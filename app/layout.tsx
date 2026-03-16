@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "LabRota",
-  description: "Embryology lab scheduling",
+  description: "Embryology lab shift scheduling and AI assistant",
 };
 
 export default function RootLayout({
