@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -58,8 +58,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // Rewrite: / → /admin, /orgs/new → /admin/orgs/new, etc.
+    // Don't double-prefix if the path already starts with /admin
     const rewriteUrl = request.nextUrl.clone()
-    rewriteUrl.pathname = "/admin" + (pathname === "/" ? "" : pathname)
+    rewriteUrl.pathname = pathname.startsWith("/admin")
+      ? pathname
+      : "/admin" + (pathname === "/" ? "" : pathname)
     const rewriteResponse = NextResponse.rewrite(rewriteUrl)
     // Forward session cookies set during getUser() refresh
     supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
