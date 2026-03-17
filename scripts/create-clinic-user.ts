@@ -2,13 +2,14 @@
  * Create a clinic organisation + user account.
  *
  * Usage (from project root):
- *   npx tsx scripts/create-clinic-user.ts --org "Ana's Lab" --email user@example.com
- *   npx tsx scripts/create-clinic-user.ts --org "Ana's Lab" --email user@example.com --name "Ana García"
+ *   npx tsx scripts/create-clinic-user.ts --org "Ana's Lab" --email user@example.com --password secret123
+ *   npx tsx scripts/create-clinic-user.ts --org "Ana's Lab" --email user@example.com --password secret123 --name "Ana García"
  *
  * Flags:
- *   --org    Organisation name (required)
- *   --email  User email (required)
- *   --name   User full name (optional)
+ *   --org       Organisation name (required)
+ *   --email     User email (required)
+ *   --password  User password (required)
+ *   --name      User full name (optional)
  *
  * Behaviour:
  *   - Creates the org if it doesn't already exist (matched by slug)
@@ -45,10 +46,11 @@ function getArg(flag: string): string | undefined {
 
 const orgName  = getArg("--org")
 const email    = getArg("--email")
+const password = getArg("--password")
 const fullName = getArg("--name")
 
-if (!orgName || !email) {
-  console.error("\n⛔  Usage: npx tsx scripts/create-clinic-user.ts --org \"Org Name\" --email user@example.com\n")
+if (!orgName || !email || !password) {
+  console.error("\n⛔  Usage: npx tsx scripts/create-clinic-user.ts --org \"Org Name\" --email user@example.com --password secret123\n")
   process.exit(1)
 }
 
@@ -126,6 +128,7 @@ async function main() {
   } else {
     const { data: newUser, error: userError } = await supabase.auth.admin.createUser({
       email: email!,
+      password: password!,
       email_confirm: true,
     })
 
