@@ -92,7 +92,7 @@ export default function LoginPage() {
           </div>
         ) : (
           /* ── Form state ── */
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="flex flex-col gap-1">
               <p className="font-sans text-[22px] font-normal text-center" style={{ color: "#1A2E3B" }}>{t("welcome")}</p>
               <p className="font-sans text-[14px] font-light text-center" style={{ color: "#666666" }}>{t("subtitle")}</p>
@@ -106,8 +106,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-[14px] font-medium">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="email" className="text-[14px] text-muted-foreground">
                 {t("emailLabel")}
               </label>
               <Input
