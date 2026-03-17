@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -550,6 +550,16 @@ export function CalendarPanel() {
           {/* Action buttons — week + day views only */}
           {showActions && (
             <>
+              {hasAssignments && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/rota/${weekStart}/print`, "_blank")}
+                >
+                  <FileDown className="size-3.5" />
+                  {t("exportPdf")}
+                </Button>
+              )}
               {isPublished && (
                 <Button variant="outline" size="sm" onClick={handleUnlock} disabled={isPending}>
                   <Lock className="size-3.5" />

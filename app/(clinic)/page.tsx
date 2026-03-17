@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { CalendarPanel } from "@/components/calendar-panel"
 import { ChatPanel } from "@/components/chat-panel"
 import { MobileBottomNav, type MobileTab } from "@/components/mobile-bottom-nav"
@@ -9,6 +10,8 @@ import { Separator } from "@/components/ui/separator"
 
 export default function SchedulePage() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("schedule")
+  const tnav   = useTranslations("nav")
+  const tagent = useTranslations("agent")
 
   return (
     <>
@@ -16,13 +19,13 @@ export default function SchedulePage() {
       <header className="hidden md:flex h-12 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="h-4" />
-        <span className="text-[14px] font-medium text-muted-foreground">Schedule</span>
+        <span className="text-[14px] font-medium text-muted-foreground">{tnav("schedule")}</span>
       </header>
 
       {/* Mobile header */}
       <header className="flex md:hidden h-12 shrink-0 items-center justify-center border-b px-4">
         <span className="text-[14px] font-medium">
-          {mobileTab === "chat" ? "AI Assistant" : "Schedule"}
+          {mobileTab === "chat" ? tagent("title") : tnav("schedule")}
         </span>
       </header>
 
