@@ -63,6 +63,23 @@ export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
   revalidatePath(`/admin/orgs/${orgId}`)
 }
 
+// ── removeOrgUser ─────────────────────────────────────────────────────────────
+export async function removeOrgUser(userId: string, orgId: string) {
+  await assertSuperAdmin()
+
+  const admin = createAdminClient()
+
+  // Detach from org (keep auth user — they may be re-invited later)
+  const { error } = await admin
+    .from("profiles")
+    .update({ organisation_id: null } as never)
+    .eq("id", userId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/admin/orgs/${orgId}`)
+}
+
 // ── createOrgUser ─────────────────────────────────────────────────────────────
 export async function createOrgUser(formData: FormData) {
   await assertSuperAdmin()

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AddUserForm } from "@/components/admin-add-user-form"
 import { getLocale } from "next-intl/server"
-import { toggleOrgStatus } from "@/app/admin/actions"
+import { toggleOrgStatus, removeOrgUser } from "@/app/admin/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import type { Organisation } from "@/lib/types/database"
 import { ArrowLeft, Users } from "lucide-react"
@@ -133,6 +133,7 @@ export default async function OrgDetailPage({
                 <tr className="border-b border-border bg-muted">
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -140,6 +141,17 @@ export default async function OrgDetailPage({
                   <tr key={p.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium">{p.full_name ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.email}</td>
+                    <td className="px-4 py-3 text-right">
+                      <form action={removeOrgUser.bind(null, p.id, id)}>
+                        <button
+                          type="submit"
+                          className="text-[13px] text-destructive hover:underline underline-offset-2"
+                          onClick={(e) => { if (!confirm(`Remove ${p.email} from this organisation?`)) e.preventDefault() }}
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>
