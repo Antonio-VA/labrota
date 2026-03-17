@@ -9,16 +9,13 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 
 -- ── Enums ────────────────────────────────────────────────────────────────────
-CREATE TYPE public.staff_role         AS ENUM ('lab', 'andrology', 'admin');
-CREATE TYPE public.onboarding_status  AS ENUM ('active', 'onboarding', 'inactive');
-CREATE TYPE public.shift_type         AS ENUM ('am', 'pm', 'full');
-CREATE TYPE public.rota_status        AS ENUM ('draft', 'published');
-CREATE TYPE public.leave_type         AS ENUM ('annual', 'sick', 'personal', 'other');
-CREATE TYPE public.leave_status       AS ENUM ('pending', 'approved', 'rejected');
-CREATE TYPE public.skill_name         AS ENUM (
-  'icsi', 'iui', 'vitrification', 'thawing',
-  'biopsy', 'semen_analysis', 'sperm_prep', 'witnessing', 'other'
-);
+DO $$ BEGIN CREATE TYPE public.staff_role        AS ENUM ('lab', 'andrology', 'admin'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.onboarding_status AS ENUM ('active', 'onboarding', 'inactive'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.shift_type        AS ENUM ('am', 'pm', 'full'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.rota_status       AS ENUM ('draft', 'published'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.leave_type        AS ENUM ('annual', 'sick', 'personal', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.leave_status      AS ENUM ('pending', 'approved', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.skill_name        AS ENUM ('icsi', 'iui', 'vitrification', 'thawing', 'biopsy', 'semen_analysis', 'sperm_prep', 'witnessing', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 -- ── organisations ────────────────────────────────────────────────────────────
