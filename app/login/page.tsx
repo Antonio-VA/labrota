@@ -122,12 +122,13 @@ export default function LoginPage() {
                 }}
                 disabled={state === "loading"}
                 required
+                className="h-[44px] rounded-[8px] border border-[#CCDDEE]"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-[44px] rounded-[8px] bg-[#1B4F8A]"
               disabled={state === "loading"}
             >
               {state === "loading" ? (
