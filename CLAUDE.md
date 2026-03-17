@@ -231,5 +231,5 @@ ANTHROPIC_API_KEY=
 | 9 | Leaves | ✅ |
 | 10 | Rota generation | ✅ |
 | 11 | Schedule views | ✅ |
-| 12 | PDF export | — |
-| 13 | AI agent | — |
+| 12 | PDF export | ✅ |
+| 13 | AI agent | ✅ |
