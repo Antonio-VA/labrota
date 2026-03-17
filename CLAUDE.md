@@ -34,7 +34,12 @@ app/
   auth/callback/      Magic link exchange → session
   design-system/      Dev-only component showcase
   login/              Magic link login page
-  (clinic routes added here per step — schedule, staff, leaves, lab, reports, settings)
+  (clinic)/           Route group — shared sidebar layout (ClinicLayout)
+    layout.tsx        SidebarProvider + AppSidebar + SidebarInset shell
+    page.tsx          Schedule (calendar + AI chat, mobile tab switching)
+    lab/
+      page.tsx        Lab configuration form
+      actions.ts      updateLabConfig server action
   globals.css         LabRota design tokens (CSS variables)
   layout.tsx          Root layout — NextIntlClientProvider + TooltipProvider
 
@@ -221,7 +226,7 @@ ANTHROPIC_API_KEY=
 | 4 | Auth | ✅ |
 | 5 | Database | ✅ |
 | 6 | Super admin portal | ✅ |
-| 7 | Lab config | — |
+| 7 | Lab config | ✅ |
 | 8 | Team (staff management) | — |
 | 9 | Leaves | — |
 | 10 | Rota generation | — |
