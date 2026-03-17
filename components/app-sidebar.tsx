@@ -31,9 +31,9 @@ export function AppSidebar() {
   ] as const
 
   return (
-    <Sidebar className="w-60 border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       {/* Logo */}
-      <SidebarHeader className="px-5 py-4 border-b border-sidebar-border">
+      <SidebarHeader className="px-5 py-4 border-b border-sidebar-border group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-3">
         <a href="/" className="flex items-center">
           <Image
             src="/brand/logo-wordmark.svg"
@@ -41,6 +41,14 @@ export function AppSidebar() {
             width={110}
             height={23}
             priority
+            className="group-data-[collapsible=icon]:hidden"
+          />
+          <Image
+            src="/brand/logo-icon.svg"
+            alt="LabRota"
+            width={24}
+            height={24}
+            className="hidden group-data-[collapsible=icon]:block mx-auto"
           />
         </a>
       </SidebarHeader>
@@ -93,7 +101,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex items-center justify-between px-2 pt-1">
+        <div className="flex items-center justify-between px-2 pt-1 group-data-[collapsible=icon]:hidden">
           <UserMenu />
           <LanguageToggle />
         </div>
