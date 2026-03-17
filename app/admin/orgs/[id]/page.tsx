@@ -85,7 +85,7 @@ export default async function OrgDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon-sm" render={<Link href="/admin" />}>
+          <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
             <ArrowLeft className="size-4" />
           </Button>
           <div>

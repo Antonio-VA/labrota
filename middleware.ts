@@ -32,6 +32,41 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
+  const hostname = request.headers.get("host") ?? ""
+  const isAdminSubdomain =
+    hostname === "admin.labrota.app" ||
+    hostname.startsWith("admin.localhost")
+
+  // ── admin.labrota.app subdomain ──────────────────────────────────────────
+  if (isAdminSubdomain) {
+    // Pass through special paths unchanged
+    if (
+      pathname.startsWith("/auth") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/brand") ||
+      pathname === "/login"
+    ) {
+      return supabaseResponse
+    }
+
+    // Auth gate
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url))
+    }
+    if (!isSuperAdmin) {
+      return NextResponse.redirect(new URL("/login", request.url))
+    }
+
+    // Rewrite: / → /admin, /orgs/new → /admin/orgs/new, etc.
+    const rewriteUrl = request.nextUrl.clone()
+    rewriteUrl.pathname = "/admin" + (pathname === "/" ? "" : pathname)
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl)
+    // Forward session cookies set during getUser() refresh
+    supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+      rewriteResponse.cookies.set(name, value)
+    })
+    return rewriteResponse
+  }
 
   // Allow through unconditionally
   if (
@@ -42,13 +77,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── /admin/* routes ─────────────────────────────────────────────────────
+  // ── /admin/* routes (direct access, e.g. localhost dev) ─────────────────
   if (pathname.startsWith("/admin")) {
-    // Not logged in → /login
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url))
     }
-    // Logged in but not super admin → back to clinic app
     if (!isSuperAdmin) {
       return NextResponse.redirect(new URL("/", request.url))
     }
@@ -58,9 +91,7 @@ export async function middleware(request: NextRequest) {
   // ── /login ───────────────────────────────────────────────────────────────
   if (pathname === "/login") {
     if (user) {
-      // Super admin lands on /login → go to admin portal
       if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
-      // Regular user → clinic app
       return NextResponse.redirect(new URL("/", request.url))
     }
     return supabaseResponse
@@ -70,7 +101,6 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
-  // Super admin accidentally on clinic app → admin portal
   if (isSuperAdmin) {
     return NextResponse.redirect(new URL("/admin", request.url))
   }

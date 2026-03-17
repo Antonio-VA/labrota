@@ -42,7 +42,7 @@ export default function NewOrgPage() {
   return (
     <div className="flex flex-col gap-6 max-w-md">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" render={<Link href="/admin" />}>
+        <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
           <ArrowLeft className="size-4" />
         </Button>
         <h1 className="text-[18px] font-medium">New organisation</h1>
@@ -96,7 +96,7 @@ export default function NewOrgPage() {
             <Button type="submit" disabled={isPending || !name || !slug}>
               {isPending ? "Creating…" : "Create organisation"}
             </Button>
-            <Button variant="outline" render={<Link href="/admin" />}>
+            <Button variant="outline" render={<Link href="/" />}>
               Cancel
             </Button>
           </div>

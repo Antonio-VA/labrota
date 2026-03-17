@@ -92,7 +92,7 @@ export default async function AdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-[18px] font-medium">Organisations</h1>
-        <Button size="sm" render={<Link href="/admin/orgs/new" />}>
+        <Button size="sm" render={<Link href="/orgs/new" />}>
           <Plus />
           New organisation
         </Button>

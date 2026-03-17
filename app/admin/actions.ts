@@ -45,7 +45,7 @@ export async function createOrganisation(formData: FormData) {
   await admin.from("lab_config").insert({ organisation_id: orgId } as never)
 
   revalidatePath("/admin")
-  redirect("/admin")
+  redirect("/")
 }
 
 // ── toggleOrgStatus ───────────────────────────────────────────────────────────
