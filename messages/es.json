@@ -57,6 +57,7 @@
   "nav": {
     "schedule": "Calendario",
     "staff": "Personal",
+    "leaves": "Ausencias",
     "lab": "Laboratorio",
     "reports": "Informes",
     "settings": "Configuración",

@@ -14,7 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import Image from "next/image"
-import { CalendarDays, Users, FlaskConical, BarChart3, Settings } from "lucide-react"
+import { CalendarDays, Users, CalendarOff, FlaskConical, BarChart3, Settings } from "lucide-react"
 import { LanguageToggle } from "@/components/language-toggle"
 import { UserMenu } from "@/components/user-menu"
 
@@ -25,6 +25,7 @@ export function AppSidebar() {
   const navItems = [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "staff",    icon: Users,        href: "/staff" },
+    { key: "leaves",   icon: CalendarOff,  href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports" },
   ] as const

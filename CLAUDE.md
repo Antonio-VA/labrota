@@ -227,8 +227,8 @@ ANTHROPIC_API_KEY=
 | 5 | Database | ✅ |
 | 6 | Super admin portal | ✅ |
 | 7 | Lab config | ✅ |
-| 8 | Team (staff management) | — |
-| 9 | Leaves | — |
+| 8 | Team (staff management) | ✅ |
+| 9 | Leaves | ✅ |
 | 10 | Rota generation | — |
 | 11 | Schedule views | — |
 | 12 | PDF export | — |
