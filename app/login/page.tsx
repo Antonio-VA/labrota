@@ -51,7 +51,7 @@ export default function LoginPage() {
       setErrorMessage(t("invalidCredentials"))
       setState("error")
     } else {
-      router.push("/schedule")
+      router.push("/")
       router.refresh()
     }
   }
