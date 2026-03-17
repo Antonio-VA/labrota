@@ -119,7 +119,7 @@ export type RotaAssignmentInsert = Omit<RotaAssignment, 'id' | 'created_at' | 'u
 // ── Update types (all fields optional except id) ──────────────────────────────
 export type StaffUpdate  = Partial<StaffInsert>
 export type LeaveUpdate  = Partial<LeaveInsert>
-export type LabConfigUpdate = Partial<Omit<LabConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
+export type LabConfigUpdate = { min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
 
 // ── Joined types used in UI ───────────────────────────────────────────────────
 export interface StaffWithSkills extends Staff {
@@ -184,7 +184,7 @@ export interface Database {
       lab_config: {
         Row:    LabConfig
         Insert: { organisation_id: string; min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
-        Update: LabConfigUpdate
+        Update: { min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
         Relationships: []
       }
     }

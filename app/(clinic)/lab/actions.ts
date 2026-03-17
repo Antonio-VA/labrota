@@ -11,7 +11,7 @@ export async function updateLabConfig(data: LabConfigUpdate) {
   const { data: profile } = await supabase
     .from("profiles")
     .select("organisation_id")
-    .single()
+    .single() as { data: { organisation_id: string | null } | null }
 
   if (!profile?.organisation_id) {
     return { error: "No organisation found." }
@@ -19,7 +19,7 @@ export async function updateLabConfig(data: LabConfigUpdate) {
 
   const { error } = await supabase
     .from("lab_config")
-    .update(data)
+    .update(data as never)
     .eq("organisation_id", profile.organisation_id)
 
   if (error) return { error: error.message }
