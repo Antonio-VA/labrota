@@ -13,12 +13,21 @@ const badgeVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 [a]:hover:bg-destructive/20",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+          "hover:bg-muted hover:text-muted-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        /* LabRota role variants */
+        lab: "border-blue-200 bg-blue-50 text-blue-700",
+        andrology: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        admin: "border-slate-200 bg-slate-100 text-slate-600",
+        /* Skill gap — red only, per spec */
+        "skill-gap": "border-red-200 bg-red-50 text-red-600",
+        /* Staff status */
+        active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        inactive: "border-slate-200 bg-slate-100 text-slate-400",
       },
     },
     defaultVariants: {

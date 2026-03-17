@@ -1,0 +1,326 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "create": "Crear",
+    "update": "Actualizar",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "clear": "Limpiar",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "generating": "Generando…",
+    "success": "Guardado correctamente",
+    "error": "Se ha producido un error",
+    "required": "Campo obligatorio",
+    "optional": "Opcional",
+    "yes": "Sí",
+    "no": "No",
+    "all": "Todos",
+    "none": "Ninguno",
+    "unknown": "Desconocido",
+    "today": "Hoy",
+    "week": "Semana",
+    "month": "Mes",
+    "day": "Día",
+    "from": "Desde",
+    "to": "Hasta",
+    "actions": "Acciones",
+    "details": "Detalles",
+    "status": "Estado",
+    "date": "Fecha",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "role": "Rol",
+    "notes": "Notas",
+    "export": "Exportar",
+    "print": "Imprimir",
+    "generate": "Generar",
+    "publish": "Publicar",
+    "unlock": "Desbloquear",
+    "lock": "Bloquear",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "published": "Publicado",
+    "draft": "Borrador",
+    "locked": "Bloqueado",
+    "language": "Idioma"
+  },
+
+  "nav": {
+    "schedule": "Calendario",
+    "staff": "Personal",
+    "lab": "Laboratorio",
+    "reports": "Informes",
+    "settings": "Configuración",
+    "signOut": "Cerrar sesión",
+    "appName": "LabRota"
+  },
+
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "magicLink": "Enlace mágico",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@clinica.com",
+    "sendLink": "Enviar enlace de acceso",
+    "checkEmail": "Revisa tu correo",
+    "checkEmailDescription": "Hemos enviado un enlace de acceso a {email}. El enlace expira en 10 minutos.",
+    "resendLink": "Reenviar enlace",
+    "invalidEmail": "Por favor, introduce un correo electrónico válido.",
+    "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "unauthorized": "No tienes permiso para acceder a esta página.",
+    "welcome": "Bienvenido a LabRota",
+    "subtitle": "Gestión de guardias para laboratorios de FIV"
+  },
+
+  "schedule": {
+    "title": "Calendario",
+    "weekView": "Semana",
+    "monthView": "Mes",
+    "dayView": "Día",
+    "today": "Hoy",
+    "previousPeriod": "Período anterior",
+    "nextPeriod": "Período siguiente",
+    "generateRota": "Generar guardia",
+    "regenerateRota": "Regenerar guardia",
+    "publishRota": "Publicar guardia",
+    "unlockRota": "Desbloquear guardia",
+    "exportPdf": "Exportar PDF",
+    "rotaPublished": "Guardia publicada correctamente",
+    "rotaPublishedBy": "Publicada el {date} por {author}",
+    "rotaLocked": "Esta guardia está bloqueada. Desbloquéala para editar.",
+    "noRota": "Sin guardia esta semana",
+    "noRotaDescription": "Genera una guardia con el agente IA o el botón Generar.",
+    "preserveOverrides": "¿Conservar modificaciones manuales?",
+    "preserveOverridesDescription": "Si conservas las modificaciones, sólo se regenerarán los turnos no editados.",
+    "keepOverrides": "Conservar modificaciones",
+    "regenerateAll": "Regenerar todo",
+    "assignmentUpdated": "Turno actualizado: {staff} asignado el {date}",
+    "constraintViolation": "No se puede cumplir la cobertura de {skill} el {date} — sólo {count} profesional disponible.",
+    "shiftTypes": {
+      "am": "Mañana",
+      "pm": "Tarde",
+      "full": "Día completo",
+      "off": "Libre"
+    },
+    "coverage": "Cobertura",
+    "skillCoverage": "Cobertura de habilidades",
+    "insufficientCoverage": "Cobertura insuficiente",
+    "history": "Historial de guardias",
+    "pastRota": "Guardia pasada — sólo lectura"
+  },
+
+  "staff": {
+    "title": "Personal",
+    "directory": "Directorio de personal",
+    "addStaff": "Añadir miembro",
+    "editStaff": "Editar miembro",
+    "searchPlaceholder": "Buscar por nombre…",
+    "filterByRole": "Filtrar por rol",
+    "filterByStatus": "Filtrar por estado",
+    "allRoles": "Todos los roles",
+    "allStatuses": "Todos los estados",
+    "noStaff": "Sin personal",
+    "noStaffDescription": "Añade tu primer miembro del equipo para empezar a planificar guardias.",
+    "noResults": "Sin resultados",
+    "noResultsDescription": "No se ha encontrado ningún miembro con ese nombre o filtro.",
+    "columns": {
+      "name": "Nombre",
+      "role": "Rol",
+      "skills": "Habilidades",
+      "shiftsThisWeek": "Turnos esta semana",
+      "status": "Estado"
+    },
+    "roles": {
+      "lab": "Laboratorio",
+      "andrology": "Andrología",
+      "admin": "Administración"
+    },
+    "fields": {
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "email": "Correo electrónico",
+      "role": "Rol",
+      "skills": "Habilidades",
+      "workingPattern": "Jornada laboral",
+      "contractedHours": "Horas contratadas semanales",
+      "startDate": "Fecha de incorporación",
+      "endDate": "Fecha de baja",
+      "onboardingStatus": "Estado de incorporación",
+      "notes": "Notas internas"
+    },
+    "onboardingStatus": {
+      "active": "Activo",
+      "onboarding": "En formación",
+      "inactive": "Inactivo"
+    },
+    "workingDays": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "addSuccess": "{name} añadido correctamente al equipo.",
+    "updateSuccess": "El perfil de {name} se ha actualizado.",
+    "deleteSuccess": "{name} eliminado del equipo.",
+    "deleteConfirmTitle": "Eliminar {name}",
+    "deleteConfirmDescription": "Esta acción no se puede deshacer. El miembro será eliminado definitivamente.",
+    "profile": "Perfil",
+    "shiftsHistory": "Historial de turnos",
+    "upcomingLeave": "Próximas ausencias"
+  },
+
+  "skills": {
+    "icsi": "ICSI",
+    "iui": "IUI",
+    "vitrification": "Vitrificación",
+    "thawing": "Descongelación",
+    "biopsy": "Biopsia",
+    "semenAnalysis": "Análisis seminal",
+    "spermPrep": "Preparación espermática",
+    "witnessing": "Testigo",
+    "other": "Otra"
+  },
+
+  "leaves": {
+    "title": "Ausencias",
+    "addLeave": "Añadir ausencia",
+    "editLeave": "Editar ausencia",
+    "approveLeave": "Aprobar",
+    "rejectLeave": "Rechazar",
+    "noLeaves": "Sin ausencias",
+    "noLeavesDescription": "No hay ausencias registradas para este período.",
+    "noPendingLeaves": "Sin solicitudes pendientes",
+    "noPendingLeavesDescription": "Todas las solicitudes de ausencia han sido revisadas.",
+    "columns": {
+      "staff": "Empleado",
+      "type": "Tipo",
+      "from": "Desde",
+      "to": "Hasta",
+      "days": "Días",
+      "status": "Estado",
+      "notes": "Notas"
+    },
+    "types": {
+      "annual": "Vacaciones",
+      "sick": "Baja médica",
+      "personal": "Asuntos propios",
+      "other": "Otros"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "approved": "Aprobada",
+      "rejected": "Rechazada"
+    },
+    "fields": {
+      "staff": "Empleado",
+      "type": "Tipo de ausencia",
+      "startDate": "Fecha inicio",
+      "endDate": "Fecha fin",
+      "notes": "Notas"
+    },
+    "addSuccess": "Ausencia de {name} añadida: {from} – {to}.",
+    "updateSuccess": "Ausencia actualizada correctamente.",
+    "approveSuccess": "Ausencia aprobada.",
+    "rejectSuccess": "Ausencia rechazada.",
+    "deleteSuccess": "Ausencia eliminada.",
+    "deleteConfirmTitle": "Eliminar ausencia",
+    "deleteConfirmDescription": "¿Seguro que quieres eliminar esta ausencia? Esta acción no se puede deshacer.",
+    "conflictWarning": "Este período coincide con otras ausencias del equipo."
+  },
+
+  "lab": {
+    "title": "Laboratorio",
+    "configuration": "Configuración del laboratorio",
+    "savedAutomatically": "Los cambios se guardan automáticamente",
+    "sections": {
+      "coverage": "Cobertura mínima",
+      "weekdays": "Días laborables",
+      "weekends": "Fines de semana",
+      "staffing": "Ratio de personal",
+      "shifts": "Tipos de turno"
+    },
+    "fields": {
+      "minLabCoverage": "Cobertura mínima Lab (por día)",
+      "minAndrologyCoverage": "Cobertura mínima Andrología (por día)",
+      "minWeekendAndrology": "Cobertura mínima Andrología (fin de semana)",
+      "punctionesAverage": "Media de punciones (últimos 3 meses)",
+      "staffingRatio": "Ratio personal / punción",
+      "adminOnWeekends": "Admin en fines de semana"
+    },
+    "shiftTypes": {
+      "am": "Mañana (AM)",
+      "pm": "Tarde (PM)",
+      "full": "Día completo"
+    },
+    "updateSuccess": "Configuración del laboratorio actualizada."
+  },
+
+  "reports": {
+    "title": "Informes",
+    "comingSoon": "Próximamente",
+    "comingSoonDescription": "Los informes estarán disponibles en una próxima versión."
+  },
+
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "languageDescription": "Selecciona el idioma de la interfaz.",
+    "spanish": "Español",
+    "english": "English",
+    "organisation": "Organización",
+    "profile": "Mi perfil"
+  },
+
+  "agent": {
+    "title": "Agente IA",
+    "placeholder": "Escribe un mensaje… (p.ej. Genera la guardia de la semana que viene)",
+    "thinking": "Pensando…",
+    "collapse": "Ocultar agente",
+    "expand": "Mostrar agente",
+    "confirmDraft": "Confirmar acción",
+    "confirmDraftDescription": "El agente propone los siguientes cambios. Revísalos antes de confirmar.",
+    "apply": "Aplicar",
+    "discard": "Descartar",
+    "examples": {
+      "generate": "Genera la guardia de la semana que viene",
+      "leave": "Añade ausencia a {name} del {from} al {to}",
+      "coverage": "¿Hay falta de cobertura esta semana?",
+      "shifts": "¿Cuántos turnos ha hecho {name} esta semana?",
+      "print": "Imprime la guardia de esta semana"
+    }
+  },
+
+  "pdf": {
+    "title": "Exportar guardia",
+    "weekOf": "Semana del {date}",
+    "generatedOn": "Generado el {date}",
+    "staff": "Personal",
+    "shifts": "Turnos",
+    "download": "Descargar PDF",
+    "preparing": "Preparando PDF…"
+  },
+
+  "errors": {
+    "notFound": "Página no encontrada",
+    "notFoundDescription": "La página que buscas no existe o has sido redirigido.",
+    "serverError": "Error del servidor",
+    "serverErrorDescription": "Se ha producido un error inesperado. Por favor, inténtalo de nuevo.",
+    "unauthorized": "Sin autorización",
+    "unauthorizedDescription": "No tienes permiso para realizar esta acción.",
+    "networkError": "Error de conexión. Comprueba tu conexión a internet.",
+    "sessionExpired": "Tu sesión ha caducado. Por favor, vuelve a iniciar sesión.",
+    "constraintViolation": "No se puede cumplir {constraint} el {date} — {reason}."
+  }
+}

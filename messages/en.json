@@ -1,0 +1,326 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "create": "Create",
+    "update": "Update",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "generating": "Generating…",
+    "success": "Saved successfully",
+    "error": "An error occurred",
+    "required": "Required",
+    "optional": "Optional",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "none": "None",
+    "unknown": "Unknown",
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "day": "Day",
+    "from": "From",
+    "to": "To",
+    "actions": "Actions",
+    "details": "Details",
+    "status": "Status",
+    "date": "Date",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "notes": "Notes",
+    "export": "Export",
+    "print": "Print",
+    "generate": "Generate",
+    "publish": "Publish",
+    "unlock": "Unlock",
+    "lock": "Lock",
+    "active": "Active",
+    "inactive": "Inactive",
+    "published": "Published",
+    "draft": "Draft",
+    "locked": "Locked",
+    "language": "Language"
+  },
+
+  "nav": {
+    "schedule": "Schedule",
+    "staff": "Staff",
+    "lab": "Lab",
+    "reports": "Reports",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "appName": "LabRota"
+  },
+
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "magicLink": "Magic link",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@clinic.com",
+    "sendLink": "Send access link",
+    "checkEmail": "Check your email",
+    "checkEmailDescription": "We've sent an access link to {email}. The link expires in 10 minutes.",
+    "resendLink": "Resend link",
+    "invalidEmail": "Please enter a valid email address.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "unauthorized": "You don't have permission to access this page.",
+    "welcome": "Welcome to LabRota",
+    "subtitle": "Shift scheduling for IVF labs"
+  },
+
+  "schedule": {
+    "title": "Schedule",
+    "weekView": "Week",
+    "monthView": "Month",
+    "dayView": "Day",
+    "today": "Today",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "generateRota": "Generate rota",
+    "regenerateRota": "Regenerate rota",
+    "publishRota": "Publish rota",
+    "unlockRota": "Unlock rota",
+    "exportPdf": "Export PDF",
+    "rotaPublished": "Rota published successfully",
+    "rotaPublishedBy": "Published on {date} by {author}",
+    "rotaLocked": "This rota is locked. Unlock it to make changes.",
+    "noRota": "No rota for this week",
+    "noRotaDescription": "Generate a rota using the AI agent or the Generate Rota button.",
+    "preserveOverrides": "Preserve manual overrides?",
+    "preserveOverridesDescription": "If you keep overrides, only unedited shifts will be regenerated.",
+    "keepOverrides": "Keep overrides",
+    "regenerateAll": "Regenerate all",
+    "assignmentUpdated": "Shift updated: {staff} assigned on {date}",
+    "constraintViolation": "Cannot meet {skill} coverage on {date} — only {count} qualified practitioner available.",
+    "shiftTypes": {
+      "am": "Morning",
+      "pm": "Afternoon",
+      "full": "Full day",
+      "off": "Off"
+    },
+    "coverage": "Coverage",
+    "skillCoverage": "Skill coverage",
+    "insufficientCoverage": "Insufficient coverage",
+    "history": "Rota history",
+    "pastRota": "Past rota — read only"
+  },
+
+  "staff": {
+    "title": "Staff",
+    "directory": "Staff directory",
+    "addStaff": "Add member",
+    "editStaff": "Edit member",
+    "searchPlaceholder": "Search by name…",
+    "filterByRole": "Filter by role",
+    "filterByStatus": "Filter by status",
+    "allRoles": "All roles",
+    "allStatuses": "All statuses",
+    "noStaff": "No staff members",
+    "noStaffDescription": "Add your first team member to start scheduling rotas.",
+    "noResults": "No results",
+    "noResultsDescription": "No members matched that name or filter.",
+    "columns": {
+      "name": "Name",
+      "role": "Role",
+      "skills": "Skills",
+      "shiftsThisWeek": "Shifts this week",
+      "status": "Status"
+    },
+    "roles": {
+      "lab": "Lab",
+      "andrology": "Andrology",
+      "admin": "Admin"
+    },
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email address",
+      "role": "Role",
+      "skills": "Skills",
+      "workingPattern": "Working pattern",
+      "contractedHours": "Contracted weekly hours",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "onboardingStatus": "Status",
+      "notes": "Internal notes"
+    },
+    "onboardingStatus": {
+      "active": "Active",
+      "onboarding": "Onboarding",
+      "inactive": "Inactive"
+    },
+    "workingDays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "addSuccess": "{name} added to the team.",
+    "updateSuccess": "{name}'s profile has been updated.",
+    "deleteSuccess": "{name} removed from the team.",
+    "deleteConfirmTitle": "Delete {name}",
+    "deleteConfirmDescription": "This action cannot be undone. The member will be permanently removed.",
+    "profile": "Profile",
+    "shiftsHistory": "Shift history",
+    "upcomingLeave": "Upcoming leave"
+  },
+
+  "skills": {
+    "icsi": "ICSI",
+    "iui": "IUI",
+    "vitrification": "Vitrification",
+    "thawing": "Thawing",
+    "biopsy": "Biopsy",
+    "semenAnalysis": "Semen analysis",
+    "spermPrep": "Sperm preparation",
+    "witnessing": "Witnessing",
+    "other": "Other"
+  },
+
+  "leaves": {
+    "title": "Leave",
+    "addLeave": "Add leave",
+    "editLeave": "Edit leave",
+    "approveLeave": "Approve",
+    "rejectLeave": "Reject",
+    "noLeaves": "No leave records",
+    "noLeavesDescription": "No leave has been recorded for this period.",
+    "noPendingLeaves": "No pending requests",
+    "noPendingLeavesDescription": "All leave requests have been reviewed.",
+    "columns": {
+      "staff": "Staff member",
+      "type": "Type",
+      "from": "From",
+      "to": "To",
+      "days": "Days",
+      "status": "Status",
+      "notes": "Notes"
+    },
+    "types": {
+      "annual": "Annual leave",
+      "sick": "Sick leave",
+      "personal": "Personal leave",
+      "other": "Other"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "fields": {
+      "staff": "Staff member",
+      "type": "Leave type",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "notes": "Notes"
+    },
+    "addSuccess": "Leave for {name} added: {from} – {to}.",
+    "updateSuccess": "Leave updated successfully.",
+    "approveSuccess": "Leave approved.",
+    "rejectSuccess": "Leave rejected.",
+    "deleteSuccess": "Leave deleted.",
+    "deleteConfirmTitle": "Delete leave",
+    "deleteConfirmDescription": "Are you sure you want to delete this leave record? This action cannot be undone.",
+    "conflictWarning": "This period overlaps with other team members' leave."
+  },
+
+  "lab": {
+    "title": "Lab",
+    "configuration": "Lab configuration",
+    "savedAutomatically": "Changes are saved automatically",
+    "sections": {
+      "coverage": "Minimum coverage",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends",
+      "staffing": "Staffing ratio",
+      "shifts": "Shift types"
+    },
+    "fields": {
+      "minLabCoverage": "Minimum Lab coverage (per day)",
+      "minAndrologyCoverage": "Minimum Andrology coverage (per day)",
+      "minWeekendAndrology": "Minimum Andrology coverage (weekend)",
+      "punctionesAverage": "Average punctions (last 3 months)",
+      "staffingRatio": "Staff-to-punction ratio",
+      "adminOnWeekends": "Schedule Admin on weekends"
+    },
+    "shiftTypes": {
+      "am": "Morning (AM)",
+      "pm": "Afternoon (PM)",
+      "full": "Full day"
+    },
+    "updateSuccess": "Lab configuration updated."
+  },
+
+  "reports": {
+    "title": "Reports",
+    "comingSoon": "Coming soon",
+    "comingSoonDescription": "Reports will be available in a future release."
+  },
+
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageDescription": "Select the interface language.",
+    "spanish": "Español",
+    "english": "English",
+    "organisation": "Organisation",
+    "profile": "My profile"
+  },
+
+  "agent": {
+    "title": "AI Agent",
+    "placeholder": "Type a message… (e.g. Generate next week's rota)",
+    "thinking": "Thinking…",
+    "collapse": "Hide agent",
+    "expand": "Show agent",
+    "confirmDraft": "Confirm action",
+    "confirmDraftDescription": "The agent is proposing the following changes. Review them before confirming.",
+    "apply": "Apply",
+    "discard": "Discard",
+    "examples": {
+      "generate": "Generate next week's rota",
+      "leave": "Add leave for {name} from {from} to {to}",
+      "coverage": "Are we short on any skills this week?",
+      "shifts": "How many shifts has {name} done this week?",
+      "print": "Print this week's rota"
+    }
+  },
+
+  "pdf": {
+    "title": "Export rota",
+    "weekOf": "Week of {date}",
+    "generatedOn": "Generated on {date}",
+    "staff": "Staff",
+    "shifts": "Shifts",
+    "download": "Download PDF",
+    "preparing": "Preparing PDF…"
+  },
+
+  "errors": {
+    "notFound": "Page not found",
+    "notFoundDescription": "The page you're looking for doesn't exist or you've been redirected.",
+    "serverError": "Server error",
+    "serverErrorDescription": "An unexpected error occurred. Please try again.",
+    "unauthorized": "Unauthorised",
+    "unauthorizedDescription": "You don't have permission to perform this action.",
+    "networkError": "Connection error. Please check your internet connection.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "constraintViolation": "Cannot meet {constraint} on {date} — {reason}."
+  }
+}
