@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -52,7 +51,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-muted grid place-items-center px-4">
 
       {/* Language toggle — top right */}
       <div className="absolute top-4 right-4">
@@ -63,14 +62,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-background rounded-lg border border-border p-8 flex flex-col gap-6">
 
         {/* Wordmark */}
-        <div className="flex justify-center">
-          <Image
-            src="/brand/logo-wordmark.svg"
-            alt="LabRota"
-            width={140}
-            height={29}
-            priority
-          />
+        <div className="flex flex-col items-center gap-0">
+          <span className="font-sans text-[28px] leading-none tracking-normal" style={{ color: "#1B4F8A" }}>
+            <span className="font-light">lab</span><span className="font-bold">rota</span>
+          </span>
+          <div className="mt-1 h-[2px] w-full" style={{ backgroundColor: "#2E86AB" }} />
         </div>
 
         {state === "sent" ? (
@@ -98,8 +94,8 @@ export default function LoginPage() {
           /* ── Form state ── */
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <p className="text-[18px] font-medium text-center">{t("welcome")}</p>
-              <p className="text-[14px] text-muted-foreground text-center">{t("subtitle")}</p>
+              <p className="font-sans text-[22px] font-normal text-center" style={{ color: "#1A2E3B" }}>{t("welcome")}</p>
+              <p className="font-sans text-[14px] font-light text-center" style={{ color: "#666666" }}>{t("subtitle")}</p>
             </div>
 
             {/* Error banner */}

@@ -29,7 +29,7 @@ export function ChatPanel() {
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l">
+    <aside className="flex w-full md:w-80 md:shrink-0 flex-col border-l">
       {/* Chat header */}
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <Bot className="size-4 text-primary" />

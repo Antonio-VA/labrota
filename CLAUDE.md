@@ -102,6 +102,31 @@ Follow this on every new component:
 - `--accent: #dbeafe` (active nav background)
 - `--accent-foreground: #1e40af` (active nav text)
 
+---
+
+## Responsive Strategy
+
+Desktop-first. Optimised for 1280px+. Breakpoint: `md` (768px).
+
+| Section | Desktop | Mobile |
+|---|---|---|
+| Schedule | Sidebar + week/month/day calendar + AI chat panel | Bottom nav, day view only, AI chat via "AI" tab |
+| Team / Leaves / Lab / Reports / Settings | Full layout | `<MobileGate>` — "Please use a desktop browser" |
+| Admin portal | Desktop only | Not applicable (no mobile support) |
+
+### Mobile layout rules
+- Sidebar hidden on mobile (`md:block` via shadcn sidebar internals — Sheet never triggered)
+- `<MobileBottomNav>` renders at bottom of `SidebarInset` — `md:hidden`
+- Schedule page: `mobileTab` state switches between `"schedule"` and `"chat"` views
+- AI chat takes full screen when active on mobile (`flex flex-1` instead of `w-80`)
+- `<MobileGate>` wraps all non-schedule page content — shows monitor icon + message on mobile
+
+### Components
+- `components/mobile-bottom-nav.tsx` — `MobileBottomNav` + exported `MobileTab` type
+- `components/mobile-gate.tsx` — `MobileGate` wrapper for desktop-only sections
+
+---
+
 ### Key component patterns
 - **Button as link**: use `render={<Link href="..." />}` — NOT `asChild` (this is base-ui, not Radix)
 - **Role badge**: `<Badge variant="lab">`, `<Badge variant="andrology">`, `<Badge variant="admin">`
