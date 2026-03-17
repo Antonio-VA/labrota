@@ -257,3 +257,80 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
   revalidatePath("/")
   return {}
 }
+
+// ── getRotaMonthSummary ───────────────────────────────────────────────────────
+
+export interface MonthDaySummary {
+  date: string
+  staffCount: number
+  hasSkillGaps: boolean
+  isWeekend: boolean
+  isCurrentMonth: boolean
+}
+
+export interface RotaMonthSummary {
+  monthStart: string   // "YYYY-MM-01"
+  days: MonthDaySummary[]
+}
+
+export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonthSummary> {
+  const supabase = await createClient()
+
+  // Build grid: Monday before 1st through Sunday after last day of month
+  const first = new Date(monthStart + "T12:00:00")
+  const last  = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12)
+
+  const gridStart = new Date(first)
+  const startDow  = gridStart.getDay()
+  gridStart.setDate(gridStart.getDate() - (startDow === 0 ? 6 : startDow - 1))
+
+  const gridEnd = new Date(last)
+  const endDow  = gridEnd.getDay()
+  if (endDow !== 0) gridEnd.setDate(gridEnd.getDate() + (7 - endDow))
+
+  const gridDates: string[] = []
+  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+    gridDates.push(d.toISOString().split("T")[0])
+  }
+
+  const [assignmentsRes, skillsRes] = await Promise.all([
+    supabase
+      .from("rota_assignments")
+      .select("date, staff_id")
+      .gte("date", gridDates[0])
+      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string }[] | null }>,
+    supabase
+      .from("staff_skills")
+      .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
+  ])
+
+  const byDate: Record<string, string[]> = {}
+  for (const a of assignmentsRes.data ?? []) {
+    if (!byDate[a.date]) byDate[a.date] = []
+    byDate[a.date].push(a.staff_id)
+  }
+
+  const staffSkillMap: Record<string, string[]> = {}
+  for (const ss of skillsRes.data ?? []) {
+    if (!staffSkillMap[ss.staff_id]) staffSkillMap[ss.staff_id] = []
+    staffSkillMap[ss.staff_id].push(ss.skill)
+  }
+  const allOrgSkills = [...new Set((skillsRes.data ?? []).map((ss) => ss.skill))]
+  const currentMonthPrefix = monthStart.slice(0, 7)
+
+  const days: MonthDaySummary[] = gridDates.map((date) => {
+    const staffIds = byDate[date] ?? []
+    const covered  = new Set(staffIds.flatMap((id) => staffSkillMap[id] ?? []))
+    const hasSkillGaps = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
+    const dow = new Date(date + "T12:00:00").getDay()
+    return {
+      date,
+      staffCount: staffIds.length,
+      hasSkillGaps,
+      isWeekend: dow === 0 || dow === 6,
+      isCurrentMonth: date.startsWith(currentMonthPrefix),
+    }
+  })
+
+  return { monthStart, days }
+}
