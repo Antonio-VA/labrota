@@ -20,7 +20,7 @@ try {
   }
 } catch { /* ignore */ }
 
-const EMAIL = "ton_va@outlook.com"
+const EMAIL = "antonio.grit@gmail.com"
 
 async function main() {
   const supabase = createClient(

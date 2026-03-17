@@ -36,7 +36,7 @@ try {
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const SUPER_ADMIN_EMAIL = "ton_va@outlook.com"
+const SUPER_ADMIN_EMAIL = "antonio.grit@gmail.com"
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
