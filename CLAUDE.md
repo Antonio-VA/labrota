@@ -229,7 +229,7 @@ ANTHROPIC_API_KEY=
 | 7 | Lab config | ✅ |
 | 8 | Team (staff management) | ✅ |
 | 9 | Leaves | ✅ |
-| 10 | Rota generation | — |
+| 10 | Rota generation | ✅ |
 | 11 | Schedule views | — |
 | 12 | PDF export | — |
 | 13 | AI agent | — |
