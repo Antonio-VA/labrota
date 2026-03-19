@@ -41,7 +41,7 @@ type Proposal = GenerateRotaProposal | AddLeaveProposal
 
 // ── Proposal card ─────────────────────────────────────────────────────────────
 
-function ProposalCard({ proposal }: { proposal: Proposal }) {
+function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?: () => void }) {
   const t      = useTranslations("agent")
   const tc     = useTranslations("common")
   const router = useRouter()
@@ -57,12 +57,21 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
       if (proposal.action === "generateRota") {
         const result = await generateRota(proposal.params.weekStart, false)
-        if (result.error) { setError(result.error); setStatus("pending") }
-        else { setStatus("done"); router.refresh() }
+        if (result.error) {
+          setError(result.error)
+          setStatus("pending")
+        } else if ((result.assignmentCount ?? 0) === 0) {
+          setError("Rota generated but no assignments were created. Check that active staff exist and lab configuration is set up.")
+          setStatus("pending")
+        } else {
+          setStatus("done")
+          onRefresh?.()
+          router.refresh()
+        }
       } else if (proposal.action === "addLeave") {
         const { params } = proposal
         if (!params.staffId) {
-          setError("Staff member not found. Please add leave manually.")
+          setError("Staff member not found. Please add the leave manually from the Ausencias page.")
           setStatus("pending")
           return
         }
@@ -153,7 +162,7 @@ function ExamplePrompts({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function ChatPanel() {
+export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
   const t = useTranslations("agent")
   const { messages, sendMessage, status } = useChat({ transport })
   const [input, setInput]       = useState("")
@@ -208,7 +217,7 @@ export function ChatPanel() {
       {!collapsed && (
         <>
           {/* Header */}
-          <div className="flex items-center gap-2 border-b px-3 py-3 shrink-0">
+          <div className="flex items-center gap-2 border-b px-3 h-12 shrink-0">
             <button
               onClick={toggleCollapse}
               className="flex items-center justify-center size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
@@ -276,7 +285,7 @@ export function ChatPanel() {
                       if (tp.state !== "result" || !tp.result?.proposal) return null
                       return (
                         <div key={i} className="w-full max-w-[95%]">
-                          <ProposalCard proposal={tp.result} />
+                          <ProposalCard proposal={tp.result} onRefresh={onRefresh} />
                         </div>
                       )
                     })}

@@ -399,7 +399,7 @@ function OverrideDialog({ onKeep, onRegenerate, onCancel, isPending }: {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel() {
+export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -442,6 +442,14 @@ export function CalendarPanel() {
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart)
   }, [monthStart, view, fetchMonth])
+
+  // External refresh trigger (e.g. after agent generates a rota)
+  useEffect(() => {
+    if (refreshKey === 0) return
+    fetchWeek(weekStart)
+    if (view === "month") fetchMonth(monthStart)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey])
 
   // Navigation
   function navigate(dir: -1 | 1) {

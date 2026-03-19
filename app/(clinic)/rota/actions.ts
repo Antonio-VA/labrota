@@ -129,7 +129,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 export async function generateRota(
   weekStart: string,
   preserveOverrides: boolean
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; assignmentCount?: number }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
@@ -229,7 +229,7 @@ export async function generateRota(
   }
 
   revalidatePath("/")
-  return {}
+  return { assignmentCount: toInsert.length }
 }
 
 // ── publishRota ───────────────────────────────────────────────────────────────
