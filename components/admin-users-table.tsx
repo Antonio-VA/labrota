@@ -126,11 +126,11 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
       {/* Role */}
       <td className="px-4 py-3">
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-          user.appRole === "admin"
-            ? "bg-blue-50 text-blue-700"
-            : "bg-muted text-muted-foreground"
+          user.appRole === "viewer"
+            ? "bg-muted text-muted-foreground"
+            : "bg-blue-50 text-blue-700"
         }`}>
-          {user.appRole === "admin" ? "Admin" : "Viewer"}
+          {user.appRole === "viewer" ? "Viewer" : "Admin"}
         </span>
       </td>
 
