@@ -34,8 +34,8 @@ function NavItem({
             <div className="flex flex-col items-center gap-1 py-2.5 mx-2 rounded-[8px] cursor-not-allowed" />
           }
         >
-          <Icon className="size-6 text-gray-300" />
-          <span className="text-[11px] font-medium text-gray-300 leading-none">{label}</span>
+          <Icon className="size-6 text-slate-300" />
+          <span className="text-[11px] font-medium text-slate-300 leading-none">{label}</span>
         </TooltipTrigger>
         <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
@@ -52,7 +52,7 @@ function NavItem({
               "flex flex-col items-center gap-1 py-2.5 mx-2 rounded-[8px] transition-colors",
               isActive
                 ? "bg-blue-100 text-blue-700"
-                : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             )}
           />
         }
