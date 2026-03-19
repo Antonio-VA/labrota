@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SendHorizonal, Bot, CheckCircle2, XCircle } from "lucide-react"
 import { useRef, useEffect, useState, useTransition } from "react"
+import ReactMarkdown from "react-markdown"
 import { generateRota } from "@/app/(clinic)/rota/actions"
 import { createLeave } from "@/app/(clinic)/leaves/actions"
 import { useRouter } from "next/navigation"
@@ -214,13 +215,26 @@ export function ChatPanel() {
                   return (
                     <div
                       key={i}
-                      className={`rounded-lg px-3 py-2 text-[13px] max-w-[90%] whitespace-pre-wrap ${
+                      className={`rounded-lg px-3 py-2 text-[13px] max-w-[90%] ${
                         m.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
+                          ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                          : "bg-muted text-foreground prose prose-sm prose-neutral max-w-none"
                       }`}
                     >
-                      {text}
+                      {m.role === "user" ? text : (
+                        <ReactMarkdown
+                          components={{
+                            p:      ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                            ul:     ({ children }) => <ul className="list-disc pl-4 mb-1.5 space-y-0.5">{children}</ul>,
+                            ol:     ({ children }) => <ol className="list-decimal pl-4 mb-1.5 space-y-0.5">{children}</ol>,
+                            li:     ({ children }) => <li>{children}</li>,
+                            code:   ({ children }) => <code className="bg-background/60 rounded px-1 text-[12px] font-mono">{children}</code>,
+                          }}
+                        >
+                          {text}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   )
                 })}
