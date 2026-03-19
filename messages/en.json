@@ -252,21 +252,42 @@
       "weekdays": "Weekdays",
       "weekends": "Weekends",
       "staffing": "Staffing ratio",
-      "shifts": "Shift types"
+      "shifts": "Shift types",
+      "punctions": "Punctions",
+      "holidays": "Bank holidays"
     },
     "fields": {
       "minLabCoverage": "Minimum Lab coverage (per day)",
       "minAndrologyCoverage": "Minimum Andrology coverage (per day)",
       "minWeekendAndrology": "Minimum Andrology coverage (weekend)",
+      "minWeekendLabCoverage": "Minimum Lab coverage (weekend)",
       "punctionesAverage": "Average punctions (last 3 months)",
+      "punctionsByDay": "Average punctions per day of the week",
       "staffingRatio": "Staff-to-punction ratio",
-      "adminOnWeekends": "Schedule Admin on weekends"
+      "adminOnWeekends": "Schedule Admin on weekends",
+      "autonomousCommunity": "Autonomous community",
+      "shiftLabel": "Shift",
+      "shiftLangEs": "Español",
+      "shiftLangEn": "English"
+    },
+    "days": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
     },
     "shiftTypes": {
       "am": "Morning (AM)",
       "pm": "Afternoon (PM)",
       "full": "Full day"
     },
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "holidaysHint": "Regional bank holidays will be applied automatically when generating rotas.",
+    "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated."
   },
 

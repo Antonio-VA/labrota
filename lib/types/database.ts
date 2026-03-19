@@ -97,17 +97,31 @@ export interface RotaAssignment {
   updated_at:         string
 }
 
+export type PunctionsByDay = {
+  mon: number; tue: number; wed: number; thu: number
+  fri: number; sat: number; sun: number
+}
+
 export interface LabConfig {
-  id:                     string
-  organisation_id:        string
-  min_lab_coverage:       number
-  min_andrology_coverage: number
-  min_weekend_andrology:  number
-  punctions_average:      number
-  staffing_ratio:         number
-  admin_on_weekends:      boolean
-  created_at:             string
-  updated_at:             string
+  id:                       string
+  organisation_id:          string
+  min_lab_coverage:         number
+  min_andrology_coverage:   number
+  min_weekend_andrology:    number
+  min_weekend_lab_coverage: number
+  punctions_average:        number   // legacy — superseded by punctions_by_day
+  punctions_by_day:         PunctionsByDay
+  staffing_ratio:           number
+  admin_on_weekends:        boolean
+  autonomous_community:     string | null
+  shift_name_am_es:         string
+  shift_name_pm_es:         string
+  shift_name_full_es:       string
+  shift_name_am_en:         string
+  shift_name_pm_en:         string
+  shift_name_full_en:       string
+  created_at:               string
+  updated_at:               string
 }
 
 // ── Insert types (omit server-generated fields) ───────────────────────────────
@@ -119,7 +133,22 @@ export type RotaAssignmentInsert = Omit<RotaAssignment, 'id' | 'created_at' | 'u
 // ── Update types (all fields optional except id) ──────────────────────────────
 export type StaffUpdate  = Partial<StaffInsert>
 export type LeaveUpdate  = Partial<LeaveInsert>
-export type LabConfigUpdate = { min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
+export type LabConfigUpdate = {
+  min_lab_coverage?:         number
+  min_andrology_coverage?:   number
+  min_weekend_andrology?:    number
+  min_weekend_lab_coverage?: number
+  punctions_by_day?:         PunctionsByDay
+  staffing_ratio?:           number
+  admin_on_weekends?:        boolean
+  autonomous_community?:     string | null
+  shift_name_am_es?:         string
+  shift_name_pm_es?:         string
+  shift_name_full_es?:       string
+  shift_name_am_en?:         string
+  shift_name_pm_en?:         string
+  shift_name_full_en?:       string
+}
 
 // ── Joined types used in UI ───────────────────────────────────────────────────
 export interface StaffWithSkills extends Staff {
@@ -183,8 +212,8 @@ export interface Database {
       }
       lab_config: {
         Row:    LabConfig
-        Insert: { organisation_id: string; min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
-        Update: { min_lab_coverage?: number; min_andrology_coverage?: number; min_weekend_andrology?: number; punctions_average?: number; staffing_ratio?: number; admin_on_weekends?: boolean }
+        Insert: { organisation_id: string } & Partial<Omit<LabConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
+        Update: LabConfigUpdate
         Relationships: []
       }
     }

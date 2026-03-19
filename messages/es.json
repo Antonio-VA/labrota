@@ -252,21 +252,42 @@
       "weekdays": "Días laborables",
       "weekends": "Fines de semana",
       "staffing": "Ratio de personal",
-      "shifts": "Tipos de turno"
+      "shifts": "Tipos de turno",
+      "punctions": "Punciones",
+      "holidays": "Festivos"
     },
     "fields": {
       "minLabCoverage": "Cobertura mínima Lab (por día)",
       "minAndrologyCoverage": "Cobertura mínima Andrología (por día)",
       "minWeekendAndrology": "Cobertura mínima Andrología (fin de semana)",
+      "minWeekendLabCoverage": "Cobertura mínima Lab (fin de semana)",
       "punctionesAverage": "Media de punciones (últimos 3 meses)",
+      "punctionsByDay": "Punciones medias por día de la semana",
       "staffingRatio": "Ratio personal / punción",
-      "adminOnWeekends": "Admin en fines de semana"
+      "adminOnWeekends": "Admin en fines de semana",
+      "autonomousCommunity": "Comunidad autónoma",
+      "shiftLabel": "Turno",
+      "shiftLangEs": "Español",
+      "shiftLangEn": "English"
+    },
+    "days": {
+      "mon": "Lunes",
+      "tue": "Martes",
+      "wed": "Miércoles",
+      "thu": "Jueves",
+      "fri": "Viernes",
+      "sat": "Sábado",
+      "sun": "Domingo"
     },
     "shiftTypes": {
       "am": "Mañana (AM)",
       "pm": "Tarde (PM)",
       "full": "Día completo"
     },
+    "saveChanges": "Guardar cambios",
+    "saving": "Guardando…",
+    "holidaysHint": "Los festivos regionales se aplicarán automáticamente al generar guardias.",
+    "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada."
   },
 
