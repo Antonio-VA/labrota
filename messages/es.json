@@ -118,7 +118,20 @@
     "skillCoverage": "Cobertura de habilidades",
     "insufficientCoverage": "Cobertura insuficiente",
     "history": "Historial de guardias",
-    "pastRota": "Guardia pasada — sólo lectura"
+    "pastRota": "Guardia pasada — sólo lectura",
+    "addAssignment": "Añadir turno",
+    "editAssignment": "Editar turno",
+    "selectStaff": "Seleccionar miembro",
+    "noActiveStaff": "Sin personal activo",
+    "shift": "Turno",
+    "supervision": "Supervisión",
+    "supervisee": "Supervisado",
+    "deleteAssignment": "Eliminar turno",
+    "punctions": "Punciones",
+    "shiftBudget": "Turnos esta semana",
+    "onLeave": "De baja",
+    "alreadyAssigned": "Ya asignado",
+    "manualOverride": "Modificación manual"
   },
 
   "staff": {

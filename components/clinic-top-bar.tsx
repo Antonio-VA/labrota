@@ -255,7 +255,7 @@ export function ClinicTopBar() {
   }
 
   return (
-    <header className="hidden md:flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="hidden md:flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-4">
 
       {/* Left: logo + separator + org name */}
       <div className="flex items-center gap-3">

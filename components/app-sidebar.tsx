@@ -1,11 +1,9 @@
 "use client"
 
-import { useTranslations, useLocale } from "next-intl"
-import { usePathname, useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { usePathname } from "next/navigation"
 import { CalendarDays, Users, Plane, FlaskConical, BarChart3, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { setLocale } from "@/lib/locale-action"
-import { useTransition } from "react"
 import {
   Tooltip,
   TooltipTrigger,
@@ -67,33 +65,6 @@ function NavItem({
   )
 }
 
-// ── Language toggle ───────────────────────────────────────────────────────────
-
-function SidebarLangToggle() {
-  const locale = useLocale()
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-
-  function toggle() {
-    const next = locale === "es" ? "en" : "es"
-    startTransition(async () => {
-      await setLocale(next as "es" | "en")
-      router.refresh()
-    })
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      disabled={isPending}
-      className="text-[10px] font-semibold text-gray-400 hover:text-gray-600 tracking-widest transition-colors py-3 w-full"
-      title={locale === "es" ? "Switch to English" : "Cambiar a Español"}
-    >
-      {locale === "es" ? "EN" : "ES"}
-    </button>
-  )
-}
-
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function AppSidebar() {
@@ -131,11 +102,6 @@ export function AppSidebar() {
           })}
         </div>
       </TooltipProvider>
-
-      {/* Bottom: language toggle */}
-      <div className="border-t border-border flex items-center justify-center">
-        <SidebarLangToggle />
-      </div>
     </nav>
   )
 }

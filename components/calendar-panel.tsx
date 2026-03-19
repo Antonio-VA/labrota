@@ -16,14 +16,20 @@ import {
   generateRota,
   publishRota,
   unlockRota,
+  getActiveStaff,
+  moveAssignment,
+  setPunctionsOverride,
   type RotaWeekData,
   type RotaDay,
   type RotaMonthSummary,
 } from "@/app/(clinic)/rota/actions"
+import { AssignmentSheet } from "@/components/assignment-sheet"
+import type { StaffWithSkills } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ViewMode = "week" | "month" | "day"
+type Assignment = RotaDay["assignments"][0]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -81,14 +87,27 @@ function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: stri
 
 // ── Staff chip ────────────────────────────────────────────────────────────────
 
-function StaffChip({ first, last, role, isOverride }: {
-  first: string; last: string; role: string; isOverride: boolean
+function StaffChip({ first, last, role, isOverride, hasTrainee, onClick, isDragging, onDragStart, onDragEnd }: {
+  first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
+  onClick?: (e: React.MouseEvent) => void
+  isDragging?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
 }) {
   return (
-    <div className={cn(
-      "flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px]",
-      isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background"
-    )}>
+    <div
+      draggable={!!onDragStart}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] select-none",
+        isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background",
+        onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
+        onDragStart && "cursor-grab",
+        isDragging && "opacity-40",
+      )}
+    >
       <div className={cn(
         "size-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0",
         ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
@@ -96,17 +115,151 @@ function StaffChip({ first, last, role, isOverride }: {
         {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
       </div>
       <span className="truncate font-medium">{first} {last[0]}.</span>
+      {hasTrainee && (
+        <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
+      )}
+    </div>
+  )
+}
+
+// ── Punctions input ────────────────────────────────────────────────────────────
+
+function PunctionsInput({ date, value, isOverride, onChange, disabled }: {
+  date: string; value: number; isOverride: boolean; onChange: (date: string, value: number | null) => void; disabled: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft]     = useState(String(value))
+
+  useEffect(() => { setDraft(String(value)) }, [value])
+
+  function commit() {
+    setEditing(false)
+    const n = parseInt(draft, 10)
+    if (!isNaN(n) && n >= 0) {
+      onChange(date, n === 0 ? null : n)
+    } else {
+      setDraft(String(value))
+    }
+  }
+
+  if (disabled) {
+    return (
+      <span className={cn("text-[11px] font-medium", isOverride ? "text-primary" : "text-muted-foreground")}>
+        {value || "—"}
+      </span>
+    )
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        min={0}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setDraft(String(value)) } }}
+        className="w-8 text-[11px] text-center border border-primary rounded px-0.5 outline-none bg-background"
+        onClick={(e) => e.stopPropagation()}
+      />
+    )
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setEditing(true) }}
+      className={cn(
+        "text-[11px] font-medium rounded px-1 transition-colors hover:bg-muted",
+        isOverride ? "text-primary" : "text-muted-foreground"
+      )}
+      title="Editar punciones"
+    >
+      {value > 0 ? value : "—"}
+    </button>
+  )
+}
+
+// ── Shift budget bar ───────────────────────────────────────────────────────────
+
+function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
+  const t = useTranslations("schedule")
+
+  // Build map: staffId -> { name, initials, role, count }
+  const staffMap: Record<string, { first: string; last: string; role: string; count: number }> = {}
+  for (const day of data.days) {
+    for (const a of day.assignments) {
+      if (!staffMap[a.staff_id]) {
+        staffMap[a.staff_id] = {
+          first: a.staff.first_name,
+          last: a.staff.last_name,
+          role: a.staff.role,
+          count: 0,
+        }
+      }
+      staffMap[a.staff_id].count++
+    }
+  }
+
+  const entries = Object.entries(staffMap).sort((a, b) => {
+    const roleOrder = { lab: 0, andrology: 1, admin: 2 }
+    return (roleOrder[a[1].role as keyof typeof roleOrder] ?? 9) - (roleOrder[b[1].role as keyof typeof roleOrder] ?? 9)
+  })
+
+  if (entries.length === 0) return null
+
+  return (
+    <div className="px-4 pb-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
+        {entries.map(([id, s]) => {
+          const colorClass = s.count >= 5 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+            : s.count >= 3 ? "bg-amber-50 border-amber-200 text-amber-700"
+            : "bg-slate-50 border-slate-200 text-slate-500"
+          return (
+            <div
+              key={id}
+              className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium", colorClass)}
+            >
+              <div className={cn(
+                "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
+                ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
+              )}>
+                {s.first[0]?.toUpperCase()}{s.last[0]?.toUpperCase()}
+              </div>
+              <span>{s.count}/5</span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
 // ── Week view ─────────────────────────────────────────────────────────────────
 
-function WeekGrid({ data, loading, locale, onSelectDay }: {
+function WeekGrid({
+  data, loading, locale, onSelectDay, onCellClick, onChipClick,
+  punctionsOverride, onPunctionsChange,
+  draggingId, dragOverDate, onChipDragStart, onChipDragEnd, onColumnDrop, onColumnDragOver, onColumnDragLeave,
+  isPublished,
+}: {
   data: RotaWeekData | null
   loading: boolean
   locale: string
   onSelectDay: (date: string) => void
+  onCellClick: (date: string) => void
+  onChipClick: (assignment: Assignment, date: string) => void
+  punctionsOverride: Record<string, number>
+  onPunctionsChange: (date: string, value: number | null) => void
+  draggingId: string | null
+  dragOverDate: string | null
+  onChipDragStart: (assignmentId: string, fromDate: string) => void
+  onChipDragEnd: () => void
+  onColumnDrop: (toDate: string) => void
+  onColumnDragOver: (date: string, e: React.DragEvent) => void
+  onColumnDragLeave: () => void
+  isPublished: boolean
 }) {
   if (loading) {
     return (
@@ -135,36 +288,62 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
     <div className="rounded-lg border border-border overflow-hidden min-w-[560px] h-full flex flex-col">
       <div className="grid grid-cols-7 flex-1">
         {data.days.map((day) => {
-          const d     = new Date(day.date + "T12:00:00")
-          const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-          const dayN  = String(d.getDate())
-          const today = day.date === TODAY
+          const d      = new Date(day.date + "T12:00:00")
+          const wday   = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
+          const dayN   = String(d.getDate())
+          const today  = day.date === TODAY
+          const isDrop = dragOverDate === day.date && !!draggingId
+
+          const defaultP = data.punctionsDefault[day.date] ?? 0
+          const overrideP = punctionsOverride[day.date]
+          const effectiveP = overrideP ?? defaultP
+          const hasOverride = overrideP !== undefined
 
           return (
             <div
               key={day.date}
-              className={cn("flex flex-col border-r last:border-r-0", day.isWeekend && "bg-slate-50")}
+              className={cn(
+                "flex flex-col border-r last:border-r-0",
+                day.isWeekend && "bg-slate-50",
+                isDrop && "bg-primary/5 ring-1 ring-primary/30 ring-inset"
+              )}
+              onDragOver={(e) => onColumnDragOver(day.date, e)}
+              onDragLeave={onColumnDragLeave}
+              onDrop={() => onColumnDrop(day.date)}
             >
-              {/* Header */}
-              <button
-                onClick={() => onSelectDay(day.date)}
-                className={cn(
-                  "flex flex-col items-center py-2 border-b gap-0.5 w-full hover:bg-muted/40 transition-colors",
-                  day.isWeekend && "bg-slate-100/60"
-                )}
-              >
-                <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
-                <div className={cn(
-                  "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
-                  today && "bg-primary text-primary-foreground"
-                )}>
-                  {dayN}
+              {/* Header — date button + punctions */}
+              <div className={cn("flex flex-col border-b", day.isWeekend && "bg-slate-100/60")}>
+                <button
+                  onClick={() => onSelectDay(day.date)}
+                  className="flex flex-col items-center pt-2 pb-1 gap-0.5 w-full hover:bg-muted/40 transition-colors"
+                >
+                  <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
+                  <div className={cn(
+                    "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
+                    today && "bg-primary text-primary-foreground"
+                  )}>
+                    {dayN}
+                  </div>
+                  {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
+                </button>
+                {/* Punctions */}
+                <div className="flex items-center justify-center gap-0.5 pb-1.5">
+                  <span className="text-[10px] text-muted-foreground">P</span>
+                  <PunctionsInput
+                    date={day.date}
+                    value={effectiveP}
+                    isOverride={hasOverride}
+                    onChange={onPunctionsChange}
+                    disabled={isPublished || !data.rota}
+                  />
                 </div>
-                {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
-              </button>
+              </div>
 
               {/* Assignments */}
-              <div className="flex flex-col gap-1 p-2 flex-1">
+              <div
+                className="flex flex-col gap-1 p-2 flex-1 min-h-[80px]"
+                onClick={() => { if (!isPublished) onCellClick(day.date) }}
+              >
                 {day.assignments.map((a) => (
                   <StaffChip
                     key={a.id}
@@ -172,10 +351,18 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
                     last={a.staff.last_name}
                     role={a.staff.role}
                     isOverride={a.is_manual_override}
+                    hasTrainee={!!a.trainee_staff_id}
+                    isDragging={draggingId === a.id}
+                    onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
+                    onDragStart={isPublished ? undefined : (e) => { e.stopPropagation(); onChipDragStart(a.id, day.date) }}
+                    onDragEnd={onChipDragEnd}
                   />
                 ))}
                 {day.assignments.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground text-center mt-4">—</span>
+                  <span className={cn(
+                    "text-[11px] text-muted-foreground text-center mt-4",
+                    !isPublished && isDrop && "text-primary"
+                  )}>—</span>
                 )}
               </div>
             </div>
@@ -360,8 +547,11 @@ function DayView({ day, loading, locale }: {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                    {a.is_manual_override && (
-                      <p className="text-[12px] text-primary">Manual override</p>
+                    {a.trainee_staff_id && (
+                      <p className="text-[12px] text-primary">{t("supervision")}</p>
+                    )}
+                    {a.notes && (
+                      <p className="text-[12px] text-muted-foreground">{a.notes}</p>
                     )}
                   </div>
                   <Badge variant="outline" className="text-[11px] shrink-0">{a.shift_type}</Badge>
@@ -415,6 +605,22 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [showOverrideDialog, setShowOverrideDialog] = useState(false)
   const [isPending, startTransition]    = useTransition()
 
+  // Staff for assignment sheet
+  const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
+
+  // Assignment sheet state
+  const [sheetOpen, setSheetOpen]           = useState(false)
+  const [sheetDate, setSheetDate]           = useState<string | null>(null)
+  const [sheetEdit, setSheetEdit]           = useState<Assignment | null>(null)
+
+  // DnD state
+  const [draggingId, setDraggingId]     = useState<string | null>(null)
+  const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+
+  // Local punctions override (kept in sync with weekData.rota.punctions_override)
+  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>({})
+
   // Derived
   const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
   const monthStart = getMonthStart(currentDate)
@@ -425,6 +631,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setError(null)
     getRotaWeek(ws).then((d) => {
       setWeekData(d)
+      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
     })
   }, [])
@@ -450,6 +657,11 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     if (view === "month") fetchMonth(monthStart)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
+
+  // Load staff list once on mount
+  useEffect(() => {
+    getActiveStaff().then(setStaffList)
+  }, [])
 
   // Navigation
   function navigate(dir: -1 | 1) {
@@ -503,14 +715,85 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setView("day")
   }
 
+  // Open sheet for adding a new assignment on a date
+  function handleCellClick(date: string) {
+    if (isPublished) return
+    setSheetDate(date)
+    setSheetEdit(null)
+    setSheetOpen(true)
+  }
+
+  // Open sheet for editing an existing assignment
+  function handleChipClick(assignment: Assignment, date: string) {
+    setSheetDate(date)
+    setSheetEdit(assignment)
+    setSheetOpen(true)
+  }
+
+  // Drag and drop
+  function handleChipDragStart(assignmentId: string, fromDate: string) {
+    setDraggingId(assignmentId)
+    setDraggingFrom(fromDate)
+  }
+
+  function handleChipDragEnd() {
+    setDraggingId(null)
+    setDraggingFrom(null)
+    setDragOverDate(null)
+  }
+
+  function handleColumnDragOver(date: string, e: React.DragEvent) {
+    e.preventDefault()
+    setDragOverDate(date)
+  }
+
+  function handleColumnDragLeave() {
+    setDragOverDate(null)
+  }
+
+  function handleColumnDrop(toDate: string) {
+    if (!draggingId || !draggingFrom || toDate === draggingFrom) {
+      handleChipDragEnd()
+      return
+    }
+    const id = draggingId
+    handleChipDragEnd()
+    startTransition(async () => {
+      const result = await moveAssignment(id, toDate)
+      if (result.error) setError(result.error)
+      else fetchWeek(weekStart)
+    })
+  }
+
+  // Punctions change
+  function handlePunctionsChange(date: string, value: number | null) {
+    if (!weekData?.rota) return
+    // Optimistic update
+    setPunctionsOverrideLocal((prev) => {
+      if (value === null) {
+        const { [date]: _removed, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [date]: value }
+    })
+    startTransition(async () => {
+      const result = await setPunctionsOverride(weekData.rota!.id, date, value)
+      if (result.error) setError(result.error)
+    })
+  }
+
   const rota           = weekData?.rota ?? null
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
   const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
   const hasSkillGaps   = weekData?.days.some((d) => d.skillGaps.length > 0) ?? false
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
+  const showActions    = view !== "month"
 
-  const showActions = view !== "month"
+  // Staff already assigned on the sheet's target date
+  const assignedOnSheetDate = sheetDate
+    ? (weekData?.days.find((d) => d.date === sheetDate)?.assignments ?? []).map((a) => a.staff_id)
+    : []
 
   // Build detailed skill gap descriptions for the banner
   const skillGapDetails = weekData?.days
@@ -672,7 +955,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* Week view — fills available height */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-3">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-3 gap-2">
             {!weekData?.rota && !loadingWeek && !isPending ? (
               <EmptyState
                 icon={CalendarDays}
@@ -686,8 +969,21 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 loading={loadingWeek}
                 locale={locale}
                 onSelectDay={handleSelectDay}
+                onCellClick={handleCellClick}
+                onChipClick={handleChipClick}
+                punctionsOverride={punctionsOverride}
+                onPunctionsChange={handlePunctionsChange}
+                draggingId={draggingId}
+                dragOverDate={dragOverDate}
+                onChipDragStart={handleChipDragStart}
+                onChipDragEnd={handleChipDragEnd}
+                onColumnDrop={handleColumnDrop}
+                onColumnDragOver={handleColumnDragOver}
+                onColumnDragLeave={handleColumnDragLeave}
+                isPublished={!!isPublished}
               />
             )}
+            {weekData && <ShiftBudgetBar data={weekData} />}
           </div>
         )}
 
@@ -718,6 +1014,20 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           />
         </div>
       </div>
+
+      {/* Assignment sheet */}
+      <AssignmentSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        date={sheetDate}
+        weekStart={weekStart}
+        editAssignment={sheetEdit}
+        staffList={staffList}
+        assignedStaffIds={assignedOnSheetDate}
+        onSaved={() => fetchWeek(weekStart)}
+        isPublished={!!isPublished}
+        locale={locale}
+      />
     </main>
   )
 }

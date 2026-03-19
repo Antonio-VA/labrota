@@ -76,14 +76,15 @@ export interface Leave {
 }
 
 export interface Rota {
-  id:              string
-  organisation_id: string
-  week_start:      string   // ISO date string — always a Monday
-  status:          RotaStatus
-  published_at:    string | null
-  published_by:    string | null
-  created_at:      string
-  updated_at:      string
+  id:                 string
+  organisation_id:    string
+  week_start:         string   // ISO date string — always a Monday
+  status:             RotaStatus
+  published_at:       string | null
+  published_by:       string | null
+  punctions_override: Record<string, number> | null
+  created_at:         string
+  updated_at:         string
 }
 
 export interface RotaAssignment {
@@ -94,6 +95,8 @@ export interface RotaAssignment {
   date:               string
   shift_type:         ShiftType
   is_manual_override: boolean
+  trainee_staff_id:   string | null
+  notes:              string | null
   created_at:         string
   updated_at:         string
 }

@@ -118,7 +118,20 @@
     "skillCoverage": "Skill coverage",
     "insufficientCoverage": "Insufficient coverage",
     "history": "Rota history",
-    "pastRota": "Past rota — read only"
+    "pastRota": "Past rota — read only",
+    "addAssignment": "Add shift",
+    "editAssignment": "Edit shift",
+    "selectStaff": "Select member",
+    "noActiveStaff": "No active staff",
+    "shift": "Shift",
+    "supervision": "Supervision",
+    "supervisee": "Supervisee",
+    "deleteAssignment": "Delete shift",
+    "punctions": "Punctions",
+    "shiftBudget": "Shifts this week",
+    "onLeave": "On leave",
+    "alreadyAssigned": "Already assigned",
+    "manualOverride": "Manual override"
   },
 
   "staff": {

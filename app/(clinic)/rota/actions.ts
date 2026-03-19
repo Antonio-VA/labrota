@@ -23,6 +23,8 @@ export interface RotaDay {
     staff_id: string
     shift_type: ShiftType
     is_manual_override: boolean
+    trainee_staff_id: string | null
+    notes: string | null
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
@@ -30,8 +32,9 @@ export interface RotaDay {
 
 export interface RotaWeekData {
   weekStart: string
-  rota: { id: string; status: RotaStatus; published_at: string | null } | null
+  rota: { id: string; status: RotaStatus; published_at: string | null; punctions_override: Record<string, number> } | null
   days: RotaDay[]
+  punctionsDefault: Record<string, number>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,20 +54,43 @@ function isWeekendDate(isoDate: string): boolean {
 
 // ── getRotaWeek ───────────────────────────────────────────────────────────────
 
+const DOW_TO_KEY: Record<number, keyof import("@/lib/types/database").PunctionsByDay> = {
+  1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat", 0: "sun",
+}
+
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record for this week
-  const { data: rotaData } = await supabase
-    .from("rotas")
-    .select("id, status, published_at")
-    .eq("week_start", weekStart)
-    .maybeSingle() as { data: { id: string; status: string; published_at: string | null } | null }
+  // Fetch rota record + lab config in parallel
+  const [rotaResult, labConfigResult] = await Promise.all([
+    supabase
+      .from("rotas")
+      .select("id, status, published_at, punctions_override")
+      .eq("week_start", weekStart)
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; punctions_override: Record<string, number> | null } | null }>,
+    supabase.from("lab_config").select("punctions_by_day").single(),
+  ])
+
+  const rotaData = rotaResult.data
+  const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
 
   const rota = rotaData
-    ? { id: rotaData.id, status: rotaData.status as RotaStatus, published_at: rotaData.published_at }
+    ? {
+        id: rotaData.id,
+        status: rotaData.status as RotaStatus,
+        published_at: rotaData.published_at,
+        punctions_override: rotaData.punctions_override ?? {},
+      }
     : null
+
+  // Compute default punctions per date from lab config
+  const punctionsDefault: Record<string, number> = {}
+  for (const date of dates) {
+    const dow = new Date(date + "T12:00:00").getDay()
+    const key = DOW_TO_KEY[dow]
+    punctionsDefault[date] = labConfig?.punctions_by_day?.[key] ?? 0
+  }
 
   // Base day structure with no assignments
   const dayMap: Record<string, RotaDay> = {}
@@ -73,18 +99,18 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]) }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault }
   }
 
   // Fetch assignments with staff info
   type AssignmentRow = {
     id: string; staff_id: string; date: string; shift_type: string;
-    is_manual_override: boolean
+    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
   const { data: assignmentsData } = await supabase
     .from("rota_assignments")
-    .select("id, staff_id, date, shift_type, is_manual_override, staff(id, first_name, last_name, role)")
+    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, staff(id, first_name, last_name, role)")
     .eq("rota_id", rota.id) as { data: AssignmentRow[] | null }
 
   // Fetch all staff_skills to compute coverage
@@ -111,6 +137,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       staff_id: a.staff_id,
       shift_type: a.shift_type as ShiftType,
       is_manual_override: a.is_manual_override,
+      trainee_staff_id: a.trainee_staff_id,
+      notes: a.notes,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
     })
   }
@@ -121,7 +149,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]) }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
@@ -230,6 +258,144 @@ export async function generateRota(
 
   revalidatePath("/")
   return { assignmentCount: toInsert.length }
+}
+
+// ── getActiveStaff ────────────────────────────────────────────────────────────
+
+export async function getActiveStaff(): Promise<StaffWithSkills[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("staff")
+    .select("*, staff_skills(*)")
+    .neq("onboarding_status", "inactive")
+    .order("first_name")
+  return (data ?? []) as StaffWithSkills[]
+}
+
+// ── upsertAssignment ──────────────────────────────────────────────────────────
+
+export async function upsertAssignment(params: {
+  weekStart: string
+  assignmentId?: string
+  staffId: string
+  date: string
+  shiftType: ShiftType
+  notes?: string | null
+  traineeStaffId?: string | null
+}): Promise<{ error?: string; id?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // Upsert rota record (create if this week has no rota yet)
+  const { data: rotaRow, error: rotaError } = await supabase
+    .from("rotas")
+    .upsert(
+      { organisation_id: orgId, week_start: params.weekStart, status: "draft" } as never,
+      { onConflict: "organisation_id,week_start" }
+    )
+    .select("id")
+    .single()
+  if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
+  const rotaId = (rotaRow as { id: string }).id
+
+  if (params.assignmentId) {
+    // Update existing
+    const { error } = await supabase
+      .from("rota_assignments")
+      .update({
+        staff_id: params.staffId,
+        shift_type: params.shiftType,
+        notes: params.notes ?? null,
+        trainee_staff_id: params.traineeStaffId ?? null,
+        is_manual_override: true,
+      } as never)
+      .eq("id", params.assignmentId)
+    if (error) return { error: error.message }
+    revalidatePath("/")
+    return { id: params.assignmentId }
+  } else {
+    // Insert new
+    const { data: row, error } = await supabase
+      .from("rota_assignments")
+      .insert({
+        organisation_id: orgId,
+        rota_id: rotaId,
+        staff_id: params.staffId,
+        date: params.date,
+        shift_type: params.shiftType,
+        is_manual_override: true,
+        notes: params.notes ?? null,
+        trainee_staff_id: params.traineeStaffId ?? null,
+      } as never)
+      .select("id")
+      .single()
+    if (error) return { error: error.message }
+    revalidatePath("/")
+    return { id: (row as { id: string }).id }
+  }
+}
+
+// ── deleteAssignment ──────────────────────────────────────────────────────────
+
+export async function deleteAssignment(assignmentId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── moveAssignment ────────────────────────────────────────────────────────────
+
+export async function moveAssignment(
+  assignmentId: string,
+  newDate: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ date: newDate, is_manual_override: true } as never)
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── setPunctionsOverride ──────────────────────────────────────────────────────
+
+export async function setPunctionsOverride(
+  rotaId: string,
+  date: string,
+  value: number | null,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  // Fetch existing override map
+  const { data: rotaData } = await supabase
+    .from("rotas")
+    .select("punctions_override")
+    .eq("id", rotaId)
+    .single() as { data: { punctions_override: Record<string, number> | null } | null }
+
+  const current = rotaData?.punctions_override ?? {}
+  let updated: Record<string, number>
+  if (value === null) {
+    const { [date]: _removed, ...rest } = current
+    updated = rest
+  } else {
+    updated = { ...current, [date]: value }
+  }
+
+  const { error } = await supabase
+    .from("rotas")
+    .update({ punctions_override: updated } as never)
+    .eq("id", rotaId)
+  if (error) return { error: error.message }
+  return {}
 }
 
 // ── publishRota ───────────────────────────────────────────────────────────────
