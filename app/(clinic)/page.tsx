@@ -25,7 +25,7 @@ export default function SchedulePage() {
         <div className={`flex flex-1 overflow-hidden ${mobileTab === "chat" ? "hidden md:flex" : "flex"}`}>
           <CalendarPanel />
         </div>
-        <div className={`${mobileTab === "chat" ? "flex flex-1" : "hidden"} md:flex md:w-80 md:shrink-0 md:flex-none`}>
+        <div className={`${mobileTab === "chat" ? "flex flex-1" : "hidden"} md:flex`}>
           <ChatPanel />
         </div>
       </div>
