@@ -203,35 +203,18 @@ function AvatarMenu({ user }: { user: User }) {
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
 
-export function ClinicTopBar() {
+export function ClinicTopBar({ orgName }: { orgName: string | null }) {
   const locale = useLocale()
   const router = useRouter()
 
   const [user, setUser]               = useState<User | null>(null)
-  const [orgName, setOrgName]         = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
 
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getUser().then(async ({ data }) => {
-      const u = data.user
-      if (!u) return
-      setUser(u)
-      // Fetch org name via profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("organisation_id")
-        .eq("id", u.id)
-        .single() as { data: { organisation_id: string | null } | null }
-      if (profile?.organisation_id) {
-        const { data: org } = await supabase
-          .from("organisations")
-          .select("name")
-          .eq("id", profile.organisation_id)
-          .single() as { data: { name: string } | null }
-        if (org) setOrgName(org.name)
-      }
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUser(data.user)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -255,7 +238,7 @@ export function ClinicTopBar() {
   }
 
   return (
-    <header className="hidden md:flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+    <header className="hidden md:flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
 
       {/* Left: logo + separator + org name */}
       <div className="flex items-center gap-3">

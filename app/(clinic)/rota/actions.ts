@@ -249,6 +249,14 @@ export async function generateRota(
       }))
     )
 
+  if (toInsert.length === 0 && !preserveOverrides) {
+    const staffCount = (staffRes.data ?? []).length
+    if (staffCount === 0) {
+      return { error: "No active staff found. Make sure staff members are added and not inactive." }
+    }
+    return { error: "No staff were eligible for any day this week. Check that staff have working patterns configured and are not all on leave." }
+  }
+
   if (toInsert.length > 0) {
     const { error: insertError } = await supabase
       .from("rota_assignments")

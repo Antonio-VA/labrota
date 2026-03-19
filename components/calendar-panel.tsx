@@ -285,7 +285,7 @@ function WeekGrid({
   if (!data) return null
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden min-w-[560px] h-full flex flex-col">
+    <div className="rounded-lg border border-border bg-background overflow-hidden min-w-[560px] h-full flex flex-col">
       <div className="grid grid-cols-7 flex-1">
         {data.days.map((day) => {
           const d      = new Date(day.date + "T12:00:00")
@@ -433,9 +433,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
                 key={day.date}
                 onClick={() => onSelectDay(day.date)}
                 className={cn(
-                  "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[56px]",
+                  "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[56px] bg-background",
                   !day.isCurrentMonth && "opacity-40",
-                  day.isWeekend && "bg-slate-50",
                   isSelected && "border-primary",
                   !isSelected && "border-border hover:bg-muted/40"
                 )}
