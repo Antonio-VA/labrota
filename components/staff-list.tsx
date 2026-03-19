@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName } from "@/lib/types/database"
 
 const ROLE_VARIANTS: Record<StaffRole, "lab" | "andrology" | "admin"> = {
@@ -178,7 +179,14 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
                     </Badge>
                   ))}
                   {extraCount > 0 && (
-                    <span className="text-[12px] text-muted-foreground shrink-0">+{extraCount}</span>
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="text-[12px] text-muted-foreground shrink-0 cursor-default" />}>
+                        +{extraCount}
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {skills.slice(4).map((sk) => ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])).join(", ")}
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
 
