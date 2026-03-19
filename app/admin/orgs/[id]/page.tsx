@@ -1,15 +1,14 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AddUserForm } from "@/components/admin-add-user-form"
 import { getLocale } from "next-intl/server"
-import { toggleOrgStatus } from "@/app/admin/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import type { Organisation } from "@/lib/types/database"
 import { ArrowLeft, Users } from "lucide-react"
 import { RemoveUserButton } from "@/components/admin-remove-user-button"
+import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value }: { label: string; value: string | number }) {
@@ -84,30 +83,13 @@ export default async function OrgDetailPage({
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-[18px] font-medium">{org.name}</h1>
-              <Badge variant={org.is_active ? "active" : "inactive"}>
-                {org.is_active ? "Active" : "Suspended"}
-              </Badge>
-            </div>
-            <p className="text-[14px] text-muted-foreground">{org.slug}</p>
-          </div>
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
+          <ArrowLeft className="size-4" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <AdminOrgHeaderActions org={org} />
         </div>
-        <form action={toggleOrgStatus.bind(null, org.id, org.is_active)}>
-          <Button
-            type="submit"
-            variant={org.is_active ? "destructive" : "outline"}
-            size="sm"
-          >
-            {org.is_active ? "Suspend" : "Activate"}
-          </Button>
-        </form>
       </div>
 
       {/* Stats */}

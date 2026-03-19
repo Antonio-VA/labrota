@@ -519,11 +519,10 @@ export function CalendarPanel() {
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      {/* Toolbar — contains page title on desktop, aligned on one baseline */}
+      {/* Secondary toolbar — calendar controls only (no page title, that lives in the global top bar) */}
       <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0">
-        {/* Left: title + nav */}
+        {/* Left: nav controls + date label */}
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-medium text-muted-foreground mr-2">{t("title")}</span>
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
             {tc("today")}
           </Button>
@@ -540,7 +539,7 @@ export function CalendarPanel() {
           </span>
         </div>
 
-        {/* Right: view toggle + actions */}
+        {/* Right: view toggle + action buttons */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
             {(["week", "month", "day"] as ViewMode[]).map((v) => (

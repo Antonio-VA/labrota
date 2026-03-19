@@ -38,9 +38,9 @@ const SKILL_KEYS: Record<SkillName, string> = {
 
 function Initials({ first, last, role }: { first: string; last: string; role: StaffRole }) {
   const colors: Record<StaffRole, string> = {
-    lab: "bg-blue-100 text-blue-700",
+    lab:       "bg-blue-100 text-blue-700",
     andrology: "bg-emerald-100 text-emerald-700",
-    admin: "bg-slate-100 text-slate-600",
+    admin:     "bg-slate-400 text-white",
   }
   return (
     <div
@@ -74,38 +74,36 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const hasFilters = search || roleFilter !== "all" || statusFilter !== "all"
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Input
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-56"
-          />
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as StaffRole | "all")}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">{t("allRoles")}</option>
-            <option value="lab">{t("roles.lab")}</option>
-            <option value="andrology">{t("roles.andrology")}</option>
-            <option value="admin">{t("roles.admin")}</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as OnboardingStatus | "all")}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">{t("allStatuses")}</option>
-            <option value="active">{t("onboardingStatus.active")}</option>
-            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-            <option value="inactive">{t("onboardingStatus.inactive")}</option>
-          </select>
-        </div>
-        <Button render={<Link href="/staff/new" />}>
+    <div className="flex flex-col gap-4 pl-8">
+      {/* Toolbar — all controls on one baseline */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input
+          placeholder={t("searchPlaceholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-56 h-8"
+        />
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as StaffRole | "all")}
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <option value="all">{t("allRoles")}</option>
+          <option value="lab">{t("roles.lab")}</option>
+          <option value="andrology">{t("roles.andrology")}</option>
+          <option value="admin">{t("roles.admin")}</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as OnboardingStatus | "all")}
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <option value="all">{t("allStatuses")}</option>
+          <option value="active">{t("onboardingStatus.active")}</option>
+          <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+          <option value="inactive">{t("onboardingStatus.inactive")}</option>
+        </select>
+        <Button size="sm" render={<Link href="/staff/new" />}>
           {t("addStaff")}
         </Button>
       </div>
@@ -133,7 +131,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
       {filtered.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Header */}
-          <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 bg-muted/40 border-b border-border">
+          <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 pl-8 pr-4 py-2 bg-muted/40 border-b border-border">
             <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
             <span className="text-[13px] font-medium text-muted-foreground w-24">{t("columns.role")}</span>
             <span className="text-[13px] font-medium text-muted-foreground w-40">{t("columns.skills")}</span>
@@ -150,7 +148,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
             return (
               <div
                 key={member.id}
-                className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center pl-8 pr-4 h-14 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
               >
                 {/* Name + avatar */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -193,14 +191,13 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
 
                 {/* Edit */}
                 <div className="flex items-center justify-end">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    render={<Link href={`/staff/${member.id}`} />}
+                  <Link
+                    href={`/staff/${member.id}`}
                     aria-label={t("editStaff")}
+                    className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   >
-                    <Pencil />
-                  </Button>
+                    <Pencil className="size-4" />
+                  </Link>
                 </div>
               </div>
             )

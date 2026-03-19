@@ -1,15 +1,10 @@
 "use client"
 
 import { useTranslations, useLocale } from "next-intl"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
+import { usePathname, useRouter } from "next/navigation"
 import { CalendarDays, Users, Plane, FlaskConical, BarChart3, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { setLocale } from "@/lib/locale-action"
-import { useRouter } from "next/navigation"
-import { useEffect, useState, useTransition } from "react"
-import type { User } from "@supabase/supabase-js"
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
 
@@ -56,28 +51,10 @@ function NavItem({
   )
 }
 
-// ── User footer ───────────────────────────────────────────────────────────────
+// ── Sign-out button ───────────────────────────────────────────────────────────
 
-function SidebarFooter() {
-  const locale = useLocale()
+function SignOutButton() {
   const router = useRouter()
-  const [user, setUser]       = useState<User | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  function initials(u: User) {
-    const name = (u.user_metadata?.full_name as string | undefined) ?? ""
-    if (name) return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    return (u.email ?? "").slice(0, 2).toUpperCase()
-  }
 
   async function signOut() {
     const supabase = createClient()
@@ -85,45 +62,17 @@ function SidebarFooter() {
     router.push("/login")
   }
 
-  async function toggleLocale() {
-    const next = locale === "es" ? "en" : "es"
-    startTransition(async () => {
-      await setLocale(next as "es" | "en")
-      router.refresh()
-    })
-  }
-
-  if (!user) return null
-
   return (
-    <div className="border-t border-border flex flex-col items-center gap-2 py-3">
-      {/* Language toggle */}
-      <button
-        onClick={toggleLocale}
-        disabled={isPending}
-        className="text-[10px] font-semibold text-gray-400 hover:text-gray-700 tracking-widest transition-colors"
-        title={locale === "es" ? "Switch to English" : "Cambiar a Español"}
-      >
-        {locale === "es" ? "EN" : "ES"}
-      </button>
-
-      {/* Avatar */}
-      <div
-        title={user.user_metadata?.full_name as string ?? user.email ?? ""}
-        className="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-medium text-primary-foreground"
-      >
-        {initials(user)}
-      </div>
-
-      {/* Sign out */}
-      <button
-        onClick={signOut}
-        className="text-gray-400 hover:text-destructive transition-colors"
-        title="Cerrar sesión"
-      >
-        <LogOut className="size-4" />
-      </button>
-    </div>
+    <button
+      onClick={signOut}
+      className="flex flex-col items-center gap-1 py-2.5 mx-1.5 rounded-xl text-gray-400 hover:text-destructive transition-colors"
+      title="Cerrar sesión"
+    >
+      <LogOut className="size-6" />
+      <span className="text-[11px] font-medium leading-none">
+        {/* label intentionally empty — icon is self-explanatory in a compact sidebar */}
+      </span>
+    </button>
   )
 }
 
@@ -146,20 +95,7 @@ export function AppSidebar() {
   ] as const
 
   return (
-    <nav className="hidden md:flex flex-col w-20 h-screen border-r border-border bg-background shrink-0">
-      {/* Logo */}
-      <div className="flex items-center justify-center h-16 border-b border-border shrink-0">
-        <a href="/">
-          <Image
-            src="/brand/logo-icon.svg"
-            alt="LabRota"
-            width={40}
-            height={40}
-            priority
-          />
-        </a>
-      </div>
-
+    <nav className="hidden md:flex flex-col w-20 h-full border-r border-border bg-background shrink-0">
       {/* Nav */}
       <div className="flex flex-col gap-0.5 py-3 flex-1">
         {navItems.map((item) => {
@@ -180,8 +116,10 @@ export function AppSidebar() {
         })}
       </div>
 
-      {/* Footer */}
-      <SidebarFooter />
+      {/* Sign out */}
+      <div className="border-t border-border py-2">
+        <SignOutButton />
+      </div>
     </nav>
   )
 }

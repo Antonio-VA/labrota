@@ -48,6 +48,57 @@ export async function createOrganisation(formData: FormData) {
   redirect("/")
 }
 
+// ── renameOrganisation ────────────────────────────────────────────────────────
+export async function renameOrganisation(orgId: string, newName: string) {
+  await assertSuperAdmin()
+
+  const name = newName.trim()
+  if (!name) return { error: "Name cannot be empty." }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ name } as never)
+    .eq("id", orgId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/admin")
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
+// ── deleteOrganisation ────────────────────────────────────────────────────────
+export async function deleteOrganisation(orgId: string) {
+  await assertSuperAdmin()
+
+  const admin = createAdminClient()
+
+  // Delete in FK-safe order (no assumed CASCADE)
+  await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
+  await admin.from("rotas").delete().eq("organisation_id", orgId)
+  await admin.from("staff_skills").delete().eq("organisation_id", orgId)
+  await admin.from("leaves").delete().eq("organisation_id", orgId)
+  await admin.from("staff").delete().eq("organisation_id", orgId)
+  await admin.from("lab_config").delete().eq("organisation_id", orgId)
+
+  // Detach profiles (keep auth users — they may be re-invited elsewhere)
+  await admin
+    .from("profiles")
+    .update({ organisation_id: null } as never)
+    .eq("organisation_id", orgId)
+
+  const { error } = await admin
+    .from("organisations")
+    .delete()
+    .eq("id", orgId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/admin")
+  return { success: true }
+}
+
 // ── toggleOrgStatus ───────────────────────────────────────────────────────────
 export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
   await assertSuperAdmin()

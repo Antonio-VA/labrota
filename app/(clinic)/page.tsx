@@ -13,7 +13,7 @@ export default function SchedulePage() {
 
   return (
     <>
-      {/* Mobile header only — desktop title lives inside CalendarPanel toolbar */}
+      {/* Mobile header — desktop top bar handles this on md+ */}
       <header className="flex md:hidden h-12 shrink-0 items-center justify-center border-b px-4">
         <span className="text-[14px] font-medium">
           {mobileTab === "chat" ? tagent("title") : tnav("schedule")}

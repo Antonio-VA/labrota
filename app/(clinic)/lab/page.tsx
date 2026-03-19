@@ -17,12 +17,6 @@ export default async function LabConfigPage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="h-12 shrink-0 flex items-center gap-4 border-b px-6">
-        <span className="text-[14px] font-medium text-muted-foreground">{t("title")}</span>
-      </header>
-
-      {/* Content */}
       <div className="flex-1 overflow-auto p-6 md:p-8">
         <MobileGate>
           <div className="max-w-2xl mx-auto flex flex-col gap-6">
