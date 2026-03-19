@@ -114,6 +114,21 @@ export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
   revalidatePath(`/admin/orgs/${orgId}`)
 }
 
+// ── renameOrgUser ─────────────────────────────────────────────────────────────
+export async function renameOrgUser(userId: string, newName: string) {
+  await assertSuperAdmin()
+
+  const full_name = newName.trim() || null
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("profiles")
+    .update({ full_name } as never)
+    .eq("id", userId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 // ── removeOrgUser ─────────────────────────────────────────────────────────────
 export async function removeOrgUser(userId: string, orgId: string) {
   await assertSuperAdmin()

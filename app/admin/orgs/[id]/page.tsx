@@ -7,8 +7,8 @@ import { getLocale } from "next-intl/server"
 import { formatDateWithYear } from "@/lib/format-date"
 import type { Organisation } from "@/lib/types/database"
 import { ArrowLeft, Users } from "lucide-react"
-import { RemoveUserButton } from "@/components/admin-remove-user-button"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
+import { AdminUsersTable, type UserRow } from "@/components/admin-users-table"
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value }: { label: string; value: string | number }) {
@@ -66,19 +66,33 @@ export default async function OrgDetailPage({
   type ProfileRow = { id: string; email: string; full_name: string | null }
   const profiles = (profilesRes.data ?? []) as ProfileRow[]
 
-  // Last login — cross-reference profiles with auth users
-  let lastLogin: string | null = null
+  // Per-user last login — cross-reference profiles with auth users
+  const lastLoginByUser: Record<string, string | null> = {}
+  let lastLoginOverall: string | null = null
+
+  const appRoleByUser: Record<string, string | null> = {}
+
   if (profiles.length > 0) {
     const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const profileIds = profiles.map((p) => p.id)
-    const orgAuthUsers = (authData?.users ?? []).filter((u) => profileIds.includes(u.id))
-    const dates = orgAuthUsers
-      .map((u) => u.last_sign_in_at)
-      .filter(Boolean) as string[]
-    lastLogin = dates.sort().at(-1) ?? null
+    const profileIds = new Set(profiles.map((p) => p.id))
+    const orgAuthUsers = (authData?.users ?? []).filter((u) => profileIds.has(u.id))
+    for (const u of orgAuthUsers) {
+      lastLoginByUser[u.id] = u.last_sign_in_at ?? null
+      appRoleByUser[u.id]   = (u.user_metadata?.app_role as string | undefined) ?? null
+    }
+    const dates = orgAuthUsers.map((u) => u.last_sign_in_at).filter(Boolean) as string[]
+    lastLoginOverall = dates.sort().at(-1) ?? null
   }
 
   const fmt = (d: string) => formatDateWithYear(d, locale)
+
+  const userRows: UserRow[] = profiles.map((p) => ({
+    id:        p.id,
+    email:     p.email,
+    full_name: p.full_name,
+    appRole:   appRoleByUser[p.id] ?? null,
+    lastLogin: lastLoginByUser[p.id] ? fmt(lastLoginByUser[p.id]!) : null,
+  }))
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,7 +111,7 @@ export default async function OrgDetailPage({
         <StatCard label="Active staff"      value={staffRes.count ?? 0} />
         <StatCard label="Rotas (all time)"  value={rotasRes.count ?? 0} />
         <StatCard label="Rotas (30 days)"   value={recentRotasRes.count ?? 0} />
-        <StatCard label="Last login"        value={lastLogin ? fmt(lastLogin) : "Never"} />
+        <StatCard label="Last login"        value={lastLoginOverall ? fmt(lastLoginOverall) : "Never"} />
       </div>
 
       {/* Users */}
@@ -105,32 +119,13 @@ export default async function OrgDetailPage({
         <h2 className="text-[18px] font-medium">Users</h2>
 
         <div className="rounded-lg border border-border bg-background overflow-hidden">
-          {profiles.length === 0 ? (
+          {userRows.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Users className="size-6 text-muted-foreground" />
               <p className="text-[14px] text-muted-foreground">No users yet</p>
             </div>
           ) : (
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {profiles.map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium">{p.full_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.email}</td>
-                    <td className="px-4 py-3 text-right">
-                      <RemoveUserButton userId={p.id} orgId={id} email={p.email} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <AdminUsersTable users={userRows} orgId={id} />
           )}
         </div>
 

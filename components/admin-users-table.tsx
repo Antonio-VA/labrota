@@ -1,0 +1,163 @@
+"use client"
+
+import { useState, useTransition, useRef, useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { renameOrgUser, removeOrgUser } from "@/app/admin/actions"
+import { Check, X, Pencil } from "lucide-react"
+
+export interface UserRow {
+  id:        string
+  email:     string
+  full_name: string | null
+  appRole:   string | null   // from user_metadata.app_role
+  lastLogin: string | null   // pre-formatted string from server
+}
+
+export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: string }) {
+  return (
+    <table className="w-full text-[14px]">
+      <thead>
+        <tr className="border-b border-border bg-muted">
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Role</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Last login</th>
+          <th className="px-4 py-3" />
+        </tr>
+      </thead>
+      <tbody>
+        {users.map((u) => (
+          <UserTableRow key={u.id} user={u} orgId={orgId} />
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
+  const [isEditing, setIsEditing]   = useState(false)
+  const [draft, setDraft]           = useState(user.full_name ?? "")
+  const [displayName, setDisplayName] = useState(user.full_name)
+  const [error, setError]           = useState("")
+  const [isPending, startTransition] = useTransition()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditing) inputRef.current?.focus()
+  }, [isEditing])
+
+  function openEdit() {
+    setDraft(displayName ?? "")
+    setError("")
+    setIsEditing(true)
+  }
+
+  function cancel() {
+    setIsEditing(false)
+    setError("")
+  }
+
+  function commit() {
+    if (draft.trim() === (displayName ?? "")) {
+      setIsEditing(false)
+      return
+    }
+    startTransition(async () => {
+      const result = await renameOrgUser(user.id, draft)
+      if (result?.error) {
+        setError(result.error)
+      } else {
+        setDisplayName(draft.trim() || null)
+        setIsEditing(false)
+        setError("")
+      }
+    })
+  }
+
+  return (
+    <tr className="border-b border-border last:border-0">
+      {/* Name — inline editable */}
+      <td className="px-4 py-3">
+        {isEditing ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")  commit()
+                if (e.key === "Escape") cancel()
+              }}
+              disabled={isPending}
+              className="h-7 text-[13px] w-40"
+            />
+            <button
+              onClick={commit}
+              disabled={isPending}
+              className="flex items-center justify-center size-6 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+              aria-label="Save"
+            >
+              <Check className="size-3.5" />
+            </button>
+            <button
+              onClick={cancel}
+              disabled={isPending}
+              className="flex items-center justify-center size-6 rounded text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Cancel"
+            >
+              <X className="size-3.5" />
+            </button>
+            {error && <span className="text-[12px] text-destructive">{error}</span>}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 group">
+            <span className="font-medium">{displayName ?? "—"}</span>
+            <button
+              onClick={openEdit}
+              className="flex items-center justify-center size-6 rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+              aria-label="Rename"
+            >
+              <Pencil className="size-3" />
+            </button>
+          </div>
+        )}
+      </td>
+
+      {/* Role */}
+      <td className="px-4 py-3">
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+          user.appRole === "admin"
+            ? "bg-blue-50 text-blue-700"
+            : "bg-muted text-muted-foreground"
+        }`}>
+          {user.appRole === "admin" ? "Admin" : "Viewer"}
+        </span>
+      </td>
+
+      {/* Email */}
+      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+
+      {/* Last login */}
+      <td className="px-4 py-3 text-muted-foreground">
+        {user.lastLogin ?? <span className="text-muted-foreground/50">Never</span>}
+      </td>
+
+      {/* Remove */}
+      <td className="px-4 py-3 text-right">
+        <form
+          action={removeOrgUser.bind(null, user.id, orgId)}
+          onSubmit={(e) => {
+            if (!confirm(`Remove ${user.email} from this organisation?`)) e.preventDefault()
+          }}
+        >
+          <button
+            type="submit"
+            className="text-[13px] text-destructive hover:underline underline-offset-2"
+          >
+            Remove
+          </button>
+        </form>
+      </td>
+    </tr>
+  )
+}
