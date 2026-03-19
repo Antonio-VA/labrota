@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   const supabase = await createClient()
 
-  const system = `You are an AI scheduling assistant for an embryology IVF lab.
+  const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
 You help managers understand the rota, staff availability, and coverage.
 
 Guidelines:
@@ -25,10 +25,15 @@ Guidelines:
 - If asked about a specific week and no week is mentioned, assume the current week.
 - Dates are ISO format (YYYY-MM-DD). The current date is ${new Date().toISOString().split("T")[0]}.`
 
+  try {
   const result = streamText({
     model: anthropic("claude-sonnet-4-6"),
-    system,
+    system: systemText,
+    abortSignal: AbortSignal.timeout(30_000),
     messages: await convertToModelMessages(messages),
+    providerOptions: {
+      anthropic: { cacheControl: { type: "ephemeral" } },
+    },
     stopWhen: stepCountIs(5),
     tools: {
 
@@ -174,4 +179,11 @@ Guidelines:
   })
 
   return result.toUIMessageStreamResponse()
+  } catch (error) {
+    console.error("[chat] streamText error:", error)
+    return new Response(JSON.stringify({ error: "AI service unavailable. Please try again." }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 }
