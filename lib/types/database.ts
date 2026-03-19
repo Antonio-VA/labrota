@@ -45,6 +45,7 @@ export interface Staff {
   working_pattern:   WorkingPattern
   contracted_hours:  number
   onboarding_status: OnboardingStatus
+  preferred_shift:   ShiftType | null
   start_date:        string
   end_date:          string | null
   notes:             string | null

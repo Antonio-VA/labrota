@@ -9,7 +9,7 @@ export default function ClinicLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-muted">
       <ClinicTopBar />
       <div className="flex flex-1 overflow-hidden">
         <AppSidebar />

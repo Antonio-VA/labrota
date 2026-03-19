@@ -79,7 +79,7 @@ function Select({
       name={name}
       defaultValue={defaultValue}
       disabled={disabled}
-      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="h-8 w-full rounded-[8px] border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {children}
     </select>
@@ -137,14 +137,14 @@ export function StaffForm({
       <Section label="Datos personales">
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.firstName")} required>
-            <Input name="first_name" defaultValue={staff?.first_name} disabled={isPending} required />
+            <Input name="first_name" defaultValue={staff?.first_name} disabled={isPending} required className="rounded-[8px]" />
           </Field>
           <Field label={t("fields.lastName")} required>
-            <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} required />
+            <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} required className="rounded-[8px]" />
           </Field>
         </div>
         <Field label={t("fields.email")}>
-          <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} />
+          <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} className="rounded-[8px]" />
         </Field>
       </Section>
 
@@ -168,10 +168,10 @@ export function StaffForm({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.startDate")} required>
-            <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required />
+            <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
           </Field>
           <Field label={t("fields.endDate")}>
-            <Input name="end_date" type="date" defaultValue={staff?.end_date ?? ""} disabled={isPending} />
+            <Input name="end_date" type="date" defaultValue={staff?.end_date ?? ""} disabled={isPending} className="rounded-[8px]" />
           </Field>
         </div>
         <Field label={t("fields.contractedHours")} required>
@@ -182,9 +182,20 @@ export function StaffForm({
             max={60}
             defaultValue={staff?.contracted_hours ?? 37}
             disabled={isPending}
-            className="max-w-28"
+            className="max-w-28 rounded-[8px]"
             required
           />
+        </Field>
+        <Field label="Turno preferido">
+          <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
+            <option value="">Sin preferencia</option>
+            <option value="am">Mañana</option>
+            <option value="pm">Tarde</option>
+            <option value="full">Completo</option>
+          </Select>
+          <p className="text-[12px] text-muted-foreground mt-1">
+            Preferencia de turno — el generador intentará respetarla sin romper la cobertura mínima.
+          </p>
         </Field>
       </Section>
 
@@ -200,7 +211,7 @@ export function StaffForm({
                 onClick={() => toggleDay(day)}
                 disabled={isPending}
                 className={cn(
-                  "h-8 px-3 rounded-lg border text-[13px] font-medium transition-colors disabled:opacity-50",
+                  "h-8 px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
                   active
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border bg-background text-muted-foreground hover:bg-muted"
@@ -257,7 +268,7 @@ export function StaffForm({
           defaultValue={staff?.notes ?? ""}
           disabled={isPending}
           rows={3}
-          className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 resize-none"
+          className="w-full rounded-[8px] border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 resize-none"
           placeholder={tc("optional")}
         />
       </Section>

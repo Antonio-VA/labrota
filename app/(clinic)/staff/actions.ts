@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import type { StaffRole, OnboardingStatus, SkillName, WorkingDay } from "@/lib/types/database"
+import type { StaffRole, OnboardingStatus, SkillName, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
@@ -33,6 +33,7 @@ function parseFormData(formData: FormData) {
       start_date:        formData.get("start_date") as string,
       end_date:          ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
+      preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
     },
     skills: ALL_SKILLS.filter(s => formData.get(`skill_${s}`) === "on"),
   }

@@ -27,6 +27,8 @@ function daysBetween(start: string, end: string): number {
   return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
+const TODAY = new Date().toISOString().split("T")[0]
+
 // ── Leave type badge ───────────────────────────────────────────────────────────
 const TYPE_VARIANTS: Record<LeaveType, "destructive" | "secondary" | "outline"> = {
   annual:   "secondary",
@@ -172,6 +174,62 @@ function LeaveForm({
   )
 }
 
+// ── Leaves table ──────────────────────────────────────────────────────────────
+function LeavesTable({
+  rows,
+  locale,
+  onEdit,
+  t,
+  muted,
+}: {
+  rows: LeaveWithStaff[]
+  locale: "es" | "en"
+  onEdit: (leave: LeaveWithStaff) => void
+  t: ReturnType<typeof useTranslations<"leaves">>
+  muted: boolean
+}) {
+  const cellClass = muted ? "text-muted-foreground" : ""
+
+  return (
+    <div className={`rounded-lg border border-border overflow-hidden mb-3 ${muted ? "opacity-70" : ""}`}>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/40">
+            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>
+            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
+            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
+            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
+            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
+            <th className="w-10" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((leave) => (
+            <tr
+              key={leave.id}
+              className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => onEdit(leave)}
+            >
+              <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
+                {leave.staff.first_name} {leave.staff.last_name}
+              </td>
+              <td className="px-4 py-2.5">
+                <Badge variant={TYPE_VARIANTS[leave.type]} className={muted ? "opacity-60" : ""}>
+                  {t(`types.${leave.type}`)}
+                </Badge>
+              </td>
+              <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
+              <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
+              <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
+              <td className="px-4 py-2.5" />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Main list ─────────────────────────────────────────────────────────────────
 export function LeavesList({
   leaves,
@@ -187,11 +245,15 @@ export function LeavesList({
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<LeaveWithStaff | null>(null)
   const [typeFilter, setTypeFilter] = useState<LeaveType | "all">("all")
+  const [showHistory, setShowHistory] = useState(false)
 
   const filtered = leaves.filter((l) => {
     if (typeFilter !== "all" && l.type !== typeFilter) return false
     return true
   })
+
+  const filteredUpcoming = filtered.filter((l) => l.end_date >= TODAY)
+  const filteredPast     = filtered.filter((l) => l.end_date <  TODAY)
 
   function openCreate() {
     setEditing(null)
@@ -226,7 +288,7 @@ export function LeavesList({
         <Button onClick={openCreate}>{t("addLeave")}</Button>
       </div>
 
-      {/* Empty state */}
+      {/* Empty state — no leaves at all */}
       {leaves.length === 0 && (
         <EmptyState
           icon={CalendarOff}
@@ -240,74 +302,31 @@ export function LeavesList({
         <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
       )}
 
-      {/* Table */}
-      {filtered.length > 0 && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          {/* Header */}
-          <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-muted/40 border-b border-border">
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.staff")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-28">{t("columns.type")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-36">{t("columns.from")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-36">{t("columns.to")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-14 text-right">{t("columns.days")}</span>
-            <span className="w-14" />
-          </div>
+      {/* Upcoming / active leaves */}
+      {filteredUpcoming.length > 0 && (
+        <LeavesTable rows={filteredUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} />
+      )}
 
-          {/* Rows */}
-          {filtered.map((leave) => {
-            const days = daysBetween(leave.start_date, leave.end_date)
-            return (
-              <div
-                key={leave.id}
-                className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 items-center px-4 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                onClick={() => openEdit(leave)}
-              >
-                {/* Staff */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[14px] font-medium truncate">
-                    {leave.staff.first_name} {leave.staff.last_name}
-                  </span>
-                  <Badge variant={leave.staff.role as "lab" | "andrology" | "admin"} className="hidden md:inline-flex">
-                    {leave.staff.role}
-                  </Badge>
-                </div>
+      {filteredUpcoming.length === 0 && filteredPast.length > 0 && (
+        <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
+      )}
 
-                {/* Type */}
-                <div className="hidden md:flex w-28">
-                  <Badge variant={TYPE_VARIANTS[leave.type]}>
-                    {t(`types.${leave.type}`)}
-                  </Badge>
-                </div>
+      {/* History toggle */}
+      {filteredPast.length > 0 && (
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+        >
+          <span>{showHistory ? "▾" : "▸"}</span>
+          {showHistory
+            ? (locale === "es" ? "Ocultar historial" : "Hide history")
+            : (locale === "es" ? `Mostrar historial (${filteredPast.length})` : `Show history (${filteredPast.length})`)}
+        </button>
+      )}
 
-                {/* From */}
-                <div className="hidden md:block w-36">
-                  <span className="text-[14px]">{formatDateWithYear(leave.start_date, locale)}</span>
-                </div>
-
-                {/* To */}
-                <div className="hidden md:block w-36">
-                  <span className="text-[14px]">{formatDateWithYear(leave.end_date, locale)}</span>
-                </div>
-
-                {/* Days */}
-                <div className="hidden md:block w-14 text-right">
-                  <span className="text-[14px] text-muted-foreground">{days}d</span>
-                </div>
-
-                {/* Mobile: show dates + days */}
-                <div className="md:hidden text-right">
-                  <p className="text-[13px] text-muted-foreground">
-                    {formatDateWithYear(leave.start_date, locale)}
-                  </p>
-                  <p className="text-[12px] text-muted-foreground">{days}d</p>
-                </div>
-
-                {/* Edit hint on desktop (row is clickable) */}
-                <div className="hidden md:block w-14" />
-              </div>
-            )
-          })}
-        </div>
+      {/* Past leaves */}
+      {showHistory && filteredPast.length > 0 && (
+        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted />
       )}
 
       {/* Sheet */}

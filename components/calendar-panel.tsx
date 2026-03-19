@@ -520,7 +520,7 @@ export function CalendarPanel() {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       {/* Secondary toolbar — calendar controls only (no page title, that lives in the global top bar) */}
-      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0">
+      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
         {/* Left: nav controls + date label */}
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
