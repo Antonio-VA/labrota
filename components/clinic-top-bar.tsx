@@ -27,7 +27,8 @@ function AvatarMenu({ user }: { user: User }) {
     (user.user_metadata?.avatar_url as string | undefined) ?? null
   )
   const [isSavingName, startSaveName] = useTransition()
-  const [isUploading, startUpload]    = useTransition()
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -64,21 +65,24 @@ function AvatarMenu({ user }: { user: User }) {
     setEditingName(false)
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    startUpload(async () => {
+    e.target.value = ""
+    setUploadError(null)
+    setIsUploading(true)
+    try {
       const supabase = createClient()
       const ext  = file.name.split(".").pop() ?? "jpg"
       const path = `${user.id}.${ext}`
       const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true })
-      if (error) return
+      if (error) { setUploadError(error.message); return }
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path)
       await supabase.auth.updateUser({ data: { avatar_url: publicUrl } })
-      setAvatarUrl(publicUrl)
-    })
-    // Reset so the same file can be re-selected
-    e.target.value = ""
+      setAvatarUrl(publicUrl + `?t=${Date.now()}`)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   async function signOut() {
@@ -176,6 +180,9 @@ function AvatarMenu({ user }: { user: User }) {
               <Upload className="size-3.5" />
               {isUploading ? "Subiendo…" : "Subir foto"}
             </button>
+            {uploadError && (
+              <p className="text-[11px] text-destructive mt-1">{uploadError}</p>
+            )}
           </div>
 
           {/* Sign out */}
