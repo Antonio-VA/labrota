@@ -106,7 +106,7 @@ function AvatarMenu({ user }: { user: User }) {
         className="flex size-7 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity overflow-hidden shrink-0"
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+          <img src={avatarUrl} alt="Avatar" className="block size-full object-cover object-center" />
         ) : (
           currentInitials()
         )}
