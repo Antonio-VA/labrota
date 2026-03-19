@@ -304,7 +304,6 @@ function WeekGrid({
               key={day.date}
               className={cn(
                 "flex flex-col border-r last:border-r-0",
-                day.isWeekend && "bg-slate-50",
                 isDrop && "bg-primary/5 ring-1 ring-primary/30 ring-inset"
               )}
               onDragOver={(e) => onColumnDragOver(day.date, e)}
@@ -312,7 +311,7 @@ function WeekGrid({
               onDrop={() => onColumnDrop(day.date)}
             >
               {/* Header — date button + punctions */}
-              <div className={cn("flex flex-col border-b", day.isWeekend && "bg-slate-100/60")}>
+              <div className="flex flex-col border-b">
                 <button
                   onClick={() => onSelectDay(day.date)}
                   className="flex flex-col items-center pt-2 pb-1 gap-0.5 w-full hover:bg-muted/40 transition-colors"
