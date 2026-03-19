@@ -216,14 +216,14 @@ export function ClinicTopBar() {
         .from("profiles")
         .select("organisation_id")
         .eq("id", u.id)
-        .single()
+        .single() as { data: { organisation_id: string | null } | null }
       if (profile?.organisation_id) {
         const { data: org } = await supabase
           .from("organisations")
           .select("name")
-          .eq("id", (profile as { organisation_id: string }).organisation_id)
-          .single()
-        if (org) setOrgName((org as { name: string }).name)
+          .eq("id", profile.organisation_id)
+          .single() as { data: { name: string } | null }
+        if (org) setOrgName(org.name)
       }
     })
 
