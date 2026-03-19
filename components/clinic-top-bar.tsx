@@ -238,7 +238,7 @@ export function ClinicTopBar({ orgName }: { orgName: string | null }) {
   }
 
   return (
-    <header className="hidden md:flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+    <header className="hidden md:flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-background px-4">
 
       {/* Left: logo + separator + org name */}
       <div className="flex items-center gap-3">

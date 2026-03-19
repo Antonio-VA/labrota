@@ -684,9 +684,13 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   function runGenerate(preserve: boolean) {
     setShowOverrideDialog(false)
     startTransition(async () => {
-      const result = await generateRota(weekStart, preserve)
-      if (result.error) setError(result.error)
-      else fetchWeek(weekStart)
+      try {
+        const result = await generateRota(weekStart, preserve)
+        if (result.error) setError(result.error)
+        else fetchWeek(weekStart)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to generate rota. Check the browser console for details.")
+      }
     })
   }
 

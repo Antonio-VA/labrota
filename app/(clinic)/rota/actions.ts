@@ -188,7 +188,9 @@ export async function generateRota(
   ])
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
-  if (!labConfig) return { error: "Lab configuration not found." }
+  if (!labConfig) return { error: "Lab configuration not found. Set it up in the Lab settings page." }
+
+  if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
 
   // Upsert rota record
   const { data: rotaRow, error: rotaError } = await supabase
@@ -252,9 +254,12 @@ export async function generateRota(
   if (toInsert.length === 0 && !preserveOverrides) {
     const staffCount = (staffRes.data ?? []).length
     if (staffCount === 0) {
-      return { error: "No active staff found. Make sure staff members are added and not inactive." }
+      return { error: "No active staff found. Make sure staff members are added and are not inactive." }
     }
-    return { error: "No staff were eligible for any day this week. Check that staff have working patterns configured and are not all on leave." }
+    if (!labConfig.min_lab_coverage && !labConfig.min_andrology_coverage) {
+      return { error: "Lab config has zero minimum coverage — set min_lab_coverage or min_andrology_coverage in Lab settings." }
+    }
+    return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check working patterns match the week's days and no one is on leave the whole week.` }
   }
 
   if (toInsert.length > 0) {
