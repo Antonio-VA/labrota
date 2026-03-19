@@ -1,13 +1,9 @@
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton, CardSkeleton } from "@/components/ui/skeleton"
+import { CardSkeleton, Skeleton } from "@/components/ui/skeleton"
 
 export default function LabLoading() {
   return (
     <>
-      <header className="h-12 shrink-0 flex items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-4" />
+      <header className="h-12 shrink-0 flex items-center gap-4 border-b px-6">
         <Skeleton className="h-4 w-24" />
       </header>
 

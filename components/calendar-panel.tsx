@@ -28,12 +28,20 @@ type ViewMode = "week" | "month" | "day"
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
-  lab:       "bg-blue-100 text-blue-700",
-  andrology: "bg-emerald-100 text-emerald-700",
-  admin:     "bg-slate-100 text-slate-600",
+  lab:       "bg-blue-600 text-white",
+  andrology: "bg-emerald-600 text-white",
+  admin:     "bg-slate-500 text-white",
 }
 
 const TODAY = new Date().toISOString().split("T")[0]
+
+// ── Skill key map (DB key → i18n key) ─────────────────────────────────────────
+
+const SKILL_KEYS: Record<string, string> = {
+  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
+  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
+  witnessing: "witnessing", other: "other",
+}
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -102,8 +110,8 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
 }) {
   if (loading) {
     return (
-      <div className="rounded-lg border border-border overflow-hidden min-w-[560px]">
-        <div className="grid grid-cols-7">
+      <div className="rounded-lg border border-border overflow-hidden min-w-[560px] min-h-[400px]">
+        <div className="grid grid-cols-7 h-full">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex flex-col border-r last:border-r-0">
               <div className="flex flex-col items-center py-2 border-b gap-1">
@@ -124,8 +132,8 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
   if (!data) return null
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden min-w-[560px]">
-      <div className="grid grid-cols-7">
+    <div className="rounded-lg border border-border overflow-hidden min-w-[560px] h-full flex flex-col">
+      <div className="grid grid-cols-7 flex-1">
         {data.days.map((day) => {
           const d     = new Date(day.date + "T12:00:00")
           const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -135,14 +143,14 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
           return (
             <div
               key={day.date}
-              className={cn("flex flex-col border-r last:border-r-0", day.isWeekend && "bg-muted/20")}
+              className={cn("flex flex-col border-r last:border-r-0", day.isWeekend && "bg-slate-50")}
             >
               {/* Header */}
               <button
                 onClick={() => onSelectDay(day.date)}
                 className={cn(
                   "flex flex-col items-center py-2 border-b gap-0.5 w-full hover:bg-muted/40 transition-colors",
-                  day.isWeekend && "bg-muted/30"
+                  day.isWeekend && "bg-slate-100/60"
                 )}
               >
                 <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
@@ -156,7 +164,7 @@ function WeekGrid({ data, loading, locale, onSelectDay }: {
               </button>
 
               {/* Assignments */}
-              <div className="flex flex-col gap-1 p-2 flex-1 min-h-[120px]">
+              <div className="flex flex-col gap-1 p-2 flex-1">
                 {day.assignments.map((a) => (
                   <StaffChip
                     key={a.id}
@@ -241,7 +249,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
                 className={cn(
                   "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[56px]",
                   !day.isCurrentMonth && "opacity-40",
-                  day.isWeekend && "bg-muted/20",
+                  day.isWeekend && "bg-slate-50",
                   isSelected && "border-primary",
                   !isSelected && "border-border hover:bg-muted/40"
                 )}
@@ -268,12 +276,6 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
 }
 
 // ── Day view ──────────────────────────────────────────────────────────────────
-
-const SKILL_KEYS: Record<string, string> = {
-  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
-  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
-  witnessing: "witnessing", other: "other",
-}
 
 function DayView({ day, loading, locale }: {
   day: RotaDay | null
@@ -311,10 +313,6 @@ function DayView({ day, loading, locale }: {
   for (const a of day.assignments) {
     byRole[a.staff.role]?.push(a)
   }
-
-  // Skill coverage (all skills that assigned staff have, vs skill gaps)
-  const allSkillsInDay = new Set(day.assignments.flatMap(() => [] as string[]))
-  const coveredSkills  = day.assignments.flatMap(() => [] as string[]) // gaps already computed server-side
 
   return (
     <div className="flex flex-col gap-5 max-w-lg mx-auto w-full">
@@ -404,6 +402,7 @@ function OverrideDialog({ onKeep, onRegenerate, onCancel, isPending }: {
 export function CalendarPanel() {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
+  const ts     = useTranslations("skills")
   const locale = useLocale()
 
   const [view, setView]               = useState<ViewMode>("week")
@@ -505,12 +504,26 @@ export function CalendarPanel() {
 
   const showActions = view !== "month"
 
+  // Build detailed skill gap descriptions for the banner
+  const skillGapDetails = weekData?.days
+    .filter((d) => d.skillGaps.length > 0)
+    .flatMap((d) => {
+      const dayLabel = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric" }).format(
+        new Date(d.date + "T12:00:00")
+      )
+      return d.skillGaps.map((sk) => ({
+        skill: ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0]),
+        day: dayLabel,
+      }))
+    }) ?? []
+
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b px-4 py-2 gap-3 flex-wrap shrink-0">
-        {/* Left: nav */}
+      {/* Toolbar — contains page title on desktop, aligned on one baseline */}
+      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0">
+        {/* Left: title + nav */}
         <div className="flex items-center gap-2">
+          <span className="text-[14px] font-medium text-muted-foreground mr-2">{t("title")}</span>
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
             {tc("today")}
           </Button>
@@ -529,8 +542,7 @@ export function CalendarPanel() {
 
         {/* Right: view toggle + actions */}
         <div className="flex items-center gap-2">
-          {/* View toggle — desktop only */}
-          <div className="hidden md:flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
             {(["week", "month", "day"] as ViewMode[]).map((v) => (
               <button
                 key={v}
@@ -547,7 +559,6 @@ export function CalendarPanel() {
             ))}
           </div>
 
-          {/* Action buttons — week + day views only */}
           {showActions && (
             <>
               {hasAssignments && (
@@ -581,6 +592,31 @@ export function CalendarPanel() {
         </div>
       </div>
 
+      {/* Mobile toolbar — nav controls only */}
+      <div className="flex md:hidden items-center justify-between border-b px-4 py-2 gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
+            {tc("today")}
+          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} aria-label={t("previousPeriod")}>
+              <ChevronLeft />
+            </Button>
+            <Button variant="ghost" size="icon-sm" onClick={() => navigate(1)} aria-label={t("nextPeriod")}>
+              <ChevronRight />
+            </Button>
+          </div>
+          <span className="text-[13px] font-medium capitalize">
+            {formatToolbarLabel(view, currentDate, weekStart, locale)}
+          </span>
+        </div>
+        {showActions && !isPublished && (
+          <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
+            {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
+          </Button>
+        )}
+      </div>
+
       {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden shrink-0">
         {isPublished && (
@@ -597,9 +633,16 @@ export function CalendarPanel() {
           </div>
         )}
         {hasSkillGaps && !isPublished && view !== "month" && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 flex items-center gap-2">
-            <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-            <span className="text-[13px] text-amber-700">{t("insufficientCoverage")}</span>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-start gap-2">
+            <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[13px] font-medium text-amber-800">{t("insufficientCoverage")}</span>
+              {skillGapDetails.map((g, i) => (
+                <span key={i} className="text-[12px] text-amber-700">
+                  {g.skill} · {g.day}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         {error && (
@@ -617,12 +660,12 @@ export function CalendarPanel() {
         )}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto px-4 py-3">
+      {/* Content — flex-1 with overflow-hidden so children can fill height */}
+      <div className="flex-1 overflow-hidden flex flex-col">
 
-        {/* Week view — desktop only */}
+        {/* Week view — fills available height */}
         {view === "week" && (
-          <div className="hidden md:block">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-3">
             {!weekData?.rota && !loadingWeek && !isPending ? (
               <EmptyState
                 icon={CalendarDays}
@@ -641,22 +684,24 @@ export function CalendarPanel() {
           </div>
         )}
 
-        {/* Month view — desktop only */}
+        {/* Month view */}
         {view === "month" && (
-          <div className="hidden md:block max-w-2xl">
-            <MonthGrid
-              summary={monthSummary}
-              loading={loadingMonth}
-              locale={locale}
-              currentDate={currentDate}
-              onSelectDay={handleSelectDay}
-            />
+          <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
+            <div className="max-w-2xl">
+              <MonthGrid
+                summary={monthSummary}
+                loading={loadingMonth}
+                locale={locale}
+                currentDate={currentDate}
+                onSelectDay={handleSelectDay}
+              />
+            </div>
           </div>
         )}
 
         {/* Day view — always on mobile, conditional on desktop */}
         <div className={cn(
-          "flex flex-col gap-4",
+          "flex flex-col gap-4 overflow-auto px-4 py-3",
           view === "day" ? "md:flex" : "md:hidden"
         )}>
           <DayView

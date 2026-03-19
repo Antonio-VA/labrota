@@ -73,6 +73,14 @@ export function AddUserForm({ orgId }: { orgId: string }) {
           disabled={isPending}
           className="flex-1"
         />
+        <select
+          name="appRole"
+          disabled={isPending}
+          className="h-8 rounded-lg border border-border bg-background px-2 text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
+        >
+          <option value="admin">Admin</option>
+          <option value="viewer">Viewer</option>
+        </select>
         <Button type="submit" disabled={isPending || !email}>
           {isPending ? "Adding…" : "Add user"}
         </Button>

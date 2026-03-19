@@ -1,7 +1,5 @@
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
 import { MobileGate } from "@/components/mobile-gate"
 import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
@@ -27,9 +25,7 @@ export default async function LeavesPage() {
 
   return (
     <>
-      <header className="h-12 shrink-0 flex items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-4" />
+      <header className="h-12 shrink-0 flex items-center gap-4 border-b px-6">
         <span className="text-[14px] font-medium text-muted-foreground">{t("title")}</span>
       </header>
 

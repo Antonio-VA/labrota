@@ -5,8 +5,6 @@ import { useTranslations } from "next-intl"
 import { CalendarPanel } from "@/components/calendar-panel"
 import { ChatPanel } from "@/components/chat-panel"
 import { MobileBottomNav, type MobileTab } from "@/components/mobile-bottom-nav"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
 
 export default function SchedulePage() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("schedule")
@@ -15,14 +13,7 @@ export default function SchedulePage() {
 
   return (
     <>
-      {/* Desktop header */}
-      <header className="hidden md:flex h-12 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-4" />
-        <span className="text-[14px] font-medium text-muted-foreground">{tnav("schedule")}</span>
-      </header>
-
-      {/* Mobile header */}
+      {/* Mobile header only — desktop title lives inside CalendarPanel toolbar */}
       <header className="flex md:hidden h-12 shrink-0 items-center justify-center border-b px-4">
         <span className="text-[14px] font-medium">
           {mobileTab === "chat" ? tagent("title") : tnav("schedule")}

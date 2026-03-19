@@ -56,7 +56,7 @@
 
   "nav": {
     "schedule": "Schedule",
-    "staff": "Staff",
+    "staff": "Team",
     "leaves": "Leave",
     "lab": "Lab",
     "reports": "Reports",
@@ -122,7 +122,7 @@
   },
 
   "staff": {
-    "title": "Staff",
+    "title": "Team",
     "directory": "Staff directory",
     "addStaff": "Add member",
     "editStaff": "Edit member",
@@ -300,6 +300,7 @@
       "generate": "Generate next week's rota",
       "leave": "Add leave for {name} from {from} to {to}",
       "coverage": "Are we short on any skills this week?",
+      "icsi": "Who covers ICSI on Thursday?",
       "shifts": "How many shifts has {name} done this week?",
       "print": "Print this week's rota"
     }

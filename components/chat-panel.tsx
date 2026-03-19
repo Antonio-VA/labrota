@@ -138,6 +138,7 @@ function ExamplePrompts({ onSelect }: { onSelect: (text: string) => void }) {
   const examples = [
     t("examples.generate"),
     t("examples.coverage"),
+    t("examples.icsi"),
   ]
 
   return (

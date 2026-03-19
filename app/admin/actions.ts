@@ -87,6 +87,7 @@ export async function createOrgUser(formData: FormData) {
   const orgId    = (formData.get("orgId")    as string).trim()
   const email    = (formData.get("email")    as string).trim().toLowerCase()
   const fullName = (formData.get("fullName") as string).trim()
+  const appRole  = (formData.get("appRole")  as string | null)?.trim() ?? "admin"
 
   if (!orgId || !email) return { error: "Organisation and email are required." }
 
@@ -96,7 +97,7 @@ export async function createOrgUser(formData: FormData) {
   const { data, error: createError } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { full_name: fullName || undefined },
+    user_metadata: { full_name: fullName || undefined, app_role: appRole },
   })
 
   if (createError) {

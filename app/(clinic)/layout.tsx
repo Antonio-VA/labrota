@@ -1,7 +1,6 @@
 "use client"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
 export default function ClinicLayout({
   children,
@@ -9,11 +8,11 @@ export default function ClinicLayout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarProvider>
+    <div className="flex h-screen overflow-hidden">
       <AppSidebar />
-      <SidebarInset className="flex flex-col h-screen overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {children}
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   )
 }
