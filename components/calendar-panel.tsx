@@ -631,6 +631,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
+    }).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "Failed to load schedule data.")
+      setLoadingWeek(false)
     })
   }, [])
 

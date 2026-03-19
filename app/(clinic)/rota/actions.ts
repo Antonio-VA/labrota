@@ -62,14 +62,16 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record + lab config in parallel
+  // Fetch rota record + lab config in parallel.
+  // Use select("*") on rotas so that missing columns (e.g. punctions_override if
+  // migration hasn't run) don't cause the entire query to fail.
   const [rotaResult, labConfigResult] = await Promise.all([
     supabase
       .from("rotas")
-      .select("id, status, published_at, punctions_override")
+      .select("*")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; punctions_override: Record<string, number> | null } | null }>,
-    supabase.from("lab_config").select("punctions_by_day").single(),
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; punctions_override?: Record<string, number> | null } | null }>,
+    supabase.from("lab_config").select("*").maybeSingle(),
   ])
 
   const rotaData = rotaResult.data
@@ -102,16 +104,29 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault }
   }
 
-  // Fetch assignments with staff info
+  // Fetch assignments with staff info.
+  // Try the full select first; fall back to base columns if newer columns
+  // (trainee_staff_id, notes) don't exist yet in the DB.
   type AssignmentRow = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
-  const { data: assignmentsData } = await supabase
+  let assignmentsData: AssignmentRow[] | null = null
+  const { data: extData, error: assignmentsError } = await supabase
     .from("rota_assignments")
     .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, staff(id, first_name, last_name, role)")
-    .eq("rota_id", rota.id) as { data: AssignmentRow[] | null }
+    .eq("rota_id", rota.id) as { data: AssignmentRow[] | null; error: { message: string } | null }
+  if (assignmentsError) {
+    // Fallback: select only the original columns
+    const { data: baseData } = await supabase
+      .from("rota_assignments")
+      .select("id, staff_id, date, shift_type, is_manual_override, staff(id, first_name, last_name, role)")
+      .eq("rota_id", rota.id) as { data: Omit<AssignmentRow, "trainee_staff_id" | "notes">[] | null }
+    assignmentsData = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null }))
+  } else {
+    assignmentsData = extData
+  }
 
   // Fetch all staff_skills to compute coverage
   const { data: skillsData } = await supabase
