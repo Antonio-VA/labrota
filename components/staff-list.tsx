@@ -74,7 +74,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const hasFilters = search || roleFilter !== "all" || statusFilter !== "all"
 
   return (
-    <div className="flex flex-col gap-4 pl-8">
+    <div className="flex flex-col gap-4 pl-8 pb-6">
       {/* Toolbar — all controls on one baseline */}
       <div className="flex items-center gap-2 flex-wrap">
         <Input
@@ -131,27 +131,27 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
       {filtered.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Header */}
-          <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 pl-8 pr-4 py-2 bg-muted/40 border-b border-border">
+          <div className="hidden md:grid grid-cols-[25%_15%_40%_12%_8%] pl-8 pr-4 py-2 bg-muted/40 border-b border-border">
             <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-24">{t("columns.role")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-40">{t("columns.skills")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground w-24">{t("columns.status")}</span>
-            <span className="w-8" />
+            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.role")}</span>
+            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.skills")}</span>
+            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+            <span />
           </div>
 
           {/* Rows */}
           {filtered.map((member) => {
             const skills = member.staff_skills ?? []
-            const visibleSkills = skills.slice(0, 3)
+            const visibleSkills = skills.slice(0, 4)
             const extraCount = skills.length - visibleSkills.length
 
             return (
               <div
                 key={member.id}
-                className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center pl-8 pr-4 h-14 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[1fr_auto] md:grid-cols-[25%_15%_40%_12%_8%] items-center pl-8 pr-4 py-2.5 min-h-[52px] border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
               >
                 {/* Name + avatar */}
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 pr-2">
                   <Initials first={member.first_name} last={member.last_name} role={member.role} />
                   <div className="min-w-0">
                     <p className="text-[14px] font-medium truncate">
@@ -164,26 +164,26 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
                 </div>
 
                 {/* Role */}
-                <div className="hidden md:flex w-24">
+                <div className="hidden md:flex items-center">
                   <Badge variant={ROLE_VARIANTS[member.role]}>
                     {t(`roles.${member.role}`)}
                   </Badge>
                 </div>
 
                 {/* Skills */}
-                <div className="hidden md:flex items-center gap-1 flex-wrap w-40">
+                <div className="hidden md:flex items-center gap-1 overflow-hidden">
                   {visibleSkills.map((sk) => (
-                    <Badge key={sk.skill} variant="outline">
+                    <Badge key={sk.skill} variant="outline" className="shrink-0">
                       {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
                     </Badge>
                   ))}
                   {extraCount > 0 && (
-                    <span className="text-[12px] text-muted-foreground">+{extraCount}</span>
+                    <span className="text-[12px] text-muted-foreground shrink-0">+{extraCount}</span>
                   )}
                 </div>
 
                 {/* Status */}
-                <div className="hidden md:flex w-24">
+                <div className="hidden md:flex items-center">
                   <Badge variant={STATUS_VARIANTS[member.onboarding_status] as "active" | "inactive" | "outline"}>
                     {t(`onboardingStatus.${member.onboarding_status}`)}
                   </Badge>
