@@ -304,7 +304,7 @@ export function ClinicTopBar({
                           localStorage.setItem("activeOrgId", org.id)
                           startSwitch(async () => {
                             await switchOrgAction(org.id)
-                            router.refresh()
+                            window.location.href = "/"
                           })
                         }}
                         className={cn(
