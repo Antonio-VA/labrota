@@ -303,6 +303,8 @@
       "shiftStart": "Inicio",
       "shiftEnd": "Fin",
       "adminOnWeekends": "Admin en fines de semana",
+      "adminDefaultShift": "Turno por defecto del personal admin",
+      "adminDefaultShiftHint": "Turno asignado al personal admin salvo que tengan turno preferente individual",
       "autonomousCommunity": "Comunidad autónoma",
       "shiftLabel": "Turno",
       "shiftLangEs": "Español",

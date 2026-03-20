@@ -303,6 +303,8 @@
       "shiftStart": "Start",
       "shiftEnd": "End",
       "adminOnWeekends": "Schedule Admin on weekends",
+      "adminDefaultShift": "Default shift for Admin staff",
+      "adminDefaultShiftHint": "Shift assigned to Admin staff unless they have an individual preferred shift set",
       "autonomousCommunity": "Autonomous community",
       "shiftLabel": "Shift",
       "shiftLangEs": "Español",

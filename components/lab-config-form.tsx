@@ -101,8 +101,9 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     // Punctions
     punctions_by_day: config.punctions_by_day ?? DEFAULT_PUNCTIONS,
     // Staffing
-    staffing_ratio:    config.staffing_ratio,
-    admin_on_weekends: config.admin_on_weekends,
+    staffing_ratio:       config.staffing_ratio,
+    admin_on_weekends:    config.admin_on_weekends,
+    admin_default_shift:  (config.admin_default_shift ?? "full") as "am" | "pm" | "full",
     // Holidays
     autonomous_community: config.autonomous_community ?? "",
     // Shift names
@@ -150,6 +151,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         punctions_by_day:         values.punctions_by_day,
         staffing_ratio:           values.staffing_ratio,
         admin_on_weekends:        values.admin_on_weekends,
+        admin_default_shift:      values.admin_default_shift,
         autonomous_community:     values.autonomous_community || null,
         shift_name_am_es:         values.shift_name_am_es,
         shift_name_pm_es:         values.shift_name_pm_es,
@@ -249,6 +251,26 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
             onChange={(v) => setValues((p) => ({ ...p, admin_on_weekends: v }))}
             disabled={isPending}
           />
+        </FieldRow>
+        <FieldRow label={t("fields.adminDefaultShift")} hint={t("fields.adminDefaultShiftHint")}>
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+            {(["am", "pm", "full"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={isPending}
+                onClick={() => setValues((p) => ({ ...p, admin_default_shift: s }))}
+                className={cn(
+                  "rounded-md px-3 py-1 text-[13px] transition-colors",
+                  values.admin_default_shift === s
+                    ? "bg-background shadow-sm font-medium"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {s.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </FieldRow>
       </div>
 

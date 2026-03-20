@@ -123,6 +123,7 @@ export interface LabConfig {
   punctions_by_day:         PunctionsByDay
   staffing_ratio:           number
   admin_on_weekends:        boolean
+  admin_default_shift:      ShiftType | null
   autonomous_community:     string | null
   shift_name_am_es:         string
   shift_name_pm_es:         string
@@ -157,6 +158,7 @@ export type LabConfigUpdate = {
   punctions_by_day?:         PunctionsByDay
   staffing_ratio?:           number
   admin_on_weekends?:        boolean
+  admin_default_shift?:      ShiftType | null
   autonomous_community?:     string | null
   shift_name_am_es?:         string
   shift_name_pm_es?:         string

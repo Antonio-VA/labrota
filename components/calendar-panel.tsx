@@ -43,6 +43,17 @@ const ROLE_COLORS: Record<string, string> = {
   admin:     "bg-slate-500 text-white",
 }
 
+const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
+const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
+
+function sortAssignments<T extends { staff: { role: string }; shift_type: string }>(arr: T[]): T[] {
+  return [...arr].sort((a, b) => {
+    const rd = (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
+    if (rd !== 0) return rd
+    return (SHIFT_ORDER[a.shift_type] ?? 9) - (SHIFT_ORDER[b.shift_type] ?? 9)
+  })
+}
+
 const TODAY = new Date().toISOString().split("T")[0]
 
 // ── Skill key map (DB key → i18n key) ─────────────────────────────────────────
@@ -256,7 +267,7 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
   if (entries.length === 0) return null
 
   return (
-    <div className="px-4 pb-3">
+    <div className="px-4 pb-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
@@ -461,7 +472,7 @@ function WeekGrid({
                 className="flex flex-col gap-1 p-2 flex-1 min-h-[80px]"
                 onClick={() => { if (!isPublished) onCellClick(day.date) }}
               >
-                {day.assignments.map((a) => (
+                {sortAssignments(day.assignments).map((a) => (
                   <StaffChip
                     key={a.id}
                     first={a.staff.first_name}
@@ -648,12 +659,13 @@ function ShiftGrid({
             )}
           </div>
           {data.days.map((day) => {
-            const dayShifts = day.assignments.filter((a) => a.shift_type === shiftRow)
+            const dayShifts = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
+              .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
             return (
               <div
                 key={day.date}
                 className={cn(
-                  "p-1.5 flex flex-col gap-1 min-h-[64px] transition-colors",
+                  "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors",
                   day.isWeekend ? "bg-slate-50" : "bg-white",
                   !isPublished && (day.isWeekend ? "cursor-pointer hover:bg-slate-100" : "cursor-pointer hover:bg-blue-50")
                 )}
@@ -690,7 +702,9 @@ function ShiftGrid({
         {data.days.map((day) => {
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
-          const offStaff    = staffList.filter((s) => !assignedIds.has(s.id))
+          const offStaff    = staffList
+            .filter((s) => !assignedIds.has(s.id))
+            .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
           const visible     = offStaff.slice(0, 3)
           const extra       = offStaff.length - visible.length
           return (
@@ -1299,7 +1313,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       {/* Banners */}
-      <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden shrink-0">
+      <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
         {isPublished && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
             <Lock className="size-3.5 text-emerald-600 shrink-0" />
@@ -1333,7 +1347,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-3 gap-2">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-2">
             {!weekData?.rota && !loadingWeek && !isPending ? (
               <EmptyState
                 icon={CalendarDays}
@@ -1377,7 +1391,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 shiftTimes={weekData?.shiftTimes ?? null}
               />
             )}
-            {weekData && calendarLayout === "person" && <ShiftBudgetBar data={weekData} />}
+            {weekData && <ShiftBudgetBar data={weekData} />}
           </div>
         )}
 
