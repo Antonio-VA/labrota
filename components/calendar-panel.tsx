@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown } from "lucide-react"
@@ -245,6 +245,58 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ── Skill gap pill (compact toolbar indicator with dropdown) ──────────────────
+
+function SkillGapPill({ details }: {
+  details: { skill: string; day: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Group by day for a cleaner dropdown
+  const byDay: { day: string; skills: string[] }[] = []
+  for (const { skill, day } of details) {
+    const existing = byDay.find((d) => d.day === day)
+    if (existing) existing.skills.push(skill)
+    else byDay.push({ day, skills: [skill] })
+  }
+
+  const affectedDays = byDay.length
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
+      >
+        <AlertTriangle className="size-3 shrink-0" />
+        <span className="hidden sm:inline">Cobertura insuficiente</span>
+        <span className="inline-flex items-center justify-center size-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">{affectedDays}</span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border border-border bg-background shadow-md py-1.5">
+          {byDay.map(({ day, skills }) => (
+            <div key={day} className="px-3 py-1.5">
+              <p className="text-[12px] font-medium capitalize">{day}</p>
+              <p className="text-[11px] text-muted-foreground">{skills.join(", ")}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -871,6 +923,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             ))}
           </div>
 
+          {hasSkillGaps && !isPublished && view !== "month" && (
+            <SkillGapPill details={skillGapDetails} />
+          )}
+
           {showActions && (
             <>
               {hasAssignments && (
@@ -929,7 +985,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         )}
       </div>
 
-      {/* Banners */}
+      {/* Banners — single-line only, max 40px each */}
       <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden shrink-0">
         {isPublished && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
@@ -942,19 +998,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   })
                 : t("rotaPublished")}
             </span>
-          </div>
-        )}
-        {hasSkillGaps && !isPublished && view !== "month" && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-start gap-2">
-            <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] font-medium text-amber-800">{t("insufficientCoverage")}</span>
-              {skillGapDetails.map((g, i) => (
-                <span key={i} className="text-[12px] text-amber-700">
-                  {g.skill} · {g.day}
-                </span>
-              ))}
-            </div>
           </div>
         )}
         {error && (
