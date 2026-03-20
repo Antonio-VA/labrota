@@ -331,7 +331,43 @@
     "saving": "Saving…",
     "holidaysHint": "Regional bank holidays will be applied automatically when generating rotas.",
     "noRegion": "Not selected",
-    "updateSuccess": "Lab configuration updated."
+    "updateSuccess": "Lab configuration updated.",
+    "rules": {
+      "title": "Scheduling rules",
+      "subtitle": "Hard rules are absolute constraints. Soft rules generate warnings but do not block.",
+      "add": "Add rule",
+      "noRules": "No rules",
+      "noRulesDescription": "Add rules to customise rota generation.",
+      "hard": "Hard",
+      "soft": "Soft",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "allStaff": "All staff",
+      "affectedStaff": "Affected staff",
+      "adminNotes": "Internal note (admin only)",
+      "save": "Save rule",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete this rule?",
+      "types": {
+        "no_coincidir": "Do not coincide",
+        "supervisor_requerido": "Supervisor required",
+        "max_dias_consecutivos": "Max consecutive days",
+        "distribucion_fines_semana": "Weekend distribution",
+        "no_turno_doble": "No double shift"
+      },
+      "descriptions": {
+        "no_coincidir": "Selected members cannot be scheduled on the same day",
+        "supervisor_requerido": "Requires a certified supervisor when trainees are present",
+        "max_dias_consecutivos": "Limits the maximum number of consecutive days worked",
+        "distribucion_fines_semana": "Limits how many weekends per month a person can work",
+        "no_turno_doble": "Prevents assigning two shifts on the same day"
+      },
+      "params": {
+        "maxDays": "Max consecutive days",
+        "maxPerMonth": "Max weekends/month",
+        "skill": "Skill requiring supervisor"
+      }
+    }
   },
 
   "reports": {

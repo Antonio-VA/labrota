@@ -17,6 +17,7 @@ import type {
   Leave,
   RotaAssignment,
   LabConfig,
+  RotaRule,
   ShiftType,
   SkillName,
   WorkingDay,
@@ -42,6 +43,7 @@ export interface EngineParams {
   recentAssignments: RotaAssignment[]  // last ~4 weeks, used for workload scoring
   labConfig: LabConfig
   punctionsOverride?: Record<string, number>  // per-date overrides from rota record
+  rules?: RotaRule[]             // enabled scheduling rules
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ export function runRotaEngine({
   recentAssignments,
   labConfig,
   punctionsOverride,
+  rules = [],
 }: EngineParams): RotaEngineResult {
   const days: DayPlan[] = []
   const warnings: string[] = []
@@ -115,6 +118,27 @@ export function runRotaEngine({
 
   // All skills present in this org (for gap detection)
   const allOrgSkills = new Set(staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))
+
+  // Assignment lookup for rules: date → set of staff_ids
+  // Pre-seeded from recentAssignments; updated each day as we generate
+  const assignedByDate: Record<string, Set<string>> = {}
+  for (const a of recentAssignments) {
+    if (!assignedByDate[a.date]) assignedByDate[a.date] = new Set()
+    assignedByDate[a.date].add(a.staff_id)
+  }
+
+  // Helper: count consecutive days assigned immediately before a given date
+  function consecutiveDaysBefore(staffId: string, date: string): number {
+    let count = 0
+    const d = new Date(date + "T12:00:00")
+    for (let i = 0; i < 30; i++) {
+      d.setDate(d.getDate() - 1)
+      const iso = d.toISOString().split("T")[0]
+      if (!assignedByDate[iso]?.has(staffId)) break
+      count++
+    }
+    return count
+  }
 
   for (const date of getWeekDates(weekStart)) {
     const dayCode = getDayCode(date)
@@ -160,13 +184,90 @@ export function runRotaEngine({
     const includeAdmin = !weekend || labConfig.admin_on_weekends
 
     // 5. Assign ALL eligible lab + andrology (budget-limited); max 1 admin
-    const assignedLab       = labPool
-    const assignedAndrology = andrologyPool
-    const assignedAdmin     = includeAdmin ? adminPool.slice(0, 1) : []
+    let assignedLab       = labPool
+    let assignedAndrology = andrologyPool
+    let assignedAdmin     = includeAdmin ? adminPool.slice(0, 1) : []
 
-    const assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
+    let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
-    // 6. OPU designation: most senior (earliest start_date) lab/andrology staff
+    // 6. Apply scheduling rules
+    if (rules.length > 0) {
+      const dateMonth = date.slice(0, 7)
+      const weekendCountThisMonth: Record<string, number> = {}
+      for (const a of recentAssignments) {
+        if (a.date.slice(0, 7) === dateMonth && isWeekend(a.date)) {
+          weekendCountThisMonth[a.staff_id] = (weekendCountThisMonth[a.staff_id] ?? 0) + 1
+        }
+      }
+
+      const hardRemovals = new Set<string>()
+      for (const rule of rules.filter((r) => r.enabled)) {
+        const affectedIds = rule.staff_ids.length > 0 ? new Set(rule.staff_ids) : null
+        const affects = (id: string) => affectedIds === null || affectedIds.has(id)
+
+        if (rule.type === "max_dias_consecutivos") {
+          const maxDays = (rule.params.maxDays as number) ?? 5
+          for (const s of assigned) {
+            if (!affects(s.id)) continue
+            if (consecutiveDaysBefore(s.id, date) >= maxDays) {
+              if (rule.is_hard) hardRemovals.add(s.id)
+              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxDays} consecutive days`)
+            }
+          }
+        }
+
+        if (rule.type === "distribucion_fines_semana" && weekend) {
+          const maxPerMonth = (rule.params.maxPerMonth as number) ?? 2
+          for (const s of assigned) {
+            if (!affects(s.id)) continue
+            if ((weekendCountThisMonth[s.id] ?? 0) >= maxPerMonth) {
+              if (rule.is_hard) hardRemovals.add(s.id)
+              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxPerMonth} weekends this month`)
+            }
+          }
+        }
+
+        if (rule.type === "no_coincidir") {
+          const conflictIds = new Set(rule.staff_ids)
+          const conflicting = assigned.filter((s) => conflictIds.has(s.id))
+          if (conflicting.length > 1) {
+            const byWorkload = [...conflicting].sort(
+              (a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+            )
+            for (let i = 1; i < byWorkload.length; i++) {
+              if (rule.is_hard) hardRemovals.add(byWorkload[i].id)
+              else warnings.push(
+                `${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} cannot coincide with ${byWorkload[0].first_name} ${byWorkload[0].last_name}`
+              )
+            }
+          }
+        }
+
+        if (rule.type === "supervisor_requerido") {
+          const skill = ((rule.params.skill as string | undefined) ?? "egg_collection") as SkillName
+          const trainees = assigned.filter(
+            (s) => affects(s.id) && s.staff_skills.some((sk) => sk.skill === skill && sk.level === "training")
+          )
+          const supervisors = assigned.filter((s) =>
+            s.staff_skills.some((sk) => sk.skill === skill && sk.level === "certified")
+          )
+          if (trainees.length > 0 && supervisors.length === 0) {
+            if (rule.is_hard) for (const t of trainees) hardRemovals.add(t.id)
+            else warnings.push(`${date}: trainees present for ${skill} without a certified supervisor`)
+          }
+        }
+        // no_turno_doble: each person is assigned at most once per day already
+      }
+
+      if (hardRemovals.size > 0) {
+        assignedLab       = assignedLab.filter((s) => !hardRemovals.has(s.id))
+        assignedAndrology = assignedAndrology.filter((s) => !hardRemovals.has(s.id))
+        assignedAdmin     = assignedAdmin.filter((s) => !hardRemovals.has(s.id))
+        assigned          = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
+      }
+    }
+
+    // 7. OPU designation: most senior (earliest start_date) lab/andrology staff
     //    with egg_collection skill among those assigned today
     let opuStaffId: string | null = null
     const opuCandidates = [...assignedLab, ...assignedAndrology].filter(
@@ -177,7 +278,7 @@ export function runRotaEngine({
       opuStaffId = opuCandidates[0].id
     }
 
-    // 7. Warnings for coverage shortfalls
+    // 8. Warnings for coverage shortfalls
     if (labPool.length < labRequired) {
       warnings.push(`${date}: only ${labPool.length} lab staff available (need ${labRequired})`)
     }
@@ -187,7 +288,7 @@ export function runRotaEngine({
       )
     }
 
-    // 8. Skill gaps
+    // 9. Skill gaps
     const coveredSkills = new Set(assigned.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))
     const skillGaps = [...allOrgSkills].filter((skill) => !coveredSkills.has(skill)) as SkillName[]
     if (skillGaps.length > 0) {

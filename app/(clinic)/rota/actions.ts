@@ -8,6 +8,7 @@ import type {
   StaffWithSkills,
   Leave,
   RotaAssignment,
+  RotaRule,
   SkillName,
   ShiftType,
   StaffRole,
@@ -281,7 +282,7 @@ export async function generateRota(
   const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
 
   // Fetch all required data in parallel
-  const [staffRes, leavesRes, recentAssignmentsRes, labConfigRes] = await Promise.all([
+  const [staffRes, leavesRes, recentAssignmentsRes, labConfigRes, rulesRes] = await Promise.all([
     supabase
       .from("staff")
       .select("*, staff_skills(*)")
@@ -298,6 +299,7 @@ export async function generateRota(
       .gte("date", fourWeeksAgoStr)
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
+    supabase.from("rota_rules").select("*").eq("enabled", true),
   ])
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
@@ -357,6 +359,7 @@ export async function generateRota(
     recentAssignments: (recentAssignmentsRes.data ?? []) as RotaAssignment[],
     labConfig,
     punctionsOverride,
+    rules: (rulesRes.data ?? []) as RotaRule[],
   })
 
   // Insert new assignments (skip override dates)

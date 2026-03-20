@@ -331,7 +331,43 @@
     "saving": "Guardando…",
     "holidaysHint": "Los festivos regionales se aplicarán automáticamente al generar guardias.",
     "noRegion": "Sin seleccionar",
-    "updateSuccess": "Configuración del laboratorio actualizada."
+    "updateSuccess": "Configuración del laboratorio actualizada.",
+    "rules": {
+      "title": "Reglas de planificación",
+      "subtitle": "Las reglas duras son restricciones absolutas. Las suaves generan avisos pero no bloquean.",
+      "add": "Añadir regla",
+      "noRules": "Sin reglas",
+      "noRulesDescription": "Añade reglas para personalizar la generación de guardias.",
+      "hard": "Dura",
+      "soft": "Suave",
+      "enabled": "Activa",
+      "disabled": "Inactiva",
+      "allStaff": "Todo el personal",
+      "affectedStaff": "Personal afectado",
+      "adminNotes": "Nota interna (solo admin)",
+      "save": "Guardar regla",
+      "cancel": "Cancelar",
+      "confirmDelete": "¿Eliminar esta regla?",
+      "types": {
+        "no_coincidir": "No coincidir",
+        "supervisor_requerido": "Supervisor requerido",
+        "max_dias_consecutivos": "Máx. días consecutivos",
+        "distribucion_fines_semana": "Distribución fines de semana",
+        "no_turno_doble": "Sin turno doble"
+      },
+      "descriptions": {
+        "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día",
+        "supervisor_requerido": "Requiere un supervisor certificado si hay personal en formación",
+        "max_dias_consecutivos": "Limita el número máximo de días consecutivos trabajados",
+        "distribucion_fines_semana": "Limita cuántos fines de semana por mes puede trabajar una persona",
+        "no_turno_doble": "Impide asignar dos turnos en el mismo día"
+      },
+      "params": {
+        "maxDays": "Máx. días consecutivos",
+        "maxPerMonth": "Máx. fines de semana/mes",
+        "skill": "Habilidad que requiere supervisor"
+      }
+    }
   },
 
   "reports": {

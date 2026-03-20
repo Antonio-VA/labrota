@@ -2,18 +2,22 @@ import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
-import type { LabConfig } from "@/lib/types/database"
+import { RulesSection } from "@/components/rules-section"
+import type { LabConfig, RotaRule, Staff } from "@/lib/types/database"
 
 export default async function LabConfigPage() {
   const supabase = await createClient()
   const t = await getTranslations("lab")
 
-  const { data } = await supabase
-    .from("lab_config")
-    .select("*")
-    .single()
+  const [configRes, rulesRes, staffRes] = await Promise.all([
+    supabase.from("lab_config").select("*").single(),
+    supabase.from("rota_rules").select("*").order("created_at"),
+    supabase.from("staff").select("id, first_name, last_name, role").neq("onboarding_status", "inactive").order("first_name"),
+  ])
 
-  const config = data as LabConfig | null
+  const config = configRes.data as LabConfig | null
+  const rules  = (rulesRes.data ?? []) as RotaRule[]
+  const staff  = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
 
   return (
     <>
@@ -33,6 +37,7 @@ export default async function LabConfigPage() {
                 Lab configuration not found. Please contact your administrator.
               </p>
             )}
+            <RulesSection rules={rules} staff={staff} />
           </div>
         </MobileGate>
       </div>

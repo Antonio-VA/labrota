@@ -174,6 +174,31 @@ export type LabConfigUpdate = {
   shift_full_end?:           string
 }
 
+// ── Rota Rules ────────────────────────────────────────────────────────────────
+
+export type RotaRuleType =
+  | 'no_coincidir'
+  | 'supervisor_requerido'
+  | 'max_dias_consecutivos'
+  | 'distribucion_fines_semana'
+  | 'no_turno_doble'
+
+export interface RotaRule {
+  id:              string
+  organisation_id: string
+  type:            RotaRuleType
+  is_hard:         boolean
+  enabled:         boolean
+  staff_ids:       string[]
+  params:          Record<string, unknown>
+  notes:           string | null
+  created_at:      string
+  updated_at:      string
+}
+
+export type RotaRuleInsert = Omit<RotaRule, 'id' | 'created_at' | 'updated_at'>
+export type RotaRuleUpdate = Partial<RotaRuleInsert>
+
 // ── Joined types used in UI ───────────────────────────────────────────────────
 export interface StaffWithSkills extends Staff {
   staff_skills: StaffSkill[]
@@ -238,6 +263,12 @@ export interface Database {
         Row:    LabConfig
         Insert: { organisation_id: string } & Partial<Omit<LabConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
         Update: LabConfigUpdate
+        Relationships: []
+      }
+      rota_rules: {
+        Row:    RotaRule
+        Insert: RotaRuleInsert
+        Update: RotaRuleUpdate
         Relationships: []
       }
     }
