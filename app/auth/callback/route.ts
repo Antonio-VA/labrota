@@ -48,7 +48,16 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) return response
+    if (!error) {
+      // In PKCE flow, Supabase appends type=recovery for password-reset links.
+      // Also honour the ?next=/reset-password param from the redirectTo URL.
+      const pkceType = searchParams.get("type")
+      if (pkceType === "recovery" || next === "/reset-password") {
+        return NextResponse.redirect(`${origin}/reset-password`)
+      }
+      return response
+    }
+    console.error("[auth/callback] exchangeCodeForSession failed")
   }
 
   // Something went wrong — send back to login with an error hint

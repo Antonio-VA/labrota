@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -500,6 +501,7 @@ function ShiftGrid({
   data, staffList, loading, locale,
   onCellClick, onChipClick,
   isPublished, isGenerating,
+  shiftTimes, onLeaveByDate,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -509,6 +511,8 @@ function ShiftGrid({
   onChipClick: (assignment: Assignment, date: string) => void
   isPublished: boolean
   isGenerating?: boolean
+  shiftTimes: ShiftTimes | null
+  onLeaveByDate: Record<string, string[]>
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -561,10 +565,16 @@ function ShiftGrid({
     staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
   }
 
+  // Row labels: use actual shift times if available, else fall back to names
   const SHIFT_LABELS: Record<ShiftType, string> = {
-    am:   "AM",
-    pm:   "PM",
-    full: t("shiftTypes.full"),
+    am:   shiftTimes ? `${shiftTimes.am.start}` : "AM",
+    pm:   shiftTimes ? `${shiftTimes.pm.start}` : "PM",
+    full: shiftTimes ? `${shiftTimes.full.start}–${shiftTimes.full.end}` : t("shiftTypes.full"),
+  }
+  const SHIFT_SUBLABELS: Record<ShiftType, string | null> = {
+    am:   shiftTimes ? `–${shiftTimes.am.end}` : null,
+    pm:   shiftTimes ? `–${shiftTimes.pm.end}` : null,
+    full: null,
   }
 
   return (
@@ -617,10 +627,15 @@ function ShiftGrid({
       {/* AM / PM / FULL rows */}
       {SHIFT_ROWS.map((shiftRow) => (
         <div key={shiftRow} className="grid grid-cols-[64px_repeat(7,1fr)] border-b">
-          <div className="border-r flex items-center justify-center px-1 py-2 bg-muted/20">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <div className="border-r flex flex-col items-center justify-center px-1 py-2 bg-muted/20 gap-0">
+            <span className="text-[11px] font-semibold text-foreground leading-tight">
               {SHIFT_LABELS[shiftRow]}
             </span>
+            {SHIFT_SUBLABELS[shiftRow] && (
+              <span className="text-[10px] text-muted-foreground leading-tight">
+                {SHIFT_SUBLABELS[shiftRow]}
+              </span>
+            )}
           </div>
           {data.days.map((day) => {
             const dayShifts = day.assignments.filter((a) => a.shift_type === shiftRow)
@@ -665,24 +680,38 @@ function ShiftGrid({
 
       {/* OFF row */}
       <div className="grid grid-cols-[64px_repeat(7,1fr)]">
-        <div className="border-r flex items-center justify-center px-1 py-2 bg-muted/20">
+        <div className="border-r flex flex-col items-center justify-center px-1 py-2 bg-muted/20">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">OFF</span>
         </div>
         {data.days.map((day) => {
-          const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-          const offStaff    = staffList.filter((s) => !assignedIds.has(s.id))
+          const assignedIds  = new Set(day.assignments.map((a) => a.staff_id))
+          const leaveIds     = new Set(onLeaveByDate[day.date] ?? [])
+          const offStaff     = staffList.filter((s) => !assignedIds.has(s.id))
           return (
             <div key={day.date} className="border-r last:border-r-0 p-1.5 flex flex-col gap-1 min-h-[40px]">
-              {offStaff.map((s) => (
-                <ShiftBadge
-                  key={s.id}
-                  first={s.first_name}
-                  last={s.last_name}
-                  role={s.role}
-                  isOpu={false}
-                  isOverride={false}
-                />
-              ))}
+              {offStaff.map((s) => {
+                const onLeave = leaveIds.has(s.id)
+                return (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
+                      onLeave
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-border bg-background text-foreground"
+                    )}
+                  >
+                    <div className={cn(
+                      "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
+                      onLeave ? "bg-amber-200 text-amber-800" : (ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground")
+                    )}>
+                      {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                    </div>
+                    <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
+                    {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
+                  </div>
+                )
+              })}
             </div>
           )
         })}
@@ -1013,10 +1042,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     startTransition(async () => {
       try {
         const result = await generateRota(weekStart, preserve)
-        if (result.error) setError(result.error)
-        else fetchWeek(weekStart)
+        if (result.error) {
+          setError(result.error)
+          toast.error(result.error)
+        } else {
+          fetchWeek(weekStart)
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to generate rota. Check the browser console for details.")
+        const msg = e instanceof Error ? e.message : "Error generando la guardia. Consulta la consola."
+        setError(msg)
+        toast.error(msg)
       }
     })
   }
@@ -1309,6 +1344,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onCellClick={handleCellClick}
                 onChipClick={handleChipClick}
                 isPublished={!!isPublished}
+                shiftTimes={weekData?.shiftTimes ?? null}
+                onLeaveByDate={weekData?.onLeaveByDate ?? {}}
               />
             ) : (
               <WeekGrid

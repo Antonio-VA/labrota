@@ -43,6 +43,8 @@ export interface RotaWeekData {
   days: RotaDay[]
   punctionsDefault: Record<string, number>
   shiftTimes: ShiftTimes | null
+  /** date → list of staff_ids on approved leave that day */
+  onLeaveByDate: Record<string, string[]>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -70,16 +72,20 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record + lab config in parallel.
-  // Use select("*") on rotas so that missing columns (e.g. punctions_override if
-  // migration hasn't run) don't cause the entire query to fail.
-  const [rotaResult, labConfigResult] = await Promise.all([
+  // Fetch rota record, lab config, and approved leaves in parallel.
+  const [rotaResult, labConfigResult, leavesResult] = await Promise.all([
     supabase
       .from("rotas")
       .select("*")
       .eq("week_start", weekStart)
       .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; punctions_override?: Record<string, number> | null } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date")
+      .lte("start_date", dates[6])
+      .gte("end_date", dates[0])
+      .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
   ])
 
   const rotaData = rotaResult.data
@@ -117,8 +123,20 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       }
     : null
 
+  // Build onLeaveByDate map
+  const onLeaveByDate: Record<string, string[]> = {}
+  for (const leave of leavesResult.data ?? []) {
+    const s = new Date(leave.start_date + "T12:00:00")
+    const e = new Date(leave.end_date + "T12:00:00")
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().split("T")[0]
+      if (!onLeaveByDate[iso]) onLeaveByDate[iso] = []
+      onLeaveByDate[iso].push(leave.staff_id)
+    }
+  }
+
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate }
   }
 
   // Fetch assignments with staff info.
@@ -186,7 +204,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
