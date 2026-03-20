@@ -94,7 +94,10 @@
     "resetPassword": "Reset password",
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least 8 characters.",
-    "resetSuccess": "Password updated. Please sign in."
+    "resetSuccess": "Password updated. Please sign in.",
+    "setPasswordTitle": "Welcome to LabRota",
+    "setPasswordSubtitle": "Create your password to get started.",
+    "setPassword": "Create password"
   },
 
   "schedule": {

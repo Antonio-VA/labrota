@@ -94,7 +94,10 @@
     "resetPassword": "Restablecer contraseña",
     "passwordMismatch": "Las contraseñas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
-    "resetSuccess": "Contraseña actualizada. Inicia sesión."
+    "resetSuccess": "Contraseña actualizada. Inicia sesión.",
+    "setPasswordTitle": "Bienvenido a LabRota",
+    "setPasswordSubtitle": "Crea tu contraseña para empezar.",
+    "setPassword": "Crear contraseña"
   },
 
   "schedule": {

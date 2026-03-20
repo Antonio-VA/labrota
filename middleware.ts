@@ -79,7 +79,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") ||
     pathname === "/forgot-password" ||
-    pathname === "/reset-password"
+    pathname === "/reset-password" ||
+    pathname === "/set-password"
   ) {
     return supabaseResponse
   }

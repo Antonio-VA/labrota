@@ -28,16 +28,19 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  // Magic link flow: token_hash + type
+  // OTP flow: token_hash + type
   const token_hash = searchParams.get("token_hash")
   const type = searchParams.get("type") as EmailOtpType | null
 
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type })
     if (!error) {
-      // Recovery links → go to the reset-password page
       if (type === "recovery") {
         return NextResponse.redirect(`${origin}/reset-password`)
+      }
+      // Invite links: set password on first login
+      if (type === "invite") {
+        return NextResponse.redirect(`${origin}/set-password`)
       }
       return response
     }
@@ -49,17 +52,19 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // In PKCE flow, Supabase appends type=recovery for password-reset links.
-      // Also honour the ?next=/reset-password param from the redirectTo URL.
       const pkceType = searchParams.get("type")
       if (pkceType === "recovery" || next === "/reset-password") {
         return NextResponse.redirect(`${origin}/reset-password`)
+      }
+      // Invite links in PKCE mode
+      if (pkceType === "invite") {
+        return NextResponse.redirect(`${origin}/set-password`)
       }
       return response
     }
     console.error("[auth/callback] exchangeCodeForSession failed")
   }
 
-  // Something went wrong — send back to login with an error hint
+  // Something went wrong - send back to login with an error hint
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }
