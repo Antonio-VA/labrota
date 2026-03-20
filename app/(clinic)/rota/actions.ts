@@ -210,11 +210,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // If is_opu / trainee / notes columns missing, retry without them
   let rawAssignments: RawAssignment[] = []
   if (assignmentsRes.error) {
-    const { data: baseData } = await supabase
+    const { data: baseData } = (await supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id) as unknown as Promise<{ data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">[] | null }>
-    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
+      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">[] | null }
+    rawAssignments = (baseData ?? []).map((a: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
   }
