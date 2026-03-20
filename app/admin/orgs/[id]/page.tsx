@@ -56,29 +56,31 @@ export default async function OrgDetailPage({
       .gte("created_at", thirtyDaysAgo),
     admin
       .from("organisation_members")
-      .select("user_id, role, display_name, profiles!inner(id, email, full_name)")
+      .select("user_id, role, display_name")
       .eq("organisation_id", id),
   ])
 
   if (!orgRes.data) notFound()
 
   const org = orgRes.data as Organisation
-  type MemberRow = {
-    user_id:      string
-    role:         string
-    display_name: string | null
-    profiles:     { id: string; email: string; full_name: string | null }
-  }
-  const members = (profilesRes.data ?? []) as unknown as MemberRow[]
+  type MemberRecord = { user_id: string; role: string; display_name: string | null }
+  const memberRecords = (profilesRes.data ?? []) as MemberRecord[]
+
+  // Fetch profiles for all member user_ids
+  const memberUserIds = memberRecords.map((m) => m.user_id)
+  const profilesData = memberUserIds.length > 0
+    ? ((await admin.from("profiles").select("id, email, full_name").in("id", memberUserIds)).data ?? []) as { id: string; email: string; full_name: string | null }[]
+    : []
+  const profileMap = Object.fromEntries(profilesData.map((p) => [p.id, p]))
 
   // Per-user last login from Supabase Auth
   const lastLoginByUser: Record<string, string | null> = {}
   let lastLoginOverall: string | null = null
 
-  if (members.length > 0) {
+  if (memberUserIds.length > 0) {
     const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const memberIds = new Set(members.map((m) => m.profiles.id))
-    const orgAuthUsers = (authData?.users ?? []).filter((u) => memberIds.has(u.id))
+    const memberSet = new Set(memberUserIds)
+    const orgAuthUsers = (authData?.users ?? []).filter((u) => memberSet.has(u.id))
     for (const u of orgAuthUsers) {
       lastLoginByUser[u.id] = u.last_sign_in_at ?? null
     }
@@ -88,15 +90,19 @@ export default async function OrgDetailPage({
 
   const fmt = (d: string) => formatDateWithYear(d, locale)
 
-  const userRows: UserRow[] = members.map((m) => ({
-    id:          m.profiles.id,
-    email:       m.profiles.email,
-    // Resolved display name: org-specific override ?? global account name
-    displayName: m.display_name ?? m.profiles.full_name,
-    orgId:       id,
-    role:        m.role,
-    lastLogin:   lastLoginByUser[m.profiles.id] ? fmt(lastLoginByUser[m.profiles.id]!) : null,
-  }))
+  const userRows: UserRow[] = memberRecords
+    .filter((m) => profileMap[m.user_id])
+    .map((m) => {
+      const profile = profileMap[m.user_id]
+      return {
+        id:          profile.id,
+        email:       profile.email,
+        displayName: m.display_name ?? profile.full_name,
+        orgId:       id,
+        role:        m.role,
+        lastLogin:   lastLoginByUser[profile.id] ? fmt(lastLoginByUser[profile.id]!) : null,
+      }
+    })
 
   return (
     <div className="flex flex-col gap-6">

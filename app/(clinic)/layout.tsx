@@ -34,17 +34,20 @@ export default async function ClinicLayout({
       if (org) { orgName = org.name; orgLogoUrl = org.logo_url }
     }
 
-    // Fetch all orgs this user belongs to (via organisation_members, using admin client)
+    // Fetch all orgs this user belongs to (via organisation_members)
     const admin = createAdminClient()
     const { data: memberships } = await admin
       .from("organisation_members")
-      .select("organisations!inner(id, name, logo_url)")
-      .eq("user_id", user.id) as {
-        data: Array<{ organisations: { id: string; name: string; logo_url: string | null } }> | null
-      }
+      .select("organisation_id")
+      .eq("user_id", user.id) as { data: Array<{ organisation_id: string }> | null }
 
     if (memberships && memberships.length > 1) {
-      allOrgs = memberships.map((m) => m.organisations)
+      const orgIds = memberships.map((m) => m.organisation_id)
+      const { data: orgsData } = await admin
+        .from("organisations")
+        .select("id, name, logo_url")
+        .in("id", orgIds) as { data: Array<{ id: string; name: string; logo_url: string | null }> | null }
+      if (orgsData) allOrgs = orgsData
     }
   }
 
