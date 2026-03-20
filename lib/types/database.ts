@@ -13,7 +13,7 @@ export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
 export type SkillName         =
   | 'icsi' | 'iui' | 'vitrification' | 'thawing'
   | 'biopsy' | 'semen_analysis' | 'sperm_prep' | 'witnessing' | 'other'
-  | 'egg_collection'
+  | 'egg_collection' | 'embryo_transfer' | 'denudation'
 
 export type SkillLevel        = 'certified' | 'training'
 

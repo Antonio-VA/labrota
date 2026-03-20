@@ -11,21 +11,16 @@ import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+// Only these 5 skills are shown in the selector
 const ALL_SKILLS: SkillName[] = [
-  "icsi", "iui", "vitrification", "thawing", "biopsy",
-  "semen_analysis", "sperm_prep", "witnessing", "egg_collection", "other",
+  "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
 ]
-const SKILL_KEYS: Record<SkillName, string> = {
-  icsi: "icsi",
-  iui: "iui",
-  vitrification: "vitrification",
-  thawing: "thawing",
-  biopsy: "biopsy",
-  semen_analysis: "semenAnalysis",
-  sperm_prep: "spermPrep",
-  witnessing: "witnessing",
-  egg_collection: "eggCollection",
-  other: "other",
+const SKILL_LABEL: Record<string, string> = {
+  biopsy:          "Biopsia",
+  icsi:            "ICSI",
+  egg_collection:  "Recogida de óvulos",
+  embryo_transfer: "Transferencia embrionaria",
+  denudation:      "Denudación",
 }
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
@@ -97,8 +92,6 @@ export function StaffForm({
 }) {
   const t = useTranslations("staff")
   const tc = useTranslations("common")
-  const ts = useTranslations("skills")
-
   const action = mode === "edit" ? updateStaff.bind(null, staff!.id) : createStaff
   const [state, formAction, isPending] = useActionState(action, null)
 
@@ -243,7 +236,7 @@ export function StaffForm({
 
       {/* Skills */}
       <Section label={t("fields.skills")}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="flex flex-wrap gap-2">
           {ALL_SKILLS.map((skill) => {
             const level = skillLevels[skill]
             return (
@@ -252,20 +245,43 @@ export function StaffForm({
                 type="button"
                 onClick={() => cycleSkill(skill)}
                 disabled={isPending}
+                style={{ width: 180, height: 56, borderRadius: 8 }}
                 className={cn(
-                  "h-8 px-3 rounded-lg border text-[13px] font-medium transition-colors disabled:opacity-50 text-left",
-                  level === 'certified' && "bg-primary/10 text-primary border-primary/30",
-                  level === 'training'  && "bg-amber-50 text-amber-700 border-amber-200",
-                  level === 'off'       && "border-border bg-background text-muted-foreground hover:bg-muted"
+                  "flex items-center justify-between px-3 border text-left transition-colors disabled:opacity-50 shrink-0",
+                  level === 'certified' && "bg-blue-50 border-blue-400",
+                  level === 'training'  && "bg-amber-50 border-amber-300",
+                  level === 'off'       && "bg-white border-slate-200 hover:bg-slate-50"
                 )}
               >
-                {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
-                {level === 'training' && <span className="ml-1 text-[11px]">★</span>}
+                <div className="flex flex-col justify-center min-w-0">
+                  <span className={cn(
+                    "text-[13px] font-medium leading-tight truncate",
+                    level === 'certified' && "text-blue-700",
+                    level === 'training'  && "text-amber-700",
+                    level === 'off'       && "text-slate-400"
+                  )}>
+                    {SKILL_LABEL[skill]}
+                  </span>
+                  {level !== 'off' && (
+                    <span className={cn(
+                      "text-[10px] leading-tight mt-0.5",
+                      level === 'certified' && "text-blue-600",
+                      level === 'training'  && "text-amber-600"
+                    )}>
+                      {level === 'certified' ? "Competente" : "En formación"}
+                    </span>
+                  )}
+                </div>
+                {level === 'certified' && (
+                  <span className="text-blue-600 text-[14px] leading-none ml-2 shrink-0">✓</span>
+                )}
+                {level === 'training' && (
+                  <span className="text-amber-600 text-[14px] leading-none ml-2 shrink-0">⏳</span>
+                )}
               </button>
             )
           })}
         </div>
-        <p className="text-[12px] text-muted-foreground">{t("fields.skillHint")}</p>
         {/* Hidden inputs for form submission */}
         {ALL_SKILLS.map((skill) =>
           skillLevels[skill] !== 'off' ? (

@@ -53,7 +53,6 @@
     "locked": "Bloqueado",
     "language": "Idioma"
   },
-
   "nav": {
     "schedule": "Calendario",
     "staff": "Equipo",
@@ -64,7 +63,6 @@
     "signOut": "Cerrar sesión",
     "appName": "LabRota"
   },
-
   "auth": {
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",
@@ -99,7 +97,6 @@
     "setPasswordSubtitle": "Crea tu contraseña para empezar.",
     "setPassword": "Crear contraseña"
   },
-
   "schedule": {
     "title": "Calendario",
     "weekView": "Semana",
@@ -153,7 +150,6 @@
     "alreadyAssigned": "Ya asignado",
     "manualOverride": "Modificación manual"
   },
-
   "staff": {
     "title": "Equipo",
     "directory": "Directorio de personal",
@@ -220,7 +216,6 @@
     "shiftsHistory": "Historial de turnos",
     "upcomingLeave": "Próximas ausencias"
   },
-
   "skills": {
     "icsi": "ICSI",
     "iui": "IUI",
@@ -231,9 +226,10 @@
     "spermPrep": "Preparación espermática",
     "witnessing": "Testigo",
     "other": "Otra",
-    "eggCollection": "Recogida de óvulos"
+    "eggCollection": "Recogida de óvulos",
+    "embryoTransfer": "Transferencia embrionaria",
+    "denudation": "Denudación"
   },
-
   "leaves": {
     "title": "Ausencias",
     "addLeave": "Añadir ausencia",
@@ -280,7 +276,6 @@
     "deleteConfirmDescription": "¿Seguro que quieres eliminar esta ausencia? Esta acción no se puede deshacer.",
     "conflictWarning": "Este período coincide con otras ausencias del equipo."
   },
-
   "lab": {
     "title": "Laboratorio",
     "configuration": "Configuración del laboratorio",
@@ -369,13 +364,11 @@
       }
     }
   },
-
   "reports": {
     "title": "Informes",
     "comingSoon": "Próximamente",
     "comingSoonDescription": "Los informes estarán disponibles en una próxima versión."
   },
-
   "settings": {
     "title": "Configuración",
     "language": "Idioma",
@@ -385,7 +378,6 @@
     "organisation": "Organización",
     "profile": "Mi perfil"
   },
-
   "agent": {
     "title": "Agente IA",
     "placeholder": "Escribe un mensaje… (p.ej. Genera la guardia de la semana que viene)",
@@ -405,7 +397,6 @@
       "print": "Imprime la guardia de esta semana"
     }
   },
-
   "pdf": {
     "title": "Exportar guardia",
     "weekOf": "Semana del {date}",
@@ -415,7 +406,6 @@
     "download": "Descargar PDF",
     "preparing": "Preparando PDF…"
   },
-
   "errors": {
     "notFound": "Página no encontrada",
     "notFoundDescription": "La página que buscas no existe o has sido redirigido.",
