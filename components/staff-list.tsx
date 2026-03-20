@@ -381,10 +381,13 @@ function BulkToolbar({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-background shadow-xl">
+      <div
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 h-11 rounded-[10px] border border-border bg-background"
+        style={{ boxShadow: "0 -2px 8px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.10)" }}
+      >
         {/* Count */}
-        <span className="text-[13px] font-medium text-foreground shrink-0 mr-1">
-          <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold mr-1.5">
+        <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground shrink-0 whitespace-nowrap">
+          <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
             {count}
           </span>
           seleccionado{count !== 1 ? "s" : ""}
@@ -397,9 +400,9 @@ function BulkToolbar({
           <button
             onClick={() => { closeAll(); setAddOpen((v) => !v) }}
             disabled={isPending}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-[13px] font-medium hover:bg-muted transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Añadir habilidad <ChevronDown className="size-3.5" />
+            Añadir habilidad <ChevronDown className="size-3 shrink-0" />
           </button>
           <AddSkillDropdown
             open={addOpen}
@@ -414,9 +417,9 @@ function BulkToolbar({
           <button
             onClick={() => { closeAll(); setRemoveOpen((v) => !v) }}
             disabled={isPending}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-[13px] font-medium hover:bg-muted transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Eliminar habilidad <ChevronDown className="size-3.5" />
+            Quitar habilidad <ChevronDown className="size-3 shrink-0" />
           </button>
           <RemoveSkillDropdown
             open={removeOpen}
@@ -431,9 +434,9 @@ function BulkToolbar({
           <button
             onClick={() => { closeAll(); setStatusOpen((v) => !v) }}
             disabled={isPending}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-background text-[13px] font-medium hover:bg-muted transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Cambiar estado <ChevronDown className="size-3.5" />
+            Estado <ChevronDown className="size-3 shrink-0" />
           </button>
           <StatusDropdown
             open={statusOpen}
@@ -449,9 +452,9 @@ function BulkToolbar({
         <button
           onClick={() => { closeAll(); setDeleteOpen(true) }}
           disabled={isPending}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-[13px] font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 h-7 px-2 rounded-md border border-destructive/30 bg-destructive/5 text-destructive text-[12px] font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50 whitespace-nowrap"
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-3 shrink-0" />
           Eliminar
         </button>
 
@@ -460,9 +463,9 @@ function BulkToolbar({
         {/* Clear */}
         <button
           onClick={onClear}
-          className="flex items-center gap-1 h-8 px-2 rounded-lg text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="flex items-center gap-1 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
         >
-          <X className="size-3.5" />
+          <X className="size-3 shrink-0" />
           Cancelar
         </button>
       </div>
