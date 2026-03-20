@@ -3,7 +3,6 @@ import { getLocale } from "next-intl/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { toggleOrgStatus } from "@/app/admin/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import { Plus, Building2 } from "lucide-react"
 import type { Organisation } from "@/lib/types/database"
@@ -117,7 +116,6 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">Rotas (30d)</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Last login</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th>
-                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -156,16 +154,6 @@ export default async function AdminPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatDateWithYear(org.created_at, locale)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <form action={toggleOrgStatus.bind(null, org.id, org.is_active)}>
-                      <button
-                        type="submit"
-                        className="text-[14px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline whitespace-nowrap"
-                      >
-                        {org.is_active ? "Suspend" : "Activate"}
-                      </button>
-                    </form>
                   </td>
                 </tr>
               ))}
