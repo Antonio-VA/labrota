@@ -92,7 +92,7 @@ export default async function AdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-[18px] font-medium">Organisations</h1>
-        <Button size="sm" className="rounded-lg" render={<Link href="/admin/orgs/new" />}>
+        <Button render={<Link href="/admin/orgs/new" />}>
           <Plus />
           New organisation
         </Button>
@@ -124,13 +124,24 @@ export default async function AdminPage() {
               {rows.map(({ org, stats, lastLogin }) => (
                 <tr key={org.id} className="border-b border-border last:border-0 hover:bg-muted/50">
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/orgs/${org.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {org.name}
-                    </Link>
-                    <p className="text-muted-foreground text-[13px]">{org.slug}</p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-8 shrink-0 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden text-[11px] font-semibold text-muted-foreground">
+                        {org.logo_url ? (
+                          <img src={org.logo_url} alt={org.name} className="size-full object-contain p-0.5" />
+                        ) : (
+                          org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <Link
+                          href={`/admin/orgs/${org.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {org.name}
+                        </Link>
+                        <p className="text-muted-foreground text-[13px]">{org.slug}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={org.is_active ? "active" : "inactive"}>
