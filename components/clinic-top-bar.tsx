@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, useTransition } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { LogOut, Pencil, Check, X, Upload } from "lucide-react"
+import { LogOut, Pencil, Check, X, Upload, ChevronDown } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { setLocale } from "@/lib/locale-action"
+import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
+import { cn } from "@/lib/utils"
 import type { User } from "@supabase/supabase-js"
 
 // ── Avatar + user dropdown ────────────────────────────────────────────────────
@@ -203,13 +205,36 @@ function AvatarMenu({ user }: { user: User }) {
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
 
-export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; orgLogoUrl?: string | null }) {
+export function ClinicTopBar({
+  orgName,
+  orgLogoUrl,
+  allOrgs = [],
+  activeOrgId,
+}: {
+  orgName: string | null
+  orgLogoUrl?: string | null
+  allOrgs?: { id: string; name: string; logo_url: string | null }[]
+  activeOrgId?: string | null
+}) {
   const locale = useLocale()
   const router = useRouter()
 
   const [user, setUser]               = useState<User | null>(null)
   const [isPending, startTransition]  = useTransition()
   const [logoError, setLogoError]     = useState(false)
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false)
+  const orgMenuRef                    = useRef<HTMLDivElement>(null)
+  const [isSwitching, startSwitch]    = useTransition()
+
+  // Close org menu on outside click
+  useEffect(() => {
+    if (!orgMenuOpen) return
+    function onMouseDown(e: MouseEvent) {
+      if (orgMenuRef.current && !orgMenuRef.current.contains(e.target as Node)) setOrgMenuOpen(false)
+    }
+    document.addEventListener("mousedown", onMouseDown)
+    return () => document.removeEventListener("mousedown", onMouseDown)
+  }, [orgMenuOpen])
 
   useEffect(() => {
     const supabase = createClient()
@@ -255,15 +280,54 @@ export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; 
         {orgName && (
           <>
             <span className="h-4 border-l border-border" />
-            {orgLogoUrl && !logoError && (
-              <img
-                src={orgLogoUrl}
-                alt=""
-                className="h-[22px] w-[22px] object-contain rounded shrink-0"
-                onError={() => setLogoError(true)}
-              />
+            {allOrgs.length > 1 ? (
+              <div className="relative" ref={orgMenuRef}>
+                <button
+                  onClick={() => setOrgMenuOpen((v) => !v)}
+                  disabled={isSwitching}
+                  className="flex items-center gap-1.5 text-[14px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
+                >
+                  {orgLogoUrl && !logoError && (
+                    <img src={orgLogoUrl} alt="" className="h-[22px] w-[22px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                  )}
+                  {orgName}
+                  <ChevronDown className="size-3.5 opacity-60" />
+                </button>
+                {orgMenuOpen && (
+                  <div className="absolute left-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+                    {allOrgs.map((org) => (
+                      <button
+                        key={org.id}
+                        onClick={() => {
+                          if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
+                          setOrgMenuOpen(false)
+                          startSwitch(async () => {
+                            await switchOrgAction(org.id)
+                            router.refresh()
+                          })
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left transition-colors",
+                          org.id === activeOrgId
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "hover:bg-muted text-foreground"
+                        )}
+                      >
+                        {org.name}
+                        {org.id === activeOrgId && <Check className="size-3.5 ml-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {orgLogoUrl && !logoError && (
+                  <img src={orgLogoUrl} alt="" className="h-[22px] w-[22px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                )}
+                <span className="text-[14px] text-muted-foreground">{orgName}</span>
+              </>
             )}
-            <span className="text-[14px] text-muted-foreground">{orgName}</span>
           </>
         )}
       </div>

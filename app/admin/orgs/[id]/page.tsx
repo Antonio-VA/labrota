@@ -55,16 +55,17 @@ export default async function OrgDetailPage({
       .eq("organisation_id", id)
       .gte("created_at", thirtyDaysAgo),
     admin
-      .from("profiles")
-      .select("id, email, full_name")
+      .from("organisation_members")
+      .select("user_id, profiles!inner(id, email, full_name)")
       .eq("organisation_id", id),
   ])
 
   if (!orgRes.data) notFound()
 
   const org      = orgRes.data as Organisation
-  type ProfileRow = { id: string; email: string; full_name: string | null }
-  const profiles = (profilesRes.data ?? []) as ProfileRow[]
+  type MemberRow = { user_id: string; profiles: { id: string; email: string; full_name: string | null } }
+  const members  = (profilesRes.data ?? []) as unknown as MemberRow[]
+  const profiles = members.map((m) => m.profiles)
 
   // Per-user last login — cross-reference profiles with auth users
   const lastLoginByUser: Record<string, string | null> = {}

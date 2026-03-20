@@ -82,6 +82,9 @@ export async function deleteOrganisation(orgId: string) {
   await admin.from("staff").delete().eq("organisation_id", orgId)
   await admin.from("lab_config").delete().eq("organisation_id", orgId)
 
+  // Remove from organisation_members
+  await admin.from("organisation_members").delete().eq("organisation_id", orgId)
+
   // Detach profiles (keep auth users — they may be re-invited elsewhere)
   await admin
     .from("profiles")
@@ -152,13 +155,37 @@ export async function removeOrgUser(userId: string, orgId: string) {
 
   const admin = createAdminClient()
 
-  // Detach from org (keep auth user — they may be re-invited later)
+  // Remove from organisation_members
   const { error } = await admin
-    .from("profiles")
-    .update({ organisation_id: null } as never)
-    .eq("id", userId)
+    .from("organisation_members")
+    .delete()
+    .eq("user_id", userId)
+    .eq("organisation_id", orgId)
 
   if (error) throw new Error(error.message)
+
+  // If this was their active org, clear it (or switch to another they belong to)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("organisation_id")
+    .eq("id", userId)
+    .single() as { data: { organisation_id: string | null } | null }
+
+  if (profile?.organisation_id === orgId) {
+    // Find another org they're still in
+    const { data: otherMember } = await admin
+      .from("organisation_members")
+      .select("organisation_id")
+      .eq("user_id", userId)
+      .neq("organisation_id", orgId)
+      .limit(1)
+      .single() as { data: { organisation_id: string } | null }
+
+    await admin
+      .from("profiles")
+      .update({ organisation_id: otherMember?.organisation_id ?? null } as never)
+      .eq("id", userId)
+  }
 
   revalidatePath(`/admin/orgs/${orgId}`)
 }
@@ -176,25 +203,45 @@ export async function createOrgUser(formData: FormData) {
 
   const admin = createAdminClient()
 
-  // Invite the user — sends an invitation email with a sign-in link
-  const { data, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName || undefined, app_role: appRole },
-  })
+  // Check if auth user already exists with this email
+  const { data: existingUsers } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  const existingUser = existingUsers?.users.find((u) => u.email === email)
 
-  if (createError) {
-    if (createError.message.includes("already been registered") || createError.message.includes("already exists")) {
-      return { error: "A user with that email already exists." }
-    }
-    return { error: createError.message }
+  let userId: string
+
+  if (existingUser) {
+    userId = existingUser.id
+  } else {
+    // New user — invite them
+    const { data, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: fullName || undefined, app_role: appRole },
+    })
+    if (createError) return { error: createError.message }
+    userId = data.user.id
   }
 
-  // Assign to organisation — the trigger already created the profile row
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({ organisation_id: orgId, full_name: fullName || null } as never)
-    .eq("id", data.user.id)
+  // Add to organisation_members
+  const { error: memberError } = await admin
+    .from("organisation_members")
+    .upsert({ organisation_id: orgId, user_id: userId, role: appRole } as never, {
+      onConflict: "organisation_id,user_id",
+    })
 
-  if (profileError) return { error: profileError.message }
+  if (memberError) return { error: memberError.message }
+
+  // If this is their first org (profile has no active org), set it as active
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("organisation_id")
+    .eq("id", userId)
+    .single() as { data: { organisation_id: string | null } | null }
+
+  if (!profile?.organisation_id) {
+    await admin
+      .from("profiles")
+      .update({ organisation_id: orgId, full_name: fullName || null } as never)
+      .eq("id", userId)
+  }
 
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }

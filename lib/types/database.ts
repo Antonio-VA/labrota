@@ -211,6 +211,15 @@ export interface RotaRule {
 export type RotaRuleInsert = Omit<RotaRule, 'id' | 'created_at' | 'updated_at'>
 export type RotaRuleUpdate = Partial<RotaRuleInsert>
 
+// ── Organisation Members ──────────────────────────────────────────────────────
+export interface OrganisationMember {
+  id:              string
+  organisation_id: string
+  user_id:         string
+  role:            string
+  created_at:      string
+}
+
 // ── Joined types used in UI ───────────────────────────────────────────────────
 export interface StaffWithSkills extends Staff {
   staff_skills: StaffSkill[]
@@ -287,6 +296,12 @@ export interface Database {
         Row:    ShiftTypeDefinition
         Insert: Omit<ShiftTypeDefinition, 'id' | 'created_at'>
         Update: Partial<Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>>
+        Relationships: []
+      }
+      organisation_members: {
+        Row:    OrganisationMember
+        Insert: { organisation_id: string; user_id: string; role?: string }
+        Update: { role?: string }
         Relationships: []
       }
     }
