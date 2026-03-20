@@ -28,7 +28,10 @@ export default function ForgotPasswordPage() {
     setState("loading")
     const supabase = createClient()
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase())
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: "https://labrota.app/auth/callback" }
+    )
 
     if (error) {
       setErrorMessage(t("invalidEmail"))
