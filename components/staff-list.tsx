@@ -78,8 +78,8 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar — all controls on one baseline */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <Input
             placeholder={t("searchPlaceholder")}
             value={search}
