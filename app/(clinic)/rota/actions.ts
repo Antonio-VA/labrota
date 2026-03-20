@@ -25,9 +25,16 @@ export interface RotaDay {
     is_manual_override: boolean
     trainee_staff_id: string | null
     notes: string | null
+    is_opu: boolean
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
+}
+
+export interface ShiftTimes {
+  am:   { start: string; end: string }
+  pm:   { start: string; end: string }
+  full: { start: string; end: string }
 }
 
 export interface RotaWeekData {
@@ -35,6 +42,7 @@ export interface RotaWeekData {
   rota: { id: string; status: RotaStatus; published_at: string | null; punctions_override: Record<string, number> } | null
   days: RotaDay[]
   punctionsDefault: Record<string, number>
+  shiftTimes: ShiftTimes | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -100,8 +108,17 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     dayMap[date] = { date, isWeekend: isWeekendDate(date), assignments: [], skillGaps: [] }
   }
 
+  // Build shift times from lab config
+  const shiftTimes: ShiftTimes | null = labConfig
+    ? {
+        am:   { start: labConfig.shift_am_start   ?? "07:30", end: labConfig.shift_am_end   ?? "14:30" },
+        pm:   { start: labConfig.shift_pm_start   ?? "14:30", end: labConfig.shift_pm_end   ?? "21:30" },
+        full: { start: labConfig.shift_full_start ?? "07:30", end: labConfig.shift_full_end ?? "21:30" },
+      }
+    : null
+
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes }
   }
 
   // Fetch assignments with staff info.
@@ -109,21 +126,21 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // (trainee_staff_id, notes) don't exist yet in the DB.
   type AssignmentRow = {
     id: string; staff_id: string; date: string; shift_type: string;
-    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null
+    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
   let assignmentsData: AssignmentRow[] | null = null
   const { data: extData, error: assignmentsError } = await supabase
     .from("rota_assignments")
-    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, staff(id, first_name, last_name, role)")
+    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, staff(id, first_name, last_name, role)")
     .eq("rota_id", rota.id) as { data: AssignmentRow[] | null; error: { message: string } | null }
   if (assignmentsError) {
     // Fallback: select only the original columns
     const { data: baseData } = await supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override, staff(id, first_name, last_name, role)")
-      .eq("rota_id", rota.id) as { data: Omit<AssignmentRow, "trainee_staff_id" | "notes">[] | null }
-    assignmentsData = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null }))
+      .eq("rota_id", rota.id) as { data: Omit<AssignmentRow, "trainee_staff_id" | "notes" | "is_opu">[] | null }
+    assignmentsData = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
   } else {
     assignmentsData = extData
   }
@@ -154,6 +171,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       is_manual_override: a.is_manual_override,
       trainee_staff_id: a.trainee_staff_id,
       notes: a.notes,
+      is_opu: a.is_opu ?? false,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
     })
   }
@@ -164,7 +182,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
@@ -243,6 +261,14 @@ export async function generateRota(
     await supabase.from("rota_assignments").delete().eq("rota_id", rotaId)
   }
 
+  // Fetch punctions overrides for this rota (so engine uses same values as UI)
+  const { data: rotaOverrides } = await supabase
+    .from("rotas")
+    .select("punctions_override")
+    .eq("id", rotaId)
+    .single() as { data: { punctions_override: Record<string, number> | null } | null }
+  const punctionsOverride: Record<string, number> = rotaOverrides?.punctions_override ?? {}
+
   // Run engine
   const { days } = runRotaEngine({
     weekStart,
@@ -250,6 +276,7 @@ export async function generateRota(
     leaves: (leavesRes.data ?? []) as Leave[],
     recentAssignments: (recentAssignmentsRes.data ?? []) as RotaAssignment[],
     labConfig,
+    punctionsOverride,
   })
 
   // Insert new assignments (skip override dates)
@@ -263,6 +290,7 @@ export async function generateRota(
         date: day.date,
         shift_type: a.shift_type,
         is_manual_override: false,
+        is_opu: a.is_opu,
       }))
     )
 
@@ -310,6 +338,7 @@ export async function upsertAssignment(params: {
   shiftType: ShiftType
   notes?: string | null
   traineeStaffId?: string | null
+  isOpu?: boolean
 }): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
@@ -336,6 +365,7 @@ export async function upsertAssignment(params: {
         shift_type: params.shiftType,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
+        is_opu: params.isOpu ?? false,
         is_manual_override: true,
       } as never)
       .eq("id", params.assignmentId)
@@ -355,6 +385,7 @@ export async function upsertAssignment(params: {
         is_manual_override: true,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
+        is_opu: params.isOpu ?? false,
       } as never)
       .select("id")
       .single()
@@ -423,6 +454,7 @@ export async function setPunctionsOverride(
     .update({ punctions_override: updated } as never)
     .eq("id", rotaId)
   if (error) return { error: error.message }
+  revalidatePath("/")
   return {}
 }
 

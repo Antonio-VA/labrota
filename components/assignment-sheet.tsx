@@ -72,6 +72,7 @@ export function AssignmentSheet({
   const [supervision, setSupervision]         = useState(false)
   const [traineeId, setTraineeId]             = useState<string | null>(null)
   const [notes, setNotes]                     = useState("")
+  const [isOpu, setIsOpu]                     = useState(false)
   const [roleTab, setRoleTab]                 = useState<StaffRole | "all">("all")
   const [error, setError]                     = useState<string | null>(null)
   const [isPending, startTransition]          = useTransition()
@@ -89,12 +90,14 @@ export function AssignmentSheet({
       setSupervision(!!editAssignment.trainee_staff_id)
       setTraineeId(editAssignment.trainee_staff_id ?? null)
       setNotes(editAssignment.notes ?? "")
+      setIsOpu(editAssignment.is_opu ?? false)
     } else {
       setSelectedStaffId(null)
       setShiftType("am")
       setSupervision(false)
       setTraineeId(null)
       setNotes("")
+      setIsOpu(false)
     }
     setRoleTab("all")
   }, [open, editAssignment])
@@ -118,6 +121,7 @@ export function AssignmentSheet({
         shiftType,
         notes: notes.trim() || null,
         traineeStaffId: supervision ? traineeId : null,
+        isOpu,
       })
       if (result.error) {
         setError(result.error)
@@ -242,6 +246,28 @@ export function AssignmentSheet({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* OPU toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[13px] font-medium">{t("opu")}</label>
+              <span className="text-[11px] text-muted-foreground">{t("opuLabel")}</span>
+            </div>
+            <button
+              disabled={isPublished}
+              onClick={() => setIsOpu(!isOpu)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                isOpu ? "bg-primary" : "bg-border",
+                isPublished && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block size-4 rounded-full bg-white shadow transition-transform",
+                isOpu ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
           </div>
 
           {/* Supervisión toggle */}

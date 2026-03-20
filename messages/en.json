@@ -139,6 +139,8 @@
     "shift": "Shift",
     "supervision": "Supervision",
     "supervisee": "Supervisee",
+    "opu": "OPU",
+    "opuLabel": "Lead for egg collection",
     "deleteAssignment": "Delete shift",
     "punctions": "Punctions",
     "shiftBudget": "Shifts this week",
@@ -181,6 +183,7 @@
       "skills": "Skills",
       "workingPattern": "Working pattern",
       "contractedHours": "Contracted weekly hours",
+      "daysPerWeek": "Days per week",
       "startDate": "Start date",
       "endDate": "End date",
       "onboardingStatus": "Status",
@@ -219,7 +222,8 @@
     "semenAnalysis": "Semen analysis",
     "spermPrep": "Sperm preparation",
     "witnessing": "Witnessing",
-    "other": "Other"
+    "other": "Other",
+    "eggCollection": "Egg collection"
   },
 
   "leaves": {
@@ -289,7 +293,10 @@
       "minWeekendLabCoverage": "Minimum Lab coverage (weekend)",
       "punctionesAverage": "Average punctions (last 3 months)",
       "punctionsByDay": "Average punctions per day of the week",
-      "staffingRatio": "Staff-to-punction ratio",
+      "staffingRatio": "1 embryologist per X punctions",
+      "staffingRatioHint": "e.g. 3 = 1 embryologist needed per 3 punctions",
+      "shiftStart": "Start",
+      "shiftEnd": "End",
       "adminOnWeekends": "Schedule Admin on weekends",
       "autonomousCommunity": "Autonomous community",
       "shiftLabel": "Shift",

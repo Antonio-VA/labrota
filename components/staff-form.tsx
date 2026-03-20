@@ -13,7 +13,7 @@ import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, WorkingDa
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
   "icsi", "iui", "vitrification", "thawing", "biopsy",
-  "semen_analysis", "sperm_prep", "witnessing", "other",
+  "semen_analysis", "sperm_prep", "witnessing", "egg_collection", "other",
 ]
 const SKILL_KEYS: Record<SkillName, string> = {
   icsi: "icsi",
@@ -24,6 +24,7 @@ const SKILL_KEYS: Record<SkillName, string> = {
   semen_analysis: "semenAnalysis",
   sperm_prep: "spermPrep",
   witnessing: "witnessing",
+  egg_collection: "eggCollection",
   other: "other",
 }
 
@@ -174,13 +175,13 @@ export function StaffForm({
             <Input name="end_date" type="date" defaultValue={staff?.end_date ?? ""} disabled={isPending} className="rounded-[8px]" />
           </Field>
         </div>
-        <Field label={t("fields.contractedHours")} required>
+        <Field label={t("fields.daysPerWeek")} required>
           <Input
-            name="contracted_hours"
+            name="days_per_week"
             type="number"
             min={1}
-            max={60}
-            defaultValue={staff?.contracted_hours ?? 37}
+            max={7}
+            defaultValue={staff?.days_per_week ?? 5}
             disabled={isPending}
             className="max-w-28 rounded-[8px]"
             required

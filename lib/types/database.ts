@@ -13,6 +13,7 @@ export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
 export type SkillName         =
   | 'icsi' | 'iui' | 'vitrification' | 'thawing'
   | 'biopsy' | 'semen_analysis' | 'sperm_prep' | 'witnessing' | 'other'
+  | 'egg_collection'
 
 export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export type WorkingPattern    = WorkingDay[]
@@ -44,6 +45,7 @@ export interface Staff {
   role:              StaffRole
   working_pattern:   WorkingPattern
   contracted_hours:  number
+  days_per_week:     number
   onboarding_status: OnboardingStatus
   preferred_shift:   ShiftType | null
   start_date:        string
@@ -97,6 +99,7 @@ export interface RotaAssignment {
   is_manual_override: boolean
   trainee_staff_id:   string | null
   notes:              string | null
+  is_opu:             boolean
   created_at:         string
   updated_at:         string
 }
@@ -124,6 +127,12 @@ export interface LabConfig {
   shift_name_am_en:         string
   shift_name_pm_en:         string
   shift_name_full_en:       string
+  shift_am_start:           string
+  shift_am_end:             string
+  shift_pm_start:           string
+  shift_pm_end:             string
+  shift_full_start:         string
+  shift_full_end:           string
   created_at:               string
   updated_at:               string
 }
@@ -152,6 +161,12 @@ export type LabConfigUpdate = {
   shift_name_am_en?:         string
   shift_name_pm_en?:         string
   shift_name_full_en?:       string
+  shift_am_start?:           string
+  shift_am_end?:             string
+  shift_pm_start?:           string
+  shift_pm_end?:             string
+  shift_full_start?:         string
+  shift_full_end?:           string
 }
 
 // ── Joined types used in UI ───────────────────────────────────────────────────

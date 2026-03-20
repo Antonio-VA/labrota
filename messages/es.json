@@ -139,6 +139,8 @@
     "shift": "Turno",
     "supervision": "Supervisión",
     "supervisee": "Supervisado",
+    "opu": "OPU",
+    "opuLabel": "Responsable de recogida de óvulos",
     "deleteAssignment": "Eliminar turno",
     "punctions": "Punciones",
     "shiftBudget": "Turnos esta semana",
@@ -181,6 +183,7 @@
       "skills": "Habilidades",
       "workingPattern": "Jornada laboral",
       "contractedHours": "Horas contratadas semanales",
+      "daysPerWeek": "Días por semana",
       "startDate": "Fecha de incorporación",
       "endDate": "Fecha de baja",
       "onboardingStatus": "Estado de incorporación",
@@ -219,7 +222,8 @@
     "semenAnalysis": "Análisis seminal",
     "spermPrep": "Preparación espermática",
     "witnessing": "Testigo",
-    "other": "Otra"
+    "other": "Otra",
+    "eggCollection": "Recogida de óvulos"
   },
 
   "leaves": {
@@ -289,7 +293,10 @@
       "minWeekendLabCoverage": "Cobertura mínima Lab (fin de semana)",
       "punctionesAverage": "Media de punciones (últimos 3 meses)",
       "punctionsByDay": "Punciones medias por día de la semana",
-      "staffingRatio": "Ratio personal / punción",
+      "staffingRatio": "1 embriólogo por cada X punciones",
+      "staffingRatioHint": "p.ej. 3 = se necesita 1 embriólogo por cada 3 punciones",
+      "shiftStart": "Inicio",
+      "shiftEnd": "Fin",
       "adminOnWeekends": "Admin en fines de semana",
       "autonomousCommunity": "Comunidad autónoma",
       "shiftLabel": "Turno",

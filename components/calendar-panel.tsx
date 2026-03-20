@@ -22,6 +22,7 @@ import {
   type RotaWeekData,
   type RotaDay,
   type RotaMonthSummary,
+  type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import type { StaffWithSkills } from "@/lib/types/database"
@@ -87,8 +88,9 @@ function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: stri
 
 // ── Staff chip ────────────────────────────────────────────────────────────────
 
-function StaffChip({ first, last, role, isOverride, hasTrainee, onClick, isDragging, onDragStart, onDragEnd }: {
+function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
   first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
+  isOpu?: boolean; notes?: string | null; shiftTime?: string
   onClick?: (e: React.MouseEvent) => void
   isDragging?: boolean
   onDragStart?: (e: React.DragEvent) => void
@@ -101,22 +103,33 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, onClick, isDragg
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] select-none",
+        "flex flex-col px-2 py-1 rounded-md border text-[12px] select-none",
         isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background",
         onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
         onDragStart && "cursor-grab",
         isDragging && "opacity-40",
       )}
     >
-      <div className={cn(
-        "size-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0",
-        ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
-      )}>
-        {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
+      {shiftTime && (
+        <span className="text-[10px] text-muted-foreground font-medium leading-none mb-0.5">{shiftTime}</span>
+      )}
+      <div className="flex items-center gap-1.5">
+        <div className={cn(
+          "size-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0",
+          ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
+        )}>
+          {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
+        </div>
+        <span className="truncate font-medium">{first} {last[0]}.</span>
+        {hasTrainee && (
+          <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
+        )}
+        {isOpu && (
+          <span className="ml-0.5 text-[9px] bg-amber-100 text-amber-700 rounded px-1 font-semibold shrink-0">OPU</span>
+        )}
       </div>
-      <span className="truncate font-medium">{first} {last[0]}.</span>
-      {hasTrainee && (
-        <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
+      {notes && (
+        <span className="text-[10px] italic text-muted-foreground leading-none mt-0.5 truncate">{notes}</span>
       )}
     </div>
   )
@@ -242,7 +255,7 @@ function WeekGrid({
   data, loading, locale, onSelectDay, onCellClick, onChipClick,
   punctionsOverride, onPunctionsChange,
   draggingId, dragOverDate, onChipDragStart, onChipDragEnd, onColumnDrop, onColumnDragOver, onColumnDragLeave,
-  isPublished,
+  isPublished, shiftTimes,
 }: {
   data: RotaWeekData | null
   loading: boolean
@@ -260,6 +273,7 @@ function WeekGrid({
   onColumnDragOver: (date: string, e: React.DragEvent) => void
   onColumnDragLeave: () => void
   isPublished: boolean
+  shiftTimes: ShiftTimes | null
 }) {
   if (loading) {
     return (
@@ -351,6 +365,9 @@ function WeekGrid({
                     role={a.staff.role}
                     isOverride={a.is_manual_override}
                     hasTrainee={!!a.trainee_staff_id}
+                    isOpu={a.is_opu}
+                    notes={a.notes}
+                    shiftTime={shiftTimes ? `${shiftTimes[a.shift_type].start}–${shiftTimes[a.shift_type].end}` : undefined}
                     isDragging={draggingId === a.id}
                     onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
                     onDragStart={isPublished ? undefined : (e) => { e.stopPropagation(); onChipDragStart(a.id, day.date) }}
@@ -986,6 +1003,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onColumnDragOver={handleColumnDragOver}
                 onColumnDragLeave={handleColumnDragLeave}
                 isPublished={!!isPublished}
+                shiftTimes={weekData?.shiftTimes ?? null}
               />
             )}
             {weekData && <ShiftBudgetBar data={weekData} />}

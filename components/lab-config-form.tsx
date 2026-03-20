@@ -112,6 +112,13 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     shift_name_am_en:   config.shift_name_am_en   ?? "Morning",
     shift_name_pm_en:   config.shift_name_pm_en   ?? "Afternoon",
     shift_name_full_en: config.shift_name_full_en ?? "Full Day",
+    // Shift times
+    shift_am_start:   config.shift_am_start   ?? "07:30",
+    shift_am_end:     config.shift_am_end     ?? "14:30",
+    shift_pm_start:   config.shift_pm_start   ?? "14:30",
+    shift_pm_end:     config.shift_pm_end     ?? "21:30",
+    shift_full_start: config.shift_full_start ?? "07:30",
+    shift_full_end:   config.shift_full_end   ?? "21:30",
   })
 
   function setInt(field: keyof typeof values, raw: string) {
@@ -150,6 +157,12 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         shift_name_am_en:         values.shift_name_am_en,
         shift_name_pm_en:         values.shift_name_pm_en,
         shift_name_full_en:       values.shift_name_full_en,
+        shift_am_start:           values.shift_am_start,
+        shift_am_end:             values.shift_am_end,
+        shift_pm_start:           values.shift_pm_start,
+        shift_pm_end:             values.shift_pm_end,
+        shift_full_start:         values.shift_full_start,
+        shift_full_end:           values.shift_full_end,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -162,9 +175,9 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
   }
 
   const shiftRows = [
-    { key: "am",   esField: "shift_name_am_es"   as const, enField: "shift_name_am_en"   as const },
-    { key: "pm",   esField: "shift_name_pm_es"   as const, enField: "shift_name_pm_en"   as const },
-    { key: "full", esField: "shift_name_full_es" as const, enField: "shift_name_full_en" as const },
+    { key: "am",   esField: "shift_name_am_es"   as const, enField: "shift_name_am_en"   as const, startField: "shift_am_start"   as const, endField: "shift_am_end"   as const },
+    { key: "pm",   esField: "shift_name_pm_es"   as const, enField: "shift_name_pm_en"   as const, startField: "shift_pm_start"   as const, endField: "shift_pm_end"   as const },
+    { key: "full", esField: "shift_name_full_es" as const, enField: "shift_name_full_en" as const, startField: "shift_full_start" as const, endField: "shift_full_end" as const },
   ]
 
   return (
@@ -225,7 +238,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
       {/* ── RATIO DE PERSONAL ────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title={t("sections.staffing")} />
-        <FieldRow label={t("fields.staffingRatio")}>
+        <FieldRow label={t("fields.staffingRatio")} hint={t("fields.staffingRatioHint")}>
           <Input type="number" min={0.1} max={10} step={0.1} value={values.staffing_ratio}
             onChange={(e) => setFloat("staffing_ratio", e.target.value)}
             disabled={isPending} className="w-20 text-center" />
@@ -271,18 +284,34 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         <SectionHeader title={t("sections.shifts")} />
         <div className="py-2 pb-3">
           {/* Column headers */}
-          <div className="grid grid-cols-3 gap-3 items-center pb-2 border-b border-border mb-1">
+          <div className="grid grid-cols-[3rem_6rem_6rem_1fr_1fr] gap-2 items-center pb-2 border-b border-border mb-1">
             <span className="text-[13px] font-medium text-muted-foreground">{t("fields.shiftLabel")}</span>
+            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftStart")}</span>
+            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftEnd")}</span>
             <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftLangEs")}</span>
             <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftLangEn")}</span>
           </div>
           {/* Shift rows */}
           <div className="flex flex-col gap-2 pt-2">
-            {shiftRows.map(({ key, esField, enField }) => (
-              <div key={key} className="grid grid-cols-3 gap-3 items-center">
-                <span className="text-[14px] font-medium text-muted-foreground uppercase tracking-wide text-[12px]">
+            {shiftRows.map(({ key, esField, enField, startField, endField }) => (
+              <div key={key} className="grid grid-cols-[3rem_6rem_6rem_1fr_1fr] gap-2 items-center">
+                <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
                   {key.toUpperCase()}
                 </span>
+                <Input
+                  type="time"
+                  value={values[startField]}
+                  onChange={(e) => setValues((p) => ({ ...p, [startField]: e.target.value }))}
+                  disabled={isPending}
+                  className="text-center text-[13px] px-1"
+                />
+                <Input
+                  type="time"
+                  value={values[endField]}
+                  onChange={(e) => setValues((p) => ({ ...p, [endField]: e.target.value }))}
+                  disabled={isPending}
+                  className="text-center text-[13px] px-1"
+                />
                 <Input
                   value={values[esField]}
                   onChange={(e) => setValues((p) => ({ ...p, [esField]: e.target.value }))}

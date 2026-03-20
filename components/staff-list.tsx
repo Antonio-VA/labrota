@@ -34,6 +34,7 @@ const SKILL_KEYS: Record<SkillName, string> = {
   semen_analysis: "semenAnalysis",
   sperm_prep: "spermPrep",
   witnessing: "witnessing",
+  egg_collection: "eggCollection",
   other: "other",
 }
 
