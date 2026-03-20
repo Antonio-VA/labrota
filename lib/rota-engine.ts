@@ -150,7 +150,10 @@ export function runRotaEngine({
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0)
       ? Math.ceil(punctionsForDay / labConfig.staffing_ratio)
       : 0
-    const labRequired       = Math.max(labConfig.min_lab_coverage, dynamicLabMin)
+    const staticLabMin      = weekend
+      ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
+      : labConfig.min_lab_coverage
+    const labRequired       = Math.max(staticLabMin, dynamicLabMin)
     const andrologyRequired = weekend
       ? labConfig.min_weekend_andrology
       : labConfig.min_andrology_coverage

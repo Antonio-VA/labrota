@@ -513,6 +513,7 @@ function ShiftGrid({
   onCellClick, onChipClick,
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
+  punctionsDefault, punctionsOverride,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -525,6 +526,8 @@ function ShiftGrid({
   shiftTimes: ShiftTimes | null
   onLeaveByDate: Record<string, string[]>
   publicHolidays: Record<string, string>
+  punctionsDefault: Record<string, number>
+  punctionsOverride: Record<string, number>
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -605,11 +608,31 @@ function ShiftGrid({
           const assignedIds   = new Set(day.assignments.map((a) => a.staff_id))
           const coveredSkills = [...new Set([...assignedIds].flatMap((id) => staffSkillMap[id] ?? []))]
 
+          const effectiveP = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
+          const hasGaps    = day.skillGaps.length > 0
+
           return (
             <div key={day.date} className={cn(
-              "flex flex-col items-center justify-center py-1 gap-[2px]",
+              "relative flex flex-col items-center justify-center py-1 gap-[2px]",
               day.isWeekend && "bg-slate-50"
             )}>
+              {/* Skill gap indicator — top-right corner */}
+              {hasGaps && (
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <span className="absolute top-1 right-1 cursor-default">
+                      <AlertTriangle className="size-3 text-amber-500" />
+                    </span>
+                  } />
+                  <TooltipContent side="bottom" className="max-w-[160px]">
+                    <p className="text-[11px] font-medium mb-0.5">Cobertura insuficiente</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {day.skillGaps.map((sk) => ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])).join(", ")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
               <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
               <div className={cn(
                 "size-7 flex items-center justify-center rounded-full font-medium leading-none",
@@ -619,7 +642,17 @@ function ShiftGrid({
               )}>
                 {dayN}
               </div>
-              <div className="flex flex-wrap gap-0.5 justify-center max-w-[64px]">
+
+              {/* Punctions + skill dots row */}
+              <div className="flex items-center gap-0.5 justify-center flex-wrap max-w-[64px]">
+                {effectiveP > 0 && (
+                  <span className={cn(
+                    "text-[9px] font-medium tabular-nums leading-none",
+                    punctionsOverride[day.date] !== undefined ? "text-primary" : "text-slate-400"
+                  )}>
+                    P:{effectiveP}
+                  </span>
+                )}
                 {coveredSkills.map((skill) => (
                   <Tooltip key={skill}>
                     <TooltipTrigger render={
@@ -1242,7 +1275,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             </div>
           )}
 
-          {hasSkillGaps && !isPublished && view !== "month" && (
+          {hasSkillGaps && view !== "month" && (
             <SkillGapPill details={skillGapDetails} />
           )}
 
@@ -1360,6 +1393,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 shiftTimes={weekData?.shiftTimes ?? null}
                 onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                 publicHolidays={weekData?.publicHolidays ?? {}}
+                punctionsDefault={weekData?.punctionsDefault ?? {}}
+                punctionsOverride={punctionsOverride}
               />
             ) : (
               <WeekGrid
