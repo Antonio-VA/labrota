@@ -165,6 +165,8 @@
     "noStaffDescription": "Add your first team member to start scheduling rotas.",
     "noResults": "No results",
     "noResultsDescription": "No members matched that name or filter.",
+    "showHistory": "Show inactive members ({count})",
+    "hideHistory": "Hide inactive members",
     "columns": {
       "name": "Name",
       "role": "Role",

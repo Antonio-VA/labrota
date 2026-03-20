@@ -56,6 +56,12 @@ function Initials({ first, last, role }: { first: string; last: string; role: St
   )
 }
 
+const ROLE_ORDER: Record<StaffRole, number> = { lab: 0, andrology: 1, admin: 2 }
+
+function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
+  return ROLE_ORDER[a.role] - ROLE_ORDER[b.role]
+}
+
 export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const t = useTranslations("staff")
   const ts = useTranslations("skills")
@@ -64,6 +70,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<StaffRole | "all">("all")
   const [statusFilter, setStatusFilter] = useState<OnboardingStatus | "all">("all")
+  const [showHistory, setShowHistory] = useState(false)
 
   const filtered = staff.filter((s) => {
     const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
@@ -72,6 +79,9 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
     if (statusFilter !== "all" && s.onboarding_status !== statusFilter) return false
     return true
   })
+
+  const activeFiltered   = filtered.filter((s) => s.onboarding_status !== "inactive").sort(sortByRole)
+  const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortByRole)
 
   const hasFilters = search || roleFilter !== "all" || statusFilter !== "all"
 
@@ -124,7 +134,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
       )}
 
       {/* Empty state — no results after filtering */}
-      {staff.length > 0 && filtered.length === 0 && hasFilters && (
+      {staff.length > 0 && activeFiltered.length === 0 && inactiveFiltered.length === 0 && hasFilters && (
         <EmptyState
           icon={Users}
           title={t("noResults")}
@@ -132,90 +142,124 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
         />
       )}
 
-      {/* Table */}
-      {filtered.length > 0 && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          {/* Header */}
-          <div className="hidden md:grid grid-cols-[28%_14%_42%_10%_6%] px-4 py-2 bg-muted/40 border-b border-border">
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.role")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.skills")}</span>
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
-            <span />
-          </div>
-
-          {/* Rows */}
-          {filtered.map((member) => {
-            const skills = member.staff_skills ?? []
-            const visibleSkills = skills.slice(0, 4)
-            const extraCount = skills.length - visibleSkills.length
-
-            return (
-              <div
-                key={member.id}
-                className="grid grid-cols-[1fr_auto] md:grid-cols-[28%_14%_42%_10%_6%] items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 hover:bg-blue-50 transition-colors"
-              >
-                {/* Name + avatar */}
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <Initials first={member.first_name} last={member.last_name} role={member.role} />
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-medium truncate">
-                      {member.first_name} {member.last_name}
-                    </p>
-                    {member.email && (
-                      <p className="text-[13px] text-muted-foreground truncate">{member.email}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Role */}
-                <div className="hidden md:flex items-center">
-                  <Badge variant={ROLE_VARIANTS[member.role]}>
-                    {t(`roles.${member.role}`)}
-                  </Badge>
-                </div>
-
-                {/* Skills */}
-                <div className="hidden md:flex items-center gap-1 overflow-hidden">
-                  {visibleSkills.map((sk) => (
-                    <Badge key={sk.skill} variant="outline" className="shrink-0">
-                      {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
-                    </Badge>
-                  ))}
-                  {extraCount > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger render={<span className="text-[12px] text-muted-foreground shrink-0 cursor-default" />}>
-                        +{extraCount}
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        {skills.slice(4).map((sk) => ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])).join(", ")}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div className="hidden md:flex items-center">
-                  <Badge variant={STATUS_VARIANTS[member.onboarding_status] as "active" | "inactive" | "outline"}>
-                    {t(`onboardingStatus.${member.onboarding_status}`)}
-                  </Badge>
-                </div>
-
-                {/* Edit */}
-                <div className="flex items-center justify-end">
-                  <Link
-                    href={`/staff/${member.id}`}
-                    aria-label={t("editStaff")}
-                    className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  >
-                    <Pencil className="size-4" />
-                  </Link>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {/* Active / onboarding table */}
+      {activeFiltered.length > 0 && (
+        <StaffTable members={activeFiltered} t={t} ts={ts} muted={false} />
       )}
+
+      {/* History toggle */}
+      {inactiveFiltered.length > 0 && (
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+        >
+          <span>{showHistory ? "▾" : "▸"}</span>
+          {showHistory
+            ? t("hideHistory")
+            : t("showHistory", { count: inactiveFiltered.length })}
+        </button>
+      )}
+
+      {/* Inactive (history) table */}
+      {showHistory && inactiveFiltered.length > 0 && (
+        <StaffTable members={inactiveFiltered} t={t} ts={ts} muted />
+      )}
+    </div>
+  )
+}
+
+function StaffTable({
+  members,
+  t,
+  ts,
+  muted,
+}: {
+  members: StaffWithSkills[]
+  t: ReturnType<typeof useTranslations<"staff">>
+  ts: ReturnType<typeof useTranslations<"skills">>
+  muted: boolean
+}) {
+  return (
+    <div className={cn("rounded-lg border border-border overflow-hidden", muted && "opacity-60")}>
+      {/* Header */}
+      <div className="hidden md:grid grid-cols-[28%_14%_42%_10%_6%] px-4 py-2 bg-muted/40 border-b border-border">
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.role")}</span>
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.skills")}</span>
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+        <span />
+      </div>
+
+      {/* Rows */}
+      {members.map((member) => {
+        const skills = member.staff_skills ?? []
+        const visibleSkills = skills.slice(0, 4)
+        const extraCount = skills.length - visibleSkills.length
+
+        return (
+          <div
+            key={member.id}
+            className="grid grid-cols-[1fr_auto] md:grid-cols-[28%_14%_42%_10%_6%] items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 hover:bg-blue-50 transition-colors"
+          >
+            {/* Name + avatar */}
+            <div className="flex items-center gap-3 min-w-0 pr-2">
+              <Initials first={member.first_name} last={member.last_name} role={member.role} />
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium truncate">
+                  {member.first_name} {member.last_name}
+                </p>
+                {member.email && (
+                  <p className="text-[13px] text-muted-foreground truncate">{member.email}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Role */}
+            <div className="hidden md:flex items-center">
+              <Badge variant={ROLE_VARIANTS[member.role]}>
+                {t(`roles.${member.role}`)}
+              </Badge>
+            </div>
+
+            {/* Skills */}
+            <div className="hidden md:flex items-center gap-1 overflow-hidden">
+              {visibleSkills.map((sk) => (
+                <Badge key={sk.skill} variant="outline" className="shrink-0">
+                  {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                </Badge>
+              ))}
+              {extraCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="text-[12px] text-muted-foreground shrink-0 cursor-default" />}>
+                    +{extraCount}
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {skills.slice(4).map((sk) => ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])).join(", ")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+
+            {/* Status */}
+            <div className="hidden md:flex items-center">
+              <Badge variant={STATUS_VARIANTS[member.onboarding_status] as "active" | "inactive" | "outline"}>
+                {t(`onboardingStatus.${member.onboarding_status}`)}
+              </Badge>
+            </div>
+
+            {/* Edit */}
+            <div className="flex items-center justify-end">
+              <Link
+                href={`/staff/${member.id}`}
+                aria-label={t("editStaff")}
+                className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <Pencil className="size-4" />
+              </Link>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

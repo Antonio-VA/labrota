@@ -165,6 +165,8 @@
     "noStaffDescription": "Añade tu primer miembro del equipo para empezar a planificar guardias.",
     "noResults": "Sin resultados",
     "noResultsDescription": "No se ha encontrado ningún miembro con ese nombre o filtro.",
+    "showHistory": "Mostrar personal inactivo ({count})",
+    "hideHistory": "Ocultar personal inactivo",
     "columns": {
       "name": "Nombre",
       "role": "Rol",
