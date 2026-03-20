@@ -44,7 +44,9 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/auth") ||
       pathname.startsWith("/_next") ||
       pathname.startsWith("/brand") ||
-      pathname === "/login"
+      pathname === "/login" ||
+      pathname === "/forgot-password" ||
+      pathname === "/reset-password"
     ) {
       return supabaseResponse
     }
@@ -75,7 +77,9 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/brand")
+    pathname.startsWith("/brand") ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
   ) {
     return supabaseResponse
   }

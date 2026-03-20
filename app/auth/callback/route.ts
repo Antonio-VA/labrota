@@ -34,7 +34,13 @@ export async function GET(request: NextRequest) {
 
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type })
-    if (!error) return response
+    if (!error) {
+      // Recovery links → go to the reset-password page
+      if (type === "recovery") {
+        return NextResponse.redirect(`${origin}/reset-password`)
+      }
+      return response
+    }
   }
 
   // PKCE / OAuth flow: code

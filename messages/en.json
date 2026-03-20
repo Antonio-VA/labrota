@@ -81,7 +81,20 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "unauthorized": "You don't have permission to access this page.",
     "welcome": "Welcome to LabRota",
-    "subtitle": "Shift scheduling for IVF labs"
+    "subtitle": "Shift scheduling for IVF labs",
+    "forgotPassword": "Forgot password?",
+    "sendResetLink": "Send reset link",
+    "checkResetEmail": "Check your email",
+    "checkResetEmailDescription": "We've sent a password reset link to {email}.",
+    "backToLogin": "Back to sign in",
+    "resetPasswordTitle": "Set a new password",
+    "resetPasswordSubtitle": "Enter your new password below.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "resetPassword": "Reset password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "resetSuccess": "Password updated. Please sign in."
   },
 
   "schedule": {

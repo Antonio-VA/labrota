@@ -3,40 +3,31 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
-import { LogIn, AlertCircle, CheckCircle2 } from "lucide-react"
+import { KeyRound, AlertCircle } from "lucide-react"
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const t = useTranslations("auth")
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const hasCallbackError = searchParams.get("error") !== null
-  const isResetSuccess   = searchParams.get("message") === "reset_success"
 
-  const [email, setEmail]       = useState("")
-  const [password, setPassword] = useState("")
-  const [state, setState]       = useState<"idle" | "loading" | "error">(
-    hasCallbackError ? "error" : "idle"
-  )
-  const [errorMessage, setErrorMessage] = useState(
-    hasCallbackError ? t("invalidCredentials") : ""
-  )
+  const [password, setPassword]   = useState("")
+  const [confirm, setConfirm]     = useState("")
+  const [state, setState]         = useState<"idle" | "loading" | "error">("idle")
+  const [errorMessage, setErrorMessage] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!email.trim() || !email.includes("@")) {
-      setErrorMessage(t("invalidEmail"))
+    if (password.length < 8) {
+      setErrorMessage(t("passwordTooShort"))
       setState("error")
       return
     }
-    if (!password) {
-      setErrorMessage(t("invalidCredentials"))
+    if (password !== confirm) {
+      setErrorMessage(t("passwordMismatch"))
       setState("error")
       return
     }
@@ -44,17 +35,15 @@ export default function LoginPage() {
     setState("loading")
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email:    email.trim().toLowerCase(),
-      password,
-    })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setErrorMessage(t("invalidCredentials"))
+      setErrorMessage(error.message)
       setState("error")
     } else {
-      router.push("/")
-      router.refresh()
+      // Sign out so the user logs in fresh with the new password
+      await supabase.auth.signOut()
+      router.push("/login?message=reset_success")
     }
   }
 
@@ -79,17 +68,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-1">
-            <p className="font-sans text-[22px] font-normal text-center" style={{ color: "#1A2E3B" }}>{t("welcome")}</p>
-            <p className="font-sans text-[14px] font-light text-center" style={{ color: "#666666" }}>{t("subtitle")}</p>
+            <p className="font-sans text-[22px] font-normal text-center" style={{ color: "#1A2E3B" }}>{t("resetPasswordTitle")}</p>
+            <p className="font-sans text-[14px] font-light text-center" style={{ color: "#666666" }}>{t("resetPasswordSubtitle")}</p>
           </div>
-
-          {/* Success banner (post-reset) */}
-          {isResetSuccess && state !== "error" && (
-            <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-              <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />
-              <p className="text-[14px] text-green-700">{t("resetSuccess")}</p>
-            </div>
-          )}
 
           {/* Error banner */}
           {state === "error" && (
@@ -101,17 +82,17 @@ export default function LoginPage() {
 
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="text-[14px] text-muted-foreground">
-                {t("emailLabel")}
+              <label htmlFor="password" className="text-[14px] text-muted-foreground">
+                {t("newPassword")}
               </label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder={t("emailPlaceholder")}
-                value={email}
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
                 onChange={(e) => {
-                  setEmail(e.target.value)
+                  setPassword(e.target.value)
                   if (state === "error") setState("idle")
                 }}
                 disabled={state === "loading"}
@@ -121,25 +102,17 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-[14px] text-muted-foreground">
-                  {t("passwordLabel")}
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-[13px] text-[#1B4F8A] hover:underline"
-                >
-                  {t("forgotPassword")}
-                </Link>
-              </div>
+              <label htmlFor="confirm" className="text-[14px] text-muted-foreground">
+                {t("confirmPassword")}
+              </label>
               <Input
-                id="password"
+                id="confirm"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 placeholder="••••••••"
-                value={password}
+                value={confirm}
                 onChange={(e) => {
-                  setPassword(e.target.value)
+                  setConfirm(e.target.value)
                   if (state === "error") setState("idle")
                 }}
                 disabled={state === "loading"}
@@ -156,13 +129,13 @@ export default function LoginPage() {
           >
             {state === "loading" ? (
               <>
-                <LogIn className="size-4 animate-pulse" />
-                {t("signIn")}…
+                <KeyRound className="size-4 animate-pulse" />
+                {t("resetPassword")}…
               </>
             ) : (
               <>
-                <LogIn className="size-4" />
-                {t("signIn")}
+                <KeyRound className="size-4" />
+                {t("resetPassword")}
               </>
             )}
           </Button>
