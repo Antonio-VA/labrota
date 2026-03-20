@@ -209,6 +209,7 @@ export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; 
 
   const [user, setUser]               = useState<User | null>(null)
   const [isPending, startTransition]  = useTransition()
+  const [logoError, setLogoError]     = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -254,11 +255,12 @@ export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; 
         {orgName && (
           <>
             <span className="h-4 border-l border-border" />
-            {orgLogoUrl ? (
+            {orgLogoUrl && !logoError ? (
               <img
                 src={orgLogoUrl}
                 alt={orgName}
                 className="h-[28px] max-w-[100px] object-contain"
+                onError={() => setLogoError(true)}
               />
             ) : (
               <span className="text-[14px] text-muted-foreground">{orgName}</span>

@@ -30,8 +30,8 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ""
-    if (file.size > 2 * 1024 * 1024) {
-      setLogoError("File must be under 2 MB.")
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError("El archivo no puede superar 5MB")
       return
     }
     setLogoError(null)

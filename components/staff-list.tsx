@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil } from "lucide-react"
+import { Users, Pencil, Plus } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,36 +76,39 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const hasFilters = search || roleFilter !== "all" || statusFilter !== "all"
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
+    <div className="flex flex-col gap-4">
       {/* Toolbar — all controls on one baseline */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Input
-          placeholder={t("searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-56 h-8"
-        />
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as StaffRole | "all")}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <option value="all">{t("allRoles")}</option>
-          <option value="lab">{t("roles.lab")}</option>
-          <option value="andrology">{t("roles.andrology")}</option>
-          <option value="admin">{t("roles.admin")}</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as OnboardingStatus | "all")}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <option value="all">{t("allStatuses")}</option>
-          <option value="active">{t("onboardingStatus.active")}</option>
-          <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-          <option value="inactive">{t("onboardingStatus.inactive")}</option>
-        </select>
-        <Button size="sm" render={<Link href="/staff/new" />}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder={t("searchPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-56 h-8"
+          />
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as StaffRole | "all")}
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="all">{t("allRoles")}</option>
+            <option value="lab">{t("roles.lab")}</option>
+            <option value="andrology">{t("roles.andrology")}</option>
+            <option value="admin">{t("roles.admin")}</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as OnboardingStatus | "all")}
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="all">{t("allStatuses")}</option>
+            <option value="active">{t("onboardingStatus.active")}</option>
+            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+            <option value="inactive">{t("onboardingStatus.inactive")}</option>
+          </select>
+        </div>
+        <Button render={<Link href="/staff/new" />}>
+          <Plus className="size-4" />
           {t("addStaff")}
         </Button>
       </div>

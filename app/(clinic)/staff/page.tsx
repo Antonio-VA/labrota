@@ -15,11 +15,9 @@ export default async function StaffPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-6 md:p-8">
         <MobileGate>
-          <div className="mx-auto w-full max-w-[1200px] px-8 py-6">
-            <StaffList staff={staff} />
-          </div>
+          <StaffList staff={staff} />
         </MobileGate>
       </div>
     </>
