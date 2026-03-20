@@ -516,6 +516,64 @@ export async function deleteAssignment(assignmentId: string): Promise<{ error?: 
   return {}
 }
 
+// ── updateAssignmentShift ─────────────────────────────────────────────────────
+
+export async function updateAssignmentShift(
+  assignmentId: string,
+  shiftType: ShiftType,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ shift_type: shiftType, is_manual_override: true } as never)
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── setDayOpu ─────────────────────────────────────────────────────────────────
+
+export async function setDayOpu(
+  rotaId: string,
+  date: string,
+  newOpuAssignmentId: string,   // empty string = clear all
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error: clearError } = await supabase
+    .from("rota_assignments")
+    .update({ is_opu: false } as never)
+    .eq("rota_id", rotaId)
+    .eq("date", date)
+  if (clearError) return { error: clearError.message }
+  if (newOpuAssignmentId) {
+    const { error: setError } = await supabase
+      .from("rota_assignments")
+      .update({ is_opu: true } as never)
+      .eq("id", newOpuAssignmentId)
+    if (setError) return { error: setError.message }
+  }
+  revalidatePath("/")
+  return {}
+}
+
+// ── deleteAllDayAssignments ───────────────────────────────────────────────────
+
+export async function deleteAllDayAssignments(
+  rotaId: string,
+  date: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("rota_id", rotaId)
+    .eq("date", date)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
 // ── moveAssignment ────────────────────────────────────────────────────────────
 
 export async function moveAssignment(

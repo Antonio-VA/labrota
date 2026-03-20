@@ -970,11 +970,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // Staff for assignment sheet
   const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
 
-  // Assignment sheet state
-  const [sheetOpen, setSheetOpen]           = useState(false)
-  const [sheetDate, setSheetDate]           = useState<string | null>(null)
-  const [sheetEdit, setSheetEdit]           = useState<Assignment | null>(null)
-  const [sheetDefaultShift, setSheetDefaultShift] = useState<ShiftType>("am")
+  // Day edit sheet state
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetDate, setSheetDate] = useState<string | null>(null)
 
   // DnD state
   const [draggingId, setDraggingId]     = useState<string | null>(null)
@@ -1100,17 +1098,13 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setView("day")
   }
 
-  function handleCellClick(date: string, shiftType: ShiftType = "am") {
-    if (isPublished) return
+  function handleCellClick(date: string, _shiftType?: ShiftType) {
     setSheetDate(date)
-    setSheetEdit(null)
-    setSheetDefaultShift(shiftType)
     setSheetOpen(true)
   }
 
-  function handleChipClick(assignment: Assignment, date: string) {
+  function handleChipClick(_assignment: Assignment, date: string) {
     setSheetDate(date)
-    setSheetEdit(assignment)
     setSheetOpen(true)
   }
 
@@ -1172,9 +1166,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
   const showActions    = view !== "month"
 
-  const assignedOnSheetDate = sheetDate
-    ? (weekData?.days.find((d) => d.date === sheetDate)?.assignments ?? []).map((a) => a.staff_id)
-    : []
+  const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
   const skillGapDetails = weekData?.days
     .filter((d) => d.skillGaps.length > 0)
@@ -1423,19 +1415,21 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         </div>
       </div>
 
-      {/* Assignment sheet */}
+      {/* Day edit sheet */}
       <AssignmentSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         date={sheetDate}
         weekStart={weekStart}
-        editAssignment={sheetEdit}
+        day={sheetDay}
         staffList={staffList}
-        assignedStaffIds={assignedOnSheetDate}
-        onSaved={() => fetchWeek(weekStart)}
+        shiftTimes={weekData?.shiftTimes ?? null}
+        punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
+        punctionsOverride={punctionsOverride}
+        rota={weekData?.rota ?? null}
         isPublished={!!isPublished}
-        locale={locale}
-        defaultShiftType={sheetDefaultShift}
+        onSaved={() => fetchWeek(weekStart)}
+        onPunctionsChange={handlePunctionsChange}
       />
     </main>
   )
