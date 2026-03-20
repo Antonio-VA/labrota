@@ -501,7 +501,7 @@ function ShiftGrid({
   data, staffList, loading, locale,
   onCellClick, onChipClick,
   isPublished, isGenerating,
-  shiftTimes, onLeaveByDate,
+  shiftTimes, onLeaveByDate, publicHolidays,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -513,6 +513,7 @@ function ShiftGrid({
   isGenerating?: boolean
   shiftTimes: ShiftTimes | null
   onLeaveByDate: Record<string, string[]>
+  publicHolidays: Record<string, string>
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -588,12 +589,16 @@ function ShiftGrid({
           const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
           const dayN  = String(d.getDate())
           const today = day.date === TODAY
+          const holidayName = publicHolidays[day.date]
 
           const assignedIds   = new Set(day.assignments.map((a) => a.staff_id))
           const coveredSkills = [...new Set([...assignedIds].flatMap((id) => staffSkillMap[id] ?? []))]
 
           return (
-            <div key={day.date} className="flex flex-col items-center justify-center py-1 gap-[2px]">
+            <div key={day.date} className={cn(
+              "flex flex-col items-center justify-center py-1 gap-[2px]",
+              day.isWeekend && "bg-slate-50"
+            )}>
               <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
               <div className={cn(
                 "size-7 flex items-center justify-center rounded-full font-medium leading-none",
@@ -603,20 +608,26 @@ function ShiftGrid({
               )}>
                 {dayN}
               </div>
-              {coveredSkills.length > 0 && (
-                <div className="flex flex-wrap gap-0.5 justify-center max-w-[64px]">
-                  {coveredSkills.map((skill) => (
-                    <Tooltip key={skill}>
-                      <TooltipTrigger render={
-                        <span className={cn("size-1.5 rounded-full shrink-0 inline-block cursor-default", SKILL_COLORS[skill] ?? "bg-slate-400")} />
-                      } />
-                      <TooltipContent side="bottom">
-                        {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-0.5 justify-center max-w-[64px]">
+                {coveredSkills.map((skill) => (
+                  <Tooltip key={skill}>
+                    <TooltipTrigger render={
+                      <span className={cn("size-1.5 rounded-full shrink-0 inline-block cursor-default", SKILL_COLORS[skill] ?? "bg-slate-400")} />
+                    } />
+                    <TooltipContent side="bottom">
+                      {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+                {holidayName && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <span className="size-1.5 rounded-full shrink-0 inline-block cursor-default bg-amber-400" />
+                    } />
+                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           )
         })}
@@ -642,8 +653,9 @@ function ShiftGrid({
               <div
                 key={day.date}
                 className={cn(
-                  "p-1.5 flex flex-col gap-1 min-h-[64px] bg-white transition-colors",
-                  !isPublished && "cursor-pointer hover:bg-blue-50"
+                  "p-1.5 flex flex-col gap-1 min-h-[64px] transition-colors",
+                  day.isWeekend ? "bg-slate-50" : "bg-white",
+                  !isPublished && (day.isWeekend ? "cursor-pointer hover:bg-slate-100" : "cursor-pointer hover:bg-blue-50")
                 )}
                 onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
               >
@@ -1341,6 +1353,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 isPublished={!!isPublished}
                 shiftTimes={weekData?.shiftTimes ?? null}
                 onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                publicHolidays={weekData?.publicHolidays ?? {}}
               />
             ) : (
               <WeekGrid

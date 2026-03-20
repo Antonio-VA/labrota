@@ -45,6 +45,42 @@ export interface RotaWeekData {
   shiftTimes: ShiftTimes | null
   /** date → list of staff_ids on approved leave that day */
   onLeaveByDate: Record<string, string[]>
+  /** date → holiday name for Spanish national holidays */
+  publicHolidays: Record<string, string>
+}
+
+// ── Spanish national public holidays ─────────────────────────────────────────
+
+function easterSunday(year: number): Date {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4), k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+function getPublicHolidays(year: number): Record<string, string> {
+  const easter = easterSunday(year)
+  const goodFriday = new Date(easter)
+  goodFriday.setDate(goodFriday.getDate() - 2)
+  const fmt = (d: Date) => d.toISOString().split("T")[0]
+  return {
+    [`${year}-01-01`]: "Año Nuevo",
+    [`${year}-01-06`]: "Reyes Magos",
+    [fmt(goodFriday)]:  "Viernes Santo",
+    [`${year}-05-01`]: "Día del Trabajo",
+    [`${year}-08-15`]: "Asunción de la Virgen",
+    [`${year}-10-12`]: "Día de la Hispanidad",
+    [`${year}-11-01`]: "Todos los Santos",
+    [`${year}-12-06`]: "Día de la Constitución",
+    [`${year}-12-08`]: "Inmaculada Concepción",
+    [`${year}-12-25`]: "Navidad",
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -135,38 +171,60 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
+  // Compute public holidays for every year spanned by this week
+  const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
+  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
+
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate, publicHolidays }
   }
 
-  // Fetch assignments with staff info.
-  // Try the full select first; fall back to base columns if newer columns
-  // (trainee_staff_id, notes) don't exist yet in the DB.
-  type AssignmentRow = {
+  // Fetch assignments + all org staff in parallel so we can enrich assignments without
+  // relying on a PostgREST join (which can silently return null after schema migrations).
+  type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean
+  }
+  type AssignmentRow = RawAssignment & {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
-  let assignmentsData: AssignmentRow[] | null = null
-  const { data: extData, error: assignmentsError } = await supabase
-    .from("rota_assignments")
-    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, staff(id, first_name, last_name, role)")
-    .eq("rota_id", rota.id) as { data: AssignmentRow[] | null; error: { message: string } | null }
-  if (assignmentsError) {
-    // Fallback: select only the original columns
+
+  const [assignmentsRes, staffRes, skillsRes] = await Promise.all([
+    // Try full column set; fallback handled below
+    supabase
+      .from("rota_assignments")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu")
+      .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string }[] | null }>,
+    supabase
+      .from("staff_skills")
+      .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
+  ])
+
+  // Build a staff lookup map so we don't depend on a join
+  const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string }> = {}
+  for (const s of staffRes.data ?? []) staffLookup[s.id] = s
+
+  // If is_opu / trainee / notes columns missing, retry without them
+  let rawAssignments: RawAssignment[] = []
+  if (assignmentsRes.error) {
     const { data: baseData } = await supabase
       .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, staff(id, first_name, last_name, role)")
-      .eq("rota_id", rota.id) as { data: Omit<AssignmentRow, "trainee_staff_id" | "notes" | "is_opu">[] | null }
-    assignmentsData = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
+      .select("id, staff_id, date, shift_type, is_manual_override")
+      .eq("rota_id", rota.id) as unknown as Promise<{ data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">[] | null }>
+    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
   } else {
-    assignmentsData = extData
+    rawAssignments = assignmentsRes.data ?? []
   }
 
-  // Fetch all staff_skills to compute coverage
-  const { data: skillsData } = await supabase
-    .from("staff_skills")
-    .select("staff_id, skill") as { data: { staff_id: string; skill: string }[] | null }
+  const assignmentsData: AssignmentRow[] = rawAssignments.map((a) => ({
+    ...a,
+    staff: staffLookup[a.staff_id] ?? null,
+  }))
+
+  const skillsData = skillsRes.data
 
   const staffSkillMap: Record<string, SkillName[]> = {}
   for (const ss of skillsData ?? []) {
@@ -204,7 +262,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate, publicHolidays }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
@@ -316,7 +374,7 @@ export async function generateRota(
       }))
     )
 
-  if (toInsert.length === 0 && !preserveOverrides) {
+  if (toInsert.length === 0) {
     const staffCount = (staffRes.data ?? []).length
     if (staffCount === 0) {
       return { error: "No active staff found. Make sure staff members are added and are not inactive." }
@@ -324,7 +382,15 @@ export async function generateRota(
     if (!labConfig.min_lab_coverage && !labConfig.min_andrology_coverage) {
       return { error: "Lab config has zero minimum coverage — set min_lab_coverage or min_andrology_coverage in Lab settings." }
     }
-    return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check working patterns match the week's days and no one is on leave the whole week.` }
+    // Check if any staff have a non-empty working pattern
+    const staffWithPattern = (staffRes.data ?? []).filter(
+      (s) => Array.isArray((s as { working_pattern?: unknown }).working_pattern) &&
+             ((s as { working_pattern: unknown[] }).working_pattern).length > 0
+    )
+    if (staffWithPattern.length === 0) {
+      return { error: `All ${staffCount} staff members have no working days set. Go to Team and set the "Disponibilidad" for each person.` }
+    }
+    return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check that working patterns include weekdays in this week and no one is on leave all week.` }
   }
 
   if (toInsert.length > 0) {

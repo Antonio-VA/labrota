@@ -126,7 +126,7 @@ export function runRotaEngine({
       if (s.onboarding_status === "inactive") return false
       if (s.start_date > date) return false
       if (s.end_date && s.end_date < date) return false
-      if (!s.working_pattern.includes(dayCode)) return false
+      if (!(s.working_pattern ?? []).includes(dayCode)) return false
       if (leaveMap[s.id]?.has(date)) return false
       if ((weeklyShiftCount[s.id] ?? 0) >= (s.days_per_week ?? 5)) return false
       return true

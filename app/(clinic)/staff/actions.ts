@@ -103,3 +103,98 @@ export async function deleteStaff(id: string) {
   revalidatePath("/staff")
   redirect("/staff")
 }
+
+// ── Bulk actions ───────────────────────────────────────────────────────────────
+
+export async function bulkAddSkill(
+  staffIds: string[],
+  skill: SkillName,
+  level: SkillLevel,
+): Promise<{ added: number; skipped: number; error?: string }> {
+  if (staffIds.length === 0) return { added: 0, skipped: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { added: 0, skipped: 0, error: "No organisation found." }
+
+  const { data: existing } = await supabase
+    .from("staff_skills")
+    .select("staff_id")
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .eq("skill", skill) as { data: { staff_id: string }[] | null }
+
+  const alreadyHave = new Set((existing ?? []).map((r) => r.staff_id))
+  const toAdd = staffIds.filter((id) => !alreadyHave.has(id))
+
+  if (toAdd.length === 0) return { added: 0, skipped: staffIds.length }
+
+  const { error } = await supabase
+    .from("staff_skills")
+    .insert(toAdd.map((staff_id) => ({ organisation_id: orgId, staff_id, skill, level })) as never)
+
+  if (error) return { added: 0, skipped: staffIds.length, error: error.message }
+
+  revalidatePath("/staff")
+  return { added: toAdd.length, skipped: alreadyHave.size }
+}
+
+export async function bulkRemoveSkill(
+  staffIds: string[],
+  skill: SkillName,
+): Promise<{ removed: number; error?: string }> {
+  if (staffIds.length === 0) return { removed: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { removed: 0, error: "No organisation found." }
+
+  const { data, error } = await supabase
+    .from("staff_skills")
+    .delete()
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .eq("skill", skill)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (error) return { removed: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { removed: (data ?? []).length }
+}
+
+export async function bulkUpdateStatus(
+  staffIds: string[],
+  status: OnboardingStatus,
+): Promise<{ updated: number; error?: string }> {
+  if (staffIds.length === 0) return { updated: 0 }
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("staff")
+    .update({ onboarding_status: status } as never)
+    .in("id", staffIds)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (error) return { updated: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { updated: (data ?? []).length }
+}
+
+export async function bulkSoftDeleteStaff(
+  staffIds: string[],
+): Promise<{ deleted: number; error?: string }> {
+  if (staffIds.length === 0) return { deleted: 0 }
+  const supabase = await createClient()
+  const today = new Date().toISOString().split("T")[0]
+
+  const { data, error } = await supabase
+    .from("staff")
+    .update({ onboarding_status: "inactive" as OnboardingStatus, end_date: today } as never)
+    .in("id", staffIds)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (error) return { deleted: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { deleted: (data ?? []).length }
+}

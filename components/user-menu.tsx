@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 function initials(user: User): string {
   const email = user.email ?? ""
@@ -55,9 +56,14 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-2 px-2 py-2">
       {/* Avatar */}
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-medium text-primary-foreground">
-        {initials(user)}
-      </div>
+      <Tooltip>
+        <TooltipTrigger render={
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-medium text-primary-foreground cursor-default">
+            {initials(user)}
+          </div>
+        } />
+        <TooltipContent side="right">{displayName(user)}</TooltipContent>
+      </Tooltip>
 
       {/* Name / email */}
       <p className="flex-1 truncate text-[14px] text-foreground leading-tight">
@@ -65,15 +71,19 @@ export function UserMenu() {
       </p>
 
       {/* Sign out */}
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        onClick={signOut}
-        title={t("signOut")}
-        className="shrink-0 text-muted-foreground hover:text-destructive"
-      >
-        <LogOut className="size-3.5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger render={
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={signOut}
+            className="shrink-0 text-muted-foreground hover:text-destructive"
+          >
+            <LogOut className="size-3.5" />
+          </Button>
+        } />
+        <TooltipContent side="right">{t("signOut")}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }
