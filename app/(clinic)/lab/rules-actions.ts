@@ -15,30 +15,34 @@ async function getOrgId(): Promise<string | null> {
 
 export async function createRule(
   data: Omit<RotaRuleInsert, "organisation_id">
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; rule?: import("@/lib/types/database").RotaRule }> {
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data: rule, error } = await supabase
     .from("rota_rules")
     .insert({ ...data, organisation_id: orgId } as never)
+    .select()
+    .single()
   if (error) return { error: error.message }
   revalidatePath("/lab")
-  return {}
+  return { rule: rule as import("@/lib/types/database").RotaRule }
 }
 
 export async function updateRule(
   id: string,
   data: RotaRuleUpdate
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; rule?: import("@/lib/types/database").RotaRule }> {
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data: rule, error } = await supabase
     .from("rota_rules")
     .update(data as never)
     .eq("id", id)
+    .select()
+    .single()
   if (error) return { error: error.message }
   revalidatePath("/lab")
-  return {}
+  return { rule: rule as import("@/lib/types/database").RotaRule }
 }
 
 export async function deleteRule(id: string): Promise<{ error?: string }> {

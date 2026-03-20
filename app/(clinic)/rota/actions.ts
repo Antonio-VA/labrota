@@ -253,12 +253,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     })
   }
 
-  // Compute skill gaps per day — only meaningful when the day has assignments
+  // Compute skill gaps per day
+  // Days with 0 assignments flag all org skills as gaps (no coverage at all)
   for (const day of Object.values(dayMap)) {
-    if (day.assignments.length === 0) {
-      day.skillGaps = []
-      continue
-    }
     const covered = new Set(day.assignments.flatMap((a) => staffSkillMap[a.staff_id] ?? []))
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }

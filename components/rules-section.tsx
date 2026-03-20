@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { PlusIcon, Pencil, Trash2, ShieldAlert, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -127,16 +127,23 @@ function RuleSheet({
   onOpenChange: (v: boolean) => void
   editing: RotaRule | null
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
-  onSaved: () => void
+  onSaved: (rule: RotaRule) => void
 }) {
   const t = useTranslations("lab.rules")
   const [form, setForm] = useState<RuleFormState>(editing ? ruleToForm(editing) : defaultForm())
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
 
-  // Reset when sheet opens/closes or editing changes
+  // Reset form whenever the sheet opens (handles both new and edit cases)
+  useEffect(() => {
+    if (open) {
+      setForm(editing ? ruleToForm(editing) : defaultForm())
+      setError("")
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
   const handleOpenChange = (v: boolean) => {
-    if (v) setForm(editing ? ruleToForm(editing) : defaultForm())
     setError("")
     onOpenChange(v)
   }
@@ -146,12 +153,15 @@ function RuleSheet({
   }
 
   function toggleStaff(id: string) {
-    setForm((p) => ({
-      ...p,
-      staff_ids: p.staff_ids.includes(id)
-        ? p.staff_ids.filter((s) => s !== id)
-        : [...p.staff_ids, id],
-    }))
+    setForm((p) => {
+      const included = p.staff_ids.includes(id)
+      return {
+        ...p,
+        staff_ids: included
+          ? p.staff_ids.filter((s) => s !== id)
+          : [...p.staff_ids, id],
+      }
+    })
   }
 
   function handleSubmit() {
@@ -164,7 +174,7 @@ function RuleSheet({
         setError(result.error)
       } else {
         onOpenChange(false)
-        onSaved()
+        if (result.rule) onSaved(result.rule)
       }
     })
   }
@@ -269,28 +279,35 @@ function RuleSheet({
 
           {/* Affected staff */}
           <div>
-            <label className={labelSelect}>
-              {t("affectedStaff")}
-              {form.type !== "no_coincidir" && (
-                <span className="ml-1 font-normal text-muted-foreground">({t("allStaff")} si ninguno)</span>
-              )}
-            </label>
-            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto border border-border rounded-[8px] p-2">
-              {staff.map((s) => (
-                <label
-                  key={s.id}
-                  className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.staff_ids.includes(s.id)}
-                    onChange={() => toggleStaff(s.id)}
-                    className="rounded border-border accent-primary"
-                  />
-                  {s.first_name} {s.last_name}
-                  <span className="ml-auto text-[11px] text-muted-foreground">{s.role}</span>
-                </label>
-              ))}
+            <label className={labelSelect}>{t("affectedStaff")}</label>
+            <div className="flex flex-col gap-1 border border-border rounded-[8px] p-2">
+              {/* All option */}
+              <label className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px] border-b border-border pb-2 mb-1">
+                <input
+                  type="checkbox"
+                  checked={form.staff_ids.length === 0}
+                  onChange={() => set("staff_ids", [])}
+                  className="rounded border-border accent-primary"
+                />
+                <span className="font-medium">Todos el personal</span>
+              </label>
+              <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                {staff.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.staff_ids.includes(s.id)}
+                      onChange={() => toggleStaff(s.id)}
+                      className="rounded border-border accent-primary"
+                    />
+                    {s.first_name} {s.last_name}
+                    <span className="ml-auto text-[11px] text-muted-foreground">{s.role}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -378,10 +395,12 @@ export function RulesSection({
     }
   }
 
-  // When sheet saves, refresh from server via revalidation — but also optimistically update
-  function handleSaved() {
-    // The server action calls revalidatePath; the page will re-render with updated data.
-    // For now, just close the sheet; Next.js SSR will refresh.
+  function handleSaved(rule: RotaRule) {
+    if (editing) {
+      setRules((prev) => prev.map((r) => r.id === rule.id ? rule : r))
+    } else {
+      setRules((prev) => [...prev, rule])
+    }
     setSheetOpen(false)
     setEditing(null)
   }
@@ -462,7 +481,7 @@ export function RulesSection({
 
       <RuleSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(v) => { setSheetOpen(v); if (!v) setEditing(null) }}
         editing={editing}
         staff={staff}
         onSaved={handleSaved}
