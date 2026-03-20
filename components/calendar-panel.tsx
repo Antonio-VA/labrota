@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +41,10 @@ const ROLE_COLORS: Record<string, string> = {
   lab:       "bg-blue-600 text-white",
   andrology: "bg-emerald-600 text-white",
   admin:     "bg-slate-500 text-white",
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  lab: "Lab", andrology: "Andrología", admin: "Admin",
 }
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
@@ -219,14 +223,20 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
 
   if (disabled) {
     return (
-      <span className={cn("text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
-        {label}{isOverride && <span className="text-primary">*</span>}
+      <span className={cn("flex items-center gap-0.5 text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
+        {label}
+        {isOverride && (
+          <Tooltip>
+            <TooltipTrigger render={<span className="text-amber-500 font-bold cursor-default">*</span>} />
+            <TooltipContent side="bottom">Valor personalizado — por defecto: {defaultValue}</TooltipContent>
+          </Tooltip>
+        )}
       </span>
     )
   }
 
   return (
-    <div ref={popRef} className="relative">
+    <div ref={popRef} className="relative flex items-center gap-0.5">
       <button
         onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
         className={cn(
@@ -235,8 +245,21 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
         )}
         title="Editar punciones"
       >
-        {label}{isOverride && <span>*</span>}
+        {label}
       </button>
+      {isOverride && (
+        <Tooltip>
+          <TooltipTrigger render={
+            <button
+              onClick={(e) => { e.stopPropagation(); onChange(date, null) }}
+              className="text-[10px] font-bold text-amber-500 hover:text-amber-700 transition-colors leading-none"
+            >
+              *
+            </button>
+          } />
+          <TooltipContent side="bottom">Valor personalizado — por defecto: {defaultValue}. Click para restablecer</TooltipContent>
+        </Tooltip>
+      )}
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-36 flex flex-col gap-2">
           <div className="flex items-center gap-1.5">
@@ -275,6 +298,49 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
   )
 }
 
+// ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
+
+function OverflowMenu({ items }: {
+  items: { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  if (items.length === 0) return null
+
+  return (
+    <div ref={ref} className="relative">
+      <Button variant="outline" size="icon-sm" onClick={() => setOpen((o) => !o)} aria-label="Más opciones">
+        <MoreHorizontal className="size-4" />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => { item.onClick(); setOpen(false) }}
+              disabled={item.disabled}
+              className="flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
 function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
@@ -306,18 +372,22 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
             ? "bg-emerald-50 border-emerald-200 text-emerald-700"
             : "bg-amber-50 border-amber-200 text-amber-700"
           return (
-            <div
-              key={id}
-              className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium", colorClass)}
-            >
-              <div className={cn(
-                "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
-                ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
-              )}>
-                {s.first[0]?.toUpperCase()}{s.last[0]?.toUpperCase()}
-              </div>
-              <span>{s.count}/5</span>
-            </div>
+            <Tooltip key={id}>
+              <TooltipTrigger render={
+                <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium cursor-default", colorClass)}>
+                  <div className={cn(
+                    "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
+                    ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
+                  )}>
+                    {s.first[0]?.toUpperCase()}{s.last[0]?.toUpperCase()}
+                  </div>
+                  <span>{s.count}/5</span>
+                </div>
+              } />
+              <TooltipContent side="top">
+                {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/5 turnos
+              </TooltipContent>
+            </Tooltip>
           )
         })}
       </div>
@@ -666,26 +736,6 @@ function ShiftGrid({
                 disabled={isPublished || !data.rota}
               />
 
-              {/* Skill coverage initials row */}
-              <div className="flex items-center gap-[3px] justify-center">
-                {COVERAGE_SKILLS.map(({ key, label }) => {
-                  const isGap     = (day.skillGaps as string[]).includes(key)
-                  const isCovered = !isGap && [...assignedIds].some((id) => (staffSkillMap[id] ?? []).includes(key))
-                  return (
-                    <span
-                      key={key}
-                      className={cn(
-                        "text-[8px] font-bold tabular-nums leading-none",
-                        isGap     ? "text-red-500"
-                        : isCovered ? "text-emerald-600"
-                        : "text-slate-300"
-                      )}
-                    >
-                      {label}
-                    </span>
-                  )
-                })}
-              </div>
             </div>
           )
         })}
@@ -707,8 +757,9 @@ function ShiftGrid({
             )}
           </div>
           {data.days.map((day) => {
-            const dayShifts = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
+            const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
               .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+            const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
             return (
               <div
                 key={day.date}
@@ -730,6 +781,9 @@ function ShiftGrid({
                     />
                   </div>
                 ))}
+                {dayShifts.length === 0 && effectivePDay === 0 && (
+                  <span className="text-[10px] text-slate-300 italic self-center mt-auto mb-auto">Sin servicio</span>
+                )}
               </div>
             )
           })}
@@ -751,18 +805,7 @@ function ShiftGrid({
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
           const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-          const isSunday    = dow === 0
           const isSaturday  = dow === 6
-          const effectiveP  = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
-
-          // Sunday with no punciones → "Sin servicio"
-          if (isSunday && effectiveP === 0) {
-            return (
-              <div key={day.date} className="p-1.5 flex items-center justify-center bg-slate-50 min-h-[36px]">
-                <span className="text-[10px] text-slate-300 italic">Sin servicio</span>
-              </div>
-            )
-          }
 
           // Saturday → show only on-leave staff, omit full unscheduled list
           if (isSaturday) {
@@ -1228,6 +1271,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   function handlePunctionsChange(date: string, value: number | null) {
     if (!weekData?.rota) return
+    const prevGaps = weekData.days.find((d) => d.date === date)?.skillGaps ?? []
+    const rotaId = weekData.rota.id
+    const ws = weekStart
     setPunctionsOverrideLocal((prev) => {
       if (value === null) {
         const { [date]: _removed, ...rest } = prev
@@ -1236,8 +1282,17 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       return { ...prev, [date]: value }
     })
     startTransition(async () => {
-      const result = await setPunctionsOverride(weekData.rota!.id, date, value)
-      if (result.error) setError(result.error)
+      const result = await setPunctionsOverride(rotaId, date, value)
+      if (result.error) { setError(result.error); return }
+      const newData = await getRotaWeek(ws)
+      setWeekData(newData)
+      setPunctionsOverrideLocal(newData.rota?.punctions_override ?? {})
+      const newGaps = newData.days.find((d) => d.date === date)?.skillGaps ?? []
+      if (newGaps.length > prevGaps.length) {
+        toast.warning("Cobertura insuficiente tras el cambio — considera regenerar la guardia")
+      } else if (newGaps.length === 0 && prevGaps.length > 0) {
+        toast.success("Cobertura correcta")
+      }
     })
   }
 
@@ -1265,10 +1320,11 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      {/* Desktop toolbar */}
+      {/* Desktop toolbar — LEFT · CENTRE · RIGHT */}
       <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
-        {/* Left: nav + date label */}
-        <div className="flex items-center gap-2">
+
+        {/* LEFT: Today · ‹ › · date range */}
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
             {tc("today")}
           </Button>
@@ -1285,9 +1341,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </span>
         </div>
 
-        {/* Right: view toggle + layout toggle + actions */}
-        <div className="flex items-center gap-2">
-          {/* Period toggle: Semana | Mes | Día */}
+        {/* CENTRE: Week · Month · Day · divider · By shift · By person */}
+        <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
             {(["week", "month", "day"] as ViewMode[]).map((v) => (
               <button
@@ -1304,60 +1359,59 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               </button>
             ))}
           </div>
-
-          {/* Layout toggle (only in week view): Por turno | Por persona */}
           {view === "week" && (
-            <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-              {(["shift", "person"] as CalendarLayout[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setCalendarLayout(l)}
-                  className={cn(
-                    "rounded-md px-3 py-1 text-[13px] transition-colors",
-                    calendarLayout === l
-                      ? "bg-background shadow-sm font-medium"
-                      : "text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {t(`${l}Layout`)}
-                </button>
-              ))}
-            </div>
+            <>
+              <span className="h-4 border-l border-border" />
+              <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+                {(["shift", "person"] as CalendarLayout[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setCalendarLayout(l)}
+                    className={cn(
+                      "rounded-md px-3 py-1 text-[13px] transition-colors",
+                      calendarLayout === l
+                        ? "bg-background shadow-sm font-medium"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {t(`${l}Layout`)}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
+        </div>
 
+        {/* RIGHT: skill gap pill · generate · overflow ··· */}
+        <div className="flex items-center gap-2 shrink-0">
           {hasSkillGaps && view !== "month" && (
             <SkillGapPill details={skillGapDetails} />
           )}
-
+          {showActions && !isPublished && (
+            <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
+              {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
+            </Button>
+          )}
           {showActions && (
-            <>
-              {hasAssignments && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`/rota/${weekStart}/print`, "_blank")}
-                >
-                  <FileDown className="size-3.5" />
-                  {t("exportPdf")}
-                </Button>
-              )}
-              {isPublished && (
-                <Button variant="outline" size="sm" onClick={handleUnlock} disabled={isPending}>
-                  <Lock className="size-3.5" />
-                  {t("unlockRota")}
-                </Button>
-              )}
-              {isDraft && hasAssignments && (
-                <Button variant="outline" size="sm" onClick={handlePublish} disabled={isPending}>
-                  {t("publishRota")}
-                </Button>
-              )}
-              {!isPublished && (
-                <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
-                  {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
-                </Button>
-              )}
-            </>
+            <OverflowMenu items={[
+              ...(hasAssignments ? [{
+                label: t("exportPdf"),
+                icon: <FileDown className="size-3.5" />,
+                onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
+              }] : []),
+              ...(isDraft && hasAssignments ? [{
+                label: t("publishRota"),
+                icon: <Lock className="size-3.5" />,
+                onClick: handlePublish,
+                disabled: isPending,
+              }] : []),
+              ...(isPublished ? [{
+                label: t("unlockRota"),
+                icon: <Lock className="size-3.5" />,
+                onClick: handleUnlock,
+                disabled: isPending,
+              }] : []),
+            ]} />
           )}
         </div>
       </div>
