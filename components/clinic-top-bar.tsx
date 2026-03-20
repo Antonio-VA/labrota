@@ -288,7 +288,7 @@ export function ClinicTopBar({
                   className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-700 hover:text-foreground transition-colors disabled:opacity-60"
                 >
                   {orgLogoUrl && !logoError && (
-                    <img src={orgLogoUrl} alt="" className="h-[22px] w-[22px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                    <img src={orgLogoUrl} alt="" className="h-[28px] w-auto max-w-[140px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
                   )}
                   {orgName}
                   <ChevronDown className="size-3.5 opacity-60" />
@@ -324,7 +324,7 @@ export function ClinicTopBar({
             ) : (
               <>
                 {orgLogoUrl && !logoError && (
-                  <img src={orgLogoUrl} alt="" className="h-[22px] w-[22px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                  <img src={orgLogoUrl} alt="" className="h-[28px] w-auto max-w-[140px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
                 )}
                 <span className="text-[14px] font-semibold text-slate-700">{orgName}</span>
               </>
