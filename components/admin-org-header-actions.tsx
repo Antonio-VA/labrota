@@ -271,7 +271,7 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
                   className="flex w-full items-center gap-2 px-3 py-2 text-[14px] text-destructive hover:bg-muted transition-colors"
                 >
                   <Trash2 className="size-4" />
-                  Delete organisation
+                  Delete
                 </button>
               </div>
             )}
