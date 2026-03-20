@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
 import { cn } from "@/lib/utils"
-import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, WorkingDay } from "@/lib/types/database"
+import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
@@ -105,9 +105,16 @@ export function StaffForm({
   const [selectedDays, setSelectedDays] = useState<WorkingDay[]>(
     staff?.working_pattern ?? ["mon", "tue", "wed", "thu", "fri"]
   )
-  const [selectedSkills, setSelectedSkills] = useState<SkillName[]>(
-    staff?.staff_skills?.map((s) => s.skill) ?? []
-  )
+
+  type SkillState = 'off' | 'training' | 'certified'
+  const [skillLevels, setSkillLevels] = useState<Record<SkillName, SkillState>>(() => {
+    const map = {} as Record<SkillName, SkillState>
+    for (const s of ALL_SKILLS) {
+      const existing = staff?.staff_skills?.find((sk) => sk.skill === s)
+      map[s] = existing ? (existing.level as SkillState) : 'off'
+    }
+    return map
+  })
 
   // Delete confirmation state
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -119,10 +126,12 @@ export function StaffForm({
     )
   }
 
-  function toggleSkill(skill: SkillName) {
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    )
+  function cycleSkill(skill: SkillName) {
+    setSkillLevels((prev) => {
+      const cur = prev[skill]
+      const next: SkillState = cur === 'off' ? 'training' : cur === 'training' ? 'certified' : 'off'
+      return { ...prev, [skill]: next }
+    })
   }
 
   function handleDelete() {
@@ -235,29 +244,31 @@ export function StaffForm({
       <Section label={t("fields.skills")}>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {ALL_SKILLS.map((skill) => {
-            const active = selectedSkills.includes(skill)
+            const level = skillLevels[skill]
             return (
               <button
                 key={skill}
                 type="button"
-                onClick={() => toggleSkill(skill)}
+                onClick={() => cycleSkill(skill)}
                 disabled={isPending}
                 className={cn(
                   "h-8 px-3 rounded-lg border text-[13px] font-medium transition-colors disabled:opacity-50 text-left",
-                  active
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                  level === 'certified' && "bg-primary/10 text-primary border-primary/30",
+                  level === 'training'  && "bg-amber-50 text-amber-700 border-amber-200",
+                  level === 'off'       && "border-border bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
                 {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
+                {level === 'training' && <span className="ml-1 text-[11px]">★</span>}
               </button>
             )
           })}
         </div>
+        <p className="text-[12px] text-muted-foreground">{t("fields.skillHint")}</p>
         {/* Hidden inputs for form submission */}
         {ALL_SKILLS.map((skill) =>
-          selectedSkills.includes(skill) ? (
-            <input key={skill} type="hidden" name={`skill_${skill}`} value="on" />
+          skillLevels[skill] !== 'off' ? (
+            <input key={skill} type="hidden" name={`skill_${skill}`} value={skillLevels[skill]} />
           ) : null
         )}
       </Section>

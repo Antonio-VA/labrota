@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import type { StaffRole, OnboardingStatus, SkillName, WorkingDay, ShiftType } from "@/lib/types/database"
+import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
@@ -36,7 +36,9 @@ function parseFormData(formData: FormData) {
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
       preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
     },
-    skills: ALL_SKILLS.filter(s => formData.get(`skill_${s}`) === "on"),
+    skills: ALL_SKILLS
+      .map(s => ({ skill: s, level: formData.get(`skill_${s}`) as SkillLevel | null }))
+      .filter((s): s is { skill: SkillName; level: SkillLevel } => s.level !== null),
   }
 }
 
@@ -59,7 +61,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
   if (skills.length > 0) {
     const { error: skillsError } = await supabase.from("staff_skills").insert(
-      skills.map(skill => ({ organisation_id: orgId, staff_id: newStaffId, skill })) as never
+      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: newStaffId, skill, level })) as never
     )
     if (skillsError) return { error: skillsError.message }
   }
@@ -85,7 +87,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
     const orgId = await getOrgId()
     if (orgId) {
       await supabase.from("staff_skills").insert(
-        skills.map(skill => ({ organisation_id: orgId, staff_id: id, skill })) as never
+        skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
       )
     }
   }

@@ -15,6 +15,7 @@ export type SkillName         =
   | 'biopsy' | 'semen_analysis' | 'sperm_prep' | 'witnessing' | 'other'
   | 'egg_collection'
 
+export type SkillLevel        = 'certified' | 'training'
 export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export type WorkingPattern    = WorkingDay[]
 
@@ -61,6 +62,7 @@ export interface StaffSkill {
   organisation_id: string
   staff_id:        string
   skill:           SkillName
+  level:           SkillLevel
   created_at:      string
 }
 
@@ -208,7 +210,7 @@ export interface Database {
       }
       staff_skills: {
         Row:    StaffSkill
-        Insert: { organisation_id: string; staff_id: string; skill: SkillName }
+        Insert: { organisation_id: string; staff_id: string; skill: SkillName; level?: SkillLevel }
         Update: Record<string, never>
         Relationships: []
       }

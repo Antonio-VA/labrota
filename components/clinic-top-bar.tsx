@@ -255,16 +255,15 @@ export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; 
         {orgName && (
           <>
             <span className="h-4 border-l border-border" />
-            {orgLogoUrl && !logoError ? (
+            {orgLogoUrl && !logoError && (
               <img
                 src={orgLogoUrl}
-                alt={orgName}
-                className="h-[28px] max-w-[100px] object-contain"
+                alt=""
+                className="h-[22px] w-[22px] object-contain rounded shrink-0"
                 onError={() => setLogoError(true)}
               />
-            ) : (
-              <span className="text-[14px] text-muted-foreground">{orgName}</span>
             )}
+            <span className="text-[14px] text-muted-foreground">{orgName}</span>
           </>
         )}
       </div>

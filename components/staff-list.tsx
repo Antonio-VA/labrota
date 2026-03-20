@@ -224,8 +224,16 @@ function StaffTable({
             {/* Skills */}
             <div className="hidden md:flex items-center gap-1 overflow-hidden">
               {visibleSkills.map((sk) => (
-                <Badge key={sk.skill} variant="outline" className="shrink-0">
+                <Badge
+                  key={sk.skill}
+                  variant="outline"
+                  className={cn(
+                    "shrink-0",
+                    sk.level === "training" && "border-amber-200 bg-amber-50 text-amber-700"
+                  )}
+                >
                   {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                  {sk.level === "training" && <span className="ml-0.5 text-[10px]">★</span>}
                 </Badge>
               ))}
               {extraCount > 0 && (

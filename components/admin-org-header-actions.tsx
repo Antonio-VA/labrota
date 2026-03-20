@@ -45,9 +45,9 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
         .upload(path, file, { upsert: true, contentType: file.type })
       if (uploadError) { setLogoError(uploadError.message); return }
       const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path)
-      const urlWithBust = publicUrl + `?t=${Date.now()}`
-      await updateOrgLogo(org.id, publicUrl)
-      setLogoUrl(urlWithBust)
+      const result = await updateOrgLogo(org.id, publicUrl)
+      if (result?.error) { setLogoError(result.error); return }
+      setLogoUrl(publicUrl + `?t=${Date.now()}`)
     } finally {
       setIsUploading(false)
     }
