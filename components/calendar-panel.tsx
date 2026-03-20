@@ -522,10 +522,10 @@ function ShiftGrid({
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
           {/* Header */}
-          <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b">
-            <div className="border-r h-14" />
+          <div className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+            <div className="border-r border-[#CCDDEE] h-[52px]" />
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center py-2 border-r last:border-r-0 gap-1.5">
+              <div key={i} className="flex flex-col items-center justify-center py-1 gap-1">
                 <div className="shimmer-bar h-2.5 w-6" />
                 <div className="shimmer-bar w-7 h-7 rounded-full" />
                 <div className="flex gap-0.5">
@@ -536,12 +536,12 @@ function ShiftGrid({
           </div>
           {/* Rows */}
           {["am", "pm", "full", "off"].map((row) => (
-            <div key={row} className={cn("grid grid-cols-[64px_repeat(7,1fr)]", row !== "off" && "border-b")}>
-              <div className="border-r flex items-center justify-center py-3 bg-muted/20">
+            <div key={row} className={cn("grid grid-cols-[72px_repeat(7,1fr)]", row !== "off" && "border-b border-[#CCDDEE]")}>
+              <div className="border-r border-[#CCDDEE] flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="border-r last:border-r-0 p-2 flex flex-col gap-1 min-h-[52px]">
+                <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-white">
                   {row !== "off" && i < 3 && <div className="shimmer-bar h-5 w-full" />}
                 </div>
               ))}
@@ -565,23 +565,24 @@ function ShiftGrid({
     staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
   }
 
-  // Row labels: use actual shift times if available, else fall back to names
+  // Row labels: start time on line 1, end time on line 2, no separators
   const SHIFT_LABELS: Record<ShiftType, string> = {
-    am:   shiftTimes ? `${shiftTimes.am.start}` : "AM",
-    pm:   shiftTimes ? `${shiftTimes.pm.start}` : "PM",
-    full: shiftTimes ? `${shiftTimes.full.start}–${shiftTimes.full.end}` : t("shiftTypes.full"),
+    am:   shiftTimes?.am.start   ?? "AM",
+    pm:   shiftTimes?.pm.start   ?? "PM",
+    full: shiftTimes?.full.start ?? "FULL",
   }
   const SHIFT_SUBLABELS: Record<ShiftType, string | null> = {
-    am:   shiftTimes ? `–${shiftTimes.am.end}` : null,
-    pm:   shiftTimes ? `–${shiftTimes.pm.end}` : null,
-    full: null,
+    am:   shiftTimes?.am.end   ?? null,
+    pm:   shiftTimes?.pm.end   ?? null,
+    full: shiftTimes?.full.end ?? null,
   }
 
   return (
-    <div className="rounded-lg border border-border bg-background overflow-auto min-w-[560px] flex-1">
-      {/* Header row */}
-      <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b sticky top-0 bg-background z-10">
-        <div className="border-r" />
+    <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px] flex-1">
+
+      {/* Header row — 52px, white, subtle border */}
+      <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
+        <div className="border-r border-[#CCDDEE]" />
         {data.days.map((day) => {
           const d     = new Date(day.date + "T12:00:00")
           const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -592,26 +593,23 @@ function ShiftGrid({
           const coveredSkills = [...new Set([...assignedIds].flatMap((id) => staffSkillMap[id] ?? []))]
 
           return (
-            <div key={day.date} className="flex flex-col items-center py-2 border-r last:border-r-0 gap-0.5">
-              <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
+            <div key={day.date} className="flex flex-col items-center justify-center py-1 gap-[2px]">
+              <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
               <div className={cn(
-                "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
-                today && "bg-primary text-primary-foreground"
+                "size-7 flex items-center justify-center rounded-full font-medium leading-none",
+                today
+                  ? "bg-primary text-primary-foreground text-[15px]"
+                  : "text-[20px] text-slate-800"
               )}>
                 {dayN}
               </div>
               {coveredSkills.length > 0 && (
-                <div className="flex flex-wrap gap-0.5 justify-center max-w-[72px] px-1">
+                <div className="flex flex-wrap gap-0.5 justify-center max-w-[64px]">
                   {coveredSkills.map((skill) => (
                     <Tooltip key={skill}>
-                      <TooltipTrigger
-                        render={
-                          <span className={cn(
-                            "size-1.5 rounded-full shrink-0 inline-block cursor-default",
-                            SKILL_COLORS[skill] ?? "bg-slate-400"
-                          )} />
-                        }
-                      />
+                      <TooltipTrigger render={
+                        <span className={cn("size-1.5 rounded-full shrink-0 inline-block cursor-default", SKILL_COLORS[skill] ?? "bg-slate-400")} />
+                      } />
                       <TooltipContent side="bottom">
                         {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
                       </TooltipContent>
@@ -626,13 +624,14 @@ function ShiftGrid({
 
       {/* AM / PM / FULL rows */}
       {SHIFT_ROWS.map((shiftRow) => (
-        <div key={shiftRow} className="grid grid-cols-[64px_repeat(7,1fr)] border-b">
-          <div className="border-r flex flex-col items-center justify-center px-1 py-2 bg-muted/20 gap-0">
-            <span className="text-[11px] font-semibold text-foreground leading-tight">
+        <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+          {/* Shift label — right-aligned, two-line, no separator */}
+          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
+            <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
               {SHIFT_LABELS[shiftRow]}
             </span>
             {SHIFT_SUBLABELS[shiftRow] && (
-              <span className="text-[10px] text-muted-foreground leading-tight">
+              <span className="text-[11px] text-slate-400 leading-tight tabular-nums">
                 {SHIFT_SUBLABELS[shiftRow]}
               </span>
             )}
@@ -643,16 +642,13 @@ function ShiftGrid({
               <div
                 key={day.date}
                 className={cn(
-                  "border-r last:border-r-0 p-1.5 flex flex-col gap-1 min-h-[52px]",
-                  !isPublished && "cursor-pointer hover:bg-blue-50 transition-colors"
+                  "p-1.5 flex flex-col gap-1 min-h-[64px] bg-white transition-colors",
+                  !isPublished && "cursor-pointer hover:bg-blue-50"
                 )}
                 onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
               >
                 {dayShifts.map((a) => (
-                  <div
-                    key={a.id}
-                    onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
-                  >
+                  <div key={a.id} onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}>
                     <ShiftBadge
                       first={a.staff.first_name}
                       last={a.staff.last_name}
@@ -669,36 +665,32 @@ function ShiftGrid({
       ))}
 
       {/* Dashed divider before OFF row */}
-      <div
-        className="h-px"
-        style={{
-          backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
-          backgroundSize:  "12px 1px",
-          backgroundRepeat: "repeat-x",
-        }}
-      />
+      <div className="h-px" style={{
+        backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
+        backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
+      }} />
 
-      {/* OFF row */}
-      <div className="grid grid-cols-[64px_repeat(7,1fr)]">
-        <div className="border-r flex flex-col items-center justify-center px-1 py-2 bg-muted/20">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">OFF</span>
+      {/* OFF row — slate-50 bg, max 3 visible + overflow indicator */}
+      <div className="grid grid-cols-[72px_repeat(7,1fr)]">
+        <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
+          <span className="text-[13px] font-medium text-slate-700 leading-tight">OFF</span>
         </div>
         {data.days.map((day) => {
-          const assignedIds  = new Set(day.assignments.map((a) => a.staff_id))
-          const leaveIds     = new Set(onLeaveByDate[day.date] ?? [])
-          const offStaff     = staffList.filter((s) => !assignedIds.has(s.id))
+          const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+          const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
+          const offStaff    = staffList.filter((s) => !assignedIds.has(s.id))
+          const visible     = offStaff.slice(0, 3)
+          const extra       = offStaff.length - visible.length
           return (
-            <div key={day.date} className="border-r last:border-r-0 p-1.5 flex flex-col gap-1 min-h-[40px]">
-              {offStaff.map((s) => {
+            <div key={day.date} className="p-1.5 flex flex-col gap-1 bg-slate-50 max-h-[120px] overflow-hidden">
+              {visible.map((s) => {
                 const onLeave = leaveIds.has(s.id)
                 return (
                   <div
                     key={s.id}
                     className={cn(
                       "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
-                      onLeave
-                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                        : "border-border bg-background text-foreground"
+                      onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[#CCDDEE] bg-white text-foreground"
                     )}
                   >
                     <div className={cn(
@@ -712,6 +704,9 @@ function ShiftGrid({
                   </div>
                 )
               })}
+              {extra > 0 && (
+                <span className="text-[11px] text-slate-400 px-1">+{extra} más</span>
+              )}
             </div>
           )
         })}
