@@ -216,6 +216,7 @@ export interface OrganisationMember {
   id:              string
   organisation_id: string
   user_id:         string
+  display_name:    string | null
   role:            string
   created_at:      string
 }
@@ -300,8 +301,8 @@ export interface Database {
       }
       organisation_members: {
         Row:    OrganisationMember
-        Insert: { organisation_id: string; user_id: string; role?: string }
-        Update: { role?: string }
+        Insert: { organisation_id: string; user_id: string; role?: string; display_name?: string | null }
+        Update: { role?: string; display_name?: string | null }
         Relationships: []
       }
     }

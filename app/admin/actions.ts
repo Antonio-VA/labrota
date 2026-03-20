@@ -135,15 +135,18 @@ export async function updateOrgLogo(orgId: string, logoUrl: string | null) {
 }
 
 // ── renameOrgUser ─────────────────────────────────────────────────────────────
-export async function renameOrgUser(userId: string, newName: string) {
+// Sets the org-specific display_name in organisation_members.
+// Passing an empty string clears it (falls back to profiles.full_name globally).
+export async function renameOrgUser(userId: string, orgId: string, newName: string) {
   await assertSuperAdmin()
 
-  const full_name = newName.trim() || null
+  const display_name = newName.trim() || null
   const admin = createAdminClient()
   const { error } = await admin
-    .from("profiles")
-    .update({ full_name } as never)
-    .eq("id", userId)
+    .from("organisation_members")
+    .update({ display_name } as never)
+    .eq("user_id", userId)
+    .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
   return { success: true }
@@ -220,10 +223,23 @@ export async function createOrgUser(formData: FormData) {
     userId = data.user.id
   }
 
+  // Determine display_name: set only when the entered name differs from the user's global name
+  let display_name: string | null = null
+  if (fullName && existingUser) {
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .single() as { data: { full_name: string | null } | null }
+    if (fullName !== (existingProfile?.full_name ?? "")) {
+      display_name = fullName
+    }
+  }
+
   // Add to organisation_members
   const { error: memberError } = await admin
     .from("organisation_members")
-    .upsert({ organisation_id: orgId, user_id: userId, role: appRole } as never, {
+    .upsert({ organisation_id: orgId, user_id: userId, role: appRole, display_name } as never, {
       onConflict: "organisation_id,user_id",
     })
 

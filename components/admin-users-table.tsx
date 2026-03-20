@@ -6,11 +6,12 @@ import { renameOrgUser, removeOrgUser } from "@/app/admin/actions"
 import { Check, X, Pencil } from "lucide-react"
 
 export interface UserRow {
-  id:        string
-  email:     string
-  full_name: string | null
-  appRole:   string | null   // from user_metadata.app_role
-  lastLogin: string | null   // pre-formatted string from server
+  id:          string
+  email:       string
+  displayName: string | null   // resolved: org display_name ?? global full_name
+  orgId:       string
+  role:        string
+  lastLogin:   string | null
 }
 
 export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: string }) {
@@ -20,7 +21,6 @@ export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: str
         <tr className="border-b border-border bg-muted">
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Role</th>
-          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Last login</th>
           <th className="px-4 py-3" />
         </tr>
@@ -35,11 +35,11 @@ export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: str
 }
 
 function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
-  const [isEditing, setIsEditing]   = useState(false)
-  const [draft, setDraft]           = useState(user.full_name ?? "")
-  const [displayName, setDisplayName] = useState(user.full_name)
-  const [error, setError]           = useState("")
-  const [isPending, startTransition] = useTransition()
+  const [isEditing, setIsEditing]     = useState(false)
+  const [draft, setDraft]             = useState(user.displayName ?? "")
+  const [displayName, setDisplayName] = useState(user.displayName)
+  const [error, setError]             = useState("")
+  const [isPending, startTransition]  = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -58,12 +58,9 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
   }
 
   function commit() {
-    if (draft.trim() === (displayName ?? "")) {
-      setIsEditing(false)
-      return
-    }
+    if (draft.trim() === (displayName ?? "")) { setIsEditing(false); return }
     startTransition(async () => {
-      const result = await renameOrgUser(user.id, draft)
+      const result = await renameOrgUser(user.id, orgId, draft)
       if (result?.error) {
         setError(result.error)
       } else {
@@ -76,7 +73,7 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
 
   return (
     <tr className="border-b border-border last:border-0">
-      {/* Name — inline editable */}
+      {/* Name — inline editable, email shown as tooltip */}
       <td className="px-4 py-3">
         {isEditing ? (
           <div className="flex items-center gap-1.5">
@@ -89,7 +86,7 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
                 if (e.key === "Escape") cancel()
               }}
               disabled={isPending}
-              className="h-7 text-[13px] w-40"
+              className="h-7 text-[13px] w-44"
             />
             <button
               onClick={commit}
@@ -111,7 +108,15 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
           </div>
         ) : (
           <div className="flex items-center gap-1.5 group">
-            <span className="font-medium">{displayName ?? "—"}</span>
+            <div>
+              <span
+                className="font-medium"
+                title={user.email}
+              >
+                {displayName ?? <span className="text-muted-foreground italic">No name</span>}
+              </span>
+              <p className="text-[12px] text-muted-foreground leading-none mt-0.5">{user.email}</p>
+            </div>
             <button
               onClick={openEdit}
               className="flex items-center justify-center size-6 rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
@@ -123,19 +128,16 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
         )}
       </td>
 
-      {/* Role */}
+      {/* Role badge */}
       <td className="px-4 py-3">
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-          user.appRole === "viewer"
+          user.role === "viewer"
             ? "bg-muted text-muted-foreground"
             : "bg-blue-50 text-blue-700"
         }`}>
-          {user.appRole === "viewer" ? "Viewer" : "Admin"}
+          {user.role === "viewer" ? "Viewer" : "Admin"}
         </span>
       </td>
-
-      {/* Email */}
-      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
 
       {/* Last login */}
       <td className="px-4 py-3 text-muted-foreground">

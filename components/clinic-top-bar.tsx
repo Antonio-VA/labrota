@@ -301,6 +301,7 @@ export function ClinicTopBar({
                         onClick={() => {
                           if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
                           setOrgMenuOpen(false)
+                          localStorage.setItem("activeOrgId", org.id)
                           startSwitch(async () => {
                             await switchOrgAction(org.id)
                             router.refresh()

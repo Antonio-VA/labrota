@@ -56,30 +56,31 @@ export default async function OrgDetailPage({
       .gte("created_at", thirtyDaysAgo),
     admin
       .from("organisation_members")
-      .select("user_id, profiles!inner(id, email, full_name)")
+      .select("user_id, role, display_name, profiles!inner(id, email, full_name)")
       .eq("organisation_id", id),
   ])
 
   if (!orgRes.data) notFound()
 
-  const org      = orgRes.data as Organisation
-  type MemberRow = { user_id: string; profiles: { id: string; email: string; full_name: string | null } }
-  const members  = (profilesRes.data ?? []) as unknown as MemberRow[]
-  const profiles = members.map((m) => m.profiles)
+  const org = orgRes.data as Organisation
+  type MemberRow = {
+    user_id:      string
+    role:         string
+    display_name: string | null
+    profiles:     { id: string; email: string; full_name: string | null }
+  }
+  const members = (profilesRes.data ?? []) as unknown as MemberRow[]
 
-  // Per-user last login — cross-reference profiles with auth users
+  // Per-user last login from Supabase Auth
   const lastLoginByUser: Record<string, string | null> = {}
   let lastLoginOverall: string | null = null
 
-  const appRoleByUser: Record<string, string | null> = {}
-
-  if (profiles.length > 0) {
+  if (members.length > 0) {
     const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const profileIds = new Set(profiles.map((p) => p.id))
-    const orgAuthUsers = (authData?.users ?? []).filter((u) => profileIds.has(u.id))
+    const memberIds = new Set(members.map((m) => m.profiles.id))
+    const orgAuthUsers = (authData?.users ?? []).filter((u) => memberIds.has(u.id))
     for (const u of orgAuthUsers) {
       lastLoginByUser[u.id] = u.last_sign_in_at ?? null
-      appRoleByUser[u.id]   = (u.user_metadata?.app_role as string | undefined) ?? null
     }
     const dates = orgAuthUsers.map((u) => u.last_sign_in_at).filter(Boolean) as string[]
     lastLoginOverall = dates.sort().at(-1) ?? null
@@ -87,12 +88,14 @@ export default async function OrgDetailPage({
 
   const fmt = (d: string) => formatDateWithYear(d, locale)
 
-  const userRows: UserRow[] = profiles.map((p) => ({
-    id:        p.id,
-    email:     p.email,
-    full_name: p.full_name,
-    appRole:   appRoleByUser[p.id] ?? null,
-    lastLogin: lastLoginByUser[p.id] ? fmt(lastLoginByUser[p.id]!) : null,
+  const userRows: UserRow[] = members.map((m) => ({
+    id:          m.profiles.id,
+    email:       m.profiles.email,
+    // Resolved display name: org-specific override ?? global account name
+    displayName: m.display_name ?? m.profiles.full_name,
+    orgId:       id,
+    role:        m.role,
+    lastLogin:   lastLoginByUser[m.profiles.id] ? fmt(lastLoginByUser[m.profiles.id]!) : null,
   }))
 
   return (

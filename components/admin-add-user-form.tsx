@@ -55,14 +55,18 @@ export function AddUserForm({ orgId }: { orgId: string }) {
       )}
 
       <div className="flex gap-3">
-        <Input
-          name="fullName"
-          placeholder="Full name (optional)"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          disabled={isPending}
-          className="flex-1"
-        />
+        <div className="flex flex-col gap-1 flex-1">
+          <Input
+            name="fullName"
+            placeholder="Full name (optional)"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={isPending}
+          />
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            Si este usuario ya existe en otra organización, puedes usar un nombre diferente aquí.
+          </p>
+        </div>
         <Input
           name="email"
           type="email"
