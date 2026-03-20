@@ -62,22 +62,18 @@ const SKILL_KEYS: Record<string, string> = {
   icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
   biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
   witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
+  embryo_transfer: "embryoTransfer", denudation: "denudation",
 }
 
-// ── Skill coverage dot colours ────────────────────────────────────────────────
+// ── The 5 skills shown in coverage row ────────────────────────────────────────
 
-const SKILL_COLORS: Record<string, string> = {
-  icsi:           "bg-blue-500",
-  iui:            "bg-cyan-500",
-  vitrification:  "bg-violet-500",
-  thawing:        "bg-sky-400",
-  biopsy:         "bg-indigo-500",
-  semen_analysis: "bg-emerald-500",
-  sperm_prep:     "bg-green-600",
-  witnessing:     "bg-amber-500",
-  egg_collection: "bg-orange-500",
-  other:          "bg-slate-400",
-}
+const COVERAGE_SKILLS = [
+  { key: "biopsy",          label: "B"  },
+  { key: "icsi",            label: "I"  },
+  { key: "egg_collection",  label: "RO" },
+  { key: "embryo_transfer", label: "TE" },
+  { key: "denudation",      label: "D"  },
+]
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -188,59 +184,94 @@ function ShiftBadge({ first, last, role, isOpu, isOverride }: {
 
 // ── Punctions input ────────────────────────────────────────────────────────────
 
-function PunctionsInput({ date, value, isOverride, onChange, disabled }: {
-  date: string; value: number; isOverride: boolean; onChange: (date: string, value: number | null) => void; disabled: boolean
+function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disabled }: {
+  date: string; value: number; defaultValue: number; isOverride: boolean
+  onChange: (date: string, value: number | null) => void; disabled: boolean
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft]     = useState(String(value))
+  const [open, setOpen]   = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  const popRef            = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setDraft(String(value)) }, [value])
 
-  function commit() {
-    setEditing(false)
-    const n = parseInt(draft, 10)
-    if (!isNaN(n) && n >= 0) {
-      onChange(date, n === 0 ? null : n)
-    } else {
-      setDraft(String(value))
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setOpen(false)
     }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  function save() {
+    const n = parseInt(draft, 10)
+    if (!isNaN(n) && n >= 0) onChange(date, n === defaultValue ? null : n)
+    else setDraft(String(value))
+    setOpen(false)
   }
+
+  function reset() {
+    onChange(date, null)
+    setOpen(false)
+  }
+
+  const label = value > 0 ? `P:${value}` : "P:—"
 
   if (disabled) {
     return (
-      <span className={cn("text-[11px] font-medium", isOverride ? "text-primary" : "text-muted-foreground")}>
-        {value || "—"}
+      <span className={cn("text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
+        {label}{isOverride && <span className="text-primary">*</span>}
       </span>
     )
   }
 
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        type="number"
-        min={0}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setDraft(String(value)) } }}
-        className="w-8 text-[11px] text-center border border-primary rounded px-0.5 outline-none bg-background"
-        onClick={(e) => e.stopPropagation()}
-      />
-    )
-  }
-
   return (
-    <button
-      onClick={(e) => { e.stopPropagation(); setEditing(true) }}
-      className={cn(
-        "text-[11px] font-medium rounded px-1 transition-colors hover:bg-muted",
-        isOverride ? "text-primary" : "text-muted-foreground"
+    <div ref={popRef} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+        className={cn(
+          "text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-slate-100",
+          isOverride ? "text-primary" : "text-muted-foreground"
+        )}
+        title="Editar punciones"
+      >
+        {label}{isOverride && <span>*</span>}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-36 flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground shrink-0">Punciones:</span>
+            <input
+              autoFocus
+              type="number"
+              min={0}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
+              className="w-10 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="flex gap-1">
+            <button
+              onClick={save}
+              className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
+            >
+              Guardar
+            </button>
+            {isOverride && (
+              <button
+                onClick={reset}
+                className="flex-1 text-[11px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
+                title={`Restaurar predeterminado (${defaultValue})`}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
       )}
-      title="Editar punciones"
-    >
-      {value > 0 ? value : "—"}
-    </button>
+    </div>
   )
 }
 
@@ -271,13 +302,13 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
-          const colorClass = s.count >= 5 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-            : s.count >= 3 ? "bg-amber-50 border-amber-200 text-amber-700"
-            : "bg-slate-50 border-slate-200 text-slate-500"
+          const colorClass = s.count <= 5
+            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+            : "bg-amber-50 border-amber-200 text-amber-700"
           return (
             <div
               key={id}
-              className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium", colorClass)}
+              className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium", colorClass)}
             >
               <div className={cn(
                 "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
@@ -457,10 +488,10 @@ function WeekGrid({
                   {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
                 </button>
                 <div className="flex items-center justify-center gap-0.5 pb-1.5">
-                  <span className="text-[10px] text-muted-foreground">P</span>
                   <PunctionsInput
                     date={day.date}
                     value={effectiveP}
+                    defaultValue={defaultP}
                     isOverride={hasOverride}
                     onChange={onPunctionsChange}
                     disabled={isPublished || !data.rota}
@@ -511,7 +542,7 @@ function ShiftGrid({
   onCellClick, onChipClick,
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
-  punctionsDefault, punctionsOverride,
+  punctionsDefault, punctionsOverride, onPunctionsChange,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -526,6 +557,7 @@ function ShiftGrid({
   publicHolidays: Record<string, string>
   punctionsDefault: Record<string, number>
   punctionsOverride: Record<string, number>
+  onPunctionsChange: (date: string, value: number | null) => void
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -596,30 +628,21 @@ function ShiftGrid({
           const holidayName = publicHolidays[day.date]
 
           const assignedIds   = new Set(day.assignments.map((a) => a.staff_id))
-          const coveredSkills = [...new Set([...assignedIds].flatMap((id) => staffSkillMap[id] ?? []))]
-
-          const effectiveP = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
-          const hasGaps    = day.skillGaps.length > 0
+          const defaultP      = punctionsDefault[day.date] ?? 0
+          const effectiveP    = punctionsOverride[day.date] ?? defaultP
+          const hasOverride   = punctionsOverride[day.date] !== undefined
 
           return (
             <div key={day.date} className={cn(
               "relative flex flex-col items-center justify-center py-1 gap-[2px]",
               day.isWeekend && "bg-slate-50"
             )}>
-              {/* Skill gap indicator — top-right corner */}
-              {hasGaps && (
+              {holidayName && (
                 <Tooltip>
                   <TooltipTrigger render={
-                    <span className="absolute top-1 right-1 cursor-default">
-                      <AlertTriangle className="size-3 text-amber-500" />
-                    </span>
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 cursor-default" />
                   } />
-                  <TooltipContent side="bottom" className="max-w-[160px]">
-                    <p className="text-[11px] font-medium mb-0.5">Cobertura insuficiente</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {day.skillGaps.map((sk) => ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])).join(", ")}
-                    </p>
-                  </TooltipContent>
+                  <TooltipContent side="bottom">{holidayName}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -633,34 +656,35 @@ function ShiftGrid({
                 {dayN}
               </div>
 
-              {/* Punctions + skill dots row */}
-              <div className="flex items-center gap-0.5 justify-center flex-wrap max-w-[64px]">
-                {effectiveP > 0 && (
-                  <span className={cn(
-                    "text-[9px] font-medium tabular-nums leading-none",
-                    punctionsOverride[day.date] !== undefined ? "text-primary" : "text-slate-400"
-                  )}>
-                    P:{effectiveP}
-                  </span>
-                )}
-                {coveredSkills.map((skill) => (
-                  <Tooltip key={skill}>
-                    <TooltipTrigger render={
-                      <span className={cn("size-1.5 rounded-full shrink-0 inline-block cursor-default", SKILL_COLORS[skill] ?? "bg-slate-400")} />
-                    } />
-                    <TooltipContent side="bottom">
-                      {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-                {holidayName && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <span className="size-1.5 rounded-full shrink-0 inline-block cursor-default bg-amber-400" />
-                    } />
-                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
-                  </Tooltip>
-                )}
+              {/* Punctions — clickable popover */}
+              <PunctionsInput
+                date={day.date}
+                value={effectiveP}
+                defaultValue={defaultP}
+                isOverride={hasOverride}
+                onChange={onPunctionsChange}
+                disabled={isPublished || !data.rota}
+              />
+
+              {/* Skill coverage initials row */}
+              <div className="flex items-center gap-[3px] justify-center">
+                {COVERAGE_SKILLS.map(({ key, label }) => {
+                  const isGap     = (day.skillGaps as string[]).includes(key)
+                  const isCovered = !isGap && [...assignedIds].some((id) => (staffSkillMap[id] ?? []).includes(key))
+                  return (
+                    <span
+                      key={key}
+                      className={cn(
+                        "text-[8px] font-bold tabular-nums leading-none",
+                        isGap     ? "text-red-500"
+                        : isCovered ? "text-emerald-600"
+                        : "text-slate-300"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  )
+                })}
               </div>
             </div>
           )
@@ -670,8 +694,9 @@ function ShiftGrid({
       {/* Shift rows */}
       {SHIFT_ROWS.map((shiftRow) => (
         <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
-          {/* Shift label — right-aligned, two-line, no separator */}
+          {/* Shift label — right-aligned, three-line: code / start / end */}
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
+            <span className="text-[10px] text-slate-400 leading-tight font-medium">{shiftRow}</span>
             <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
               {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
             </span>
@@ -725,11 +750,46 @@ function ShiftGrid({
         {data.days.map((day) => {
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
-          const offStaff    = staffList
+          const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
+          const isSunday    = dow === 0
+          const isSaturday  = dow === 6
+          const effectiveP  = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
+
+          // Sunday with no punciones → "Sin servicio"
+          if (isSunday && effectiveP === 0) {
+            return (
+              <div key={day.date} className="p-1.5 flex items-center justify-center bg-slate-50 min-h-[36px]">
+                <span className="text-[10px] text-slate-300 italic">Sin servicio</span>
+              </div>
+            )
+          }
+
+          // Saturday → show only on-leave staff, omit full unscheduled list
+          if (isSaturday) {
+            const leaveStaff = staffList
+              .filter((s) => !assignedIds.has(s.id) && leaveIds.has(s.id))
+              .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
+            return (
+              <div key={day.date} className="p-1.5 flex flex-col gap-1 bg-slate-50 min-h-[36px]">
+                {leaveStaff.map((s) => (
+                  <div key={s.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
+                    <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0 bg-amber-200 text-amber-800">
+                      {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                    </div>
+                    <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
+                    <CalendarX className="size-3 shrink-0 ml-auto" />
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          // Weekdays — show first 3 off staff + overflow
+          const offStaff = staffList
             .filter((s) => !assignedIds.has(s.id))
             .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-          const visible     = offStaff.slice(0, 3)
-          const extra       = offStaff.length - visible.length
+          const visible  = offStaff.slice(0, 3)
+          const extra    = offStaff.length - visible.length
           return (
             <div key={day.date} className="p-1.5 flex flex-col gap-1 bg-slate-50 max-h-[120px] overflow-hidden">
               {visible.map((s) => {
@@ -1385,6 +1445,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 publicHolidays={weekData?.publicHolidays ?? {}}
                 punctionsDefault={weekData?.punctionsDefault ?? {}}
                 punctionsOverride={punctionsOverride}
+                onPunctionsChange={handlePunctionsChange}
               />
             ) : (
               <WeekGrid
