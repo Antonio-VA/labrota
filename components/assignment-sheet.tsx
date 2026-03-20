@@ -293,6 +293,7 @@ export function AssignmentSheet({
       is_manual_override: true,
       trainee_staff_id: null,
       notes: null,
+      function_label: null,
       staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
     }
     setAssignments((prev) => [...prev, optimistic].sort((a, b) => {

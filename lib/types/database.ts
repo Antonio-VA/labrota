@@ -115,6 +115,7 @@ export interface RotaAssignment {
   trainee_staff_id:   string | null
   notes:              string | null
   is_opu:             boolean
+  function_label:     string | null
   created_at:         string
   updated_at:         string
 }

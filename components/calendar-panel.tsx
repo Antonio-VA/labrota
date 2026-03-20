@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal } from "lucide-react"
 import { toast } from "sonner"
+import { DndContext, DragOverlay, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -21,6 +22,9 @@ import {
   getActiveStaff,
   moveAssignment,
   setPunctionsOverride,
+  moveAssignmentShift,
+  removeAssignment,
+  setFunctionLabel,
   type RotaWeekData,
   type RotaDay,
   type RotaMonthSummary,
@@ -166,9 +170,19 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
 
 // ── Shift badge (Vista por turno — compact inline pill) ───────────────────────
 
-function ShiftBadge({ first, last, role, isOpu, isOverride }: {
+type ShiftBadgeProps = {
   first: string; last: string; role: string; isOpu: boolean; isOverride: boolean
-}) {
+  functionLabel?: string | null
+}
+
+function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel }: ShiftBadgeProps) {
+  const fnLabel = functionLabel ?? (isOpu ? "OPU" : null)
+  const fnColor = fnLabel === "OPU" ? "bg-amber-100 border-amber-400 text-amber-700"
+    : fnLabel === "SUP" ? "bg-purple-100 border-purple-400 text-purple-700"
+    : fnLabel === "TRN" ? "bg-slate-100 border-slate-400 text-slate-600"
+    : fnLabel ? "bg-blue-100 border-blue-400 text-blue-700"
+    : null
+
   return (
     <div className={cn(
       "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
@@ -181,7 +195,81 @@ function ShiftBadge({ first, last, role, isOpu, isOverride }: {
         {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
       </div>
       <span className="truncate">{first} {last[0]}.</span>
-      {isOpu && <span className="text-amber-500 shrink-0 text-[11px] leading-none" title="OPU">★</span>}
+      {fnLabel && fnColor && (
+        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", fnColor)}>
+          {fnLabel}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ── Function label popover ────────────────────────────────────────────────────
+
+const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
+  lab:       ["OPU", "ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
+  andrology: ["AND", "SUP", "TRN"],
+  admin:     [],
+}
+
+function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
+  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
+  onSave: (id: string, label: string | null) => void
+  isPublished: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const available = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
+  const current = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  if (available.length === 0 || isPublished) return <>{children}</>
+
+  return (
+    <div ref={ref} className="relative">
+      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
+        {children}
+      </div>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
+          <div className="flex flex-wrap gap-1">
+            {available.map((fn) => {
+              const isActive = current === fn
+              const color = fn === "OPU" ? "bg-amber-100 border-amber-400 text-amber-700"
+                : fn === "SUP" ? "bg-purple-100 border-purple-400 text-purple-700"
+                : fn === "TRN" ? "bg-slate-100 border-slate-400 text-slate-600"
+                : "bg-blue-100 border-blue-400 text-blue-700"
+              return (
+                <button
+                  key={fn}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSave(assignment.id, isActive ? null : fn)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                    color,
+                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                  )}
+                >
+                  {fn}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -607,12 +695,44 @@ function WeekGrid({
 
 // ── Shift grid (Vista por turno) ──────────────────────────────────────────────
 
+function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
+    opacity: isDragging ? 0.95 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    position: isDragging ? "relative" as const : undefined,
+  } : undefined
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <ShiftBadge {...props} />
+    </div>
+  )
+}
+
+function DroppableCell({ id, children, isOver, isPublished, onClick, className }: {
+  id: string; children: React.ReactNode; isOver: boolean
+  isPublished: boolean; onClick?: () => void; className?: string
+}) {
+  const { setNodeRef, isOver: dndIsOver } = useDroppable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={onClick}
+      className={cn(className, (isOver || dndIsOver) && !isPublished && "bg-blue-50")}
+    >
+      {children}
+    </div>
+  )
+}
+
 function ShiftGrid({
   data, staffList, loading, locale,
   onCellClick, onChipClick,
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
+  onRefresh, onFunctionLabelSave,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -628,9 +748,51 @@ function ShiftGrid({
   punctionsDefault: Record<string, number>
   punctionsOverride: Record<string, number>
   onPunctionsChange: (date: string, value: number | null) => void
+  onRefresh: () => void
+  onFunctionLabelSave: (assignmentId: string, label: string | null) => void
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
+
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId]     = useState<string | null>(null)
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+    if (!over || active.id === over.id) return
+
+    const assignmentId = String(active.id)
+    const destZone     = String(over.id) // e.g. "T1-2026-03-16" or "OFF-2026-03-16"
+
+    // Find source assignment
+    const sourceAssignment = data?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
+    if (!sourceAssignment) return
+
+    const sourceZone = `${sourceAssignment.shift_type}-${sourceAssignment.date}`
+    if (sourceZone === destZone) return
+
+    if (destZone.startsWith("OFF-")) {
+      const result = await removeAssignment(assignmentId)
+      if (result?.error) { toast.error(result.error); return }
+    } else {
+      const destDate  = destZone.slice(-10)
+      const destShift = destZone.slice(0, destZone.length - 11)
+
+      // Only allow same-day drags
+      if (sourceAssignment.date !== destDate) {
+        toast.error("No se puede mover entre días")
+        return
+      }
+
+      const result = await moveAssignmentShift(assignmentId, destShift)
+      if (result?.error) { toast.error(result.error); return }
+    }
+
+    toast.success("Turno actualizado")
+    onRefresh()
+  }
 
   if (loading) {
     return (
@@ -684,186 +846,238 @@ function ShiftGrid({
   const SHIFT_ROWS = data.shiftTypes.map((s) => s.code)
   const shiftTypeMap = Object.fromEntries((data.shiftTypes ?? []).map((st) => [st.code, st]))
 
+  // Find the active assignment for drag overlay
+  const activeAssignment = activeId
+    ? data?.days.flatMap((d) => d.assignments).find((a) => a.id === activeId)
+    : null
+
   return (
-    <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px] flex-1">
+    <DndContext
+      onDragStart={(e) => { setActiveId(String(e.active.id)); setOverId(null) }}
+      onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px] flex-1">
 
-      {/* Header row — 52px, white, subtle border */}
-      <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
-        <div className="border-r border-[#CCDDEE]" />
-        {data.days.map((day) => {
-          const d     = new Date(day.date + "T12:00:00")
-          const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-          const dayN  = String(d.getDate())
-          const today = day.date === TODAY
-          const holidayName = publicHolidays[day.date]
-
-          const assignedIds   = new Set(day.assignments.map((a) => a.staff_id))
-          const defaultP      = punctionsDefault[day.date] ?? 0
-          const effectiveP    = punctionsOverride[day.date] ?? defaultP
-          const hasOverride   = punctionsOverride[day.date] !== undefined
-
-          return (
-            <div key={day.date} className={cn(
-              "relative flex flex-col items-center justify-center py-1 gap-[2px]",
-              day.isWeekend && "bg-slate-50"
-            )}>
-              {holidayName && (
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 cursor-default" />
-                  } />
-                  <TooltipContent side="bottom">{holidayName}</TooltipContent>
-                </Tooltip>
-              )}
-
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
-              <div className={cn(
-                "size-7 flex items-center justify-center rounded-full font-medium leading-none",
-                today
-                  ? "bg-primary text-primary-foreground text-[15px]"
-                  : "text-[20px] text-slate-800"
-              )}>
-                {dayN}
-              </div>
-
-              {/* Punctions — clickable popover */}
-              <PunctionsInput
-                date={day.date}
-                value={effectiveP}
-                defaultValue={defaultP}
-                isOverride={hasOverride}
-                onChange={onPunctionsChange}
-                disabled={isPublished || !data.rota}
-              />
-
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Shift rows */}
-      {SHIFT_ROWS.map((shiftRow) => (
-        <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
-          {/* Shift label — right-aligned, three-line: code / start / end */}
-          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
-            <span className="text-[10px] text-slate-400 leading-tight font-medium">{shiftRow}</span>
-            <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
-              {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
-            </span>
-            {shiftTypeMap[shiftRow]?.end_time && (
-              <span className="text-[11px] text-slate-400 leading-tight tabular-nums">
-                {shiftTypeMap[shiftRow].end_time}
-              </span>
-            )}
-          </div>
+        {/* Header row — 52px, white, subtle border */}
+        <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
+          <div className="border-r border-[#CCDDEE]" />
           {data.days.map((day) => {
-            const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
-              .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
-            const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
+            const d     = new Date(day.date + "T12:00:00")
+            const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
+            const dayN  = String(d.getDate())
+            const today = day.date === TODAY
+            const holidayName = publicHolidays[day.date]
+
+            const defaultP      = punctionsDefault[day.date] ?? 0
+            const effectiveP    = punctionsOverride[day.date] ?? defaultP
+            const hasOverride   = punctionsOverride[day.date] !== undefined
+
             return (
-              <div
-                key={day.date}
-                className={cn(
-                  "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors",
-                  day.isWeekend ? "bg-slate-50" : "bg-white",
-                  !isPublished && (day.isWeekend ? "cursor-pointer hover:bg-slate-100" : "cursor-pointer hover:bg-blue-50")
+              <div key={day.date} className={cn(
+                "relative flex flex-col items-center justify-center py-1 gap-[2px]",
+                day.isWeekend && "bg-slate-50"
+              )}>
+                {holidayName && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 cursor-default" />
+                    } />
+                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
+                  </Tooltip>
                 )}
-                onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
-              >
-                {dayShifts.map((a) => (
-                  <div key={a.id} onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}>
-                    <ShiftBadge
-                      first={a.staff.first_name}
-                      last={a.staff.last_name}
-                      role={a.staff.role}
-                      isOpu={a.is_opu ?? false}
-                      isOverride={a.is_manual_override}
-                    />
-                  </div>
-                ))}
-                {dayShifts.length === 0 && effectivePDay === 0 && (
-                  <span className="text-[10px] text-slate-300 italic self-center mt-auto mb-auto">Sin servicio</span>
-                )}
+
+                <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
+                <div className={cn(
+                  "size-7 flex items-center justify-center rounded-full font-medium leading-none",
+                  today
+                    ? "bg-primary text-primary-foreground text-[15px]"
+                    : "text-[20px] text-slate-800"
+                )}>
+                  {dayN}
+                </div>
+
+                {/* Punctions — clickable popover */}
+                <PunctionsInput
+                  date={day.date}
+                  value={effectiveP}
+                  defaultValue={defaultP}
+                  isOverride={hasOverride}
+                  onChange={onPunctionsChange}
+                  disabled={isPublished || !data.rota}
+                />
+
               </div>
             )
           })}
         </div>
-      ))}
 
-      {/* Dashed divider before OFF row */}
-      <div className="h-px" style={{
-        backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
-        backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
-      }} />
-
-      {/* OFF row — slate-50 bg, max 3 visible + overflow indicator */}
-      <div className="grid grid-cols-[72px_repeat(7,1fr)]">
-        <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
-          <span className="text-[13px] font-medium text-slate-700 leading-tight">OFF</span>
-        </div>
-        {data.days.map((day) => {
-          const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-          const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
-          const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-          const isSaturday  = dow === 6
-
-          // Saturday → show only on-leave staff, omit full unscheduled list
-          if (isSaturday) {
-            const leaveStaff = staffList
-              .filter((s) => !assignedIds.has(s.id) && leaveIds.has(s.id))
-              .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-            return (
-              <div key={day.date} className="p-1.5 flex flex-col gap-1 bg-slate-50 min-h-[36px]">
-                {leaveStaff.map((s) => (
-                  <div key={s.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
-                    <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0 bg-amber-200 text-amber-800">
-                      {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
-                    </div>
-                    <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                    <CalendarX className="size-3 shrink-0 ml-auto" />
-                  </div>
-                ))}
-              </div>
-            )
-          }
-
-          // Weekdays — show first 3 off staff + overflow
-          const offStaff = staffList
-            .filter((s) => !assignedIds.has(s.id))
-            .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-          const visible  = offStaff.slice(0, 3)
-          const extra    = offStaff.length - visible.length
-          return (
-            <div key={day.date} className="p-1.5 flex flex-col gap-1 bg-slate-50 max-h-[120px] overflow-hidden">
-              {visible.map((s) => {
-                const onLeave = leaveIds.has(s.id)
-                return (
-                  <div
-                    key={s.id}
-                    className={cn(
-                      "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
-                      onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[#CCDDEE] bg-white text-foreground"
-                    )}
-                  >
-                    <div className={cn(
-                      "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
-                      onLeave ? "bg-amber-200 text-amber-800" : (ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground")
-                    )}>
-                      {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
-                    </div>
-                    <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
-                    {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
-                  </div>
-                )
-              })}
-              {extra > 0 && (
-                <span className="text-[11px] text-slate-400 px-1">+{extra} más</span>
+        {/* Shift rows */}
+        {SHIFT_ROWS.map((shiftRow) => (
+          <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+            {/* Shift label — right-aligned, three-line: code / start / end */}
+            <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
+              <span className="text-[10px] text-slate-400 leading-tight font-medium">{shiftRow}</span>
+              <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
+                {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
+              </span>
+              {shiftTypeMap[shiftRow]?.end_time && (
+                <span className="text-[11px] text-slate-400 leading-tight tabular-nums">
+                  {shiftTypeMap[shiftRow].end_time}
+                </span>
               )}
             </div>
-          )
-        })}
+            {data.days.map((day) => {
+              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
+                .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+              const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
+              const cellId = `${shiftRow}-${day.date}`
+              return (
+                <DroppableCell
+                  key={day.date}
+                  id={cellId}
+                  isOver={overId === cellId}
+                  isPublished={isPublished}
+                  onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
+                  className={cn(
+                    "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors",
+                    day.isWeekend ? "bg-slate-50" : "bg-white",
+                    !isPublished && (day.isWeekend ? "cursor-pointer hover:bg-slate-100" : "cursor-pointer hover:bg-blue-50")
+                  )}
+                >
+                  {dayShifts.map((a) => (
+                    <FunctionLabelPopover
+                      key={a.id}
+                      assignment={a}
+                      onSave={onFunctionLabelSave}
+                      isPublished={isPublished}
+                    >
+                      <div onClick={(e) => { e.stopPropagation(); if (!isPublished) onChipClick(a, day.date) }}>
+                        <DraggableShiftBadge
+                          id={a.id}
+                          first={a.staff.first_name}
+                          last={a.staff.last_name}
+                          role={a.staff.role}
+                          isOpu={a.is_opu ?? false}
+                          isOverride={a.is_manual_override}
+                          functionLabel={a.function_label}
+                        />
+                      </div>
+                    </FunctionLabelPopover>
+                  ))}
+                  {dayShifts.length === 0 && effectivePDay === 0 && (
+                    <span className="text-[10px] text-slate-300 italic self-center mt-auto mb-auto">Sin servicio</span>
+                  )}
+                </DroppableCell>
+              )
+            })}
+          </div>
+        ))}
+
+        {/* Dashed divider before OFF row */}
+        <div className="h-px" style={{
+          backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
+          backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
+        }} />
+
+        {/* OFF row — slate-50 bg, max 3 visible + overflow indicator */}
+        <div className="grid grid-cols-[72px_repeat(7,1fr)]">
+          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
+            <span className="text-[13px] font-medium text-slate-700 leading-tight">OFF</span>
+          </div>
+          {data.days.map((day) => {
+            const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+            const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
+            const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
+            const isSaturday  = dow === 6
+            const offCellId   = `OFF-${day.date}`
+
+            // Saturday → show only on-leave staff, omit full unscheduled list
+            if (isSaturday) {
+              const leaveStaff = staffList
+                .filter((s) => !assignedIds.has(s.id) && leaveIds.has(s.id))
+                .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
+              return (
+                <DroppableCell
+                  key={day.date}
+                  id={offCellId}
+                  isOver={overId === offCellId}
+                  isPublished={isPublished}
+                  className="p-1.5 flex flex-col gap-1 bg-slate-50 min-h-[36px]"
+                >
+                  {leaveStaff.map((s) => (
+                    <div key={s.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
+                      <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0 bg-amber-200 text-amber-800">
+                        {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                      </div>
+                      <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
+                      <CalendarX className="size-3 shrink-0 ml-auto" />
+                    </div>
+                  ))}
+                </DroppableCell>
+              )
+            }
+
+            // Weekdays — show first 3 off staff + overflow
+            const offStaff = staffList
+              .filter((s) => !assignedIds.has(s.id))
+              .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
+            const visible  = offStaff.slice(0, 3)
+            const extra    = offStaff.length - visible.length
+            return (
+              <DroppableCell
+                key={day.date}
+                id={offCellId}
+                isOver={overId === offCellId}
+                isPublished={isPublished}
+                className="p-1.5 flex flex-col gap-1 bg-slate-50 max-h-[120px] overflow-hidden"
+              >
+                {visible.map((s) => {
+                  const onLeave = leaveIds.has(s.id)
+                  return (
+                    <div
+                      key={s.id}
+                      className={cn(
+                        "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
+                        onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[#CCDDEE] bg-white text-foreground"
+                      )}
+                    >
+                      <div className={cn(
+                        "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
+                        onLeave ? "bg-amber-200 text-amber-800" : (ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground")
+                      )}>
+                        {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                      </div>
+                      <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
+                      {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
+                    </div>
+                  )
+                })}
+                {extra > 0 && (
+                  <span className="text-[11px] text-slate-400 px-1">+{extra} más</span>
+                )}
+              </DroppableCell>
+            )
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeAssignment ? (
+          <div className="opacity-90 shadow-lg rounded">
+            <ShiftBadge
+              first={activeAssignment.staff.first_name}
+              last={activeAssignment.staff.last_name}
+              role={activeAssignment.staff.role}
+              isOpu={activeAssignment.is_opu ?? false}
+              isOverride={activeAssignment.is_manual_override}
+              functionLabel={activeAssignment.function_label}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   )
 }
 
@@ -1296,6 +1510,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
+  function handleFunctionLabelSave(assignmentId: string, label: string | null) {
+    const ws = weekStart
+    startTransition(async () => {
+      const result = await setFunctionLabel(assignmentId, label)
+      if (result.error) { toast.error(result.error); return }
+      const newData = await getRotaWeek(ws)
+      setWeekData(newData)
+    })
+  }
+
   const rota           = weekData?.rota ?? null
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
@@ -1500,6 +1724,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 punctionsDefault={weekData?.punctionsDefault ?? {}}
                 punctionsOverride={punctionsOverride}
                 onPunctionsChange={handlePunctionsChange}
+                onRefresh={() => fetchWeek(weekStart)}
+                onFunctionLabelSave={handleFunctionLabelSave}
               />
             ) : (
               <WeekGrid

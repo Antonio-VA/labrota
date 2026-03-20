@@ -28,6 +28,7 @@ export interface RotaDay {
     trainee_staff_id: string | null
     notes: string | null
     is_opu: boolean
+    function_label: string | null
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
@@ -180,7 +181,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // relying on a PostgREST join (which can silently return null after schema migrations).
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
-    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean
+    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean;
+    function_label: string | null
   }
   type AssignmentRow = RawAssignment & {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
@@ -190,7 +192,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Try full column set; fallback handled below
     supabase
       .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, function_label")
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
@@ -210,8 +212,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const { data: baseData } = (await supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">[] | null }
-    rawAssignments = (baseData ?? []).map((a: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu">) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false }))
+      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label">[] | null }
+    rawAssignments = (baseData ?? []).map((a: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label">) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false, function_label: null }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
   }
@@ -245,6 +247,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       trainee_staff_id: a.trainee_staff_id,
       notes: a.notes,
       is_opu: a.is_opu ?? false,
+      function_label: a.function_label ?? null,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
     })
   }
@@ -641,6 +644,45 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
     .from("rotas")
     .update({ status: "draft", published_at: null } as never)
     .eq("id", rotaId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── moveAssignmentShift ───────────────────────────────────────────────────────
+
+export async function moveAssignmentShift(assignmentId: string, newShiftType: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ shift_type: newShiftType, is_manual_override: true } as never)
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── removeAssignment ──────────────────────────────────────────────────────────
+
+export async function removeAssignment(assignmentId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── setFunctionLabel ──────────────────────────────────────────────────────────
+
+export async function setFunctionLabel(assignmentId: string, label: string | null): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ function_label: label } as never)
+    .eq("id", assignmentId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
