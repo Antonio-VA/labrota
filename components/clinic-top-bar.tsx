@@ -203,7 +203,7 @@ function AvatarMenu({ user }: { user: User }) {
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
 
-export function ClinicTopBar({ orgName }: { orgName: string | null }) {
+export function ClinicTopBar({ orgName, orgLogoUrl }: { orgName: string | null; orgLogoUrl?: string | null }) {
   const locale = useLocale()
   const router = useRouter()
 
@@ -254,7 +254,15 @@ export function ClinicTopBar({ orgName }: { orgName: string | null }) {
         {orgName && (
           <>
             <span className="h-4 border-l border-border" />
-            <span className="text-[14px] text-muted-foreground">{orgName}</span>
+            {orgLogoUrl ? (
+              <img
+                src={orgLogoUrl}
+                alt={orgName}
+                className="h-[28px] max-w-[100px] object-contain"
+              />
+            ) : (
+              <span className="text-[14px] text-muted-foreground">{orgName}</span>
+            )}
           </>
         )}
       </div>

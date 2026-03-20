@@ -24,6 +24,7 @@ export interface Organisation {
   name:       string
   slug:       string
   is_active:  boolean
+  logo_url:   string | null
   created_at: string
 }
 
@@ -190,7 +191,7 @@ export interface Database {
       organisations: {
         Row:    Organisation
         Insert: { name: string; slug: string; is_active?: boolean }
-        Update: { name?: string; slug?: string; is_active?: boolean }
+        Update: { name?: string; slug?: string; is_active?: boolean; logo_url?: string | null }
         Relationships: []
       }
       profiles: {

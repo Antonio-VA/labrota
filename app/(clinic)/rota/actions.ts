@@ -176,8 +176,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     })
   }
 
-  // Compute skill gaps per day
+  // Compute skill gaps per day — only meaningful when the day has assignments
   for (const day of Object.values(dayMap)) {
+    if (day.assignments.length === 0) {
+      day.skillGaps = []
+      continue
+    }
     const covered = new Set(day.assignments.flatMap((a) => staffSkillMap[a.staff_id] ?? []))
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
@@ -309,7 +313,27 @@ export async function generateRota(
     const { error: insertError } = await supabase
       .from("rota_assignments")
       .insert(toInsert as never)
-    if (insertError) return { error: insertError.message }
+
+    if (insertError) {
+      // is_opu column may not exist if migration 20260321000001_schema_updates.sql
+      // hasn't been run yet — retry without it so generation still works.
+      if (insertError.message.includes("is_opu")) {
+        const compat = toInsert.map((row) => ({
+          organisation_id:    row.organisation_id,
+          rota_id:            row.rota_id,
+          staff_id:           row.staff_id,
+          date:               row.date,
+          shift_type:         row.shift_type,
+          is_manual_override: row.is_manual_override,
+        }))
+        const { error: insertError2 } = await supabase
+          .from("rota_assignments")
+          .insert(compat as never)
+        if (insertError2) return { error: insertError2.message }
+      } else {
+        return { error: insertError.message }
+      }
+    }
   }
 
   revalidatePath("/")

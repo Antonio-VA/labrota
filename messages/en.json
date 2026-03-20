@@ -102,6 +102,8 @@
     "weekView": "Week",
     "monthView": "Month",
     "dayView": "Day",
+    "shiftLayout": "By shift",
+    "personLayout": "By person",
     "today": "Today",
     "previousPeriod": "Previous period",
     "nextPeriod": "Next period",

@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(
       email.trim().toLowerCase(),
-      { redirectTo: "https://labrota.app/auth/callback" }
+      { redirectTo: "https://labrota.app/auth/callback?next=/reset-password" }
     )
 
     if (error) {

@@ -2,21 +2,60 @@
 
 import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { renameOrganisation, deleteOrganisation, toggleOrgStatus } from "@/app/admin/actions"
-import { Check, X, Pencil, MoreHorizontal, Trash2 } from "lucide-react"
+import { renameOrganisation, deleteOrganisation, toggleOrgStatus, updateOrgLogo } from "@/app/admin/actions"
+import { Check, X, Pencil, MoreHorizontal, Trash2, Upload } from "lucide-react"
 
 interface Org {
   id: string
   name: string
   slug: string
   is_active: boolean
+  logo_url: string | null
 }
 
 export function AdminOrgHeaderActions({ org }: { org: Org }) {
   const router = useRouter()
+
+  // ── Logo state ──────────────────────────────────────────────────────────────
+  const [logoUrl, setLogoUrl]         = useState<string | null>(org.logo_url)
+  const [isUploading, setIsUploading] = useState(false)
+  const [logoError, setLogoError]     = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("File must be under 2 MB.")
+      return
+    }
+    setLogoError(null)
+    setIsUploading(true)
+    try {
+      const supabase = createClient()
+      const ext  = file.name.split(".").pop() ?? "png"
+      const path = `${org.id}/logo.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from("org-logos")
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) { setLogoError(uploadError.message); return }
+      const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path)
+      const urlWithBust = publicUrl + `?t=${Date.now()}`
+      await updateOrgLogo(org.id, publicUrl)
+      setLogoUrl(urlWithBust)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  function orgInitials() {
+    return org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+  }
 
   // ── Rename state ────────────────────────────────────────────────────────────
   const [isEditing, setIsEditing]   = useState(false)
@@ -110,8 +149,37 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
 
-        {/* Left: name + badge + slug */}
+        {/* Left: logo + name + badge + slug */}
         <div className="flex items-center gap-3">
+          {/* Logo upload */}
+          <div className="relative group shrink-0">
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml"
+              className="hidden"
+              onChange={handleLogoChange}
+            />
+            <button
+              onClick={() => logoInputRef.current?.click()}
+              disabled={isUploading}
+              aria-label="Upload organisation logo"
+              className="flex size-12 items-center justify-center rounded-lg border border-border bg-muted text-[14px] font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors overflow-hidden relative disabled:opacity-50"
+            >
+              {logoUrl ? (
+                <img src={logoUrl} alt={org.name} className="size-full object-contain p-1" />
+              ) : (
+                orgInitials()
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                <Upload className="size-4 text-white" />
+              </span>
+            </button>
+            {logoError && (
+              <p className="absolute top-full mt-1 left-0 text-[11px] text-destructive whitespace-nowrap">{logoError}</p>
+            )}
+          </div>
+
           {/* Name / inline rename */}
           <div className="flex flex-col gap-0.5">
             {isEditing ? (

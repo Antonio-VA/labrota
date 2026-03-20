@@ -32,6 +32,7 @@ interface Props {
   onSaved: () => void
   isPublished: boolean
   locale: string
+  defaultShiftType?: ShiftType
 }
 
 // ── Role colors ────────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export function AssignmentSheet({
   assignedStaffIds,
   onSaved,
   isPublished,
+  defaultShiftType,
 }: Props) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -93,13 +95,14 @@ export function AssignmentSheet({
       setIsOpu(editAssignment.is_opu ?? false)
     } else {
       setSelectedStaffId(null)
-      setShiftType("am")
+      setShiftType(defaultShiftType ?? "am")
       setSupervision(false)
       setTraineeId(null)
       setNotes("")
       setIsOpu(false)
     }
     setRoleTab("all")
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editAssignment])
 
   const filteredStaff = staffList.filter((s) =>

@@ -139,6 +139,38 @@
   --chart-5: #ef4444;
 }
 
+/* ── Calendar shimmer skeleton ────────────────────────────────────────────────
+   background-attachment: fixed ties the gradient to viewport coordinates so
+   every shimmer-bar animates in sync — one light source sweeping the full page.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 1; }
+}
+
+.shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e8f4 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  background-attachment: fixed;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.generating-label {
+  animation: pulse-opacity 1.5s infinite ease-in-out;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

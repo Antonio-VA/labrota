@@ -31,7 +31,7 @@ function NavItem({
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="flex flex-col items-center gap-1 py-2.5 mx-2 rounded-[8px] cursor-not-allowed" />
+            <div className="flex flex-col items-center gap-1.5 py-3.5 mx-2 rounded-[8px] cursor-not-allowed" />
           }
         >
           <Icon className="size-6 text-slate-300" />
@@ -49,7 +49,7 @@ function NavItem({
           <a
             href={href}
             className={cn(
-              "flex flex-col items-center gap-1 py-2.5 mx-2 rounded-[8px] transition-colors",
+              "flex flex-col items-center gap-1.5 py-3.5 mx-2 rounded-[8px] transition-colors",
               isActive
                 ? "bg-blue-100 text-blue-700"
                 : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"

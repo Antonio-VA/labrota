@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 import {
@@ -25,12 +26,13 @@ import {
   type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
 import { AssignmentSheet } from "@/components/assignment-sheet"
-import type { StaffWithSkills } from "@/lib/types/database"
+import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ViewMode = "week" | "month" | "day"
-type Assignment = RotaDay["assignments"][0]
+type ViewMode      = "week" | "month" | "day"
+type CalendarLayout = "shift" | "person"
+type Assignment    = RotaDay["assignments"][0]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -47,7 +49,22 @@ const TODAY = new Date().toISOString().split("T")[0]
 const SKILL_KEYS: Record<string, string> = {
   icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
   biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
-  witnessing: "witnessing", other: "other",
+  witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
+}
+
+// ── Skill coverage dot colours ────────────────────────────────────────────────
+
+const SKILL_COLORS: Record<string, string> = {
+  icsi:           "bg-blue-500",
+  iui:            "bg-cyan-500",
+  vitrification:  "bg-violet-500",
+  thawing:        "bg-sky-400",
+  biopsy:         "bg-indigo-500",
+  semen_analysis: "bg-emerald-500",
+  sperm_prep:     "bg-green-600",
+  witnessing:     "bg-amber-500",
+  egg_collection: "bg-orange-500",
+  other:          "bg-slate-400",
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -86,7 +103,7 @@ function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: stri
   return `${s} – ${e}`
 }
 
-// ── Staff chip ────────────────────────────────────────────────────────────────
+// ── Staff chip (Vista por persona) ────────────────────────────────────────────
 
 function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
   first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
@@ -131,6 +148,28 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
       {notes && (
         <span className="text-[10px] italic text-muted-foreground leading-none mt-0.5 truncate">{notes}</span>
       )}
+    </div>
+  )
+}
+
+// ── Shift badge (Vista por turno — compact inline pill) ───────────────────────
+
+function ShiftBadge({ first, last, role, isOpu, isOverride }: {
+  first: string; last: string; role: string; isOpu: boolean; isOverride: boolean
+}) {
+  return (
+    <div className={cn(
+      "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
+      isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background"
+    )}>
+      <div className={cn(
+        "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
+        ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
+      )}>
+        {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
+      </div>
+      <span className="truncate">{first} {last[0]}.</span>
+      {isOpu && <span className="text-amber-500 shrink-0 text-[11px] leading-none" title="OPU">★</span>}
     </div>
   )
 }
@@ -198,17 +237,11 @@ function PunctionsInput({ date, value, isOverride, onChange, disabled }: {
 function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
   const t = useTranslations("schedule")
 
-  // Build map: staffId -> { name, initials, role, count }
   const staffMap: Record<string, { first: string; last: string; role: string; count: number }> = {}
   for (const day of data.days) {
     for (const a of day.assignments) {
       if (!staffMap[a.staff_id]) {
-        staffMap[a.staff_id] = {
-          first: a.staff.first_name,
-          last: a.staff.last_name,
-          role: a.staff.role,
-          count: 0,
-        }
+        staffMap[a.staff_id] = { first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role, count: 0 }
       }
       staffMap[a.staff_id].count++
     }
@@ -249,7 +282,7 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
   )
 }
 
-// ── Skill gap pill (compact toolbar indicator with dropdown) ──────────────────
+// ── Skill gap pill ────────────────────────────────────────────────────────────
 
 function SkillGapPill({ details }: {
   details: { skill: string; day: string }[]
@@ -257,7 +290,6 @@ function SkillGapPill({ details }: {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Group by day for a cleaner dropdown
   const byDay: { day: string; skills: string[] }[] = []
   for (const { skill, day } of details) {
     const existing = byDay.find((d) => d.day === day)
@@ -301,13 +333,23 @@ function SkillGapPill({ details }: {
   )
 }
 
-// ── Week view ─────────────────────────────────────────────────────────────────
+// ── Week view (Vista por persona) ─────────────────────────────────────────────
+
+const COLUMN_BARS: string[][] = [
+  ["70%", "80%", "60%"],
+  ["80%", "50%", "70%", "60%"],
+  ["60%", "80%", "50%", "70%", "45%"],
+  ["80%", "60%", "70%", "50%"],
+  ["70%", "80%", "60%"],
+  ["60%", "50%"],
+  ["45%", "60%"],
+]
 
 function WeekGrid({
   data, loading, locale, onSelectDay, onCellClick, onChipClick,
   punctionsOverride, onPunctionsChange,
   draggingId, dragOverDate, onChipDragStart, onChipDragEnd, onColumnDrop, onColumnDragOver, onColumnDragLeave,
-  isPublished, shiftTimes,
+  isPublished, shiftTimes, isGenerating,
 }: {
   data: RotaWeekData | null
   loading: boolean
@@ -326,23 +368,35 @@ function WeekGrid({
   onColumnDragLeave: () => void
   isPublished: boolean
   shiftTimes: ShiftTimes | null
+  isGenerating?: boolean
 }) {
   if (loading) {
     return (
-      <div className="rounded-lg border border-border overflow-hidden min-w-[560px] min-h-[400px]">
-        <div className="grid grid-cols-7 h-full">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="flex flex-col border-r last:border-r-0">
-              <div className="flex flex-col items-center py-2 border-b gap-1">
-                <Skeleton className="h-3 w-6" />
-                <Skeleton className="size-7 rounded-full" />
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
+        <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
+          <div className="grid grid-cols-7 h-full">
+            {COLUMN_BARS.map((bars, i) => (
+              <div key={i} className="flex flex-col border-r last:border-r-0">
+                <div className="flex flex-col items-center py-2 border-b gap-1.5">
+                  <div className="shimmer-bar h-2.5 w-6" />
+                  <div className="shimmer-bar w-7 h-7 rounded-full" />
+                </div>
+                <div className="flex justify-center py-1.5 border-b">
+                  <div className="shimmer-bar h-2 w-4" />
+                </div>
+                <div className="flex flex-col gap-1.5 p-2 pt-2">
+                  {bars.map((w, j) => (
+                    <div key={j} className="shimmer-bar h-6" style={{ width: w }} />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col gap-1 p-2">
-                <Skeleton className="h-7 w-full rounded-md" />
-                <Skeleton className="h-7 w-full rounded-md" />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-1">
+          <span className="generating-label text-[13px] text-muted-foreground">
+            {isGenerating ? "Generando guardia…" : "Cargando…"}
+          </span>
         </div>
       </div>
     )
@@ -376,7 +430,6 @@ function WeekGrid({
               onDragLeave={onColumnDragLeave}
               onDrop={() => onColumnDrop(day.date)}
             >
-              {/* Header — date button + punctions */}
               <div className="flex flex-col border-b">
                 <button
                   onClick={() => onSelectDay(day.date)}
@@ -391,7 +444,6 @@ function WeekGrid({
                   </div>
                   {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
                 </button>
-                {/* Punctions */}
                 <div className="flex items-center justify-center gap-0.5 pb-1.5">
                   <span className="text-[10px] text-muted-foreground">P</span>
                   <PunctionsInput
@@ -404,7 +456,6 @@ function WeekGrid({
                 </div>
               </div>
 
-              {/* Assignments */}
               <div
                 className="flex flex-col gap-1 p-2 flex-1 min-h-[80px]"
                 onClick={() => { if (!isPublished) onCellClick(day.date) }}
@@ -433,6 +484,205 @@ function WeekGrid({
                   )}>—</span>
                 )}
               </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Shift grid (Vista por turno) ──────────────────────────────────────────────
+
+const SHIFT_ROWS: ShiftType[] = ["am", "pm", "full"]
+
+function ShiftGrid({
+  data, staffList, loading, locale,
+  onCellClick, onChipClick,
+  isPublished, isGenerating,
+}: {
+  data: RotaWeekData | null
+  staffList: StaffWithSkills[]
+  loading: boolean
+  locale: string
+  onCellClick: (date: string, shiftType: ShiftType) => void
+  onChipClick: (assignment: Assignment, date: string) => void
+  isPublished: boolean
+  isGenerating?: boolean
+}) {
+  const t  = useTranslations("schedule")
+  const ts = useTranslations("skills")
+
+  if (loading) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
+        <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
+          {/* Header */}
+          <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b">
+            <div className="border-r h-14" />
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center py-2 border-r last:border-r-0 gap-1.5">
+                <div className="shimmer-bar h-2.5 w-6" />
+                <div className="shimmer-bar w-7 h-7 rounded-full" />
+                <div className="flex gap-0.5">
+                  {[0, 1, 2].map((j) => <div key={j} className="shimmer-bar size-1.5 rounded-full" />)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Rows */}
+          {["am", "pm", "full", "off"].map((row) => (
+            <div key={row} className={cn("grid grid-cols-[64px_repeat(7,1fr)]", row !== "off" && "border-b")}>
+              <div className="border-r flex items-center justify-center py-3 bg-muted/20">
+                <div className="shimmer-bar h-3 w-8" />
+              </div>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="border-r last:border-r-0 p-2 flex flex-col gap-1 min-h-[52px]">
+                  {row !== "off" && i < 3 && <div className="shimmer-bar h-5 w-full" />}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center py-1">
+          <span className="generating-label text-[13px] text-muted-foreground">
+            {isGenerating ? "Generando guardia…" : "Cargando…"}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  // Build skill map for coverage dots
+  const staffSkillMap: Record<string, string[]> = {}
+  for (const s of staffList) {
+    staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
+  }
+
+  const SHIFT_LABELS: Record<ShiftType, string> = {
+    am:   "AM",
+    pm:   "PM",
+    full: t("shiftTypes.full"),
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-background overflow-auto min-w-[560px] flex-1">
+      {/* Header row */}
+      <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b sticky top-0 bg-background z-10">
+        <div className="border-r" />
+        {data.days.map((day) => {
+          const d     = new Date(day.date + "T12:00:00")
+          const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
+          const dayN  = String(d.getDate())
+          const today = day.date === TODAY
+
+          const assignedIds   = new Set(day.assignments.map((a) => a.staff_id))
+          const coveredSkills = [...new Set([...assignedIds].flatMap((id) => staffSkillMap[id] ?? []))]
+
+          return (
+            <div key={day.date} className="flex flex-col items-center py-2 border-r last:border-r-0 gap-0.5">
+              <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
+              <div className={cn(
+                "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
+                today && "bg-primary text-primary-foreground"
+              )}>
+                {dayN}
+              </div>
+              {coveredSkills.length > 0 && (
+                <div className="flex flex-wrap gap-0.5 justify-center max-w-[72px] px-1">
+                  {coveredSkills.map((skill) => (
+                    <Tooltip key={skill}>
+                      <TooltipTrigger
+                        render={
+                          <span className={cn(
+                            "size-1.5 rounded-full shrink-0 inline-block cursor-default",
+                            SKILL_COLORS[skill] ?? "bg-slate-400"
+                          )} />
+                        }
+                      />
+                      <TooltipContent side="bottom">
+                        {ts(SKILL_KEYS[skill] as Parameters<typeof ts>[0])}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* AM / PM / FULL rows */}
+      {SHIFT_ROWS.map((shiftRow) => (
+        <div key={shiftRow} className="grid grid-cols-[64px_repeat(7,1fr)] border-b">
+          <div className="border-r flex items-center justify-center px-1 py-2 bg-muted/20">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              {SHIFT_LABELS[shiftRow]}
+            </span>
+          </div>
+          {data.days.map((day) => {
+            const dayShifts = day.assignments.filter((a) => a.shift_type === shiftRow)
+            return (
+              <div
+                key={day.date}
+                className={cn(
+                  "border-r last:border-r-0 p-1.5 flex flex-col gap-1 min-h-[52px]",
+                  !isPublished && "cursor-pointer hover:bg-blue-50 transition-colors"
+                )}
+                onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
+              >
+                {dayShifts.map((a) => (
+                  <div
+                    key={a.id}
+                    onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
+                  >
+                    <ShiftBadge
+                      first={a.staff.first_name}
+                      last={a.staff.last_name}
+                      role={a.staff.role}
+                      isOpu={a.is_opu ?? false}
+                      isOverride={a.is_manual_override}
+                    />
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      {/* Dashed divider before OFF row */}
+      <div
+        className="h-px"
+        style={{
+          backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
+          backgroundSize:  "12px 1px",
+          backgroundRepeat: "repeat-x",
+        }}
+      />
+
+      {/* OFF row */}
+      <div className="grid grid-cols-[64px_repeat(7,1fr)]">
+        <div className="border-r flex items-center justify-center px-1 py-2 bg-muted/20">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">OFF</span>
+        </div>
+        {data.days.map((day) => {
+          const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+          const offStaff    = staffList.filter((s) => !assignedIds.has(s.id))
+          return (
+            <div key={day.date} className="border-r last:border-r-0 p-1.5 flex flex-col gap-1 min-h-[40px]">
+              {offStaff.map((s) => (
+                <ShiftBadge
+                  key={s.id}
+                  first={s.first_name}
+                  last={s.last_name}
+                  role={s.role}
+                  isOpu={false}
+                  isOverride={false}
+                />
+              ))}
             </div>
           )
         })}
@@ -474,7 +724,6 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
     )
   }
 
-  // Group into weeks
   const weeks: (typeof summary.days)[] = []
   for (let i = 0; i < summary.days.length; i += 7) {
     weeks.push(summary.days.slice(i, i + 7))
@@ -482,14 +731,12 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Day-of-week headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {headers.map((h) => (
           <div key={h} className="text-center text-[11px] font-medium text-muted-foreground py-1">{h}</div>
         ))}
       </div>
 
-      {/* Weeks */}
       {weeks.map((week, wi) => (
         <div key={wi} className="grid grid-cols-7 gap-1">
           {week.map((day) => {
@@ -562,7 +809,6 @@ function DayView({ day, loading, locale }: {
     )
   }
 
-  // Group by role
   const byRole: Record<string, typeof day.assignments> = { lab: [], andrology: [], admin: [] }
   for (const a of day.assignments) {
     byRole[a.staff.role]?.push(a)
@@ -570,7 +816,6 @@ function DayView({ day, loading, locale }: {
 
   return (
     <div className="flex flex-col gap-5 max-w-lg mx-auto w-full">
-      {/* Skill coverage */}
       {(day.skillGaps.length > 0) && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
           <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
@@ -587,7 +832,6 @@ function DayView({ day, loading, locale }: {
         </div>
       )}
 
-      {/* Staff by role */}
       {(["lab", "andrology", "admin"] as const).map((role) => {
         const staff = byRole[role]
         if (!staff || staff.length === 0) return null
@@ -662,9 +906,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const ts     = useTranslations("skills")
   const locale = useLocale()
 
-  const [view, setView]               = useState<ViewMode>("week")
-  const [currentDate, setCurrentDate] = useState(TODAY)
-  const [weekData, setWeekData]       = useState<RotaWeekData | null>(null)
+  const [view, setView]                 = useState<ViewMode>("week")
+  const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
+  const [currentDate, setCurrentDate]   = useState(TODAY)
+  const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
   const [loadingMonth, setLoadingMonth] = useState(false)
@@ -679,20 +924,32 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [sheetOpen, setSheetOpen]           = useState(false)
   const [sheetDate, setSheetDate]           = useState<string | null>(null)
   const [sheetEdit, setSheetEdit]           = useState<Assignment | null>(null)
+  const [sheetDefaultShift, setSheetDefaultShift] = useState<ShiftType>("am")
 
   // DnD state
   const [draggingId, setDraggingId]     = useState<string | null>(null)
   const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
 
-  // Local punctions override (kept in sync with weekData.rota.punctions_override)
+  // Local punctions override
   const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>({})
 
   // Derived
   const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
   const monthStart = getMonthStart(currentDate)
 
-  // Fetch week data whenever the week changes
+  // Persist calendar layout preference
+  useEffect(() => {
+    const saved = localStorage.getItem("labrota_calendar_layout") as CalendarLayout | null
+    if (saved === "shift" || saved === "person") setCalendarLayoutState(saved)
+  }, [])
+
+  function setCalendarLayout(layout: CalendarLayout) {
+    setCalendarLayoutState(layout)
+    localStorage.setItem("labrota_calendar_layout", layout)
+  }
+
+  // Fetch week data
   const fetchWeek = useCallback((ws: string) => {
     setLoadingWeek(true)
     setError(null)
@@ -706,7 +963,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }, [])
 
-  // Fetch month summary whenever month or view changes
+  // Fetch month summary
   const fetchMonth = useCallback((ms: string) => {
     setLoadingMonth(true)
     getRotaMonthSummary(ms).then((d) => {
@@ -720,7 +977,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     if (view === "month") fetchMonth(monthStart)
   }, [monthStart, view, fetchMonth])
 
-  // External refresh trigger (e.g. after agent generates a rota)
   useEffect(() => {
     if (refreshKey === 0) return
     fetchWeek(weekStart)
@@ -728,7 +984,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
-  // Load staff list once on mount
   useEffect(() => {
     getActiveStaff().then(setStaffList)
   }, [])
@@ -736,9 +991,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // Navigation
   function navigate(dir: -1 | 1) {
     setShowOverrideDialog(false)
-    if (view === "day")   setCurrentDate((d) => addDays(d, dir))
+    if (view === "day")        setCurrentDate((d) => addDays(d, dir))
     else if (view === "week")  setCurrentDate((d) => addDays(d, dir * 7))
-    else setCurrentDate((d) => addMonths(d, dir))
+    else                       setCurrentDate((d) => addMonths(d, dir))
   }
 
   function goToToday() {
@@ -789,15 +1044,14 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setView("day")
   }
 
-  // Open sheet for adding a new assignment on a date
-  function handleCellClick(date: string) {
+  function handleCellClick(date: string, shiftType: ShiftType = "am") {
     if (isPublished) return
     setSheetDate(date)
     setSheetEdit(null)
+    setSheetDefaultShift(shiftType)
     setSheetOpen(true)
   }
 
-  // Open sheet for editing an existing assignment
   function handleChipClick(assignment: Assignment, date: string) {
     setSheetDate(date)
     setSheetEdit(assignment)
@@ -839,10 +1093,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
-  // Punctions change
   function handlePunctionsChange(date: string, value: number | null) {
     if (!weekData?.rota) return
-    // Optimistic update
     setPunctionsOverrideLocal((prev) => {
       if (value === null) {
         const { [date]: _removed, ...rest } = prev
@@ -860,16 +1112,14 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
   const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
-  const hasSkillGaps   = weekData?.days.some((d) => d.skillGaps.length > 0) ?? false
+  const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
   const showActions    = view !== "month"
 
-  // Staff already assigned on the sheet's target date
   const assignedOnSheetDate = sheetDate
     ? (weekData?.days.find((d) => d.date === sheetDate)?.assignments ?? []).map((a) => a.staff_id)
     : []
 
-  // Build detailed skill gap descriptions for the banner
   const skillGapDetails = weekData?.days
     .filter((d) => d.skillGaps.length > 0)
     .flatMap((d) => {
@@ -884,9 +1134,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      {/* Secondary toolbar — calendar controls only (no page title, that lives in the global top bar) */}
+      {/* Desktop toolbar */}
       <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
-        {/* Left: nav controls + date label */}
+        {/* Left: nav + date label */}
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
             {tc("today")}
@@ -904,8 +1154,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </span>
         </div>
 
-        {/* Right: view toggle + action buttons */}
+        {/* Right: view toggle + layout toggle + actions */}
         <div className="flex items-center gap-2">
+          {/* Period toggle: Semana | Mes | Día */}
           <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
             {(["week", "month", "day"] as ViewMode[]).map((v) => (
               <button
@@ -922,6 +1173,26 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               </button>
             ))}
           </div>
+
+          {/* Layout toggle (only in week view): Por turno | Por persona */}
+          {view === "week" && (
+            <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+              {(["shift", "person"] as CalendarLayout[]).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setCalendarLayout(l)}
+                  className={cn(
+                    "rounded-md px-3 py-1 text-[13px] transition-colors",
+                    calendarLayout === l
+                      ? "bg-background shadow-sm font-medium"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {t(`${l}Layout`)}
+                </button>
+              ))}
+            </div>
+          )}
 
           {hasSkillGaps && !isPublished && view !== "month" && (
             <SkillGapPill details={skillGapDetails} />
@@ -960,7 +1231,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         </div>
       </div>
 
-      {/* Mobile toolbar — nav controls only */}
+      {/* Mobile toolbar */}
       <div className="flex md:hidden items-center justify-between border-b px-4 py-2 gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
@@ -985,7 +1256,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         )}
       </div>
 
-      {/* Banners — single-line only, max 40px each */}
+      {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden shrink-0">
         {isPublished && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
@@ -1015,10 +1286,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         )}
       </div>
 
-      {/* Content — flex-1 with overflow-hidden so children can fill height */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden flex flex-col">
 
-        {/* Week view — fills available height */}
+        {/* Week view */}
         {view === "week" && (
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-3 gap-2">
             {!weekData?.rota && !loadingWeek && !isPending ? (
@@ -1028,13 +1299,25 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 description={t("noRotaDescription")}
                 action={{ label: t("generateRota"), onClick: handleGenerateClick }}
               />
+            ) : calendarLayout === "shift" ? (
+              <ShiftGrid
+                data={weekData}
+                staffList={staffList}
+                loading={loadingWeek || isPending}
+                isGenerating={isPending}
+                locale={locale}
+                onCellClick={handleCellClick}
+                onChipClick={handleChipClick}
+                isPublished={!!isPublished}
+              />
             ) : (
               <WeekGrid
                 data={weekData}
-                loading={loadingWeek}
+                loading={loadingWeek || isPending}
+                isGenerating={isPending}
                 locale={locale}
                 onSelectDay={handleSelectDay}
-                onCellClick={handleCellClick}
+                onCellClick={(date) => handleCellClick(date)}
                 onChipClick={handleChipClick}
                 punctionsOverride={punctionsOverride}
                 onPunctionsChange={handlePunctionsChange}
@@ -1049,7 +1332,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 shiftTimes={weekData?.shiftTimes ?? null}
               />
             )}
-            {weekData && <ShiftBudgetBar data={weekData} />}
+            {weekData && calendarLayout === "person" && <ShiftBudgetBar data={weekData} />}
           </div>
         )}
 
@@ -1068,7 +1351,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </div>
         )}
 
-        {/* Day view — always on mobile, conditional on desktop */}
+        {/* Day view */}
         <div className={cn(
           "flex flex-col gap-4 overflow-auto px-4 py-3",
           view === "day" ? "md:flex" : "md:hidden"
@@ -1093,6 +1376,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         onSaved={() => fetchWeek(weekStart)}
         isPublished={!!isPublished}
         locale={locale}
+        defaultShiftType={sheetDefaultShift}
       />
     </main>
   )

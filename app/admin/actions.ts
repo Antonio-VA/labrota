@@ -114,6 +114,23 @@ export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
   revalidatePath(`/admin/orgs/${orgId}`)
 }
 
+// ── updateOrgLogo ─────────────────────────────────────────────────────────────
+export async function updateOrgLogo(orgId: string, logoUrl: string | null) {
+  await assertSuperAdmin()
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ logo_url: logoUrl } as never)
+    .eq("id", orgId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/admin")
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 // ── renameOrgUser ─────────────────────────────────────────────────────────────
 export async function renameOrgUser(userId: string, newName: string) {
   await assertSuperAdmin()
