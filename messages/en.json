@@ -132,6 +132,7 @@
     "coverage": "Coverage",
     "skillCoverage": "Skill coverage",
     "insufficientCoverage": "Insufficient coverage",
+    "warnings": "Warnings",
     "history": "Rota history",
     "pastRota": "Past rota — read only",
     "addAssignment": "Add shift",

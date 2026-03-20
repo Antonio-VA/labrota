@@ -488,6 +488,7 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
 function SkillGapPill({ details }: {
   details: { skill: string; day: string }[]
 }) {
+  const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -516,7 +517,7 @@ function SkillGapPill({ details }: {
         className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
-        <span className="hidden sm:inline">Cobertura insuficiente</span>
+        <span className="hidden sm:inline">{t("warnings")}</span>
         <span className="inline-flex items-center justify-center size-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">{affectedDays}</span>
       </button>
 
@@ -884,6 +885,24 @@ function ShiftGrid({
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 cursor-default" />
                     } />
                     <TooltipContent side="bottom">{holidayName}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {day.skillGaps.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <span className="absolute top-1 left-1 cursor-default">
+                        <AlertTriangle className="size-3 text-amber-500" />
+                      </span>
+                    } />
+                    <TooltipContent side="bottom">
+                      <p className="font-medium mb-0.5">{t("warnings")}</p>
+                      {day.skillGaps.map((sk) => (
+                        <p key={sk} className="text-[11px] text-muted-foreground">
+                          {ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])}
+                        </p>
+                      ))}
+                    </TooltipContent>
                   </Tooltip>
                 )}
 

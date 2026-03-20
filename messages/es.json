@@ -132,6 +132,7 @@
     "coverage": "Cobertura",
     "skillCoverage": "Cobertura de habilidades",
     "insufficientCoverage": "Cobertura insuficiente",
+    "warnings": "Avisos",
     "history": "Historial de guardias",
     "pastRota": "Guardia pasada — sólo lectura",
     "addAssignment": "Añadir turno",
