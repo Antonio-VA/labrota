@@ -15,7 +15,7 @@ import {
   updateAssignmentShift,
   setPunctionsOverride,
 } from "@/app/(clinic)/rota/actions"
-import type { StaffWithSkills, ShiftType, StaffRole } from "@/lib/types/database"
+import type { StaffWithSkills, ShiftType, StaffRole, ShiftTypeDefinition } from "@/lib/types/database"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -30,12 +30,11 @@ const ROLE_COLORS: Record<string, string> = {
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
 const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
-const SHIFTS: ShiftType[] = ["am", "pm", "full"]
 
 function shiftLabel(shift: ShiftType, shiftTimes: ShiftTimes | null): string {
   const label = shift.toUpperCase()
   if (!shiftTimes) return label
-  return `${label} · ${shiftTimes[shift].start}–${shiftTimes[shift].end}`
+  return `${label} · ${shiftTimes[shift]?.start ?? ""}–${shiftTimes[shift]?.end ?? ""}`
 }
 
 // ── Staff avatar ───────────────────────────────────────────────────────────────
@@ -54,7 +53,7 @@ function Avatar({ first, last, role }: { first: string; last: string; role: stri
 // ── Staff card (assigned) ──────────────────────────────────────────────────────
 
 function StaffCard({
-  a, canOpu, onRemove, onToggleOpu, onChangeShift, disabled, shiftTimes,
+  a, canOpu, onRemove, onToggleOpu, onChangeShift, disabled, shiftTimes, shiftTypes,
 }: {
   a: Assignment
   canOpu: boolean
@@ -63,6 +62,7 @@ function StaffCard({
   onChangeShift: (s: ShiftType) => void
   disabled: boolean
   shiftTimes: ShiftTimes | null
+  shiftTypes: ShiftTypeDefinition[]
 }) {
   const [shiftOpen, setShiftOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -118,15 +118,15 @@ function StaffCard({
           </button>
           {shiftOpen && (
             <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-border bg-background shadow-md py-1 min-w-[80px]">
-              {SHIFTS.filter((s) => s !== a.shift_type).map((s) => (
+              {shiftTypes.filter((st) => st.code !== a.shift_type).map((st) => (
                 <button
-                  key={s}
-                  onClick={() => { setShiftOpen(false); onChangeShift(s) }}
+                  key={st.code}
+                  onClick={() => { setShiftOpen(false); onChangeShift(st.code) }}
                   className="flex items-center gap-1.5 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 transition-colors"
                 >
-                  <span className="font-medium">{s.toUpperCase()}</span>
+                  <span className="font-medium">{st.code}</span>
                   {shiftTimes && (
-                    <span className="text-muted-foreground">{shiftTimes[s].start}</span>
+                    <span className="text-muted-foreground">{shiftTimes[st.code]?.start}</span>
                   )}
                 </button>
               ))}
@@ -216,6 +216,7 @@ interface Props {
   day: RotaDay | null
   staffList: StaffWithSkills[]
   shiftTimes: ShiftTimes | null
+  shiftTypes: ShiftTypeDefinition[]
   punctionsDefault: number
   punctionsOverride: Record<string, number>
   rota: { id: string; status: string; punctions_override: Record<string, number> } | null
@@ -225,7 +226,7 @@ interface Props {
 }
 
 export function AssignmentSheet({
-  open, onOpenChange, date, weekStart, day, staffList, shiftTimes,
+  open, onOpenChange, date, weekStart, day, staffList, shiftTimes, shiftTypes,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
 }: Props) {
   // Local optimistic assignments
@@ -363,7 +364,7 @@ export function AssignmentSheet({
 
   function handleAddFromOff(staffId: string) {
     const staff = staffList.find((s) => s.id === staffId)
-    const shift = (staff?.preferred_shift ?? "am") as ShiftType
+    const shift = (staff?.preferred_shift ?? shiftTypes[0]?.code ?? "T1") as ShiftType
     handleAdd(staffId, shift)
   }
 
@@ -441,7 +442,8 @@ export function AssignmentSheet({
         <div className="flex-1 overflow-y-auto">
 
           {/* Shift sections */}
-          {SHIFTS.map((shift) => {
+          {shiftTypes.map((shiftDef) => {
+            const shift = shiftDef.code
             const shiftAssignments = assignments
               .filter((a) => a.shift_type === shift)
               .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
@@ -468,6 +470,7 @@ export function AssignmentSheet({
                       onChangeShift={(s) => handleChangeShift(a.id, s)}
                       disabled={isPublished || a.id.startsWith("temp-")}
                       shiftTimes={shiftTimes}
+                      shiftTypes={shiftTypes}
                     />
                   ))}
 

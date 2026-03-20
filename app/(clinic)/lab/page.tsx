@@ -3,21 +3,24 @@ import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
-import type { LabConfig, RotaRule, Staff } from "@/lib/types/database"
+import { ShiftTypesTable } from "@/components/shift-types-table"
+import type { LabConfig, RotaRule, Staff, ShiftTypeDefinition } from "@/lib/types/database"
 
 export default async function LabConfigPage() {
   const supabase = await createClient()
   const t = await getTranslations("lab")
 
-  const [configRes, rulesRes, staffRes] = await Promise.all([
+  const [configRes, rulesRes, staffRes, shiftTypesRes] = await Promise.all([
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("*").order("created_at"),
     supabase.from("staff").select("id, first_name, last_name, role").neq("onboarding_status", "inactive").order("first_name"),
+    supabase.from("shift_types").select("*").order("sort_order"),
   ])
 
-  const config = configRes.data as LabConfig | null
-  const rules  = (rulesRes.data ?? []) as RotaRule[]
-  const staff  = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
+  const config     = configRes.data as LabConfig | null
+  const rules      = (rulesRes.data ?? []) as RotaRule[]
+  const staff      = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
+  const shiftTypes = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
 
   return (
     <>
@@ -30,8 +33,15 @@ export default async function LabConfigPage() {
                 {t("sections.coverage")} · {t("sections.staffing")} · {t("sections.shifts")}
               </p>
             </div>
+
+            {/* Turnos section */}
+            <div className="rounded-lg border border-border bg-background px-5 py-4">
+              <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-3">{t("sections.shifts")}</p>
+              <ShiftTypesTable initialTypes={shiftTypes} />
+            </div>
+
             {config ? (
-              <LabConfigForm config={config} />
+              <LabConfigForm config={config} shiftTypes={shiftTypes} />
             ) : (
               <p className="text-[14px] text-muted-foreground">
                 Lab configuration not found. Please contact your administrator.

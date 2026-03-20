@@ -27,7 +27,7 @@ import {
   type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
 import { AssignmentSheet } from "@/components/assignment-sheet"
-import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
+import type { StaffWithSkills, ShiftType, ShiftTypeDefinition } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -482,7 +482,7 @@ function WeekGrid({
                     hasTrainee={!!a.trainee_staff_id}
                     isOpu={a.is_opu}
                     notes={a.notes}
-                    shiftTime={shiftTimes ? `${shiftTimes[a.shift_type].start}–${shiftTimes[a.shift_type].end}` : undefined}
+                    shiftTime={shiftTimes ? `${shiftTimes[a.shift_type]?.start ?? ""}–${shiftTimes[a.shift_type]?.end ?? ""}` : undefined}
                     isDragging={draggingId === a.id}
                     onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
                     onDragStart={isPublished ? undefined : (e) => { e.stopPropagation(); onChipDragStart(a.id, day.date) }}
@@ -505,8 +505,6 @@ function WeekGrid({
 }
 
 // ── Shift grid (Vista por turno) ──────────────────────────────────────────────
-
-const SHIFT_ROWS: ShiftType[] = ["am", "pm", "full"]
 
 function ShiftGrid({
   data, staffList, loading, locale,
@@ -550,7 +548,7 @@ function ShiftGrid({
             ))}
           </div>
           {/* Rows */}
-          {["am", "pm", "full", "off"].map((row) => (
+          {["T1", "T2", "T3", "off"].map((row) => (
             <div key={row} className={cn("grid grid-cols-[72px_repeat(7,1fr)]", row !== "off" && "border-b border-[#CCDDEE]")}>
               <div className="border-r border-[#CCDDEE] flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
@@ -580,17 +578,9 @@ function ShiftGrid({
     staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
   }
 
-  // Row labels: start time on line 1, end time on line 2, no separators
-  const SHIFT_LABELS: Record<ShiftType, string> = {
-    am:   shiftTimes?.am.start   ?? "AM",
-    pm:   shiftTimes?.pm.start   ?? "PM",
-    full: shiftTimes?.full.start ?? "FULL",
-  }
-  const SHIFT_SUBLABELS: Record<ShiftType, string | null> = {
-    am:   shiftTimes?.am.end   ?? null,
-    pm:   shiftTimes?.pm.end   ?? null,
-    full: shiftTimes?.full.end ?? null,
-  }
+  // Dynamic shift rows from data
+  const SHIFT_ROWS = data.shiftTypes.map((s) => s.code)
+  const shiftTypeMap = Object.fromEntries((data.shiftTypes ?? []).map((st) => [st.code, st]))
 
   return (
     <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px] flex-1">
@@ -677,17 +667,17 @@ function ShiftGrid({
         })}
       </div>
 
-      {/* AM / PM / FULL rows */}
+      {/* Shift rows */}
       {SHIFT_ROWS.map((shiftRow) => (
         <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
           {/* Shift label — right-aligned, two-line, no separator */}
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
             <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
-              {SHIFT_LABELS[shiftRow]}
+              {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
             </span>
-            {SHIFT_SUBLABELS[shiftRow] && (
+            {shiftTypeMap[shiftRow]?.end_time && (
               <span className="text-[11px] text-slate-400 leading-tight tabular-nums">
-                {SHIFT_SUBLABELS[shiftRow]}
+                {shiftTypeMap[shiftRow].end_time}
               </span>
             )}
           </div>
@@ -1459,6 +1449,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         day={sheetDay}
         staffList={staffList}
         shiftTimes={weekData?.shiftTimes ?? null}
+        shiftTypes={weekData?.shiftTypes ?? []}
         punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}

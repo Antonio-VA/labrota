@@ -199,9 +199,10 @@ export function StaffForm({
         <Field label="Turno preferido">
           <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
             <option value="">Sin preferencia</option>
-            <option value="am">Mañana</option>
-            <option value="pm">Tarde</option>
-            <option value="full">Completo</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+            <option value="T4">T4</option>
           </Select>
           <p className="text-[12px] text-muted-foreground mt-1">
             Preferencia de turno — el generador intentará respetarla sin romper la cobertura mínima.

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import type { LabConfig, PunctionsByDay } from "@/lib/types/database"
+import type { LabConfig, PunctionsByDay, ShiftTypeDefinition } from "@/lib/types/database"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -84,7 +84,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 // ── Main form ─────────────────────────────────────────────────────────────────
-export function LabConfigForm({ config }: { config: LabConfig }) {
+export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shiftTypes: ShiftTypeDefinition[] }) {
   const t = useTranslations("lab")
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
@@ -103,23 +103,9 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     // Staffing
     staffing_ratio:       config.staffing_ratio,
     admin_on_weekends:    config.admin_on_weekends,
-    admin_default_shift:  (config.admin_default_shift ?? "full") as "am" | "pm" | "full",
+    admin_default_shift:  config.admin_default_shift ?? (shiftTypes[0]?.code ?? ""),
     // Holidays
     autonomous_community: config.autonomous_community ?? "",
-    // Shift names
-    shift_name_am_es:   config.shift_name_am_es   ?? "Mañana",
-    shift_name_pm_es:   config.shift_name_pm_es   ?? "Tarde",
-    shift_name_full_es: config.shift_name_full_es ?? "Completo",
-    shift_name_am_en:   config.shift_name_am_en   ?? "Morning",
-    shift_name_pm_en:   config.shift_name_pm_en   ?? "Afternoon",
-    shift_name_full_en: config.shift_name_full_en ?? "Full Day",
-    // Shift times
-    shift_am_start:   config.shift_am_start   ?? "07:30",
-    shift_am_end:     config.shift_am_end     ?? "14:30",
-    shift_pm_start:   config.shift_pm_start   ?? "14:30",
-    shift_pm_end:     config.shift_pm_end     ?? "21:30",
-    shift_full_start: config.shift_full_start ?? "07:30",
-    shift_full_end:   config.shift_full_end   ?? "21:30",
   })
 
   function setInt(field: keyof typeof values, raw: string) {
@@ -151,20 +137,8 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         punctions_by_day:         values.punctions_by_day,
         staffing_ratio:           values.staffing_ratio,
         admin_on_weekends:        values.admin_on_weekends,
-        admin_default_shift:      values.admin_default_shift,
+        admin_default_shift:      values.admin_default_shift || null,
         autonomous_community:     values.autonomous_community || null,
-        shift_name_am_es:         values.shift_name_am_es,
-        shift_name_pm_es:         values.shift_name_pm_es,
-        shift_name_full_es:       values.shift_name_full_es,
-        shift_name_am_en:         values.shift_name_am_en,
-        shift_name_pm_en:         values.shift_name_pm_en,
-        shift_name_full_en:       values.shift_name_full_en,
-        shift_am_start:           values.shift_am_start,
-        shift_am_end:             values.shift_am_end,
-        shift_pm_start:           values.shift_pm_start,
-        shift_pm_end:             values.shift_pm_end,
-        shift_full_start:         values.shift_full_start,
-        shift_full_end:           values.shift_full_end,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -175,12 +149,6 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
       }
     })
   }
-
-  const shiftRows = [
-    { key: "am",   esField: "shift_name_am_es"   as const, enField: "shift_name_am_en"   as const, startField: "shift_am_start"   as const, endField: "shift_am_end"   as const },
-    { key: "pm",   esField: "shift_name_pm_es"   as const, enField: "shift_name_pm_en"   as const, startField: "shift_pm_start"   as const, endField: "shift_pm_end"   as const },
-    { key: "full", esField: "shift_name_full_es" as const, enField: "shift_name_full_en" as const, startField: "shift_full_start" as const, endField: "shift_full_end" as const },
-  ]
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -253,24 +221,16 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
           />
         </FieldRow>
         <FieldRow label={t("fields.adminDefaultShift")} hint={t("fields.adminDefaultShiftHint")}>
-          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-            {(["am", "pm", "full"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                disabled={isPending}
-                onClick={() => setValues((p) => ({ ...p, admin_default_shift: s }))}
-                className={cn(
-                  "rounded-md px-3 py-1 text-[13px] transition-colors",
-                  values.admin_default_shift === s
-                    ? "bg-background shadow-sm font-medium"
-                    : "text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {s.toUpperCase()}
-              </button>
+          <select
+            value={values.admin_default_shift}
+            onChange={(e) => setValues((p) => ({ ...p, admin_default_shift: e.target.value }))}
+            disabled={isPending}
+            className="h-8 rounded-lg border border-border bg-background px-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-ring/50"
+          >
+            {shiftTypes.map((st) => (
+              <option key={st.code} value={st.code}>{st.code} — {st.name_es}</option>
             ))}
-          </div>
+          </select>
         </FieldRow>
       </div>
 
@@ -298,59 +258,6 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
               <p className="text-[13px] text-muted-foreground">{t("holidaysHint")}</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ── TURNOS ───────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.shifts")} />
-        <div className="py-2 pb-3">
-          {/* Column headers */}
-          <div className="grid grid-cols-[3rem_6rem_6rem_1fr_1fr] gap-2 items-center pb-2 border-b border-border mb-1">
-            <span className="text-[13px] font-medium text-muted-foreground">{t("fields.shiftLabel")}</span>
-            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftStart")}</span>
-            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftEnd")}</span>
-            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftLangEs")}</span>
-            <span className="text-[13px] text-muted-foreground text-center">{t("fields.shiftLangEn")}</span>
-          </div>
-          {/* Shift rows */}
-          <div className="flex flex-col gap-2 pt-2">
-            {shiftRows.map(({ key, esField, enField, startField, endField }) => (
-              <div key={key} className="grid grid-cols-[3rem_6rem_6rem_1fr_1fr] gap-2 items-center">
-                <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
-                  {key.toUpperCase()}
-                </span>
-                <Input
-                  type="time"
-                  value={values[startField]}
-                  onChange={(e) => setValues((p) => ({ ...p, [startField]: e.target.value }))}
-                  disabled={isPending}
-                  className="text-center text-[13px] px-1"
-                />
-                <Input
-                  type="time"
-                  value={values[endField]}
-                  onChange={(e) => setValues((p) => ({ ...p, [endField]: e.target.value }))}
-                  disabled={isPending}
-                  className="text-center text-[13px] px-1"
-                />
-                <Input
-                  value={values[esField]}
-                  onChange={(e) => setValues((p) => ({ ...p, [esField]: e.target.value }))}
-                  disabled={isPending}
-                  className="text-center text-[13px]"
-                  maxLength={30}
-                />
-                <Input
-                  value={values[enField]}
-                  onChange={(e) => setValues((p) => ({ ...p, [enField]: e.target.value }))}
-                  disabled={isPending}
-                  className="text-center text-[13px]"
-                  maxLength={30}
-                />
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 

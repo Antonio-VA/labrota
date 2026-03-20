@@ -6,7 +6,7 @@
 // ── Enums ────────────────────────────────────────────────────────────────────
 export type StaffRole         = 'lab' | 'andrology' | 'admin'
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
-export type ShiftType         = 'am' | 'pm' | 'full'
+export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
 export type LeaveType         = 'annual' | 'sick' | 'personal' | 'other'
 export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
@@ -16,6 +16,18 @@ export type SkillName         =
   | 'egg_collection'
 
 export type SkillLevel        = 'certified' | 'training'
+
+export interface ShiftTypeDefinition {
+  id:              string
+  organisation_id: string
+  code:            string
+  name_es:         string
+  name_en:         string
+  start_time:      string
+  end_time:        string
+  sort_order:      number
+  created_at:      string
+}
 export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export type WorkingPattern    = WorkingDay[]
 
@@ -123,7 +135,7 @@ export interface LabConfig {
   punctions_by_day:         PunctionsByDay
   staffing_ratio:           number
   admin_on_weekends:        boolean
-  admin_default_shift:      ShiftType | null
+  admin_default_shift:      string | null
   autonomous_community:     string | null
   shift_name_am_es:         string
   shift_name_pm_es:         string
@@ -158,7 +170,7 @@ export type LabConfigUpdate = {
   punctions_by_day?:         PunctionsByDay
   staffing_ratio?:           number
   admin_on_weekends?:        boolean
-  admin_default_shift?:      ShiftType | null
+  admin_default_shift?:      string | null
   autonomous_community?:     string | null
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
@@ -271,12 +283,17 @@ export interface Database {
         Update: RotaRuleUpdate
         Relationships: []
       }
+      shift_types: {
+        Row:    ShiftTypeDefinition
+        Insert: Omit<ShiftTypeDefinition, 'id' | 'created_at'>
+        Update: Partial<Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Enums: {
       staff_role:        StaffRole
       onboarding_status: OnboardingStatus
-      shift_type:        ShiftType
       rota_status:       RotaStatus
       leave_type:        LeaveType
       leave_status:      LeaveStatus

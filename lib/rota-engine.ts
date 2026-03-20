@@ -295,13 +295,13 @@ export function runRotaEngine({
       warnings.push(`${date}: skill gaps — ${skillGaps.join(", ")}`)
     }
 
-    const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? "full"
+    const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? "T1"
 
     days.push({
       date,
       assignments: assigned.map((s) => ({
         staff_id:   s.id,
-        shift_type: (s.preferred_shift ?? (s.role === "admin" ? adminDefaultShift : "full")) as ShiftType,
+        shift_type: (s.preferred_shift ?? (s.role === "admin" ? adminDefaultShift : "T1")) as ShiftType,
         is_opu:     s.id === opuStaffId,
       })),
       skillGaps,

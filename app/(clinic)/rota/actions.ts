@@ -12,6 +12,7 @@ import type {
   SkillName,
   ShiftType,
   StaffRole,
+  ShiftTypeDefinition,
 } from "@/lib/types/database"
 
 // ── Shared types exported to client ──────────────────────────────────────────
@@ -32,17 +33,14 @@ export interface RotaDay {
   skillGaps: SkillName[]
 }
 
-export interface ShiftTimes {
-  am:   { start: string; end: string }
-  pm:   { start: string; end: string }
-  full: { start: string; end: string }
-}
+export type ShiftTimes = Record<string, { start: string; end: string }>
 
 export interface RotaWeekData {
   weekStart: string
   rota: { id: string; status: RotaStatus; published_at: string | null; punctions_override: Record<string, number> } | null
   days: RotaDay[]
   punctionsDefault: Record<string, number>
+  shiftTypes: ShiftTypeDefinition[]
   shiftTimes: ShiftTimes | null
   /** date → list of staff_ids on approved leave that day */
   onLeaveByDate: Record<string, string[]>
@@ -109,8 +107,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record, lab config, and approved leaves in parallel.
-  const [rotaResult, labConfigResult, leavesResult] = await Promise.all([
+  // Fetch rota record, lab config, approved leaves, and shift types in parallel.
+  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes] = await Promise.all([
     supabase
       .from("rotas")
       .select("*")
@@ -123,6 +121,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
+    supabase.from("shift_types").select("*").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
   ])
 
   const rotaData = rotaResult.data
@@ -151,13 +150,10 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     dayMap[date] = { date, isWeekend: isWeekendDate(date), assignments: [], skillGaps: [] }
   }
 
-  // Build shift times from lab config
-  const shiftTimes: ShiftTimes | null = labConfig
-    ? {
-        am:   { start: labConfig.shift_am_start   ?? "07:30", end: labConfig.shift_am_end   ?? "14:30" },
-        pm:   { start: labConfig.shift_pm_start   ?? "14:30", end: labConfig.shift_pm_end   ?? "21:30" },
-        full: { start: labConfig.shift_full_start ?? "07:30", end: labConfig.shift_full_end ?? "21:30" },
-      }
+  // Build shift times from shift_types table
+  const shiftTypesData = shiftTypesRes.data ?? []
+  const shiftTimes: ShiftTimes | null = shiftTypesData.length > 0
+    ? Object.fromEntries(shiftTypesData.map((st) => [st.code, { start: st.start_time, end: st.end_time }]))
     : null
 
   // Build onLeaveByDate map
@@ -177,7 +173,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate, publicHolidays }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -260,7 +256,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTimes, onLeaveByDate, publicHolidays }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
