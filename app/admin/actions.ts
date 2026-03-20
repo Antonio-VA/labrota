@@ -176,15 +176,13 @@ export async function createOrgUser(formData: FormData) {
 
   const admin = createAdminClient()
 
-  // Create the auth user — email already confirmed, they'll sign in via magic link
-  const { data, error: createError } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { full_name: fullName || undefined, app_role: appRole },
+  // Invite the user — sends an invitation email with a sign-in link
+  const { data, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName || undefined, app_role: appRole },
   })
 
   if (createError) {
-    if (createError.message.includes("already been registered")) {
+    if (createError.message.includes("already been registered") || createError.message.includes("already exists")) {
       return { error: "A user with that email already exists." }
     }
     return { error: createError.message }
