@@ -592,7 +592,7 @@ const GRID = "grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minm
 
 function StaffTable({
   members, t, ts, muted,
-  selectedIds, onToggle, onToggleAll,
+  selectedIds, onToggle, onToggleAll, shiftsThisWeek,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -601,6 +601,7 @@ function StaffTable({
   selectedIds: Set<string>
   onToggle: (id: string) => void
   onToggleAll: (ids: string[]) => void
+  shiftsThisWeek: Record<string, number>
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -632,6 +633,9 @@ function StaffTable({
         const trainingSkills  = skills.filter((sk) => sk.level === "training")
         const isSelected      = selectedIds.has(member.id)
         const isAdmin         = member.role === "admin"
+        const shiftCount      = shiftsThisWeek[member.id] ?? 0
+        const shiftBudget     = member.days_per_week ?? 5
+        const underScheduled  = member.onboarding_status !== "inactive" && shiftCount < shiftBudget
 
         return (
           <div
@@ -701,13 +705,18 @@ function StaffTable({
             </div>
 
             {/* Status */}
-            <div className="hidden md:flex items-center gap-1.5">
+            <div className="hidden md:flex flex-col items-start gap-1">
               <Badge variant={STATUS_VARIANTS[member.onboarding_status]}>
                 {member.onboarding_status === "onboarding" && (
                   <Hourglass className="size-3 mr-1 inline-block" />
                 )}
                 {t(`onboardingStatus.${member.onboarding_status}`)}
               </Badge>
+              {underScheduled && (
+                <span className="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-600">
+                  {shiftCount}/{shiftBudget}
+                </span>
+              )}
             </div>
 
             {/* Edit */}
@@ -729,7 +738,7 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
+export function StaffList({ staff, shiftsThisWeek }: { staff: StaffWithSkills[]; shiftsThisWeek: Record<string, number> }) {
   const t  = useTranslations("staff")
   const ts = useTranslations("skills")
   const router = useRouter()
@@ -855,6 +864,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           selectedIds={effectiveSelectedIds}
           onToggle={toggleOne}
           onToggleAll={toggleAll}
+          shiftsThisWeek={shiftsThisWeek}
         />
       )}
 
@@ -881,6 +891,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           selectedIds={effectiveSelectedIds}
           onToggle={toggleOne}
           onToggleAll={toggleAll}
+          shiftsThisWeek={shiftsThisWeek}
         />
       )}
 
