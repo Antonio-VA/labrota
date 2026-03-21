@@ -2196,6 +2196,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         onLeaveStaffIds={sheetDate ? (weekData?.onLeaveByDate[sheetDate] ?? []) : []}
         shiftTimes={weekData?.shiftTimes ?? null}
         shiftTypes={weekData?.shiftTypes ?? []}
+        tecnicas={weekData?.tecnicas ?? []}
         punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}
