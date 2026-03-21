@@ -18,6 +18,11 @@ import type {
 
 // ── Shared types exported to client ──────────────────────────────────────────
 
+export interface RotaDayWarning {
+  category: "coverage" | "skill_gap" | "rule"
+  message: string
+}
+
 export interface RotaDay {
   date: string
   isWeekend: boolean
@@ -34,6 +39,7 @@ export interface RotaDay {
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
+  warnings: RotaDayWarning[]
 }
 
 export type ShiftTimes = Record<string, { start: string; end: string }>
@@ -153,7 +159,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Base day structure with no assignments
   const dayMap: Record<string, RotaDay> = {}
   for (const date of dates) {
-    dayMap[date] = { date, isWeekend: isWeekendDate(date), assignments: [], skillGaps: [] }
+    dayMap[date] = { date, isWeekend: isWeekendDate(date), assignments: [], skillGaps: [], warnings: [] }
   }
 
   // Build shift times from shift_types table
@@ -266,11 +272,40 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     })
   }
 
-  // Compute skill gaps per day
-  // Days with 0 assignments flag all org skills as gaps (no coverage at all)
+  // Compute skill gaps and coverage warnings per day
   for (const day of Object.values(dayMap)) {
+    // Skill gaps
     const covered = new Set(day.assignments.flatMap((a) => staffSkillMap[a.staff_id] ?? []))
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
+
+    if (day.skillGaps.length > 0) {
+      day.warnings.push({ category: "skill_gap", message: day.skillGaps.join(", ") })
+    }
+
+    // Coverage warnings — compare assigned staff by role against minimums
+    if (labConfig && day.assignments.length > 0) {
+      const weekend  = day.isWeekend
+      const labCount = day.assignments.filter((a) => a.staff.role === "lab").length
+      const andCount = day.assignments.filter((a) => a.staff.role === "andrology").length
+
+      const dow    = new Date(day.date + "T12:00:00").getDay()
+      const dowKey = DOW_TO_KEY[dow]
+      const dayCov = labConfig.coverage_by_day?.[dowKey]
+
+      const labMin = dayCov?.lab ?? (weekend
+        ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
+        : labConfig.min_lab_coverage)
+      const andMin = dayCov?.andrology ?? (weekend
+        ? labConfig.min_weekend_andrology
+        : labConfig.min_andrology_coverage)
+
+      if (labCount < labMin) {
+        day.warnings.push({ category: "coverage", message: `Lab: ${labCount}/${labMin}` })
+      }
+      if (andCount < andMin) {
+        day.warnings.push({ category: "coverage", message: `Andrología: ${andCount}/${andMin}` })
+      }
+    }
   }
 
   return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas }

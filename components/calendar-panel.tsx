@@ -30,6 +30,7 @@ import {
   getStaffProfile,
   type RotaWeekData,
   type RotaDay,
+  type RotaDayWarning,
   type RotaMonthSummary,
   type ShiftTimes,
   type StaffProfileData,
@@ -914,21 +915,70 @@ function ShiftBudgetBar({ data, staffList, onPillClick }: { data: RotaWeekData; 
 
 // ── Skill gap pill ────────────────────────────────────────────────────────────
 
-function SkillGapPill({ details }: {
-  details: { skill: string; day: string }[]
-}) {
-  const t = useTranslations("schedule")
+const WARNING_CATEGORY_LABEL: Record<string, string> = {
+  coverage: "Cobertura insuficiente",
+  skill_gap: "Habilidades sin cubrir",
+  rule: "Reglas de planificación",
+}
+const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, rule: 2 }
+
+/** Click-to-open popover for per-day warnings in column headers. */
+function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const byDay: { day: string; skills: string[] }[] = []
-  for (const { skill, day } of details) {
-    const existing = byDay.find((d) => d.day === day)
-    if (existing) existing.skills.push(skill)
-    else byDay.push({ day, skills: [skill] })
-  }
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
 
-  const affectedDays = byDay.length
+  // Group by category
+  const groups: Record<string, string[]> = {}
+  for (const w of warnings) {
+    if (!groups[w.category]) groups[w.category] = []
+    groups[w.category].push(w.message)
+  }
+  const sortedCategories = Object.keys(groups).sort(
+    (a, b) => (WARNING_CATEGORY_ORDER[a] ?? 9) - (WARNING_CATEGORY_ORDER[b] ?? 9)
+  )
+
+  return (
+    <div ref={ref} className="absolute top-[6px] right-[6px] z-10">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        className="cursor-pointer"
+      >
+        <AlertTriangle className="size-[14px] text-amber-500" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-background shadow-lg py-2 px-3">
+          {sortedCategories.map((cat) => (
+            <div key={cat} className="mb-2 last:mb-0">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                {WARNING_CATEGORY_LABEL[cat] ?? cat}
+              </p>
+              {groups[cat].map((msg, i) => (
+                <p key={i} className="text-[11px] text-slate-600">· {msg}</p>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Toolbar pill summarising all warnings for the week. Click to expand. */
+function WarningsPill({ days }: { days: RotaDay[] }) {
+  const t = useTranslations("schedule")
+  const ts = useTranslations("skills")
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const locale = useLocale()
 
   useEffect(() => {
     if (!open) return
@@ -939,6 +989,31 @@ function SkillGapPill({ details }: {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [open])
 
+  // Collect all warnings grouped by category, then by day
+  const byCategory: Record<string, { day: string; messages: string[] }[]> = {}
+  for (const day of days) {
+    if (day.warnings.length === 0) continue
+    const dayLabel = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric" }).format(
+      new Date(day.date + "T12:00:00")
+    )
+    for (const w of day.warnings) {
+      if (!byCategory[w.category]) byCategory[w.category] = []
+      const existing = byCategory[w.category].find((e) => e.day === dayLabel)
+      const msg = w.category === "skill_gap"
+        ? w.message.split(", ").map((sk) => ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0] ?? sk)).join(", ")
+        : w.message
+      if (existing) existing.messages.push(msg)
+      else byCategory[w.category].push({ day: dayLabel, messages: [msg] })
+    }
+  }
+
+  const sortedCategories = Object.keys(byCategory).sort(
+    (a, b) => (WARNING_CATEGORY_ORDER[a] ?? 9) - (WARNING_CATEGORY_ORDER[b] ?? 9)
+  )
+
+  const totalDays = days.filter((d) => d.warnings.length > 0).length
+  if (totalDays === 0) return null
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -947,15 +1022,22 @@ function SkillGapPill({ details }: {
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>
-        <span className="inline-flex items-center justify-center size-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">{affectedDays}</span>
+        <span className="inline-flex items-center justify-center size-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">{totalDays}</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border border-border bg-background shadow-md py-1.5">
-          {byDay.map(({ day, skills }) => (
-            <div key={day} className="px-3 py-1.5">
-              <p className="text-[12px] font-medium capitalize">{day}</p>
-              <p className="text-[11px] text-muted-foreground">{skills.join(", ")}</p>
+        <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg border border-border bg-background shadow-lg py-2">
+          {sortedCategories.map((cat) => (
+            <div key={cat} className="px-3 py-1.5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                {WARNING_CATEGORY_LABEL[cat] ?? cat}
+              </p>
+              {byCategory[cat].map(({ day, messages }) => (
+                <div key={day} className="mb-1 last:mb-0">
+                  <span className="text-[12px] font-medium capitalize">{day}: </span>
+                  <span className="text-[11px] text-slate-600">{messages.join(", ")}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -1556,28 +1638,8 @@ function ShiftGrid({
                   </Tooltip>
                 )}
 
-                {day.skillGaps.length > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <span className="absolute top-[6px] right-[6px] cursor-default">
-                        <AlertTriangle className="size-[14px] text-amber-500" />
-                      </span>
-                    } />
-                    <TooltipContent
-                      side="bottom"
-                      className="bg-background text-foreground border border-border shadow-md max-w-[220px] flex-col items-start gap-0.5 py-2 px-3"
-                    >
-                      <p className="font-medium text-[12px] mb-1">{t("warnings")}</p>
-                      {day.skillGaps
-                        .filter((sk) => COVERAGE_SKILLS.some((cs) => cs.key === sk))
-                        .map((sk) => (
-                          <p key={sk} className="text-[11px] text-muted-foreground">
-                            · {ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])}
-                          </p>
-                        ))
-                      }
-                    </TooltipContent>
-                  </Tooltip>
+                {day.warnings.length > 0 && (
+                  <DayWarningPopover warnings={day.warnings} />
                 )}
 
                 <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
@@ -2216,17 +2278,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
-  const skillGapDetails = weekData?.days
-    .filter((d) => d.skillGaps.length > 0)
-    .flatMap((d) => {
-      const dayLabel = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric" }).format(
-        new Date(d.date + "T12:00:00")
-      )
-      return d.skillGaps.map((sk) => ({
-        skill: ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0]),
-        day: dayLabel,
-      }))
-    }) ?? []
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -2307,8 +2358,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               </span>
             ))}
           </div>
-          {hasSkillGaps && view !== "month" && (
-            <SkillGapPill details={skillGapDetails} />
+          {view !== "month" && weekData && (
+            <WarningsPill days={weekData.days} />
           )}
           {showActions && !isPublished && (
             <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
