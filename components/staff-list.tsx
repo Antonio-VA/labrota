@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Timer } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -683,13 +683,18 @@ function StaffTable({
               {isAdmin || trainingSkills.length === 0 ? (
                 <span className="text-[13px] text-muted-foreground/40">—</span>
               ) : trainingSkills.map((sk) => (
-                <span
-                  key={sk.skill}
-                  className="shrink-0 inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
-                  style={{ borderLeftColor: "#f59e0b", borderLeftWidth: 2 }}
-                >
-                  {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
-                </span>
+                <Tooltip key={sk.skill}>
+                  <TooltipTrigger render={
+                    <span
+                      className="shrink-0 inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 cursor-default"
+                      style={{ borderLeftColor: "#f59e0b", borderLeftWidth: 2 }}
+                    >
+                      <Timer className="size-2.5 text-amber-500 shrink-0" />
+                      {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                    </span>
+                  } />
+                  <TooltipContent side="top">En formación</TooltipContent>
+                </Tooltip>
               ))}
             </div>
 

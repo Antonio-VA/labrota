@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
+import { Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -316,7 +317,7 @@ export function StaffForm({
                   <span className="text-blue-600 text-[14px] leading-none ml-2 shrink-0">✓</span>
                 )}
                 {level === 'training' && (
-                  <span className="text-amber-600 text-[14px] leading-none ml-2 shrink-0">⏳</span>
+                  <Timer className="size-4 text-amber-500 ml-2 shrink-0" />
                 )}
               </button>
             )

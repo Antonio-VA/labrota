@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2 } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Timer } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -382,10 +382,8 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
                     isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
                   )}
                 >
+                  {isTraining && <Timer className="size-2 text-amber-500" />}
                   {fn}
-                  {isTraining && (
-                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-amber-400 border border-white" />
-                  )}
                 </button>
               )
             })}
@@ -725,15 +723,22 @@ function StaffProfilePanel({
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {staff.staff_skills.map((sk) => (
-                    <span key={sk.id} className={cn(
-                      "text-[11px] px-2 py-0.5 rounded-full border font-medium",
-                      sk.level === "certified"
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-amber-50 border-amber-200 text-amber-700"
-                    )}>
-                      {ts(SKILL_KEYS[sk.skill] ?? sk.skill as never)}
-                      {sk.level === "training" && " ○"}
-                    </span>
+                    <Tooltip key={sk.id}>
+                      <TooltipTrigger render={
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium cursor-default",
+                          sk.level === "certified"
+                            ? "bg-blue-50 border-blue-200 text-blue-700"
+                            : "bg-amber-50 border-amber-200 text-amber-700"
+                        )}>
+                          {sk.level === "training" && <Timer className="size-2.5 text-amber-500 shrink-0" />}
+                          {ts(SKILL_KEYS[sk.skill] ?? sk.skill as never)}
+                        </span>
+                      } />
+                      <TooltipContent side="top">
+                        {sk.level === "training" ? "En formación" : "Certificada"}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
               )}
