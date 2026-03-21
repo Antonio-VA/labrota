@@ -191,10 +191,10 @@ function LeavesTable({
   const cellClass = muted ? "text-muted-foreground" : ""
 
   return (
-    <div className={`rounded-lg border border-border overflow-hidden mb-3 ${muted ? "opacity-70" : ""}`}>
+    <div className={`rounded-lg border border-border overflow-hidden mb-3 bg-white ${muted ? "opacity-70" : ""}`}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/40">
+          <tr className="border-b border-border bg-white">
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>

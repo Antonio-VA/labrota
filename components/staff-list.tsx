@@ -504,9 +504,9 @@ function StaffTable({
   const someSelected = members.some((m) => selectedIds.has(m.id))
 
   return (
-    <div className={cn("rounded-lg border border-border overflow-hidden", muted && "opacity-60")}>
+    <div className={cn("rounded-lg border border-border overflow-hidden bg-white", muted && "opacity-60")}>
       {/* Header */}
-      <div className={cn("hidden md:grid px-4 py-2 bg-muted/40 border-b border-border items-center", GRID)}>
+      <div className={cn("hidden md:grid px-4 py-2 bg-white border-b border-border items-center", GRID)}>
         <input
           type="checkbox"
           checked={allSelected}
