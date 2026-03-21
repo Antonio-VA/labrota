@@ -13,6 +13,7 @@ import type {
   ShiftType,
   StaffRole,
   ShiftTypeDefinition,
+  Tecnica,
 } from "@/lib/types/database"
 
 // ── Shared types exported to client ──────────────────────────────────────────
@@ -29,6 +30,7 @@ export interface RotaDay {
     notes: string | null
     is_opu: boolean
     function_label: string | null
+    tecnica_id: string | null
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
@@ -47,6 +49,7 @@ export interface RotaWeekData {
   onLeaveByDate: Record<string, string[]>
   /** date → holiday name for Spanish national holidays */
   publicHolidays: Record<string, string>
+  tecnicas: Tecnica[]
 }
 
 // ── Spanish national public holidays ─────────────────────────────────────────
@@ -108,8 +111,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record, lab config, approved leaves, and shift types in parallel.
-  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes] = await Promise.all([
+  // Fetch rota record, lab config, approved leaves, shift types, and técnicas in parallel.
+  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes] = await Promise.all([
     supabase
       .from("rotas")
       .select("*")
@@ -123,10 +126,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .gte("end_date", dates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
     supabase.from("shift_types").select("*").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
+    supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
   ])
 
-  const rotaData = rotaResult.data
+  const rotaData  = rotaResult.data
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
+  const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
 
   const rota = rotaData
     ? {
@@ -174,7 +179,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -182,7 +187,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean;
-    function_label: string | null
+    function_label: string | null; tecnica_id: string | null
   }
   type AssignmentRow = RawAssignment & {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
@@ -192,7 +197,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Try full column set; fallback handled below
     supabase
       .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, function_label")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, function_label, tecnica_id")
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
@@ -206,14 +211,14 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string }> = {}
   for (const s of staffRes.data ?? []) staffLookup[s.id] = s
 
-  // If is_opu / trainee / notes columns missing, retry without them
+  // If newer columns missing, retry with minimal select
   let rawAssignments: RawAssignment[] = []
   if (assignmentsRes.error) {
     const { data: baseData } = (await supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label">[] | null }
-    rawAssignments = (baseData ?? []).map((a: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label">) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false, function_label: null }))
+      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label" | "tecnica_id">[] | null }
+    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false, function_label: null, tecnica_id: null }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
   }
@@ -256,6 +261,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       notes: a.notes,
       is_opu: a.is_opu ?? false,
       function_label: a.function_label ?? null,
+      tecnica_id: a.tecnica_id ?? null,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
     })
   }
@@ -267,7 +273,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
@@ -688,6 +694,19 @@ export async function removeAssignment(assignmentId: string): Promise<{ error?: 
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
+    .eq("id", assignmentId)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
+// ── setTecnica ────────────────────────────────────────────────────────────────
+
+export async function setTecnica(assignmentId: string, tecnicaId: string | null): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ tecnica_id: tecnicaId } as never)
     .eq("id", assignmentId)
   if (error) return { error: error.message }
   revalidatePath("/")

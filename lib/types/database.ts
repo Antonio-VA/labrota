@@ -116,8 +116,22 @@ export interface RotaAssignment {
   notes:              string | null
   is_opu:             boolean
   function_label:     string | null
+  tecnica_id:         string | null
   created_at:         string
   updated_at:         string
+}
+
+export interface Tecnica {
+  id:              string
+  organisation_id: string
+  nombre_es:       string
+  nombre_en:       string
+  codigo:          string
+  color:           string
+  required_skill:  SkillName | null
+  activa:          boolean
+  orden:           number
+  created_at:      string
 }
 
 export type PunctionsByDay = {

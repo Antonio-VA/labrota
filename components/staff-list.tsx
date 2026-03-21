@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -680,8 +680,11 @@ function StaffTable({
             </div>
 
             {/* Status */}
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center gap-1.5">
               <Badge variant={STATUS_VARIANTS[member.onboarding_status]}>
+                {member.onboarding_status === "onboarding" && (
+                  <Hourglass className="size-3 mr-1 inline-block" />
+                )}
                 {t(`onboardingStatus.${member.onboarding_status}`)}
               </Badge>
             </div>

@@ -8,20 +8,19 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
 import { cn } from "@/lib/utils"
-import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay } from "@/lib/types/database"
+import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Tecnica } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-// Only these 5 skills are shown in the selector
-const ALL_SKILLS: SkillName[] = [
-  "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
-]
-const SKILL_LABEL: Record<string, string> = {
+
+// Fallback skill labels when no técnicas provided
+const DEFAULT_SKILL_LABEL: Record<string, string> = {
   biopsy:          "Biopsia",
   icsi:            "ICSI",
   egg_collection:  "Recogida de óvulos",
   embryo_transfer: "Transferencia embrionaria",
   denudation:      "Denudación",
 }
+const DEFAULT_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -86,9 +85,11 @@ function Select({
 export function StaffForm({
   mode,
   staff,
+  tecnicas,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
+  tecnicas?: Tecnica[]
 }) {
   const t = useTranslations("staff")
   const tc = useTranslations("common")
@@ -99,12 +100,29 @@ export function StaffForm({
     staff?.working_pattern ?? ["mon", "tue", "wed", "thu", "fri"]
   )
 
+  // Derive which skills to show: from active técnicas with required_skill, deduped by skill
+  const capacidades: { skill: SkillName; label: string }[] = (() => {
+    if (tecnicas && tecnicas.length > 0) {
+      const seen = new Set<SkillName>()
+      const result: { skill: SkillName; label: string }[] = []
+      for (const tec of tecnicas.filter((tec) => tec.activa && tec.required_skill)) {
+        const skill = tec.required_skill!
+        if (!seen.has(skill)) {
+          seen.add(skill)
+          result.push({ skill, label: tec.nombre_es })
+        }
+      }
+      return result
+    }
+    return DEFAULT_SKILLS.map((s) => ({ skill: s, label: DEFAULT_SKILL_LABEL[s] }))
+  })()
+
   type SkillState = 'off' | 'training' | 'certified'
   const [skillLevels, setSkillLevels] = useState<Record<SkillName, SkillState>>(() => {
     const map = {} as Record<SkillName, SkillState>
-    for (const s of ALL_SKILLS) {
-      const existing = staff?.staff_skills?.find((sk) => sk.skill === s)
-      map[s] = existing ? (existing.level as SkillState) : 'off'
+    for (const { skill } of capacidades) {
+      const existing = staff?.staff_skills?.find((sk) => sk.skill === skill)
+      map[skill] = existing ? (existing.level as SkillState) : 'off'
     }
     return map
   })
@@ -234,11 +252,11 @@ export function StaffForm({
         )}
       </Section>
 
-      {/* Skills */}
-      <Section label={t("fields.skills")}>
+      {/* Capacidades */}
+      <Section label="Capacidades">
         <div className="flex flex-wrap gap-2">
-          {ALL_SKILLS.map((skill) => {
-            const level = skillLevels[skill]
+          {capacidades.map(({ skill, label }) => {
+            const level = skillLevels[skill] ?? 'off'
             return (
               <button
                 key={skill}
@@ -260,7 +278,7 @@ export function StaffForm({
                     level === 'training'  && "text-amber-700",
                     level === 'off'       && "text-slate-400"
                   )}>
-                    {SKILL_LABEL[skill]}
+                    {label}
                   </span>
                   {level !== 'off' && (
                     <span className={cn(
@@ -283,8 +301,8 @@ export function StaffForm({
           })}
         </div>
         {/* Hidden inputs for form submission */}
-        {ALL_SKILLS.map((skill) =>
-          skillLevels[skill] !== 'off' ? (
+        {capacidades.map(({ skill }) =>
+          skillLevels[skill] && skillLevels[skill] !== 'off' ? (
             <input key={skill} type="hidden" name={`skill_${skill}`} value={skillLevels[skill]} />
           ) : null
         )}

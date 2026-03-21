@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useTransition, useState } from "react"
+import { useEffect, useTransition, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
@@ -67,6 +67,76 @@ function NavItem({
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
+  )
+}
+
+// ── Avatar menu ───────────────────────────────────────────────────────────────
+
+function AvatarMenu({
+  user, firstName, initials, avatarUrl, locale, isPending, onToggleLocale, onSignOut,
+}: {
+  user: User | null; firstName: string; initials: string; avatarUrl: string | null
+  locale: string; isPending: boolean
+  onToggleLocale: () => void; onSignOut: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="border-t border-border py-3 flex flex-col items-center gap-2 px-2 relative">
+      {/* Language pill */}
+      <button
+        onClick={onToggleLocale}
+        disabled={isPending}
+        className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/20 tracking-widest transition-colors disabled:opacity-50"
+        title={locale === "es" ? "Switch to English" : "Cambiar a Español"}
+      >
+        {locale === "es" ? "EN" : "ES"}
+      </button>
+
+      {user && (
+        <>
+          {/* Clickable avatar — opens menu */}
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
+            title={firstName}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+            ) : (
+              initials
+            )}
+          </button>
+
+          {/* Dropdown menu */}
+          {open && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden z-50">
+              <div className="px-3 py-2.5 border-b border-border">
+                <p className="text-[13px] font-medium truncate">{firstName}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+              </div>
+              <button
+                onClick={() => { setOpen(false); onSignOut() }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
+              >
+                <LogOut className="size-3.5" />
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -150,57 +220,16 @@ export function AppSidebar() {
         </div>
 
         {/* Bottom: account section */}
-        <div className="border-t border-border py-3 flex flex-col items-center gap-2 px-2">
-          {/* Language pill */}
-          <button
-            onClick={toggleLocale}
-            disabled={isPending}
-            className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/20 tracking-widest transition-colors disabled:opacity-50"
-            title={locale === "es" ? "Switch to English" : "Cambiar a Español"}
-          >
-            {locale === "es" ? "EN" : "ES"}
-          </button>
-
-          {user && (
-            <>
-              {/* Avatar */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden cursor-default" />
-                  }
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
-                  ) : (
-                    initials()
-                  )}
-                </TooltipTrigger>
-                <TooltipContent side="right">{firstName()}</TooltipContent>
-              </Tooltip>
-
-              {/* First name */}
-              <span className="text-[10px] text-muted-foreground truncate w-full text-center leading-none px-1">
-                {firstName()}
-              </span>
-
-              {/* Sign out */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      onClick={signOut}
-                      className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
-                    />
-                  }
-                >
-                  <LogOut className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent side="right">Cerrar sesión</TooltipContent>
-              </Tooltip>
-            </>
-          )}
-        </div>
+        <AvatarMenu
+          user={user}
+          firstName={firstName()}
+          initials={initials()}
+          avatarUrl={avatarUrl}
+          locale={locale}
+          isPending={isPending}
+          onToggleLocale={toggleLocale}
+          onSignOut={signOut}
+        />
       </TooltipProvider>
     </nav>
   )

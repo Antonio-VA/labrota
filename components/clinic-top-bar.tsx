@@ -61,10 +61,10 @@ export function ClinicTopBar({
               disabled={isSwitching}
               className="flex items-center gap-2 text-[14px] font-medium text-slate-600 hover:text-foreground transition-colors disabled:opacity-60"
             >
+              {orgName}
               {orgLogoUrl && !logoError && (
                 <img src={orgLogoUrl} alt="" className="h-6 w-auto max-w-[120px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
               )}
-              {orgName}
               <ChevronDown className="size-3.5 opacity-50" />
             </button>
             {orgMenuOpen && (
@@ -97,10 +97,10 @@ export function ClinicTopBar({
           </div>
         ) : (
           <div className="flex items-center gap-2">
+            <span className="text-[14px] font-medium text-slate-600">{orgName}</span>
             {orgLogoUrl && !logoError && (
               <img src={orgLogoUrl} alt="" className="h-6 w-auto max-w-[120px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
             )}
-            <span className="text-[14px] font-medium text-slate-600">{orgName}</span>
           </div>
         )
       )}

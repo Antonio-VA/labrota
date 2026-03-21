@@ -25,6 +25,7 @@ import {
   moveAssignmentShift,
   removeAssignment,
   setFunctionLabel,
+  setTecnica,
   upsertAssignment,
   type RotaWeekData,
   type RotaDay,
@@ -32,7 +33,7 @@ import {
   type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
 import { AssignmentSheet } from "@/components/assignment-sheet"
-import type { StaffWithSkills, ShiftType, ShiftTypeDefinition } from "@/lib/types/database"
+import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,18 @@ const ROLE_LABEL: Record<string, string> = {
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
 const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
+
+// Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
+const TECNICA_PILL: Record<string, string> = {
+  amber:  "bg-amber-50 border-amber-300 text-amber-800",
+  blue:   "bg-blue-50 border-blue-300 text-blue-700",
+  green:  "bg-green-50 border-green-300 text-green-700",
+  purple: "bg-purple-50 border-purple-300 text-purple-700",
+  coral:  "bg-red-50 border-red-300 text-red-700",
+  teal:   "bg-teal-50 border-teal-300 text-teal-700",
+  slate:  "bg-slate-100 border-slate-300 text-slate-600",
+  red:    "bg-red-50 border-red-400 text-red-800",
+}
 
 function sortAssignments<T extends { staff: { role: string }; shift_type: string }>(arr: T[]): T[] {
   return [...arr].sort((a, b) => {
@@ -169,14 +182,18 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
 type ShiftBadgeProps = {
   first: string; last: string; role: string; isOpu: boolean; isOverride: boolean
   functionLabel?: string | null
+  tecnica?: Tecnica | null
 }
 
-function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel }: ShiftBadgeProps) {
-  const fnLabel = functionLabel ?? (isOpu ? "OPU" : null)
-  const fnColor = fnLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
-    : fnLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : fnLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
-    : fnLabel ? "bg-blue-50 border-blue-200 text-blue-700"
+function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecnica }: ShiftBadgeProps) {
+  // Técnica pill takes precedence; fall back to function_label / OPU
+  const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? (isOpu ? "OPU" : null))
+  const pillColor = tecnica
+    ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
+    : pillLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
+    : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+    : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+    : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
   return (
@@ -186,9 +203,9 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel }: Shi
     )}>
         <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
       <span className="truncate">{first} {last[0]}.</span>
-      {fnLabel && fnColor && (
-        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", fnColor)}>
-          {fnLabel}
+      {pillLabel && pillColor && (
+        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", pillColor)}>
+          {pillLabel}
         </span>
       )}
     </div>
@@ -255,6 +272,75 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
                   )}
                 >
                   {fn}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Técnica popover (replaces FunctionLabelPopover for técnica assignment) ────
+
+function TécnicaPopover({ assignment, staffSkills, tecnicas, onSave, isPublished, children }: {
+  assignment: { id: string; staff: { role: string }; tecnica_id: string | null }
+  staffSkills: { skill: string; level: string }[]
+  tecnicas: Tecnica[]
+  onSave: (id: string, tecnicaId: string | null) => void
+  isPublished: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  // Técnicas this staff member is Competente in
+  const certifiedSkills = new Set(
+    staffSkills.filter((s) => s.level === "certified").map((s) => s.skill)
+  )
+  const available = tecnicas.filter((t) =>
+    t.activa && (t.required_skill === null || certifiedSkills.has(t.required_skill))
+  )
+
+  if (available.length === 0 || isPublished) return <>{children}</>
+
+  return (
+    <div ref={ref} className="relative">
+      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
+        {children}
+      </div>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48">
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
+          <div className="flex flex-wrap gap-1">
+            {available.map((tec) => {
+              const isActive = assignment.tecnica_id === tec.id
+              const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
+              return (
+                <button
+                  key={tec.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSave(assignment.id, isActive ? null : tec.id)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                    color,
+                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                  )}
+                >
+                  {tec.codigo}
                 </button>
               )
             })}
@@ -422,14 +508,18 @@ function OverflowMenu({ items }: {
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
+function ShiftBudgetBar({ data, staffList }: { data: RotaWeekData; staffList: StaffWithSkills[] }) {
   const t = useTranslations("schedule")
 
-  const staffMap: Record<string, { first: string; last: string; role: string; count: number }> = {}
+  const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
   for (const day of data.days) {
     for (const a of day.assignments) {
       if (!staffMap[a.staff_id]) {
-        staffMap[a.staff_id] = { first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role, count: 0 }
+        const member = staffList.find((s) => s.id === a.staff_id)
+        staffMap[a.staff_id] = {
+          first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role,
+          count: 0, daysPerWeek: member?.days_per_week ?? 5,
+        }
       }
       staffMap[a.staff_id].count++
     }
@@ -447,19 +537,20 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
-          const colorClass = s.count <= 5
-            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-            : "bg-amber-50 border-amber-200 text-amber-700"
+          const over = s.count > s.daysPerWeek
+          const colorClass = over
+            ? "bg-red-50 border-red-200 text-red-700"
+            : "bg-emerald-50 border-emerald-200 text-emerald-700"
           return (
             <Tooltip key={id}>
               <TooltipTrigger render={
                 <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium cursor-default", colorClass)}>
                   <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[s.role] ?? "bg-slate-400")} />
-                  <span>{s.first} {s.count}/5</span>
+                  <span>{s.first} {s.count}/{s.daysPerWeek}</span>
                 </div>
               } />
               <TooltipContent side="top">
-                {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/5 turnos
+                {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} turnos
               </TooltipContent>
             </Tooltip>
           )
@@ -738,7 +829,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, onFunctionLabelSave, weekStart,
+  onRefresh, onFunctionLabelSave, onTecnicaSave, weekStart,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -756,6 +847,7 @@ function ShiftGrid({
   onPunctionsChange: (date: string, value: number | null) => void
   onRefresh: () => void
   onFunctionLabelSave: (assignmentId: string, label: string | null) => void
+  onTecnicaSave: (assignmentId: string, tecnicaId: string | null) => void
   weekStart: string
 }) {
   const t  = useTranslations("schedule")
@@ -792,7 +884,7 @@ function ShiftGrid({
           const optimistic = {
             id: `opt-${Date.now()}`, staff_id: staffId,
             staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
-            shift_type: destShift, is_opu: false, is_manual_override: true, function_label: null, notes: null, trainee_staff_id: null,
+            shift_type: destShift, is_opu: false, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
           }
           return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
         }))
@@ -912,6 +1004,11 @@ function ShiftGrid({
   // Find the active assignment for drag overlay
   const activeAssignment = activeId
     ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
+    : null
+
+  // Find the active off-staff member for drag overlay (id = "off-{staffId}-{date}")
+  const activeOffStaff = activeId?.startsWith("off-")
+    ? staffList.find((s) => activeId.startsWith(`off-${s.id}`))
     : null
 
   return (
@@ -1036,12 +1133,15 @@ function ShiftGrid({
                   )}
                 >
                   {dayShifts.map((a) => {
-                    const fnLabel = a.function_label ?? (a.is_opu ? "OPU" : null)
+                    const staffMember = staffList.find((s) => s.id === a.staff_id)
+                    const tecnica = (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
                     return (
-                      <FunctionLabelPopover
+                      <TécnicaPopover
                         key={a.id}
                         assignment={a}
-                        onSave={onFunctionLabelSave}
+                        staffSkills={staffMember?.staff_skills ?? []}
+                        tecnicas={data?.tecnicas ?? []}
+                        onSave={onTecnicaSave}
                         isPublished={isPublished}
                       >
                         <Tooltip>
@@ -1055,14 +1155,15 @@ function ShiftGrid({
                                 isOpu={a.is_opu ?? false}
                                 isOverride={a.is_manual_override}
                                 functionLabel={a.function_label}
+                                tecnica={tecnica}
                               />
                             </div>
                           } />
                           <TooltipContent side="top">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{fnLabel ? ` · ${fnLabel}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
                           </TooltipContent>
                         </Tooltip>
-                      </FunctionLabelPopover>
+                      </TécnicaPopover>
                     )
                   })}
                   {dayShifts.length === 0 && effectivePDay === 0 && (
@@ -1139,6 +1240,18 @@ function ShiftGrid({
               isOpu={activeAssignment.is_opu ?? false}
               isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
+              tecnica={(data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
+            />
+          </div>
+        ) : activeOffStaff ? (
+          <div className="opacity-90 shadow-lg rounded">
+            <ShiftBadge
+              first={activeOffStaff.first_name}
+              last={activeOffStaff.last_name}
+              role={activeOffStaff.role}
+              isOpu={false}
+              isOverride={false}
+              functionLabel={null}
             />
           </div>
         ) : null}
@@ -1585,6 +1698,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
+  function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
+    const ws = weekStart
+    startTransition(async () => {
+      const result = await setTecnica(assignmentId, tecnicaId)
+      if (result.error) { toast.error(result.error); return }
+      const newData = await getRotaWeek(ws)
+      setWeekData(newData)
+    })
+  }
+
   const rota           = weekData?.rota ?? null
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
@@ -1671,8 +1794,21 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           )}
         </div>
 
-        {/* RIGHT: skill gap pill · generate · overflow ··· */}
+        {/* RIGHT: legend · skill gap pill · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Role colour legend */}
+          <div className="hidden lg:flex items-center gap-2.5 mr-1">
+            {[
+              { dot: "bg-blue-400",    label: "Lab" },
+              { dot: "bg-emerald-400", label: "And" },
+              { dot: "bg-slate-400",   label: "Adm" },
+            ].map(({ dot, label }) => (
+              <span key={label} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className={cn("size-2 rounded-full shrink-0", dot)} />
+                {label}
+              </span>
+            ))}
+          </div>
           {hasSkillGaps && view !== "month" && (
             <SkillGapPill details={skillGapDetails} />
           )}
@@ -1791,6 +1927,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onPunctionsChange={handlePunctionsChange}
                 onRefresh={() => fetchWeekSilent(weekStart)}
                 onFunctionLabelSave={handleFunctionLabelSave}
+                onTecnicaSave={handleTecnicaSave}
                 weekStart={weekStart}
               />
             ) : (
@@ -1815,7 +1952,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 shiftTimes={weekData?.shiftTimes ?? null}
               />
             )}
-            {weekData && <ShiftBudgetBar data={weekData} />}
+            {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} />}
           </div>
         )}
 
