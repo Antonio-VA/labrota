@@ -43,6 +43,7 @@ function Field({
   required?: boolean
   children: React.ReactNode
 }) {
+  const tc = useTranslations("common")
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[14px] font-medium">
