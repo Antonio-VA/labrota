@@ -149,7 +149,18 @@
     "shiftBudget": "Turnos",
     "onLeave": "De baja",
     "alreadyAssigned": "Ya asignado",
-    "manualOverride": "Modificación manual"
+    "manualOverride": "Modificación manual",
+    "saveAsTemplate": "Guardar como plantilla",
+    "applyTemplate": "Aplicar plantilla",
+    "templateName": "Nombre de la plantilla",
+    "templateSaved": "Plantilla guardada",
+    "templateApplied": "Plantilla aplicada",
+    "templateAppliedSkipped": "Plantilla aplicada. {count} asignaciones omitidas (baja o inactivos).",
+    "noTemplates": "Sin plantillas",
+    "noTemplatesDescription": "Guarda una guardia como plantilla primero.",
+    "save": "Guardar",
+    "apply": "Aplicar",
+    "assignments": "asignaciones"
   },
   "staff": {
     "title": "Equipo",

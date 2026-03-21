@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -34,14 +34,18 @@ import {
   type RotaMonthSummary,
   type ShiftTimes,
   type StaffProfileData,
+  saveAsTemplate,
+  getTemplates,
+  applyTemplate,
 } from "@/app/(clinic)/rota/actions"
+import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ViewMode      = "week" | "month" | "day"
+type ViewMode      = "week" | "month"
 type CalendarLayout = "shift" | "person"
 type Assignment    = RotaDay["assignments"][0]
 
@@ -120,10 +124,6 @@ function getMonthStart(isoDate: string): string {
 }
 
 function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: string, locale: string): string {
-  if (view === "day") {
-    const d = new Date(currentDate + "T12:00:00")
-    return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d)
-  }
   if (view === "month") {
     const d = new Date(currentDate + "T12:00:00")
     return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(d)
@@ -2098,6 +2098,139 @@ function OverrideDialog({ onKeep, onRegenerate, onCancel, isPending }: {
   )
 }
 
+// ── Save template modal ──────────────────────────────────────────────────────
+
+function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
+  open: boolean; weekStart: string; onClose: () => void; onSaved: () => void
+}) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
+  const [name, setName] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { if (open) setName("") }, [open])
+
+  if (!open) return null
+
+  async function handleSave() {
+    if (!name.trim()) return
+    setSaving(true)
+    const result = await saveAsTemplate(weekStart, name.trim())
+    setSaving(false)
+    if (result.error) { toast.error(result.error); return }
+    toast.success(t("templateSaved"))
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[380px] p-5">
+        <p className="text-[14px] font-medium mb-3">{t("saveAsTemplate")}</p>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
+          placeholder={t("templateName")}
+          className="w-full rounded-lg border border-border px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        />
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>{tc("cancel")}</Button>
+          <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>{t("save")}</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Apply template modal ─────────────────────────────────────────────────────
+
+function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
+  open: boolean; weekStart: string; onClose: () => void; onApplied: () => void
+}) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
+  const locale = useLocale() as "es" | "en"
+  const [templates, setTemplates] = useState<RotaTemplate[]>([])
+  const [loading, setLoading] = useState(false)
+  const [applying, setApplying] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    getTemplates().then((d) => { setTemplates(d); setLoading(false) })
+  }, [open])
+
+  if (!open) return null
+
+  async function handleApply(id: string) {
+    setApplying(id)
+    const result = await applyTemplate(id, weekStart)
+    setApplying(null)
+    if (result.error) { toast.error(result.error); return }
+    if (result.skipped && result.skipped.length > 0) {
+      toast.info(t("templateAppliedSkipped", { count: result.skipped.length }))
+    } else {
+      toast.success(t("templateApplied"))
+    }
+    onApplied()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[440px] max-h-[70vh] flex flex-col">
+        <div className="px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+          <p className="text-[14px] font-medium">{t("applyTemplate")}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((i) => <div key={i} className="shimmer-bar h-16 w-full rounded-lg" />)}
+            </div>
+          ) : templates.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-[14px] font-medium text-slate-500">{t("noTemplates")}</p>
+              <p className="text-[13px] text-muted-foreground mt-1">{t("noTemplatesDescription")}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {templates.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="rounded-lg border border-border p-3 hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer flex items-center justify-between"
+                  onClick={() => handleApply(tpl.id)}
+                >
+                  <div>
+                    <p className="text-[13px] font-medium">{tpl.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {tpl.assignments.length} {t("assignments")} · {formatDate(tpl.created_at, locale)}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={applying === tpl.id}
+                    onClick={(e) => { e.stopPropagation(); handleApply(tpl.id) }}
+                  >
+                    {applying === tpl.id ? "…" : t("apply")}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-[#CCDDEE] shrink-0 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
@@ -2128,6 +2261,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // Staff profile panel state
   const [profileOpen, setProfileOpen]       = useState(false)
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
+  const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
+  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
   function openProfile(staffId: string) {
     setProfileStaffId(staffId)
@@ -2207,9 +2342,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // Navigation
   function navigate(dir: -1 | 1) {
     setShowOverrideDialog(false)
-    if (view === "day")        setCurrentDate((d) => addDays(d, dir))
-    else if (view === "week")  setCurrentDate((d) => addDays(d, dir * 7))
-    else                       setCurrentDate((d) => addMonths(d, dir))
+    if (view === "week")  setCurrentDate((d) => addDays(d, dir * 7))
+    else                  setCurrentDate((d) => addMonths(d, dir))
   }
 
   function goToToday() {
@@ -2261,10 +2395,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
-  function handleSelectDay(date: string) {
-    setCurrentDate(date)
-    setView("day")
-  }
 
   function handleMonthDayClick(date: string) {
     setCurrentDate(date)   // ensures correct week is loaded for the AssignmentSheet
@@ -2371,7 +2501,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         {/* CENTRE: Week · Month · Day · divider · By shift · By person */}
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-            {(["week", "month", "day"] as ViewMode[]).map((v) => (
+            {(["week", "month"] as ViewMode[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -2453,8 +2583,19 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               }] : []),
               ...(view === "week" && calendarLayout === "shift" ? [{
                 label: compact ? "Vista normal" : "Vista compacta",
+                icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
               }] : []),
+              ...(hasAssignments && !isPublished ? [{
+                label: t("saveAsTemplate"),
+                icon: <BookmarkPlus className="size-3.5" />,
+                onClick: () => setSaveTemplateOpen(true),
+              }] : []),
+              {
+                label: t("applyTemplate"),
+                icon: <BookmarkCheck className="size-3.5" />,
+                onClick: () => setApplyTemplateOpen(true),
+              },
             ]} />
           )}
         </div>
@@ -2581,10 +2722,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         )}
 
         {/* Day view */}
-        <div className={cn(
-          "flex flex-col gap-4 overflow-auto px-4 py-3",
-          view === "day" ? "md:flex" : "md:hidden"
-        )}>
+        <div className="flex flex-col gap-4 overflow-auto px-4 py-3 md:hidden">
           <DayView
             day={currentDayData}
             loading={loadingWeek}
@@ -2631,6 +2769,20 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           onPillClick={openProfile}
         />
       )}
+
+      {/* Template modals */}
+      <SaveTemplateModal
+        open={saveTemplateOpen}
+        weekStart={weekStart}
+        onClose={() => setSaveTemplateOpen(false)}
+        onSaved={() => {}}
+      />
+      <ApplyTemplateModal
+        open={applyTemplateOpen}
+        weekStart={weekStart}
+        onClose={() => setApplyTemplateOpen(false)}
+        onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
+      />
     </main>
   )
 }

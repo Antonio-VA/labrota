@@ -149,7 +149,18 @@
     "shiftBudget": "Shifts",
     "onLeave": "On leave",
     "alreadyAssigned": "Already assigned",
-    "manualOverride": "Manual override"
+    "manualOverride": "Manual override",
+    "saveAsTemplate": "Save as template",
+    "applyTemplate": "Apply template",
+    "templateName": "Template name",
+    "templateSaved": "Template saved",
+    "templateApplied": "Template applied",
+    "templateAppliedSkipped": "Template applied. {count} assignments skipped (on leave or inactive).",
+    "noTemplates": "No templates",
+    "noTemplatesDescription": "Save a rota as a template first.",
+    "save": "Save",
+    "apply": "Apply",
+    "assignments": "assignments"
   },
   "staff": {
     "title": "Team",

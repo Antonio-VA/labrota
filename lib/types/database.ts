@@ -235,6 +235,25 @@ export interface RotaRule {
 export type RotaRuleInsert = Omit<RotaRule, 'id' | 'created_at' | 'updated_at'>
 export type RotaRuleUpdate = Partial<RotaRuleInsert>
 
+// ── Rota Templates ───────────────────────────────────────────────────────────
+
+export interface RotaTemplateAssignment {
+  staff_id:       string
+  day_offset:     number  // 0=Mon, 1=Tue, ..., 6=Sun
+  shift_type:     string
+  is_opu:         boolean
+  function_label: string | null
+}
+
+export interface RotaTemplate {
+  id:              string
+  organisation_id: string
+  name:            string
+  assignments:     RotaTemplateAssignment[]
+  created_at:      string
+  updated_at:      string
+}
+
 // ── Organisation Members ──────────────────────────────────────────────────────
 export interface OrganisationMember {
   id:              string
@@ -321,6 +340,12 @@ export interface Database {
         Row:    ShiftTypeDefinition
         Insert: Omit<ShiftTypeDefinition, 'id' | 'created_at'>
         Update: Partial<Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>>
+        Relationships: []
+      }
+      rota_templates: {
+        Row:    RotaTemplate
+        Insert: { organisation_id: string; name: string; assignments: unknown }
+        Update: { name?: string; assignments?: unknown }
         Relationships: []
       }
       organisation_members: {

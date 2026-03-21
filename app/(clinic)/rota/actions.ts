@@ -882,3 +882,151 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
     upcomingLeaves: leavesRes.data ?? [],
   }
 }
+
+// ── Template actions ──────────────────────────────────────────────────────────
+
+import type { RotaTemplate, RotaTemplateAssignment } from "@/lib/types/database"
+
+export async function saveAsTemplate(weekStart: string, name: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  const dates = getWeekDates(weekStart)
+  const { data: assignments } = await supabase
+    .from("rota_assignments")
+    .select("staff_id, date, shift_type, is_opu, function_label")
+    .gte("date", dates[0])
+    .lte("date", dates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }
+
+  if (!assignments || assignments.length === 0) return { error: "No hay turnos para guardar." }
+
+  const templateAssignments: RotaTemplateAssignment[] = assignments.map((a) => {
+    const dayIndex = dates.indexOf(a.date)
+    return {
+      staff_id: a.staff_id,
+      day_offset: dayIndex >= 0 ? dayIndex : 0,
+      shift_type: a.shift_type,
+      is_opu: a.is_opu ?? false,
+      function_label: a.function_label ?? null,
+    }
+  })
+
+  const { error } = await (supabase
+    .from("rota_templates") as ReturnType<typeof supabase.from>)
+    .insert({ organisation_id: orgId, name, assignments: templateAssignments } as never)
+  if (error) return { error: error.message }
+  revalidatePath("/lab")
+  return {}
+}
+
+export async function getTemplates(): Promise<RotaTemplate[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("rota_templates")
+    .select("*")
+    .order("created_at", { ascending: false }) as unknown as { data: RotaTemplate[] | null }
+  return data ?? []
+}
+
+export async function applyTemplate(templateId: string, weekStart: string): Promise<{ error?: string; skipped?: string[] }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // Fetch template
+  const { data: template } = await supabase
+    .from("rota_templates")
+    .select("*")
+    .eq("id", templateId)
+    .single() as unknown as { data: RotaTemplate | null }
+  if (!template) return { error: "Plantilla no encontrada." }
+
+  const dates = getWeekDates(weekStart)
+
+  // Upsert rota record
+  const { data: rota } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id, week_start" })
+    .select("id")
+    .single() as unknown as { data: { id: string } | null }
+  if (!rota) return { error: "Error creando la guardia." }
+
+  // Fetch leaves for this week
+  const { data: leaves } = await supabase
+    .from("leaves")
+    .select("staff_id, start_date, end_date")
+    .lte("start_date", dates[6])
+    .gte("end_date", dates[0])
+    .eq("status", "approved") as unknown as { data: { staff_id: string; start_date: string; end_date: string }[] | null }
+
+  const onLeave: Record<string, Set<string>> = {}
+  for (const l of leaves ?? []) {
+    const s = new Date(l.start_date + "T12:00:00")
+    const e = new Date(l.end_date + "T12:00:00")
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().split("T")[0]
+      if (!onLeave[iso]) onLeave[iso] = new Set()
+      onLeave[iso].add(l.staff_id)
+    }
+  }
+
+  // Fetch active staff
+  const { data: activeStaff } = await supabase
+    .from("staff")
+    .select("id, onboarding_status")
+    .eq("onboarding_status", "active") as unknown as { data: { id: string }[] | null }
+  const activeIds = new Set((activeStaff ?? []).map((s) => s.id))
+
+  // Delete existing non-override assignments
+  await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("rota_id", rota.id)
+    .eq("is_manual_override", false)
+
+  // Insert template assignments, skipping leave/inactive
+  const skipped: string[] = []
+  const toInsert: { organisation_id: string; rota_id: string; staff_id: string; date: string; shift_type: string; is_opu: boolean; is_manual_override: boolean; function_label: string | null }[] = []
+
+  for (const a of template.assignments) {
+    const date = dates[a.day_offset]
+    if (!date) continue
+    if (!activeIds.has(a.staff_id)) { skipped.push(a.staff_id); continue }
+    if (onLeave[date]?.has(a.staff_id)) { skipped.push(a.staff_id); continue }
+    toInsert.push({
+      organisation_id: orgId,
+      rota_id: rota.id,
+      staff_id: a.staff_id,
+      date,
+      shift_type: a.shift_type,
+      is_opu: a.is_opu,
+      is_manual_override: false,
+      function_label: a.function_label,
+    })
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath("/")
+  return { skipped: [...new Set(skipped)] }
+}
+
+export async function renameTemplate(id: string, name: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("rota_templates").update({ name } as never).eq("id", id)
+  if (error) return { error: error.message }
+  revalidatePath("/lab")
+  return {}
+}
+
+export async function deleteTemplate(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("rota_templates").delete().eq("id", id)
+  if (error) return { error: error.message }
+  revalidatePath("/lab")
+  return {}
+}
