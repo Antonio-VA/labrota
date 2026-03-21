@@ -277,7 +277,7 @@ export function LeavesList({
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as LeaveType | "all")}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="all">{t("columns.type")}: —</option>
           <option value="annual">{t("types.annual")}</option>
@@ -285,7 +285,7 @@ export function LeavesList({
           <option value="personal">{t("types.personal")}</option>
           <option value="other">{t("types.other")}</option>
         </select>
-        <Button onClick={openCreate}>{t("addLeave")}</Button>
+        <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
       </div>
 
       {/* Empty state — no leaves at all */}

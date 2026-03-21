@@ -304,7 +304,7 @@ export async function generateRota(
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("*").eq("enabled", true),
-    supabase.from("shift_types").select("code").order("sort_order"),
+    supabase.from("shift_types").select("code").order("sort_order") as unknown as Promise<{ data: { code: string }[] | null }>,
   ])
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
@@ -360,12 +360,11 @@ export async function generateRota(
   // Staff seeded with old 'am'/'pm'/'full' values (before the shift_types migration) would
   // otherwise get assignments saved with those stale codes, making them invisible in the grid.
   const validEngineCodes = new Set((shiftTypesForEngine.data ?? []).map((st) => st.code))
-  const normalizedStaff = (staffRes.data ?? []).map((s) => {
-    const ps = (s as { preferred_shift?: string | null }).preferred_shift
-    return validEngineCodes.size > 0 && ps && !validEngineCodes.has(ps)
+  const normalizedStaff = ((staffRes.data ?? []) as StaffWithSkills[]).map((s) => {
+    return validEngineCodes.size > 0 && s.preferred_shift && !validEngineCodes.has(s.preferred_shift)
       ? { ...s, preferred_shift: null }  // engine will fall back to default (T1 / admin_default_shift)
       : s
-  }) as StaffWithSkills[]
+  })
 
   // Run engine
   const { days } = runRotaEngine({

@@ -690,12 +690,12 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
             placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-56 h-8"
+            className="max-w-56 h-9"
           />
           <select
             value={roleFilter}
             onChange={(e) => { setRoleFilter(e.target.value as StaffRole | "all"); clearSelection() }}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="all">{t("allRoles")}</option>
             <option value="lab">{t("roles.lab")}</option>
@@ -705,7 +705,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="all">{t("allStatuses")}</option>
             <option value="active">{t("onboardingStatus.active")}</option>
@@ -713,7 +713,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
             <option value="inactive">{t("onboardingStatus.inactive")}</option>
           </select>
         </div>
-        <Button render={<Link href="/staff/new" />}>
+        <Button size="lg" render={<Link href="/staff/new" />}>
           <Plus className="size-4" />
           {t("addStaff")}
         </Button>
