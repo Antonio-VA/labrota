@@ -314,12 +314,11 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublished, onBadgeClick, children }: {
+function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublished, children }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
   staffSkills: { skill: string; level: string }[]
   onFunctionSave: (id: string, label: string | null) => void
   isPublished: boolean
-  onBadgeClick?: () => void
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -346,32 +345,13 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
     return skillLevelMap[req] === "certified" || skillLevelMap[req] === "training"
   })
 
-  if (functionLabels.length === 0 || isPublished) {
-    return (
-      <div onClick={onBadgeClick ? (e) => { e.stopPropagation(); onBadgeClick() } : undefined}
-           className={onBadgeClick ? "cursor-pointer" : undefined}>
-        {children}
-      </div>
-    )
-  }
+  if (functionLabels.length === 0 || isPublished) return <>{children}</>
 
   return (
-    <div ref={ref} className="relative group/pop">
-      {/* Badge click → staff profile */}
-      <div onClick={onBadgeClick ? (e) => { e.stopPropagation(); onBadgeClick() } : undefined}
-           className={onBadgeClick ? "cursor-pointer" : undefined}>
+    <div ref={ref} className="relative">
+      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
         {children}
       </div>
-      {/* Fn button — appears on hover, opens function assignment */}
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
-        className="absolute right-0.5 top-0.5 z-10 size-4 flex items-center justify-center rounded
-                   text-[8px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100
-                   opacity-0 group-hover/pop:opacity-100 transition-opacity"
-        title="Asignar función"
-      >
-        fn
-      </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
           <div className="flex flex-wrap gap-1.5">
@@ -879,7 +859,7 @@ function StaffProfilePanel({
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data, staffList }: { data: RotaWeekData; staffList: StaffWithSkills[] }) {
+function ShiftBudgetBar({ data, staffList, onPillClick }: { data: RotaWeekData; staffList: StaffWithSkills[]; onPillClick?: (staffId: string) => void }) {
   const t = useTranslations("schedule")
 
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
@@ -918,7 +898,10 @@ function ShiftBudgetBar({ data, staffList }: { data: RotaWeekData; staffList: St
           return (
             <Tooltip key={id}>
               <TooltipTrigger render={
-                <div className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full border text-[12px] cursor-default", pillClass)}>
+                <div
+                  onClick={onPillClick ? () => onPillClick(id) : undefined}
+                  className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full border text-[12px]", pillClass, onPillClick ? "cursor-pointer hover:shadow-sm transition-shadow" : "cursor-default")}
+                >
                   <span className="font-medium">{s.first}</span>
                   <span className="font-normal">{s.count}/{s.daysPerWeek}</span>
                 </div>
@@ -1213,13 +1196,21 @@ function PersonGrid({
                             staffSkills={s.staff_skills ?? []}
                             onFunctionSave={handleFunctionLabelSave}
                             isPublished={isPublished}
-                            onBadgeClick={() => onChipClick(assignment, day.date)}
                           >
-                            <PersonShiftPill
-                              assignment={assignment}
-                              shiftTimes={shiftTimes}
-                              tecnica={tecnica}
-                            />
+                            <Tooltip>
+                              <TooltipTrigger render={
+                                <div>
+                                  <PersonShiftPill
+                                    assignment={assignment}
+                                    shiftTimes={shiftTimes}
+                                    tecnica={tecnica}
+                                  />
+                                </div>
+                              } />
+                              <TooltipContent side="top">
+                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${FUNCTION_FULL_NAME[assignment.function_label] ?? assignment.function_label}` : assignment.is_opu ? " · Recogida de óvulos" : ""}
+                              </TooltipContent>
+                            </Tooltip>
                           </AssignmentPopover>
                         ) : onLeave ? (
                           <span className="text-[11px] text-slate-400 italic">Aus.</span>
@@ -1664,7 +1655,6 @@ function ShiftGrid({
                         staffSkills={staffMember?.staff_skills ?? []}
                         onFunctionSave={handleFunctionLabelSave}
                         isPublished={isPublished}
-                        onBadgeClick={() => onChipClick(a, day.date)}
                       >
                         <Tooltip>
                           <TooltipTrigger render={
@@ -2462,7 +2452,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 />
               )}
             </div>
-            {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} />}
+            {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} onPillClick={openProfile} />}
           </div>
         )}
 
