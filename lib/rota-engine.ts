@@ -127,8 +127,16 @@ export function runRotaEngine({
     }
   }
 
-  // All skills present in this org (for gap detection)
-  const allOrgSkills = new Set(staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))
+  // Canonical skills tracked for gap detection — only these five matter for rota coverage.
+  // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
+  const CANONICAL_SKILLS = new Set<SkillName>([
+    "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
+  ])
+  // Intersect with what this org's staff actually have (no point warning about unused skills)
+  const allOrgSkills = new Set(
+    staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill))
+         .filter((sk) => CANONICAL_SKILLS.has(sk))
+  )
 
   // Assignment lookup for rules: date → set of staff_ids
   // Pre-seeded from recentAssignments; updated each day as we generate
