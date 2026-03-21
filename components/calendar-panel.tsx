@@ -1395,7 +1395,7 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="top">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${FUNCTION_FULL_NAME[a.function_label] ?? a.function_label}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
