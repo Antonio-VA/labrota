@@ -777,7 +777,7 @@ function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps)
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
-    opacity: isDragging ? 0.95 : 1,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 50 : undefined,
     position: isDragging ? "relative" as const : undefined,
   } : undefined
@@ -795,7 +795,7 @@ function DraggableOffStaff({ staffId, date, children, disabled }: {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, disabled })
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 50 : undefined,
     position: isDragging ? "relative" as const : undefined,
   } : undefined
@@ -893,7 +893,16 @@ function ShiftGrid({
       try {
         const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success("Turno asignado")
+        const newId = result.id
+        toast.success("Turno asignado", {
+          action: newId ? {
+            label: "Deshacer",
+            onClick: async () => {
+              await removeAssignment(newId)
+              onRefresh()
+            },
+          } : undefined,
+        })
       } catch {
         toast.error("Error al asignar turno")
       } finally {
@@ -915,10 +924,21 @@ function ShiftGrid({
       setLocalDays((prev) => prev.map((d) => ({
         ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId),
       })))
+      const oldShift = sourceAssignment.shift_type as ShiftType
+      const oldDate  = sourceAssignment.date
+      const oldStaff = sourceAssignment.staff_id
       try {
         const result = await removeAssignment(assignmentId)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success("Turno eliminado")
+        toast.success("Turno eliminado", {
+          action: {
+            label: "Deshacer",
+            onClick: async () => {
+              await upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift })
+              onRefresh()
+            },
+          },
+        })
       } catch {
         toast.error("Error al eliminar turno")
         onRefresh()
@@ -932,6 +952,7 @@ function ShiftGrid({
         return
       }
 
+      const oldShift = sourceAssignment.shift_type
       // Optimistic: change shift_type immediately
       setLocalDays((prev) => prev.map((d) => ({
         ...d, assignments: d.assignments.map((a) =>
@@ -941,7 +962,15 @@ function ShiftGrid({
       try {
         const result = await moveAssignmentShift(assignmentId, destShift)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success("Turno actualizado")
+        toast.success("Turno actualizado", {
+          action: {
+            label: "Deshacer",
+            onClick: async () => {
+              await moveAssignmentShift(assignmentId, oldShift)
+              onRefresh()
+            },
+          },
+        })
       } catch {
         toast.error("Error al mover turno")
         onRefresh()
