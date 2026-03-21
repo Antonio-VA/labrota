@@ -25,6 +25,7 @@ import {
 const SKILL_KEYS: Record<SkillName, string> = {
   icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
   biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
+  sperm_freezing: "spermFreezing",
   witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
   embryo_transfer: "embryoTransfer", denudation: "denudation",
 }

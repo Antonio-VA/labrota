@@ -16,10 +16,17 @@ const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const SKILL_KEYS: Record<string, string> = {
   icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
   biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
+  sperm_freezing: "spermFreezing",
   witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
   embryo_transfer: "embryoTransfer", denudation: "denudation",
 }
-const DEFAULT_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
+const LAB_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
+const ANDROLOGY_SKILLS: SkillName[] = ["sperm_freezing", "semen_analysis", "sperm_prep"]
+const SKILLS_BY_ROLE: Record<string, SkillName[]> = {
+  lab: LAB_SKILLS,
+  andrology: ANDROLOGY_SKILLS,
+  admin: [],
+}
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -62,11 +69,13 @@ function Select({
   name,
   defaultValue,
   disabled,
+  onChange,
   children,
 }: {
   name: string
   defaultValue?: string
   disabled?: boolean
+  onChange?: (value: string) => void
   children: React.ReactNode
 }) {
   return (
@@ -74,6 +83,7 @@ function Select({
       name={name}
       defaultValue={defaultValue}
       disabled={disabled}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       className="h-8 w-full rounded-[8px] border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {children}
@@ -100,22 +110,33 @@ export function StaffForm({
   const [selectedDays, setSelectedDays] = useState<WorkingDay[]>(
     staff?.working_pattern ?? ["mon", "tue", "wed", "thu", "fri"]
   )
+  const [role, setRole] = useState<string>(staff?.role ?? "lab")
 
-  // Derive which skills to show: from active técnicas with required_skill, deduped by skill
+  // Derive which skills to show based on role
+  const roleSkills = SKILLS_BY_ROLE[role] ?? []
   const capacidades: { skill: SkillName; label: string }[] = (() => {
+    if (role === "admin") return []
     if (tecnicas && tecnicas.length > 0) {
       const seen = new Set<SkillName>()
       const result: { skill: SkillName; label: string }[] = []
       for (const tec of tecnicas.filter((tec) => tec.activa && tec.required_skill)) {
         const skill = tec.required_skill!
+        if (!roleSkills.includes(skill)) continue
         if (!seen.has(skill)) {
           seen.add(skill)
           result.push({ skill, label: tec.nombre_es })
         }
       }
+      // Add any role skills not covered by técnicas
+      for (const sk of roleSkills) {
+        if (!seen.has(sk)) {
+          seen.add(sk)
+          result.push({ skill: sk, label: ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0]) })
+        }
+      }
       return result
     }
-    return DEFAULT_SKILLS.map((s) => ({ skill: s, label: ts(SKILL_KEYS[s] as Parameters<typeof ts>[0]) }))
+    return roleSkills.map((s) => ({ skill: s, label: ts(SKILL_KEYS[s] as Parameters<typeof ts>[0]) }))
   })()
 
   type SkillState = 'off' | 'training' | 'certified'
@@ -174,7 +195,7 @@ export function StaffForm({
       <Section label={t("sections.roleAndStatus")}>
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.role")} required>
-            <Select name="role" defaultValue={staff?.role ?? "lab"} disabled={isPending}>
+            <Select name="role" defaultValue={staff?.role ?? "lab"} disabled={isPending} onChange={setRole}>
               <option value="lab">{t("roles.lab")}</option>
               <option value="andrology">{t("roles.andrology")}</option>
               <option value="admin">{t("roles.admin")}</option>

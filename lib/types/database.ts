@@ -12,7 +12,7 @@ export type LeaveType         = 'annual' | 'sick' | 'personal' | 'other'
 export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
 export type SkillName         =
   | 'icsi' | 'iui' | 'vitrification' | 'thawing'
-  | 'biopsy' | 'semen_analysis' | 'sperm_prep' | 'witnessing' | 'other'
+  | 'biopsy' | 'semen_analysis' | 'sperm_prep' | 'sperm_freezing' | 'witnessing' | 'other'
   | 'egg_collection' | 'embryo_transfer' | 'denudation'
 
 export type SkillLevel        = 'certified' | 'training'

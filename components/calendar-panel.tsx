@@ -93,6 +93,7 @@ const TODAY = new Date().toISOString().split("T")[0]
 const SKILL_KEYS: Record<string, string> = {
   icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
   biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
+  sperm_freezing: "spermFreezing",
   witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
   embryo_transfer: "embryoTransfer", denudation: "denudation",
 }
@@ -2039,9 +2040,18 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 const isToday    = day.date === TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
 
+                const tooltipParts: string[] = []
+                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
+                if (day.punctions > 0) tooltipParts.push(`${day.punctions} punciones`)
+                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ausencias`)
+                if (day.hasSkillGaps) tooltipParts.push("Habilidades sin cubrir")
+                if (day.holidayName) tooltipParts.push(day.holidayName)
+                const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
+
                 return (
+                  <Tooltip key={day.date}>
+                    <TooltipTrigger render={
                   <button
-                    key={day.date}
                     onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
                     className={cn(
                       "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[80px]",
@@ -2101,6 +2111,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                     )}
                   </button>
+                    } />
+                    {tooltipText && <TooltipContent side="top">{tooltipText}</TooltipContent>}
+                  </Tooltip>
                 )
               })}
             </div>
@@ -2728,15 +2741,15 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
   const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
-  const showActions    = view !== "month"
+  const showActions    = true
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      {/* Desktop toolbar — LEFT · CENTRE · RIGHT */}
-      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
+      {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
+      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
 
         {/* LEFT: Today · ‹ › · date range */}
         <div className="flex items-center gap-2 shrink-0">
@@ -2756,8 +2769,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </span>
         </div>
 
-        {/* CENTRE: Week · Month · Day · divider · By shift · By person */}
-        <div className="flex items-center gap-1.5">
+        {/* CENTRE — absolutely positioned so it stays centred regardless of left/right width */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
           <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
             {(["week", "month"] as ViewMode[]).map((v) => (
               <button
@@ -2799,7 +2812,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* RIGHT: warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
-          {view !== "month" && weekData && (
+          {weekData && (
             <WarningsPill days={weekData.days} />
           )}
           {showActions && !isPublished && (
