@@ -469,10 +469,10 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
               <TooltipTrigger render={
                 <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium cursor-default", colorClass)}>
                   <div className={cn(
-                    "size-4 rounded-full flex items-center justify-center text-[8px] font-bold",
+                    "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
                     ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
                   )}>
-                    {ROLE_ABBR[s.role] ?? "?"}
+                    {s.first[0]?.toUpperCase()}{s.last[0]?.toUpperCase()}
                   </div>
                   <span>{s.count}/5</span>
                 </div>
