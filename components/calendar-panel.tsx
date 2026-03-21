@@ -1375,6 +1375,14 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }, [])
 
+  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
+  const fetchWeekSilent = useCallback((ws: string) => {
+    getRotaWeek(ws).then((d) => {
+      setWeekData(d)
+      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
+    }).catch(() => {/* ignore — grid stays as-is */})
+  }, [])
+
   // Fetch month summary
   const fetchMonth = useCallback((ms: string) => {
     setLoadingMonth(true)
@@ -1748,7 +1756,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 punctionsDefault={weekData?.punctionsDefault ?? {}}
                 punctionsOverride={punctionsOverride}
                 onPunctionsChange={handlePunctionsChange}
-                onRefresh={() => fetchWeek(weekStart)}
+                onRefresh={() => fetchWeekSilent(weekStart)}
                 onFunctionLabelSave={handleFunctionLabelSave}
               />
             ) : (
