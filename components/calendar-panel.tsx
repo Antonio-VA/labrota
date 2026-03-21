@@ -888,13 +888,8 @@ function ShiftBudgetBar({ data, staffList, onPillClick }: { data: RotaWeekData; 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
-          const over  = s.count > s.daysPerWeek
-          const under = s.count < s.daysPerWeek
-          const pillClass = over
-            ? "bg-red-50 border-red-300 text-red-600"
-            : under
-            ? "bg-orange-50 border-orange-300 text-orange-600"
-            : "bg-white border-slate-200"
+          const textColor = s.count === 0 ? "" : s.count > s.daysPerWeek ? "text-red-600" : s.count < s.daysPerWeek ? "text-amber-600" : ""
+          const pillClass = cn("bg-white border-slate-200", textColor)
           return (
             <Tooltip key={id}>
               <TooltipTrigger render={

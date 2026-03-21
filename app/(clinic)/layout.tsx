@@ -52,7 +52,7 @@ export default async function ClinicLayout({
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-muted">
+    <div className="flex flex-col h-dvh overflow-hidden bg-muted">
       <ClinicTopBar
         orgName={orgName}
         orgLogoUrl={orgLogoUrl}
