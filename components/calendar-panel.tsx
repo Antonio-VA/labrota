@@ -860,8 +860,14 @@ function StaffProfilePanel({
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data, staffList, onPillClick }: { data: RotaWeekData; staffList: StaffWithSkills[]; onPillClick?: (staffId: string) => void }) {
+function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick }: {
+  data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
+}) {
   const t = useTranslations("schedule")
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [visibleCount, setVisibleCount] = useState<number | null>(null)
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  const overflowRef = useRef<HTMLDivElement>(null)
 
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
   for (const day of data.days) {
@@ -882,33 +888,93 @@ function ShiftBudgetBar({ data, staffList, onPillClick }: { data: RotaWeekData; 
     return (roleOrder[a[1].role as keyof typeof roleOrder] ?? 9) - (roleOrder[b[1].role as keyof typeof roleOrder] ?? 9)
   })
 
+  // Measure overflow after render
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const items = el.querySelectorAll<HTMLElement>("[data-pill]")
+    if (items.length === 0) { setVisibleCount(null); return }
+    const containerRight = el.getBoundingClientRect().right
+    let count = 0
+    for (const item of items) {
+      if (item.getBoundingClientRect().right <= containerRight - 80) count++
+      else break
+    }
+    setVisibleCount(count < items.length ? count : null)
+  }, [entries.length])
+
+  // Close overflow on outside click
+  useEffect(() => {
+    if (!overflowOpen) return
+    function handler(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) setOverflowOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [overflowOpen])
+
   if (entries.length === 0) return null
 
+  const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
+  const overflow = visibleCount !== null ? entries.slice(visibleCount) : []
+
+  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; daysPerWeek: number }) {
+    const over  = s.count > s.daysPerWeek
+    const under = s.count < s.daysPerWeek
+    const color = s.count === 0 ? "text-slate-400" : over ? "text-red-600" : under ? "text-amber-600" : "text-slate-600"
+    return (
+      <Tooltip key={id}>
+        <TooltipTrigger render={
+          <button
+            data-pill
+            onClick={() => onPillClick?.(id)}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-blue-50", color)}
+          >
+            <span className="font-medium">{s.first}</span>{" "}
+            <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
+          </button>
+        } />
+        <TooltipContent side="top">
+          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} turnos
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
   return (
-    <div className="border-t border-[#CCDDEE] px-4 py-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
-        {entries.map(([id, s]) => {
-          const textColor = s.count === 0 ? "" : s.count > s.daysPerWeek ? "text-red-600" : s.count < s.daysPerWeek ? "text-amber-600" : ""
-          const pillClass = cn("bg-white border-slate-200", textColor)
-          return (
-            <Tooltip key={id}>
-              <TooltipTrigger render={
-                <div
-                  onClick={onPillClick ? () => onPillClick(id) : undefined}
-                  className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full border text-[12px]", pillClass, onPillClick ? "cursor-pointer hover:shadow-sm transition-shadow" : "cursor-default")}
-                >
-                  <span className="font-medium">{s.first}</span>
-                  <span className="font-normal">{s.count}/{s.daysPerWeek}</span>
-                </div>
-              } />
-              <TooltipContent side="top">
-                {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} turnos
-              </TooltipContent>
-            </Tooltip>
-          )
-        })}
+    <div
+      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-[#CCDDEE] flex items-center px-4 gap-1"
+      style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
+    >
+      {/* Left: label + pills */}
+      <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
+      <div ref={containerRef} className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
+        {shown.map(([id, s], i) => (
+          <Fragment key={id}>
+            {i > 0 && <span className="text-slate-300 text-[10px] select-none">·</span>}
+            {renderPill(id, s)}
+          </Fragment>
+        ))}
       </div>
+      {overflow.length > 0 && (
+        <div ref={overflowRef} className="relative shrink-0">
+          <button
+            onClick={() => setOverflowOpen((o) => !o)}
+            className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer ml-1"
+          >
+            +{overflow.length} más
+          </button>
+          {overflowOpen && (
+            <div className="absolute bottom-full right-0 mb-2 z-50 w-60 rounded-lg border border-border bg-background shadow-lg py-2 px-1">
+              <div className="flex flex-wrap gap-0.5">
+                {overflow.map(([id, s]) => renderPill(id, s))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Right: week range */}
+      <span className="text-[12px] text-slate-400 shrink-0 ml-auto capitalize">{weekLabel}</span>
     </div>
   )
 }
@@ -2454,7 +2520,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {!weekData?.rota && !loadingWeek && !isPending ? (
                 <EmptyState
@@ -2498,7 +2564,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 />
               )}
             </div>
-            {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} onPillClick={openProfile} />}
           </div>
         )}
 
@@ -2556,6 +2621,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
       />
+
+      {/* Bottom taskbar */}
+      {view === "week" && weekData && (
+        <ShiftBudgetBar
+          data={weekData}
+          staffList={staffList}
+          weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
+          onPillClick={openProfile}
+        />
+      )}
     </main>
   )
 }
