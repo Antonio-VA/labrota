@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, Trash2 } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -27,8 +27,8 @@ const ROLE_VARIANTS: Record<StaffRole, "lab" | "andrology" | "admin"> = {
   lab: "lab", andrology: "andrology", admin: "admin",
 }
 
-const STATUS_VARIANTS: Record<OnboardingStatus, "active" | "inactive" | "outline"> = {
-  active: "active", onboarding: "outline", inactive: "inactive",
+const STATUS_VARIANTS: Record<OnboardingStatus, "active" | "onboarding" | "inactive"> = {
+  active: "active", onboarding: "onboarding", inactive: "inactive",
 }
 
 const SKILL_KEYS: Record<SkillName, string> = {
@@ -38,15 +38,14 @@ const SKILL_KEYS: Record<SkillName, string> = {
   embryo_transfer: "embryoTransfer", denudation: "denudation",
 }
 
-// Only the 5 skills surfaced in bulk UI
-const BULK_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "other", "witnessing"]
+const BULK_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
 
 const BULK_SKILL_LABELS: Record<string, string> = {
-  biopsy: "Biopsia",
-  icsi: "ICSI",
-  egg_collection: "Recogida de óvulos",
-  other: "Transferencia embrionaria",
-  witnessing: "Denudación",
+  biopsy:          "Biopsia",
+  icsi:            "ICSI",
+  egg_collection:  "Recogida de óvulos",
+  embryo_transfer: "Transferencia embrionaria",
+  denudation:      "Denudación",
 }
 
 const ROLE_ORDER: Record<StaffRole, number> = { lab: 0, andrology: 1, admin: 2 }
@@ -659,14 +658,13 @@ function StaffTable({
                 <span
                   key={sk.skill}
                   className={cn(
-                    "shrink-0 inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[11px] font-medium",
+                    "shrink-0 inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium",
                     sk.level === "training"
-                      ? "border-amber-300 bg-amber-50 text-amber-800"
-                      : "border-blue-200 bg-blue-50 text-blue-700"
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-blue-400 bg-blue-50 text-blue-700"
                   )}
                 >
                   {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
-                  {sk.level === "training" && <span className="text-[9px] opacity-70">★</span>}
                 </span>
               ))}
               {extraCount > 0 && (
@@ -683,7 +681,7 @@ function StaffTable({
 
             {/* Status */}
             <div className="hidden md:flex items-center">
-              <Badge variant={STATUS_VARIANTS[member.onboarding_status] as "active" | "inactive" | "outline"}>
+              <Badge variant={STATUS_VARIANTS[member.onboarding_status]}>
                 {t(`onboardingStatus.${member.onboarding_status}`)}
               </Badge>
             </div>
@@ -842,7 +840,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           onClick={() => setShowHistory((v) => !v)}
           className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
         >
-          <span>{showHistory ? "▾" : "▸"}</span>
+          {showHistory ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           {showHistory
             ? t("hideHistory")
             : t("showHistory", { count: inactiveFiltered.length })}

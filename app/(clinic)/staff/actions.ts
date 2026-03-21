@@ -7,8 +7,7 @@ import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Sh
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
-  "icsi", "iui", "vitrification", "thawing", "biopsy",
-  "semen_analysis", "sperm_prep", "witnessing", "egg_collection", "other",
+  "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
 ]
 
 async function getOrgId(): Promise<string | null> {

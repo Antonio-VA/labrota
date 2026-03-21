@@ -20,13 +20,14 @@ const badgeVariants = cva(
           "hover:bg-muted hover:text-muted-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         /* LabRota role variants */
-        lab: "border-blue-200 bg-blue-50 text-blue-700",
-        andrology: "border-emerald-200 bg-emerald-50 text-emerald-700",
-        admin: "border-slate-200 bg-slate-100 text-slate-600",
+        lab: "border-blue-100 bg-blue-50 text-blue-600",
+        andrology: "border-emerald-100 bg-emerald-50 text-emerald-600",
+        admin: "border-slate-100 bg-slate-50 text-slate-500",
         /* Skill gap — red only, per spec */
         "skill-gap": "border-red-200 bg-red-50 text-red-600",
         /* Staff status */
-        active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        active: "border-green-100 bg-green-50 text-green-600",
+        onboarding: "border-amber-200 bg-amber-50 text-amber-600",
         inactive: "border-slate-200 bg-slate-100 text-slate-400",
       },
     },
