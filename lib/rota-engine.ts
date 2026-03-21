@@ -5,7 +5,7 @@
  * Algorithm per day:
  *  1. Determine eligible staff (active, in employment window, works that weekday,
  *     not on leave, has weekly shift budget remaining)
- *  2. Sort by historical workload score (fewer recent shifts = higher priority)
+ *  2. Sort by preferred days (soft), then historical workload (fewer = higher priority)
  *  3. Assign ALL eligible lab + andrology staff; max 1 admin
  *  4. Compute minimum coverage requirements (dynamic from punctions/embryologist ratio)
  *  5. Auto-designate OPU (most senior lab/andrology staff with egg_collection skill)
@@ -200,10 +200,15 @@ export function runRotaEngine({
       return true
     })
 
-    // 2. Sort by historical workload ascending (fewer past shifts = higher priority)
-    const sorted = [...eligible].sort(
-      (a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-    )
+    // 2. Sort by: preferred day first (soft), then historical workload ascending
+    const sorted = [...eligible].sort((a, b) => {
+      // Prefer staff who have this day in their preferred_days (soft constraint)
+      const aPref = a.preferred_days?.length ? (a.preferred_days.includes(dayCode) ? 0 : 1) : 0
+      const bPref = b.preferred_days?.length ? (b.preferred_days.includes(dayCode) ? 0 : 1) : 0
+      if (aPref !== bPref) return aPref - bPref
+      // Then by workload fairness
+      return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+    })
 
     // 3. Role pools (all eligible staff in each role, sorted by workload)
     const labPool       = sorted.filter((s) => s.role === "lab")

@@ -8,6 +8,7 @@ import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Sh
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const ALL_SKILLS: SkillName[] = [
   "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
+  "sperm_freezing", "semen_analysis", "sperm_prep",
 ]
 
 async function getOrgId(): Promise<string | null> {
@@ -27,6 +28,7 @@ function parseFormData(formData: FormData) {
       email:             ((formData.get("email") as string) || "").trim() || null,
       role:              formData.get("role") as StaffRole,
       working_pattern:   ALL_DAYS.filter(d => formData.get(`day_${d}`) === "on"),
+      preferred_days:    ALL_DAYS.filter(d => formData.get(`pref_${d}`) === "on"),
       contracted_hours:  37,   // kept in DB but not shown in UI
       days_per_week:     Math.min(7, Math.max(1, parseInt(formData.get("days_per_week") as string, 10) || 5)),
       onboarding_status: formData.get("onboarding_status") as OnboardingStatus,

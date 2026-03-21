@@ -45,6 +45,7 @@ function makeStaff(overrides: Partial<StaffWithSkills> & { id: string }): StaffW
     email: null,
     role: "lab",
     working_pattern: ["mon", "tue", "wed", "thu", "fri"],
+    preferred_days: null,
     contracted_hours: 40,
     days_per_week: 5,
     onboarding_status: "active",
@@ -204,6 +205,40 @@ describe("runRotaEngine — shift budget", () => {
     expect(count).toBe(6)
     // Saturday should be assigned
     expect(result.days.find((d) => d.date === "2026-03-21")!.assignments).toHaveLength(1)
+  })
+})
+
+// ── Preferred days (soft constraint) ──────────────────────────────────────────
+
+describe("runRotaEngine — preferred days", () => {
+  it("preferred_days staff are sorted before non-preferred on that day", () => {
+    // Both work Mon-Fri, but s1 prefers Mon, s2 does not
+    // With days_per_week=1, only one gets Monday — should be s1
+    const staff = [
+      makeStaff({ id: "s1", first_name: "Preferred", days_per_week: 1, preferred_days: ["mon"] }),
+      makeStaff({ id: "s2", first_name: "NoPreference", days_per_week: 1, preferred_days: [] }),
+    ]
+    const result = runRotaEngine({
+      weekStart: WEEK, staff, leaves: [], recentAssignments: [],
+      labConfig: BASE_CONFIG,
+    })
+    const mon = result.days.find((d) => d.date === "2026-03-16")!
+    // s1 prefers Monday → assigned first
+    expect(mon.assignments[0].staff_id).toBe("s1")
+  })
+
+  it("null preferred_days treated as no preference (all equal)", () => {
+    const staff = [
+      makeStaff({ id: "s1", preferred_days: null }),
+      makeStaff({ id: "s2", preferred_days: null }),
+    ]
+    const result = runRotaEngine({
+      weekStart: WEEK, staff, leaves: [], recentAssignments: [],
+      labConfig: BASE_CONFIG,
+    })
+    // Both should be assigned (no filtering, just workload sort)
+    const mon = result.days.find((d) => d.date === "2026-03-16")!
+    expect(mon.assignments).toHaveLength(2)
   })
 })
 

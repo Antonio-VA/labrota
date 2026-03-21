@@ -58,6 +58,7 @@ export interface Staff {
   email:             string | null
   role:              StaffRole
   working_pattern:   WorkingPattern
+  preferred_days:    WorkingPattern | null
   contracted_hours:  number
   days_per_week:     number
   onboarding_status: OnboardingStatus

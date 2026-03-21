@@ -111,6 +111,9 @@ export function StaffForm({
   const [selectedDays, setSelectedDays] = useState<WorkingDay[]>(
     staff?.working_pattern ?? ["mon", "tue", "wed", "thu", "fri"]
   )
+  const [preferredDays, setPreferredDays] = useState<WorkingDay[]>(
+    staff?.preferred_days ?? []
+  )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
 
   // Derive which skills to show based on role
@@ -155,7 +158,17 @@ export function StaffForm({
   const [isDeleting, startDelete] = useTransition()
 
   function toggleDay(day: WorkingDay) {
-    setSelectedDays((prev) =>
+    setSelectedDays((prev) => {
+      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      // Remove from preferred if no longer available
+      setPreferredDays((pref) => pref.filter((d) => next.includes(d)))
+      return next
+    })
+  }
+
+  function togglePreferredDay(day: WorkingDay) {
+    if (!selectedDays.includes(day)) return // can't prefer a day not available
+    setPreferredDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     )
   }
@@ -244,8 +257,11 @@ export function StaffForm({
         </Field>
       </Section>
 
-      {/* Working pattern */}
-      <Section label={t("fields.workingPattern")}>
+      {/* Días disponibles (hard constraint) */}
+      <Section label="Días disponibles">
+        <p className="text-[12px] text-muted-foreground mb-2">
+          Días contratados. El generador nunca asigna fuera de estos días.
+        </p>
         <div className="flex gap-2 flex-wrap">
           {ALL_DAYS.map((day) => {
             const active = selectedDays.includes(day)
@@ -267,13 +283,53 @@ export function StaffForm({
             )
           })}
         </div>
-        {/* Hidden inputs for form submission */}
         {ALL_DAYS.map((day) =>
           selectedDays.includes(day) ? (
             <input key={day} type="hidden" name={`day_${day}`} value="on" />
           ) : null
         )}
       </Section>
+
+      {/* Días preferidos (soft constraint) */}
+      {selectedDays.length > 0 && (
+        <Section label="Días preferidos">
+          <p className="text-[12px] text-muted-foreground mb-2">
+            Días que prefiere trabajar (dentro de los disponibles). El generador intenta respetar pero puede ajustar si es necesario.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {ALL_DAYS.map((day) => {
+              const available = selectedDays.includes(day)
+              const preferred = preferredDays.includes(day)
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => togglePreferredDay(day)}
+                  disabled={isPending || !available}
+                  className={cn(
+                    "h-8 px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
+                    !available
+                      ? "border-border bg-slate-50 text-slate-300 cursor-not-allowed"
+                      : preferred
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-400"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {t(`workingDays.${day}`)}
+                </button>
+              )
+            })}
+          </div>
+          {preferredDays.length === 0 && (
+            <p className="text-[11px] text-slate-400 italic mt-1">Sin preferencia — todos los días disponibles son iguales.</p>
+          )}
+          {ALL_DAYS.map((day) =>
+            preferredDays.includes(day) ? (
+              <input key={day} type="hidden" name={`pref_${day}`} value="on" />
+            ) : null
+          )}
+        </Section>
+      )}
 
       {/* Capacidades */}
       <Section label={t("sections.capabilities")}>

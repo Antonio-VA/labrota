@@ -812,9 +812,15 @@ function StaffProfilePanel({
                   <p className="text-slate-700 font-medium">{tenureLabel}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Patrón</p>
+                  <p className="text-muted-foreground">Disponible</p>
                   <p className="text-slate-700 font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
                 </div>
+                {staff.preferred_days && staff.preferred_days.length > 0 && (
+                  <div>
+                    <p className="text-muted-foreground">Preferidos</p>
+                    <p className="text-emerald-700 font-medium">{staff.preferred_days.join(", ").toUpperCase()}</p>
+                  </div>
+                )}
                 {staff.preferred_shift && (
                   <div>
                     <p className="text-muted-foreground">Turno preferido</p>
