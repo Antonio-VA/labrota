@@ -19,6 +19,7 @@ import type {
   LabConfig,
   RotaRule,
   ShiftType,
+  ShiftTypeDefinition,
   SkillName,
   WorkingDay,
 } from "@/lib/types/database"
@@ -42,6 +43,7 @@ export interface EngineParams {
   leaves: Leave[]
   recentAssignments: RotaAssignment[]  // last ~4 weeks, used for workload scoring
   labConfig: LabConfig
+  shiftTypes?: ShiftTypeDefinition[]   // org shift catalogue — used to fill all shifts
   punctionsOverride?: Record<string, number>  // per-date overrides from rota record
   rules?: RotaRule[]             // enabled scheduling rules
 }
@@ -89,6 +91,7 @@ export function runRotaEngine({
   leaves,
   recentAssignments,
   labConfig,
+  shiftTypes = [],
   punctionsOverride,
   rules = [],
 }: EngineParams): RotaEngineResult {
@@ -126,6 +129,18 @@ export function runRotaEngine({
       leaveMap[leave.staff_id].add(iso)
     }
   }
+
+  // Leave days this week per staff — used to discount their shift budget so the
+  // ShiftBudgetBar doesn't flag leave-reduced weeks as under-scheduled.
+  const leaveThisWeek: Record<string, number> = {}
+  for (const staffId in leaveMap) {
+    leaveThisWeek[staffId] = allWeekDates.filter((d) => leaveMap[staffId].has(d)).length
+  }
+
+  // Shift codes sorted by sort_order — used to distribute staff across all available shifts.
+  const shiftCodes = [...shiftTypes]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((st) => st.code)
 
   // Canonical skills tracked for gap detection — only these five matter for rota coverage.
   // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
@@ -173,7 +188,8 @@ export function runRotaEngine({
       if (leaveMap[s.id]?.has(date)) return false
       // Budget check: on weekdays, reserve slots for upcoming weekend pattern days
       // so the Mon→Fri greedy fill doesn't exhaust quota before Saturday/Sunday.
-      const totalBudget = s.days_per_week ?? 5
+      // Leave days this week reduce the effective budget so under-leave weeks aren't flagged.
+      const totalBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
       const used        = weeklyShiftCount[s.id] ?? 0
       if (weekend) {
         if (used >= totalBudget) return false
@@ -326,15 +342,26 @@ export function runRotaEngine({
       warnings.push(`${date}: skill gaps — ${skillGaps.join(", ")}`)
     }
 
-    const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? "T1"
+    const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? (shiftCodes[0] ?? "T1")
+    const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
+    // Distribute staff without a preferred_shift round-robin across all available shifts,
+    // so every shift type gets coverage. Staff with a preferred_shift keep their preference.
+    let rrIdx = 0
     days.push({
       date,
-      assignments: assigned.map((s) => ({
-        staff_id:   s.id,
-        shift_type: (s.preferred_shift ?? (s.role === "admin" ? adminDefaultShift : "T1")) as ShiftType,
-        is_opu:     s.id === opuStaffId,
-      })),
+      assignments: assigned.map((s) => {
+        let shift: ShiftType
+        if (s.preferred_shift) {
+          shift = s.preferred_shift as ShiftType
+        } else if (s.role === "admin") {
+          shift = adminDefaultShift
+        } else {
+          shift = defaultShiftCodes[rrIdx % defaultShiftCodes.length] as ShiftType
+          rrIdx++
+        }
+        return { staff_id: s.id, shift_type: shift, is_opu: s.id === opuStaffId }
+      }),
       skillGaps,
     })
 

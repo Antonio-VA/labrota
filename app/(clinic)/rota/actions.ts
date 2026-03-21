@@ -310,7 +310,7 @@ export async function generateRota(
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("*").eq("enabled", true),
-    supabase.from("shift_types").select("code").order("sort_order") as unknown as Promise<{ data: { code: string }[] | null }>,
+    supabase.from("shift_types").select("*").order("sort_order"),
   ])
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
@@ -365,7 +365,8 @@ export async function generateRota(
   // Normalise preferred_shift against the org's actual shift_type codes.
   // Staff seeded with old 'am'/'pm'/'full' values (before the shift_types migration) would
   // otherwise get assignments saved with those stale codes, making them invisible in the grid.
-  const validEngineCodes = new Set((shiftTypesForEngine.data ?? []).map((st) => st.code))
+  const shiftTypesData = (shiftTypesForEngine.data ?? []) as import("@/lib/types/database").ShiftTypeDefinition[]
+  const validEngineCodes = new Set(shiftTypesData.map((st) => st.code))
   const normalizedStaff = ((staffRes.data ?? []) as StaffWithSkills[]).map((s) => {
     return validEngineCodes.size > 0 && s.preferred_shift && !validEngineCodes.has(s.preferred_shift)
       ? { ...s, preferred_shift: null }  // engine will fall back to default (T1 / admin_default_shift)
@@ -379,6 +380,7 @@ export async function generateRota(
     leaves: (leavesRes.data ?? []) as Leave[],
     recentAssignments: (recentAssignmentsRes.data ?? []) as RotaAssignment[],
     labConfig,
+    shiftTypes: shiftTypesData,
     punctionsOverride,
     rules: (rulesRes.data ?? []) as RotaRule[],
   })

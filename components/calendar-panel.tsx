@@ -206,9 +206,13 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecni
       <span className="text-[10px] font-normal text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100 shrink-0 -ml-0.5">
         {ROLE_LABEL[role] ?? role}
       </span>
-      {pillLabel && pillColor && (
-        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", pillColor)}>
+      {pillLabel && pillColor ? (
+        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded ml-auto shrink-0", pillColor)}>
           {pillLabel}
+        </span>
+      ) : (
+        <span className="text-[9px] font-medium text-slate-300 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+          + Task
         </span>
       )}
     </div>
@@ -671,7 +675,7 @@ function SkillGapPill({ details }: {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-amber-700 text-[12px] font-medium hover:bg-amber-50/50 transition-colors shrink-0"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>
@@ -1410,8 +1414,8 @@ function ShiftGrid({
           backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
         }} />
 
-        {/* OFF row — slate-50 bg, max 3 visible + overflow indicator */}
-        <div className="grid grid-cols-[72px_repeat(7,1fr)]">
+        {/* OFF row */}
+        <div className="grid grid-cols-[72px_repeat(7,1fr)] bg-slate-50">
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
             <span className="text-[12px] italic text-slate-400 leading-tight">OFF</span>
           </div>
@@ -1433,7 +1437,7 @@ function ShiftGrid({
                 isOver={overId === offCellId}
                 isPublished={isPublished}
                 style={isSaturday ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
-                className="p-1.5 flex flex-col gap-1 bg-white"
+                className="p-1.5 flex flex-col gap-1 bg-slate-50"
               >
                 {offStaff.map((s) => {
                   const onLeave = leaveIds.has(s.id)
