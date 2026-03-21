@@ -185,11 +185,11 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel }: Shi
 
   return (
     <div className={cn(
-      "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
+      "flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px]",
       isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background"
     )}>
       <div className={cn(
-        "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
+        "size-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0",
         ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
       )}>
         {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
@@ -711,15 +711,16 @@ function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps)
   )
 }
 
-function DroppableCell({ id, children, isOver, isPublished, onClick, className }: {
+function DroppableCell({ id, children, isOver, isPublished, onClick, className, style }: {
   id: string; children: React.ReactNode; isOver: boolean
-  isPublished: boolean; onClick?: () => void; className?: string
+  isPublished: boolean; onClick?: () => void; className?: string; style?: React.CSSProperties
 }) {
   const { setNodeRef, isOver: dndIsOver } = useDroppable({ id })
   return (
     <div
       ref={setNodeRef}
       onClick={onClick}
+      style={style}
       className={cn(className, (isOver || dndIsOver) && !isPublished && "bg-blue-50")}
     >
       {children}
@@ -858,7 +859,7 @@ function ShiftGrid({
       onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
       onDragEnd={handleDragEnd}
     >
-      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px] flex-1">
+      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px]">
 
         {/* Header row — 52px, white, subtle border */}
         <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
@@ -868,6 +869,7 @@ function ShiftGrid({
             const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
             const dayN  = String(d.getDate())
             const today = day.date === TODAY
+            const isSat = d.getDay() === 6
             const holidayName = publicHolidays[day.date]
 
             const defaultP      = punctionsDefault[day.date] ?? 0
@@ -875,10 +877,11 @@ function ShiftGrid({
             const hasOverride   = punctionsOverride[day.date] !== undefined
 
             return (
-              <div key={day.date} className={cn(
-                "relative flex flex-col items-center justify-center py-1 gap-[2px]",
-                day.isWeekend && "bg-slate-50"
-              )}>
+              <div
+                key={day.date}
+                className="relative flex flex-col items-center justify-center py-1 gap-[2px]"
+                style={isSat ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
+              >
                 {holidayName && (
                   <Tooltip>
                     <TooltipTrigger render={
@@ -911,7 +914,7 @@ function ShiftGrid({
                   "size-7 flex items-center justify-center rounded-full font-medium leading-none",
                   today
                     ? "bg-primary text-primary-foreground text-[15px]"
-                    : "text-[20px] text-slate-800"
+                    : day.isWeekend ? "text-[20px] text-slate-500" : "text-[20px] text-slate-800"
                 )}>
                   {dayN}
                 </div>
@@ -951,6 +954,7 @@ function ShiftGrid({
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
               const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
               const cellId = `${shiftRow}-${day.date}`
+              const isSatCell = new Date(day.date + "T12:00:00").getDay() === 6
               return (
                 <DroppableCell
                   key={day.date}
@@ -958,10 +962,10 @@ function ShiftGrid({
                   isOver={overId === cellId}
                   isPublished={isPublished}
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
+                  style={isSatCell ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors",
-                    day.isWeekend ? "bg-slate-50" : "bg-white",
-                    !isPublished && (day.isWeekend ? "cursor-pointer hover:bg-slate-100" : "cursor-pointer hover:bg-blue-50")
+                    "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors bg-white",
+                    !isPublished && "cursor-pointer hover:bg-blue-50"
                   )}
                 >
                   {dayShifts.map((a) => (
@@ -1002,7 +1006,7 @@ function ShiftGrid({
         {/* OFF row — slate-50 bg, max 3 visible + overflow indicator */}
         <div className="grid grid-cols-[72px_repeat(7,1fr)]">
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
-            <span className="text-[13px] font-medium text-slate-700 leading-tight">OFF</span>
+            <span className="text-[12px] italic text-slate-400 leading-tight">OFF</span>
           </div>
           {data.days.map((day) => {
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
@@ -1022,7 +1026,8 @@ function ShiftGrid({
                   id={offCellId}
                   isOver={overId === offCellId}
                   isPublished={isPublished}
-                  className="p-1.5 flex flex-col gap-1 bg-slate-50 min-h-[36px]"
+                  style={{ borderLeft: "1px dashed #e2e8f0" }}
+                  className="p-1.5 flex flex-col gap-1 bg-white min-h-[36px]"
                 >
                   {leaveStaff.map((s) => (
                     <div key={s.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
@@ -1049,7 +1054,7 @@ function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 bg-slate-50 max-h-[120px] overflow-hidden"
+                className="p-1.5 flex flex-col gap-1 bg-white max-h-[120px] overflow-hidden"
               >
                 {visible.map((s) => {
                   const onLeave = leaveIds.has(s.id)
@@ -1058,12 +1063,12 @@ function ShiftGrid({
                       key={s.id}
                       className={cn(
                         "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
-                        onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[#CCDDEE] bg-white text-foreground"
+                        onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-500"
                       )}
                     >
                       <div className={cn(
                         "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
-                        onLeave ? "bg-amber-200 text-amber-800" : (ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground")
+                        onLeave ? "bg-amber-200 text-amber-800" : "bg-slate-200 text-slate-500"
                       )}>
                         {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
                       </div>
@@ -1715,11 +1720,11 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto flex flex-col">
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-2">
+          <div className="hidden md:flex flex-col px-4 py-2 gap-4">
             {!weekData?.rota && !loadingWeek && !isPending ? (
               <EmptyState
                 icon={CalendarDays}
