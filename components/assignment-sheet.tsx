@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { Star, X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX } from "lucide-react"
+import { Star, X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy } from "lucide-react"
 import { toast } from "sonner"
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -20,6 +20,7 @@ import {
   setPunctionsOverride,
   setFunctionLabel,
   setTecnica,
+  copyDayFromLastWeek,
 } from "@/app/(clinic)/rota/actions"
 import type {
   StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica,
@@ -291,10 +292,11 @@ function DraggableCard({
 // ── Draggable OFF staff chip ───────────────────────────────────────────────────
 
 function DraggableOffChip({
-  staff, onAdd, disabled, onLeave,
+  staff, shiftTypes, onAddToShift, disabled, onLeave,
 }: {
   staff: StaffWithSkills
-  onAdd: () => void
+  shiftTypes: ShiftTypeDefinition[]
+  onAddToShift: (staffId: string, shift: ShiftType) => void
   disabled: boolean
   onLeave: boolean
 }) {
@@ -323,10 +325,64 @@ function DraggableOffChip({
         onLeave ? "bg-amber-400 opacity-50" : ROLE_DOT[staff.role] ?? "bg-slate-400"
       )} />
       <span className="truncate flex-1">{staff.first_name} {staff.last_name}</span>
-      {onLeave
-        ? <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
-        : !disabled && <Plus className="size-3 shrink-0 opacity-40" />
-      }
+      {onLeave ? (
+        <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
+      ) : !disabled && shiftTypes.length > 0 ? (
+        <ShiftPickerButton shiftTypes={shiftTypes} onSelect={(shift) => onAddToShift(staff.id, shift)} />
+      ) : null}
+    </div>
+  )
+}
+
+// ── Shift picker for OFF chips ────────────────────────────────────────────────
+
+function ShiftPickerButton({ shiftTypes, onSelect }: { shiftTypes: ShiftTypeDefinition[]; onSelect: (shift: ShiftType) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  if (shiftTypes.length === 1) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); onSelect(shiftTypes[0].code) }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="shrink-0"
+      >
+        <Plus className="size-3 opacity-40 hover:opacity-100 transition-opacity" />
+      </button>
+    )
+  }
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Plus className="size-3 opacity-40 hover:opacity-100 transition-opacity" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-border bg-background shadow-lg py-1 w-28">
+          {shiftTypes.map((st) => (
+            <button
+              key={st.code}
+              onClick={(e) => { e.stopPropagation(); onSelect(st.code); setOpen(false) }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-muted/50 transition-colors text-[12px]"
+            >
+              <span className="font-medium">{st.code}</span>
+              <span className="text-muted-foreground text-[10px]">{st.start_time}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -737,6 +793,11 @@ export function AssignmentSheet({
                   <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
                     <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                       {shift.toUpperCase()}{timeLabel}
+                      {shiftAssignments.length > 0 && (
+                        <span className="font-normal normal-case tracking-normal ml-1.5 text-slate-400">
+                          · {shiftAssignments.length} {shiftAssignments.length === 1 ? "persona" : "personas"}
+                        </span>
+                      )}
                     </span>
                     <AddPersonButton
                       shift={shift}
@@ -769,24 +830,30 @@ export function AssignmentSheet({
                       )
                     })}
                     {shiftAssignments.length === 0 && (
-                      <div className="text-[11px] text-slate-300 italic py-1 select-none">Sin asignaciones</div>
+                      <div className="rounded-lg border border-dashed border-slate-200 py-3 flex items-center justify-center text-[11px] text-slate-300 select-none">
+                        Arrastra aquí o + Añadir
+                      </div>
                     )}
                   </div>
                 </DroppableShiftRow>
               )
             })}
 
-            {/* OFF section */}
-            <DroppableOffSection className="border-b border-border/60 transition-colors">
-              <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">OFF</span>
+            {/* OFF section separator */}
+            <div className="mx-4 my-1" style={{
+              borderBottom: "1px dashed #ccddee",
+            }} />
+            <DroppableOffSection className="transition-colors">
+              <div className="px-4 pt-2 pb-1.5">
+                <span className="text-[12px] text-slate-400 italic">OFF · No programados</span>
               </div>
-              <div className="px-3 flex flex-col gap-1 pb-3 bg-slate-50 min-h-[40px]">
+              <div className="px-3 flex flex-col gap-1 pb-3 bg-slate-50/50 min-h-[40px]">
                 {offStaff.map((s) => (
                   <DraggableOffChip
                     key={s.id}
                     staff={s}
-                    onAdd={() => handleAdd(s.id, (s.preferred_shift ?? shiftTypes[0]?.code ?? "T1") as ShiftType)}
+                    shiftTypes={shiftTypes}
+                    onAddToShift={handleAdd}
                     disabled={isPublished || !rota}
                     onLeave={false}
                   />
@@ -795,7 +862,8 @@ export function AssignmentSheet({
                   <DraggableOffChip
                     key={s.id}
                     staff={s}
-                    onAdd={() => {}}
+                    shiftTypes={shiftTypes}
+                    onAddToShift={() => {}}
                     disabled={true}
                     onLeave={true}
                   />
@@ -806,10 +874,27 @@ export function AssignmentSheet({
               </div>
             </DroppableOffSection>
 
-            {/* Destructive actions */}
-            {!isPublished && rota && assignments.length > 0 && (
-              <div className="px-4 py-4">
-                {!showDeleteAll ? (
+            {/* Actions */}
+            {!isPublished && rota && (
+              <div className="px-4 py-3 flex flex-col gap-3">
+                {/* Copy from last week */}
+                {assignments.length === 0 && date && (
+                  <button
+                    onClick={() => {
+                      startSave(async () => {
+                        const r = await copyDayFromLastWeek(weekStart, date)
+                        if (r.error) toast.error(r.error)
+                        else { toast.success(`${r.count} asignaciones copiadas`); onSaved() }
+                      })
+                    }}
+                    className="flex items-center gap-1.5 text-[12px] text-primary/70 hover:text-primary transition-colors"
+                  >
+                    <Copy className="size-3.5" />
+                    Copiar de semana anterior
+                  </button>
+                )}
+                {/* Delete all */}
+                {assignments.length > 0 && (!showDeleteAll ? (
                   <button
                     onClick={() => setShowDeleteAll(true)}
                     className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
@@ -844,7 +929,7 @@ export function AssignmentSheet({
                       </Button>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
             )}
           </div>

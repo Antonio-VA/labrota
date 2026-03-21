@@ -966,6 +966,64 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
   }
 }
 
+export async function copyDayFromLastWeek(weekStart: string, date: string): Promise<{ error?: string; count?: number }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // Get the same weekday from last week
+  const lastWeekDate = new Date(date + "T12:00:00")
+  lastWeekDate.setDate(lastWeekDate.getDate() - 7)
+  const lastWeek = lastWeekDate.toISOString().split("T")[0]
+
+  const { data: lastWeekAssignments } = await supabase
+    .from("rota_assignments")
+    .select("staff_id, shift_type, is_opu, function_label")
+    .eq("date", lastWeek) as unknown as { data: { staff_id: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }
+
+  if (!lastWeekAssignments || lastWeekAssignments.length === 0) {
+    return { error: "No hay asignaciones el mismo día de la semana anterior." }
+  }
+
+  // Ensure rota exists
+  const { data: rotaRow } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .select("id")
+    .single() as unknown as { data: { id: string } | null }
+  if (!rotaRow) return { error: "Error creando la guardia." }
+
+  // Check who's on leave
+  const { data: leaves } = await supabase
+    .from("leaves")
+    .select("staff_id")
+    .lte("start_date", date)
+    .gte("end_date", date)
+    .eq("status", "approved") as unknown as { data: { staff_id: string }[] | null }
+  const leaveIds = new Set((leaves ?? []).map((l) => l.staff_id))
+
+  const toInsert = lastWeekAssignments
+    .filter((a) => !leaveIds.has(a.staff_id))
+    .map((a) => ({
+      organisation_id: orgId,
+      rota_id: rotaRow.id,
+      staff_id: a.staff_id,
+      date,
+      shift_type: a.shift_type,
+      is_opu: a.is_opu,
+      is_manual_override: true,
+      function_label: a.function_label,
+    }))
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath("/")
+  return { count: toInsert.length }
+}
+
 export async function clearWeek(weekStart: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
