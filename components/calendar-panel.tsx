@@ -183,9 +183,10 @@ type ShiftBadgeProps = {
   first: string; last: string; role: string; isOpu: boolean; isOverride: boolean
   functionLabel?: string | null
   tecnica?: Tecnica | null
+  compact?: boolean
 }
 
-function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecnica }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecnica, compact = false }: ShiftBadgeProps) {
   // Técnica pill takes precedence; fall back to function_label / OPU
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? (isOpu ? "OPU" : null))
   const pillColor = tecnica
@@ -198,16 +199,14 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecni
 
   return (
     <div className={cn(
-      "group flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px] bg-white",
+      "group flex items-center gap-1.5 px-2 rounded border font-medium w-full bg-white",
+      compact ? "py-0.5 min-h-[24px] text-[11px]" : "py-1.5 min-h-[32px] text-[13px]",
       isOverride ? "border-primary/40" : "border-border"
     )}>
-      <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
+      <span className={cn("rounded-full shrink-0", compact ? "size-1.5" : "size-2", ROLE_DOT[role] ?? "bg-slate-400")} />
       <span className="truncate">{first} {last[0]}.</span>
-      <span className="text-[10px] font-normal text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100 shrink-0 -ml-0.5">
-        {ROLE_LABEL[role] ?? role}
-      </span>
       {pillLabel && pillColor ? (
-        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded ml-auto shrink-0", pillColor)}>
+        <span className={cn("font-semibold px-1 py-0.5 rounded ml-auto shrink-0", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
           {pillLabel}
         </span>
       ) : (
@@ -1009,7 +1008,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, weekStart,
+  onRefresh, weekStart, compact,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1027,6 +1026,7 @@ function ShiftGrid({
   onPunctionsChange: (date: string, value: number | null) => void
   onRefresh: () => void
   weekStart: string
+  compact?: boolean
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1360,7 +1360,8 @@ function ShiftGrid({
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   style={isSatCell ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 min-h-[48px] bg-white",
+                    "p-1.5 flex flex-col gap-1 bg-white",
+                    compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
                 >
@@ -1389,6 +1390,7 @@ function ShiftGrid({
                                 isOverride={a.is_manual_override}
                                 functionLabel={a.function_label}
                                 tecnica={tecnica}
+                                compact={compact}
                               />
                             </div>
                           } />
@@ -1705,6 +1707,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const [view, setView]                 = useState<ViewMode>("week")
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
+  const [compact, setCompact] = useState(false)
   const [currentDate, setCurrentDate]   = useState(TODAY)
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
@@ -2049,6 +2052,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onClick: handleUnlock,
                 disabled: isPending,
               }] : []),
+              ...(view === "week" && calendarLayout === "shift" ? [{
+                label: compact ? "Vista normal" : "Vista compacta",
+                onClick: () => setCompact((c) => !c),
+              }] : []),
             ]} />
           )}
         </div>
@@ -2110,51 +2117,54 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col">
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col px-4 py-2 gap-4">
-            {!weekData?.rota && !loadingWeek && !isPending ? (
-              <EmptyState
-                icon={CalendarDays}
-                title={t("noRota")}
-                description={t("noRotaDescription")}
-                action={{ label: t("generateRota"), onClick: handleGenerateClick }}
-              />
-            ) : calendarLayout === "shift" ? (
-              <ShiftGrid
-                data={weekData}
-                staffList={staffList}
-                loading={loadingWeek || isPending}
-                isGenerating={isPending}
-                locale={locale}
-                onCellClick={() => {}}
-                onChipClick={() => {}}
-                isPublished={!!isPublished}
-                shiftTimes={weekData?.shiftTimes ?? null}
-                onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                publicHolidays={weekData?.publicHolidays ?? {}}
-                punctionsDefault={weekData?.punctionsDefault ?? {}}
-                punctionsOverride={punctionsOverride}
-                onPunctionsChange={handlePunctionsChange}
-                onRefresh={() => fetchWeekSilent(weekStart)}
-                weekStart={weekStart}
-              />
-            ) : (
-              <PersonGrid
-                data={weekData}
-                staffList={staffList}
-                loading={loadingWeek || isPending}
-                isGenerating={isPending}
-                locale={locale}
-                isPublished={!!isPublished}
-                shiftTimes={weekData?.shiftTimes ?? null}
-                onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                publicHolidays={weekData?.publicHolidays ?? {}}
-                onChipClick={(_a, date) => handleMonthDayClick(date)}
-              />
-            )}
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-2 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto">
+              {!weekData?.rota && !loadingWeek && !isPending ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title={t("noRota")}
+                  description={t("noRotaDescription")}
+                  action={{ label: t("generateRota"), onClick: handleGenerateClick }}
+                />
+              ) : calendarLayout === "shift" ? (
+                <ShiftGrid
+                  data={weekData}
+                  staffList={staffList}
+                  loading={loadingWeek || isPending}
+                  isGenerating={isPending}
+                  locale={locale}
+                  onCellClick={() => {}}
+                  onChipClick={() => {}}
+                  isPublished={!!isPublished}
+                  shiftTimes={weekData?.shiftTimes ?? null}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={handlePunctionsChange}
+                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  weekStart={weekStart}
+                  compact={compact}
+                />
+              ) : (
+                <PersonGrid
+                  data={weekData}
+                  staffList={staffList}
+                  loading={loadingWeek || isPending}
+                  isGenerating={isPending}
+                  locale={locale}
+                  isPublished={!!isPublished}
+                  shiftTimes={weekData?.shiftTimes ?? null}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onChipClick={(_a, date) => handleMonthDayClick(date)}
+                />
+              )}
+            </div>
             {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} />}
           </div>
         )}
