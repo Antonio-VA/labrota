@@ -1838,23 +1838,40 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
+  function patchAssignment(assignmentId: string, patch: Record<string, unknown>) {
+    setWeekData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        days: prev.days.map((d) => ({
+          ...d,
+          assignments: d.assignments.map((a) =>
+            a.id === assignmentId ? { ...a, ...patch } : a
+          ),
+        })),
+      }
+    })
+  }
+
   function handleFunctionLabelSave(assignmentId: string, label: string | null) {
-    const ws = weekStart
+    patchAssignment(assignmentId, { function_label: label })
     startTransition(async () => {
       const result = await setFunctionLabel(assignmentId, label)
-      if (result.error) { toast.error(result.error); return }
-      const newData = await getRotaWeek(ws)
-      setWeekData(newData)
+      if (result.error) {
+        toast.error(result.error)
+        fetchWeekSilent(weekStart)
+      }
     })
   }
 
   function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
-    const ws = weekStart
+    patchAssignment(assignmentId, { tecnica_id: tecnicaId })
     startTransition(async () => {
       const result = await setTecnica(assignmentId, tecnicaId)
-      if (result.error) { toast.error(result.error); return }
-      const newData = await getRotaWeek(ws)
-      setWeekData(newData)
+      if (result.error) {
+        toast.error(result.error)
+        fetchWeekSilent(weekStart)
+      }
     })
   }
 
