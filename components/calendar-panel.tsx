@@ -778,6 +778,10 @@ function ShiftGrid({
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
+  const [localDays, setLocalDays] = useState(data?.days ?? [])
+
+  // Sync local state whenever server data arrives
+  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -790,29 +794,48 @@ function ShiftGrid({
 
     // ── OFF → shift: create a new assignment ─────────────────────────────────
     if (activeId.startsWith("off-")) {
-      if (destZone.startsWith("OFF-")) return // dropped back on OFF — do nothing
+      if (destZone.startsWith("OFF-")) return
       const destDate  = destZone.slice(-10)
-      const destShift = destZone.slice(0, destZone.length - 11)
-      // id format: "off-{staffId}-{date}"
-      const staffId = activeId.slice(4, activeId.length - 11)
-      const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift as ShiftType })
-      if (result?.error) { toast.error(result.error); return }
+      const destShift = destZone.slice(0, destZone.length - 11) as ShiftType
+      const staffId   = activeId.slice(4, activeId.length - 11)
+      const staffMember = staffList.find((s) => s.id === staffId)
+
+      // Optimistic: add a placeholder assignment immediately
+      if (staffMember) {
+        setLocalDays((prev) => prev.map((d) => {
+          if (d.date !== destDate) return d
+          const optimistic = {
+            id: `opt-${Date.now()}`, staff_id: staffId,
+            staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role },
+            shift_type: destShift, date: destDate,
+            is_opu: false, is_manual_override: true, function_label: null, notes: null, trainee_staff_id: null,
+          }
+          return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
+        }))
+      }
+
+      const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
+      if (result?.error) { toast.error(result.error); onRefresh(); return }
       toast.success("Turno asignado")
       onRefresh()
       return
     }
 
     // ── Existing assignment → shift or OFF ────────────────────────────────────
-    const assignmentId = activeId
-    const sourceAssignment = data?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
+    const assignmentId    = activeId
+    const sourceAssignment = localDays.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
     if (!sourceAssignment) return
 
     const sourceZone = `${sourceAssignment.shift_type}-${sourceAssignment.date}`
     if (sourceZone === destZone) return
 
     if (destZone.startsWith("OFF-")) {
+      // Optimistic: remove immediately
+      setLocalDays((prev) => prev.map((d) => ({
+        ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId),
+      })))
       const result = await removeAssignment(assignmentId)
-      if (result?.error) { toast.error(result.error); return }
+      if (result?.error) { toast.error(result.error); onRefresh(); return }
     } else {
       const destDate  = destZone.slice(-10)
       const destShift = destZone.slice(0, destZone.length - 11)
@@ -822,8 +845,14 @@ function ShiftGrid({
         return
       }
 
+      // Optimistic: change shift_type immediately
+      setLocalDays((prev) => prev.map((d) => ({
+        ...d, assignments: d.assignments.map((a) =>
+          a.id === assignmentId ? { ...a, shift_type: destShift, is_manual_override: true } : a
+        ),
+      })))
       const result = await moveAssignmentShift(assignmentId, destShift)
-      if (result?.error) { toast.error(result.error); return }
+      if (result?.error) { toast.error(result.error); onRefresh(); return }
     }
 
     toast.success("Turno actualizado")
@@ -884,7 +913,7 @@ function ShiftGrid({
 
   // Find the active assignment for drag overlay
   const activeAssignment = activeId
-    ? data?.days.flatMap((d) => d.assignments).find((a) => a.id === activeId)
+    ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
     : null
 
   return (
@@ -898,7 +927,7 @@ function ShiftGrid({
         {/* Header row — 52px, white, subtle border */}
         <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
           <div className="border-r border-[#CCDDEE]" />
-          {data.days.map((day) => {
+          {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
             const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
             const dayN  = String(d.getDate())
@@ -989,7 +1018,7 @@ function ShiftGrid({
                 </span>
               )}
             </div>
-            {data.days.map((day) => {
+            {localDays.map((day) => {
               const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
               const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
@@ -1058,7 +1087,7 @@ function ShiftGrid({
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
             <span className="text-[12px] italic text-slate-400 leading-tight">OFF</span>
           </div>
-          {data.days.map((day) => {
+          {localDays.map((day) => {
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
             const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
             const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
@@ -1094,21 +1123,19 @@ function ShiftGrid({
               )
             }
 
-            // Weekdays — show first 3 off staff + overflow
+            // Weekdays — show all off staff (all are draggable)
             const offStaff = staffList
               .filter((s) => !assignedIds.has(s.id))
               .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-            const visible  = offStaff.slice(0, 3)
-            const extra    = offStaff.length - visible.length
             return (
               <DroppableCell
                 key={day.date}
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 bg-white max-h-[120px] overflow-hidden"
+                className="p-1.5 flex flex-col gap-1 bg-white"
               >
-                {visible.map((s) => {
+                {offStaff.map((s) => {
                   const onLeave = leaveIds.has(s.id)
                   return (
                     <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
@@ -1130,9 +1157,6 @@ function ShiftGrid({
                     </DraggableOffStaff>
                   )
                 })}
-                {extra > 0 && (
-                  <span className="text-[11px] text-slate-400 px-1">+{extra} más</span>
-                )}
               </DroppableCell>
             )
           })}
