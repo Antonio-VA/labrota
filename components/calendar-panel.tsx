@@ -537,9 +537,12 @@ function ShiftBudgetBar({ data, staffList }: { data: RotaWeekData; staffList: St
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
-          const over = s.count > s.daysPerWeek
+          const over  = s.count > s.daysPerWeek
+          const under = s.count < s.daysPerWeek
           const colorClass = over
             ? "bg-red-50 border-red-200 text-red-700"
+            : under
+            ? "bg-amber-50 border-amber-200 text-amber-700"
             : "bg-emerald-50 border-emerald-200 text-emerald-700"
           return (
             <Tooltip key={id}>
