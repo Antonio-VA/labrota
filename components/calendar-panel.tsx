@@ -613,20 +613,23 @@ function ShiftBudgetBar({ data, staffList }: { data: RotaWeekData; staffList: St
   if (entries.length === 0) return null
 
   return (
-    <div className="px-4 pb-2">
+    <div className="border-t border-[#CCDDEE] px-4 py-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-muted-foreground font-medium shrink-0">{t("shiftBudget")}:</span>
         {entries.map(([id, s]) => {
-          const over = s.count > s.daysPerWeek
+          const over  = s.count > s.daysPerWeek
+          const under = s.count < s.daysPerWeek
           const pillClass = over
-            ? "bg-amber-100 border-amber-300 text-amber-600"
+            ? "bg-red-50 border-red-300 text-red-600"
+            : under
+            ? "bg-orange-50 border-orange-300 text-orange-600"
             : "bg-white border-slate-200"
           return (
             <Tooltip key={id}>
               <TooltipTrigger render={
                 <div className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full border text-[12px] cursor-default", pillClass)}>
-                  <span className={over ? "font-medium" : "text-slate-600 font-medium"}>{s.first}</span>
-                  <span className={over ? "font-normal" : "text-slate-500 font-normal"}>{s.count}/{s.daysPerWeek}</span>
+                  <span className="font-medium">{s.first}</span>
+                  <span className="font-normal">{s.count}/{s.daysPerWeek}</span>
                 </div>
               } />
               <TooltipContent side="top">
