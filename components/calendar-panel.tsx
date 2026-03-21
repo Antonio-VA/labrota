@@ -198,11 +198,14 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecni
 
   return (
     <div className={cn(
-      "flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px] bg-white",
+      "group flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px] bg-white",
       isOverride ? "border-primary/40" : "border-border"
     )}>
-        <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
+      <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
       <span className="truncate">{first} {last[0]}.</span>
+      <span className="text-[10px] font-normal text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100 shrink-0 -ml-0.5">
+        {ROLE_LABEL[role] ?? role}
+      </span>
       {pillLabel && pillColor && (
         <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", pillColor)}>
           {pillLabel}
@@ -741,7 +744,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onFunctionLabelSave, onTecnicaSave,
+  onChipClick,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -753,10 +756,32 @@ function PersonGrid({
   onLeaveByDate: Record<string, string[]>
   publicHolidays: Record<string, string>
   onChipClick: (assignment: Assignment, date: string) => void
-  onFunctionLabelSave: (assignmentId: string, label: string | null) => void
-  onTecnicaSave: (assignmentId: string, tecnicaId: string | null) => void
   isGenerating?: boolean
 }) {
+  const [localDays, setLocalDays] = useState(data?.days ?? [])
+  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
+
+  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
+    setLocalDays((prev) => prev.map((d) => ({
+      ...d,
+      assignments: d.assignments.map((a) =>
+        a.id === assignmentId ? { ...a, ...patch } : a
+      ),
+    })))
+  }
+
+  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
+    patchLocalAssignment(assignmentId, { function_label: label })
+    const result = await setFunctionLabel(assignmentId, label)
+    if (result.error) toast.error(result.error)
+  }
+
+  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
+    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
+    const result = await setTecnica(assignmentId, tecnicaId)
+    if (result.error) toast.error(result.error)
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -796,7 +821,7 @@ function PersonGrid({
 
   // Build assignment lookup: staffId → date → assignment
   const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of data.days) {
+  for (const day of localDays) {
     for (const a of day.assignments) {
       if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
       assignMap[a.staff_id][day.date] = a
@@ -819,7 +844,7 @@ function PersonGrid({
     else roleGroups.push({ role: s.role, members: [s] })
   }
 
-  const days = data.days
+  const days = localDays
 
   return (
     <div className="rounded-lg border border-border overflow-auto min-w-[560px] h-full">
@@ -893,8 +918,8 @@ function PersonGrid({
                             assignment={assignment}
                             staffSkills={s.staff_skills ?? []}
                             tecnicas={data.tecnicas ?? []}
-                            onFunctionSave={onFunctionLabelSave}
-                            onTecnicaSave={onTecnicaSave}
+                            onFunctionSave={handleFunctionLabelSave}
+                            onTecnicaSave={handleTecnicaSave}
                             isPublished={isPublished}
                           >
                             <PersonShiftPill
@@ -980,7 +1005,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, onFunctionLabelSave, onTecnicaSave, weekStart,
+  onRefresh, weekStart,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -997,8 +1022,6 @@ function ShiftGrid({
   punctionsOverride: Record<string, number>
   onPunctionsChange: (date: string, value: number | null) => void
   onRefresh: () => void
-  onFunctionLabelSave: (assignmentId: string, label: string | null) => void
-  onTecnicaSave: (assignmentId: string, tecnicaId: string | null) => void
   weekStart: string
 }) {
   const t  = useTranslations("schedule")
@@ -1013,6 +1036,27 @@ function ShiftGrid({
 
   // Sync local state whenever server data arrives
   useEffect(() => { if (data) setLocalDays(data.days) }, [data])
+
+  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
+    setLocalDays((prev) => prev.map((d) => ({
+      ...d,
+      assignments: d.assignments.map((a) =>
+        a.id === assignmentId ? { ...a, ...patch } : a
+      ),
+    })))
+  }
+
+  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
+    patchLocalAssignment(assignmentId, { function_label: label })
+    const result = await setFunctionLabel(assignmentId, label)
+    if (result.error) { toast.error(result.error); onRefresh() }
+  }
+
+  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
+    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
+    const result = await setTecnica(assignmentId, tecnicaId)
+    if (result.error) { toast.error(result.error); onRefresh() }
+  }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -1325,8 +1369,8 @@ function ShiftGrid({
                         assignment={a}
                         staffSkills={staffMember?.staff_skills ?? []}
                         tecnicas={data?.tecnicas ?? []}
-                        onFunctionSave={onFunctionLabelSave}
-                        onTecnicaSave={onTecnicaSave}
+                        onFunctionSave={handleFunctionLabelSave}
+                        onTecnicaSave={handleTecnicaSave}
                         isPublished={isPublished}
                       >
                         <Tooltip>
@@ -1873,43 +1917,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     })
   }
 
-  function patchAssignment(assignmentId: string, patch: Record<string, unknown>) {
-    setWeekData((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        days: prev.days.map((d) => ({
-          ...d,
-          assignments: d.assignments.map((a) =>
-            a.id === assignmentId ? { ...a, ...patch } : a
-          ),
-        })),
-      }
-    })
-  }
-
-  function handleFunctionLabelSave(assignmentId: string, label: string | null) {
-    patchAssignment(assignmentId, { function_label: label })
-    startTransition(async () => {
-      const result = await setFunctionLabel(assignmentId, label)
-      if (result.error) {
-        toast.error(result.error)
-        fetchWeekSilent(weekStart)
-      }
-    })
-  }
-
-  function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
-    patchAssignment(assignmentId, { tecnica_id: tecnicaId })
-    startTransition(async () => {
-      const result = await setTecnica(assignmentId, tecnicaId)
-      if (result.error) {
-        toast.error(result.error)
-        fetchWeekSilent(weekStart)
-      }
-    })
-  }
-
   const rota           = weekData?.rota ?? null
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
@@ -2128,8 +2135,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 punctionsOverride={punctionsOverride}
                 onPunctionsChange={handlePunctionsChange}
                 onRefresh={() => fetchWeekSilent(weekStart)}
-                onFunctionLabelSave={handleFunctionLabelSave}
-                onTecnicaSave={handleTecnicaSave}
                 weekStart={weekStart}
               />
             ) : (
@@ -2144,8 +2149,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                 publicHolidays={weekData?.publicHolidays ?? {}}
                 onChipClick={(_a, date) => handleMonthDayClick(date)}
-                onFunctionLabelSave={handleFunctionLabelSave}
-                onTecnicaSave={handleTecnicaSave}
               />
             )}
             {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} />}

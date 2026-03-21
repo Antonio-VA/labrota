@@ -37,7 +37,7 @@ export default async function RootLayout({
     <html lang={locale}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider delay={600}>{children}</TooltipProvider>
           <Toaster position="top-right" richColors closeButton />
         </NextIntlClientProvider>
       </body>
