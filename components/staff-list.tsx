@@ -588,7 +588,7 @@ function BulkToolbar({
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-const GRID = "grid-cols-[32px_minmax(0,3fr)_minmax(0,1.5fr)_minmax(0,4fr)_minmax(0,1.2fr)_40px]"
+const GRID = "grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minmax(0,2.2fr)_minmax(0,1fr)_40px]"
 
 function StaffTable({
   members, t, ts, muted,
@@ -619,24 +619,26 @@ function StaffTable({
         />
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.role")}</span>
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.skills")}</span>
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
+        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
         <span />
       </div>
 
       {/* Rows */}
       {members.map((member) => {
-        const skills       = member.staff_skills ?? []
-        const visibleSkills = skills.slice(0, 4)
-        const extraCount   = skills.length - visibleSkills.length
-        const isSelected   = selectedIds.has(member.id)
+        const skills          = member.staff_skills ?? []
+        const certifiedSkills = skills.filter((sk) => sk.level === "certified")
+        const trainingSkills  = skills.filter((sk) => sk.level === "training")
+        const isSelected      = selectedIds.has(member.id)
+        const isAdmin         = member.role === "admin"
 
         return (
           <div
             key={member.id}
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
-              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,3fr)_minmax(0,1.5fr)_minmax(0,4fr)_minmax(0,1.2fr)_40px]",
+              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minmax(0,2.2fr)_minmax(0,1fr)_40px]",
               isSelected ? "bg-primary/5" : "hover:bg-blue-50"
             )}
           >
@@ -670,31 +672,32 @@ function StaffTable({
               </Badge>
             </div>
 
-            {/* Skills */}
-            <div className="hidden md:flex items-center gap-1 overflow-hidden">
-              {visibleSkills.map((sk) => (
+            {/* Capacidades (certified) */}
+            <div className="hidden md:flex items-center gap-1 flex-wrap overflow-hidden">
+              {isAdmin || certifiedSkills.length === 0 ? (
+                <span className="text-[13px] text-muted-foreground/40">—</span>
+              ) : certifiedSkills.map((sk) => (
                 <span
                   key={sk.skill}
-                  className={cn(
-                    "shrink-0 inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium",
-                    sk.level === "training"
-                      ? "border-amber-300 bg-amber-50 text-amber-700"
-                      : "border-blue-400 bg-blue-50 text-blue-700"
-                  )}
+                  className="shrink-0 inline-flex items-center rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-600"
                 >
                   {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
                 </span>
               ))}
-              {extraCount > 0 && (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="text-[12px] text-muted-foreground shrink-0 cursor-default" />}>
-                    +{extraCount}
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {skills.slice(4).map((sk) => ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])).join(", ")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+            </div>
+
+            {/* En formación (training) */}
+            <div className="hidden md:flex items-center gap-1 flex-wrap overflow-hidden">
+              {isAdmin || trainingSkills.length === 0 ? (
+                <span className="text-[13px] text-muted-foreground/40">—</span>
+              ) : trainingSkills.map((sk) => (
+                <span
+                  key={sk.skill}
+                  className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-600"
+                >
+                  {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                </span>
+              ))}
             </div>
 
             {/* Status */}

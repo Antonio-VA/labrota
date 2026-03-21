@@ -171,6 +171,8 @@
       "name": "Name",
       "role": "Role",
       "skills": "Skills",
+      "capacidades": "Competencies",
+      "training": "In training",
       "shiftsThisWeek": "Shifts this week",
       "status": "Status"
     },

@@ -171,6 +171,8 @@
       "name": "Nombre",
       "role": "Rol",
       "skills": "Habilidades",
+      "capacidades": "Capacidades",
+      "training": "En formación",
       "shiftsThisWeek": "Turnos esta semana",
       "status": "Estado"
     },
