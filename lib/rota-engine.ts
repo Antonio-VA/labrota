@@ -8,8 +8,7 @@
  *  2. Sort by preferred days (soft), then historical workload (fewer = higher priority)
  *  3. Assign ALL eligible lab + andrology staff; max 1 admin
  *  4. Compute minimum coverage requirements (dynamic from punctions/embryologist ratio)
- *  5. Auto-designate OPU (most senior lab/andrology staff with egg_collection skill)
- *  6. Compute skill gaps
+ *  5. Compute skill gaps
  */
 
 import type {
@@ -28,7 +27,7 @@ import type {
 
 export interface DayPlan {
   date: string
-  assignments: { staff_id: string; shift_type: ShiftType; is_opu: boolean }[]
+  assignments: { staff_id: string; shift_type: ShiftType }[]
   skillGaps: SkillName[]
 }
 
@@ -319,18 +318,7 @@ export function runRotaEngine({
       }
     }
 
-    // 7. OPU designation: most senior (earliest start_date) lab/andrology staff
-    //    with egg_collection skill among those assigned today
-    let opuStaffId: string | null = null
-    const opuCandidates = [...assignedLab, ...assignedAndrology].filter(
-      (s) => s.staff_skills.some((sk) => sk.skill === "egg_collection")
-    )
-    if (opuCandidates.length > 0) {
-      opuCandidates.sort((a, b) => a.start_date.localeCompare(b.start_date))
-      opuStaffId = opuCandidates[0].id
-    }
-
-    // 8. Warnings for coverage shortfalls
+    // 7. Warnings for coverage shortfalls
     if (labPool.length < labRequired) {
       warnings.push(`${date}: only ${labPool.length} lab staff available (need ${labRequired})`)
     }
@@ -365,7 +353,7 @@ export function runRotaEngine({
           shift = defaultShiftCodes[rrIdx % defaultShiftCodes.length] as ShiftType
           rrIdx++
         }
-        return { staff_id: s.id, shift_type: shift, is_opu: s.id === opuStaffId }
+        return { staff_id: s.id, shift_type: shift }
       }),
       skillGaps,
     })

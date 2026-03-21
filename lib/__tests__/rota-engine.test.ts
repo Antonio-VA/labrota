@@ -283,34 +283,6 @@ describe("runRotaEngine — shift types", () => {
   })
 })
 
-// ── OPU designation ───────────────────────────────────────────────────────────
-
-describe("runRotaEngine — OPU", () => {
-  it("designates the most senior egg_collection staff as OPU", () => {
-    const staff = [
-      makeStaff({ id: "senior", start_date: "2018-01-01", staff_skills: [{ id: "sk1", organisation_id: ORG, staff_id: "senior", skill: "egg_collection", level: "certified", created_at: "" }] }),
-      makeStaff({ id: "junior", start_date: "2022-01-01", staff_skills: [{ id: "sk2", organisation_id: ORG, staff_id: "junior", skill: "egg_collection", level: "certified", created_at: "" }] }),
-    ]
-    const result = runRotaEngine({
-      weekStart: WEEK, staff, leaves: [], recentAssignments: [],
-      labConfig: BASE_CONFIG,
-    })
-    const mon = result.days.find((d) => d.date === "2026-03-16")!
-    const opuAssignment = mon.assignments.find((a) => a.is_opu)
-    expect(opuAssignment?.staff_id).toBe("senior")
-  })
-
-  it("no OPU assigned when no egg_collection skill present", () => {
-    const staff = [makeStaff({ id: "s1", staff_skills: [] })]
-    const result = runRotaEngine({
-      weekStart: WEEK, staff, leaves: [], recentAssignments: [],
-      labConfig: BASE_CONFIG,
-    })
-    const mon = result.days.find((d) => d.date === "2026-03-16")!
-    expect(mon.assignments.every((a) => !a.is_opu)).toBe(true)
-  })
-})
-
 // ── Workload fairness ─────────────────────────────────────────────────────────
 
 describe("runRotaEngine — workload scoring", () => {
@@ -321,9 +293,9 @@ describe("runRotaEngine — workload scoring", () => {
       makeStaff({ id: "s2", first_name: "High", days_per_week: 1 }),
     ]
     const recentAssignments = [
-      { id: "r1", staff_id: "s2", date: "2026-03-09", shift_type: "T1", is_opu: false, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
-      { id: "r2", staff_id: "s2", date: "2026-03-10", shift_type: "T1", is_opu: false, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
-    ]
+      { id: "r1", staff_id: "s2", date: "2026-03-09", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
+      { id: "r2", staff_id: "s2", date: "2026-03-10", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
+    ] as never[]
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG,
@@ -417,7 +389,7 @@ describe("runRotaEngine — rules", () => {
       id: `r${i}`, staff_id: "s1",
       date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
         .toISOString().split("T")[0],
-      shift_type: "T1", is_opu: false, is_manual_override: false,
+      shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",
     })) as never[]
@@ -441,7 +413,7 @@ describe("runRotaEngine — rules", () => {
       id: `r${i}`, staff_id: "s1",
       date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
         .toISOString().split("T")[0],
-      shift_type: "T1", is_opu: false, is_manual_override: false,
+      shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",
     })) as never[]
@@ -468,9 +440,9 @@ describe("runRotaEngine — rules", () => {
     ]
     // s2 has higher recent workload
     const recentAssignments = [
-      { id: "r1", staff_id: "s2", date: "2026-03-09", shift_type: "T1", is_opu: false, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
-      { id: "r2", staff_id: "s2", date: "2026-03-10", shift_type: "T1", is_opu: false, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
-    ]
+      { id: "r1", staff_id: "s2", date: "2026-03-09", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
+      { id: "r2", staff_id: "s2", date: "2026-03-10", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
+    ] as never[]
     const rule: RotaRule = {
       id: "rule2", organisation_id: ORG, type: "no_coincidir",
       is_hard: true, enabled: true, staff_ids: ["s1", "s2"], params: {},
@@ -493,7 +465,7 @@ describe("runRotaEngine — rules", () => {
       id: `r${i}`, staff_id: "s1",
       date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
         .toISOString().split("T")[0],
-      shift_type: "T1", is_opu: false, is_manual_override: false,
+      shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",
     })) as never[]

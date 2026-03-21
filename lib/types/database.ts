@@ -245,7 +245,6 @@ export interface RotaTemplateAssignment {
   staff_id:       string
   day_offset:     number  // 0=Mon, 1=Tue, ..., 6=Sun
   shift_type:     string
-  is_opu:         boolean
   function_label: string | null
 }
 

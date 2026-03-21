@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { Star, X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Timer } from "lucide-react"
+import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Timer } from "lucide-react"
 import { toast } from "sonner"
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils"
 import {
   upsertAssignment,
   deleteAssignment,
-  setDayOpu,
   deleteAllDayAssignments,
   updateAssignmentShift,
   setPunctionsOverride,
@@ -37,7 +36,7 @@ const ROLE_DOT: Record<string, string> = {
   admin:     "bg-slate-400",
 }
 const ROLE_LABEL: Record<string, string> = {
-  lab: "Lab", andrology: "And", admin: "Adm",
+  lab: "Emb", andrology: "And", admin: "Adm",
 }
 const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
 
@@ -53,14 +52,14 @@ const TECNICA_PILL: Record<string, string> = {
 }
 
 const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
-  OPU: "egg_collection", ICSI: "icsi", ET: "embryo_transfer", BX: "biopsy", DEN: "denudation",
+  ICSI: "icsi", ET: "embryo_transfer", BX: "biopsy", DEN: "denudation",
 }
 const FUNCTION_FULL_NAME: Record<string, string> = {
-  OPU: "Recogida de óvulos", ICSI: "ICSI", ET: "Transferencia embrionaria",
+  ICSI: "ICSI", ET: "Transferencia embrionaria",
   BX: "Biopsia", DEN: "Denudación", SUP: "Supervisor", TRN: "En formación", AND: "Andrología",
 }
 const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
-  lab:       ["OPU", "ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
+  lab:       ["ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
   andrology: ["AND", "SUP", "TRN"],
   admin:     [],
 }
@@ -71,7 +70,7 @@ function AssignmentPopover({
   assignment, staffSkills, tecnicas,
   onFunctionSave, onTecnicaSave, isPublished, children,
 }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean; tecnica_id: string | null }
+  assignment: { id: string; staff: { role: string }; function_label: string | null; tecnica_id: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
   onFunctionSave: (id: string, label: string | null) => void
@@ -92,7 +91,7 @@ function AssignmentPopover({
   }, [open])
 
   const allLabels     = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const currentLabel  = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const currentLabel  = assignment.function_label ?? null
   const skillLevelMap = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
   const certifiedSet  = new Set(staffSkills.filter((s) => s.level === "certified").map((s) => s.skill))
 
@@ -124,8 +123,7 @@ function AssignmentPopover({
                   const isActive      = currentLabel === fn
                   const reqSkill      = FUNCTION_TO_SKILL[fn]
                   const isTraining    = reqSkill ? skillLevelMap[reqSkill] === "training" : false
-                  const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
-                    : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+                  const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
                     : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
                     : "bg-blue-50 border-blue-200 text-blue-700"
                   return (
@@ -189,16 +187,14 @@ function AssignmentPopover({
 
 function DraggableCard({
   assignment, tecnica, staffSkills, tecnicas,
-  canOpu, onRemove, onToggleOpu, disabled, isPublished,
+  onRemove, disabled, isPublished,
   onFunctionSave, onTecnicaSave,
 }: {
   assignment: Assignment
   tecnica: Tecnica | null
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
-  canOpu: boolean
   onRemove: () => void
-  onToggleOpu: () => void
   disabled: boolean
   isPublished: boolean
   onFunctionSave: (id: string, label: string | null) => void
@@ -209,10 +205,8 @@ function DraggableCard({
     disabled,
   })
 
-  const pillLabel = tecnica ? tecnica.codigo
-    : assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const pillLabel = tecnica ? tecnica.codigo : (assignment.function_label ?? null)
   const pillColor = tecnica ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
-    : pillLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
     : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -255,23 +249,6 @@ function DraggableCard({
           )}
         </div>
       </AssignmentPopover>
-
-      {/* OPU star */}
-      {canOpu && (
-        <button
-          disabled={disabled}
-          onClick={(e) => { e.stopPropagation(); onToggleOpu() }}
-          onPointerDown={(e) => e.stopPropagation()}
-          title={assignment.is_opu ? "Quitar OPU" : "Designar OPU"}
-          className={cn(
-            "shrink-0 transition-colors",
-            assignment.is_opu ? "text-amber-500" : "text-muted-foreground/25 hover:text-amber-400",
-            disabled && "pointer-events-none"
-          )}
-        >
-          <Star className={cn("size-3.5", assignment.is_opu && "fill-amber-500")} />
-        </button>
-      )}
 
       {/* Remove */}
       {!disabled && (
@@ -560,7 +537,7 @@ export function AssignmentSheet({
     const tempId = `temp-${Date.now()}`
     const optimistic: Assignment = {
       id: tempId, staff_id: staffId, shift_type: shift,
-      is_opu: false, is_manual_override: true,
+      is_manual_override: true,
       trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null,
       staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
     }
@@ -596,22 +573,7 @@ export function AssignmentSheet({
     save(() => updateAssignmentShift(assignmentId, newShift), () => setAssignments(prev))
   }
 
-  // ── OPU ───────────────────────────────────────────────────────────────────
 
-  function handleToggleOpu(assignmentId: string) {
-    if (!rota || !date) return
-    const target = assignments.find((a) => a.id === assignmentId)
-    if (!target) return
-
-    const prev = assignments
-    if (target.is_opu) {
-      setAssignments((cur) => cur.map((a) => a.id === assignmentId ? { ...a, is_opu: false } : a))
-      save(() => setDayOpu(rota.id, date, ""), () => setAssignments(prev))
-    } else {
-      setAssignments((cur) => cur.map((a) => ({ ...a, is_opu: a.id === assignmentId })))
-      save(() => setDayOpu(rota.id, date, assignmentId), () => setAssignments(prev))
-    }
-  }
 
   // ── Function label ─────────────────────────────────────────────────────────
 
@@ -817,9 +779,7 @@ export function AssignmentSheet({
                           tecnica={tecnica}
                           staffSkills={staffMember?.staff_skills ?? []}
                           tecnicas={tecnicas}
-                          canOpu={a.staff.role === "lab" || a.staff.role === "andrology"}
                           onRemove={() => handleRemove(a.id)}
-                          onToggleOpu={() => handleToggleOpu(a.id)}
                           disabled={isPublished || a.id.startsWith("temp-")}
                           isPublished={isPublished}
                           onFunctionSave={handleFunctionSave}

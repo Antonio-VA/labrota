@@ -33,7 +33,6 @@ export interface RotaDay {
     is_manual_override: boolean
     trainee_staff_id: string | null
     notes: string | null
-    is_opu: boolean
     function_label: string | null
     tecnica_id: string | null
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
@@ -192,7 +191,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // relying on a PostgREST join (which can silently return null after schema migrations).
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
-    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; is_opu: boolean;
+    is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null;
     function_label: string | null; tecnica_id: string | null
   }
   type AssignmentRow = RawAssignment & {
@@ -203,7 +202,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Try full column set; fallback handled below
     supabase
       .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, is_opu, function_label, tecnica_id")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id")
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
@@ -223,8 +222,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const { data: baseData } = (await supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "is_opu" | "function_label" | "tecnica_id">[] | null }
-    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, is_opu: false, function_label: null, tecnica_id: null }))
+      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[] | null }
+    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
   }
@@ -265,7 +264,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       is_manual_override: a.is_manual_override,
       trainee_staff_id: a.trainee_staff_id,
       notes: a.notes,
-      is_opu: a.is_opu ?? false,
       function_label: a.function_label ?? null,
       tecnica_id: a.tecnica_id ?? null,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
@@ -435,7 +433,6 @@ export async function generateRota(
         date: day.date,
         shift_type: a.shift_type,
         is_manual_override: false,
-        is_opu: a.is_opu,
       }))
     )
 
@@ -463,26 +460,7 @@ export async function generateRota(
       .from("rota_assignments")
       .insert(toInsert as never)
 
-    if (insertError) {
-      // is_opu column may not exist if migration 20260321000001_schema_updates.sql
-      // hasn't been run yet — retry without it so generation still works.
-      if (insertError.message.includes("is_opu")) {
-        const compat = toInsert.map((row) => ({
-          organisation_id:    row.organisation_id,
-          rota_id:            row.rota_id,
-          staff_id:           row.staff_id,
-          date:               row.date,
-          shift_type:         row.shift_type,
-          is_manual_override: row.is_manual_override,
-        }))
-        const { error: insertError2 } = await supabase
-          .from("rota_assignments")
-          .insert(compat as never)
-        if (insertError2) return { error: insertError2.message }
-      } else {
-        return { error: insertError.message }
-      }
-    }
+    if (insertError) return { error: insertError.message }
   }
 
   revalidatePath("/")
@@ -538,7 +516,6 @@ export async function upsertAssignment(params: {
         shift_type: params.shiftType,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
-        is_opu: params.isOpu ?? false,
         is_manual_override: true,
       } as never)
       .eq("id", params.assignmentId)
@@ -558,7 +535,6 @@ export async function upsertAssignment(params: {
         is_manual_override: true,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
-        is_opu: params.isOpu ?? false,
       } as never)
       .select("id")
       .single()
@@ -598,29 +574,6 @@ export async function updateAssignmentShift(
 }
 
 // ── setDayOpu ─────────────────────────────────────────────────────────────────
-
-export async function setDayOpu(
-  rotaId: string,
-  date: string,
-  newOpuAssignmentId: string,   // empty string = clear all
-): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { error: clearError } = await supabase
-    .from("rota_assignments")
-    .update({ is_opu: false } as never)
-    .eq("rota_id", rotaId)
-    .eq("date", date)
-  if (clearError) return { error: clearError.message }
-  if (newOpuAssignmentId) {
-    const { error: setError } = await supabase
-      .from("rota_assignments")
-      .update({ is_opu: true } as never)
-      .eq("id", newOpuAssignmentId)
-    if (setError) return { error: setError.message }
-  }
-  revalidatePath("/")
-  return {}
-}
 
 // ── deleteAllDayAssignments ───────────────────────────────────────────────────
 
@@ -927,7 +880,7 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
 
 export interface StaffProfileData {
   /** Last 20 assignments, newest first */
-  recentAssignments: { date: string; shift_type: string; is_opu: boolean; function_label: string | null }[]
+  recentAssignments: { date: string; shift_type: string; function_label: string | null }[]
   /** Future approved leaves */
   upcomingLeaves: { start_date: string; end_date: string; type: string }[]
 }
@@ -944,12 +897,12 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
   const [assignmentsRes, leavesRes] = await Promise.all([
     supabase
       .from("rota_assignments")
-      .select("date, shift_type, is_opu, function_label")
+      .select("date, shift_type, function_label")
       .eq("staff_id", staffId)
       .gte("date", since)
       .lte("date", today)
       .order("date", { ascending: false })
-      .limit(20) as unknown as Promise<{ data: { date: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }>,
+      .limit(20) as unknown as Promise<{ data: { date: string; shift_type: string; function_label: string | null }[] | null }>,
     supabase
       .from("leaves")
       .select("start_date, end_date, type")
@@ -978,8 +931,8 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
 
   const { data: lastWeekAssignments } = await supabase
     .from("rota_assignments")
-    .select("staff_id, shift_type, is_opu, function_label")
-    .eq("date", lastWeek) as unknown as { data: { staff_id: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }
+    .select("staff_id, shift_type, function_label")
+    .eq("date", lastWeek) as unknown as { data: { staff_id: string; shift_type: string; function_label: string | null }[] | null }
 
   if (!lastWeekAssignments || lastWeekAssignments.length === 0) {
     return { error: "No hay asignaciones el mismo día de la semana anterior." }
@@ -1010,7 +963,6 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
       staff_id: a.staff_id,
       date,
       shift_type: a.shift_type,
-      is_opu: a.is_opu,
       is_manual_override: true,
       function_label: a.function_label,
     }))
@@ -1061,9 +1013,9 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
   const dates = getWeekDates(weekStart)
   const { data: assignments } = await supabase
     .from("rota_assignments")
-    .select("staff_id, date, shift_type, is_opu, function_label")
+    .select("staff_id, date, shift_type, function_label")
     .gte("date", dates[0])
-    .lte("date", dates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }
+    .lte("date", dates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
 
   if (!assignments || assignments.length === 0) return { error: "No hay turnos para guardar." }
 
@@ -1073,7 +1025,6 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
       staff_id: a.staff_id,
       day_offset: dayIndex >= 0 ? dayIndex : 0,
       shift_type: a.shift_type,
-      is_opu: a.is_opu ?? false,
       function_label: a.function_label ?? null,
     }
   })
@@ -1156,7 +1107,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
 
   // Insert template assignments, skipping leave/inactive
   const skipped: string[] = []
-  const toInsert: { organisation_id: string; rota_id: string; staff_id: string; date: string; shift_type: string; is_opu: boolean; is_manual_override: boolean; function_label: string | null }[] = []
+  const toInsert: { organisation_id: string; rota_id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; function_label: string | null }[] = []
 
   for (const a of template.assignments) {
     const date = dates[a.day_offset]
@@ -1169,7 +1120,6 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
       staff_id: a.staff_id,
       date,
       shift_type: a.shift_type,
-      is_opu: a.is_opu,
       is_manual_override: false,
       function_label: a.function_label,
     })

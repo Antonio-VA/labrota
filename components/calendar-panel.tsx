@@ -60,7 +60,7 @@ const ROLE_DOT: Record<string, string> = {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  lab: "Lab", andrology: "Andrología", admin: "Admin",
+  lab: "Embriólogo", andrology: "Andrología", admin: "Admin",
 }
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
@@ -142,9 +142,9 @@ function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: stri
 
 // ── Staff chip (Vista por persona) ────────────────────────────────────────────
 
-function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
+function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
   first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
-  isOpu?: boolean; notes?: string | null; shiftTime?: string
+  notes?: string | null; shiftTime?: string
   onClick?: (e: React.MouseEvent) => void
   isDragging?: boolean
   onDragStart?: (e: React.DragEvent) => void
@@ -173,9 +173,6 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
         {hasTrainee && (
           <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
         )}
-        {isOpu && (
-          <span className="ml-0.5 text-[9px] bg-amber-100 text-amber-700 rounded px-1 font-semibold shrink-0">OPU</span>
-        )}
       </div>
       {notes && (
         <span className="text-[10px] italic text-muted-foreground leading-none mt-0.5 truncate">{notes}</span>
@@ -187,18 +184,16 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
 // ── Shift badge (Vista por turno — compact inline pill) ───────────────────────
 
 type ShiftBadgeProps = {
-  first: string; last: string; role: string; isOpu: boolean; isOverride: boolean
+  first: string; last: string; role: string; isOverride: boolean
   functionLabel?: string | null
   tecnica?: Tecnica | null
   compact?: boolean
 }
 
-function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecnica, compact = false }: ShiftBadgeProps) {
-  // Técnica pill takes precedence; fall back to function_label / OPU
-  const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? (isOpu ? "OPU" : null))
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false }: ShiftBadgeProps) {
+  const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
-    : pillLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
     : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -228,14 +223,13 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecni
 // ── Function label popover ────────────────────────────────────────────────────
 
 const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
-  lab:       ["OPU", "ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
+  lab:       ["ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
   andrology: ["AND", "SUP", "TRN"],
   admin:     [],
 }
 
 // Maps a function code to the canonical skill it requires (if any)
 const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
-  OPU: "egg_collection",
   ICSI: "icsi",
   ET:  "embryo_transfer",
   BX:  "biopsy",
@@ -244,7 +238,6 @@ const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
 
 // Full display name for each function code
 const FUNCTION_FULL_NAME: Record<string, string> = {
-  OPU: "Recogida de óvulos",
   ICSI: "ICSI",
   ET:  "Transferencia embrionaria",
   BX:  "Biopsia",
@@ -255,7 +248,7 @@ const FUNCTION_FULL_NAME: Record<string, string> = {
 }
 
 function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
+  assignment: { id: string; staff: { role: string }; function_label: string | null }
   onSave: (id: string, label: string | null) => void
   isPublished: boolean
   children: React.ReactNode
@@ -263,7 +256,7 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const available = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const current = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const current = assignment.function_label ?? null
 
   useEffect(() => {
     if (!open) return
@@ -287,8 +280,7 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
           <div className="flex flex-wrap gap-1">
             {available.map((fn) => {
               const isActive = current === fn
-              const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
-                : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+              const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
                 : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
                 : "bg-blue-50 border-blue-200 text-blue-700"
               return (
@@ -319,7 +311,7 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
 function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublished, children }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
+  assignment: { id: string; staff: { role: string }; function_label: string | null }
   staffSkills: { skill: string; level: string }[]
   onFunctionSave: (id: string, label: string | null) => void
   isPublished: boolean
@@ -338,7 +330,7 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
   }, [open])
 
   const allFunctionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const currentLabel      = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const currentLabel      = assignment.function_label ?? null
   const skillLevelMap     = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
 
   // Only show functions the staff is certified or in training for;
@@ -363,8 +355,7 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
               const isActive     = currentLabel === fn
               const req          = FUNCTION_TO_SKILL[fn]
               const isTraining   = req ? skillLevelMap[req] === "training" : false
-              const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
-                : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+              const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
                 : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
                 : "bg-blue-50 border-blue-200 text-blue-700"
               return (
@@ -763,10 +754,7 @@ function StaffProfilePanel({
                     <span className="text-slate-500 capitalize">{formatDate(a.date, locale)}</span>
                     <div className="flex items-center gap-1">
                       <span className="font-medium text-slate-700">{a.shift_type}</span>
-                      {a.is_opu && (
-                        <span className="text-[9px] px-1 py-0.5 rounded border bg-amber-50 border-amber-200 text-amber-700 font-semibold">OPU</span>
-                      )}
-                      {a.function_label && !a.is_opu && (
+                      {a.function_label && (
                         <span className="text-[9px] px-1 py-0.5 rounded border bg-blue-50 border-blue-200 text-blue-700 font-semibold">{a.function_label}</span>
                       )}
                     </div>
@@ -1182,7 +1170,7 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  lab: "Lab", andrology: "Andrología", admin: "Administración",
+  lab: "Embriólogo", andrology: "Andrología", admin: "Administración",
 }
 
 function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
@@ -1191,12 +1179,11 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
   tecnica: Tecnica | null
   onClick?: (e: React.MouseEvent) => void
 }) {
-  const { shift_type, is_opu, is_manual_override, function_label } = assignment
+  const { shift_type, is_manual_override, function_label } = assignment
   const time = shiftTimes?.[shift_type]
-  const pillLabel = tecnica ? tecnica.codigo : (function_label ?? (is_opu ? "OPU" : null))
+  const pillLabel = tecnica ? tecnica.codigo : (function_label ?? null)
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
-    : pillLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
     : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -1424,7 +1411,7 @@ function PersonGrid({
                                 </div>
                               } />
                               <TooltipContent side="top">
-                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${FUNCTION_FULL_NAME[assignment.function_label] ?? assignment.function_label}` : assignment.is_opu ? " · Recogida de óvulos" : ""}
+                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${FUNCTION_FULL_NAME[assignment.function_label] ?? assignment.function_label}` : ""}
                               </TooltipContent>
                             </Tooltip>
                           </AssignmentPopover>
@@ -1583,7 +1570,7 @@ function ShiftGrid({
           const optimistic = {
             id: `opt-${Date.now()}`, staff_id: staffId,
             staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
-            shift_type: destShift, is_opu: false, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
+            shift_type: destShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
           }
           return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
         }))
@@ -1866,8 +1853,7 @@ function ShiftGrid({
                                 first={a.staff.first_name}
                                 last={a.staff.last_name}
                                 role={a.staff.role}
-                                isOpu={a.is_opu ?? false}
-                                isOverride={a.is_manual_override}
+                                                                isOverride={a.is_manual_override}
                                 functionLabel={a.function_label}
                                 tecnica={tecnica}
                                 compact={compact}
@@ -1952,8 +1938,7 @@ function ShiftGrid({
               first={activeAssignment.staff.first_name}
               last={activeAssignment.staff.last_name}
               role={activeAssignment.staff.role}
-              isOpu={activeAssignment.is_opu ?? false}
-              isOverride={activeAssignment.is_manual_override}
+                            isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
               tecnica={(data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
             />
@@ -1964,8 +1949,7 @@ function ShiftGrid({
               first={activeOffStaff.first_name}
               last={activeOffStaff.last_name}
               role={activeOffStaff.role}
-              isOpu={false}
-              isOverride={false}
+                            isOverride={false}
               functionLabel={null}
             />
           </div>
