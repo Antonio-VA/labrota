@@ -92,11 +92,14 @@ export interface Leave {
   updated_at:      string
 }
 
+export type GenerationType = 'strict_template' | 'flexible_template' | 'ai_optimal' | 'manual'
+
 export interface Rota {
   id:                 string
   organisation_id:    string
   week_start:         string   // ISO date string — always a Monday
   status:             RotaStatus
+  generation_type:    GenerationType | null
   published_at:       string | null
   published_by:       string | null
   punctions_override: Record<string, number> | null

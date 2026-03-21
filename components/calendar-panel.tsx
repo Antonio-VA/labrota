@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,7 @@ import {
   saveAsTemplate,
   getTemplates,
   applyTemplate,
+  clearWeek,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -2090,21 +2091,133 @@ function DayView({ day, loading, locale }: {
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-function OverrideDialog({ onKeep, onRegenerate, onCancel, isPending }: {
-  onKeep: () => void; onRegenerate: () => void; onCancel: () => void; isPending: boolean
+type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "manual"
+
+const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: string; desc: string; badge: string; badgeColor: string }[] = [
+  {
+    key: "strict_template", icon: <BookmarkX className="size-5" />,
+    title: "Plantilla estricta",
+    desc: "Usa una plantilla guardada como base. Las asignaciones se copian exactamente, respetando solo ausencias aprobadas.",
+    badge: "HARD", badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    key: "flexible_template", icon: <Bookmark className="size-5" />,
+    title: "Plantilla flexible",
+    desc: "Usa una plantilla como punto de partida. El algoritmo ajusta según disponibilidad, reglas y preferencias de turno.",
+    badge: "SOFT", badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  {
+    key: "ai_optimal", icon: <Sparkles className="size-5" />,
+    title: "Óptimo IA",
+    desc: "El agente genera la guardia óptima desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
+    badge: "IA", badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+  },
+  {
+    key: "manual", icon: <Grid3X3 className="size-5" />,
+    title: "Semana en blanco",
+    desc: "Empieza con una guardia vacía y asigna los turnos manualmente.",
+    badge: "MANUAL", badgeColor: "bg-slate-50 text-slate-600 border-slate-200",
+  },
+]
+
+function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate }: {
+  open: boolean; weekStart: string; weekLabel: string
+  onClose: () => void
+  onGenerate: (strategy: GenerationStrategy, templateId?: string) => void
 }) {
-  const t  = useTranslations("schedule")
   const tc = useTranslations("common")
+  const [selected, setSelected] = useState<GenerationStrategy | null>(null)
+  const [templates, setTemplates] = useState<RotaTemplate[]>([])
+  const [loadingTpl, setLoadingTpl] = useState(false)
+  const [selectedTplId, setSelectedTplId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) { setSelected(null); setSelectedTplId(null); return }
+    setLoadingTpl(true)
+    getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
+  }, [open])
+
+  if (!open) return null
+
+  const needsTemplate = selected === "strict_template" || selected === "flexible_template"
+  const canGenerate = selected && (!needsTemplate || selectedTplId)
+
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 justify-between shrink-0">
-      <div>
-        <p className="text-[14px] font-medium text-amber-800">{t("preserveOverrides")}</p>
-        <p className="text-[13px] text-amber-700">{t("preserveOverridesDescription")}</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button size="sm" onClick={onKeep} disabled={isPending}>{t("keepOverrides")}</Button>
-        <Button size="sm" variant="outline" onClick={onRegenerate} disabled={isPending}>{t("regenerateAll")}</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel} disabled={isPending}>{tc("cancel")}</Button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[520px] max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+          <p className="text-[15px] font-medium">Generar guardia — <span className="capitalize">{weekLabel}</span></p>
+        </div>
+
+        {/* Strategy cards — 2×2 grid */}
+        <div className="p-4 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            {STRATEGY_CARDS.map((card) => (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => { setSelected(card.key); setSelectedTplId(null) }}
+                className={cn(
+                  "relative flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all",
+                  selected === card.key
+                    ? "border-primary bg-blue-50/50 ring-1 ring-primary/20"
+                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                )}
+              >
+                <div className="text-slate-500">{card.icon}</div>
+                <p className="text-[14px] font-medium leading-tight">{card.title}</p>
+                <p className="text-[12px] text-slate-500 leading-snug">{card.desc}</p>
+                <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
+                  {card.badge}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Template selector — shown when a template strategy is selected */}
+          {needsTemplate && (
+            <div className="mt-4">
+              {loadingTpl ? (
+                <div className="shimmer-bar h-10 w-full rounded-lg" />
+              ) : templates.length === 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-[13px] text-amber-800">No hay plantillas guardadas</p>
+                  <p className="text-[12px] text-amber-700 mt-0.5">
+                    Guarda una desde el calendario o ve a{" "}
+                    <a href="/lab" className="underline font-medium">Configuración → Plantillas</a>
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={selectedTplId ?? ""}
+                  onChange={(e) => setSelectedTplId(e.target.value || null)}
+                  className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                >
+                  <option value="">Seleccionar plantilla...</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.assignments.length} asignaciones)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-[#CCDDEE] shrink-0 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
+          <Button
+            size="sm"
+            disabled={!canGenerate}
+            onClick={() => { if (selected) onGenerate(selected, selectedTplId ?? undefined) }}
+          >
+            Generar
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -2260,7 +2373,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [loadingWeek, setLoadingWeek]   = useState(true)
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
-  const [showOverrideDialog, setShowOverrideDialog] = useState(false)
+  const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [isPending, startTransition]    = useTransition()
 
   // Staff for assignment sheet
@@ -2353,28 +2466,44 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   // Navigation
   function navigate(dir: -1 | 1) {
-    setShowOverrideDialog(false)
+    setShowStrategyModal(false)
     if (view === "week")  setCurrentDate((d) => addDays(d, dir * 7))
     else                  setCurrentDate((d) => addMonths(d, dir))
   }
 
   function goToToday() {
     setCurrentDate(TODAY)
-    setShowOverrideDialog(false)
+    setShowStrategyModal(false)
   }
 
   // Generate / publish / unlock
   function handleGenerateClick() {
-    const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0)
-    if (hasAssignments) setShowOverrideDialog(true)
-    else runGenerate(false)
+    setShowStrategyModal(true)
   }
 
-  function runGenerate(preserve: boolean) {
-    setShowOverrideDialog(false)
+  function handleStrategyGenerate(strategy: GenerationStrategy, templateId?: string) {
+    setShowStrategyModal(false)
     startTransition(async () => {
       try {
-        const result = await generateRota(weekStart, preserve)
+        if (strategy === "manual") {
+          const result = await clearWeek(weekStart)
+          if (result.error) { toast.error(result.error); return }
+          fetchWeek(weekStart)
+          return
+        }
+        if ((strategy === "strict_template" || strategy === "flexible_template") && templateId) {
+          const result = await applyTemplate(templateId, weekStart, strategy === "strict_template")
+          if (result.error) { toast.error(result.error); return }
+          if (result.skipped && result.skipped.length > 0) {
+            toast.info(t("templateAppliedSkipped", { count: result.skipped.length }))
+          } else {
+            toast.success(t("templateApplied"))
+          }
+          fetchWeek(weekStart)
+          return
+        }
+        // ai_optimal — run the engine
+        const result = await generateRota(weekStart, false, "ai_optimal")
         if (result.error) {
           setError(result.error)
           toast.error(result.error)
@@ -2382,7 +2511,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           fetchWeek(weekStart)
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error generando la guardia. Consulta la consola."
+        const msg = e instanceof Error ? e.message : "Error generando la guardia."
         setError(msg)
         toast.error(msg)
       }
@@ -2558,7 +2687,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           )}
           {showActions && !isPublished && (
             <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
-              {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
+              {isPending ? tc("generating") : t("generateRota")}
             </Button>
           )}
           {showActions && (
@@ -2620,7 +2749,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         </div>
         {showActions && !isPublished && (
           <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
-            {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
+            {isPending ? tc("generating") : t("generateRota")}
           </Button>
         )}
       </div>
@@ -2644,14 +2773,6 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
             <span className="text-[13px] text-destructive">{error}</span>
           </div>
-        )}
-        {showOverrideDialog && (
-          <OverrideDialog
-            onKeep={() => runGenerate(true)}
-            onRegenerate={() => runGenerate(false)}
-            onCancel={() => setShowOverrideDialog(false)}
-            isPending={isPending}
-          />
         )}
       </div>
 
@@ -2770,6 +2891,15 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           onPillClick={openProfile}
         />
       )}
+
+      {/* Generation strategy modal */}
+      <GenerationStrategyModal
+        open={showStrategyModal}
+        weekStart={weekStart}
+        weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
+        onClose={() => setShowStrategyModal(false)}
+        onGenerate={handleStrategyGenerate}
+      />
 
       {/* Template modals */}
       <SaveTemplateModal

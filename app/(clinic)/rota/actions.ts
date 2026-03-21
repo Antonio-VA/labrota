@@ -315,7 +315,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
 export async function generateRota(
   weekStart: string,
-  preserveOverrides: boolean
+  preserveOverrides: boolean,
+  generationType: import("@/lib/types/database").GenerationType = "ai_optimal"
 ): Promise<{ error?: string; assignmentCount?: number }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
@@ -357,7 +358,7 @@ export async function generateRota(
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft" } as never,
+      { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: generationType } as never,
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
@@ -883,6 +884,26 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
   }
 }
 
+export async function clearWeek(weekStart: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  const { data: rotaRow } = await supabase
+    .from("rotas")
+    .upsert(
+      { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: "manual" } as never,
+      { onConflict: "organisation_id,week_start" }
+    )
+    .select("id")
+    .single() as unknown as { data: { id: string } | null }
+  if (!rotaRow) return { error: "Error creando la guardia." }
+
+  await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
+  revalidatePath("/")
+  return {}
+}
+
 // ── Template actions ──────────────────────────────────────────────────────────
 
 import type { RotaTemplate, RotaTemplateAssignment } from "@/lib/types/database"
@@ -929,7 +950,7 @@ export async function getTemplates(): Promise<RotaTemplate[]> {
   return data ?? []
 }
 
-export async function applyTemplate(templateId: string, weekStart: string): Promise<{ error?: string; skipped?: string[] }> {
+export async function applyTemplate(templateId: string, weekStart: string, strict = true): Promise<{ error?: string; skipped?: string[] }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
@@ -947,7 +968,7 @@ export async function applyTemplate(templateId: string, weekStart: string): Prom
   // Upsert rota record
   const { data: rota } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id, week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: strict ? "strict_template" : "flexible_template" } as never, { onConflict: "organisation_id, week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
   if (!rota) return { error: "Error creando la guardia." }
