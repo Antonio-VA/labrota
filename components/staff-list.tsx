@@ -113,6 +113,9 @@ function AddSkillDropdown({
   onConfirm: (skill: SkillName, level: SkillLevel) => void
   isPending: boolean
 }) {
+  const t  = useTranslations("staff")
+  const tc = useTranslations("common")
+  const ts = useTranslations("skills")
   const [skill, setSkill] = useState<SkillName | null>(null)
   const [level, setLevel] = useState<SkillLevel>("certified")
 
@@ -122,7 +125,7 @@ function AddSkillDropdown({
 
   return (
     <DropdownPanel open={open} onClose={onClose} className="w-[240px]">
-      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Añadir habilidad</p>
+      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.addSkillTitle")}</p>
       <div className="flex flex-col gap-1 mb-3">
         {BULK_SKILLS.map((s) => (
           <button
@@ -135,7 +138,7 @@ function AddSkillDropdown({
                 : "border-transparent hover:bg-muted text-foreground"
             )}
           >
-            {BULK_SKILL_LABELS[s]}
+            {ts(SKILL_KEYS[s] as Parameters<typeof ts>[0])}
           </button>
         ))}
       </div>
@@ -154,7 +157,7 @@ function AddSkillDropdown({
                   : "border-border hover:bg-muted text-muted-foreground"
               )}
             >
-              {l === "training" ? "En formación" : "Certificado"}
+              {l === "training" ? t("skillLevels.training") : t("skillLevels.certifiedShort")}
             </button>
           ))}
         </div>
@@ -165,7 +168,7 @@ function AddSkillDropdown({
         disabled={!skill || isPending}
         onClick={() => skill && onConfirm(skill, level)}
       >
-        Confirmar
+        {tc("confirm")}
       </Button>
     </DropdownPanel>
   )
@@ -181,9 +184,11 @@ function RemoveSkillDropdown({
   onConfirm: (skill: SkillName) => void
   isPending: boolean
 }) {
+  const t  = useTranslations("staff")
+  const ts = useTranslations("skills")
   return (
     <DropdownPanel open={open} onClose={onClose} className="w-[220px]">
-      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Eliminar habilidad</p>
+      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.removeSkillTitle")}</p>
       <div className="flex flex-col gap-1">
         {BULK_SKILLS.map((s) => (
           <button
@@ -192,7 +197,7 @@ function RemoveSkillDropdown({
             onClick={() => onConfirm(s)}
             className="text-left text-[13px] px-2.5 py-1.5 rounded-lg border border-transparent hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-colors"
           >
-            {BULK_SKILL_LABELS[s]}
+            {ts(SKILL_KEYS[s] as Parameters<typeof ts>[0])}
           </button>
         ))}
       </div>
@@ -210,14 +215,15 @@ function StatusDropdown({
   onConfirm: (status: OnboardingStatus) => void
   isPending: boolean
 }) {
+  const t = useTranslations("staff")
   const options: { value: OnboardingStatus; label: string }[] = [
-    { value: "active",      label: "Activo" },
-    { value: "onboarding",  label: "En formación" },
-    { value: "inactive",    label: "Inactivo" },
+    { value: "active",      label: t("onboardingStatus.active") },
+    { value: "onboarding",  label: t("onboardingStatus.onboarding") },
+    { value: "inactive",    label: t("onboardingStatus.inactive") },
   ]
   return (
     <DropdownPanel open={open} onClose={onClose} className="w-[180px]">
-      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Cambiar estado</p>
+      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.changeStatusTitle")}</p>
       <div className="flex flex-col gap-1">
         {options.map((o) => (
           <button
@@ -249,7 +255,10 @@ function DeleteModal({
   onCancel: () => void
   isPending: boolean
 }) {
+  const t  = useTranslations("staff")
+  const tc = useTranslations("common")
   const [confirmText, setConfirmText] = useState("")
+  const confirmWord = t("deactivateModal.confirmWord")
 
   useEffect(() => {
     if (!open) setConfirmText("")
@@ -266,8 +275,8 @@ function DeleteModal({
             <Trash2 className="size-4 text-destructive" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-destructive">Desactivar {names.length} miembro{names.length !== 1 ? "s" : ""}</h2>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Se marcarán como inactivos con fecha de fin hoy</p>
+            <h2 className="text-[16px] font-semibold text-destructive">{t("bulk.deactivate")} {names.length} {names.length !== 1 ? "miembros" : "miembro"}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">{t("deactivateModal.description")}</p>
           </div>
         </div>
 
@@ -279,12 +288,14 @@ function DeleteModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-muted-foreground">
-            Escribe <span className="font-mono font-medium text-foreground">ELIMINAR</span> para confirmar
+            {t("deactivateModal.typeToConfirm").split(confirmWord)[0]}
+            <span className="font-mono font-medium text-foreground">{confirmWord}</span>
+            {t("deactivateModal.typeToConfirm").split(confirmWord)[1]}
           </label>
           <Input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="ELIMINAR"
+            placeholder={confirmWord}
             disabled={isPending}
             className="font-mono"
           />
@@ -292,15 +303,15 @@ function DeleteModal({
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={onCancel} disabled={isPending}>
-            Cancelar
+            {tc("cancel")}
           </Button>
           <Button
             variant="destructive"
             size="sm"
             onClick={onConfirm}
-            disabled={confirmText !== "ELIMINAR" || isPending}
+            disabled={confirmText !== confirmWord || isPending}
           >
-            {isPending ? "Desactivando…" : "Desactivar"}
+            {isPending ? t("deactivateModal.deactivating") : t("deactivateModal.confirm")}
           </Button>
         </div>
       </div>
@@ -315,7 +326,10 @@ function HardDeleteModal({
 }: {
   open: boolean; names: string[]; onConfirm: () => void; onCancel: () => void; isPending: boolean
 }) {
+  const t  = useTranslations("staff")
+  const tc = useTranslations("common")
   const [confirmText, setConfirmText] = useState("")
+  const confirmWord = t("hardDeleteModal.confirmWord")
 
   useEffect(() => { if (!open) setConfirmText("") }, [open])
 
@@ -330,8 +344,8 @@ function HardDeleteModal({
             <Trash2 className="size-4 text-destructive" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-destructive">Borrar definitivamente {names.length} miembro{names.length !== 1 ? "s" : ""}</h2>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Esta acción es <strong>irreversible</strong>. Se borrará el registro completo y todo el historial de turnos asociado.</p>
+            <h2 className="text-[16px] font-semibold text-destructive">{t("hardDeleteModal.confirm")} {names.length} {names.length !== 1 ? "miembros" : "miembro"}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">{t("hardDeleteModal.description")}</p>
           </div>
         </div>
 
@@ -341,26 +355,28 @@ function HardDeleteModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-muted-foreground">
-            Escribe <span className="font-mono font-medium text-foreground">BORRAR</span> para confirmar
+            {t("hardDeleteModal.typeToConfirm").split(confirmWord)[0]}
+            <span className="font-mono font-medium text-foreground">{confirmWord}</span>
+            {t("hardDeleteModal.typeToConfirm").split(confirmWord)[1]}
           </label>
           <Input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="BORRAR"
+            placeholder={confirmWord}
             disabled={isPending}
             className="font-mono"
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={onCancel} disabled={isPending}>Cancelar</Button>
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={isPending}>{tc("cancel")}</Button>
           <Button
             variant="destructive"
             size="sm"
             onClick={onConfirm}
-            disabled={confirmText !== "BORRAR" || isPending}
+            disabled={confirmText !== confirmWord || isPending}
           >
-            {isPending ? "Borrando…" : "Borrar definitivamente"}
+            {isPending ? t("hardDeleteModal.deleting") : t("hardDeleteModal.confirm")}
           </Button>
         </div>
       </div>
@@ -379,6 +395,8 @@ function BulkToolbar({
   selectedStaff: StaffWithSkills[]
   onClear: () => void
 }) {
+  const t  = useTranslations("staff")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [addOpen,        setAddOpen]        = useState(false)
   const [removeOpen,     setRemoveOpen]     = useState(false)
@@ -458,7 +476,7 @@ function BulkToolbar({
           <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
             {count}
           </span>
-          seleccionado{count !== 1 ? "s" : ""}
+          {count !== 1 ? "seleccionados" : "seleccionado"}
         </span>
 
         <div className="w-px h-5 bg-border shrink-0" />
@@ -470,7 +488,7 @@ function BulkToolbar({
             disabled={isPending}
             className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Añadir habilidad <ChevronDown className="size-3 shrink-0" />
+            {t("bulk.addSkill")} <ChevronDown className="size-3 shrink-0" />
           </button>
           <AddSkillDropdown
             open={addOpen}
@@ -487,7 +505,7 @@ function BulkToolbar({
             disabled={isPending}
             className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Quitar habilidad <ChevronDown className="size-3 shrink-0" />
+            {t("bulk.removeSkill")} <ChevronDown className="size-3 shrink-0" />
           </button>
           <RemoveSkillDropdown
             open={removeOpen}
@@ -504,7 +522,7 @@ function BulkToolbar({
             disabled={isPending}
             className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            Estado <ChevronDown className="size-3 shrink-0" />
+            {t("bulk.changeStatus")} <ChevronDown className="size-3 shrink-0" />
           </button>
           <StatusDropdown
             open={statusOpen}
@@ -523,7 +541,7 @@ function BulkToolbar({
           className="flex items-center gap-1 h-7 px-2 rounded-md border border-destructive/30 bg-destructive/5 text-destructive text-[12px] font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50 whitespace-nowrap"
         >
           <Trash2 className="size-3 shrink-0" />
-          Desactivar
+          {t("bulk.deactivate")}
         </button>
 
         {/* Hard delete — only when all selected are already inactive */}
@@ -534,7 +552,7 @@ function BulkToolbar({
             className="flex items-center gap-1 h-7 px-2 rounded-md bg-destructive text-destructive-foreground text-[12px] font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             <Trash2 className="size-3 shrink-0" />
-            Borrar
+            {t("bulk.hardDelete")}
           </button>
         )}
 
@@ -546,7 +564,7 @@ function BulkToolbar({
           className="flex items-center gap-1 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
         >
           <X className="size-3 shrink-0" />
-          Cancelar
+          {tc("cancel")}
         </button>
       </div>
 

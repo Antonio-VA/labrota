@@ -591,7 +591,7 @@ function SkillGapPill({ details }: {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-amber-700 text-[12px] font-medium hover:bg-amber-50/50 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>

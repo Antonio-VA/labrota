@@ -79,6 +79,7 @@ function AvatarMenu({
   locale: string; isPending: boolean
   onToggleLocale: () => void; onSignOut: () => void
 }) {
+  const t    = useTranslations("nav")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -120,7 +121,7 @@ function AvatarMenu({
 
           {/* Dropdown menu */}
           {open && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden z-50">
+            <div className="absolute bottom-0 left-full ml-2 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden z-50">
               <div className="px-3 py-2.5 border-b border-border">
                 <p className="text-[13px] font-medium truncate">{firstName}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
@@ -130,7 +131,7 @@ function AvatarMenu({
                 className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
               >
                 <LogOut className="size-3.5" />
-                Cerrar sesión
+                {t("signOut")}
               </button>
             </div>
           )}

@@ -192,7 +192,10 @@
       "startDate": "Start date",
       "endDate": "End date",
       "onboardingStatus": "Status",
-      "notes": "Internal notes"
+      "notes": "Internal notes",
+      "preferredShift": "Preferred shift",
+      "preferredShiftNone": "No preference",
+      "preferredShiftHint": "Preferred shift — the scheduler will try to honour it without breaking minimum coverage."
     },
     "onboardingStatus": {
       "active": "Active",
@@ -215,7 +218,46 @@
     "deleteConfirmDescription": "This action cannot be undone. The member will be permanently removed.",
     "profile": "Profile",
     "shiftsHistory": "Shift history",
-    "upcomingLeave": "Upcoming leave"
+    "upcomingLeave": "Upcoming leave",
+    "sections": {
+      "personalInfo": "Personal information",
+      "roleAndStatus": "Role & status",
+      "capabilities": "Capabilities"
+    },
+    "skillLevels": {
+      "certified": "Certified",
+      "certifiedShort": "Certified",
+      "training": "In training"
+    },
+    "bulk": {
+      "addSkill": "Add skill",
+      "removeSkill": "Remove skill",
+      "changeStatus": "Status",
+      "deactivate": "Deactivate",
+      "deactivating": "Deactivating…",
+      "hardDelete": "Delete",
+      "hardDeleting": "Deleting…",
+      "hardDeletePermanently": "Delete permanently"
+    },
+    "deactivateModal": {
+      "description": "They will be marked as inactive with today as the end date",
+      "typeToConfirm": "Type DEACTIVATE to confirm",
+      "confirmWord": "DEACTIVATE",
+      "deactivating": "Deactivating…",
+      "confirm": "Deactivate"
+    },
+    "hardDeleteModal": {
+      "description": "This action is irreversible. The entire record and all associated shift history will be deleted.",
+      "typeToConfirm": "Type DELETE to confirm",
+      "confirmWord": "DELETE",
+      "deleting": "Deleting…",
+      "confirm": "Delete permanently"
+    },
+    "dropdowns": {
+      "addSkillTitle": "Add skill",
+      "removeSkillTitle": "Remove skill",
+      "changeStatusTitle": "Change status"
+    }
   },
   "skills": {
     "icsi": "ICSI",

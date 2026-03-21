@@ -192,7 +192,10 @@
       "startDate": "Fecha de incorporación",
       "endDate": "Fecha de baja",
       "onboardingStatus": "Estado de incorporación",
-      "notes": "Notas internas"
+      "notes": "Notas internas",
+      "preferredShift": "Turno preferido",
+      "preferredShiftNone": "Sin preferencia",
+      "preferredShiftHint": "Preferencia de turno — el generador intentará respetarla sin romper la cobertura mínima."
     },
     "onboardingStatus": {
       "active": "Activo",
@@ -215,7 +218,46 @@
     "deleteConfirmDescription": "Esta acción no se puede deshacer. El miembro será eliminado definitivamente.",
     "profile": "Perfil",
     "shiftsHistory": "Historial de turnos",
-    "upcomingLeave": "Próximas ausencias"
+    "upcomingLeave": "Próximas ausencias",
+    "sections": {
+      "personalInfo": "Datos personales",
+      "roleAndStatus": "Rol y estado",
+      "capabilities": "Capacidades"
+    },
+    "skillLevels": {
+      "certified": "Competente",
+      "certifiedShort": "Certificado",
+      "training": "En formación"
+    },
+    "bulk": {
+      "addSkill": "Añadir habilidad",
+      "removeSkill": "Quitar habilidad",
+      "changeStatus": "Estado",
+      "deactivate": "Desactivar",
+      "deactivating": "Desactivando…",
+      "hardDelete": "Borrar",
+      "hardDeleting": "Borrando…",
+      "hardDeletePermanently": "Borrar definitivamente"
+    },
+    "deactivateModal": {
+      "description": "Se marcarán como inactivos con fecha de fin hoy",
+      "typeToConfirm": "Escribe ELIMINAR para confirmar",
+      "confirmWord": "ELIMINAR",
+      "deactivating": "Desactivando…",
+      "confirm": "Desactivar"
+    },
+    "hardDeleteModal": {
+      "description": "Esta acción es irreversible. Se borrará el registro completo y todo el historial de turnos asociado.",
+      "typeToConfirm": "Escribe BORRAR para confirmar",
+      "confirmWord": "BORRAR",
+      "deleting": "Borrando…",
+      "confirm": "Borrar definitivamente"
+    },
+    "dropdowns": {
+      "addSkillTitle": "Añadir habilidad",
+      "removeSkillTitle": "Eliminar habilidad",
+      "changeStatusTitle": "Cambiar estado"
+    }
   },
   "skills": {
     "icsi": "ICSI",

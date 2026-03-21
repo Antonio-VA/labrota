@@ -12,13 +12,12 @@ import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLeve
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
-// Fallback skill labels when no técnicas provided
-const DEFAULT_SKILL_LABEL: Record<string, string> = {
-  biopsy:          "Biopsia",
-  icsi:            "ICSI",
-  egg_collection:  "Recogida de óvulos",
-  embryo_transfer: "Transferencia embrionaria",
-  denudation:      "Denudación",
+// Fallback skill keys for translation lookup when no técnicas provided
+const SKILL_KEYS: Record<string, string> = {
+  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
+  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
+  witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
+  embryo_transfer: "embryoTransfer", denudation: "denudation",
 }
 const DEFAULT_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
 
@@ -49,7 +48,7 @@ function Field({
       <label className="text-[14px] font-medium">
         {label}
         {!required && (
-          <span className="ml-1 text-[12px] font-normal text-muted-foreground">(opcional)</span>
+          <span className="ml-1 text-[12px] font-normal text-muted-foreground">({tc("optional").toLowerCase()})</span>
         )}
       </label>
       {children}
@@ -91,8 +90,9 @@ export function StaffForm({
   staff?: StaffWithSkills
   tecnicas?: Tecnica[]
 }) {
-  const t = useTranslations("staff")
+  const t  = useTranslations("staff")
   const tc = useTranslations("common")
+  const ts = useTranslations("skills")
   const action = mode === "edit" ? updateStaff.bind(null, staff!.id) : createStaff
   const [state, formAction, isPending] = useActionState(action, null)
 
@@ -114,7 +114,7 @@ export function StaffForm({
       }
       return result
     }
-    return DEFAULT_SKILLS.map((s) => ({ skill: s, label: DEFAULT_SKILL_LABEL[s] }))
+    return DEFAULT_SKILLS.map((s) => ({ skill: s, label: ts(SKILL_KEYS[s] as Parameters<typeof ts>[0]) }))
   })()
 
   type SkillState = 'off' | 'training' | 'certified'
@@ -155,7 +155,7 @@ export function StaffForm({
     <form action={formAction} className="flex flex-col gap-6">
 
       {/* Personal info */}
-      <Section label="Datos personales">
+      <Section label={t("sections.personalInfo")}>
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.firstName")} required>
             <Input name="first_name" defaultValue={staff?.first_name} disabled={isPending} required className="rounded-[8px]" />
@@ -170,7 +170,7 @@ export function StaffForm({
       </Section>
 
       {/* Role & status */}
-      <Section label="Rol y estado">
+      <Section label={t("sections.roleAndStatus")}>
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.role")} required>
             <Select name="role" defaultValue={staff?.role ?? "lab"} disabled={isPending}>
@@ -207,16 +207,16 @@ export function StaffForm({
             required
           />
         </Field>
-        <Field label="Turno preferido">
+        <Field label={t("fields.preferredShift")}>
           <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
-            <option value="">Sin preferencia</option>
+            <option value="">{t("fields.preferredShiftNone")}</option>
             <option value="T1">T1</option>
             <option value="T2">T2</option>
             <option value="T3">T3</option>
             <option value="T4">T4</option>
           </Select>
           <p className="text-[12px] text-muted-foreground mt-1">
-            Preferencia de turno — el generador intentará respetarla sin romper la cobertura mínima.
+            {t("fields.preferredShiftHint")}
           </p>
         </Field>
       </Section>
@@ -253,7 +253,7 @@ export function StaffForm({
       </Section>
 
       {/* Capacidades */}
-      <Section label="Capacidades">
+      <Section label={t("sections.capabilities")}>
         <div className="flex flex-wrap gap-2">
           {capacidades.map(({ skill, label }) => {
             const level = skillLevels[skill] ?? 'off'
@@ -286,7 +286,7 @@ export function StaffForm({
                       level === 'certified' && "text-blue-600",
                       level === 'training'  && "text-amber-600"
                     )}>
-                      {level === 'certified' ? "Competente" : "En formación"}
+                      {level === 'certified' ? t("skillLevels.certified") : t("skillLevels.training")}
                     </span>
                   )}
                 </div>

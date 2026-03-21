@@ -101,6 +101,17 @@ export function runRotaEngine({
     workloadScore[a.staff_id] = (workloadScore[a.staff_id] ?? 0) + 1
   }
 
+  // Pre-compute each staff member's weekend pattern days in this week.
+  // Used to reserve weekly budget so weekday greedy assignment doesn't
+  // exhaust the quota before weekend days are processed.
+  const allWeekDates = getWeekDates(weekStart)
+  const staffWeekendDays: Record<string, string[]> = {}
+  for (const s of staff) {
+    staffWeekendDays[s.id] = allWeekDates.filter(
+      (d) => isWeekend(d) && (s.working_pattern ?? []).includes(getDayCode(d))
+    )
+  }
+
   // Weekly shift counter — resets at the start of each generated week
   const weeklyShiftCount: Record<string, number> = {}
 
@@ -152,7 +163,16 @@ export function runRotaEngine({
       if (s.end_date && s.end_date < date) return false
       if (!(s.working_pattern ?? []).includes(dayCode)) return false
       if (leaveMap[s.id]?.has(date)) return false
-      if ((weeklyShiftCount[s.id] ?? 0) >= (s.days_per_week ?? 5)) return false
+      // Budget check: on weekdays, reserve slots for upcoming weekend pattern days
+      // so the Mon→Fri greedy fill doesn't exhaust quota before Saturday/Sunday.
+      const totalBudget = s.days_per_week ?? 5
+      const used        = weeklyShiftCount[s.id] ?? 0
+      if (weekend) {
+        if (used >= totalBudget) return false
+      } else {
+        const upcomingWeekendSlots = staffWeekendDays[s.id].filter((d) => d > date).length
+        if (used >= totalBudget - upcomingWeekendSlots) return false
+      }
       return true
     })
 
