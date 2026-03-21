@@ -55,18 +55,20 @@ function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function Initials({ first, last, role }: { first: string; last: string; role: StaffRole }) {
+const ROLE_ABBR: Record<StaffRole, string> = { lab: "EM", andrology: "AN", admin: "AD" }
+
+function Initials({ role }: { first: string; last: string; role: StaffRole }) {
   const colors: Record<StaffRole, string> = {
     lab:       "bg-blue-100 text-blue-700",
     andrology: "bg-emerald-100 text-emerald-700",
-    admin:     "bg-slate-400 text-white",
+    admin:     "bg-slate-100 text-slate-600",
   }
   return (
     <div className={cn(
-      "size-8 rounded-full flex items-center justify-center text-[12px] font-medium shrink-0",
+      "size-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
       colors[role]
     )}>
-      {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
+      {ROLE_ABBR[role]}
     </div>
   )
 }

@@ -23,9 +23,13 @@ import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 type Assignment = RotaDay["assignments"][0]
 
 const ROLE_COLORS: Record<string, string> = {
-  lab:       "bg-blue-600 text-white",
-  andrology: "bg-emerald-600 text-white",
-  admin:     "bg-slate-500 text-white",
+  lab:       "bg-blue-100 text-blue-700",
+  andrology: "bg-emerald-100 text-emerald-700",
+  admin:     "bg-slate-100 text-slate-600",
+}
+
+const ROLE_ABBR: Record<string, string> = {
+  lab: "EM", andrology: "AN", admin: "AD",
 }
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
@@ -45,7 +49,7 @@ function Avatar({ first, last, role }: { first: string; last: string; role: stri
       "size-7 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0",
       ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
     )}>
-      {first[0]?.toUpperCase()}{last[0]?.toUpperCase()}
+      {ROLE_ABBR[role] ?? "?"}
     </div>
   )
 }
@@ -512,7 +516,7 @@ export function AssignmentSheet({
                       "size-6 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 opacity-50",
                       ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
                     )}>
-                      {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                      {ROLE_ABBR[s.role] ?? "?"}
                     </div>
                     <span className="truncate flex-1">{s.first_name} {s.last_name}</span>
                     {!isPublished && rota && (
