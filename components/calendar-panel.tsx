@@ -25,6 +25,7 @@ import {
   moveAssignmentShift,
   removeAssignment,
   setFunctionLabel,
+  upsertAssignment,
   type RotaWeekData,
   type RotaDay,
   type RotaMonthSummary,
@@ -711,6 +712,24 @@ function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps)
   )
 }
 
+function DraggableOffStaff({ staffId, date, children, disabled }: {
+  staffId: string; date: string; children: React.ReactNode; disabled?: boolean
+}) {
+  const id = `off-${staffId}-${date}`
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, disabled })
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    position: isDragging ? "relative" as const : undefined,
+  } : undefined
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={disabled ? undefined : "cursor-grab"}>
+      {children}
+    </div>
+  )
+}
+
 function DroppableCell({ id, children, isOver, isPublished, onClick, className, style }: {
   id: string; children: React.ReactNode; isOver: boolean
   isPublished: boolean; onClick?: () => void; className?: string; style?: React.CSSProperties
@@ -734,7 +753,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, onFunctionLabelSave,
+  onRefresh, onFunctionLabelSave, weekStart,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -752,6 +771,7 @@ function ShiftGrid({
   onPunctionsChange: (date: string, value: number | null) => void
   onRefresh: () => void
   onFunctionLabelSave: (assignmentId: string, label: string | null) => void
+  weekStart: string
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -763,12 +783,27 @@ function ShiftGrid({
     const { active, over } = event
     setActiveId(null)
     setOverId(null)
-    if (!over || active.id === over.id) return
+    if (!over) return
 
-    const assignmentId = String(active.id)
-    const destZone     = String(over.id) // e.g. "T1-2026-03-16" or "OFF-2026-03-16"
+    const activeId  = String(active.id)
+    const destZone  = String(over.id)
 
-    // Find source assignment
+    // ── OFF → shift: create a new assignment ─────────────────────────────────
+    if (activeId.startsWith("off-")) {
+      if (destZone.startsWith("OFF-")) return // dropped back on OFF — do nothing
+      const destDate  = destZone.slice(-10)
+      const destShift = destZone.slice(0, destZone.length - 11)
+      // id format: "off-{staffId}-{date}"
+      const staffId = activeId.slice(4, activeId.length - 11)
+      const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift as ShiftType })
+      if (result?.error) { toast.error(result.error); return }
+      toast.success("Turno asignado")
+      onRefresh()
+      return
+    }
+
+    // ── Existing assignment → shift or OFF ────────────────────────────────────
+    const assignmentId = activeId
     const sourceAssignment = data?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
     if (!sourceAssignment) return
 
@@ -782,7 +817,6 @@ function ShiftGrid({
       const destDate  = destZone.slice(-10)
       const destShift = destZone.slice(0, destZone.length - 11)
 
-      // Only allow same-day drags
       if (sourceAssignment.date !== destDate) {
         toast.error("No se puede mover entre días")
         return
@@ -1030,13 +1064,15 @@ function ShiftGrid({
                   className="p-1.5 flex flex-col gap-1 bg-white min-h-[36px]"
                 >
                   {leaveStaff.map((s) => (
-                    <div key={s.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
-                      <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0 bg-amber-200 text-amber-800">
-                        {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                    <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
+                        <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0 bg-amber-200 text-amber-800">
+                          {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                        </div>
+                        <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
+                        <CalendarX className="size-3 shrink-0 ml-auto" />
                       </div>
-                      <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                      <CalendarX className="size-3 shrink-0 ml-auto" />
-                    </div>
+                    </DraggableOffStaff>
                   ))}
                 </DroppableCell>
               )
@@ -1059,22 +1095,23 @@ function ShiftGrid({
                 {visible.map((s) => {
                   const onLeave = leaveIds.has(s.id)
                   return (
-                    <div
-                      key={s.id}
-                      className={cn(
-                        "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
-                        onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-500"
-                      )}
-                    >
-                      <div className={cn(
-                        "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
-                        onLeave ? "bg-amber-200 text-amber-800" : "bg-slate-200 text-slate-500"
-                      )}>
-                        {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                    <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
+                          onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-500"
+                        )}
+                      >
+                        <div className={cn(
+                          "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold shrink-0",
+                          onLeave ? "bg-amber-200 text-amber-800" : "bg-slate-200 text-slate-500"
+                        )}>
+                          {s.first_name[0]?.toUpperCase()}{s.last_name[0]?.toUpperCase()}
+                        </div>
+                        <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
+                        {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
                       </div>
-                      <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
-                      {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
-                    </div>
+                    </DraggableOffStaff>
                   )
                 })}
                 {extra > 0 && (
@@ -1758,6 +1795,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onPunctionsChange={handlePunctionsChange}
                 onRefresh={() => fetchWeekSilent(weekStart)}
                 onFunctionLabelSave={handleFunctionLabelSave}
+                weekStart={weekStart}
               />
             ) : (
               <WeekGrid
