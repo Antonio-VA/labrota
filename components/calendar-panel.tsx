@@ -969,6 +969,9 @@ function ShiftGrid({
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
 
+  // Require 5px movement before drag activates — allows click events to pass through
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
   const [localDays, setLocalDays] = useState(data?.days ?? [])
@@ -1155,9 +1158,6 @@ function ShiftGrid({
   const activeOffStaff = activeId?.startsWith("off-")
     ? staffList.find((s) => activeId.startsWith(`off-${s.id}`))
     : null
-
-  // Require 5px movement before drag activates — allows click events to pass through
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   return (
     <DndContext
