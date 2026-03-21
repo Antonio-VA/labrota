@@ -788,7 +788,7 @@ function PersonGrid({
   if (loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
+        <div className="rounded-lg border border-border overflow-hidden w-full">
           <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
             <div className="h-[52px] border-b border-r border-[#CCDDEE]" />
             {Array.from({ length: 7 }).map((_, i) => (
@@ -850,7 +850,7 @@ function PersonGrid({
   const days = localDays
 
   return (
-    <div className="rounded-lg border border-border overflow-auto min-w-[560px] h-full">
+    <div className="rounded-lg border border-border overflow-hidden w-full">
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
         {/* Header row */}
@@ -1183,9 +1183,9 @@ function ShiftGrid({
   if (loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
+        <div className="rounded-lg border border-border overflow-hidden w-full">
           {/* Header */}
-          <div className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#CCDDEE]">
             <div className="border-r border-[#CCDDEE] h-[52px]" />
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center justify-center py-1 gap-1">
@@ -1199,7 +1199,7 @@ function ShiftGrid({
           </div>
           {/* Rows */}
           {["T1", "T2", "T3", "off"].map((row) => (
-            <div key={row} className={cn("grid grid-cols-[72px_repeat(7,1fr)]", row !== "off" && "border-b border-[#CCDDEE]")}>
+            <div key={row} className={cn("grid grid-cols-[80px_repeat(7,1fr)]", row !== "off" && "border-b border-[#CCDDEE]")}>
               <div className="border-r border-[#CCDDEE] flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
@@ -1249,10 +1249,10 @@ function ShiftGrid({
       onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
       onDragEnd={handleDragEnd}
     >
-      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-auto min-w-[560px]">
+      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-hidden w-full">
 
         {/* Header row — 52px, white, subtle border */}
-        <div className="grid grid-cols-[72px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
           <div className="border-r border-[#CCDDEE]" />
           {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
@@ -1332,7 +1332,7 @@ function ShiftGrid({
 
         {/* Shift rows */}
         {SHIFT_ROWS.map((shiftRow) => (
-          <div key={shiftRow} className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+          <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#CCDDEE]">
             {/* Shift label — right-aligned, three-line: code / start / end */}
             <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
               <span className="text-[10px] text-slate-400 leading-tight font-medium">{shiftRow}</span>
@@ -1417,7 +1417,7 @@ function ShiftGrid({
         }} />
 
         {/* OFF row */}
-        <div className="grid grid-cols-[72px_repeat(7,1fr)] bg-slate-50">
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50">
           <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
             <span className="text-[12px] italic text-slate-400 leading-tight">OFF</span>
           </div>
@@ -2121,8 +2121,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-2 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-auto">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {!weekData?.rota && !loadingWeek && !isPending ? (
                 <EmptyState
                   icon={CalendarDays}
