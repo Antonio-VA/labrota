@@ -22,14 +22,10 @@ import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 
 type Assignment = RotaDay["assignments"][0]
 
-const ROLE_COLORS: Record<string, string> = {
-  lab:       "bg-blue-100 text-blue-700",
-  andrology: "bg-emerald-100 text-emerald-700",
-  admin:     "bg-slate-100 text-slate-600",
-}
-
-const ROLE_ABBR: Record<string, string> = {
-  lab: "EM", andrology: "AN", admin: "AD",
+const ROLE_DOT: Record<string, string> = {
+  lab:       "bg-blue-400",
+  andrology: "bg-emerald-400",
+  admin:     "bg-slate-400",
 }
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
@@ -43,14 +39,9 @@ function shiftLabel(shift: ShiftType, shiftTimes: ShiftTimes | null): string {
 
 // ── Staff avatar ───────────────────────────────────────────────────────────────
 
-function Avatar({ first, last, role }: { first: string; last: string; role: string }) {
+function Avatar({ role }: { first: string; last: string; role: string }) {
   return (
-    <div className={cn(
-      "size-7 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0",
-      ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
-    )}>
-      {ROLE_ABBR[role] ?? "?"}
-    </div>
+    <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
   )
 }
 
@@ -512,12 +503,7 @@ export function AssignmentSheet({
                       "text-muted-foreground"
                     )}
                   >
-                    <div className={cn(
-                      "size-6 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 opacity-50",
-                      ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
-                    )}>
-                      {ROLE_ABBR[s.role] ?? "?"}
-                    </div>
+                    <span className={cn("size-2 rounded-full shrink-0 opacity-50", ROLE_DOT[s.role] ?? "bg-slate-400")} />
                     <span className="truncate flex-1">{s.first_name} {s.last_name}</span>
                     {!isPublished && rota && (
                       <Plus className="size-3 shrink-0 opacity-50" />

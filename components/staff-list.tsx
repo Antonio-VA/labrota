@@ -56,21 +56,15 @@ function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ROLE_ABBR: Record<StaffRole, string> = { lab: "EM", andrology: "AN", admin: "AD" }
+const ROLE_DOT: Record<StaffRole, string> = {
+  lab:       "bg-blue-400",
+  andrology: "bg-emerald-400",
+  admin:     "bg-slate-400",
+}
 
-function Initials({ role }: { first: string; last: string; role: StaffRole }) {
-  const colors: Record<StaffRole, string> = {
-    lab:       "bg-blue-100 text-blue-700",
-    andrology: "bg-emerald-100 text-emerald-700",
-    admin:     "bg-slate-100 text-slate-600",
-  }
+function RoleDot({ role }: { role: StaffRole }) {
   return (
-    <div className={cn(
-      "size-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
-      colors[role]
-    )}>
-      {ROLE_ABBR[role]}
-    </div>
+    <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role])} />
   )
 }
 
@@ -641,7 +635,7 @@ function StaffTable({
 
             {/* Name + avatar */}
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <Initials first={member.first_name} last={member.last_name} role={member.role} />
+              <RoleDot role={member.role} />
               <div className="min-w-0">
                 <p className="text-[14px] font-medium truncate">
                   {member.first_name} {member.last_name}

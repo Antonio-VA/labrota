@@ -42,14 +42,10 @@ type Assignment    = RotaDay["assignments"][0]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ROLE_COLORS: Record<string, string> = {
-  lab:       "bg-blue-100 text-blue-700",
-  andrology: "bg-emerald-100 text-emerald-700",
-  admin:     "bg-slate-100 text-slate-600",
-}
-
-const ROLE_ABBR: Record<string, string> = {
-  lab: "EM", andrology: "AN", admin: "AD",
+const ROLE_DOT: Record<string, string> = {
+  lab:       "bg-blue-400",
+  andrology: "bg-emerald-400",
+  admin:     "bg-slate-400",
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -152,12 +148,7 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, isOpu, notes, sh
         <span className="text-[10px] text-muted-foreground font-medium leading-none mb-0.5">{shiftTime}</span>
       )}
       <div className="flex items-center gap-1.5">
-        <div className={cn(
-          "size-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
-          ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
-        )}>
-          {ROLE_ABBR[role] ?? "?"}
-        </div>
+        <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
         <span className="truncate font-medium">{first} {last[0]}.</span>
         {hasTrainee && (
           <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
@@ -193,12 +184,7 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel }: Shi
       "flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px]",
       isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background"
     )}>
-      <div className={cn(
-        "size-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
-        ROLE_COLORS[role] ?? "bg-muted text-muted-foreground"
-      )}>
-        {ROLE_ABBR[role] ?? "?"}
-      </div>
+        <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
       <span className="truncate">{first} {last[0]}.</span>
       {fnLabel && fnColor && (
         <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border ml-auto shrink-0", fnColor)}>
@@ -468,13 +454,8 @@ function ShiftBudgetBar({ data }: { data: RotaWeekData }) {
             <Tooltip key={id}>
               <TooltipTrigger render={
                 <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[12px] font-medium cursor-default", colorClass)}>
-                  <div className={cn(
-                    "size-4 rounded-full flex items-center justify-center text-[8px] font-semibold",
-                    ROLE_COLORS[s.role] ?? "bg-muted text-muted-foreground"
-                  )}>
-                    {s.first[0]?.toUpperCase()}{s.last[0]?.toUpperCase()}
-                  </div>
-                  <span>{s.count}/5</span>
+                  <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[s.role] ?? "bg-slate-400")} />
+                  <span>{s.first} {s.count}/5</span>
                 </div>
               } />
               <TooltipContent side="top">
@@ -1134,12 +1115,7 @@ function ShiftGrid({
                           onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-500"
                         )}
                       >
-                        <div className={cn(
-                          "size-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0",
-                          onLeave ? "bg-amber-200 text-amber-800" : ROLE_COLORS[s.role] ?? "bg-slate-100 text-slate-500"
-                        )}>
-                          {ROLE_ABBR[s.role] ?? "?"}
-                        </div>
+                        <span className={cn("size-2 rounded-full shrink-0", onLeave ? "bg-amber-400" : ROLE_DOT[s.role] ?? "bg-slate-400")} />
                         <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
                         {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
                       </div>
@@ -1330,12 +1306,7 @@ function DayView({ day, loading, locale }: {
                     a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
                   )}
                 >
-                  <div className={cn(
-                    "size-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
-                    ROLE_COLORS[role]
-                  )}>
-                    {ROLE_ABBR[role] ?? "?"}
-                  </div>
+                  <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
                     {a.trainee_staff_id && (
