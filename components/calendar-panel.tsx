@@ -928,17 +928,23 @@ function ShiftGrid({
                 {day.skillGaps.length > 0 && (
                   <Tooltip>
                     <TooltipTrigger render={
-                      <span className="absolute top-1 left-1 cursor-default">
-                        <AlertTriangle className="size-3 text-amber-500" />
+                      <span className="absolute top-[6px] right-[6px] cursor-default">
+                        <AlertTriangle className="size-[14px] text-amber-500" />
                       </span>
                     } />
-                    <TooltipContent side="bottom">
-                      <p className="font-medium mb-0.5">{t("warnings")}</p>
-                      {day.skillGaps.map((sk) => (
-                        <p key={sk} className="text-[11px] text-muted-foreground">
-                          {ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])}
-                        </p>
-                      ))}
+                    <TooltipContent
+                      side="bottom"
+                      className="bg-background text-foreground border border-border shadow-md max-w-[220px] flex-col items-start gap-0.5 py-2 px-3"
+                    >
+                      <p className="font-medium text-[12px] mb-1">{t("warnings")}</p>
+                      {day.skillGaps
+                        .filter((sk) => COVERAGE_SKILLS.some((cs) => cs.key === sk))
+                        .map((sk) => (
+                          <p key={sk} className="text-[11px] text-muted-foreground">
+                            · {ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])}
+                          </p>
+                        ))
+                      }
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -1002,26 +1008,36 @@ function ShiftGrid({
                     !isPublished && "cursor-pointer hover:bg-blue-50"
                   )}
                 >
-                  {dayShifts.map((a) => (
-                    <FunctionLabelPopover
-                      key={a.id}
-                      assignment={a}
-                      onSave={onFunctionLabelSave}
-                      isPublished={isPublished}
-                    >
-                      <div onClick={(e) => { e.stopPropagation(); if (!isPublished) onChipClick(a, day.date) }}>
-                        <DraggableShiftBadge
-                          id={a.id}
-                          first={a.staff.first_name}
-                          last={a.staff.last_name}
-                          role={a.staff.role}
-                          isOpu={a.is_opu ?? false}
-                          isOverride={a.is_manual_override}
-                          functionLabel={a.function_label}
-                        />
-                      </div>
-                    </FunctionLabelPopover>
-                  ))}
+                  {dayShifts.map((a) => {
+                    const fnLabel = a.function_label ?? (a.is_opu ? "OPU" : null)
+                    return (
+                      <FunctionLabelPopover
+                        key={a.id}
+                        assignment={a}
+                        onSave={onFunctionLabelSave}
+                        isPublished={isPublished}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger render={
+                            <div>
+                              <DraggableShiftBadge
+                                id={a.id}
+                                first={a.staff.first_name}
+                                last={a.staff.last_name}
+                                role={a.staff.role}
+                                isOpu={a.is_opu ?? false}
+                                isOverride={a.is_manual_override}
+                                functionLabel={a.function_label}
+                              />
+                            </div>
+                          } />
+                          <TooltipContent side="top">
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{fnLabel ? ` · ${fnLabel}` : ""}
+                          </TooltipContent>
+                        </Tooltip>
+                      </FunctionLabelPopover>
+                    )
+                  })}
                   {dayShifts.length === 0 && effectivePDay === 0 && (
                     <span className="text-[10px] text-slate-300 italic self-center mt-auto mb-auto">Sin servicio</span>
                   )}

@@ -264,10 +264,10 @@ export function ClinicTopBar({
   }
 
   return (
-    <header className="hidden md:flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-background px-4">
+    <header className="hidden md:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4">
 
-      {/* Left: logo + separator + org name */}
-      <div className="flex items-center gap-3">
+      {/* Left: LabRota wordmark */}
+      <div className="flex-1 flex items-center">
         <a href="/" className="flex items-center shrink-0">
           <Image
             src="/brand/logo-wordmark.svg"
@@ -277,64 +277,65 @@ export function ClinicTopBar({
             priority
           />
         </a>
+      </div>
+
+      {/* Centre: org logo + name */}
+      <div className="flex items-center justify-center gap-2">
         {orgName && (
-          <>
-            <span className="h-4 border-l border-border" />
-            {allOrgs.length > 1 ? (
-              <div className="relative" ref={orgMenuRef}>
-                <button
-                  onClick={() => setOrgMenuOpen((v) => !v)}
-                  disabled={isSwitching}
-                  className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-700 hover:text-foreground transition-colors disabled:opacity-60"
-                >
-                  {orgLogoUrl && !logoError && (
-                    <img src={orgLogoUrl} alt="" className="h-[28px] w-auto max-w-[140px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
-                  )}
-                  {orgName}
-                  <ChevronDown className="size-3.5 opacity-60" />
-                </button>
-                {orgMenuOpen && (
-                  <div className="absolute left-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
-                    {allOrgs.map((org) => (
-                      <button
-                        key={org.id}
-                        onClick={() => {
-                          if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
-                          setOrgMenuOpen(false)
-                          localStorage.setItem("activeOrgId", org.id)
-                          startSwitch(async () => {
-                            await switchOrgAction(org.id)
-                            window.location.href = "/"
-                          })
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left transition-colors",
-                          org.id === activeOrgId
-                            ? "bg-accent text-accent-foreground font-medium"
-                            : "hover:bg-muted text-foreground"
-                        )}
-                      >
-                        {org.name}
-                        {org.id === activeOrgId && <Check className="size-3.5 ml-auto" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
+          allOrgs.length > 1 ? (
+            <div className="relative" ref={orgMenuRef}>
+              <button
+                onClick={() => setOrgMenuOpen((v) => !v)}
+                disabled={isSwitching}
+                className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-700 hover:text-foreground transition-colors disabled:opacity-60"
+              >
                 {orgLogoUrl && !logoError && (
                   <img src={orgLogoUrl} alt="" className="h-[28px] w-auto max-w-[140px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
                 )}
-                <span className="text-[14px] font-semibold text-slate-700">{orgName}</span>
-              </>
-            )}
-          </>
+                {orgName}
+                <ChevronDown className="size-3.5 opacity-60" />
+              </button>
+              {orgMenuOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+                  {allOrgs.map((org) => (
+                    <button
+                      key={org.id}
+                      onClick={() => {
+                        if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
+                        setOrgMenuOpen(false)
+                        localStorage.setItem("activeOrgId", org.id)
+                        startSwitch(async () => {
+                          await switchOrgAction(org.id)
+                          window.location.href = "/"
+                        })
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left transition-colors",
+                        org.id === activeOrgId
+                          ? "bg-accent text-accent-foreground font-medium"
+                          : "hover:bg-muted text-foreground"
+                      )}
+                    >
+                      {org.name}
+                      {org.id === activeOrgId && <Check className="size-3.5 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {orgLogoUrl && !logoError && (
+                <img src={orgLogoUrl} alt="" className="h-[28px] w-auto max-w-[140px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+              )}
+              <span className="text-[14px] font-semibold text-slate-700">{orgName}</span>
+            </div>
+          )
         )}
       </div>
 
       {/* Right: lang toggle + avatar dropdown + sign out */}
-      <div className="flex items-center gap-2">
+      <div className="flex-1 flex items-center justify-end gap-2">
         <button
           onClick={toggleLocale}
           disabled={isPending}
