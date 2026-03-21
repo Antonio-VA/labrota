@@ -862,8 +862,9 @@ function StaffProfilePanel({
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick }: {
+function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays }: {
   data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
+  liveDays?: RotaDay[] | null
 }) {
   const t = useTranslations("schedule")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -871,8 +872,9 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick }: {
   const [overflowOpen, setOverflowOpen] = useState(false)
   const overflowRef = useRef<HTMLDivElement>(null)
 
+  const days = liveDays ?? data.days
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
-  for (const day of data.days) {
+  for (const day of days) {
     for (const a of day.assignments) {
       if (!staffMap[a.staff_id]) {
         const member = staffList.find((s) => s.id === a.staff_id)
@@ -1491,7 +1493,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, weekStart, compact, onDateClick,
+  onRefresh, weekStart, compact, onDateClick, onLocalDaysChange,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1511,6 +1513,7 @@ function ShiftGrid({
   weekStart: string
   compact?: boolean
   onDateClick?: (date: string) => void
+  onLocalDaysChange?: (days: RotaDay[]) => void
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1520,10 +1523,17 @@ function ShiftGrid({
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
-  const [localDays, setLocalDays] = useState(data?.days ?? [])
+  const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
+  const setLocalDays: typeof setLocalDaysRaw = (update) => {
+    setLocalDaysRaw((prev) => {
+      const next = typeof update === "function" ? update(prev) : update
+      onLocalDaysChange?.(next)
+      return next
+    })
+  }
 
   // Sync local state whenever server data arrives
-  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
+  useEffect(() => { if (data) { setLocalDaysRaw(data.days); onLocalDaysChange?.(data.days) } }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
     setLocalDays((prev) => prev.map((d) => ({
@@ -2512,6 +2522,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [profileOpen, setProfileOpen]       = useState(false)
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
+  const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
   function openProfile(staffId: string) {
@@ -2935,6 +2946,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   weekStart={weekStart}
                   compact={compact}
                   onDateClick={handleMonthDayClick}
+                  onLocalDaysChange={setLiveDays}
                 />
               ) : (
                 <PersonGrid
@@ -3015,6 +3027,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           staffList={staffList}
           weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
           onPillClick={openProfile}
+          liveDays={liveDays}
         />
       )}
       {view === "month" && monthSummary && (
