@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -27,11 +27,14 @@ import {
   setFunctionLabel,
   setTecnica,
   upsertAssignment,
+  getStaffProfile,
   type RotaWeekData,
   type RotaDay,
   type RotaMonthSummary,
   type ShiftTimes,
+  type StaffProfileData,
 } from "@/app/(clinic)/rota/actions"
+import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
@@ -311,13 +314,12 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, onTecnicaSave, isPublished, children }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean; tecnica_id: string | null }
+function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublished, onBadgeClick, children }: {
+  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
   staffSkills: { skill: string; level: string }[]
-  tecnicas: Tecnica[]
   onFunctionSave: (id: string, label: string | null) => void
-  onTecnicaSave: (id: string, tecnicaId: string | null) => void
   isPublished: boolean
+  onBadgeClick?: () => void
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -334,97 +336,76 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
 
   const allFunctionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
   const currentLabel      = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const skillLevelMap     = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
 
-  const skillLevelMap = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
-  const certifiedSkills = new Set(staffSkills.filter((s) => s.level === "certified").map((s) => s.skill))
-
-  // Filter functions: show only those the staff is certified or in training for,
-  // plus SUP/TRN/AND which have no skill requirement
+  // Only show functions the staff is certified or in training for;
+  // SUP / TRN / AND have no skill requirement so always shown
   const functionLabels = allFunctionLabels.filter((fn) => {
-    const requiredSkill = FUNCTION_TO_SKILL[fn]
-    if (!requiredSkill) return true // SUP, TRN, AND — always available
-    return skillLevelMap[requiredSkill] === "certified" || skillLevelMap[requiredSkill] === "training"
+    const req = FUNCTION_TO_SKILL[fn]
+    if (!req) return true
+    return skillLevelMap[req] === "certified" || skillLevelMap[req] === "training"
   })
 
-  const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && (t.required_skill === null || certifiedSkills.has(t.required_skill))
-  )
-
-  const hasAnything = functionLabels.length > 0 || availableTecnicas.length > 0
-  if (!hasAnything || isPublished) return <>{children}</>
-
-  return (
-    <div ref={ref} className="relative">
-      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
+  if (functionLabels.length === 0 || isPublished) {
+    return (
+      <div onClick={onBadgeClick ? (e) => { e.stopPropagation(); onBadgeClick() } : undefined}
+           className={onBadgeClick ? "cursor-pointer" : undefined}>
         {children}
       </div>
+    )
+  }
+
+  return (
+    <div ref={ref} className="relative group/pop">
+      {/* Badge click → staff profile */}
+      <div onClick={onBadgeClick ? (e) => { e.stopPropagation(); onBadgeClick() } : undefined}
+           className={onBadgeClick ? "cursor-pointer" : undefined}>
+        {children}
+      </div>
+      {/* Fn button — appears on hover, opens function assignment */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        className="absolute right-0.5 top-0.5 z-10 size-4 flex items-center justify-center rounded
+                   text-[8px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100
+                   opacity-0 group-hover/pop:opacity-100 transition-opacity"
+        title="Asignar función"
+      >
+        fn
+      </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48 flex flex-col gap-2.5">
-          {functionLabels.length > 0 && (
-            <div>
-              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
-              <div className="flex flex-wrap gap-1.5">
-                {functionLabels.map((fn) => {
-                  const isActive       = currentLabel === fn
-                  const requiredSkill  = FUNCTION_TO_SKILL[fn]
-                  const isTraining     = requiredSkill ? skillLevelMap[requiredSkill] === "training" : false
-                  const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
-                    : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-                    : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
-                    : "bg-blue-50 border-blue-200 text-blue-700"
-                  return (
-                    <button
-                      key={fn}
-                      title={FUNCTION_FULL_NAME[fn] ?? fn}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onFunctionSave(assignment.id, isActive ? null : fn)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                        color,
-                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
-                      )}
-                    >
-                      {fn}
-                      {isTraining && (
-                        <span className="absolute -top-1 -right-1 size-2 rounded-full bg-amber-400 border border-white" />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          {availableTecnicas.length > 0 && (
-            <div>
-              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
-              <div className="flex flex-wrap gap-1">
-                {availableTecnicas.map((tec) => {
-                  const isActive = assignment.tecnica_id === tec.id
-                  const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
-                  return (
-                    <button
-                      key={tec.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onTecnicaSave(assignment.id, isActive ? null : tec.id)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                        color,
-                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
-                      )}
-                    >
-                      {tec.codigo}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
+          <div className="flex flex-wrap gap-1.5">
+            {functionLabels.map((fn) => {
+              const isActive     = currentLabel === fn
+              const req          = FUNCTION_TO_SKILL[fn]
+              const isTraining   = req ? skillLevelMap[req] === "training" : false
+              const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
+                : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+                : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+                : "bg-blue-50 border-blue-200 text-blue-700"
+              return (
+                <button
+                  key={fn}
+                  title={FUNCTION_FULL_NAME[fn] ?? fn}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onFunctionSave(assignment.id, isActive ? null : fn)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                    color,
+                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
+                  )}
+                >
+                  {fn}
+                  {isTraining && (
+                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-amber-400 border border-white" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -583,6 +564,316 @@ function OverflowMenu({ items }: {
         </div>
       )}
     </div>
+  )
+}
+
+// ── Staff profile panel ───────────────────────────────────────────────────────
+
+const LEAVE_TYPE_LABEL: Record<string, string> = {
+  annual: "Vacaciones", sick: "Baja médica", personal: "Personal", other: "Otro",
+}
+
+function StaffProfilePanel({
+  staffId, staffList, weekData, open, onClose,
+}: {
+  staffId: string | null
+  staffList: StaffWithSkills[]
+  weekData: RotaWeekData | null
+  open: boolean
+  onClose: () => void
+}) {
+  const localeRaw = useLocale()
+  const locale    = localeRaw as "es" | "en"
+  const ts        = useTranslations("skills")
+  const [data, setData]       = useState<StaffProfileData | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!staffId || !open) return
+    setData(null)
+    setLoading(true)
+    getStaffProfile(staffId).then((d) => { setData(d); setLoading(false) })
+  }, [staffId, open])
+
+  const staff = staffId ? staffList.find((s) => s.id === staffId) : null
+
+  // Shift debt: assignments in last 28 days vs expected (days_per_week × 4)
+  const today28 = new Date(); today28.setDate(today28.getDate() - 28)
+  const since28 = today28.toISOString().split("T")[0]
+  const last4w  = (data?.recentAssignments ?? []).filter((a) => a.date >= since28).length
+  const expected4w = (staff?.days_per_week ?? 5) * 4
+  const debt    = last4w - expected4w
+
+  // Weekly shift strip: this person's assignments for the current visible week
+  const weekDays = weekData?.days ?? []
+  const DOW_SHORT = locale === "es"
+    ? ["L", "M", "X", "J", "V", "S", "D"]
+    : ["M", "T", "W", "T", "F", "S", "S"]
+
+  // Tenure in years + months
+  const tenureLabel = staff ? (() => {
+    const start = new Date(staff.start_date + "T12:00:00")
+    const now = new Date()
+    let years = now.getFullYear() - start.getFullYear()
+    let months = now.getMonth() - start.getMonth()
+    if (months < 0) { years--; months += 12 }
+    return years > 0 ? `${years}a ${months}m` : `${months}m`
+  })() : null
+
+  return (
+    <>
+      {/* Overlay */}
+      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+
+      {/* Side panel — 400px */}
+      <div className={cn(
+        "fixed right-0 top-0 bottom-0 z-50 bg-white border-l border-[#CCDDEE] shadow-xl",
+        "flex flex-col transition-transform duration-200 ease-out w-[400px]",
+        open ? "translate-x-0" : "translate-x-full",
+      )}>
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+          {/* Role dot + avatar placeholder */}
+          <div className={cn(
+            "size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0",
+            staff?.role === "lab" ? "bg-blue-500" : staff?.role === "andrology" ? "bg-emerald-500" : "bg-slate-400"
+          )}>
+            {staff ? `${staff.first_name[0]}${staff.last_name[0]}` : "—"}
+          </div>
+          <div className="flex-1 min-w-0">
+            {staff ? (
+              <>
+                <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
+                  <span className="text-slate-300">·</span>
+                  <span>{staff.contracted_hours}h/sem</span>
+                  <span className="text-slate-300">·</span>
+                  <span>{staff.days_per_week}d/sem</span>
+                </div>
+              </>
+            ) : (
+              <div className="shimmer-bar h-4 w-32 rounded" />
+            )}
+          </div>
+          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-slate-100 shrink-0">
+            <X className="size-4 text-slate-500" />
+          </button>
+        </div>
+
+        {/* ── Content ────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Weekly shift strip — this week's assignments */}
+          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Semana actual</p>
+            <div className="grid grid-cols-7 gap-1">
+              {weekDays.map((day, i) => {
+                const a = day.assignments.find((a) => a.staff_id === staffId)
+                const onLeave = weekData?.onLeaveByDate[day.date]?.includes(staffId ?? "") ?? false
+                const isToday = day.date === TODAY
+                return (
+                  <div key={day.date} className="flex flex-col items-center gap-0.5">
+                    <span className={cn(
+                      "text-[10px] font-medium leading-none",
+                      isToday ? "text-primary" : "text-slate-400"
+                    )}>
+                      {DOW_SHORT[i]}
+                    </span>
+                    <div className={cn(
+                      "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
+                      a ? "bg-primary/10 text-primary border border-primary/20"
+                        : onLeave ? "bg-amber-50 text-amber-600 border border-amber-200"
+                        : "bg-slate-50 text-slate-300 border border-slate-100"
+                    )}>
+                      {a ? a.shift_type : onLeave ? "Aus" : "—"}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Shift debt — last 4 weeks */}
+          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Deuda de turnos · 4 semanas</p>
+            {loading ? (
+              <div className="shimmer-bar h-6 w-24 rounded" />
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className={cn(
+                    "text-[24px] font-semibold tabular-nums leading-none",
+                    debt < 0 ? "text-amber-600" : debt > 0 ? "text-red-600" : "text-slate-700"
+                  )}>
+                    {last4w}
+                  </span>
+                  <span className="text-[13px] text-muted-foreground">/ {expected4w} turnos</span>
+                  {debt !== 0 && (
+                    <span className={cn(
+                      "text-[12px] font-semibold ml-auto px-1.5 py-0.5 rounded",
+                      debt > 0 ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                    )}>
+                      {debt > 0 ? `+${debt}` : debt}
+                    </span>
+                  )}
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      debt < 0 ? "bg-amber-400" : debt > 0 ? "bg-red-400" : "bg-emerald-400"
+                    )}
+                    style={{ width: `${Math.min(100, Math.round((last4w / Math.max(expected4w, 1)) * 100))}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Capacidades (skills) */}
+          {staff && (
+            <div className="px-5 py-3 border-b border-[#CCDDEE]">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Capacidades</p>
+              {staff.staff_skills.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground italic">Sin capacidades registradas</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {staff.staff_skills.map((sk) => (
+                    <span key={sk.id} className={cn(
+                      "text-[11px] px-2 py-0.5 rounded-full border font-medium",
+                      sk.level === "certified"
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-amber-50 border-amber-200 text-amber-700"
+                    )}>
+                      {ts(SKILL_KEYS[sk.skill] ?? sk.skill as never)}
+                      {sk.level === "training" && " ○"}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Last shifts */}
+          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Últimos turnos</p>
+            {loading ? (
+              <div className="flex flex-col gap-1.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="shimmer-bar h-4 w-full rounded" />
+                ))}
+              </div>
+            ) : !data?.recentAssignments.length ? (
+              <p className="text-[12px] text-muted-foreground italic">Sin turnos recientes</p>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                {data.recentAssignments.slice(0, 10).map((a, i) => (
+                  <div key={i} className="flex items-center justify-between text-[12px] py-0.5">
+                    <span className="text-slate-500 capitalize">{formatDate(a.date, locale)}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-slate-700">{a.shift_type}</span>
+                      {a.is_opu && (
+                        <span className="text-[9px] px-1 py-0.5 rounded border bg-amber-50 border-amber-200 text-amber-700 font-semibold">OPU</span>
+                      )}
+                      {a.function_label && !a.is_opu && (
+                        <span className="text-[9px] px-1 py-0.5 rounded border bg-blue-50 border-blue-200 text-blue-700 font-semibold">{a.function_label}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming leaves */}
+          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Próximas vacaciones</p>
+            {loading ? (
+              <div className="shimmer-bar h-4 w-40 rounded" />
+            ) : !data?.upcomingLeaves.length ? (
+              <p className="text-[12px] text-muted-foreground italic">Sin vacaciones programadas</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {data.upcomingLeaves.map((leave, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <CalendarX className="size-3.5 text-amber-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[12px] text-slate-700">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
+                      <p className="text-[11px] text-muted-foreground">{LEAVE_TYPE_LABEL[leave.type] ?? leave.type}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Key info */}
+          {staff && (
+            <div className="px-5 py-3">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Información</p>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[12px]">
+                <div>
+                  <p className="text-muted-foreground">Incorporación</p>
+                  <p className="text-slate-700 font-medium">{formatDateWithYear(staff.start_date, locale)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Antigüedad</p>
+                  <p className="text-slate-700 font-medium">{tenureLabel}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Patrón</p>
+                  <p className="text-slate-700 font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
+                </div>
+                {staff.preferred_shift && (
+                  <div>
+                    <p className="text-muted-foreground">Turno preferido</p>
+                    <p className="text-slate-700 font-medium">{staff.preferred_shift}</p>
+                  </div>
+                )}
+                {staff.email && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Email</p>
+                    <p className="text-slate-700 font-medium truncate">{staff.email}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer: quick actions ────────────────────────────── */}
+        <div className="border-t border-[#CCDDEE] px-5 py-3 shrink-0 flex items-center gap-2">
+          <Button
+            variant="outline" size="sm"
+            className="flex-1 gap-1.5 text-[12px]"
+            render={<a href={`/team?staff=${staffId}`} />}
+          >
+            <UserCog className="size-3.5" />
+            Perfil
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            className="flex-1 gap-1.5 text-[12px]"
+            render={<a href={`/leaves?staff=${staffId}`} />}
+          >
+            <CalendarPlus className="size-3.5" />
+            Ausencia
+          </Button>
+          {staff?.email && (
+            <Button
+              variant="outline" size="sm"
+              className="flex-1 gap-1.5 text-[12px]"
+              render={<a href={`mailto:${staff.email}`} />}
+            >
+              <Mail className="size-3.5" />
+              Email
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -920,22 +1211,20 @@ function PersonGrid({
                           <AssignmentPopover
                             assignment={assignment}
                             staffSkills={s.staff_skills ?? []}
-                            tecnicas={data.tecnicas ?? []}
                             onFunctionSave={handleFunctionLabelSave}
-                            onTecnicaSave={handleTecnicaSave}
                             isPublished={isPublished}
+                            onBadgeClick={() => onChipClick(assignment, day.date)}
                           >
                             <PersonShiftPill
                               assignment={assignment}
                               shiftTimes={shiftTimes}
                               tecnica={tecnica}
-                              onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
                             />
                           </AssignmentPopover>
                         ) : onLeave ? (
                           <span className="text-[11px] text-slate-400 italic">Aus.</span>
                         ) : (
-                          <span className="text-[11px] text-slate-200 select-none">—</span>
+                          <span className="text-[11px] text-slate-400 select-none">OFF</span>
                         )}
                       </div>
                     )
@@ -1373,10 +1662,9 @@ function ShiftGrid({
                         key={a.id}
                         assignment={a}
                         staffSkills={staffMember?.staff_skills ?? []}
-                        tecnicas={data?.tecnicas ?? []}
                         onFunctionSave={handleFunctionLabelSave}
-                        onTecnicaSave={handleTecnicaSave}
                         isPublished={isPublished}
+                        onBadgeClick={() => onChipClick(a, day.date)}
                       >
                         <Tooltip>
                           <TooltipTrigger render={
@@ -1418,8 +1706,8 @@ function ShiftGrid({
 
         {/* OFF row */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50">
-          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-start px-2.5 pt-2.5">
-            <span className="text-[12px] italic text-slate-400 leading-tight">OFF</span>
+          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
+            <span className="text-[10px] text-slate-400 leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
           {localDays.map((day) => {
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
@@ -1723,6 +2011,15 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   // Day edit sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetDate, setSheetDate] = useState<string | null>(null)
+
+  // Staff profile panel state
+  const [profileOpen, setProfileOpen]       = useState(false)
+  const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
+
+  function openProfile(staffId: string) {
+    setProfileStaffId(staffId)
+    setProfileOpen(true)
+  }
 
   // DnD state
   const [draggingId, setDraggingId]     = useState<string | null>(null)
@@ -2138,7 +2435,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
-                  onChipClick={() => {}}
+                  onChipClick={(a) => openProfile(a.staff_id)}
                   isPublished={!!isPublished}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
@@ -2161,7 +2458,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(_a, date) => handleMonthDayClick(date)}
+                  onChipClick={(a) => openProfile(a.staff_id)}
                 />
               )}
             </div>
@@ -2213,6 +2510,15 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         isPublished={!!isPublished}
         onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
         onPunctionsChange={handlePunctionsChange}
+      />
+
+      {/* Staff profile panel */}
+      <StaffProfilePanel
+        staffId={profileStaffId}
+        staffList={staffList}
+        weekData={weekData}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
       />
     </main>
   )

@@ -804,3 +804,46 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
 
   return { monthStart, days }
 }
+
+// ── getStaffProfile ───────────────────────────────────────────────────────────
+
+export interface StaffProfileData {
+  /** Last 20 assignments, newest first */
+  recentAssignments: { date: string; shift_type: string; is_opu: boolean; function_label: string | null }[]
+  /** Future approved leaves */
+  upcomingLeaves: { start_date: string; end_date: string; type: string }[]
+}
+
+export async function getStaffProfile(staffId: string): Promise<StaffProfileData> {
+  const supabase = await createClient()
+  const today    = new Date().toISOString().split("T")[0]
+
+  // Go back 8 weeks to capture enough history for "last 10 shifts"
+  const eightWeeksAgo = new Date()
+  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
+  const since = eightWeeksAgo.toISOString().split("T")[0]
+
+  const [assignmentsRes, leavesRes] = await Promise.all([
+    supabase
+      .from("rota_assignments")
+      .select("date, shift_type, is_opu, function_label")
+      .eq("staff_id", staffId)
+      .gte("date", since)
+      .lte("date", today)
+      .order("date", { ascending: false })
+      .limit(20) as unknown as Promise<{ data: { date: string; shift_type: string; is_opu: boolean; function_label: string | null }[] | null }>,
+    supabase
+      .from("leaves")
+      .select("start_date, end_date, type")
+      .eq("staff_id", staffId)
+      .eq("status", "approved")
+      .gte("end_date", today)
+      .order("start_date", { ascending: true })
+      .limit(5) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
+  ])
+
+  return {
+    recentAssignments: assignmentsRes.data ?? [],
+    upcomingLeaves: leavesRes.data ?? [],
+  }
+}
