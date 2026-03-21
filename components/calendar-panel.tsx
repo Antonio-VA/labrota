@@ -220,6 +220,27 @@ const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
   admin:     [],
 }
 
+// Maps a function code to the canonical skill it requires (if any)
+const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
+  OPU: "egg_collection",
+  ICSI: "icsi",
+  ET:  "embryo_transfer",
+  BX:  "biopsy",
+  DEN: "denudation",
+}
+
+// Full display name for each function code
+const FUNCTION_FULL_NAME: Record<string, string> = {
+  OPU: "Recogida de óvulos",
+  ICSI: "ICSI",
+  ET:  "Transferencia embrionaria",
+  BX:  "Biopsia",
+  DEN: "Denudación",
+  SUP: "Supervisor",
+  TRN: "En formación",
+  AND: "Andrología",
+}
+
 function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean }
   onSave: (id: string, label: string | null) => void
@@ -305,12 +326,20 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  const functionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const currentLabel   = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+  const allFunctionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
+  const currentLabel      = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
 
-  const certifiedSkills = new Set(
-    staffSkills.filter((s) => s.level === "certified").map((s) => s.skill)
-  )
+  const skillLevelMap = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
+  const certifiedSkills = new Set(staffSkills.filter((s) => s.level === "certified").map((s) => s.skill))
+
+  // Filter functions: show only those the staff is certified or in training for,
+  // plus SUP/TRN/AND which have no skill requirement
+  const functionLabels = allFunctionLabels.filter((fn) => {
+    const requiredSkill = FUNCTION_TO_SKILL[fn]
+    if (!requiredSkill) return true // SUP, TRN, AND — always available
+    return skillLevelMap[requiredSkill] === "certified" || skillLevelMap[requiredSkill] === "training"
+  })
+
   const availableTecnicas = tecnicas.filter((t) =>
     t.activa && (t.required_skill === null || certifiedSkills.has(t.required_skill))
   )
@@ -328,9 +357,11 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
           {functionLabels.length > 0 && (
             <div>
               <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {functionLabels.map((fn) => {
-                  const isActive = currentLabel === fn
+                  const isActive       = currentLabel === fn
+                  const requiredSkill  = FUNCTION_TO_SKILL[fn]
+                  const isTraining     = requiredSkill ? skillLevelMap[requiredSkill] === "training" : false
                   const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
                     : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
                     : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
@@ -338,18 +369,22 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                   return (
                     <button
                       key={fn}
+                      title={FUNCTION_FULL_NAME[fn] ?? fn}
                       onClick={(e) => {
                         e.stopPropagation()
                         onFunctionSave(assignment.id, isActive ? null : fn)
                         setOpen(false)
                       }}
                       className={cn(
-                        "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                        "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
                         color,
-                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
                       )}
                     >
                       {fn}
+                      {isTraining && (
+                        <span className="absolute -top-1 -right-1 size-2 rounded-full bg-amber-400 border border-white" />
+                      )}
                     </button>
                   )
                 })}
