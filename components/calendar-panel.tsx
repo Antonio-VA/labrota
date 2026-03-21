@@ -1111,36 +1111,7 @@ function ShiftGrid({
             const isSaturday  = dow === 6
             const offCellId   = `OFF-${day.date}`
 
-            // Saturday → show only on-leave staff, omit full unscheduled list
-            if (isSaturday) {
-              const leaveStaff = staffList
-                .filter((s) => !assignedIds.has(s.id) && leaveIds.has(s.id))
-                .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-              return (
-                <DroppableCell
-                  key={day.date}
-                  id={offCellId}
-                  isOver={overId === offCellId}
-                  isPublished={isPublished}
-                  style={{ borderLeft: "1px dashed #e2e8f0" }}
-                  className="p-1.5 flex flex-col gap-1 bg-white min-h-[36px]"
-                >
-                  {leaveStaff.map((s) => (
-                    <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full border-amber-200 bg-amber-50 text-amber-700">
-                        <div className="size-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 bg-amber-200 text-amber-800">
-                          {ROLE_ABBR[s.role] ?? "?"}
-                        </div>
-                        <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                        <CalendarX className="size-3 shrink-0 ml-auto" />
-                      </div>
-                    </DraggableOffStaff>
-                  ))}
-                </DroppableCell>
-              )
-            }
-
-            // Weekdays — show all off staff (all are draggable)
+            // Show all unassigned staff every day (weekday and Saturday)
             const offStaff = staffList
               .filter((s) => !assignedIds.has(s.id))
               .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
@@ -1150,6 +1121,7 @@ function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
+                style={isSaturday ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
                 className="p-1.5 flex flex-col gap-1 bg-white"
               >
                 {offStaff.map((s) => {
@@ -1564,12 +1536,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     setView("day")
   }
 
-  function handleCellClick(date: string, _shiftType?: ShiftType) {
-    setSheetDate(date)
-    setSheetOpen(true)
-  }
-
-  function handleChipClick(_assignment: Assignment, date: string) {
+  function handleMonthDayClick(date: string) {
+    setCurrentDate(date)   // ensures correct week is loaded for the AssignmentSheet
     setSheetDate(date)
     setSheetOpen(true)
   }
@@ -1841,8 +1809,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 loading={loadingWeek || isPending}
                 isGenerating={isPending}
                 locale={locale}
-                onCellClick={handleCellClick}
-                onChipClick={handleChipClick}
+                onCellClick={() => {}}
+                onChipClick={() => {}}
                 isPublished={!!isPublished}
                 shiftTimes={weekData?.shiftTimes ?? null}
                 onLeaveByDate={weekData?.onLeaveByDate ?? {}}
@@ -1861,8 +1829,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 isGenerating={isPending}
                 locale={locale}
                 onSelectDay={handleSelectDay}
-                onCellClick={(date) => handleCellClick(date)}
-                onChipClick={handleChipClick}
+                onCellClick={() => {}}
+                onChipClick={() => {}}
                 punctionsOverride={punctionsOverride}
                 onPunctionsChange={handlePunctionsChange}
                 draggingId={draggingId}
@@ -1883,15 +1851,13 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         {/* Month view */}
         {view === "month" && (
           <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
-            <div className="max-w-2xl">
-              <MonthGrid
-                summary={monthSummary}
-                loading={loadingMonth}
-                locale={locale}
-                currentDate={currentDate}
-                onSelectDay={handleSelectDay}
-              />
-            </div>
+            <MonthGrid
+              summary={monthSummary}
+              loading={loadingMonth}
+              locale={locale}
+              currentDate={currentDate}
+              onSelectDay={handleMonthDayClick}
+            />
           </div>
         )}
 
@@ -1922,7 +1888,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}
         isPublished={!!isPublished}
-        onSaved={() => fetchWeek(weekStart)}
+        onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
         onPunctionsChange={handlePunctionsChange}
       />
     </main>
