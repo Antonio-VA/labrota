@@ -1164,7 +1164,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick,
+  onChipClick, onDateClick,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1176,6 +1176,7 @@ function PersonGrid({
   onLeaveByDate: Record<string, string[]>
   publicHolidays: Record<string, string>
   onChipClick: (assignment: Assignment, date: string) => void
+  onDateClick?: (date: string) => void
   isGenerating?: boolean
 }) {
   const [localDays, setLocalDays] = useState(data?.days ?? [])
@@ -1283,13 +1284,18 @@ function PersonGrid({
               "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-[#CCDDEE]",
               holiday ? "bg-red-50/50" : "bg-white"
             )}>
-              <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
-              <div className={cn(
-                "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
-                today && "bg-primary text-primary-foreground"
-              )}>
-                {dayN}
-              </div>
+              <button
+                onClick={() => onDateClick?.(day.date)}
+                className={cn("flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+              >
+                <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
+                <div className={cn(
+                  "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
+                  today && "bg-primary text-primary-foreground"
+                )}>
+                  {dayN}
+                </div>
+              </button>
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
             </div>
           )
@@ -1431,7 +1437,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, weekStart, compact,
+  onRefresh, weekStart, compact, onDateClick,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1450,6 +1456,7 @@ function ShiftGrid({
   onRefresh: () => void
   weekStart: string
   compact?: boolean
+  onDateClick?: (date: string) => void
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1708,15 +1715,20 @@ function ShiftGrid({
                   <DayWarningPopover warnings={day.warnings} />
                 )}
 
-                <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
-                <div className={cn(
-                  "size-7 flex items-center justify-center rounded-full font-medium leading-none",
-                  today
-                    ? "bg-primary text-primary-foreground text-[15px]"
-                    : day.isWeekend ? "text-[20px] text-slate-500" : "text-[20px] text-slate-800"
-                )}>
-                  {dayN}
-                </div>
+                <button
+                  onClick={() => onDateClick?.(day.date)}
+                  className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+                >
+                  <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
+                  <div className={cn(
+                    "size-7 flex items-center justify-center rounded-full font-medium leading-none",
+                    today
+                      ? "bg-primary text-primary-foreground text-[15px]"
+                      : day.isWeekend ? "text-[20px] text-slate-500" : "text-[20px] text-slate-800"
+                  )}>
+                    {dayN}
+                  </div>
+                </button>
 
                 {/* Punctions — clickable popover */}
                 <PunctionsInput
@@ -2539,21 +2551,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           )}
         </div>
 
-        {/* RIGHT: legend · skill gap pill · generate · overflow ··· */}
+        {/* RIGHT: warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Role colour legend */}
-          <div className="hidden lg:flex items-center gap-2.5 mr-1">
-            {[
-              { dot: "bg-blue-400",    label: "Lab" },
-              { dot: "bg-emerald-400", label: "And" },
-              { dot: "bg-slate-400",   label: "Adm" },
-            ].map(({ dot, label }) => (
-              <span key={label} className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <span className={cn("size-2 rounded-full shrink-0", dot)} />
-                {label}
-              </span>
-            ))}
-          </div>
           {view !== "month" && weekData && (
             <WarningsPill days={weekData.days} />
           )}
@@ -2689,6 +2688,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   weekStart={weekStart}
                   compact={compact}
+                  onDateClick={handleMonthDayClick}
                 />
               ) : (
                 <PersonGrid
@@ -2702,6 +2702,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onChipClick={(a) => openProfile(a.staff_id)}
+                  onDateClick={handleMonthDayClick}
                 />
               )}
             </div>
