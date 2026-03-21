@@ -59,6 +59,12 @@ const ROLE_DOT: Record<string, string> = {
   admin:     "bg-slate-400",
 }
 
+const ROLE_BORDER: Record<string, string> = {
+  lab:       "#60A5FA",
+  andrology: "#34D399",
+  admin:     "#94A3B8",
+}
+
 const ROLE_LABEL: Record<string, string> = {
   lab: "Embriólogo", andrology: "Andrología", admin: "Admin",
 }
@@ -157,18 +163,17 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "flex flex-col px-2 py-1 rounded-md border text-[12px] select-none",
-        isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background",
+        "flex flex-col py-1 text-[12px] select-none bg-white text-slate-700",
         onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
         onDragStart && "cursor-grab",
         isDragging && "opacity-40",
       )}
+      style={{ borderLeft: `3px solid ${ROLE_BORDER[role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 6, paddingRight: 8 }}
     >
       {shiftTime && (
         <span className="text-[10px] text-muted-foreground font-medium leading-none mb-0.5">{shiftTime}</span>
       )}
       <div className="flex items-center gap-1.5">
-        <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
         <span className="truncate font-medium">{first} {last[0]}.</span>
         {hasTrainee && (
           <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
@@ -200,12 +205,13 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
     : null
 
   return (
-    <div className={cn(
-      "group flex items-center gap-1.5 px-2 rounded border font-medium w-full bg-white",
-      compact ? "py-0.5 min-h-[24px] text-[11px]" : "py-1.5 min-h-[32px] text-[13px]",
-      isOverride ? "border-primary/40" : "border-border"
-    )}>
-      <span className={cn("rounded-full shrink-0", compact ? "size-1.5" : "size-2", ROLE_DOT[role] ?? "bg-slate-400")} />
+    <div
+      className={cn(
+        "group flex items-center gap-1.5 rounded font-medium w-full bg-white text-slate-700",
+        compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
+      )}
+      style={{ borderLeft: `3px solid ${ROLE_BORDER[role] ?? "#94A3B8"}`, borderRadius: 4 }}
+    >
       <span className="truncate">{first} {last[0]}.</span>
       {pillLabel && pillColor ? (
         <span className={cn("font-semibold px-1 py-0.5 rounded ml-auto shrink-0", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
@@ -1923,11 +1929,11 @@ function ShiftGrid({
                     <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
                       <div
                         className={cn(
-                          "flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium w-full",
-                          onLeave ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-500"
+                          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full",
+                          onLeave ? "bg-amber-50 text-amber-700" : "bg-white text-slate-500"
                         )}
+                        style={{ borderLeft: `3px solid ${onLeave ? "#FBBF24" : ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                       >
-                        <span className={cn("size-2 rounded-full shrink-0", onLeave ? "bg-amber-400" : ROLE_DOT[s.role] ?? "bg-slate-400")} />
                         <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
                         {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
                       </div>

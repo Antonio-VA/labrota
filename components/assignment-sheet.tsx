@@ -35,6 +35,11 @@ const ROLE_DOT: Record<string, string> = {
   andrology: "bg-emerald-400",
   admin:     "bg-slate-400",
 }
+const ROLE_BORDER: Record<string, string> = {
+  lab:       "#60A5FA",
+  andrology: "#34D399",
+  admin:     "#94A3B8",
+}
 const ROLE_LABEL: Record<string, string> = {
   lab: "Emb", andrology: "And", admin: "Adm",
 }
@@ -215,17 +220,14 @@ function DraggableCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ opacity: isDragging ? 0 : 1 }}
+      style={{ opacity: isDragging ? 0 : 1, borderLeft: `3px solid ${ROLE_BORDER[assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
       className={cn(
-        "flex items-center gap-2 px-2.5 py-2 rounded-lg border text-[13px] bg-white",
-        assignment.is_manual_override ? "border-primary/20" : "border-border",
+        "flex items-center gap-2 py-2 text-[13px] bg-white text-slate-700",
         !disabled && "cursor-grab"
       )}
       {...listeners}
       {...attributes}
     >
-      <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[assignment.staff.role] ?? "bg-slate-400")} />
-
       {/* Clickable area for function/técnica popover */}
       <AssignmentPopover
         assignment={assignment}
@@ -283,22 +285,22 @@ function DraggableOffChip({
   return (
     <div
       ref={setNodeRef}
-      style={{ opacity: isDragging ? 0 : 1 }}
+      style={{
+        opacity: isDragging ? 0 : 1,
+        borderLeft: `3px solid ${onLeave ? "#FBBF24" : ROLE_BORDER[staff.role] ?? "#94A3B8"}`,
+        borderRadius: 4,
+      }}
       {...(onLeave ? {} : listeners)}
       {...(onLeave ? {} : attributes)}
       className={cn(
-        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed text-[12px]",
+        "flex items-center gap-2 py-1.5 text-[12px]",
         onLeave
-          ? "border-border/50 text-muted-foreground/50 cursor-not-allowed select-none"
+          ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-50/50"
           : disabled
-          ? "border-border text-muted-foreground cursor-default"
-          : "border-border text-muted-foreground cursor-grab hover:border-primary/40 hover:bg-primary/5 hover:text-foreground transition-colors"
+          ? "text-muted-foreground cursor-default bg-white"
+          : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-white"
       )}
     >
-      <span className={cn(
-        "size-2 rounded-full shrink-0",
-        onLeave ? "bg-amber-400 opacity-50" : ROLE_DOT[staff.role] ?? "bg-slate-400"
-      )} />
       <span className="truncate flex-1">{staff.first_name} {staff.last_name}</span>
       {onLeave ? (
         <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
@@ -431,7 +433,7 @@ function AddPersonButton({
               onClick={() => { setOpen(false); onAdd(s.id) }}
               className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors"
             >
-              <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[s.role] ?? "bg-slate-400")} />
+              <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: ROLE_BORDER[s.role] ?? "#94A3B8" }} />
               <span className="text-[13px] truncate flex-1">{s.first_name} {s.last_name}</span>
               {s.preferred_shift === shift && (
                 <span className="text-[10px] text-muted-foreground shrink-0">pref.</span>
@@ -895,8 +897,10 @@ export function AssignmentSheet({
           {/* Drag overlay */}
           <DragOverlay dropAnimation={null}>
             {activeAssignment && (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border bg-white text-[13px] shadow-lg w-[330px]">
-                <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[activeAssignment.staff.role] ?? "bg-slate-400")} />
+              <div
+                className="flex items-center gap-2 py-2 bg-white text-[13px] shadow-lg w-[330px] text-slate-700"
+                style={{ borderLeft: `3px solid ${ROLE_BORDER[activeAssignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
+              >
                 <span className="font-medium truncate flex-1">
                   {activeAssignment.staff.first_name} {activeAssignment.staff.last_name}
                 </span>
@@ -906,8 +910,10 @@ export function AssignmentSheet({
               </div>
             )}
             {activeOffStaff && (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-primary/40 bg-white text-[12px] shadow-md w-[330px]">
-                <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[activeOffStaff.role] ?? "bg-slate-400")} />
+              <div
+                className="flex items-center gap-2 py-1.5 bg-white text-[12px] shadow-md w-[330px] text-slate-600"
+                style={{ borderLeft: `3px solid ${ROLE_BORDER[activeOffStaff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
+              >
                 <span className="truncate">{activeOffStaff.first_name} {activeOffStaff.last_name}</span>
               </div>
             )}
