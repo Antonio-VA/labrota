@@ -194,14 +194,17 @@ export function runRotaEngine({
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0)
       ? Math.ceil(punctionsForDay / labConfig.staffing_ratio)
       : 0
-    const staticLabMin      = weekend
+    const dayCoverage       = labConfig.coverage_by_day?.[dayCode]
+    const staticLabMin      = dayCoverage?.lab ?? (weekend
       ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
-      : labConfig.min_lab_coverage
+      : labConfig.min_lab_coverage)
     const labRequired       = Math.max(staticLabMin, dynamicLabMin)
-    const andrologyRequired = weekend
+    const andrologyRequired = dayCoverage?.andrology ?? (weekend
       ? labConfig.min_weekend_andrology
-      : labConfig.min_andrology_coverage
-    const includeAdmin = !weekend || labConfig.admin_on_weekends
+      : labConfig.min_andrology_coverage)
+    const includeAdmin = dayCoverage
+      ? dayCoverage.admin > 0
+      : (!weekend || labConfig.admin_on_weekends)
 
     // 5. Assign ALL eligible lab + andrology (budget-limited); max 1 admin
     let assignedLab       = labPool

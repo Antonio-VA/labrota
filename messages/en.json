@@ -368,7 +368,14 @@
       "full": "Full day"
     },
     "saveChanges": "Save changes",
+    "saveCoverage": "Save configuration",
     "saving": "Saving…",
+    "coverageTable": {
+      "day": "Day",
+      "labMin": "Lab (min.)",
+      "andrologyMin": "Andrology (min.)",
+      "adminMin": "Admin (min.)"
+    },
     "holidaysHint": "Regional bank holidays will be applied automatically when generating rotas.",
     "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated.",

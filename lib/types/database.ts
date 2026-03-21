@@ -139,6 +139,13 @@ export type PunctionsByDay = {
   fri: number; sat: number; sun: number
 }
 
+export type CoverageByDayEntry = { lab: number; andrology: number; admin: number }
+export type CoverageByDay = {
+  mon: CoverageByDayEntry; tue: CoverageByDayEntry; wed: CoverageByDayEntry
+  thu: CoverageByDayEntry; fri: CoverageByDayEntry; sat: CoverageByDayEntry
+  sun: CoverageByDayEntry
+}
+
 export interface LabConfig {
   id:                       string
   organisation_id:          string
@@ -146,6 +153,7 @@ export interface LabConfig {
   min_andrology_coverage:   number
   min_weekend_andrology:    number
   min_weekend_lab_coverage: number
+  coverage_by_day:          CoverageByDay | null
   punctions_average:        number   // legacy — superseded by punctions_by_day
   punctions_by_day:         PunctionsByDay
   staffing_ratio:           number
@@ -182,6 +190,7 @@ export type LabConfigUpdate = {
   min_andrology_coverage?:   number
   min_weekend_andrology?:    number
   min_weekend_lab_coverage?: number
+  coverage_by_day?:          CoverageByDay
   punctions_by_day?:         PunctionsByDay
   staffing_ratio?:           number
   admin_on_weekends?:        boolean

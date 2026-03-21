@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import type { LabConfig, PunctionsByDay, ShiftTypeDefinition } from "@/lib/types/database"
+import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftTypeDefinition } from "@/lib/types/database"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -84,34 +84,38 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 // ── Main form ─────────────────────────────────────────────────────────────────
+const DEFAULT_COVERAGE: CoverageByDay = {
+  mon: { lab: 3, andrology: 1, admin: 1 },
+  tue: { lab: 3, andrology: 1, admin: 1 },
+  wed: { lab: 3, andrology: 1, admin: 1 },
+  thu: { lab: 3, andrology: 1, admin: 1 },
+  fri: { lab: 3, andrology: 1, admin: 1 },
+  sat: { lab: 1, andrology: 0, admin: 0 },
+  sun: { lab: 0, andrology: 0, admin: 0 },
+}
+
 export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shiftTypes: ShiftTypeDefinition[] }) {
   const t = useTranslations("lab")
-  const [isPending, startTransition] = useTransition()
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
-  const [errorMsg, setErrorMsg] = useState("")
+  const [isPending,         startTransition]         = useTransition()
+  const [coveragePending,   startCoverageTransition] = useTransition()
+  const [status,            setStatus]            = useState<"idle" | "success" | "error">("idle")
+  const [coverageStatus,    setCoverageStatus]    = useState<"idle" | "success" | "error">("idle")
+  const [errorMsg,          setErrorMsg]          = useState("")
+  const [coverageErrorMsg,  setCoverageErrorMsg]  = useState("")
 
   const DEFAULT_PUNCTIONS: PunctionsByDay = { mon: 6, tue: 6, wed: 6, thu: 6, fri: 6, sat: 2, sun: 0 }
 
+  const [coverageByDay, setCoverageByDay] = useState<CoverageByDay>(
+    config.coverage_by_day ?? DEFAULT_COVERAGE
+  )
+
   const [values, setValues] = useState({
-    // Coverage
-    min_lab_coverage:         config.min_lab_coverage,
-    min_andrology_coverage:   config.min_andrology_coverage,
-    min_weekend_andrology:    config.min_weekend_andrology,
-    min_weekend_lab_coverage: config.min_weekend_lab_coverage ?? 1,
-    // Punctions
-    punctions_by_day: config.punctions_by_day ?? DEFAULT_PUNCTIONS,
-    // Staffing
+    punctions_by_day:     config.punctions_by_day ?? DEFAULT_PUNCTIONS,
     staffing_ratio:       config.staffing_ratio,
     admin_on_weekends:    config.admin_on_weekends,
     admin_default_shift:  config.admin_default_shift ?? (shiftTypes[0]?.code ?? ""),
-    // Holidays
     autonomous_community: config.autonomous_community ?? "",
   })
-
-  function setInt(field: keyof typeof values, raw: string) {
-    const v = parseInt(raw, 10)
-    if (!isNaN(v) && v >= 0) setValues((p) => ({ ...p, [field]: v }))
-  }
 
   function setFloat(field: keyof typeof values, raw: string) {
     const v = parseFloat(raw)
@@ -125,20 +129,37 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
     }
   }
 
+  const setCoverage = useCallback((day: keyof CoverageByDay, role: "lab" | "andrology" | "admin", raw: string) => {
+    const v = parseInt(raw, 10)
+    if (!isNaN(v) && v >= 0) {
+      setCoverageByDay((p) => ({ ...p, [day]: { ...p[day], [role]: v } }))
+    }
+  }, [])
+
+  function handleCoverageSave() {
+    setCoverageStatus("idle")
+    startCoverageTransition(async () => {
+      const result = await updateLabConfig({ coverage_by_day: coverageByDay })
+      if (result.error) {
+        setCoverageErrorMsg(result.error)
+        setCoverageStatus("error")
+      } else {
+        setCoverageStatus("success")
+        setTimeout(() => setCoverageStatus("idle"), 3000)
+      }
+    })
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setStatus("idle")
     startTransition(async () => {
       const result = await updateLabConfig({
-        min_lab_coverage:         values.min_lab_coverage,
-        min_andrology_coverage:   values.min_andrology_coverage,
-        min_weekend_andrology:    values.min_weekend_andrology,
-        min_weekend_lab_coverage: values.min_weekend_lab_coverage,
-        punctions_by_day:         values.punctions_by_day,
-        staffing_ratio:           values.staffing_ratio,
-        admin_on_weekends:        values.admin_on_weekends,
-        admin_default_shift:      values.admin_default_shift || null,
-        autonomous_community:     values.autonomous_community || null,
+        punctions_by_day:     values.punctions_by_day,
+        staffing_ratio:       values.staffing_ratio,
+        admin_on_weekends:    values.admin_on_weekends,
+        admin_default_shift:  values.admin_default_shift || null,
+        autonomous_community: values.autonomous_community || null,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -154,28 +175,68 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {/* ── COBERTURA MÍNIMA ─────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.coverage")} />
-        <FieldRow label={t("fields.minLabCoverage")} hint={t("sections.weekdays")}>
-          <Input type="number" min={1} max={20} value={values.min_lab_coverage}
-            onChange={(e) => setInt("min_lab_coverage", e.target.value)}
-            disabled={isPending} className="w-20 text-center" />
-        </FieldRow>
-        <FieldRow label={t("fields.minWeekendLabCoverage")} hint={t("sections.weekends")}>
-          <Input type="number" min={0} max={20} value={values.min_weekend_lab_coverage}
-            onChange={(e) => setInt("min_weekend_lab_coverage", e.target.value)}
-            disabled={isPending} className="w-20 text-center" />
-        </FieldRow>
-        <FieldRow label={t("fields.minAndrologyCoverage")} hint={t("sections.weekdays")}>
-          <Input type="number" min={0} max={10} value={values.min_andrology_coverage}
-            onChange={(e) => setInt("min_andrology_coverage", e.target.value)}
-            disabled={isPending} className="w-20 text-center" />
-        </FieldRow>
-        <FieldRow label={t("fields.minWeekendAndrology")} hint={t("sections.weekends")}>
-          <Input type="number" min={0} max={10} value={values.min_weekend_andrology}
-            onChange={(e) => setInt("min_weekend_andrology", e.target.value)}
-            disabled={isPending} className="w-20 text-center" />
-        </FieldRow>
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">
+            {t("sections.coverage")}
+          </p>
+        </div>
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-slate-100 border-b border-border">
+              <th className="px-4 py-2.5 text-left font-medium text-slate-600 w-[30%]">{t("coverageTable.day")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.labMin")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.andrologyMin")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.adminMin")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DAY_KEYS.map((day) => {
+              const isWeekend = day === "sat" || day === "sun"
+              return (
+                <tr
+                  key={day}
+                  className={cn(
+                    "border-b border-border last:border-0",
+                    isWeekend ? "bg-slate-50" : "bg-white"
+                  )}
+                >
+                  <td className="px-4 py-2.5 font-medium text-slate-600">{t(`days.${day}`)}</td>
+                  {(["lab", "andrology", "admin"] as const).map((role) => (
+                    <td key={role} className="px-4 py-2.5 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={coverageByDay[day][role]}
+                        onChange={(e) => setCoverage(day, role, e.target.value)}
+                        disabled={coveragePending}
+                        className="w-16 h-8 rounded-[8px] border border-input bg-transparent text-center text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 mx-auto block"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <div className="px-5 py-3 border-t border-border flex items-center gap-3">
+          <Button type="button" onClick={handleCoverageSave} disabled={coveragePending}>
+            {coveragePending ? t("saving") : t("saveCoverage")}
+          </Button>
+          {coverageStatus === "success" && (
+            <span className="flex items-center gap-1.5 text-[14px] text-emerald-600">
+              <CheckCircle2 className="size-4" />
+              {t("updateSuccess")}
+            </span>
+          )}
+          {coverageStatus === "error" && (
+            <span className="flex items-center gap-1.5 text-[14px] text-destructive">
+              <AlertCircle className="size-4" />
+              {coverageErrorMsg}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── PUNCIONES ────────────────────────────────────────────────────── */}

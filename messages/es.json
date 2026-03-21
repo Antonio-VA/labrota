@@ -368,7 +368,14 @@
       "full": "Día completo"
     },
     "saveChanges": "Guardar cambios",
+    "saveCoverage": "Guardar configuración",
     "saving": "Guardando…",
+    "coverageTable": {
+      "day": "Día",
+      "labMin": "Lab (mín.)",
+      "andrologyMin": "Andrología (mín.)",
+      "adminMin": "Administración (mín.)"
+    },
     "holidaysHint": "Los festivos regionales se aplicarán automáticamente al generar guardias.",
     "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada.",
