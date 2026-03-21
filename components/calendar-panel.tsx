@@ -198,8 +198,8 @@ function ShiftBadge({ first, last, role, isOpu, isOverride, functionLabel, tecni
 
   return (
     <div className={cn(
-      "flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px]",
-      isOverride ? "border-primary/30 bg-primary/5" : "border-border bg-background"
+      "flex items-center gap-1.5 px-2 py-1.5 rounded border text-[13px] font-medium w-full min-h-[32px] bg-white",
+      isOverride ? "border-primary/40" : "border-border"
     )}>
         <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
       <span className="truncate">{first} {last[0]}.</span>
@@ -282,13 +282,14 @@ function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
   )
 }
 
-// ── Técnica popover (replaces FunctionLabelPopover for técnica assignment) ────
+// ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function TécnicaPopover({ assignment, staffSkills, tecnicas, onSave, isPublished, children }: {
-  assignment: { id: string; staff: { role: string }; tecnica_id: string | null }
+function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, onTecnicaSave, isPublished, children }: {
+  assignment: { id: string; staff: { role: string }; function_label: string | null; is_opu: boolean; tecnica_id: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
-  onSave: (id: string, tecnicaId: string | null) => void
+  onFunctionSave: (id: string, label: string | null) => void
+  onTecnicaSave: (id: string, tecnicaId: string | null) => void
   isPublished: boolean
   children: React.ReactNode
 }) {
@@ -304,15 +305,18 @@ function TécnicaPopover({ assignment, staffSkills, tecnicas, onSave, isPublishe
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // Técnicas this staff member is Competente in
+  const functionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
+  const currentLabel   = assignment.function_label ?? (assignment.is_opu ? "OPU" : null)
+
   const certifiedSkills = new Set(
     staffSkills.filter((s) => s.level === "certified").map((s) => s.skill)
   )
-  const available = tecnicas.filter((t) =>
+  const availableTecnicas = tecnicas.filter((t) =>
     t.activa && (t.required_skill === null || certifiedSkills.has(t.required_skill))
   )
 
-  if (available.length === 0 || isPublished) return <>{children}</>
+  const hasAnything = functionLabels.length > 0 || availableTecnicas.length > 0
+  if (!hasAnything || isPublished) return <>{children}</>
 
   return (
     <div ref={ref} className="relative">
@@ -320,31 +324,66 @@ function TécnicaPopover({ assignment, staffSkills, tecnicas, onSave, isPublishe
         {children}
       </div>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
-          <div className="flex flex-wrap gap-1">
-            {available.map((tec) => {
-              const isActive = assignment.tecnica_id === tec.id
-              const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
-              return (
-                <button
-                  key={tec.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSave(assignment.id, isActive ? null : tec.id)
-                    setOpen(false)
-                  }}
-                  className={cn(
-                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                    color,
-                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
-                  )}
-                >
-                  {tec.codigo}
-                </button>
-              )
-            })}
-          </div>
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48 flex flex-col gap-2.5">
+          {functionLabels.length > 0 && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
+              <div className="flex flex-wrap gap-1">
+                {functionLabels.map((fn) => {
+                  const isActive = currentLabel === fn
+                  const color = fn === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
+                    : fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+                    : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+                    : "bg-blue-50 border-blue-200 text-blue-700"
+                  return (
+                    <button
+                      key={fn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onFunctionSave(assignment.id, isActive ? null : fn)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                        color,
+                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      {fn}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {availableTecnicas.length > 0 && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
+              <div className="flex flex-wrap gap-1">
+                {availableTecnicas.map((tec) => {
+                  const isActive = assignment.tecnica_id === tec.id
+                  const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
+                  return (
+                    <button
+                      key={tec.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTecnicaSave(assignment.id, isActive ? null : tec.id)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
+                        color,
+                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      {tec.codigo}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1168,12 +1207,13 @@ function ShiftGrid({
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
                     const tecnica = (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
                     return (
-                      <TécnicaPopover
+                      <AssignmentPopover
                         key={a.id}
                         assignment={a}
                         staffSkills={staffMember?.staff_skills ?? []}
                         tecnicas={data?.tecnicas ?? []}
-                        onSave={onTecnicaSave}
+                        onFunctionSave={onFunctionLabelSave}
+                        onTecnicaSave={onTecnicaSave}
                         isPublished={isPublished}
                       >
                         <Tooltip>
@@ -1195,7 +1235,7 @@ function ShiftGrid({
                             {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
                           </TooltipContent>
                         </Tooltip>
-                      </TécnicaPopover>
+                      </AssignmentPopover>
                     )
                   })}
                   {dayShifts.length === 0 && effectivePDay === 0 && (
