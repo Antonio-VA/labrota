@@ -775,17 +775,29 @@ export interface MonthDaySummary {
   hasSkillGaps: boolean
   isWeekend: boolean
   isCurrentMonth: boolean
+  punctions: number
+  leaveCount: number
+  holidayName: string | null
+  /** Up to 3 staff roles for colour dot preview */
+  staffRoles: string[]
+}
+
+export interface MonthWeekStatus {
+  weekStart: string
+  status: "published" | "draft" | null
 }
 
 export interface RotaMonthSummary {
-  monthStart: string   // "YYYY-MM-01"
+  monthStart: string
   days: MonthDaySummary[]
+  weekStatuses: MonthWeekStatus[]
+  /** staff_id → total assignments in this month's grid */
+  staffTotals: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }>
 }
 
 export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonthSummary> {
   const supabase = await createClient()
 
-  // Build grid: Monday before 1st through Sunday after last day of month
   const first = new Date(monthStart + "T12:00:00")
   const last  = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12)
 
@@ -802,46 +814,113 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
     gridDates.push(d.toISOString().split("T")[0])
   }
 
-  const [assignmentsRes, skillsRes] = await Promise.all([
+  const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes] = await Promise.all([
     supabase
       .from("rota_assignments")
-      .select("date, staff_id")
+      .select("date, staff_id, staff:staff_id(first_name, last_name, role)")
       .gte("date", gridDates[0])
-      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string }[] | null }>,
+      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
     supabase
       .from("staff_skills")
       .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date")
+      .lte("start_date", gridDates[gridDates.length - 1])
+      .gte("end_date", gridDates[0])
+      .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
+    supabase.from("lab_config").select("punctions_by_day").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null } | null }>,
+    supabase
+      .from("rotas")
+      .select("week_start, status")
+      .gte("week_start", gridDates[0])
+      .lte("week_start", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { week_start: string; status: string }[] | null }>,
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, days_per_week")
+      .neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; days_per_week: number }[] | null }>,
   ])
 
-  const byDate: Record<string, string[]> = {}
+  // Assignment data
+  const byDate: Record<string, { staff_id: string; role: string }[]> = {}
   for (const a of assignmentsRes.data ?? []) {
     if (!byDate[a.date]) byDate[a.date] = []
-    byDate[a.date].push(a.staff_id)
+    byDate[a.date].push({ staff_id: a.staff_id, role: a.staff?.role ?? "lab" })
   }
 
+  // Staff totals for month taskbar
+  const staffTotals: RotaMonthSummary["staffTotals"] = {}
+  const staffLookup = Object.fromEntries((staffRes.data ?? []).map((s) => [s.id, s]))
+  const currentMonthPrefix = monthStart.slice(0, 7)
+  for (const a of assignmentsRes.data ?? []) {
+    if (!a.date.startsWith(currentMonthPrefix)) continue
+    if (!staffTotals[a.staff_id]) {
+      const s = staffLookup[a.staff_id] ?? a.staff
+      staffTotals[a.staff_id] = {
+        first: s?.first_name ?? "?", last: s?.last_name ?? "?",
+        role: s?.role ?? "lab", count: 0,
+        daysPerWeek: staffLookup[a.staff_id]?.days_per_week ?? 5,
+      }
+    }
+    staffTotals[a.staff_id].count++
+  }
+
+  // Skills
   const staffSkillMap: Record<string, string[]> = {}
   for (const ss of skillsRes.data ?? []) {
     if (!staffSkillMap[ss.staff_id]) staffSkillMap[ss.staff_id] = []
     staffSkillMap[ss.staff_id].push(ss.skill)
   }
   const allOrgSkills = [...new Set((skillsRes.data ?? []).map((ss) => ss.skill))]
-  const currentMonthPrefix = monthStart.slice(0, 7)
+
+  // Leave map: date → count
+  const leaveByDate: Record<string, number> = {}
+  for (const l of leavesRes.data ?? []) {
+    const s = new Date(l.start_date + "T12:00:00")
+    const e = new Date(l.end_date + "T12:00:00")
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().split("T")[0]
+      leaveByDate[iso] = (leaveByDate[iso] ?? 0) + 1
+    }
+  }
+
+  // Punctions config
+  const puncByDay = labConfigRes.data?.punctions_by_day ?? {}
+
+  // Public holidays
+  const years = [...new Set(gridDates.map((d) => parseInt(d.slice(0, 4))))]
+  const holidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
+
+  // Week statuses
+  const rotaMap = Object.fromEntries((rotasRes.data ?? []).map((r) => [r.week_start, r.status]))
+  const weekStarts: string[] = []
+  for (let i = 0; i < gridDates.length; i += 7) weekStarts.push(gridDates[i])
+  const weekStatuses: MonthWeekStatus[] = weekStarts.map((ws) => ({
+    weekStart: ws,
+    status: (rotaMap[ws] as "published" | "draft") ?? null,
+  }))
 
   const days: MonthDaySummary[] = gridDates.map((date) => {
-    const staffIds = byDate[date] ?? []
-    const covered  = new Set(staffIds.flatMap((id) => staffSkillMap[id] ?? []))
+    const entries   = byDate[date] ?? []
+    const staffIds  = entries.map((e) => e.staff_id)
+    const covered   = new Set(staffIds.flatMap((id) => staffSkillMap[id] ?? []))
     const hasSkillGaps = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
-    const dow = new Date(date + "T12:00:00").getDay()
+    const dow       = new Date(date + "T12:00:00").getDay()
+    const dowKey    = DOW_TO_KEY[dow]
     return {
       date,
       staffCount: staffIds.length,
       hasSkillGaps,
       isWeekend: dow === 0 || dow === 6,
       isCurrentMonth: date.startsWith(currentMonthPrefix),
+      punctions: puncByDay[dowKey] ?? 0,
+      leaveCount: leaveByDate[date] ?? 0,
+      holidayName: holidays[date] ?? null,
+      staffRoles: entries.slice(0, 4).map((e) => e.role),
     }
   })
 
-  return { monthStart, days }
+  return { monthStart, days, weekStatuses, staffTotals }
 }
 
 // ── getStaffProfile ───────────────────────────────────────────────────────────

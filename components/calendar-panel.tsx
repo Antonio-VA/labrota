@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ import {
   type RotaDay,
   type RotaDayWarning,
   type RotaMonthSummary,
+  type MonthWeekStatus,
   type ShiftTimes,
   type StaffProfileData,
   saveAsTemplate,
@@ -980,6 +981,59 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick }: {
   )
 }
 
+function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
+  summary: RotaMonthSummary; monthLabel: string; onPillClick?: (staffId: string) => void
+}) {
+  const t = useTranslations("schedule")
+  const entries = Object.entries(summary.staffTotals).sort((a, b) => {
+    const roleOrder: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+    return (roleOrder[a[1].role] ?? 9) - (roleOrder[b[1].role] ?? 9)
+  })
+
+  if (entries.length === 0) return null
+
+  // Monthly expected: days_per_week × ~4.33 (weeks in a month)
+  const monthDate = new Date(summary.monthStart + "T12:00:00")
+  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate()
+  const weeksInMonth = daysInMonth / 7
+
+  return (
+    <div
+      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-[#CCDDEE] flex items-center px-4 gap-1"
+      style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
+    >
+      <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
+      <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
+        {entries.map(([id, s], i) => {
+          const expected = Math.round(s.daysPerWeek * weeksInMonth)
+          const over = s.count > expected
+          const color = s.count === 0 ? "text-slate-400" : over ? "text-amber-600" : "text-slate-600"
+          return (
+            <Fragment key={id}>
+              {i > 0 && <span className="text-slate-300 text-[10px] select-none">·</span>}
+              <Tooltip>
+                <TooltipTrigger render={
+                  <button
+                    onClick={() => onPillClick?.(id)}
+                    className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-blue-50", color)}
+                  >
+                    <span className="font-medium">{s.first}</span>{" "}
+                    <span className="font-normal tabular-nums">{s.count}/{expected}</span>
+                  </button>
+                } />
+                <TooltipContent side="top">
+                  {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{expected} turnos/mes
+                </TooltipContent>
+              </Tooltip>
+            </Fragment>
+          )
+        })}
+      </div>
+      <span className="text-[12px] text-slate-400 shrink-0 ml-auto capitalize">{monthLabel}</span>
+    </div>
+  )
+}
+
 // ── Skill gap pill ────────────────────────────────────────────────────────────
 
 const WARNING_CATEGORY_LABEL: Record<string, string> = {
@@ -1914,12 +1968,13 @@ function ShiftGrid({
 const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
   currentDate: string
   onSelectDay: (date: string) => void
+  onSelectWeek: (weekStart: string) => void
 }) {
   const headers = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
 
@@ -1934,7 +1989,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
         {Array.from({ length: 5 }).map((_, w) => (
           <div key={w} className="grid grid-cols-7 gap-1">
             {Array.from({ length: 7 }).map((_, d) => (
-              <Skeleton key={d} className="h-14 rounded-lg" />
+              <Skeleton key={d} className="h-20 rounded-lg" />
             ))}
           </div>
         ))}
@@ -1947,6 +2002,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
     weeks.push(summary.days.slice(i, i + 7))
   }
 
+  const weekStatusMap = Object.fromEntries(summary.weekStatuses.map((ws) => [ws.weekStart, ws.status]))
+
   return (
     <div className="flex flex-col gap-1">
       <div className="grid grid-cols-7 gap-1 mb-1">
@@ -1955,41 +2012,101 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay }: {
         ))}
       </div>
 
-      {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-cols-7 gap-1">
-          {week.map((day) => {
-            const isToday    = day.date === TODAY
-            const isSelected = day.date === currentDate
-            const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
-
-            return (
-              <button
-                key={day.date}
-                onClick={() => onSelectDay(day.date)}
-                className={cn(
-                  "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[56px] bg-background",
-                  !day.isCurrentMonth && "opacity-40",
-                  isSelected && "border-primary",
-                  !isSelected && "border-border hover:bg-muted/40"
-                )}
-              >
-                <div className={cn(
-                  "size-6 flex items-center justify-center rounded-full text-[13px] font-medium mb-1",
-                  isToday && "bg-primary text-primary-foreground"
+      {weeks.map((week, wi) => {
+        const weekStart = week[0].date
+        const weekStatus = weekStatusMap[weekStart] ?? null
+        return (
+          <div key={wi} className="relative group/week">
+            {/* Week status pill */}
+            {weekStatus && (
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full z-10 hidden lg:block">
+                <span className={cn(
+                  "text-[9px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap",
+                  weekStatus === "published"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
                 )}>
-                  {dayNum}
-                </div>
-                {day.staffCount > 0 && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-muted-foreground">{day.staffCount}</span>
-                    {day.hasSkillGaps && <AlertTriangle className="size-3 text-amber-500" />}
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      ))}
+                  {weekStatus === "published" ? "Publicada" : "Borrador"}
+                </span>
+              </div>
+            )}
+
+            <div
+              className="grid grid-cols-7 gap-1 rounded-lg transition-colors cursor-pointer group-hover/week:bg-blue-50/40"
+              onClick={() => onSelectWeek(weekStart)}
+            >
+              {week.map((day) => {
+                const isToday    = day.date === TODAY
+                const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
+
+                return (
+                  <button
+                    key={day.date}
+                    onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
+                    className={cn(
+                      "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[80px]",
+                      !day.isCurrentMonth
+                        ? "bg-slate-50 border-slate-100"
+                        : day.holidayName
+                        ? "bg-amber-50/40 border-amber-100"
+                        : "bg-white border-border hover:bg-muted/30"
+                    )}
+                  >
+                    {/* Top row: date + coverage indicator */}
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className={cn(
+                        "size-6 flex items-center justify-center rounded-full text-[13px] leading-none",
+                        isToday ? "bg-primary text-primary-foreground font-semibold"
+                          : !day.isCurrentMonth ? "text-slate-300 font-normal"
+                          : "font-medium text-slate-800"
+                      )}>
+                        {dayNum}
+                      </div>
+                      {day.staffCount > 0 && (
+                        day.hasSkillGaps
+                          ? <AlertTriangle className="size-3 text-amber-500" />
+                          : <CheckCircle2 className="size-3 text-emerald-400" />
+                      )}
+                    </div>
+
+                    {/* Holiday name */}
+                    {day.holidayName && day.isCurrentMonth && (
+                      <span className="text-[9px] text-amber-600 leading-tight truncate w-full">{day.holidayName}</span>
+                    )}
+
+                    {/* Staff info */}
+                    {day.staffCount > 0 && day.isCurrentMonth && (
+                      <div className="flex items-center gap-1 mt-auto">
+                        <span className="text-[11px] text-slate-500">{day.staffCount}p</span>
+                        {/* Role dots */}
+                        <div className="flex gap-0.5">
+                          {day.staffRoles.map((role, i) => (
+                            <span key={i} className={cn("size-1.5 rounded-full", ROLE_DOT[role] ?? "bg-slate-400")} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bottom row: punctions + leave */}
+                    {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {day.punctions > 0 && (
+                          <span className="text-[10px] text-slate-400 tabular-nums">P:{day.punctions}</span>
+                        )}
+                        {day.leaveCount > 0 && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+                            <Briefcase className="size-2.5" />{day.leaveCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -2832,13 +2949,14 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {/* Month view */}
         {view === "month" && (
-          <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
+          <div className="hidden md:block overflow-auto flex-1 px-4 py-3 pb-14">
             <MonthGrid
               summary={monthSummary}
               loading={loadingMonth}
               locale={locale}
               currentDate={currentDate}
               onSelectDay={handleMonthDayClick}
+              onSelectWeek={(ws) => { setCurrentDate(ws); setView("week") }}
             />
           </div>
         )}
@@ -2888,6 +3006,13 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           data={weekData}
           staffList={staffList}
           weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
+          onPillClick={openProfile}
+        />
+      )}
+      {view === "month" && monthSummary && (
+        <MonthBudgetBar
+          summary={monthSummary}
+          monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}
           onPillClick={openProfile}
         />
       )}
