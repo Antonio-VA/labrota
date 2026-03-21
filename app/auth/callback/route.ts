@@ -5,10 +5,19 @@ import type { EmailOtpType } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
-  const next = searchParams.get("next") ?? "/"
+  const next       = searchParams.get("next") ?? "/"
+  const token_hash = searchParams.get("token_hash")
+  const type       = searchParams.get("type") as EmailOtpType | null
+  const code       = searchParams.get("code")
+
+  // Resolve final destination BEFORE creating the response so that session
+  // cookies set by verifyOtp / exchangeCodeForSession land on the right object.
+  let destination = next
+  if (type === "invite")                               destination = "/set-password"
+  if (type === "recovery" || next === "/reset-password") destination = "/reset-password"
 
   const cookieStore = await cookies()
-  const response = NextResponse.redirect(`${origin}${next}`)
+  const response = NextResponse.redirect(`${origin}${destination}`)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,42 +38,18 @@ export async function GET(request: NextRequest) {
   )
 
   // OTP flow: token_hash + type
-  const token_hash = searchParams.get("token_hash")
-  const type = searchParams.get("type") as EmailOtpType | null
-
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type })
-    if (!error) {
-      if (type === "recovery") {
-        return NextResponse.redirect(`${origin}/reset-password`)
-      }
-      // Invite links: set password on first login
-      if (type === "invite") {
-        return NextResponse.redirect(`${origin}/set-password`)
-      }
-      return response
-    }
+    if (!error) return response
   }
 
   // PKCE / OAuth flow: code
-  const code = searchParams.get("code")
-
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      const pkceType = searchParams.get("type")
-      if (pkceType === "recovery" || next === "/reset-password") {
-        return NextResponse.redirect(`${origin}/reset-password`)
-      }
-      // Invite links in PKCE mode
-      if (pkceType === "invite") {
-        return NextResponse.redirect(`${origin}/set-password`)
-      }
-      return response
-    }
+    if (!error) return response
     console.error("[auth/callback] exchangeCodeForSession failed")
   }
 
-  // Something went wrong - send back to login with an error hint
+  // Something went wrong — send back to login with an error hint
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }
