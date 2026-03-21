@@ -358,7 +358,7 @@ export async function generateRota(
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: generationType } as never,
+      { organisation_id: orgId, week_start: weekStart, status: "draft" } as never,
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
@@ -367,6 +367,9 @@ export async function generateRota(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
 
   const rotaId = (rotaRow as { id: string }).id
+
+  // Best-effort: set generation_type (column may not exist yet)
+  await supabase.from("rotas").update({ generation_type: generationType } as never).eq("id", rotaId).then(() => {})
 
   // Determine which dates have manual overrides (to preserve)
   const overrideDates = new Set<string>()
@@ -889,15 +892,20 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: rotaRow } = await supabase
+  const { data: rotaRow, error: upsertErr } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: "manual" } as never,
+      { organisation_id: orgId, week_start: weekStart, status: "draft" } as never,
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
-    .single() as unknown as { data: { id: string } | null }
+    .single() as unknown as { data: { id: string } | null; error: { message: string } | null }
+
+  if (upsertErr) return { error: upsertErr.message }
   if (!rotaRow) return { error: "Error creando la guardia." }
+
+  // Best-effort: set generation_type
+  await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id).then(() => {})
 
   await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
   revalidatePath("/")
@@ -968,10 +976,13 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   // Upsert rota record
   const { data: rota } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: strict ? "strict_template" : "flexible_template" } as never, { onConflict: "organisation_id, week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id, week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
   if (!rota) return { error: "Error creando la guardia." }
+
+  // Best-effort: set generation_type
+  await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" } as never).eq("id", rota.id).then(() => {})
 
   // Fetch leaves for this week
   const { data: leaves } = await supabase
