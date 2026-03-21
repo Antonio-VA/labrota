@@ -198,3 +198,30 @@ export async function bulkSoftDeleteStaff(
   revalidatePath("/staff")
   return { deleted: (data ?? []).length }
 }
+
+export async function hardDeleteStaff(
+  staffIds: string[],
+): Promise<{ deleted: number; error?: string }> {
+  if (staffIds.length === 0) return { deleted: 0 }
+  const supabase = await createClient()
+
+  // Safety guard: only allow hard-deleting inactive staff
+  const { data: check, error: checkError } = await supabase
+    .from("staff")
+    .select("id")
+    .in("id", staffIds)
+    .neq("onboarding_status", "inactive") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (checkError) return { deleted: 0, error: checkError.message }
+  if ((check ?? []).length > 0) return { deleted: 0, error: "Solo se pueden borrar definitivamente miembros inactivos." }
+
+  const { error } = await supabase
+    .from("staff")
+    .delete()
+    .in("id", staffIds)
+
+  if (error) return { deleted: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { deleted: staffIds.length }
+}

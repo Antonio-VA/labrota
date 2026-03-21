@@ -18,6 +18,7 @@ import {
   bulkRemoveSkill,
   bulkUpdateStatus,
   bulkSoftDeleteStaff,
+  hardDeleteStaff,
 } from "@/app/(clinic)/staff/actions"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -314,6 +315,66 @@ function DeleteModal({
   )
 }
 
+// ── Hard delete modal ──────────────────────────────────────────────────────────
+
+function HardDeleteModal({
+  open, names, onConfirm, onCancel, isPending,
+}: {
+  open: boolean; names: string[]; onConfirm: () => void; onCancel: () => void; isPending: boolean
+}) {
+  const [confirmText, setConfirmText] = useState("")
+
+  useEffect(() => { if (!open) setConfirmText("") }, [open])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={() => !isPending && onCancel()} />
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-destructive/30 bg-background p-6 shadow-xl flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <Trash2 className="size-4 text-destructive" />
+          </div>
+          <div>
+            <h2 className="text-[16px] font-semibold text-destructive">Borrar definitivamente {names.length} miembro{names.length !== 1 ? "s" : ""}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Esta acción es <strong>irreversible</strong>. Se borrará el registro completo y todo el historial de turnos asociado.</p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 max-h-36 overflow-y-auto">
+          {names.map((n) => <p key={n} className="text-[13px] py-0.5">{n}</p>)}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-muted-foreground">
+            Escribe <span className="font-mono font-medium text-foreground">BORRAR</span> para confirmar
+          </label>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="BORRAR"
+            disabled={isPending}
+            className="font-mono"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={isPending}>Cancelar</Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onConfirm}
+            disabled={confirmText !== "BORRAR" || isPending}
+          >
+            {isPending ? "Borrando…" : "Borrar definitivamente"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Bulk toolbar ───────────────────────────────────────────────────────────────
 
 function BulkToolbar({
@@ -326,16 +387,17 @@ function BulkToolbar({
   onClear: () => void
 }) {
   const [isPending, startTransition] = useTransition()
-  const [addOpen,    setAddOpen]    = useState(false)
-  const [removeOpen, setRemoveOpen] = useState(false)
-  const [statusOpen, setStatusOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [addOpen,        setAddOpen]        = useState(false)
+  const [removeOpen,     setRemoveOpen]     = useState(false)
+  const [statusOpen,     setStatusOpen]     = useState(false)
+  const [deleteOpen,     setDeleteOpen]     = useState(false)
+  const [hardDeleteOpen, setHardDeleteOpen] = useState(false)
 
   const count = selectedIds.size
   const ids   = [...selectedIds]
-  const names = selectedStaff
-    .filter((s) => selectedIds.has(s.id))
-    .map((s) => `${s.first_name} ${s.last_name}`)
+  const selectedMembers = selectedStaff.filter((s) => selectedIds.has(s.id))
+  const names = selectedMembers.map((s) => `${s.first_name} ${s.last_name}`)
+  const allInactive = selectedMembers.length > 0 && selectedMembers.every((s) => s.onboarding_status === "inactive")
 
   function closeAll() {
     setAddOpen(false); setRemoveOpen(false); setStatusOpen(false)
@@ -378,6 +440,16 @@ function BulkToolbar({
       const result = await bulkSoftDeleteStaff(ids)
       if (result.error) { toast.error(result.error); return }
       toast.success(`${result.deleted} miembro${result.deleted !== 1 ? "s" : ""} desactivado${result.deleted !== 1 ? "s" : ""}.`)
+      onClear()
+    })
+  }
+
+  function handleHardDelete() {
+    setHardDeleteOpen(false)
+    startTransition(async () => {
+      const result = await hardDeleteStaff(ids)
+      if (result.error) { toast.error(result.error); return }
+      toast.success(`${result.deleted} miembro${result.deleted !== 1 ? "s" : ""} borrado${result.deleted !== 1 ? "s" : ""} definitivamente.`)
       onClear()
     })
   }
@@ -451,15 +523,27 @@ function BulkToolbar({
 
         <div className="w-px h-5 bg-border shrink-0" />
 
-        {/* Delete */}
+        {/* Soft delete */}
         <button
           onClick={() => { closeAll(); setDeleteOpen(true) }}
           disabled={isPending}
           className="flex items-center gap-1 h-7 px-2 rounded-md border border-destructive/30 bg-destructive/5 text-destructive text-[12px] font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50 whitespace-nowrap"
         >
           <Trash2 className="size-3 shrink-0" />
-          Eliminar
+          Desactivar
         </button>
+
+        {/* Hard delete — only when all selected are already inactive */}
+        {allInactive && (
+          <button
+            onClick={() => { closeAll(); setHardDeleteOpen(true) }}
+            disabled={isPending}
+            className="flex items-center gap-1 h-7 px-2 rounded-md bg-destructive text-destructive-foreground text-[12px] font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Trash2 className="size-3 shrink-0" />
+            Borrar
+          </button>
+        )}
 
         <div className="w-px h-5 bg-border shrink-0" />
 
@@ -478,6 +562,13 @@ function BulkToolbar({
         names={names}
         onConfirm={handleDelete}
         onCancel={() => setDeleteOpen(false)}
+        isPending={isPending}
+      />
+      <HardDeleteModal
+        open={hardDeleteOpen}
+        names={names}
+        onConfirm={handleHardDelete}
+        onCancel={() => setHardDeleteOpen(false)}
         isPending={isPending}
       />
     </>
