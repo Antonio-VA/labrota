@@ -793,8 +793,8 @@ function ShiftGrid({
     setOverId(null)
     if (!over) return
 
-    const activeId  = String(active.id)
-    const destZone  = String(over.id)
+    const activeId = String(active.id)
+    const destZone = String(over.id)
 
     // ── OFF → shift: create a new assignment ─────────────────────────────────
     if (activeId.startsWith("off-")) {
@@ -810,18 +810,22 @@ function ShiftGrid({
           if (d.date !== destDate) return d
           const optimistic = {
             id: `opt-${Date.now()}`, staff_id: staffId,
-            staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role },
-            shift_type: destShift, date: destDate,
-            is_opu: false, is_manual_override: true, function_label: null, notes: null, trainee_staff_id: null,
+            staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
+            shift_type: destShift, is_opu: false, is_manual_override: true, function_label: null, notes: null, trainee_staff_id: null,
           }
           return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
         }))
       }
 
-      const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
-      if (result?.error) { toast.error(result.error); onRefresh(); return }
-      toast.success("Turno asignado")
-      onRefresh()
+      try {
+        const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
+        if (result?.error) { toast.error(result.error); onRefresh(); return }
+        toast.success("Turno asignado")
+      } catch {
+        toast.error("Error al asignar turno")
+      } finally {
+        onRefresh()
+      }
       return
     }
 
@@ -838,8 +842,14 @@ function ShiftGrid({
       setLocalDays((prev) => prev.map((d) => ({
         ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId),
       })))
-      const result = await removeAssignment(assignmentId)
-      if (result?.error) { toast.error(result.error); onRefresh(); return }
+      try {
+        const result = await removeAssignment(assignmentId)
+        if (result?.error) { toast.error(result.error); onRefresh(); return }
+        toast.success("Turno eliminado")
+      } catch {
+        toast.error("Error al eliminar turno")
+        onRefresh()
+      }
     } else {
       const destDate  = destZone.slice(-10)
       const destShift = destZone.slice(0, destZone.length - 11)
@@ -855,12 +865,15 @@ function ShiftGrid({
           a.id === assignmentId ? { ...a, shift_type: destShift, is_manual_override: true } : a
         ),
       })))
-      const result = await moveAssignmentShift(assignmentId, destShift)
-      if (result?.error) { toast.error(result.error); onRefresh(); return }
+      try {
+        const result = await moveAssignmentShift(assignmentId, destShift)
+        if (result?.error) { toast.error(result.error); onRefresh(); return }
+        toast.success("Turno actualizado")
+      } catch {
+        toast.error("Error al mover turno")
+        onRefresh()
+      }
     }
-
-    toast.success("Turno actualizado")
-    onRefresh()
   }
 
   if (loading) {

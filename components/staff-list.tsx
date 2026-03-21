@@ -571,17 +571,18 @@ function StaffTable({
             {/* Skills */}
             <div className="hidden md:flex items-center gap-1 overflow-hidden">
               {visibleSkills.map((sk) => (
-                <Badge
+                <span
                   key={sk.skill}
-                  variant="outline"
                   className={cn(
-                    "shrink-0",
-                    sk.level === "training" && "border-amber-200 bg-amber-50 text-amber-700"
+                    "shrink-0 inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[11px] font-medium",
+                    sk.level === "training"
+                      ? "border-amber-300 bg-amber-50 text-amber-800"
+                      : "border-blue-200 bg-blue-50 text-blue-700"
                   )}
                 >
                   {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
-                  {sk.level === "training" && <span className="ml-0.5 text-[10px]">★</span>}
-                </Badge>
+                  {sk.level === "training" && <span className="text-[9px] opacity-70">★</span>}
+                </span>
               ))}
               {extraCount > 0 && (
                 <Tooltip>
