@@ -210,6 +210,7 @@ interface Props {
   weekStart: string
   day: RotaDay | null
   staffList: StaffWithSkills[]
+  onLeaveStaffIds: string[]
   shiftTimes: ShiftTimes | null
   shiftTypes: ShiftTypeDefinition[]
   punctionsDefault: number
@@ -221,7 +222,7 @@ interface Props {
 }
 
 export function AssignmentSheet({
-  open, onOpenChange, date, weekStart, day, staffList, shiftTimes, shiftTypes,
+  open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds, shiftTimes, shiftTypes,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
 }: Props) {
   // Local optimistic assignments
@@ -250,10 +251,13 @@ export function AssignmentSheet({
     if (!open) { setShowDeleteAll(false); setEditingP(false) }
   }, [open])
 
-  const assignedIds = new Set(assignments.map((a) => a.staff_id))
-  const offStaff    = staffList
+  const assignedIds  = new Set(assignments.map((a) => a.staff_id))
+  const leaveIds     = new Set(onLeaveStaffIds)
+  const unassigned   = staffList
     .filter((s) => !assignedIds.has(s.id))
     .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
+  const offStaff     = unassigned.filter((s) => !leaveIds.has(s.id))
+  const onLeaveStaff = unassigned.filter((s) => leaveIds.has(s.id))
 
   const effectiveP  = date ? (punctionsOverride[date] ?? punctionsDefault) : 0
   const hasOverride = date ? date in punctionsOverride : false
@@ -482,7 +486,7 @@ export function AssignmentSheet({
           })}
 
           {/* OFF section */}
-          {offStaff.length > 0 && (
+          {(offStaff.length > 0 || onLeaveStaff.length > 0) && (
             <div className="border-b border-border/60">
               <div className="px-4 pt-3 pb-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -509,6 +513,17 @@ export function AssignmentSheet({
                       <Plus className="size-3 shrink-0 opacity-50" />
                     )}
                   </button>
+                ))}
+                {onLeaveStaff.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-border/50 text-[12px] text-muted-foreground/50 cursor-not-allowed select-none"
+                    title="De baja"
+                  >
+                    <span className="size-2 rounded-full shrink-0 bg-amber-400 opacity-50" />
+                    <span className="truncate flex-1">{s.first_name} {s.last_name}</span>
+                    <span className="text-[10px] shrink-0">De baja</span>
+                  </div>
                 ))}
               </div>
             </div>
