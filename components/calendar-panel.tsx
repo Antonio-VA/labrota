@@ -1,11 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal } from "lucide-react"
 import { toast } from "sonner"
-import { DndContext, DragOverlay, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core"
+import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -654,63 +654,97 @@ function SkillGapPill({ details }: {
   )
 }
 
-// ── Week view (Vista por persona) ─────────────────────────────────────────────
+// ── Person view (Vista por persona) ───────────────────────────────────────────
 
-const COLUMN_BARS: string[][] = [
-  ["70%", "80%", "60%"],
-  ["80%", "50%", "70%", "60%"],
-  ["60%", "80%", "50%", "70%", "45%"],
-  ["80%", "60%", "70%", "50%"],
-  ["70%", "80%", "60%"],
-  ["60%", "50%"],
-  ["45%", "60%"],
-]
+const ROLE_LABEL_MAP: Record<string, string> = {
+  lab: "Lab", andrology: "Andrología", admin: "Administración",
+}
 
-function WeekGrid({
-  data, loading, locale, onSelectDay, onCellClick, onChipClick,
-  punctionsOverride, onPunctionsChange,
-  draggingId, dragOverDate, onChipDragStart, onChipDragEnd, onColumnDrop, onColumnDragOver, onColumnDragLeave,
-  isPublished, shiftTimes, isGenerating,
+function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
+  assignment: Assignment
+  shiftTimes: ShiftTimes | null
+  tecnica: Tecnica | null
+  onClick?: (e: React.MouseEvent) => void
+}) {
+  const { shift_type, is_opu, is_manual_override, function_label } = assignment
+  const time = shiftTimes?.[shift_type]
+  const pillLabel = tecnica ? tecnica.codigo : (function_label ?? (is_opu ? "OPU" : null))
+  const pillColor = tecnica
+    ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
+    : pillLabel === "OPU" ? "bg-amber-50 border-amber-300 text-amber-800"
+    : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
+    : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+    : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
+    : null
+
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        "w-full rounded border px-1.5 py-1 flex flex-col gap-0.5 bg-white select-none",
+        !onClick ? "cursor-default" : "cursor-pointer hover:bg-slate-50",
+        is_manual_override ? "border-primary/40" : "border-border",
+      )}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[12px] font-semibold text-slate-700">{shift_type}</span>
+        {pillLabel && pillColor && (
+          <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0", pillColor)}>
+            {pillLabel}
+          </span>
+        )}
+      </div>
+      {time && (
+        <span className="text-[10px] text-slate-400 tabular-nums leading-none">
+          {time.start}–{time.end}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function PersonGrid({
+  data, staffList, loading, locale,
+  isPublished, shiftTimes, onLeaveByDate, publicHolidays,
+  onChipClick, onFunctionLabelSave, onTecnicaSave,
+  isGenerating,
 }: {
   data: RotaWeekData | null
+  staffList: StaffWithSkills[]
   loading: boolean
   locale: string
-  onSelectDay: (date: string) => void
-  onCellClick: (date: string) => void
-  onChipClick: (assignment: Assignment, date: string) => void
-  punctionsOverride: Record<string, number>
-  onPunctionsChange: (date: string, value: number | null) => void
-  draggingId: string | null
-  dragOverDate: string | null
-  onChipDragStart: (assignmentId: string, fromDate: string) => void
-  onChipDragEnd: () => void
-  onColumnDrop: (toDate: string) => void
-  onColumnDragOver: (date: string, e: React.DragEvent) => void
-  onColumnDragLeave: () => void
   isPublished: boolean
   shiftTimes: ShiftTimes | null
+  onLeaveByDate: Record<string, string[]>
+  publicHolidays: Record<string, string>
+  onChipClick: (assignment: Assignment, date: string) => void
+  onFunctionLabelSave: (assignmentId: string, label: string | null) => void
+  onTecnicaSave: (assignmentId: string, tecnicaId: string | null) => void
   isGenerating?: boolean
 }) {
   if (loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden min-w-[560px] flex-1">
-          <div className="grid grid-cols-7 h-full">
-            {COLUMN_BARS.map((bars, i) => (
-              <div key={i} className="flex flex-col border-r last:border-r-0">
-                <div className="flex flex-col items-center py-2 border-b gap-1.5">
-                  <div className="shimmer-bar h-2.5 w-6" />
-                  <div className="shimmer-bar w-7 h-7 rounded-full" />
-                </div>
-                <div className="flex justify-center py-1.5 border-b">
-                  <div className="shimmer-bar h-2 w-4" />
-                </div>
-                <div className="flex flex-col gap-1.5 p-2 pt-2">
-                  {bars.map((w, j) => (
-                    <div key={j} className="shimmer-bar h-6" style={{ width: w }} />
-                  ))}
-                </div>
+          <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
+            <div className="h-[52px] border-b border-r border-[#CCDDEE]" />
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-[#CCDDEE] gap-1">
+                <div className="shimmer-bar h-2.5 w-6" />
+                <div className="shimmer-bar w-7 h-7 rounded-full" />
               </div>
+            ))}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Fragment key={i}>
+                <div className="px-3 py-2.5 border-b border-r border-[#CCDDEE]">
+                  <div className="shimmer-bar h-3 w-28" />
+                </div>
+                {Array.from({ length: 7 }).map((_, j) => (
+                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-[#CCDDEE] min-h-[48px]">
+                    {j < 5 && <div className="shimmer-bar h-9 w-full rounded" />}
+                  </div>
+                ))}
+              </Fragment>
             ))}
           </div>
         </div>
@@ -725,89 +759,129 @@ function WeekGrid({
 
   if (!data) return null
 
+  // Build assignment lookup: staffId → date → assignment
+  const assignMap: Record<string, Record<string, Assignment>> = {}
+  for (const day of data.days) {
+    for (const a of day.assignments) {
+      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
+      assignMap[a.staff_id][day.date] = a
+    }
+  }
+
+  // Active staff sorted by role then last name
+  const activeStaff = staffList
+    .filter((s) => s.onboarding_status !== "inactive")
+    .sort((a, b) => {
+      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+      return ro !== 0 ? ro : a.last_name.localeCompare(b.last_name)
+    })
+
+  // Group by role
+  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
+  for (const s of activeStaff) {
+    const last = roleGroups[roleGroups.length - 1]
+    if (last && last.role === s.role) last.members.push(s)
+    else roleGroups.push({ role: s.role, members: [s] })
+  }
+
+  const days = data.days
+
   return (
-    <div className="rounded-lg border border-border bg-background overflow-hidden min-w-[560px] h-full flex flex-col">
-      <div className="grid grid-cols-7 flex-1">
-        {data.days.map((day) => {
-          const d      = new Date(day.date + "T12:00:00")
-          const wday   = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-          const dayN   = String(d.getDate())
-          const today  = day.date === TODAY
-          const isDrop = dragOverDate === day.date && !!draggingId
+    <div className="rounded-lg border border-border overflow-auto min-w-[560px] h-full">
+      <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
-          const defaultP = data.punctionsDefault[day.date] ?? 0
-          const overrideP = punctionsOverride[day.date]
-          const effectiveP = overrideP ?? defaultP
-          const hasOverride = overrideP !== undefined
-
+        {/* Header row */}
+        <div className="px-3 py-2 border-b border-r border-[#CCDDEE] bg-white sticky left-0 z-10" />
+        {days.map((day) => {
+          const d       = new Date(day.date + "T12:00:00")
+          const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
+          const dayN    = String(d.getDate())
+          const today   = day.date === TODAY
+          const holiday = publicHolidays[day.date]
           return (
-            <div
-              key={day.date}
-              className={cn(
-                "flex flex-col border-r last:border-r-0",
-                isDrop && "bg-primary/5 ring-1 ring-primary/30 ring-inset"
-              )}
-              onDragOver={(e) => onColumnDragOver(day.date, e)}
-              onDragLeave={onColumnDragLeave}
-              onDrop={() => onColumnDrop(day.date)}
-            >
-              <div className="flex flex-col border-b">
-                <button
-                  onClick={() => onSelectDay(day.date)}
-                  className="flex flex-col items-center pt-2 pb-1 gap-0.5 w-full hover:bg-muted/40 transition-colors"
-                >
-                  <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
-                  <div className={cn(
-                    "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
-                    today && "bg-primary text-primary-foreground"
-                  )}>
-                    {dayN}
-                  </div>
-                  {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
-                </button>
-                <div className="flex items-center justify-center gap-0.5 pb-1.5">
-                  <PunctionsInput
-                    date={day.date}
-                    value={effectiveP}
-                    defaultValue={defaultP}
-                    isOverride={hasOverride}
-                    onChange={onPunctionsChange}
-                    disabled={isPublished || !data.rota}
-                  />
-                </div>
+            <div key={day.date} className={cn(
+              "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-[#CCDDEE]",
+              holiday ? "bg-red-50/50" : "bg-white"
+            )}>
+              <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
+              <div className={cn(
+                "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
+                today && "bg-primary text-primary-foreground"
+              )}>
+                {dayN}
               </div>
-
-              <div
-                className="flex flex-col gap-1 p-2 flex-1 min-h-[80px]"
-                onClick={() => { if (!isPublished) onCellClick(day.date) }}
-              >
-                {sortAssignments(day.assignments).map((a) => (
-                  <StaffChip
-                    key={a.id}
-                    first={a.staff.first_name}
-                    last={a.staff.last_name}
-                    role={a.staff.role}
-                    isOverride={a.is_manual_override}
-                    hasTrainee={!!a.trainee_staff_id}
-                    isOpu={a.is_opu}
-                    notes={a.notes}
-                    shiftTime={shiftTimes ? `${shiftTimes[a.shift_type]?.start ?? ""}–${shiftTimes[a.shift_type]?.end ?? ""}` : undefined}
-                    isDragging={draggingId === a.id}
-                    onClick={(e) => { e.stopPropagation(); onChipClick(a, day.date) }}
-                    onDragStart={isPublished ? undefined : (e) => { e.stopPropagation(); onChipDragStart(a.id, day.date) }}
-                    onDragEnd={onChipDragEnd}
-                  />
-                ))}
-                {day.assignments.length === 0 && (
-                  <span className={cn(
-                    "text-[11px] text-muted-foreground text-center mt-4",
-                    !isPublished && isDrop && "text-primary"
-                  )}>—</span>
-                )}
-              </div>
+              {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
             </div>
           )
         })}
+
+        {/* Role groups */}
+        {roleGroups.map(({ role, members }) => (
+          <Fragment key={role}>
+            {/* Role header — spans all 8 columns */}
+            <div
+              className="px-3 py-1 bg-slate-50 border-b border-[#CCDDEE] flex items-center gap-1.5"
+              style={{ gridColumn: "1 / -1" }}
+            >
+              <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                {ROLE_LABEL_MAP[role] ?? role}
+              </span>
+            </div>
+
+            {/* Member rows */}
+            {members.map((s) => {
+              const staffAssigns = assignMap[s.id] ?? {}
+              return (
+                <Fragment key={s.id}>
+                  {/* Name cell */}
+                  <div className="px-3 py-2 border-b border-r border-[#CCDDEE] bg-white sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
+                    <span className="text-[13px] font-medium truncate leading-tight">
+                      {s.first_name} {s.last_name}
+                    </span>
+                  </div>
+
+                  {/* Day cells */}
+                  {days.map((day) => {
+                    const assignment = staffAssigns[day.date]
+                    const onLeave    = (onLeaveByDate[day.date] ?? []).includes(s.id)
+                    const tecnica    = assignment
+                      ? (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
+                      : null
+                    return (
+                      <div
+                        key={day.date}
+                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-[#CCDDEE] bg-white min-h-[48px] flex items-center"
+                      >
+                        {assignment ? (
+                          <AssignmentPopover
+                            assignment={assignment}
+                            staffSkills={s.staff_skills ?? []}
+                            tecnicas={data.tecnicas ?? []}
+                            onFunctionSave={onFunctionLabelSave}
+                            onTecnicaSave={onTecnicaSave}
+                            isPublished={isPublished}
+                          >
+                            <PersonShiftPill
+                              assignment={assignment}
+                              shiftTimes={shiftTimes}
+                              tecnica={tecnica}
+                              onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
+                            />
+                          </AssignmentPopover>
+                        ) : onLeave ? (
+                          <span className="text-[11px] text-slate-400 italic">Aus.</span>
+                        ) : (
+                          <span className="text-[11px] text-slate-200 select-none">—</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </Fragment>
+              )
+            })}
+          </Fragment>
+        ))}
       </div>
     </div>
   )
@@ -1082,8 +1156,12 @@ function ShiftGrid({
     ? staffList.find((s) => activeId.startsWith(`off-${s.id}`))
     : null
 
+  // Require 5px movement before drag activates — allows click events to pass through
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
   return (
     <DndContext
+      sensors={sensors}
       onDragStart={(e) => { setActiveId(String(e.active.id)); setOverId(null) }}
       onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
       onDragEnd={handleDragEnd}
@@ -1199,8 +1277,8 @@ function ShiftGrid({
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   style={isSatCell ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 min-h-[48px] transition-colors bg-white",
-                    !isPublished && "cursor-pointer hover:bg-blue-50"
+                    "p-1.5 flex flex-col gap-1 min-h-[48px] bg-white",
+                    !isPublished && "cursor-pointer"
                   )}
                 >
                   {dayShifts.map((a) => {
@@ -2003,25 +2081,19 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 weekStart={weekStart}
               />
             ) : (
-              <WeekGrid
+              <PersonGrid
                 data={weekData}
+                staffList={staffList}
                 loading={loadingWeek || isPending}
                 isGenerating={isPending}
                 locale={locale}
-                onSelectDay={handleSelectDay}
-                onCellClick={() => {}}
-                onChipClick={() => {}}
-                punctionsOverride={punctionsOverride}
-                onPunctionsChange={handlePunctionsChange}
-                draggingId={draggingId}
-                dragOverDate={dragOverDate}
-                onChipDragStart={handleChipDragStart}
-                onChipDragEnd={handleChipDragEnd}
-                onColumnDrop={handleColumnDrop}
-                onColumnDragOver={handleColumnDragOver}
-                onColumnDragLeave={handleColumnDragLeave}
                 isPublished={!!isPublished}
                 shiftTimes={weekData?.shiftTimes ?? null}
+                onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                publicHolidays={weekData?.publicHolidays ?? {}}
+                onChipClick={(_a, date) => handleMonthDayClick(date)}
+                onFunctionLabelSave={handleFunctionLabelSave}
+                onTecnicaSave={handleTecnicaSave}
               />
             )}
             {weekData && <ShiftBudgetBar data={weekData} staffList={staffList} />}
