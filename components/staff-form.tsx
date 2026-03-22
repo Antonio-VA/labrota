@@ -120,26 +120,6 @@ export function StaffForm({
   const roleSkills = SKILLS_BY_ROLE[role] ?? []
   const capacidades: { skill: SkillName; label: string }[] = (() => {
     if (role === "admin") return []
-    if (tecnicas && tecnicas.length > 0) {
-      const seen = new Set<SkillName>()
-      const result: { skill: SkillName; label: string }[] = []
-      for (const tec of tecnicas.filter((tec) => tec.activa && tec.required_skill)) {
-        const skill = tec.required_skill!
-        if (!roleSkills.includes(skill)) continue
-        if (!seen.has(skill)) {
-          seen.add(skill)
-          result.push({ skill, label: tec.nombre_es })
-        }
-      }
-      // Add any role skills not covered by técnicas
-      for (const sk of roleSkills) {
-        if (!seen.has(sk)) {
-          seen.add(sk)
-          result.push({ skill: sk, label: ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0]) })
-        }
-      }
-      return result
-    }
     return roleSkills.map((s) => ({ skill: s, label: ts(SKILL_KEYS[s] as Parameters<typeof ts>[0]) }))
   })()
 

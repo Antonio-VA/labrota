@@ -163,7 +163,7 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "flex flex-col py-1 text-[12px] select-none bg-white text-slate-700",
+        "flex flex-col py-1 text-[12px] select-none bg-white text-slate-700 border border-slate-200",
         onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
         onDragStart && "cursor-grab",
         isDragging && "opacity-40",
@@ -207,7 +207,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded font-medium w-full bg-white text-slate-700",
+        "group flex items-center gap-1.5 rounded border border-slate-200 font-medium w-full bg-white text-slate-700",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
       )}
       style={{ borderLeft: `3px solid ${ROLE_BORDER[role] ?? "#94A3B8"}`, borderRadius: 4 }}
@@ -1929,8 +1929,8 @@ function ShiftGrid({
                     <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
                       <div
                         className={cn(
-                          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full",
-                          onLeave ? "bg-amber-50 text-amber-700" : "bg-white text-slate-500"
+                          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full border border-slate-200",
+                          onLeave ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-white text-slate-500"
                         )}
                         style={{ borderLeft: `3px solid ${onLeave ? "#FBBF24" : ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                       >

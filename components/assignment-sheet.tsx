@@ -98,7 +98,7 @@ function AssignmentPopover({
   const allLabels     = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
   const currentLabel  = assignment.function_label ?? null
   const skillLevelMap = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
-  const certifiedSet  = new Set(staffSkills.filter((s) => s.level === "certified").map((s) => s.skill))
+
 
   const functionLabels = allLabels.filter((fn) => {
     const req = FUNCTION_TO_SKILL[fn]
@@ -109,7 +109,7 @@ function AssignmentPopover({
   const deptMap: Record<string, string> = { lab: "lab", andrology: "andrology" }
   const staffDept = deptMap[assignment.staff.role]
   const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && (!staffDept || t.department === staffDept) && (t.required_skill === null || certifiedSet.has(t.required_skill))
+    t.activa && (!staffDept || t.department === staffDept)
   )
 
   const hasAnything = functionLabels.length > 0 || availableTecnicas.length > 0
@@ -224,7 +224,7 @@ function DraggableCard({
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0 : 1, borderLeft: `3px solid ${ROLE_BORDER[assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
       className={cn(
-        "flex items-center gap-2 py-2 text-[13px] bg-white text-slate-700",
+        "flex items-center gap-2 py-2 text-[13px] bg-white text-slate-700 border border-slate-200",
         !disabled && "cursor-grab"
       )}
       {...listeners}
@@ -295,9 +295,9 @@ function DraggableOffChip({
       {...(onLeave ? {} : listeners)}
       {...(onLeave ? {} : attributes)}
       className={cn(
-        "flex items-center gap-2 py-1.5 text-[12px]",
+        "flex items-center gap-2 py-1.5 text-[12px] border border-slate-200",
         onLeave
-          ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-50/50"
+          ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-50/50 border-amber-200"
           : disabled
           ? "text-muted-foreground cursor-default bg-white"
           : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-white"
@@ -900,7 +900,7 @@ export function AssignmentSheet({
           <DragOverlay dropAnimation={null}>
             {activeAssignment && (
               <div
-                className="flex items-center gap-2 py-2 bg-white text-[13px] shadow-lg w-[330px] text-slate-700"
+                className="flex items-center gap-2 py-2 bg-white text-[13px] shadow-lg w-[330px] text-slate-700 border border-slate-200"
                 style={{ borderLeft: `3px solid ${ROLE_BORDER[activeAssignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
               >
                 <span className="font-medium truncate flex-1">
@@ -913,7 +913,7 @@ export function AssignmentSheet({
             )}
             {activeOffStaff && (
               <div
-                className="flex items-center gap-2 py-1.5 bg-white text-[12px] shadow-md w-[330px] text-slate-600"
+                className="flex items-center gap-2 py-1.5 bg-white text-[12px] shadow-md w-[330px] text-slate-600 border border-slate-200"
                 style={{ borderLeft: `3px solid ${ROLE_BORDER[activeOffStaff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
               >
                 <span className="truncate">{activeOffStaff.first_name} {activeOffStaff.last_name}</span>

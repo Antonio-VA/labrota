@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { saveTecnica, deleteTecnica, reorderTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
-import type { Tecnica, SkillName } from "@/lib/types/database"
+import type { Tecnica } from "@/lib/types/database"
 
 // ── Color options ──────────────────────────────────────────────────────────────
 
@@ -23,22 +23,6 @@ const COLORS = [
 
 export type TecnicaColor = typeof COLORS[number]["key"]
 
-const LAB_SKILL_OPTIONS: { value: SkillName; label: string }[] = [
-  { value: "biopsy",          label: "Biopsia" },
-  { value: "icsi",            label: "ICSI" },
-  { value: "egg_collection",  label: "Recogida de óvulos" },
-  { value: "embryo_transfer", label: "Transferencia embrionaria" },
-  { value: "denudation",      label: "Denudación" },
-]
-const ANDROLOGY_SKILL_OPTIONS: { value: SkillName; label: string }[] = [
-  { value: "sperm_freezing",  label: "Congelación de esperma" },
-  { value: "semen_analysis",  label: "Análisis seminal" },
-  { value: "sperm_prep",      label: "Preparación espermática" },
-]
-const SKILL_OPTIONS_BY_DEPT: Record<string, { value: SkillName; label: string }[]> = {
-  lab: LAB_SKILL_OPTIONS,
-  andrology: ANDROLOGY_SKILL_OPTIONS,
-}
 
 // ── Color picker ───────────────────────────────────────────────────────────────
 
@@ -70,7 +54,7 @@ function ColorPicker({ value, onChange, disabled }: {
 type Draft = {
   id?: string
   nombre_es: string; nombre_en: string; codigo: string
-  color: string; required_skill: SkillName | null; department: "lab" | "andrology"; activa: boolean; orden: number
+  color: string; department: "lab" | "andrology"; activa: boolean; orden: number
 }
 
 function TecnicaRow({
@@ -149,26 +133,12 @@ function TecnicaRow({
             <span className="text-[12px] text-muted-foreground shrink-0">Dept.</span>
             <select
               value={tecnica.department}
-              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology", required_skill: null })}
+              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
               disabled={disabled}
               className="h-7 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
             >
               <option value="lab">Embriólogo</option>
               <option value="andrology">Andrología</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 flex-1">
-            <span className="text-[12px] text-muted-foreground shrink-0">Habilidad</span>
-            <select
-              value={tecnica.required_skill ?? ""}
-              onChange={(e) => onChange({ ...tecnica, required_skill: (e.target.value || null) as SkillName | null })}
-              disabled={disabled}
-              className="h-7 flex-1 min-w-0 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
-            >
-              <option value="">— Sin requisito —</option>
-              {(SKILL_OPTIONS_BY_DEPT[tecnica.department] ?? []).map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
             </select>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -215,7 +185,6 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       nombre_en:      t.nombre_en,
       codigo:         t.codigo,
       color:          t.color,
-      required_skill: t.required_skill,
       department:     t.department ?? "lab" as const,
       activa:         t.activa,
       orden:          t.orden,
@@ -230,7 +199,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       ...prev,
       {
         nombre_es: "", nombre_en: "", codigo: "",
-        color: "blue", required_skill: null, department: "lab" as const, activa: true,
+        color: "blue", department: "lab" as const, activa: true,
         orden: prev.length,
       },
     ])
