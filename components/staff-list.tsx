@@ -619,7 +619,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant }: {
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]"
+const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]"
 
 function StaffTable({
   members, t, ts, muted,
@@ -673,7 +673,7 @@ function StaffTable({
             key={member.id}
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
-              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]",
+              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]",
               isSelected ? "bg-primary/5" : "hover:bg-blue-50"
             )}
           >
@@ -857,16 +857,6 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
             <option value="andrology">{t("roles.andrology")}</option>
             <option value="admin">{t("roles.admin")}</option>
           </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }}
-            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">{t("allStatuses")}</option>
-            <option value="active">{t("onboardingStatus.active")}</option>
-            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-            <option value="inactive">{t("onboardingStatus.inactive")}</option>
-          </select>
           {allSkillCodes.length > 0 && (
             <select
               value={skillFilter}
@@ -879,6 +869,16 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
               ))}
             </select>
           )}
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }}
+            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="all">{t("allStatuses")}</option>
+            <option value="active">{t("onboardingStatus.active")}</option>
+            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+            <option value="inactive">{t("onboardingStatus.inactive")}</option>
+          </select>
         </div>
         <Button size="lg" render={<Link href="/staff/new" />}>
           <Plus className="size-4" />
