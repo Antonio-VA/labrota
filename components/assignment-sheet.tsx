@@ -106,8 +106,10 @@ function AssignmentPopover({
     return skillLevelMap[req] === "certified" || skillLevelMap[req] === "training"
   })
 
+  const deptMap: Record<string, string> = { lab: "lab", andrology: "andrology" }
+  const staffDept = deptMap[assignment.staff.role]
   const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && (t.required_skill === null || certifiedSet.has(t.required_skill))
+    t.activa && (!staffDept || t.department === staffDept) && (t.required_skill === null || certifiedSet.has(t.required_skill))
   )
 
   const hasAnything = functionLabels.length > 0 || availableTecnicas.length > 0

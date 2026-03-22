@@ -133,6 +133,7 @@ export interface Tecnica {
   codigo:          string
   color:           string
   required_skill:  SkillName | null
+  department:      'lab' | 'andrology'
   activa:          boolean
   orden:           number
   created_at:      string

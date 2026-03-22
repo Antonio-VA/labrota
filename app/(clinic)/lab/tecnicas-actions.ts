@@ -39,6 +39,7 @@ export async function saveTecnica(
         codigo:         tecnica.codigo.toUpperCase().slice(0, 3),
         color:          tecnica.color,
         required_skill: tecnica.required_skill ?? null,
+        department:     tecnica.department ?? "lab",
         activa:         tecnica.activa ?? true,
         orden:          tecnica.orden ?? 0,
       } as never)
@@ -57,6 +58,7 @@ export async function saveTecnica(
       codigo:          tecnica.codigo.toUpperCase().slice(0, 3),
       color:           tecnica.color,
       required_skill:  tecnica.required_skill ?? null,
+      department:      tecnica.department ?? "lab",
       activa:          tecnica.activa ?? true,
       orden:           tecnica.orden ?? 0,
     } as never)

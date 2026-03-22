@@ -23,13 +23,22 @@ const COLORS = [
 
 export type TecnicaColor = typeof COLORS[number]["key"]
 
-const SKILL_OPTIONS: { value: SkillName; label: string }[] = [
+const LAB_SKILL_OPTIONS: { value: SkillName; label: string }[] = [
   { value: "biopsy",          label: "Biopsia" },
   { value: "icsi",            label: "ICSI" },
   { value: "egg_collection",  label: "Recogida de óvulos" },
   { value: "embryo_transfer", label: "Transferencia embrionaria" },
   { value: "denudation",      label: "Denudación" },
 ]
+const ANDROLOGY_SKILL_OPTIONS: { value: SkillName; label: string }[] = [
+  { value: "sperm_freezing",  label: "Congelación de esperma" },
+  { value: "semen_analysis",  label: "Análisis seminal" },
+  { value: "sperm_prep",      label: "Preparación espermática" },
+]
+const SKILL_OPTIONS_BY_DEPT: Record<string, { value: SkillName; label: string }[]> = {
+  lab: LAB_SKILL_OPTIONS,
+  andrology: ANDROLOGY_SKILL_OPTIONS,
+}
 
 // ── Color picker ───────────────────────────────────────────────────────────────
 
@@ -61,7 +70,7 @@ function ColorPicker({ value, onChange, disabled }: {
 type Draft = {
   id?: string
   nombre_es: string; nombre_en: string; codigo: string
-  color: string; required_skill: SkillName | null; activa: boolean; orden: number
+  color: string; required_skill: SkillName | null; department: "lab" | "andrology"; activa: boolean; orden: number
 }
 
 function TecnicaRow({
@@ -136,6 +145,18 @@ function TecnicaRow({
             <span className="text-[12px] text-muted-foreground shrink-0">Color</span>
             <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-muted-foreground shrink-0">Dept.</span>
+            <select
+              value={tecnica.department}
+              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology", required_skill: null })}
+              disabled={disabled}
+              className="h-7 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
+            >
+              <option value="lab">Embriólogo</option>
+              <option value="andrology">Andrología</option>
+            </select>
+          </div>
           <div className="flex items-center gap-2 flex-1">
             <span className="text-[12px] text-muted-foreground shrink-0">Habilidad</span>
             <select
@@ -145,7 +166,7 @@ function TecnicaRow({
               className="h-7 flex-1 min-w-0 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
             >
               <option value="">— Sin requisito —</option>
-              {SKILL_OPTIONS.map((s) => (
+              {(SKILL_OPTIONS_BY_DEPT[tecnica.department] ?? []).map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
@@ -195,6 +216,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       codigo:         t.codigo,
       color:          t.color,
       required_skill: t.required_skill,
+      department:     t.department ?? "lab" as const,
       activa:         t.activa,
       orden:          t.orden,
     }))
@@ -208,7 +230,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       ...prev,
       {
         nombre_es: "", nombre_en: "", codigo: "",
-        color: "blue", required_skill: null, activa: true,
+        color: "blue", required_skill: null, department: "lab" as const, activa: true,
         orden: prev.length,
       },
     ])
@@ -304,19 +326,41 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
         </div>
       )}
 
-      {tecnicas.map((t, i) => (
-        <TecnicaRow
-          key={t.id ?? `new-${i}`}
-          tecnica={t}
-          index={i}
-          total={tecnicas.length}
-          onChange={(draft) => updateRow(i, draft)}
-          onMoveUp={() => moveUp(i)}
-          onMoveDown={() => moveDown(i)}
-          onDelete={() => deleteRow(i)}
-          disabled={isPending}
-        />
-      ))}
+      {/* Embriólogo técnicas */}
+      {tecnicas.some((t) => t.department === "lab") && (
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Embriólogo</p>
+          <div className="flex flex-col gap-3">
+            {tecnicas.map((t, i) => t.department === "lab" ? (
+              <TecnicaRow
+                key={t.id ?? `new-${i}`}
+                tecnica={t} index={i} total={tecnicas.length}
+                onChange={(draft) => updateRow(i, draft)}
+                onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
+                onDelete={() => deleteRow(i)} disabled={isPending}
+              />
+            ) : null)}
+          </div>
+        </div>
+      )}
+
+      {/* Andrología técnicas */}
+      {tecnicas.some((t) => t.department === "andrology") && (
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Andrología</p>
+          <div className="flex flex-col gap-3">
+            {tecnicas.map((t, i) => t.department === "andrology" ? (
+              <TecnicaRow
+                key={t.id ?? `new-${i}`}
+                tecnica={t} index={i} total={tecnicas.length}
+                onChange={(draft) => updateRow(i, draft)}
+                onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
+                onDelete={() => deleteRow(i)} disabled={isPending}
+              />
+            ) : null)}
+          </div>
+        </div>
+      )}
 
       {/* Add row */}
       <button
