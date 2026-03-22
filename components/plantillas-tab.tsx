@@ -84,13 +84,13 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRename(tpl.id); if (e.key === "Escape") setEditingId(null) }}
-                  className="flex-1 rounded border border-border px-2 py-1 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+                  className="flex-1 rounded border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <button onClick={() => handleRename(tpl.id)} className="size-6 flex items-center justify-center rounded hover:bg-muted">
                   <Check className="size-3.5 text-emerald-600" />
                 </button>
                 <button onClick={() => setEditingId(null)} className="size-6 flex items-center justify-center rounded hover:bg-muted">
-                  <X className="size-3.5 text-slate-400" />
+                  <X className="size-3.5 text-muted-foreground" />
                 </button>
               </div>
             ) : (
@@ -99,7 +99,7 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
             <p className="text-[12px] text-muted-foreground mt-0.5">
               {tpl.assignments.length} asignaciones · {shiftSummary(tpl)}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               Creada {formatDateWithYear(tpl.created_at, locale)}
             </p>
           </div>
@@ -117,14 +117,14 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
                   className={cn("size-7 flex items-center justify-center rounded hover:bg-muted", editingId === tpl.id && "hidden")}
                   title="Renombrar"
                 >
-                  <Pencil className="size-3.5 text-slate-400" />
+                  <Pencil className="size-3.5 text-muted-foreground" />
                 </button>
                 <button
                   onClick={() => setDeletingId(tpl.id)}
-                  className="size-7 flex items-center justify-center rounded hover:bg-red-50"
+                  className="size-7 flex items-center justify-center rounded hover:bg-destructive/10"
                   title="Eliminar"
                 >
-                  <Trash2 className="size-3.5 text-slate-400 hover:text-red-500" />
+                  <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
                 </button>
               </>
             )}

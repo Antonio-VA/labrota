@@ -183,7 +183,7 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
         </div>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="bg-slate-100 border-b border-border">
+            <tr className="bg-muted border-b border-border">
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-[30%]">{t("coverageTable.day")}</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.labMin")}</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.andrologyMin")}</th>
