@@ -2271,19 +2271,19 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "strict_template", icon: <BookmarkX className="size-5" />,
     title: "Plantilla estricta",
     desc: "Usa una plantilla guardada como base. Las asignaciones se copian exactamente, respetando solo ausencias aprobadas.",
-    badge: "HARD", badgeColor: "bg-amber-50 text-amber-600 dark:text-amber-400 border-amber-200",
+    badge: "HARD", badgeColor: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   },
   {
     key: "flexible_template", icon: <Bookmark className="size-5" />,
     title: "Plantilla flexible",
     desc: "Usa una plantilla como punto de partida. El algoritmo ajusta según disponibilidad, reglas y preferencias de turno.",
-    badge: "SOFT", badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+    badge: "SOFT", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
   },
   {
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
     title: "Óptimo IA",
     desc: "El agente genera la guardia óptima desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
-    badge: "IA", badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+    badge: "IA", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
   },
   {
     key: "manual", icon: <Grid3X3 className="size-5" />,
