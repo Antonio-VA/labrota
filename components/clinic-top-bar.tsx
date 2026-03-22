@@ -5,6 +5,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Check, ChevronDown } from "lucide-react"
 import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
+import { NotificationBell } from "@/components/notification-panel"
 import { cn } from "@/lib/utils"
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
@@ -51,6 +52,9 @@ export function ClinicTopBar({
       </a>
 
       <div className="flex-1" />
+
+      {/* Notifications */}
+      <NotificationBell />
 
       {/* Right: org logo + name */}
       {orgName && (
