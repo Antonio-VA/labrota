@@ -624,6 +624,7 @@ const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,3fr)_minm
 function StaffTable({
   members, t, ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
+  deptBorder, deptLabel,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -633,6 +634,8 @@ function StaffTable({
   onToggle: (id: string) => void
   onToggleAll: (ids: string[]) => void
   skillLabel: (code: string) => string
+  deptBorder: Record<string, string>
+  deptLabel: Record<string, string>
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -700,9 +703,9 @@ function StaffTable({
             <div className="hidden md:flex items-center">
               <span
                 className="inline-flex items-center bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200"
-                style={{ borderLeft: `3px solid ${ROLE_BORDER_COLOR[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+                style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
               >
-                {t(`roles.${member.role}`)}
+                {deptLabel[member.role] ?? member.role}
               </span>
             </div>
 
@@ -765,11 +768,14 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[] }) {
+export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
   const t  = useTranslations("staff")
   const ts = useTranslations("skills")
   const router = useRouter()
   const skillLabel = makeSkillLabel(tecnicas)
+  const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }
+  const deptLabel: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
+  for (const d of deptsProp) { deptBorder[d.code] = d.colour; deptLabel[d.code] = d.name }
 
   const [search,       setSearch]       = useState("")
   const [roleFilter,   setRoleFilter]   = useState<StaffRole | "all">("all")
@@ -910,6 +916,8 @@ export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; 
           onToggle={toggleOne}
           onToggleAll={toggleAll}
           skillLabel={skillLabel}
+          deptBorder={deptBorder}
+          deptLabel={deptLabel}
         />
       )}
 
@@ -937,6 +945,8 @@ export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; 
           onToggle={toggleOne}
           onToggleAll={toggleAll}
           skillLabel={skillLabel}
+          deptBorder={deptBorder}
+          deptLabel={deptLabel}
         />
       )}
 

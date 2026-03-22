@@ -407,6 +407,7 @@ interface Props {
   shiftTimes: ShiftTimes | null
   shiftTypes: ShiftTypeDefinition[]
   tecnicas: Tecnica[]
+  departments?: import("@/lib/types/database").Department[]
   punctionsDefault: number
   punctionsOverride: Record<string, number>
   rota: { id: string; status: string; punctions_override: Record<string, number> } | null
@@ -417,10 +418,13 @@ interface Props {
 
 export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
-  shiftTimes, shiftTypes, tecnicas,
+  shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
 }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  // Merge department colours into the module-level ROLE_BORDER for sub-components
+  for (const d of deptsProp ?? []) ROLE_BORDER[d.code] = d.colour
 
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [, startSave] = useTransition()
@@ -628,7 +632,7 @@ export function AssignmentSheet({
                     <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5 cursor-default" />
                   } />
                   <TooltipContent side="left" className="max-w-[200px]">
-                    <p className="font-medium text-[12px] mb-1">Habilidades sin cobertura</p>
+                    <p className="font-medium text-[12px] mb-1">Técnicas sin cobertura</p>
                     {skillGaps.map((sk) => (
                       <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
                     ))}

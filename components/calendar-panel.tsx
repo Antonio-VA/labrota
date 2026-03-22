@@ -53,22 +53,33 @@ type Assignment    = RotaDay["assignments"][0]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+// Dynamic department maps — built from departments table, with fallbacks
+type DeptMaps = { border: Record<string, string>; label: Record<string, string>; order: Record<string, number> }
+
+const DEFAULT_DEPT_MAPS: DeptMaps = {
+  border: { lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8" },
+  label:  { lab: "Embriología", andrology: "Andrología", admin: "Admin" },
+  order:  { lab: 0, andrology: 1, admin: 2 },
+}
+
+function buildDeptMaps(departments: import("@/lib/types/database").Department[]): DeptMaps {
+  if (!departments || departments.length === 0) return DEFAULT_DEPT_MAPS
+  return {
+    border: Object.fromEntries(departments.map((d) => [d.code, d.colour])),
+    label:  Object.fromEntries(departments.map((d) => [d.code, d.name])),
+    order:  Object.fromEntries(departments.map((d) => [d.code, d.sort_order])),
+  }
+}
+
+// Top-level fallbacks for components that don't have access to weekData
+const ROLE_ORDER: Record<string, number> = DEFAULT_DEPT_MAPS.order
+const ROLE_LABEL: Record<string, string> = DEFAULT_DEPT_MAPS.label
+const ROLE_BORDER: Record<string, string> = DEFAULT_DEPT_MAPS.border
+
+// Kept for month grid role dots (tiny preview)
 const ROLE_DOT: Record<string, string> = {
-  lab:       "bg-blue-400",
-  andrology: "bg-emerald-400",
-  admin:     "bg-slate-400",
+  lab: "bg-blue-400", andrology: "bg-emerald-400", admin: "bg-slate-400",
 }
-
-// Department colours/labels — defaults for the 3 standard departments.
-// Phase 2 will replace these with fully dynamic lookups from departments table.
-const ROLE_BORDER: Record<string, string> = {
-  lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8",
-}
-const ROLE_LABEL: Record<string, string> = {
-  lab: "Embriología", andrology: "Andrología", admin: "Admin",
-}
-
-const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
 const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
 
 // Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
@@ -194,9 +205,10 @@ type ShiftBadgeProps = {
   functionLabel?: string | null
   tecnica?: Tecnica | null
   compact?: boolean
+  borderColor?: string
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
@@ -211,7 +223,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
         "group flex items-center gap-1.5 rounded border border-slate-200 font-medium w-full bg-white text-slate-700",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
       )}
-      style={{ borderLeft: `3px solid ${ROLE_BORDER[role] ?? "#94A3B8"}`, borderRadius: 4 }}
+      style={{ borderLeft: `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`, borderRadius: 4 }}
     >
       <span className="truncate">{first} {last[0]}.</span>
       {pillLabel && pillColor ? (
@@ -487,6 +499,9 @@ function StaffProfilePanel({
   }, [staffId, open])
 
   const staff = staffId ? staffList.find((s) => s.id === staffId) : null
+  const deptMaps = buildDeptMaps(weekData?.departments ?? [])
+  const ROLE_LABEL = deptMaps.label
+  const ROLE_BORDER = deptMaps.border
 
   // Shift debt: assignments in last 28 days vs expected (days_per_week × 4)
   const today28 = new Date(); today28.setDate(today28.getDate() - 28)
@@ -527,10 +542,10 @@ function StaffProfilePanel({
         {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-[#CCDDEE] shrink-0">
           {/* Role dot + avatar placeholder */}
-          <div className={cn(
-            "size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0",
-            staff?.role === "lab" ? "bg-blue-500" : staff?.role === "andrology" ? "bg-emerald-500" : "bg-slate-400"
-          )}>
+          <div
+            className="size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0"
+            style={{ background: staff ? (ROLE_BORDER[staff.role] ?? "#94A3B8") : "#94A3B8" }}
+          >
             {staff ? `${staff.first_name[0]}${staff.last_name[0]}` : "—"}
           </div>
           <div className="flex-1 min-w-0">
@@ -787,6 +802,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   liveDays?: RotaDay[] | null; deptFilter?: Set<string>
 }) {
   const t = useTranslations("schedule")
+  const ROLE_LABEL = buildDeptMaps(data.departments ?? []).label
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)
@@ -961,7 +977,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
 const WARNING_CATEGORY_LABEL: Record<string, string> = {
   coverage: "Cobertura insuficiente",
-  skill_gap: "Habilidades sin cubrir",
+  skill_gap: "Técnicas sin cubrir",
   rule: "Reglas de planificación",
   budget: "Carga de turnos",
 }
@@ -1110,9 +1126,6 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
-const ROLE_LABEL_MAP: Record<string, string> = {
-  lab: "Embriología", andrology: "Andrología", admin: "Administración",
-}
 
 function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
   assignment: Assignment
@@ -1234,6 +1247,8 @@ function PersonGrid({
   }
 
   if (!data) return null
+
+  const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [])
 
   // Build assignment lookup: staffId → date → assignment
   const assignMap: Record<string, Record<string, Assignment>> = {}
@@ -1669,6 +1684,12 @@ function ShiftGrid({
   // Staff IDs visible based on department filter
   const visibleStaffIds = new Set(staffList.map((s) => s.id))
 
+  // Dynamic department maps from DB
+  const deptMaps = buildDeptMaps(data.departments ?? [])
+  const ROLE_BORDER = deptMaps.border
+  const ROLE_LABEL = deptMaps.label
+  const ROLE_ORDER = deptMaps.order
+
   // Find the active assignment for drag overlay
   const activeAssignment = activeId
     ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
@@ -1807,10 +1828,11 @@ function ShiftGrid({
                                 first={a.staff.first_name}
                                 last={a.staff.last_name}
                                 role={a.staff.role}
-                                                                isOverride={a.is_manual_override}
+                                isOverride={a.is_manual_override}
                                 functionLabel={a.function_label}
                                 tecnica={tecnica}
                                 compact={compact}
+                                borderColor={ROLE_BORDER[a.staff.role]}
                               />
                             </div>
                           } />
@@ -1892,8 +1914,9 @@ function ShiftGrid({
               first={activeAssignment.staff.first_name}
               last={activeAssignment.staff.last_name}
               role={activeAssignment.staff.role}
-                            isOverride={activeAssignment.is_manual_override}
+              isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
+              borderColor={ROLE_BORDER[activeAssignment.staff.role]}
               tecnica={(data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
             />
           </div>
@@ -1903,8 +1926,9 @@ function ShiftGrid({
               first={activeOffStaff.first_name}
               last={activeOffStaff.last_name}
               role={activeOffStaff.role}
-                            isOverride={false}
+              isOverride={false}
               functionLabel={null}
+              borderColor={ROLE_BORDER[activeOffStaff.role]}
             />
           </div>
         ) : null}
@@ -1993,7 +2017,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
                 if (day.punctions > 0) tooltipParts.push(`${day.punctions} punciones`)
                 if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ausencias`)
-                if (day.hasSkillGaps) tooltipParts.push("Habilidades sin cubrir")
+                if (day.hasSkillGaps) tooltipParts.push("Técnicas sin cubrir")
                 if (day.holidayName) tooltipParts.push(day.holidayName)
                 const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
 
@@ -2437,13 +2461,11 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
 
 // ── Department filter ─────────────────────────────────────────────────────────
 
-const DEPT_LABELS: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
-const DEPT_ABBR: Record<string, string> = { lab: "Emb", andrology: "And", admin: "Adm" }
-const DEPT_COLORS: Record<string, string> = { lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8" }
 
-function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSetOnly }: {
+function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSetOnly, deptLabels, deptColors, deptAbbr }: {
   selected: Set<string>; allDepts: string[]
   onToggle: (d: string) => void; onSetAll: () => void; onSetOnly: (d: string) => void
+  deptLabels: Record<string, string>; deptColors: Record<string, string>; deptAbbr: Record<string, string>
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -2460,7 +2482,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
   const allSelected = selected.size === allDepts.length
   const label = allSelected
     ? "Todos"
-    : allDepts.filter((d) => selected.has(d)).map((d) => DEPT_ABBR[d] ?? d).join(" · ")
+    : allDepts.filter((d) => selected.has(d)).map((d) => deptAbbr[d] ?? d).join(" · ")
 
   return (
     <div ref={ref} className="relative">
@@ -2507,8 +2529,8 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
                 <span className={cn("size-3.5 rounded border flex items-center justify-center", checked ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
                   {checked && <span className="text-[9px]">✓</span>}
                 </span>
-                <span className="size-2 rounded-full shrink-0" style={{ background: DEPT_COLORS[dept] }} />
-                <span className="font-medium">{DEPT_LABELS[dept] ?? dept}</span>
+                <span className="size-2 rounded-full shrink-0" style={{ background: deptColors[dept] }} />
+                <span className="font-medium">{deptLabels[dept] ?? dept}</span>
               </button>
             )
           })}
@@ -2521,7 +2543,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
                 onClick={() => { onSetOnly(dept); setOpen(false) }}
                 className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors"
               >
-                Solo {DEPT_LABELS[dept]}
+                Solo {deptLabels[dept]}
               </button>
             ))}
           </div>
@@ -2565,7 +2587,17 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
   // Department filter — persisted in localStorage
-  const ALL_DEPTS = ["lab", "andrology", "admin"]
+  // Dynamic department data from weekData (or defaults)
+  const departments = weekData?.departments ?? []
+  const globalDeptMaps = buildDeptMaps(departments)
+  const ALL_DEPTS = departments.length > 0
+    ? departments.map((d) => d.code)
+    : ["lab", "andrology", "admin"]
+  const deptAbbrMap = Object.fromEntries(
+    departments.length > 0
+      ? departments.map((d) => [d.code, d.abbreviation || d.name.slice(0, 3)])
+      : [["lab", "Emb"], ["andrology", "And"], ["admin", "Adm"]]
+  )
   const [deptFilter, setDeptFilter] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set(ALL_DEPTS)
     try {
@@ -2898,6 +2930,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onToggle={toggleDept}
                 onSetAll={setAllDepts}
                 onSetOnly={setOnlyDept}
+                deptLabels={globalDeptMaps.label}
+                deptColors={globalDeptMaps.border}
+                deptAbbr={deptAbbrMap}
               />
             </div>
           )}
@@ -3086,6 +3121,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         shiftTimes={weekData?.shiftTimes ?? null}
         shiftTypes={weekData?.shiftTypes ?? []}
         tecnicas={weekData?.tecnicas ?? []}
+        departments={weekData?.departments ?? []}
         punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}
