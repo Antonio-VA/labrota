@@ -94,8 +94,17 @@ function sortAssignments<T extends { staff: { role: string }; shift_type: string
 
 const TODAY = new Date().toISOString().split("T")[0]
 
-// ── Skill display — use técnica code directly ────────────────────────────────
-function skillLabel(code: string): string { return code }
+// ── Skill display — look up técnica name, fallback to code ───────────────────
+const LEGACY_SKILL_NAMES: Record<string, string> = {
+  biopsy: "Biopsia", icsi: "ICSI", egg_collection: "Recogida de óvulos",
+  embryo_transfer: "Transferencia embrionaria", denudation: "Denudación",
+  semen_analysis: "Análisis seminal", sperm_prep: "Preparación espermática",
+  sperm_freezing: "Congelación de esperma",
+}
+function makeSkillLabel(tecnicas: Tecnica[]) {
+  const codeMap = Object.fromEntries(tecnicas.map((t) => [t.codigo, t.nombre_es]))
+  return (code: string) => codeMap[code] ?? LEGACY_SKILL_NAMES[code] ?? code
+}
 
 // ── The 5 skills shown in coverage row ────────────────────────────────────────
 
@@ -492,6 +501,8 @@ function StaffProfilePanel({
   const DOW_SHORT = locale === "es"
     ? ["L", "M", "X", "J", "V", "S", "D"]
     : ["M", "T", "W", "T", "F", "S", "S"]
+
+  const skillLabel = makeSkillLabel(weekData?.tecnicas ?? [])
 
   // Tenure in years + months
   const tenureLabel = staff ? (() => {

@@ -59,7 +59,7 @@ export default async function LabConfigPage() {
             tecnicas={
               <div className="rounded-lg border border-border bg-background px-5 py-4">
                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                  Técnicas
+                  Capacidades
                 </p>
                 <TécnicasTab initialTecnicas={tecnicas} />
               </div>

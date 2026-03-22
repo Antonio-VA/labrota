@@ -235,7 +235,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     setStatus("idle")
     const invalid = tecnicas.filter((t) => !t.nombre_es.trim() || !t.codigo.trim())
     if (invalid.length > 0) {
-      setErrorMsg("Todas las técnicas necesitan nombre y código.")
+      setErrorMsg("Todas las capacidades necesitan nombre y código.")
       setStatus("error")
       return
     }
@@ -288,7 +288,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     <div className="flex flex-col gap-4">
       {tecnicas.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-[14px] text-muted-foreground mb-3">No hay técnicas definidas.</p>
+          <p className="text-[14px] text-muted-foreground mb-3">No hay capacidades definidas.</p>
           <Button type="button" variant="outline" size="sm" onClick={handleSeed} disabled={isPending}>
             Cargar defaults (OPU, ICS, ET, BX, DEN, AND)
           </Button>
@@ -339,13 +339,13 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
         className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1"
       >
         <Plus className="size-3.5" />
-        Añadir técnica
+        Añadir capacidad
       </button>
 
       {/* Footer */}
       <div className="flex items-center gap-3 pt-2 border-t border-border">
         <Button type="button" onClick={handleSave} disabled={isPending || tecnicas.length === 0}>
-          {isPending ? "Guardando…" : "Guardar técnicas"}
+          {isPending ? "Guardando…" : "Guardar capacidades"}
         </Button>
         {status === "success" && (
           <span className="flex items-center gap-1.5 text-[14px] text-emerald-600">

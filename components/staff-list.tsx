@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/ui/empty-state"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel } from "@/lib/types/database"
+import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, Tecnica } from "@/lib/types/database"
 import {
   bulkAddSkill,
   bulkRemoveSkill,
@@ -22,9 +22,17 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Display skill code directly — técnica codes (OPU, ICS, ET) are human-readable
-function skillLabel(code: string): string {
-  return code
+// Legacy skill names → Spanish display names (fallback for old data)
+const LEGACY_SKILL_NAMES: Record<string, string> = {
+  biopsy: "Biopsia", icsi: "ICSI", egg_collection: "Recogida de óvulos",
+  embryo_transfer: "Transferencia embrionaria", denudation: "Denudación",
+  semen_analysis: "Análisis seminal", sperm_prep: "Preparación espermática",
+  sperm_freezing: "Congelación de esperma",
+}
+
+function makeSkillLabel(tecnicas: Tecnica[]) {
+  const codeMap = Object.fromEntries(tecnicas.map((t) => [t.codigo, t.nombre_es]))
+  return (code: string) => codeMap[code] ?? LEGACY_SKILL_NAMES[code] ?? code
 }
 
 const BULK_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
@@ -581,7 +589,7 @@ const GRID = "grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minm
 
 function StaffTable({
   members, t, ts, muted,
-  selectedIds, onToggle, onToggleAll,
+  selectedIds, onToggle, onToggleAll, skillLabel,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -590,6 +598,7 @@ function StaffTable({
   selectedIds: Set<string>
   onToggle: (id: string) => void
   onToggleAll: (ids: string[]) => void
+  skillLabel: (code: string) => string
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -725,10 +734,11 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
+export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[] }) {
   const t  = useTranslations("staff")
   const ts = useTranslations("skills")
   const router = useRouter()
+  const skillLabel = makeSkillLabel(tecnicas)
 
   const [search,       setSearch]       = useState("")
   const [roleFilter,   setRoleFilter]   = useState<StaffRole | "all">("all")
@@ -868,6 +878,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           selectedIds={effectiveSelectedIds}
           onToggle={toggleOne}
           onToggleAll={toggleAll}
+          skillLabel={skillLabel}
         />
       )}
 
@@ -894,6 +905,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
           selectedIds={effectiveSelectedIds}
           onToggle={toggleOne}
           onToggleAll={toggleAll}
+          skillLabel={skillLabel}
         />
       )}
 

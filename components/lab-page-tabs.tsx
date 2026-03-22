@@ -10,7 +10,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   turnos:        "Turnos",
   configuracion: "Configuración",
   reglas:        "Reglas",
-  tecnicas:      "Técnicas",
+  tecnicas:      "Capacidades",
   plantillas:    "Plantillas",
 }
 
