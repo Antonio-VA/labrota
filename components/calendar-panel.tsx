@@ -208,11 +208,14 @@ type ShiftBadgeProps = {
   compact?: boolean
   borderColor?: string
   isTrainingTecnica?: boolean
+  colorChips?: boolean
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
-  const pillColor = tecnica
+  const pillColor = !colorChips
+    ? "bg-slate-100 border-slate-200 text-slate-500"
+    : tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
     : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
@@ -1493,7 +1496,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, weekStart, compact, onDateClick, onLocalDaysChange,
+  onRefresh, weekStart, compact, colorChips, onDateClick, onLocalDaysChange,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1512,6 +1515,7 @@ function ShiftGrid({
   onRefresh: () => void
   weekStart: string
   compact?: boolean
+  colorChips?: boolean
   onDateClick?: (date: string) => void
   onLocalDaysChange?: (days: RotaDay[]) => void
 }) {
@@ -1881,6 +1885,7 @@ function ShiftGrid({
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
                                 isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
+                                colorChips={colorChips}
                               />
                             </div>
                           } />
@@ -2621,6 +2626,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [view, setView]                 = useState<ViewMode>("week")
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
   const [compact, setCompact] = useState(false)
+  const [colorChips, setColorChips] = useState(() => {
+    if (typeof window === "undefined") return true
+    return localStorage.getItem("labrota_color_chips") !== "false"
+  })
   const [currentDate, setCurrentDate]   = useState(TODAY)
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
@@ -3025,6 +3034,11 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
               }] : []),
+              {
+                label: colorChips ? "Técnicas en gris" : "Mostrar colores en técnicas",
+                icon: <Rows3 className="size-3.5" />,
+                onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
+              },
               ...(hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
@@ -3120,6 +3134,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   weekStart={weekStart}
                   compact={compact}
+                  colorChips={colorChips}
                   onDateClick={handleMonthDayClick}
                   onLocalDaysChange={setLiveDays}
                 />
