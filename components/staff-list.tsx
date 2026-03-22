@@ -580,14 +580,18 @@ function BulkToolbar({
 
 // ── Skill badges with overflow ─────────────────────────────────────────────────
 
-function SkillOverflow({ skills, skillLabel, maxVisible, variant }: {
+function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: {
   skills: { skill: string; level: string }[]
   skillLabel: (code: string) => string
   maxVisible: number
   variant: "certified" | "training"
+  skillOrder?: Record<string, number>
 }) {
-  const visible  = skills.slice(0, maxVisible)
-  const overflow = skills.slice(maxVisible)
+  const sorted = skillOrder
+    ? [...skills].sort((a, b) => (skillOrder[a.skill] ?? 999) - (skillOrder[b.skill] ?? 999))
+    : skills
+  const visible  = sorted.slice(0, maxVisible)
+  const overflow = sorted.slice(maxVisible)
 
   const badgeClass = variant === "training"
     ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
@@ -624,7 +628,7 @@ const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax
 function StaffTable({
   members, t, ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
-  deptBorder, deptLabel,
+  deptBorder, deptLabel, skillOrder,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -636,6 +640,7 @@ function StaffTable({
   skillLabel: (code: string) => string
   deptBorder: Record<string, string>
   deptLabel: Record<string, string>
+  skillOrder: Record<string, number>
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -717,8 +722,9 @@ function StaffTable({
                 <SkillOverflow
                   skills={certifiedSkills}
                   skillLabel={skillLabel}
-                  maxVisible={3}
+                  maxVisible={4}
                   variant="certified"
+                  skillOrder={skillOrder}
                 />
               )}
             </div>
@@ -731,8 +737,9 @@ function StaffTable({
                 <SkillOverflow
                   skills={trainingSkills}
                   skillLabel={skillLabel}
-                  maxVisible={2}
+                  maxVisible={3}
                   variant="training"
+                  skillOrder={skillOrder}
                 />
               )}
             </div>
@@ -773,6 +780,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
   const ts = useTranslations("skills")
   const router = useRouter()
   const skillLabel = makeSkillLabel(tecnicas)
+  const skillOrder = Object.fromEntries(tecnicas.map((t, i) => [t.codigo, i]))
   const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }
   const deptLabel: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
   for (const d of deptsProp) { deptBorder[d.code] = d.colour; deptLabel[d.code] = d.name }
@@ -918,6 +926,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           skillLabel={skillLabel}
           deptBorder={deptBorder}
           deptLabel={deptLabel}
+          skillOrder={skillOrder}
         />
       )}
 
@@ -947,6 +956,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           skillLabel={skillLabel}
           deptBorder={deptBorder}
           deptLabel={deptLabel}
+          skillOrder={skillOrder}
         />
       )}
 
