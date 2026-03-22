@@ -329,7 +329,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                   )}
                 >
                   <span className={cn(
-                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0",
+                    "text-[10px] font-semibold py-0.5 rounded border shrink-0 w-9 text-center inline-flex items-center justify-center",
                     pillColor,
                     isActive && "ring-1 ring-offset-1 ring-current"
                   )}>
