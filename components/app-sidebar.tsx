@@ -8,6 +8,7 @@ import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog } 
 import { AccountPanel, applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit } from "@/lib/role-context"
+import { NotificationBell } from "@/components/notification-panel"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -99,6 +100,9 @@ function AvatarMenu({
     <div ref={ref} className="border-t border-border py-3 flex flex-col items-center gap-2 px-2 relative">
       {user && (
         <>
+          {/* Notifications */}
+          <NotificationBell />
+
           {/* Clickable avatar — opens menu */}
           <button
             onClick={() => setOpen((o) => !o)}

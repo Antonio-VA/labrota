@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 
 async function getOrgId(): Promise<string | null> {
@@ -39,6 +40,21 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
     .insert({ ...leave, organisation_id: orgId } as never)
 
   if (error) return { error: error.message }
+
+  // Notify admins if this leave impacts published rotas
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("first_name, last_name")
+    .eq("id", leave.staff_id)
+    .single() as { data: { first_name: string; last_name: string } | null }
+  if (staffData) {
+    notifyLeaveImpact({
+      orgId,
+      staffName: `${staffData.first_name} ${staffData.last_name}`,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+    }).catch(() => {}) // fire and forget
+  }
 
   revalidatePath("/leaves")
   return { success: true }

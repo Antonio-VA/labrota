@@ -268,6 +268,19 @@ export interface RotaTemplate {
   updated_at:      string
 }
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+export interface Notification {
+  id:              string
+  organisation_id: string
+  user_id:         string
+  type:            string
+  title:           string
+  message:         string
+  data:            Record<string, unknown>
+  read:            boolean
+  created_at:      string
+}
+
 // ── Organisation Members ──────────────────────────────────────────────────────
 export interface OrganisationMember {
   id:              string
