@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, Fragment } fro
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -468,9 +468,9 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
 
 // ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
 
-function OverflowMenu({ items }: {
-  items: { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean }[]
-}) {
+type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean }
+
+function OverflowMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -493,15 +493,20 @@ function OverflowMenu({ items }: {
       {open && (
         <div className="absolute right-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
           {items.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => { item.onClick(); setOpen(false) }}
-              disabled={item.disabled}
-              className="flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              {item.icon}
-              {item.label}
-            </button>
+            <Fragment key={item.label}>
+              {item.dividerBefore && <div className="h-px bg-border my-1" />}
+              <button
+                onClick={() => { item.onClick(); setOpen(false) }}
+                disabled={item.disabled}
+                className={cn(
+                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-colors disabled:opacity-50",
+                  item.destructive ? "text-destructive hover:bg-destructive/5" : "hover:bg-muted"
+                )}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            </Fragment>
           ))}
         </div>
       )}
@@ -3025,6 +3030,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           )}
           {showActions && (
             <OverflowMenu items={[
+              // ── Group 1: Export & Publish ──
               ...(hasAssignments ? [{
                 label: t("exportPdf"),
                 icon: <FileDown className="size-3.5" />,
@@ -3042,28 +3048,60 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onClick: handleUnlock,
                 disabled: isPending,
               }] : []),
+              // ── Group 2: View options ──
               ...(view === "week" && calendarLayout === "shift" ? [{
                 label: compact ? "Vista normal" : "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
-              }] : []),
-              {
+                dividerBefore: true,
+              }] : [{
                 label: colorChips ? "Técnicas en gris" : "Técnicas en color",
                 icon: colorChips
                   ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
-              },
+                dividerBefore: true,
+              }]),
+              ...(view === "week" && calendarLayout === "shift" ? [{
+                label: colorChips ? "Técnicas en gris" : "Técnicas en color",
+                icon: colorChips
+                  ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
+                  : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
+                onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
+              }] : []),
+              // ── Group 3: Templates ──
               ...(hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
-              }] : []),
-              {
+                dividerBefore: true,
+              }] : [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
-              },
+                dividerBefore: true,
+              }]),
+              ...(hasAssignments && !isPublished ? [{
+                label: t("applyTemplate"),
+                icon: <BookmarkCheck className="size-3.5" />,
+                onClick: () => setApplyTemplateOpen(true),
+              }] : []),
+              // ── Group 4: Destructive ──
+              ...(hasAssignments && !isPublished ? [{
+                label: "Eliminar guardia",
+                icon: <Trash2 className="size-3.5" />,
+                onClick: () => {
+                  if (confirm("¿Eliminar todas las asignaciones de esta semana?")) {
+                    startTransition(async () => {
+                      const result = await clearWeek(weekStart)
+                      if (result.error) toast.error(result.error)
+                      else { toast.success("Guardia eliminada"); fetchWeek(weekStart) }
+                    })
+                  }
+                },
+                dividerBefore: true,
+                destructive: true,
+              }] : []),
             ]} />
           )}
         </div>
