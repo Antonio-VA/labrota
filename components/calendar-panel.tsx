@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -262,6 +262,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
       </div>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
+          <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Función principal</p>
           <div className="flex flex-wrap gap-1.5">
             {availableTecnicas.map((tec) => {
               const isActive = currentLabel === tec.codigo
@@ -1051,11 +1052,11 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
+        className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>
-        <span className="inline-flex items-center justify-center size-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">{totalDays}</span>
+        <span className="font-semibold">{totalDays}</span>
       </button>
 
       {open && (
@@ -1637,6 +1638,9 @@ function ShiftGrid({
   const SHIFT_ROWS = data.shiftTypes.map((s) => s.code)
   const shiftTypeMap = Object.fromEntries((data.shiftTypes ?? []).map((st) => [st.code, st]))
 
+  // Staff IDs visible based on department filter
+  const visibleStaffIds = new Set(staffList.map((s) => s.id))
+
   // Find the active assignment for drag overlay
   const activeAssignment = activeId
     ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
@@ -1736,7 +1740,7 @@ function ShiftGrid({
               )}
             </div>
             {localDays.map((day) => {
-              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow)]
+              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))]
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
               const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
               const cellId = `${shiftRow}-${day.date}`
@@ -2406,6 +2410,7 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
 // ── Department filter ─────────────────────────────────────────────────────────
 
 const DEPT_LABELS: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
+const DEPT_ABBR: Record<string, string> = { lab: "Emb", andrology: "And", admin: "Adm" }
 const DEPT_COLORS: Record<string, string> = { lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8" }
 
 function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSetOnly }: {
@@ -2427,7 +2432,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
   const allSelected = selected.size === allDepts.length
   const label = allSelected
     ? "Todos"
-    : allDepts.filter((d) => selected.has(d)).map((d) => DEPT_LABELS[d] ?? d).join(" · ")
+    : allDepts.filter((d) => selected.has(d)).map((d) => DEPT_ABBR[d] ?? d).join(" · ")
 
   return (
     <div ref={ref} className="relative">
@@ -2438,6 +2443,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
           allSelected ? "text-muted-foreground hover:bg-muted" : "text-blue-700 bg-blue-50 hover:bg-blue-100"
         )}
       >
+        <Filter className="size-3 shrink-0" />
         <span className="truncate max-w-[140px]">{label}</span>
         {!allSelected && (
           <button

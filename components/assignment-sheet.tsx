@@ -104,7 +104,7 @@ function AssignmentPopover({
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48 flex flex-col gap-2.5">
           {availableTecnicas.length > 0 && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función principal</p>
               <div className="flex flex-wrap gap-1">
                 {availableTecnicas.map((tec) => {
                   const isActive = assignment.tecnica_id === tec.id
