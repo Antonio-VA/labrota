@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   getUserPreferences,
+  getUserDepartment,
   saveUserPreferences,
   uploadAvatar,
   type UserPreferences,
@@ -42,16 +43,18 @@ export function AccountPanel({ open, onClose, user }: {
   })
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [department, setDepartment] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !user) return
     setLoading(true)
-    getUserPreferences().then((p) => {
+    Promise.all([getUserPreferences(), getUserDepartment()]).then(([p, dept]) => {
       setPrefs({
         locale: p.locale ?? "browser",
         theme: p.theme ?? "light",
         accentColor: p.accentColor ?? "#1b4f8a",
       })
+      setDepartment(dept)
       setLoading(false)
     })
   }, [open, user])
@@ -134,7 +137,12 @@ export function AccountPanel({ open, onClose, user }: {
               <div className="min-w-0">
                 <p className="text-[14px] font-medium truncate">{user?.user_metadata?.full_name ?? "—"}</p>
                 <p className="text-[12px] text-muted-foreground truncate">{user?.email ?? "—"}</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-0.5">Pulsa la foto para cambiar</p>
+                {department && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {department === "admin" ? "Administrador" : department === "lab" ? "Embriología" : department === "andrology" ? "Andrología" : department}
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground/50 mt-0.5">Pulsa la foto para cambiar</p>
               </div>
             </div>
           </div>

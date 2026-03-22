@@ -9,6 +9,20 @@ export interface UserPreferences {
   accentColor?: string
 }
 
+export async function getUserDepartment(): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from("staff")
+    .select("role")
+    .eq("email", user.email ?? "")
+    .maybeSingle() as unknown as { data: { role: string } | null }
+
+  return data?.role ?? null
+}
+
 export async function getUserPreferences(): Promise<UserPreferences> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
