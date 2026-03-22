@@ -205,7 +205,7 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime
 // ── Shift badge (Vista por turno — compact inline pill) ───────────────────────
 
 type ShiftBadgeProps = {
-  first: string; last: string; role: string; isOverride: boolean
+  first: string; last: string; role: string; isOverride: boolean; readOnly?: boolean
   functionLabel?: string | null
   tecnica?: Tecnica | null
   compact?: boolean
@@ -214,7 +214,7 @@ type ShiftBadgeProps = {
   colorChips?: boolean
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = !colorChips
     ? "bg-slate-100 border-border text-muted-foreground"
@@ -239,11 +239,11 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
           {isTrainingTecnica && <Hourglass className="size-2 text-amber-500" />}
           {pillLabel}
         </span>
-      ) : (
+      ) : !readOnly ? (
         <span className="text-[9px] font-medium text-muted-foreground/40 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
           + Task
         </span>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -1894,6 +1894,7 @@ function ShiftGrid({
                                 borderColor={ROLE_BORDER[a.staff.role]}
                                 isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
                                 colorChips={colorChips}
+                                readOnly={isPublished}
                               />
                             </div>
                           } />
