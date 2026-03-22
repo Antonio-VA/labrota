@@ -778,9 +778,9 @@ function StaffProfilePanel({
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays }: {
+function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, deptFilter }: {
   data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
-  liveDays?: RotaDay[] | null
+  liveDays?: RotaDay[] | null; deptFilter?: Set<string>
 }) {
   const t = useTranslations("schedule")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -792,6 +792,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays }: {
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
   for (const day of days) {
     for (const a of day.assignments) {
+      if (deptFilter && !deptFilter.has(a.staff.role)) continue
       if (!staffMap[a.staff_id]) {
         const member = staffList.find((s) => s.id === a.staff_id)
         staffMap[a.staff_id] = {
@@ -2409,6 +2410,100 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
   )
 }
 
+// ── Department filter ─────────────────────────────────────────────────────────
+
+const DEPT_LABELS: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
+const DEPT_COLORS: Record<string, string> = { lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8" }
+
+function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSetOnly }: {
+  selected: Set<string>; allDepts: string[]
+  onToggle: (d: string) => void; onSetAll: () => void; onSetOnly: (d: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const allSelected = selected.size === allDepts.length
+  const label = allSelected
+    ? "Todos"
+    : allDepts.filter((d) => selected.has(d)).map((d) => DEPT_LABELS[d] ?? d).join(" · ")
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[12px] font-medium transition-colors shrink-0",
+          allSelected ? "text-muted-foreground hover:bg-muted" : "text-blue-700 bg-blue-50 hover:bg-blue-100"
+        )}
+      >
+        <span className="truncate max-w-[140px]">{label}</span>
+        {!allSelected && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSetAll() }}
+            className="ml-0.5 text-blue-400 hover:text-blue-600"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-lg border border-border bg-background shadow-lg py-1.5">
+          {/* Toggle all */}
+          <button
+            onClick={() => { allSelected ? setOpen(false) : onSetAll() }}
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[12px] text-muted-foreground hover:bg-muted/50 transition-colors"
+          >
+            <span className={cn("size-3.5 rounded border flex items-center justify-center", allSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+              {allSelected && <span className="text-[9px]">✓</span>}
+            </span>
+            Seleccionar todos
+          </button>
+          <div className="h-px bg-border my-1" />
+          {allDepts.map((dept) => {
+            const checked = selected.has(dept)
+            return (
+              <button
+                key={dept}
+                onClick={() => onToggle(dept)}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[13px] hover:bg-muted/50 transition-colors"
+              >
+                <span className={cn("size-3.5 rounded border flex items-center justify-center", checked ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                  {checked && <span className="text-[9px]">✓</span>}
+                </span>
+                <span className="size-2 rounded-full shrink-0" style={{ background: DEPT_COLORS[dept] }} />
+                <span className="font-medium">{DEPT_LABELS[dept] ?? dept}</span>
+              </button>
+            )
+          })}
+          {/* Quick shortcuts */}
+          <div className="h-px bg-border my-1" />
+          <div className="px-3 py-1 flex gap-1">
+            {allDepts.map((dept) => (
+              <button
+                key={dept}
+                onClick={() => { onSetOnly(dept); setOpen(false) }}
+                className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors"
+              >
+                Solo {DEPT_LABELS[dept]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
@@ -2441,6 +2536,38 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
   const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
+
+  // Department filter — persisted in localStorage
+  const ALL_DEPTS = ["lab", "andrology", "admin"]
+  const [deptFilter, setDeptFilter] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set(ALL_DEPTS)
+    try {
+      const saved = localStorage.getItem("labrota_dept_filter")
+      return saved ? new Set(JSON.parse(saved)) : new Set(ALL_DEPTS)
+    } catch { return new Set(ALL_DEPTS) }
+  })
+  const allDeptsSelected = deptFilter.size === ALL_DEPTS.length
+  function toggleDept(dept: string) {
+    setDeptFilter((prev) => {
+      const next = new Set(prev)
+      next.has(dept) ? next.delete(dept) : next.add(dept)
+      localStorage.setItem("labrota_dept_filter", JSON.stringify([...next]))
+      return next
+    })
+  }
+  function setAllDepts() {
+    const next = new Set(ALL_DEPTS)
+    setDeptFilter(next)
+    localStorage.setItem("labrota_dept_filter", JSON.stringify(ALL_DEPTS))
+  }
+  function setOnlyDept(dept: string) {
+    const next = new Set([dept])
+    setDeptFilter(next)
+    localStorage.setItem("labrota_dept_filter", JSON.stringify([dept]))
+  }
+
+  // Filtered staff list based on department filter
+  const filteredStaffList = allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role))
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
   function openProfile(staffId: string) {
@@ -2734,8 +2861,19 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           )}
         </div>
 
-        {/* RIGHT: warnings · generate · overflow ··· */}
+        {/* RIGHT: dept filter · warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
+          {view === "week" && (
+            <div className="hidden lg:block">
+              <DepartmentFilterDropdown
+                selected={deptFilter}
+                allDepts={ALL_DEPTS}
+                onToggle={toggleDept}
+                onSetAll={setAllDepts}
+                onSetOnly={setOnlyDept}
+              />
+            </div>
+          )}
           {weekData && (
             <WarningsPill days={weekData.days} />
           )}
@@ -2847,7 +2985,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
                   data={weekData}
-                  staffList={staffList}
+                  staffList={filteredStaffList}
                   loading={loadingWeek || isPending}
                   isGenerating={isPending}
                   locale={locale}
@@ -2869,7 +3007,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               ) : (
                 <PersonGrid
                   data={weekData}
-                  staffList={staffList}
+                  staffList={filteredStaffList}
                   loading={loadingWeek || isPending}
                   isGenerating={isPending}
                   locale={locale}
@@ -2942,10 +3080,11 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       {view === "week" && weekData && (
         <ShiftBudgetBar
           data={weekData}
-          staffList={staffList}
+          staffList={filteredStaffList}
           weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
           onPillClick={openProfile}
           liveDays={liveDays}
+          deptFilter={deptFilter}
         />
       )}
       {view === "month" && monthSummary && (
