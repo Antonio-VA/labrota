@@ -72,9 +72,16 @@ export async function saveTecnica(
 
 export async function deleteTecnica(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  // Get the code before deleting so we can clean up staff_skills
+  const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
   const { error } = await supabase.from("tecnicas").delete().eq("id", id)
   if (error) return { error: error.message }
+  // Clean up orphaned staff_skills referencing the deleted técnica code
+  if (tec) {
+    await supabase.from("staff_skills").delete().eq("skill", tec.codigo).eq("organisation_id", tec.organisation_id)
+  }
   revalidatePath("/lab")
+  revalidatePath("/staff")
   return {}
 }
 

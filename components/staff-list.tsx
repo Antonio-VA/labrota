@@ -578,9 +578,48 @@ function BulkToolbar({
   )
 }
 
+// ── Skill badges with overflow ─────────────────────────────────────────────────
+
+function SkillOverflow({ skills, skillLabel, maxVisible, variant }: {
+  skills: { skill: string; level: string }[]
+  skillLabel: (code: string) => string
+  maxVisible: number
+  variant: "certified" | "training"
+}) {
+  const visible  = skills.slice(0, maxVisible)
+  const overflow = skills.slice(maxVisible)
+
+  const badgeClass = variant === "training"
+    ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+    : "shrink-0 inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
+
+  return (
+    <div className="flex items-center gap-1">
+      {visible.map((sk) => (
+        <span key={sk.skill} className={badgeClass}>
+          {variant === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
+          {skillLabel(sk.skill)}
+        </span>
+      ))}
+      {overflow.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger render={
+            <span className="shrink-0 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 cursor-default">
+              +{overflow.length}
+            </span>
+          } />
+          <TooltipContent side="top">
+            {overflow.map((sk) => skillLabel(sk.skill)).join(", ")}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  )
+}
+
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-const GRID = "grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minmax(0,2.2fr)_minmax(0,1fr)_40px]"
+const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]"
 
 function StaffTable({
   members, t, ts, muted,
@@ -631,7 +670,7 @@ function StaffTable({
             key={member.id}
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
-              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,2.8fr)_minmax(0,2.2fr)_minmax(0,1fr)_40px]",
+              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]",
               isSelected ? "bg-primary/5" : "hover:bg-blue-50"
             )}
           >
@@ -667,37 +706,32 @@ function StaffTable({
               </span>
             </div>
 
-            {/* Capacidades (certified) */}
-            <div className="hidden md:flex items-center gap-1 flex-wrap overflow-hidden">
+            {/* Técnicas (certified) */}
+            <div className="hidden md:flex items-center gap-1 overflow-hidden">
               {isAdmin || certifiedSkills.length === 0 ? (
                 <span className="text-[13px] text-muted-foreground/40">—</span>
-              ) : certifiedSkills.map((sk) => (
-                <span
-                  key={sk.skill}
-                  className="shrink-0 inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
-                >
-                  {skillLabel(sk.skill)}
-                </span>
-              ))}
+              ) : (
+                <SkillOverflow
+                  skills={certifiedSkills}
+                  skillLabel={skillLabel}
+                  maxVisible={3}
+                  variant="certified"
+                />
+              )}
             </div>
 
             {/* En formación (training) */}
-            <div className="hidden md:flex items-center gap-1 flex-wrap overflow-hidden">
+            <div className="hidden md:flex items-center gap-1 overflow-hidden">
               {isAdmin || trainingSkills.length === 0 ? (
                 <span className="text-[13px] text-muted-foreground/40">—</span>
-              ) : trainingSkills.map((sk) => (
-                <Tooltip key={sk.skill}>
-                  <TooltipTrigger render={
-                    <span
-                      className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 cursor-default"
-                    >
-                      <Hourglass className="size-2.5 text-amber-500 shrink-0" />
-                      {skillLabel(sk.skill)}
-                    </span>
-                  } />
-                  <TooltipContent side="top">En formación</TooltipContent>
-                </Tooltip>
-              ))}
+              ) : (
+                <SkillOverflow
+                  skills={trainingSkills}
+                  skillLabel={skillLabel}
+                  maxVisible={2}
+                  variant="training"
+                />
+              )}
             </div>
 
             {/* Status */}
@@ -835,7 +869,7 @@ export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; 
             >
               <option value="all">Todas las técnicas</option>
               {allSkillCodes.map((code) => (
-                <option key={code} value={code}>{code}</option>
+                <option key={code} value={code}>{skillLabel(code)}</option>
               ))}
             </select>
           )}
