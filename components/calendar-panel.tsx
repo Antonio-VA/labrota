@@ -579,12 +579,12 @@ function StaffProfilePanel({
 
       {/* Side panel — 400px */}
       <div className={cn(
-        "fixed right-0 top-0 bottom-0 z-50 bg-white border-l border-[#CCDDEE] shadow-xl",
+        "fixed right-0 top-0 bottom-0 z-50 bg-white border-l border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[400px]",
         open ? "translate-x-0" : "translate-x-full",
       )}>
         {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
           {/* Role dot + avatar placeholder */}
           <div
             className="size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0"
@@ -617,7 +617,7 @@ function StaffProfilePanel({
         <div className="flex-1 overflow-y-auto">
 
           {/* Weekly shift strip — this week's assignments */}
-          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+          <div className="px-5 py-3 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Semana actual</p>
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map((day, i) => {
@@ -647,7 +647,7 @@ function StaffProfilePanel({
           </div>
 
           {/* Shift debt — last 4 weeks */}
-          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+          <div className="px-5 py-3 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Deuda de turnos · 4 semanas</p>
             {loading ? (
               <div className="shimmer-bar h-6 w-24 rounded" />
@@ -686,7 +686,7 @@ function StaffProfilePanel({
 
           {/* Capacidades (skills) */}
           {staff && (
-            <div className="px-5 py-3 border-b border-[#CCDDEE]">
+            <div className="px-5 py-3 border-b border-border">
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Técnicas</p>
               {staff.staff_skills.length === 0 ? (
                 <p className="text-[12px] text-muted-foreground italic">Sin técnicas registradas</p>
@@ -716,7 +716,7 @@ function StaffProfilePanel({
           )}
 
           {/* Last shifts */}
-          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+          <div className="px-5 py-3 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Últimos turnos</p>
             {loading ? (
               <div className="flex flex-col gap-1.5">
@@ -744,7 +744,7 @@ function StaffProfilePanel({
           </div>
 
           {/* Upcoming leaves */}
-          <div className="px-5 py-3 border-b border-[#CCDDEE]">
+          <div className="px-5 py-3 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Próximas vacaciones</p>
             {loading ? (
               <div className="shimmer-bar h-4 w-40 rounded" />
@@ -806,7 +806,7 @@ function StaffProfilePanel({
         </div>
 
         {/* ── Footer: quick actions ────────────────────────────── */}
-        <div className="border-t border-[#CCDDEE] px-5 py-3 shrink-0 flex items-center gap-2">
+        <div className="border-t border-border px-5 py-3 shrink-0 flex items-center gap-2">
           <Button
             variant="outline" size="sm"
             className="flex-1 gap-1.5 text-[12px]"
@@ -928,7 +928,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-[#CCDDEE] flex items-center px-4 gap-1"
+      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-border flex items-center px-4 gap-1"
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
       {/* Left: label + pills */}
@@ -982,7 +982,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-[#CCDDEE] flex items-center px-4 gap-1"
+      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-border flex items-center px-4 gap-1"
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
       <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
@@ -1268,20 +1268,20 @@ function PersonGrid({
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden w-full">
           <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-            <div className="h-[52px] border-b border-r border-[#CCDDEE]" />
+            <div className="h-[52px] border-b border-r border-border" />
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-[#CCDDEE] gap-1">
+              <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
                 <div className="shimmer-bar h-2.5 w-6" />
                 <div className="shimmer-bar w-7 h-7 rounded-full" />
               </div>
             ))}
             {Array.from({ length: 8 }).map((_, i) => (
               <Fragment key={i}>
-                <div className="px-3 py-2.5 border-b border-r border-[#CCDDEE]">
+                <div className="px-3 py-2.5 border-b border-r border-border">
                   <div className="shimmer-bar h-3 w-28" />
                 </div>
                 {Array.from({ length: 7 }).map((_, j) => (
-                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-[#CCDDEE] min-h-[48px]">
+                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px]">
                     {j < 5 && <div className="shimmer-bar h-9 w-full rounded" />}
                   </div>
                 ))}
@@ -1334,7 +1334,7 @@ function PersonGrid({
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
         {/* Header row */}
-        <div className="px-3 py-2 border-b border-r border-[#CCDDEE] bg-white sticky left-0 z-10" />
+        <div className="px-3 py-2 border-b border-r border-border bg-white sticky left-0 z-10" />
         {days.map((day) => {
           const d       = new Date(day.date + "T12:00:00")
           const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -1343,7 +1343,7 @@ function PersonGrid({
           const holiday = publicHolidays[day.date]
           return (
             <div key={day.date} className={cn(
-              "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-[#CCDDEE]",
+              "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border",
               holiday ? "bg-red-50/50" : "bg-white"
             )}>
               <button
@@ -1368,7 +1368,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-slate-50 border-b border-[#CCDDEE] flex items-center gap-1.5"
+              className="px-3 py-1 bg-slate-50 border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1383,7 +1383,7 @@ function PersonGrid({
               return (
                 <Fragment key={s.id}>
                   {/* Name cell */}
-                  <div className="px-3 py-2 border-b border-r border-[#CCDDEE] bg-white sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
+                  <div className="px-3 py-2 border-b border-r border-border bg-white sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
                     <span className="text-[13px] font-medium truncate leading-tight">
                       {s.first_name} {s.last_name}
                     </span>
@@ -1401,7 +1401,7 @@ function PersonGrid({
                     return (
                       <div
                         key={day.date}
-                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-[#CCDDEE] bg-white min-h-[48px] flex items-center"
+                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-border bg-white min-h-[48px] flex items-center"
                       >
                         {assignment ? (
                           <AssignmentPopover
@@ -1689,8 +1689,8 @@ function ShiftGrid({
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden w-full">
           {/* Header */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#CCDDEE]">
-            <div className="border-r border-[#CCDDEE] h-[52px]" />
+          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
+            <div className="border-r border-border h-[52px]" />
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center justify-center py-1 gap-1">
                 <div className="shimmer-bar h-2.5 w-6" />
@@ -1703,8 +1703,8 @@ function ShiftGrid({
           </div>
           {/* Rows */}
           {["T1", "T2", "T3", "off"].map((row) => (
-            <div key={row} className={cn("grid grid-cols-[80px_repeat(7,1fr)]", row !== "off" && "border-b border-[#CCDDEE]")}>
-              <div className="border-r border-[#CCDDEE] flex items-center justify-end px-2 py-3">
+            <div key={row} className={cn("grid grid-cols-[80px_repeat(7,1fr)]", row !== "off" && "border-b border-border")}>
+              <div className="border-r border-border flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
@@ -1762,11 +1762,11 @@ function ShiftGrid({
       onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
       onDragEnd={handleDragEnd}
     >
-      <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-hidden w-full">
+      <div className="rounded-lg border border-border bg-white overflow-hidden w-full">
 
         {/* Header row — light blue tint matching PDF export */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52, background: "#f1f5fb" }}>
-          <div className="border-r border-[#CCDDEE]" />
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52, background: "#f1f5fb" }}>
+          <div className="border-r border-border" />
           {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
             const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -1830,9 +1830,9 @@ function ShiftGrid({
 
         {/* Shift rows */}
         {SHIFT_ROWS.map((shiftRow) => (
-          <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#CCDDEE]">
+          <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             {/* Shift label — right-aligned, three-line: code / start / end */}
-            <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2" style={{ background: "#f8fafd" }}>
+            <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2" style={{ background: "#f8fafd" }}>
               <span className="text-[10px] leading-tight font-medium" style={{ color: "#64748b" }}>{shiftRow}</span>
               <span className="text-[13px] font-medium leading-tight tabular-nums" style={{ color: "#1b4f8a" }}>
                 {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
@@ -1913,13 +1913,13 @@ function ShiftGrid({
 
         {/* Dashed divider before OFF row */}
         <div className="h-px" style={{
-          backgroundImage: "repeating-linear-gradient(90deg, #ccddee 0, #ccddee 6px, transparent 6px, transparent 12px)",
+          backgroundImage: "repeating-linear-gradient(90deg, var(--border) 0, var(--border) 6px, transparent 6px, transparent 12px)",
           backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
         }} />
 
         {/* OFF row */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50">
-          <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
+          <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2">
             <span className="text-[10px] text-slate-400 leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
           {localDays.map((day) => {
@@ -2316,9 +2316,9 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[520px] max-h-[85vh] flex flex-col">
+      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+        <div className="px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Generar guardia — <span className="capitalize">{weekLabel}</span></p>
         </div>
 
@@ -2379,7 +2379,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-[#CCDDEE] shrink-0 flex justify-end gap-2">
+        <div className="px-5 py-3 border-t border-border shrink-0 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
           <Button
             size="sm"
@@ -2422,7 +2422,7 @@ function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[380px] p-5">
+      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[380px] p-5">
         <p className="text-[14px] font-medium mb-3">{t("saveAsTemplate")}</p>
         <input
           autoFocus
@@ -2478,8 +2478,8 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-[#CCDDEE] shadow-xl w-[440px] max-h-[70vh] flex flex-col">
-        <div className="px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[440px] max-h-[70vh] flex flex-col">
+        <div className="px-5 py-4 border-b border-border shrink-0">
           <p className="text-[14px] font-medium">{t("applyTemplate")}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -2519,7 +2519,7 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
             </div>
           )}
         </div>
-        <div className="px-5 py-3 border-t border-[#CCDDEE] shrink-0 flex justify-end">
+        <div className="px-5 py-3 border-t border-border shrink-0 flex justify-end">
           <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
         </div>
       </div>

@@ -95,12 +95,12 @@ export function AccountPanel({ open, onClose, user }: {
       {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
 
       <div className={cn(
-        "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-[#CCDDEE] shadow-xl",
+        "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[360px]",
         open ? "translate-x-0" : "-translate-x-full",
       )}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#CCDDEE] shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Mi cuenta</p>
           <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-slate-100">
             <X className="size-4 text-slate-500" />
@@ -109,7 +109,7 @@ export function AccountPanel({ open, onClose, user }: {
 
         <div className="flex-1 overflow-y-auto">
           {/* Profile */}
-          <div className="px-5 py-4 border-b border-[#CCDDEE]">
+          <div className="px-5 py-4 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Perfil</p>
             <div className="flex items-center gap-3 mb-3">
               {/* Avatar with upload */}
@@ -148,7 +148,7 @@ export function AccountPanel({ open, onClose, user }: {
           </div>
 
           {/* Language */}
-          <div className="px-5 py-4 border-b border-[#CCDDEE]">
+          <div className="px-5 py-4 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Idioma</p>
             <select
               value={prefs.locale}
@@ -162,7 +162,7 @@ export function AccountPanel({ open, onClose, user }: {
           </div>
 
           {/* Appearance — Theme */}
-          <div className="px-5 py-4 border-b border-[#CCDDEE]">
+          <div className="px-5 py-4 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Apariencia</p>
 
             <p className="text-[12px] text-slate-600 font-medium mb-2">Modo</p>
@@ -207,7 +207,7 @@ export function AccountPanel({ open, onClose, user }: {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[#CCDDEE] px-5 py-3 shrink-0 flex justify-end gap-2">
+        <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
           <Button size="sm" onClick={handleSave} disabled={isPending || loading}>
             {isPending ? "Guardando…" : "Guardar"}
@@ -222,19 +222,23 @@ export function AccountPanel({ open, onClose, user }: {
 export function applyTheme(prefs: UserPreferences) {
   const root = document.documentElement
 
-  // Accent colour
+  // Accent colour — override --primary in both light and dark
   if (prefs.accentColor) {
     root.style.setProperty("--primary", prefs.accentColor)
+    root.style.setProperty("--ring", prefs.accentColor)
+    root.style.setProperty("--sidebar-primary", prefs.accentColor)
+    root.style.setProperty("--sidebar-ring", prefs.accentColor)
   }
 
-  // Dark mode
+  // Dark mode via data-theme attribute (matches CSS selectors in globals.css)
   if (prefs.theme === "dark") {
-    root.classList.add("dark")
+    root.setAttribute("data-theme", "dark")
   } else if (prefs.theme === "light") {
-    root.classList.remove("dark")
+    root.removeAttribute("data-theme")
   } else {
     // auto — follow system
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    root.classList.toggle("dark", prefersDark)
+    if (prefersDark) root.setAttribute("data-theme", "dark")
+    else root.removeAttribute("data-theme")
   }
 }

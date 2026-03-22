@@ -755,7 +755,7 @@ export function AssignmentSheet({
 
             {/* OFF section separator */}
             <div className="mx-4 my-1" style={{
-              borderBottom: "1px dashed #ccddee",
+              borderBottom: "1px dashed var(--border)",
             }} />
             <DroppableOffSection className="transition-colors">
               <div className="px-4 pt-2 pb-1.5">

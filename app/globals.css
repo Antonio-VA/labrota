@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -137,6 +137,55 @@
   --chart-3: #059669;
   --chart-4: #64748b;
   --chart-5: #ef4444;
+}
+
+/* ── Dark mode ──────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+
+  --card: #1e293b;
+  --card-foreground: #e2e8f0;
+
+  --popover: #1e293b;
+  --popover-foreground: #e2e8f0;
+
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #94a3b8;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #1e3a5f;
+  --accent-foreground: #93c5fd;
+
+  --destructive: #ef4444;
+
+  --border: #334155;
+  --input: #334155;
+  --ring: #3b82f6;
+
+  --sidebar: #0f172a;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e3a5f;
+  --sidebar-accent-foreground: #93c5fd;
+  --sidebar-border: #334155;
+  --sidebar-ring: #3b82f6;
+
+  --role-lab: #60a5fa;
+  --role-andrology: #34d399;
+  --role-admin: #94a3b8;
+
+  --chart-1: #3b82f6;
+  --chart-2: #60a5fa;
+  --chart-3: #34d399;
+  --chart-4: #94a3b8;
+  --chart-5: #f87171;
 }
 
 /* ── Calendar shimmer skeleton ────────────────────────────────────────────────
