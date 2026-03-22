@@ -3035,7 +3035,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               {isPending ? tc("generating") : t("generateRota")}
             </Button>
           )}
-          {showActions && (
+          {(showActions || hasAssignments) && (
             <OverflowMenu items={[
               // ── Group 1: Export & Publish ──
               ...(hasAssignments ? [{
@@ -3043,13 +3043,13 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 icon: <FileDown className="size-3.5" />,
                 onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
               }] : []),
-              ...(isDraft && hasAssignments ? [{
+              ...(canEdit && isDraft && hasAssignments ? [{
                 label: t("publishRota"),
                 icon: <Lock className="size-3.5" />,
                 onClick: handlePublish,
                 disabled: isPending,
               }] : []),
-              ...(isPublished ? [{
+              ...(canEdit && isPublished ? [{
                 label: t("unlockRota"),
                 icon: <Lock className="size-3.5" />,
                 onClick: handleUnlock,
@@ -3076,25 +3076,25 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               }] : []),
-              // ── Group 3: Templates ──
-              ...(hasAssignments && !isPublished ? [{
+              // ── Group 3: Templates (editors only) ──
+              ...(canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
-              }] : [{
+              }] : canEdit ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
-              }]),
-              ...(hasAssignments && !isPublished ? [{
+              }] : []),
+              ...(canEdit && hasAssignments && !isPublished ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
               }] : []),
-              // ── Group 4: Destructive ──
-              ...(hasAssignments && !isPublished ? [{
+              // ── Group 4: Destructive (editors only) ──
+              ...(canEdit && hasAssignments && !isPublished ? [{
                 label: "Eliminar guardia",
                 icon: <Trash2 className="size-3.5" />,
                 onClick: () => {
@@ -3148,7 +3148,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
               {rota?.published_at
                 ? t("rotaPublishedBy", {
                     date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(rota.published_at)),
-                    author: "—",
+                    author: rota.published_by ?? "—",
                   })
                 : t("rotaPublished")}
             </span>
@@ -3301,8 +3301,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         onClose={() => setProfileOpen(false)}
       />
 
-      {/* Bottom taskbar */}
-      {view === "week" && weekData && (
+      {/* Bottom taskbar — hidden for viewers */}
+      {canEdit && view === "week" && weekData && (
         <ShiftBudgetBar
           data={weekData}
           staffList={filteredStaffList}
@@ -3312,7 +3312,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           deptFilter={deptFilter}
         />
       )}
-      {view === "month" && monthSummary && (
+      {canEdit && view === "month" && monthSummary && (
         <MonthBudgetBar
           summary={monthSummary}
           monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}

@@ -45,7 +45,7 @@ export type ShiftTimes = Record<string, { start: string; end: string }>
 
 export interface RotaWeekData {
   weekStart: string
-  rota: { id: string; status: RotaStatus; published_at: string | null; punctions_override: Record<string, number> } | null
+  rota: { id: string; status: RotaStatus; published_at: string | null; published_by: string | null; punctions_override: Record<string, number> } | null
   days: RotaDay[]
   punctionsDefault: Record<string, number>
   shiftTypes: ShiftTypeDefinition[]
@@ -148,6 +148,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         id: rotaData.id,
         status: rotaData.status as RotaStatus,
         published_at: rotaData.published_at,
+        published_by: (rotaData as Record<string, unknown>).published_by as string | null ?? null,
         punctions_override: rotaData.punctions_override ?? {},
       }
     : null
@@ -651,9 +652,11 @@ export async function setPunctionsOverride(
 
 export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const publisherName = (user?.user_metadata?.full_name as string) ?? user?.email ?? "—"
   const { error } = await supabase
     .from("rotas")
-    .update({ status: "published", published_at: new Date().toISOString() } as never)
+    .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName } as never)
     .eq("id", rotaId)
   if (error) return { error: error.message }
   revalidatePath("/")
