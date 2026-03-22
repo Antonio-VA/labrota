@@ -207,9 +207,10 @@ type ShiftBadgeProps = {
   tecnica?: Tecnica | null
   compact?: boolean
   borderColor?: string
+  isTrainingTecnica?: boolean
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
@@ -228,7 +229,8 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
     >
       <span className="truncate">{first} {last[0]}.</span>
       {pillLabel && pillColor ? (
-        <span className={cn("font-semibold px-1 py-0.5 rounded ml-auto shrink-0", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
+        <span className={cn("font-semibold px-1 py-0.5 rounded ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
+          {isTrainingTecnica && <Hourglass className="size-2 text-amber-500" />}
           {pillLabel}
         </span>
       ) : (
@@ -1383,7 +1385,9 @@ function PersonGrid({
                     const assignment = staffAssigns[day.date]
                     const onLeave    = (onLeaveByDate[day.date] ?? []).includes(s.id)
                     const tecnica    = assignment
-                      ? (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
+                      ? (assignment.function_label
+                        ? (data.tecnicas ?? []).find((t) => t.codigo === assignment.function_label) ?? null
+                        : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null)
                       : null
                     return (
                       <div
@@ -1851,7 +1855,9 @@ function ShiftGrid({
                 >
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
-                    const tecnica = (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
+                    const tecnica = a.function_label
+                      ? (data?.tecnicas ?? []).find((t) => t.codigo === a.function_label) ?? null
+                      : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
                     return (
                       <AssignmentPopover
                         key={a.id}
@@ -1874,6 +1880,7 @@ function ShiftGrid({
                                 tecnica={tecnica}
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
+                                isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
                               />
                             </div>
                           } />
@@ -1965,7 +1972,9 @@ function ShiftGrid({
               isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
               borderColor={ROLE_BORDER[activeAssignment.staff.role]}
-              tecnica={(data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
+              tecnica={activeAssignment.function_label
+                ? (data?.tecnicas ?? []).find((t) => t.codigo === activeAssignment.function_label) ?? null
+                : (data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
             />
           </div>
         ) : activeOffStaff ? (
