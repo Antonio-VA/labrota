@@ -34,7 +34,24 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            const p = JSON.parse(localStorage.getItem('labrota_theme') || '{}');
+            const theme = p.theme || 'light';
+            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            if (p.accentColor) {
+              document.documentElement.style.setProperty('--primary', p.accentColor);
+              document.documentElement.style.setProperty('--ring', p.accentColor);
+              document.documentElement.style.setProperty('--sidebar-primary', p.accentColor);
+              document.documentElement.style.setProperty('--sidebar-ring', p.accentColor);
+            }
+          } catch(e) {}
+        `}} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TooltipProvider delay={600}>{children}</TooltipProvider>

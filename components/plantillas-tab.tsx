@@ -86,10 +86,10 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
                   onKeyDown={(e) => { if (e.key === "Enter") handleRename(tpl.id); if (e.key === "Escape") setEditingId(null) }}
                   className="flex-1 rounded border border-border px-2 py-1 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
                 />
-                <button onClick={() => handleRename(tpl.id)} className="size-6 flex items-center justify-center rounded hover:bg-slate-100">
+                <button onClick={() => handleRename(tpl.id)} className="size-6 flex items-center justify-center rounded hover:bg-muted">
                   <Check className="size-3.5 text-emerald-600" />
                 </button>
-                <button onClick={() => setEditingId(null)} className="size-6 flex items-center justify-center rounded hover:bg-slate-100">
+                <button onClick={() => setEditingId(null)} className="size-6 flex items-center justify-center rounded hover:bg-muted">
                   <X className="size-3.5 text-slate-400" />
                 </button>
               </div>
@@ -114,7 +114,7 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
               <>
                 <button
                   onClick={() => { setEditingId(tpl.id); setEditName(tpl.name) }}
-                  className={cn("size-7 flex items-center justify-center rounded hover:bg-slate-100", editingId === tpl.id && "hidden")}
+                  className={cn("size-7 flex items-center justify-center rounded hover:bg-muted", editingId === tpl.id && "hidden")}
                   title="Renombrar"
                 >
                   <Pencil className="size-3.5 text-slate-400" />

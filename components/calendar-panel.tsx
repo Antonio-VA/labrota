@@ -216,11 +216,11 @@ type ShiftBadgeProps = {
 function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = !colorChips
-    ? "bg-slate-100 border-border text-slate-500"
+    ? "bg-slate-100 border-border text-muted-foreground"
     : tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-slate-50 border-border text-slate-500"
+    : pillLabel === "TRN" ? "bg-muted border-border text-muted-foreground"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
@@ -239,7 +239,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
           {pillLabel}
         </span>
       ) : (
-        <span className="text-[9px] font-medium text-slate-300 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+        <span className="text-[9px] font-medium text-muted-foreground/40 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
           + Task
         </span>
       )}
@@ -332,7 +332,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                   }}
                   className={cn(
                     "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                    isActive ? "bg-blue-50" : "hover:bg-slate-100"
+                    isActive ? "bg-accent" : "hover:bg-muted"
                   )}
                 >
                   <span className={cn(
@@ -409,7 +409,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
       <button
         onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
         className={cn(
-          "text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-slate-100",
+          "text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted",
           isOverride ? "text-primary" : "text-muted-foreground"
         )}
         title="Editar punciones"
@@ -599,9 +599,9 @@ function StaffProfilePanel({
                 <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-muted-foreground/40">·</span>
                   <span>{staff.contracted_hours}h/sem</span>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-muted-foreground/40">·</span>
                   <span>{staff.days_per_week}d/sem</span>
                 </div>
               </>
@@ -609,8 +609,8 @@ function StaffProfilePanel({
               <div className="shimmer-bar h-4 w-32 rounded" />
             )}
           </div>
-          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-slate-100 shrink-0">
-            <X className="size-4 text-slate-500" />
+          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted shrink-0">
+            <X className="size-4 text-muted-foreground" />
           </button>
         </div>
 
@@ -629,7 +629,7 @@ function StaffProfilePanel({
                   <div key={day.date} className="flex flex-col items-center gap-0.5">
                     <span className={cn(
                       "text-[10px] font-medium leading-none",
-                      isToday ? "text-primary" : "text-slate-400"
+                      isToday ? "text-primary" : "text-muted-foreground"
                     )}>
                       {DOW_SHORT[i]}
                     </span>
@@ -637,7 +637,7 @@ function StaffProfilePanel({
                       "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
                       a ? "bg-primary/10 text-primary border border-primary/20"
                         : onLeave ? "bg-amber-50 text-amber-600 border border-amber-200"
-                        : "bg-slate-50 text-slate-300 border border-slate-100"
+                        : "bg-muted text-muted-foreground/40 border border-border/50"
                     )}>
                       {a ? a.shift_type : onLeave ? "Aus" : "—"}
                     </div>
@@ -731,7 +731,7 @@ function StaffProfilePanel({
               <div className="flex flex-col gap-0.5">
                 {data.recentAssignments.slice(0, 10).map((a, i) => (
                   <div key={i} className="flex items-center justify-between text-[12px] py-0.5">
-                    <span className="text-slate-500 capitalize">{formatDate(a.date, locale)}</span>
+                    <span className="text-muted-foreground capitalize">{formatDate(a.date, locale)}</span>
                     <div className="flex items-center gap-1">
                       <span className="font-medium text-foreground">{a.shift_type}</span>
                       {a.function_label && (
@@ -907,14 +907,14 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   function renderPill(id: string, s: { first: string; last: string; role: string; count: number; daysPerWeek: number }) {
     const over  = s.count > s.daysPerWeek
     const under = s.count < s.daysPerWeek
-    const color = s.count === 0 ? "text-slate-400" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
+    const color = s.count === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
     return (
       <Tooltip key={id}>
         <TooltipTrigger render={
           <button
             data-pill
             onClick={() => onPillClick?.(id)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-blue-50", color)}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
           >
             <span className="font-medium">{s.first}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
@@ -933,11 +933,11 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
       {/* Left: label + pills */}
-      <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
+      <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
       <div ref={containerRef} className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
         {shown.map(([id, s], i) => (
           <Fragment key={id}>
-            {i > 0 && <span className="text-slate-300 text-[10px] select-none">·</span>}
+            {i > 0 && <span className="text-muted-foreground/40 text-[10px] select-none">·</span>}
             {renderPill(id, s)}
           </Fragment>
         ))}
@@ -960,7 +960,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
         </div>
       )}
       {/* Right: week range */}
-      <span className="text-[12px] text-slate-400 shrink-0 ml-auto capitalize">{weekLabel}</span>
+      <span className="text-[12px] text-muted-foreground shrink-0 ml-auto capitalize">{weekLabel}</span>
     </div>
   )
 }
@@ -986,20 +986,20 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
       className="fixed bottom-0 right-0 z-30 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
-      <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
+      <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
       <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
         {entries.map(([id, s], i) => {
           const expected = Math.round(s.daysPerWeek * weeksInMonth)
           const over = s.count > expected
-          const color = s.count === 0 ? "text-slate-400" : over ? "text-amber-600" : "text-muted-foreground"
+          const color = s.count === 0 ? "text-muted-foreground" : over ? "text-amber-600" : "text-muted-foreground"
           return (
             <Fragment key={id}>
-              {i > 0 && <span className="text-slate-300 text-[10px] select-none">·</span>}
+              {i > 0 && <span className="text-muted-foreground/40 text-[10px] select-none">·</span>}
               <Tooltip>
                 <TooltipTrigger render={
                   <button
                     onClick={() => onPillClick?.(id)}
-                    className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-blue-50", color)}
+                    className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
                   >
                     <span className="font-medium">{s.first}</span>{" "}
                     <span className="font-normal tabular-nums">{s.count}/{expected}</span>
@@ -1013,7 +1013,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
           )
         })}
       </div>
-      <span className="text-[12px] text-slate-400 shrink-0 ml-auto capitalize">{monthLabel}</span>
+      <span className="text-[12px] text-muted-foreground shrink-0 ml-auto capitalize">{monthLabel}</span>
     </div>
   )
 }
@@ -1138,7 +1138,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
   if (totalIssues === 0) {
     return (
-      <div className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] font-medium">
+      <div className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
         <CheckCircle2 className="size-3 shrink-0" />
         Sin avisos
       </div>
@@ -1192,7 +1192,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-slate-50 border-border text-slate-500"
+    : pillLabel === "TRN" ? "bg-muted border-border text-muted-foreground"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
@@ -1201,7 +1201,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
       onClick={onClick}
       className={cn(
         "w-full rounded border px-1.5 py-1 flex flex-col gap-0.5 bg-background select-none",
-        !onClick ? "cursor-default" : "cursor-pointer hover:bg-slate-50",
+        !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
         is_manual_override ? "border-primary/40" : "border-border",
       )}
     >
@@ -1214,7 +1214,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
         )}
       </div>
       {time && (
-        <span className="text-[10px] text-slate-400 tabular-nums leading-none">
+        <span className="text-[10px] text-muted-foreground tabular-nums leading-none">
           {time.start}–{time.end}
         </span>
       )}
@@ -1369,7 +1369,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-slate-50 border-b border-border flex items-center gap-1.5"
+              className="px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1428,9 +1428,9 @@ function PersonGrid({
                             </Tooltip>
                           </AssignmentPopover>
                         ) : onLeave ? (
-                          <span className="text-[11px] text-slate-400 italic">Aus.</span>
+                          <span className="text-[11px] text-muted-foreground italic">Aus.</span>
                         ) : (
-                          <span className="text-[11px] text-slate-400 select-none">OFF</span>
+                          <span className="text-[11px] text-muted-foreground select-none">OFF</span>
                         )}
                       </div>
                     )
@@ -1839,7 +1839,7 @@ function ShiftGrid({
                 {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
               </span>
               {shiftTypeMap[shiftRow]?.end_time && (
-                <span className="text-[11px] text-slate-400 leading-tight tabular-nums">
+                <span className="text-[11px] text-muted-foreground leading-tight tabular-nums">
                   {shiftTypeMap[shiftRow].end_time}
                 </span>
               )}
@@ -1904,7 +1904,7 @@ function ShiftGrid({
                     )
                   })}
                   {dayShifts.length === 0 && effectivePDay === 0 && (
-                    <span className="text-[10px] text-slate-300 italic self-center mt-auto mb-auto">Sin servicio</span>
+                    <span className="text-[10px] text-muted-foreground/40 italic self-center mt-auto mb-auto">Sin servicio</span>
                   )}
                 </DroppableCell>
               )
@@ -1919,9 +1919,9 @@ function ShiftGrid({
         }} />
 
         {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50">
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted">
           <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2">
-            <span className="text-[10px] text-slate-400 leading-tight font-medium uppercase tracking-wide">OFF</span>
+            <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
           {localDays.map((day) => {
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
@@ -1943,24 +1943,24 @@ function ShiftGrid({
                 isOver={overId === offCellId}
                 isPublished={isPublished}
                 style={isSaturday ? { borderLeft: "1px dashed var(--border)" } : undefined}
-                className="p-1.5 flex flex-col gap-1 bg-slate-50"
+                className="p-1.5 flex flex-col gap-1 bg-muted"
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
                 {onLeaveStaff.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-slate-50 text-slate-400 border border-border select-none cursor-default"
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-default"
                     style={{ borderLeft: "3px solid var(--muted-foreground)", borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                    <Plane className="size-3 shrink-0 ml-auto text-slate-300" />
+                    <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
                   </div>
                 ))}
                 {/* Available — draggable */}
                 {availableOff.map((s) => (
                   <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
                     <div
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-slate-500 border border-border"
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border"
                       style={{ borderLeft: `3px solid ${ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
@@ -2098,7 +2098,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     className={cn(
                       "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[80px]",
                       !day.isCurrentMonth
-                        ? "bg-slate-50 border-slate-100"
+                        ? "bg-muted border-border/50"
                         : day.holidayName
                         ? "bg-amber-50/40 border-amber-100"
                         : "bg-background border-border hover:bg-muted/30"
@@ -2109,8 +2109,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <div className={cn(
                         "size-6 flex items-center justify-center rounded-full text-[13px] leading-none",
                         isToday ? "bg-primary text-primary-foreground font-semibold"
-                          : !day.isCurrentMonth ? "text-slate-300 font-normal"
-                          : "font-medium text-slate-800"
+                          : !day.isCurrentMonth ? "text-muted-foreground/40 font-normal"
+                          : "font-medium text-foreground"
                       )}>
                         {dayNum}
                       </div>
@@ -2129,7 +2129,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     {/* Staff info */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
                       <div className="flex items-center gap-1 mt-auto">
-                        <span className="text-[11px] text-slate-500">{day.staffCount}p</span>
+                        <span className="text-[11px] text-muted-foreground">{day.staffCount}p</span>
                         {/* Role dots */}
                         <div className="flex gap-0.5">
                           {day.staffRoles.map((role, i) => (
@@ -2143,7 +2143,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {day.punctions > 0 && (
-                          <span className="text-[10px] text-slate-400 tabular-nums">P:{day.punctions}</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
                         )}
                         {day.leaveCount > 0 && (
                           <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
@@ -2288,7 +2288,7 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "manual", icon: <Grid3X3 className="size-5" />,
     title: "Semana en blanco",
     desc: "Empieza con una guardia vacía y asigna los turnos manualmente.",
-    badge: "MANUAL", badgeColor: "bg-slate-50 text-muted-foreground border-border",
+    badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
   },
 ]
 
@@ -2335,12 +2335,12 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                   "relative flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all",
                   selected === card.key
                     ? "border-primary bg-blue-50/50 ring-1 ring-primary/20"
-                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                    : "border-border hover:border-primary/30 hover:bg-muted/50/50"
                 )}
               >
-                <div className="text-slate-500">{card.icon}</div>
+                <div className="text-muted-foreground">{card.icon}</div>
                 <p className="text-[14px] font-medium leading-tight">{card.title}</p>
-                <p className="text-[12px] text-slate-500 leading-snug">{card.desc}</p>
+                <p className="text-[12px] text-muted-foreground leading-snug">{card.desc}</p>
                 <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
                   {card.badge}
                 </span>
@@ -2490,7 +2490,7 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
             </div>
           ) : templates.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-[14px] font-medium text-slate-500">{t("noTemplates")}</p>
+              <p className="text-[14px] font-medium text-muted-foreground">{t("noTemplates")}</p>
               <p className="text-[13px] text-muted-foreground mt-1">{t("noTemplatesDescription")}</p>
             </div>
           ) : (
@@ -2610,7 +2610,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
               <button
                 key={dept}
                 onClick={() => { onSetOnly(dept); setOpen(false) }}
-                className="text-[10px] px-1.5 py-0.5 rounded border border-border text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors"
+                className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:bg-accent hover:text-blue-700 hover:border-blue-200 transition-colors"
               >
                 Solo {deptLabels[dept]}
               </button>

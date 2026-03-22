@@ -682,7 +682,7 @@ function StaffTable({
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
               "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]",
-              isSelected ? "bg-primary/5" : "hover:bg-blue-50"
+              isSelected ? "bg-primary/5" : "hover:bg-accent"
             )}
           >
             {/* Checkbox */}
@@ -774,7 +774,7 @@ function StaffTable({
               <Link
                 href={`/staff/${member.id}`}
                 aria-label={t("editStaff")}
-                className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent hover:text-blue-600 transition-colors"
               >
                 <Pencil className="size-4" />
               </Link>

@@ -102,7 +102,7 @@ export function AccountPanel({ open, onClose, user }: {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Mi cuenta</p>
-          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-slate-100">
+          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted">
             <X className="size-4 text-slate-500" />
           </button>
         </div>
@@ -175,7 +175,7 @@ export function AccountPanel({ open, onClose, user }: {
                     "flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all text-[12px]",
                     prefs.theme === opt.key
                       ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border text-muted-foreground hover:bg-slate-50"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
                   )}
                 >
                   {opt.icon}
@@ -221,6 +221,9 @@ export function AccountPanel({ open, onClose, user }: {
 /** Apply theme preferences to the document */
 export function applyTheme(prefs: UserPreferences) {
   const root = document.documentElement
+
+  // Persist to localStorage for the blocking script in layout.tsx
+  try { localStorage.setItem("labrota_theme", JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor })) } catch {}
 
   // Accent colour — override --primary in both light and dark
   if (prefs.accentColor) {

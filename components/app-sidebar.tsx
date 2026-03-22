@@ -58,7 +58,7 @@ function NavItem({
             className={cn(
               "flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] transition-colors",
               isActive
-                ? "bg-blue-100 text-blue-700"
+                ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           />
