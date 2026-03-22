@@ -242,7 +242,7 @@ function DraggableOffChip({
       className={cn(
         "flex items-center gap-2 py-1.5 text-[12px] border border-border",
         onLeave
-          ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-50/50 border-amber-200"
+          ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-500/5 border-amber-500/20"
           : disabled
           ? "text-muted-foreground cursor-default bg-background"
           : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-background"
@@ -322,7 +322,7 @@ function DroppableShiftRow({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `shift-${shiftCode}` })
   return (
-    <div ref={setNodeRef} className={cn(className, isOver && "bg-blue-50")}>
+    <div ref={setNodeRef} className={cn(className, isOver && "bg-accent")}>
       {children}
     </div>
   )
@@ -331,7 +331,7 @@ function DroppableShiftRow({
 function DroppableOffSection({ children, className }: { children: React.ReactNode; className?: string }) {
   const { setNodeRef, isOver } = useDroppable({ id: "off-section" })
   return (
-    <div ref={setNodeRef} className={cn(className, isOver && "bg-blue-50/50")}>
+    <div ref={setNodeRef} className={cn(className, isOver && "bg-accent/50")}>
       {children}
     </div>
   )
@@ -756,9 +756,9 @@ export function AssignmentSheet({
             }} />
             <DroppableOffSection className="transition-colors">
               <div className="px-4 pt-2 pb-1.5">
-                <span className="text-[12px] text-slate-400 italic">OFF · No programados</span>
+                <span className="text-[12px] text-muted-foreground italic">OFF · No programados</span>
               </div>
-              <div className="px-3 flex flex-col gap-1 pb-3 bg-slate-50/50 min-h-[40px]">
+              <div className="px-3 flex flex-col gap-1 pb-3 bg-muted/50 min-h-[40px]">
                 {offStaff.map((s) => (
                   <DraggableOffChip
                     key={s.id}
