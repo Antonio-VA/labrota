@@ -101,11 +101,11 @@ function AssignmentPopover({
         {children}
       </div>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
           {availableTecnicas.length > 0 && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función principal</p>
-              <div className="flex flex-wrap gap-1">
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Técnica principal</p>
+              <div className="flex flex-col">
                 {availableTecnicas.map((tec) => {
                   const isActive = assignment.tecnica_id === tec.id
                   const color    = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
@@ -118,12 +118,14 @@ function AssignmentPopover({
                         setOpen(false)
                       }}
                       className={cn(
-                        "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                        color,
-                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
+                        "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                        isActive ? "bg-primary/5" : "hover:bg-muted/50"
                       )}
                     >
-                      {tec.codigo}
+                      <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", color, isActive && "ring-1 ring-offset-1 ring-current")}>
+                        {tec.codigo}
+                      </span>
+                      <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
                     </button>
                   )
                 })}

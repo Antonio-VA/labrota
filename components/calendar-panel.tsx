@@ -281,9 +281,9 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
         {children}
       </div>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
-          <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Función principal</p>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
+          <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Técnica principal</p>
+          <div className="flex flex-col">
             {availableTecnicas.map((tec) => {
               const isActive = currentLabel === tec.codigo
               const isTraining = staffSkills.find((s) => s.skill === tec.codigo)?.level === "training"
@@ -291,20 +291,25 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
               return (
                 <button
                   key={tec.id}
-                  title={tec.nombre_es}
                   onClick={(e) => {
                     e.stopPropagation()
                     onFunctionSave(assignment.id, isActive ? null : tec.codigo)
                     setOpen(false)
                   }}
                   className={cn(
-                    "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                    pillColor,
-                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
+                    "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                    isActive ? "bg-primary/5" : "hover:bg-muted/50"
                   )}
                 >
-                  {isTraining && <Hourglass className="size-2 text-amber-500" />}
-                  {tec.codigo}
+                  <span className={cn(
+                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0",
+                    pillColor,
+                    isActive && "ring-1 ring-offset-1 ring-current"
+                  )}>
+                    {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
+                    {tec.codigo}
+                  </span>
+                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
                 </button>
               )
             })}
