@@ -13,21 +13,7 @@ import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLeve
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
-// Fallback skill keys for translation lookup when no técnicas provided
-const SKILL_KEYS: Record<string, string> = {
-  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
-  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
-  sperm_freezing: "spermFreezing",
-  witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
-  embryo_transfer: "embryoTransfer", denudation: "denudation",
-}
-const LAB_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
-const ANDROLOGY_SKILLS: SkillName[] = ["sperm_freezing", "semen_analysis", "sperm_prep"]
-const SKILLS_BY_ROLE: Record<string, SkillName[]> = {
-  lab: LAB_SKILLS,
-  andrology: ANDROLOGY_SKILLS,
-  admin: [],
-}
+const DEPT_MAP: Record<string, string> = { lab: "lab", andrology: "andrology" }
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -116,11 +102,14 @@ export function StaffForm({
   )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
 
-  // Derive which skills to show based on role
-  const roleSkills = SKILLS_BY_ROLE[role] ?? []
-  const capacidades: { skill: SkillName; label: string }[] = (() => {
-    if (role === "admin") return []
-    return roleSkills.map((s) => ({ skill: s, label: ts(SKILL_KEYS[s] as Parameters<typeof ts>[0]) }))
+  // Derive capacidades from técnicas matching the staff's department
+  const dept = DEPT_MAP[role]
+  const capacidades: { skill: string; label: string }[] = (() => {
+    if (!dept || !tecnicas) return []
+    return tecnicas
+      .filter((t) => t.activa && t.department === dept)
+      .sort((a, b) => a.orden - b.orden)
+      .map((t) => ({ skill: t.codigo, label: t.nombre_es }))
   })()
 
   type SkillState = 'off' | 'training' | 'certified'

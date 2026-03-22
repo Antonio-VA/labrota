@@ -6,10 +6,15 @@ import { createClient } from "@/lib/supabase/server"
 import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-const ALL_SKILLS: SkillName[] = [
-  "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
-  "sperm_freezing", "semen_analysis", "sperm_prep",
-]
+function parseSkillsFromForm(formData: FormData): { skill: string; level: SkillLevel }[] {
+  const skills: { skill: string; level: SkillLevel }[] = []
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith("skill_") && (value === "certified" || value === "training")) {
+      skills.push({ skill: key.slice(6), level: value as SkillLevel })
+    }
+  }
+  return skills
+}
 
 async function getOrgId(): Promise<string | null> {
   const supabase = await createClient()
@@ -37,9 +42,7 @@ function parseFormData(formData: FormData) {
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
       preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
     },
-    skills: ALL_SKILLS
-      .map(s => ({ skill: s, level: formData.get(`skill_${s}`) as SkillLevel | null }))
-      .filter((s): s is { skill: SkillName; level: SkillLevel } => s.level !== null),
+    skills: parseSkillsFromForm(formData),
   }
 }
 

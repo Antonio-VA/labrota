@@ -226,99 +226,15 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
   )
 }
 
-// ── Function label popover ────────────────────────────────────────────────────
-
-const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
-  lab:       ["ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
-  andrology: ["AND", "SUP", "TRN"],
-  admin:     [],
-}
-
-// Maps a function code to the canonical skill it requires (if any)
-const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
-  ICSI: "icsi",
-  ET:  "embryo_transfer",
-  BX:  "biopsy",
-  DEN: "denudation",
-}
-
-// Full display name for each function code
-const FUNCTION_FULL_NAME: Record<string, string> = {
-  ICSI: "ICSI",
-  ET:  "Transferencia embrionaria",
-  BX:  "Biopsia",
-  DEN: "Denudación",
-  SUP: "Supervisor",
-  TRN: "En formación",
-  AND: "Andrología",
-}
-
-function FunctionLabelPopover({ assignment, onSave, isPublished, children }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null }
-  onSave: (id: string, label: string | null) => void
-  isPublished: boolean
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const available = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const current = assignment.function_label ?? null
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  if (available.length === 0 || isPublished) return <>{children}</>
-
-  return (
-    <div ref={ref} className="relative">
-      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
-        {children}
-      </div>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
-          <div className="flex flex-wrap gap-1">
-            {available.map((fn) => {
-              const isActive = current === fn
-              const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-                : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
-                : "bg-blue-50 border-blue-200 text-blue-700"
-              return (
-                <button
-                  key={fn}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSave(assignment.id, isActive ? null : fn)
-                    setOpen(false)
-                  }}
-                  className={cn(
-                    "text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                    color,
-                    isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-60 hover:opacity-100"
-                  )}
-                >
-                  {fn}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+// Maps department to role for técnica filtering
+const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "andrology" }
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublished, children }: {
+function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, isPublished, children }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null }
   staffSkills: { skill: string; level: string }[]
+  tecnicas: Tecnica[]
   onFunctionSave: (id: string, label: string | null) => void
   isPublished: boolean
   children: React.ReactNode
@@ -335,19 +251,16 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  const allFunctionLabels = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const currentLabel      = assignment.function_label ?? null
-  const skillLevelMap     = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
+  const currentLabel = assignment.function_label ?? null
+  const staffSkillCodes = new Set(staffSkills.map((s) => s.skill))
+  const staffDept = DEPT_FOR_ROLE[assignment.staff.role]
 
-  // Only show functions the staff is certified or in training for;
-  // SUP / TRN / AND have no skill requirement so always shown
-  const functionLabels = allFunctionLabels.filter((fn) => {
-    const req = FUNCTION_TO_SKILL[fn]
-    if (!req) return true
-    return skillLevelMap[req] === "certified" || skillLevelMap[req] === "training"
-  })
+  // Show only técnicas from the staff's department that they are certified/trained in
+  const availableTecnicas = tecnicas.filter((t) =>
+    t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
+  )
 
-  if (functionLabels.length === 0 || isPublished) return <>{children}</>
+  if (availableTecnicas.length === 0 || isPublished) return <>{children}</>
 
   return (
     <div ref={ref} className="relative">
@@ -357,30 +270,27 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-44">
           <div className="flex flex-wrap gap-1.5">
-            {functionLabels.map((fn) => {
-              const isActive     = currentLabel === fn
-              const req          = FUNCTION_TO_SKILL[fn]
-              const isTraining   = req ? skillLevelMap[req] === "training" : false
-              const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-                : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
-                : "bg-blue-50 border-blue-200 text-blue-700"
+            {availableTecnicas.map((tec) => {
+              const isActive = currentLabel === tec.codigo
+              const isTraining = staffSkills.find((s) => s.skill === tec.codigo)?.level === "training"
+              const pillColor = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
               return (
                 <button
-                  key={fn}
-                  title={FUNCTION_FULL_NAME[fn] ?? fn}
+                  key={tec.id}
+                  title={tec.nombre_es}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onFunctionSave(assignment.id, isActive ? null : fn)
+                    onFunctionSave(assignment.id, isActive ? null : tec.codigo)
                     setOpen(false)
                   }}
                   className={cn(
                     "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                    color,
+                    pillColor,
                     isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
                   )}
                 >
                   {isTraining && <Hourglass className="size-2 text-amber-500" />}
-                  {fn}
+                  {tec.codigo}
                 </button>
               )
             })}
@@ -1405,6 +1315,7 @@ function PersonGrid({
                           <AssignmentPopover
                             assignment={assignment}
                             staffSkills={s.staff_skills ?? []}
+                            tecnicas={data?.tecnicas ?? []}
                             onFunctionSave={handleFunctionLabelSave}
                             isPublished={isPublished}
                           >
@@ -1419,7 +1330,7 @@ function PersonGrid({
                                 </div>
                               } />
                               <TooltipContent side="top">
-                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${FUNCTION_FULL_NAME[assignment.function_label] ?? assignment.function_label}` : ""}
+                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}
                               </TooltipContent>
                             </Tooltip>
                           </AssignmentPopover>
@@ -1858,6 +1769,7 @@ function ShiftGrid({
                         key={a.id}
                         assignment={a}
                         staffSkills={staffMember?.staff_skills ?? []}
+                        tecnicas={data?.tecnicas ?? []}
                         onFunctionSave={handleFunctionLabelSave}
                         isPublished={isPublished}
                       >
@@ -1877,7 +1789,7 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="top">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${FUNCTION_FULL_NAME[a.function_label] ?? a.function_label}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>

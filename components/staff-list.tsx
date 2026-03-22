@@ -736,6 +736,7 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
   const [search,       setSearch]       = useState("")
   const [roleFilter,   setRoleFilter]   = useState<StaffRole | "all">("all")
   const [statusFilter, setStatusFilter] = useState<OnboardingStatus | "all">("all")
+  const [skillFilter,  setSkillFilter]  = useState<string>("all")
   const [showHistory,  setShowHistory]  = useState(false)
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
 
@@ -744,13 +745,17 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
     if (search && !fullName.includes(search.toLowerCase())) return false
     if (roleFilter   !== "all" && s.role              !== roleFilter)   return false
     if (statusFilter !== "all" && s.onboarding_status !== statusFilter) return false
+    if (skillFilter  !== "all" && !s.staff_skills.some((sk) => sk.skill === skillFilter)) return false
     return true
   })
 
   const activeFiltered   = filtered.filter((s) => s.onboarding_status !== "inactive").sort(sortByRole)
   const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortByRole)
 
-  const hasFilters = search || roleFilter !== "all" || statusFilter !== "all"
+  // Collect all unique skill codes for the filter dropdown
+  const allSkillCodes = [...new Set(staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))].sort()
+
+  const hasFilters = search || roleFilter !== "all" || statusFilter !== "all" || skillFilter !== "all"
 
   // All currently visible staff IDs (respects filters)
   const visibleIds = [
@@ -818,6 +823,18 @@ export function StaffList({ staff }: { staff: StaffWithSkills[] }) {
             <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
             <option value="inactive">{t("onboardingStatus.inactive")}</option>
           </select>
+          {allSkillCodes.length > 0 && (
+            <select
+              value={skillFilter}
+              onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }}
+              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="all">Todas las capacidades</option>
+              {allSkillCodes.map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
+          )}
         </div>
         <Button size="lg" render={<Link href="/staff/new" />}>
           <Plus className="size-4" />

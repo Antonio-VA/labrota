@@ -56,18 +56,7 @@ const TECNICA_PILL: Record<string, string> = {
   red:    "bg-red-50 border-red-400 text-red-800",
 }
 
-const FUNCTION_TO_SKILL: Partial<Record<string, string>> = {
-  ICSI: "icsi", ET: "embryo_transfer", BX: "biopsy", DEN: "denudation",
-}
-const FUNCTION_FULL_NAME: Record<string, string> = {
-  ICSI: "ICSI", ET: "Transferencia embrionaria",
-  BX: "Biopsia", DEN: "Denudación", SUP: "Supervisor", TRN: "En formación", AND: "Andrología",
-}
-const FUNCTION_LABELS_BY_ROLE: Record<string, string[]> = {
-  lab:       ["ICSI", "ET", "BX", "DEN", "SUP", "TRN"],
-  andrology: ["AND", "SUP", "TRN"],
-  admin:     [],
-}
+const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "andrology" }
 
 // ── Function + Técnica inline popover ─────────────────────────────────────────
 
@@ -95,25 +84,16 @@ function AssignmentPopover({
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  const allLabels     = FUNCTION_LABELS_BY_ROLE[assignment.staff.role] ?? []
-  const currentLabel  = assignment.function_label ?? null
-  const skillLevelMap = Object.fromEntries(staffSkills.map((s) => [s.skill, s.level]))
+  const staffSkillCodes = new Set(staffSkills.map((s) => s.skill))
+  const staffDept = DEPT_FOR_ROLE[assignment.staff.role]
+  const currentLabel = assignment.function_label ?? null
 
-
-  const functionLabels = allLabels.filter((fn) => {
-    const req = FUNCTION_TO_SKILL[fn]
-    if (!req) return true
-    return skillLevelMap[req] === "certified" || skillLevelMap[req] === "training"
-  })
-
-  const deptMap: Record<string, string> = { lab: "lab", andrology: "andrology" }
-  const staffDept = deptMap[assignment.staff.role]
+  // Show técnicas from staff's department that they are certified/trained in
   const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && (!staffDept || t.department === staffDept)
+    t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
   )
 
-  const hasAnything = functionLabels.length > 0 || availableTecnicas.length > 0
-  if (!hasAnything || isPublished) return <>{children}</>
+  if (availableTecnicas.length === 0 || isPublished) return <>{children}</>
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
@@ -122,40 +102,6 @@ function AssignmentPopover({
       </div>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-48 flex flex-col gap-2.5">
-          {functionLabels.length > 0 && (
-            <div>
-              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Función</p>
-              <div className="flex flex-wrap gap-1.5">
-                {functionLabels.map((fn) => {
-                  const isActive      = currentLabel === fn
-                  const reqSkill      = FUNCTION_TO_SKILL[fn]
-                  const isTraining    = reqSkill ? skillLevelMap[reqSkill] === "training" : false
-                  const color = fn === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-                    : fn === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
-                    : "bg-blue-50 border-blue-200 text-blue-700"
-                  return (
-                    <button
-                      key={fn}
-                      title={FUNCTION_FULL_NAME[fn] ?? fn}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onFunctionSave(assignment.id, isActive ? null : fn)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        "relative text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-opacity",
-                        color,
-                        isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
-                      )}
-                    >
-                      {isTraining && <Hourglass className="size-2 text-amber-500" />}
-                      {fn}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
           {availableTecnicas.length > 0 && (
             <div>
               <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Técnica</p>
