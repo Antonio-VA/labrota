@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, Fragment } fro
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -1903,9 +1903,11 @@ function ShiftGrid({
             const isSaturday  = dow === 6
             const offCellId   = `OFF-${day.date}`
 
-            // Show all unassigned staff every day (weekday and Saturday)
-            const offStaff = staffList
-              .filter((s) => !assignedIds.has(s.id))
+            // Unassigned staff — leave people first (non-draggable), then others
+            const allOff = staffList.filter((s) => !assignedIds.has(s.id))
+            const onLeaveStaff = allOff.filter((s) => leaveIds.has(s.id))
+              .sort((a, b) => a.last_name.localeCompare(b.last_name))
+            const availableOff = allOff.filter((s) => !leaveIds.has(s.id))
               .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
             return (
               <DroppableCell
@@ -1916,23 +1918,28 @@ function ShiftGrid({
                 style={isSaturday ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
                 className="p-1.5 flex flex-col gap-1 bg-slate-50"
               >
-                {offStaff.map((s) => {
-                  const onLeave = leaveIds.has(s.id)
-                  return (
-                    <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
-                      <div
-                        className={cn(
-                          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full border border-slate-200",
-                          onLeave ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-white text-slate-500"
-                        )}
-                        style={{ borderLeft: `3px solid ${onLeave ? "#FBBF24" : ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
-                      >
-                        <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
-                        {onLeave && <CalendarX className="size-3 shrink-0 ml-auto" />}
-                      </div>
-                    </DraggableOffStaff>
-                  )
-                })}
+                {/* On leave — always first, not draggable, gray + airplane */}
+                {onLeaveStaff.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-slate-50 text-slate-400 border border-slate-200 select-none cursor-default"
+                    style={{ borderLeft: "3px solid #cbd5e1", borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
+                  >
+                    <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
+                    <Plane className="size-3 shrink-0 ml-auto text-slate-300" />
+                  </div>
+                ))}
+                {/* Available — draggable */}
+                {availableOff.map((s) => (
+                  <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
+                    <div
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-white text-slate-500 border border-slate-200"
+                      style={{ borderLeft: `3px solid ${ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
+                    >
+                      <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
+                    </div>
+                  </DraggableOffStaff>
+                ))}
               </DroppableCell>
             )
           })}
