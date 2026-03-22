@@ -177,7 +177,7 @@ function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "flex flex-col py-1 text-[12px] select-none bg-white text-slate-700 border border-slate-200",
+        "flex flex-col py-1 text-[12px] select-none bg-background text-foreground border border-border",
         onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
         onDragStart && "cursor-grab",
         isDragging && "opacity-40",
@@ -215,18 +215,18 @@ type ShiftBadgeProps = {
 function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true }: ShiftBadgeProps) {
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = !colorChips
-    ? "bg-slate-100 border-slate-200 text-slate-500"
+    ? "bg-slate-100 border-border text-slate-500"
     : tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+    : pillLabel === "TRN" ? "bg-slate-50 border-border text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded border border-slate-200 font-medium w-full bg-white text-slate-700",
+        "group flex items-center gap-1.5 rounded border border-border font-medium w-full bg-background text-foreground",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
       )}
       style={{ borderLeft: `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`, borderRadius: 4 }}
@@ -579,7 +579,7 @@ function StaffProfilePanel({
 
       {/* Side panel — 400px */}
       <div className={cn(
-        "fixed right-0 top-0 bottom-0 z-50 bg-white border-l border-border shadow-xl",
+        "fixed right-0 top-0 bottom-0 z-50 bg-background border-l border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[400px]",
         open ? "translate-x-0" : "translate-x-full",
       )}>
@@ -656,7 +656,7 @@ function StaffProfilePanel({
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className={cn(
                     "text-[24px] font-semibold tabular-nums leading-none",
-                    debt < 0 ? "text-amber-600" : debt > 0 ? "text-red-600" : "text-slate-700"
+                    debt < 0 ? "text-amber-600" : debt > 0 ? "text-red-600" : "text-foreground"
                   )}>
                     {last4w}
                   </span>
@@ -732,7 +732,7 @@ function StaffProfilePanel({
                   <div key={i} className="flex items-center justify-between text-[12px] py-0.5">
                     <span className="text-slate-500 capitalize">{formatDate(a.date, locale)}</span>
                     <div className="flex items-center gap-1">
-                      <span className="font-medium text-slate-700">{a.shift_type}</span>
+                      <span className="font-medium text-foreground">{a.shift_type}</span>
                       {a.function_label && (
                         <span className="text-[9px] px-1 py-0.5 rounded border bg-blue-50 border-blue-200 text-blue-700 font-semibold">{a.function_label}</span>
                       )}
@@ -756,7 +756,7 @@ function StaffProfilePanel({
                   <div key={i} className="flex items-start gap-2">
                     <CalendarX className="size-3.5 text-amber-500 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-[12px] text-slate-700">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
+                      <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
                       <p className="text-[11px] text-muted-foreground">{LEAVE_TYPE_LABEL[leave.type] ?? leave.type}</p>
                     </div>
                   </div>
@@ -772,15 +772,15 @@ function StaffProfilePanel({
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[12px]">
                 <div>
                   <p className="text-muted-foreground">Incorporación</p>
-                  <p className="text-slate-700 font-medium">{formatDateWithYear(staff.start_date, locale)}</p>
+                  <p className="text-foreground font-medium">{formatDateWithYear(staff.start_date, locale)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Antigüedad</p>
-                  <p className="text-slate-700 font-medium">{tenureLabel}</p>
+                  <p className="text-foreground font-medium">{tenureLabel}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Disponible</p>
-                  <p className="text-slate-700 font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
+                  <p className="text-foreground font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
                 </div>
                 {staff.preferred_days && staff.preferred_days.length > 0 && (
                   <div>
@@ -791,13 +791,13 @@ function StaffProfilePanel({
                 {staff.preferred_shift && (
                   <div>
                     <p className="text-muted-foreground">Turno preferido</p>
-                    <p className="text-slate-700 font-medium">{staff.preferred_shift}</p>
+                    <p className="text-foreground font-medium">{staff.preferred_shift}</p>
                   </div>
                 )}
                 {staff.email && (
                   <div className="col-span-2">
                     <p className="text-muted-foreground">Email</p>
-                    <p className="text-slate-700 font-medium truncate">{staff.email}</p>
+                    <p className="text-foreground font-medium truncate">{staff.email}</p>
                   </div>
                 )}
               </div>
@@ -928,7 +928,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-border flex items-center px-4 gap-1"
+      className="fixed bottom-0 right-0 z-30 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
       {/* Left: label + pills */}
@@ -982,7 +982,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-white border-t border-border flex items-center px-4 gap-1"
+      className="fixed bottom-0 right-0 z-30 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
       style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
     >
       <span className="text-[12px] text-slate-400 font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
@@ -1191,7 +1191,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+    : pillLabel === "TRN" ? "bg-slate-50 border-border text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
@@ -1199,13 +1199,13 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
     <div
       onClick={onClick}
       className={cn(
-        "w-full rounded border px-1.5 py-1 flex flex-col gap-0.5 bg-white select-none",
+        "w-full rounded border px-1.5 py-1 flex flex-col gap-0.5 bg-background select-none",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-slate-50",
         is_manual_override ? "border-primary/40" : "border-border",
       )}
     >
       <div className="flex items-center justify-between gap-1">
-        <span className="text-[12px] font-semibold text-slate-700">{shift_type}</span>
+        <span className="text-[12px] font-semibold text-foreground">{shift_type}</span>
         {pillLabel && pillColor && (
           <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0", pillColor)}>
             {pillLabel}
@@ -1334,7 +1334,7 @@ function PersonGrid({
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
         {/* Header row */}
-        <div className="px-3 py-2 border-b border-r border-border bg-white sticky left-0 z-10" />
+        <div className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10" />
         {days.map((day) => {
           const d       = new Date(day.date + "T12:00:00")
           const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -1344,7 +1344,7 @@ function PersonGrid({
           return (
             <div key={day.date} className={cn(
               "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border",
-              holiday ? "bg-red-50/50" : "bg-white"
+              holiday ? "bg-red-50/50" : "bg-background"
             )}>
               <button
                 onClick={() => onDateClick?.(day.date)}
@@ -1383,7 +1383,7 @@ function PersonGrid({
               return (
                 <Fragment key={s.id}>
                   {/* Name cell */}
-                  <div className="px-3 py-2 border-b border-r border-border bg-white sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
+                  <div className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
                     <span className="text-[13px] font-medium truncate leading-tight">
                       {s.first_name} {s.last_name}
                     </span>
@@ -1401,7 +1401,7 @@ function PersonGrid({
                     return (
                       <div
                         key={day.date}
-                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-border bg-white min-h-[48px] flex items-center"
+                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-border bg-background min-h-[48px] flex items-center"
                       >
                         {assignment ? (
                           <AssignmentPopover
@@ -1708,7 +1708,7 @@ function ShiftGrid({
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-white">
+                <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-background">
                   {row !== "off" && i < 3 && <div className="shimmer-bar h-5 w-full" />}
                 </div>
               ))}
@@ -1762,10 +1762,10 @@ function ShiftGrid({
       onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
       onDragEnd={handleDragEnd}
     >
-      <div className="rounded-lg border border-border bg-white overflow-hidden w-full">
+      <div className="rounded-lg border border-border bg-background overflow-hidden w-full">
 
         {/* Header row — light blue tint matching PDF export */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52, background: "#f1f5fb" }}>
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border bg-secondary" style={{ minHeight: 52 }}>
           <div className="border-r border-border" />
           {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
@@ -1783,7 +1783,7 @@ function ShiftGrid({
               <div
                 key={day.date}
                 className="relative flex flex-col items-center justify-center py-1 gap-[2px]"
-                style={isSat ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
+                style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
               >
                 {holidayName && (
                   <Tooltip>
@@ -1802,13 +1802,13 @@ function ShiftGrid({
                   onClick={() => onDateClick?.(day.date)}
                   className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
-                  <span className="text-[11px] uppercase tracking-wider leading-none" style={{ color: "#64748b" }}>{wday}</span>
+                  <span className="text-[11px] uppercase tracking-wider leading-none" style={{ color: "var(--muted-foreground)" }}>{wday}</span>
                   <div className={cn(
                     "size-7 flex items-center justify-center rounded-full font-medium leading-none",
                     today
                       ? "bg-primary text-primary-foreground text-[15px]"
                       : day.isWeekend ? "text-[20px]" : "text-[20px]"
-                  )} style={!today ? { color: day.isWeekend ? "#94a3b8" : "#1b4f8a" } : undefined}>
+                  )} style={!today ? { color: day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
                     {dayN}
                   </div>
                 </button>
@@ -1832,9 +1832,9 @@ function ShiftGrid({
         {SHIFT_ROWS.map((shiftRow) => (
           <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             {/* Shift label — right-aligned, three-line: code / start / end */}
-            <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2" style={{ background: "#f8fafd" }}>
-              <span className="text-[10px] leading-tight font-medium" style={{ color: "#64748b" }}>{shiftRow}</span>
-              <span className="text-[13px] font-medium leading-tight tabular-nums" style={{ color: "#1b4f8a" }}>
+            <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
+              <span className="text-[10px] leading-tight font-medium" style={{ color: "var(--muted-foreground)" }}>{shiftRow}</span>
+              <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
                 {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
               </span>
               {shiftTypeMap[shiftRow]?.end_time && (
@@ -1856,9 +1856,9 @@ function ShiftGrid({
                   isOver={overId === cellId}
                   isPublished={isPublished}
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
-                  style={isSatCell ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
+                  style={isSatCell ? { borderLeft: "1px dashed var(--border)" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 bg-white",
+                    "p-1.5 flex flex-col gap-1 bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
@@ -1941,15 +1941,15 @@ function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                style={isSaturday ? { borderLeft: "1px dashed #e2e8f0" } : undefined}
+                style={isSaturday ? { borderLeft: "1px dashed var(--border)" } : undefined}
                 className="p-1.5 flex flex-col gap-1 bg-slate-50"
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
                 {onLeaveStaff.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-slate-50 text-slate-400 border border-slate-200 select-none cursor-default"
-                    style={{ borderLeft: "3px solid #cbd5e1", borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-slate-50 text-slate-400 border border-border select-none cursor-default"
+                    style={{ borderLeft: "3px solid var(--muted-foreground)", borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
                     <Plane className="size-3 shrink-0 ml-auto text-slate-300" />
@@ -1959,7 +1959,7 @@ function ShiftGrid({
                 {availableOff.map((s) => (
                   <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
                     <div
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-white text-slate-500 border border-slate-200"
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-slate-500 border border-border"
                       style={{ borderLeft: `3px solid ${ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
@@ -2100,7 +2100,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         ? "bg-slate-50 border-slate-100"
                         : day.holidayName
                         ? "bg-amber-50/40 border-amber-100"
-                        : "bg-white border-border hover:bg-muted/30"
+                        : "bg-background border-border hover:bg-muted/30"
                     )}
                   >
                     {/* Top row: date + coverage indicator */}
@@ -2287,7 +2287,7 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "manual", icon: <Grid3X3 className="size-5" />,
     title: "Semana en blanco",
     desc: "Empieza con una guardia vacía y asigna los turnos manualmente.",
-    badge: "MANUAL", badgeColor: "bg-slate-50 text-slate-600 border-slate-200",
+    badge: "MANUAL", badgeColor: "bg-slate-50 text-slate-600 border-border",
   },
 ]
 
@@ -2316,7 +2316,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
+      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Generar guardia — <span className="capitalize">{weekLabel}</span></p>
@@ -2364,7 +2364,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 <select
                   value={selectedTplId ?? ""}
                   onChange={(e) => setSelectedTplId(e.target.value || null)}
-                  className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                  className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background"
                 >
                   <option value="">Seleccionar plantilla...</option>
                   {templates.map((t) => (
@@ -2422,7 +2422,7 @@ function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[380px] p-5">
+      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[380px] p-5">
         <p className="text-[14px] font-medium mb-3">{t("saveAsTemplate")}</p>
         <input
           autoFocus
@@ -2478,7 +2478,7 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-border shadow-xl w-[440px] max-h-[70vh] flex flex-col">
+      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[440px] max-h-[70vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0">
           <p className="text-[14px] font-medium">{t("applyTemplate")}</p>
         </div>
@@ -2609,7 +2609,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
               <button
                 key={dept}
                 onClick={() => { onSetOnly(dept); setOpen(false) }}
-                className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors"
+                className="text-[10px] px-1.5 py-0.5 rounded border border-border text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors"
               >
                 Solo {deptLabels[dept]}
               </button>

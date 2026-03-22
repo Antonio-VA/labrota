@@ -326,7 +326,7 @@ export function StaffForm({
                   "flex items-center justify-between px-3 border text-left transition-colors disabled:opacity-50 shrink-0",
                   level === 'certified' && "bg-blue-50 border-blue-400",
                   level === 'training'  && "bg-amber-50 border-amber-300",
-                  level === 'off'       && "bg-white border-slate-200 hover:bg-slate-50"
+                  level === 'off'       && "bg-background border-border hover:bg-muted"
                 )}
               >
                 <div className="flex flex-col justify-center min-w-0">

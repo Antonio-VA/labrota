@@ -163,7 +163,7 @@ function DraggableCard({
   const pillLabel = tecnica ? tecnica.codigo : (assignment.function_label ?? null)
   const pillColor = tecnica ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-slate-50 border-slate-200 text-slate-500"
+    : pillLabel === "TRN" ? "bg-slate-50 border-border text-slate-500"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
 
@@ -172,7 +172,7 @@ function DraggableCard({
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0 : 1, borderLeft: `3px solid ${ROLE_BORDER[assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
       className={cn(
-        "flex items-center gap-2.5 pl-3 pr-2 py-2 min-h-[40px] text-[13px] bg-white text-slate-700 border border-slate-200",
+        "flex items-center gap-2.5 pl-3 pr-2 py-2 min-h-[40px] text-[13px] bg-background text-foreground border border-border",
         !disabled && "cursor-grab"
       )}
       {...listeners}
@@ -243,12 +243,12 @@ function DraggableOffChip({
       {...(onLeave ? {} : listeners)}
       {...(onLeave ? {} : attributes)}
       className={cn(
-        "flex items-center gap-2 py-1.5 text-[12px] border border-slate-200",
+        "flex items-center gap-2 py-1.5 text-[12px] border border-border",
         onLeave
           ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-50/50 border-amber-200"
           : disabled
-          ? "text-muted-foreground cursor-default bg-white"
-          : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-white"
+          ? "text-muted-foreground cursor-default bg-background"
+          : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-background"
       )}
     >
       <span className="truncate flex-1">{staff.first_name} {staff.last_name}</span>
@@ -744,7 +744,7 @@ export function AssignmentSheet({
                       )
                     })}
                     {shiftAssignments.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-slate-200 py-3 flex items-center justify-center text-[11px] text-slate-300 select-none">
+                      <div className="rounded-lg border border-dashed border-border py-3 flex items-center justify-center text-[11px] text-slate-300 select-none">
                         Arrastra aquí o + Añadir
                       </div>
                     )}
@@ -852,7 +852,7 @@ export function AssignmentSheet({
           <DragOverlay dropAnimation={null}>
             {activeAssignment && (
               <div
-                className="flex items-center gap-2 py-2 bg-white text-[13px] shadow-lg w-[330px] text-slate-700 border border-slate-200"
+                className="flex items-center gap-2 py-2 bg-background text-[13px] shadow-lg w-[330px] text-foreground border border-border"
                 style={{ borderLeft: `3px solid ${ROLE_BORDER[activeAssignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
               >
                 <span className="font-medium truncate flex-1">
@@ -865,7 +865,7 @@ export function AssignmentSheet({
             )}
             {activeOffStaff && (
               <div
-                className="flex items-center gap-2 py-1.5 bg-white text-[12px] shadow-md w-[330px] text-slate-600 border border-slate-200"
+                className="flex items-center gap-2 py-1.5 bg-background text-[12px] shadow-md w-[330px] text-slate-600 border border-border"
                 style={{ borderLeft: `3px solid ${ROLE_BORDER[activeOffStaff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
               >
                 <span className="truncate">{activeOffStaff.first_name} {activeOffStaff.last_name}</span>

@@ -95,7 +95,7 @@ export function AccountPanel({ open, onClose, user }: {
       {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
 
       <div className={cn(
-        "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-border shadow-xl",
+        "fixed left-0 top-0 bottom-0 z-50 bg-background border-r border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[360px]",
         open ? "translate-x-0" : "-translate-x-full",
       )}>
@@ -153,7 +153,7 @@ export function AccountPanel({ open, onClose, user }: {
             <select
               value={prefs.locale}
               onChange={(e) => setPrefs((p) => ({ ...p, locale: e.target.value as UserPreferences["locale"] }))}
-              className="w-full h-9 rounded-lg border border-border bg-white px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="browser">Idioma del navegador (predeterminado)</option>
               <option value="es">Español</option>

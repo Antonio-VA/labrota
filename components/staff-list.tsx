@@ -596,7 +596,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
   const badgeClass = variant === "training"
     ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
-    : "shrink-0 inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
+    : "shrink-0 inline-flex items-center rounded border border-slate-200 bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground"
 
   return (
     <div className="flex items-center gap-1">
@@ -648,9 +648,9 @@ function StaffTable({
   const someSelected = members.some((m) => selectedIds.has(m.id))
 
   return (
-    <div className={cn("rounded-lg border border-border overflow-hidden bg-white", muted && "opacity-60")}>
+    <div className={cn("rounded-lg border border-border overflow-hidden bg-background", muted && "opacity-60")}>
       {/* Header */}
-      <div className={cn("hidden md:grid px-4 py-2 bg-white border-b border-border items-center", GRID)}>
+      <div className={cn("hidden md:grid px-4 py-2 bg-background border-b border-border items-center", GRID)}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -723,7 +723,7 @@ function StaffTable({
             {/* Department */}
             <div className="hidden md:flex items-center">
               <span
-                className="inline-flex items-center bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200"
+                className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-slate-200"
                 style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
               >
                 {deptLabel[member.role] ?? member.role}

@@ -158,7 +158,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
                 <span className="text-[10px] text-muted-foreground bg-slate-100 px-1.5 py-0.5 rounded font-medium">Por defecto</span>
               )}
               {/* Preview */}
-              <span className="ml-auto text-[11px] font-medium text-slate-600 border border-slate-200 bg-white px-1.5 py-0.5"
+              <span className="ml-auto text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5"
                 style={{ borderLeft: `3px solid ${dept.colour}`, borderRadius: 4 }}>
                 {dept.abbreviation || dept.name.slice(0, 3) || "—"}
               </span>
