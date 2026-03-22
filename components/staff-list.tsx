@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -628,7 +628,7 @@ const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax
 function StaffTable({
   members, t, ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
-  deptBorder, deptLabel, skillOrder,
+  deptBorder, deptLabel, skillOrder, tecnicas,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -641,6 +641,7 @@ function StaffTable({
   deptBorder: Record<string, string>
   deptLabel: Record<string, string>
   skillOrder: Record<string, number>
+  tecnicas: Tecnica[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -672,6 +673,10 @@ function StaffTable({
         const trainingSkills  = skills.filter((sk) => sk.level === "training")
         const isSelected      = selectedIds.has(member.id)
         const isAdmin         = member.role === "admin"
+        const deptCode        = member.role
+        const deptTecnicas    = tecnicas.filter((t) => t.activa && t.department === deptCode)
+        const certifiedCodes  = new Set(certifiedSkills.map((s) => s.skill))
+        const allCertified    = !isAdmin && deptTecnicas.length > 0 && deptTecnicas.every((t) => certifiedCodes.has(t.codigo))
 
         return (
           <div
@@ -695,9 +700,19 @@ function StaffTable({
             {/* Name */}
             <div className="flex items-center gap-3 min-w-0 pr-2">
               <div className="min-w-0">
-                <p className="text-[14px] font-medium truncate">
-                  {member.first_name} {member.last_name}
-                </p>
+                <div className="flex items-center gap-1">
+                  <p className="text-[14px] font-medium truncate">
+                    {member.first_name} {member.last_name}
+                  </p>
+                  {allCertified && (
+                    <Tooltip>
+                      <TooltipTrigger render={
+                        <Star className="size-3.5 text-amber-400 fill-amber-400 shrink-0 cursor-default" />
+                      } />
+                      <TooltipContent side="right">Todas las técnicas validadas</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 {member.email && (
                   <p className="text-[13px] text-muted-foreground truncate">{member.email}</p>
                 )}
@@ -927,6 +942,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           deptBorder={deptBorder}
           deptLabel={deptLabel}
           skillOrder={skillOrder}
+          tecnicas={tecnicas}
         />
       )}
 
@@ -957,6 +973,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           deptBorder={deptBorder}
           deptLabel={deptLabel}
           skillOrder={skillOrder}
+          tecnicas={tecnicas}
         />
       )}
 
