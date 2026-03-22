@@ -75,11 +75,10 @@ function NavItem({
 // ── Avatar menu ───────────────────────────────────────────────────────────────
 
 function AvatarMenu({
-  user, firstName, initials, avatarUrl, locale, isPending, onToggleLocale, onSignOut,
+  user, firstName, initials, avatarUrl, onSignOut,
 }: {
   user: User | null; firstName: string; initials: string; avatarUrl: string | null
-  locale: string; isPending: boolean
-  onToggleLocale: () => void; onSignOut: () => void
+  onSignOut: () => void
 }) {
   const t    = useTranslations("nav")
   const [open, setOpen] = useState(false)
@@ -97,16 +96,6 @@ function AvatarMenu({
 
   return (
     <div ref={ref} className="border-t border-border py-3 flex flex-col items-center gap-2 px-2 relative">
-      {/* Language pill */}
-      <button
-        onClick={onToggleLocale}
-        disabled={isPending}
-        className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/20 tracking-widest transition-colors disabled:opacity-50"
-        title={locale === "es" ? "Switch to English" : "Cambiar a Español"}
-      >
-        {locale === "es" ? "EN" : "ES"}
-      </button>
-
       {user && (
         <>
           {/* Clickable avatar — opens menu */}
@@ -245,9 +234,6 @@ export function AppSidebar() {
           firstName={firstName()}
           initials={initials()}
           avatarUrl={avatarUrl}
-          locale={locale}
-          isPending={isPending}
-          onToggleLocale={toggleLocale}
           onSignOut={signOut}
         />
       </TooltipProvider>
