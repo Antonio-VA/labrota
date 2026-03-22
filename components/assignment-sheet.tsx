@@ -172,7 +172,7 @@ function DraggableCard({
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0 : 1, borderLeft: `3px solid ${ROLE_BORDER[assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
       className={cn(
-        "flex items-center gap-2 py-2 text-[13px] bg-white text-slate-700 border border-slate-200",
+        "flex items-center gap-2.5 pl-3 pr-2 py-2 min-h-[40px] text-[13px] bg-white text-slate-700 border border-slate-200",
         !disabled && "cursor-grab"
       )}
       {...listeners}
@@ -187,29 +187,29 @@ function DraggableCard({
         onTecnicaSave={onTecnicaSave}
         isPublished={isPublished}
       >
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="font-medium truncate">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="font-medium truncate leading-tight">
             {assignment.staff.first_name} {assignment.staff.last_name}
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+          <span className="text-[10px] font-medium text-muted-foreground shrink-0 leading-tight">
             {ROLE_LABEL[assignment.staff.role] ?? assignment.staff.role}
           </span>
           {pillLabel && pillColor && (
-            <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto", pillColor)}>
+            <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto leading-tight", pillColor)}>
               {pillLabel}
             </span>
           )}
         </div>
       </AssignmentPopover>
 
-      {/* Remove */}
+      {/* Remove — clear tap target with padding */}
       {!disabled && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemove() }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="shrink-0 text-muted-foreground/30 hover:text-destructive transition-colors"
+          className="shrink-0 p-1 -mr-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-red-50 transition-colors"
         >
-          <X className="size-4" />
+          <X className="size-3.5" />
         </button>
       )}
     </div>
