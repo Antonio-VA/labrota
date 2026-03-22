@@ -22,12 +22,9 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SKILL_KEYS: Record<SkillName, string> = {
-  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
-  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
-  sperm_freezing: "spermFreezing",
-  witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
-  embryo_transfer: "embryoTransfer", denudation: "denudation",
+// Display skill code directly — técnica codes (OPU, ICS, ET) are human-readable
+function skillLabel(code: string): string {
+  return code
 }
 
 const BULK_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
@@ -130,7 +127,7 @@ function AddSkillDropdown({
                 : "border-transparent hover:bg-muted text-foreground"
             )}
           >
-            {ts(SKILL_KEYS[s] as Parameters<typeof ts>[0])}
+            {BULK_SKILL_LABELS[s] ?? s}
           </button>
         ))}
       </div>
@@ -189,7 +186,7 @@ function RemoveSkillDropdown({
             onClick={() => onConfirm(s)}
             className="text-left text-[13px] px-2.5 py-1.5 rounded-lg border border-transparent hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-colors"
           >
-            {ts(SKILL_KEYS[s] as Parameters<typeof ts>[0])}
+            {BULK_SKILL_LABELS[s] ?? s}
           </button>
         ))}
       </div>
@@ -673,7 +670,7 @@ function StaffTable({
                   key={sk.skill}
                   className="shrink-0 inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
                 >
-                  {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                  {skillLabel(sk.skill)}
                 </span>
               ))}
             </div>
@@ -689,7 +686,7 @@ function StaffTable({
                       className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 cursor-default"
                     >
                       <Hourglass className="size-2.5 text-amber-500 shrink-0" />
-                      {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
+                      {skillLabel(sk.skill)}
                     </span>
                   } />
                   <TooltipContent side="top">En formación</TooltipContent>

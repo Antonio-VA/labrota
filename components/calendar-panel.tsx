@@ -94,15 +94,8 @@ function sortAssignments<T extends { staff: { role: string }; shift_type: string
 
 const TODAY = new Date().toISOString().split("T")[0]
 
-// ── Skill key map (DB key → i18n key) ─────────────────────────────────────────
-
-const SKILL_KEYS: Record<string, string> = {
-  icsi: "icsi", iui: "iui", vitrification: "vitrification", thawing: "thawing",
-  biopsy: "biopsy", semen_analysis: "semenAnalysis", sperm_prep: "spermPrep",
-  sperm_freezing: "spermFreezing",
-  witnessing: "witnessing", egg_collection: "eggCollection", other: "other",
-  embryo_transfer: "embryoTransfer", denudation: "denudation",
-}
+// ── Skill display — use técnica code directly ────────────────────────────────
+function skillLabel(code: string): string { return code }
 
 // ── The 5 skills shown in coverage row ────────────────────────────────────────
 
@@ -639,7 +632,7 @@ function StaffProfilePanel({
                             : "bg-amber-50 border-amber-200 text-amber-700"
                         )}>
                           {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
-                          {ts(SKILL_KEYS[sk.skill] ?? sk.skill as never)}
+                          {skillLabel(sk.skill)}
                         </span>
                       } />
                       <TooltipContent side="top">
@@ -1040,7 +1033,7 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
       if (!byCategory[w.category]) byCategory[w.category] = []
       const existing = byCategory[w.category].find((e) => e.day === dayLabel)
       const msg = w.category === "skill_gap"
-        ? w.message.split(", ").map((sk) => ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0] ?? sk)).join(", ")
+        ? w.message
         : w.message
       if (existing) existing.messages.push(msg)
       else byCategory[w.category].push({ day: dayLabel, messages: [msg] })
@@ -2096,7 +2089,7 @@ function DayView({ day, loading, locale }: {
             <div className="flex flex-wrap gap-1 mt-1">
               {day.skillGaps.map((sk) => (
                 <Badge key={sk} variant="skill-gap">
-                  {ts(SKILL_KEYS[sk] as Parameters<typeof ts>[0])}
+                  {sk}
                 </Badge>
               ))}
             </div>
