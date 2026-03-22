@@ -1,3 +1,4 @@
+import { requireEditor } from "@/lib/require-editor"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
@@ -11,6 +12,7 @@ import { LabPageTabs } from "@/components/lab-page-tabs"
 import type { LabConfig, RotaRule, Staff, ShiftTypeDefinition, Tecnica, RotaTemplate, Department } from "@/lib/types/database"
 
 export default async function LabConfigPage() {
+  await requireEditor()
   const supabase = await createClient()
   const t = await getTranslations("lab")
 

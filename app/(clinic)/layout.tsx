@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ClinicTopBar } from "@/components/clinic-top-bar"
+import { RoleProvider } from "@/lib/role-context"
 
 export default async function ClinicLayout({
   children,
@@ -15,6 +16,7 @@ export default async function ClinicLayout({
   let orgLogoUrl: string | null = null
   let activeOrgId: string | null = null
   let allOrgs: { id: string; name: string; logo_url: string | null }[] = []
+  let userRole: "admin" | "manager" | "viewer" = "admin"
 
   if (user) {
     const { data: profile } = await supabase
@@ -34,12 +36,19 @@ export default async function ClinicLayout({
       if (org) { orgName = org.name; orgLogoUrl = org.logo_url }
     }
 
-    // Fetch all orgs this user belongs to (via organisation_members)
+    // Fetch all orgs this user belongs to + their role in the active org
     const admin = createAdminClient()
     const { data: memberships } = await admin
       .from("organisation_members")
-      .select("organisation_id")
-      .eq("user_id", user.id) as { data: Array<{ organisation_id: string }> | null }
+      .select("organisation_id, role")
+      .eq("user_id", user.id) as { data: Array<{ organisation_id: string; role: string }> | null }
+
+    // Get role for active org
+    if (memberships && activeOrgId) {
+      const activeMembership = memberships.find((m) => m.organisation_id === activeOrgId)
+      if (activeMembership?.role === "viewer") userRole = "viewer"
+      else if (activeMembership?.role === "manager") userRole = "manager"
+    }
 
     if (memberships && memberships.length > 1) {
       const orgIds = memberships.map((m) => m.organisation_id)
@@ -59,12 +68,14 @@ export default async function ClinicLayout({
         allOrgs={allOrgs}
         activeOrgId={activeOrgId}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background">
-          {children}
+      <RoleProvider role={userRole}>
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background">
+            {children}
+          </div>
         </div>
-      </div>
+      </RoleProvider>
     </div>
   )
 }

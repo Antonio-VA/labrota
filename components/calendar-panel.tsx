@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, Fragment } fro
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
+import { useCanEdit } from "@/lib/role-context"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
@@ -2629,6 +2630,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
   const locale = useLocale()
+  const canEdit = useCanEdit()
 
   const [view, setView]                 = useState<ViewMode>("week")
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
@@ -2939,7 +2941,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
   const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
-  const showActions    = true
+  const showActions    = canEdit
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
@@ -3211,7 +3213,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   locale={locale}
                   onCellClick={() => {}}
                   onChipClick={(a) => openProfile(a.staff_id)}
-                  isPublished={!!isPublished}
+                  isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -3232,7 +3234,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   loading={loadingWeek || isPending}
                   isGenerating={isPending}
                   locale={locale}
-                  isPublished={!!isPublished}
+                  isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -3284,7 +3286,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}
-        isPublished={!!isPublished}
+        isPublished={!!isPublished || !canEdit}
         onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
         onPunctionsChange={handlePunctionsChange}
       />

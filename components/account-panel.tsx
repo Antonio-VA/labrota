@@ -36,10 +36,12 @@ export function AccountPanel({ open, onClose, user }: {
   onClose: () => void
   user: User | null
 }) {
-  const [prefs, setPrefs] = useState<UserPreferences>({
-    locale: "browser",
-    theme: "light",
-    accentColor: "#1b4f8a",
+  const [prefs, setPrefs] = useState<UserPreferences>(() => {
+    if (typeof window === "undefined") return { locale: "browser", theme: "light", accentColor: "#1b4f8a" }
+    try {
+      const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
+      return { locale: "browser", theme: saved.theme ?? "light", accentColor: saved.accentColor ?? "#1b4f8a" }
+    } catch { return { locale: "browser", theme: "light", accentColor: "#1b4f8a" } }
   })
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()

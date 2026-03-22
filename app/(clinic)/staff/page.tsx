@@ -1,9 +1,11 @@
+import { requireEditor } from "@/lib/require-editor"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffList } from "@/components/staff-list"
 import type { StaffWithSkills, Tecnica, Department } from "@/lib/types/database"
 
 export default async function StaffPage() {
+  await requireEditor()
   const supabase = await createClient()
   const [staffRes, tecnicasRes, deptRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").order("last_name"),

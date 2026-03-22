@@ -1,9 +1,11 @@
+import { requireEditor } from "@/lib/require-editor"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
 
 export default async function LeavesPage() {
+  await requireEditor()
   const supabase = await createClient()
 
   const [{ data: leavesData }, { data: staffData }] = await Promise.all([

@@ -1,3 +1,4 @@
+import { requireEditor } from "@/lib/require-editor"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
@@ -5,6 +6,7 @@ import { StaffForm } from "@/components/staff-form"
 import type { Tecnica, Department } from "@/lib/types/database"
 
 export default async function NewStaffPage() {
+  await requireEditor()
   const t = await getTranslations("staff")
   const supabase = await createClient()
   const [tecRes, deptRes] = await Promise.all([

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog } from "lucide-react"
 import { AccountPanel, applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
+import { useCanEdit } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -198,12 +199,16 @@ export function AppSidebar() {
 
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? null
 
-  const navItems = [
+  const canEdit = useCanEdit()
+
+  const navItems = canEdit ? [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "staff",    icon: Users,        href: "/staff" },
     { key: "leaves",   icon: Plane,        href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports",  disabled: true },
+  ] as const : [
+    { key: "schedule", icon: CalendarDays, href: "/" },
   ] as const
 
   return (

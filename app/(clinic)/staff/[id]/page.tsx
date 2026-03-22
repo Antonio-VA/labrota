@@ -1,3 +1,4 @@
+import { requireEditor } from "@/lib/require-editor"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
@@ -10,6 +11,7 @@ export default async function EditStaffPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireEditor()
   const { id } = await params
   const supabase = await createClient()
   const t = await getTranslations("staff")
