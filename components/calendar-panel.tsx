@@ -2765,13 +2765,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
 
   // Check if previous week has a rota (for "copy previous week" button)
+  // Don't reset to false while loading — keep the last known value
   useEffect(() => {
+    let cancelled = false
     const prev = new Date(weekStart + "T12:00:00")
     prev.setDate(prev.getDate() - 7)
     const prevWs = prev.toISOString().split("T")[0]
     getRotaWeek(prevWs).then((d) => {
-      setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
-    }).catch(() => setPrevWeekHasRota(false))
+      if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
+    }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
+    return () => { cancelled = true }
   }, [weekStart])
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart)
@@ -3161,7 +3164,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         {view === "week" && (
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-              {!weekData?.rota && !loadingWeek && !isPending ? (
+              {(!weekData?.rota || (weekData && !weekData.days.some((d) => d.assignments.length > 0))) && !loadingWeek && !isPending ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
                   <CalendarDays className="size-10 text-muted-foreground/30" />
                   <div className="text-center">
