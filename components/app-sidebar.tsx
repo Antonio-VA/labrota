@@ -39,7 +39,7 @@ function NavItem({
             <div className="flex flex-col items-center gap-2 py-2 mx-2 rounded-[8px] cursor-not-allowed" />
           }
         >
-          <Icon className="size-6 text-slate-300" />
+          <Icon className="size-5 text-slate-300" />
           <span className="text-[11px] font-medium text-slate-300 leading-none">{label}</span>
         </TooltipTrigger>
         <TooltipContent side="right">{label}</TooltipContent>
@@ -62,7 +62,7 @@ function NavItem({
           />
         }
       >
-        <Icon className="size-6" />
+        <Icon className="size-5" />
         <span className="text-[11px] font-medium leading-none">{label}</span>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>

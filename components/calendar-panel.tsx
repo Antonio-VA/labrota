@@ -1400,7 +1400,7 @@ function PersonGrid({
                                   />
                                 </div>
                               } />
-                              <TooltipContent side="top">
+                              <TooltipContent side="right">
                                 {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}
                               </TooltipContent>
                             </Tooltip>
@@ -1869,7 +1869,7 @@ function ShiftGrid({
                               />
                             </div>
                           } />
-                          <TooltipContent side="top">
+                          <TooltipContent side="right">
                             {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
                           </TooltipContent>
                         </Tooltip>
