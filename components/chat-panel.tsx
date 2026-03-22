@@ -166,10 +166,12 @@ export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
   const t = useTranslations("agent")
   const { messages, sendMessage, status } = useChat({ transport })
   const [input, setInput]       = useState("")
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("agentPanelCollapsed") === "true"
-  })
+  const [mounted, setMounted] = useState(false)
+  const [collapsed, setCollapsed] = useState(true) // default collapsed to avoid flash
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("agentPanelCollapsed") === "true")
+    setMounted(true)
+  }, [])
   const bottomRef               = useRef<HTMLDivElement>(null)
   const inputRef                = useRef<HTMLInputElement>(null)
   const isLoading               = status === "submitted" || status === "streaming"
@@ -195,8 +197,8 @@ export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
     <aside
       className={`
         hidden md:flex flex-col border-l bg-background shrink-0
-        transition-[width] duration-300 ease-in-out overflow-hidden
-        ${collapsed ? "w-10" : "w-80"}
+        overflow-hidden
+        ${!mounted ? "w-10" : `transition-[width] duration-300 ease-in-out ${collapsed ? "w-10" : "w-80"}`}
       `}
     >
       {/* ── Collapsed tab ── */}
