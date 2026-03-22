@@ -52,17 +52,12 @@ function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ROLE_DOT: Record<StaffRole, string> = {
-  lab:       "bg-blue-400",
-  andrology: "bg-emerald-400",
-  admin:     "bg-slate-400",
+const ROLE_BORDER_COLOR: Record<string, string> = {
+  lab:       "#60A5FA",
+  andrology: "#34D399",
+  admin:     "#94A3B8",
 }
 
-function RoleDot({ role }: { role: StaffRole }) {
-  return (
-    <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role])} />
-  )
-}
 
 // ── Dropdown wrapper ───────────────────────────────────────────────────────────
 
@@ -650,9 +645,8 @@ function StaffTable({
               aria-label={`Seleccionar ${member.first_name} ${member.last_name}`}
             />
 
-            {/* Name + avatar */}
+            {/* Name */}
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <RoleDot role={member.role} />
               <div className="min-w-0">
                 <p className="text-[14px] font-medium truncate">
                   {member.first_name} {member.last_name}
@@ -663,9 +657,12 @@ function StaffTable({
               </div>
             </div>
 
-            {/* Role */}
+            {/* Department */}
             <div className="hidden md:flex items-center">
-              <span className="inline-flex items-center rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+              <span
+                className="inline-flex items-center bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200"
+                style={{ borderLeft: `3px solid ${ROLE_BORDER_COLOR[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+              >
                 {t(`roles.${member.role}`)}
               </span>
             </div>
