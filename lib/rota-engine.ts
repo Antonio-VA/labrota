@@ -141,6 +141,10 @@ export function runRotaEngine({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
 
+  // Global round-robin index — carried across days so different shifts get
+  // first picks on different days (prevents T1/T2 always getting all staff)
+  let globalRrIdx = 0
+
   // Canonical skills tracked for gap detection — only these five matter for rota coverage.
   // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
   const CANONICAL_SKILLS = new Set<SkillName>([
@@ -185,16 +189,19 @@ export function runRotaEngine({
       if (s.end_date && s.end_date < date) return false
       if (!(s.working_pattern ?? []).includes(dayCode)) return false
       if (leaveMap[s.id]?.has(date)) return false
-      // Budget check: on weekdays, reserve slots for upcoming weekend pattern days
-      // so the Mon→Fri greedy fill doesn't exhaust quota before Saturday/Sunday.
-      // Leave days this week reduce the effective budget so under-leave weeks aren't flagged.
+      // Budget check: don't exceed days_per_week (adjusted for leave).
+      // On weekdays, reserve at most 1 slot for a weekend day (if the staff
+      // works weekends) to avoid starving Friday entirely. But never reserve
+      // more than what's actually left in the budget after today.
       const totalBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
       const used        = weeklyShiftCount[s.id] ?? 0
-      if (weekend) {
-        if (used >= totalBudget) return false
-      } else {
-        const upcomingWeekendSlots = staffWeekendDays[s.id].filter((d) => d > date).length
-        if (used >= totalBudget - upcomingWeekendSlots) return false
+      if (used >= totalBudget) return false
+      if (!weekend) {
+        const futureWeekendDays = staffWeekendDays[s.id].filter((d) => d > date).length
+        const remaining = totalBudget - used
+        // Only reserve if there are multiple remaining slots; never starve
+        // the current day just for a weekend reservation
+        if (futureWeekendDays > 0 && remaining <= 1) return false
       }
       return true
     })
@@ -338,9 +345,9 @@ export function runRotaEngine({
     const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? (shiftCodes[0] ?? "T1")
     const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
-    // Distribute staff without a preferred_shift round-robin across all available shifts,
-    // so every shift type gets coverage. Staff with a preferred_shift keep their preference.
-    let rrIdx = 0
+    // Distribute staff without a preferred_shift round-robin across all available shifts.
+    // Uses global index so different days start from different shifts, ensuring
+    // T4/T5 get coverage over the week (not just T1/T2 every day).
     days.push({
       date,
       assignments: assigned.map((s) => {
@@ -350,8 +357,8 @@ export function runRotaEngine({
         } else if (s.role === "admin") {
           shift = adminDefaultShift
         } else {
-          shift = defaultShiftCodes[rrIdx % defaultShiftCodes.length] as ShiftType
-          rrIdx++
+          shift = defaultShiftCodes[globalRrIdx % defaultShiftCodes.length] as ShiftType
+          globalRrIdx++
         }
         return { staff_id: s.id, shift_type: shift }
       }),
