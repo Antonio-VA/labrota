@@ -20,7 +20,7 @@ export async function sendSupportMessage(subject: string, message: string): Prom
         "Authorization": `Bearer ${process.env.RESEND_API_KEY ?? ""}`,
       },
       body: JSON.stringify({
-        from: "LabRota <noreply@labrota.app>",
+        from: "LabRota <onboarding@resend.dev>",
         to: "antonio.grit@gmail.com",
         reply_to: from,
         subject: `[LabRota Support] ${subject}`,
