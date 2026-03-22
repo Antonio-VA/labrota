@@ -4,7 +4,9 @@ import { useEffect, useTransition, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
-import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut } from "lucide-react"
+import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog } from "lucide-react"
+import { AccountPanel, applyTheme } from "@/components/account-panel"
+import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -81,6 +83,7 @@ function AvatarMenu({
 }) {
   const t    = useTranslations("nav")
   const [open, setOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -127,6 +130,13 @@ function AvatarMenu({
                 <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
               </div>
               <button
+                onClick={() => { setOpen(false); setAccountOpen(true) }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
+              >
+                <UserCog className="size-3.5" />
+                Mi cuenta
+              </button>
+              <button
                 onClick={() => { setOpen(false); onSignOut() }}
                 className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
               >
@@ -135,6 +145,8 @@ function AvatarMenu({
               </button>
             </div>
           )}
+
+          <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} user={user} />
         </>
       )}
     </div>
@@ -154,7 +166,15 @@ export function AppSidebar() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null))
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null)
+      // Load and apply saved theme preferences
+      if (data.user) {
+        getUserPreferences().then((prefs) => {
+          if (prefs.accentColor || prefs.theme) applyTheme(prefs)
+        })
+      }
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
     })
