@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter } from "lucide-react"
@@ -253,22 +254,39 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean }>({ top: 0, left: 0, flipUp: false })
 
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (triggerRef.current?.contains(e.target as Node)) return
+      if (popupRef.current?.contains(e.target as Node)) return
+      setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  // Calculate position when opening
+  useEffect(() => {
+    if (!open || !triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    const popupHeight = 200 // approximate
+    const spaceBelow = window.innerHeight - rect.bottom
+    const flipUp = spaceBelow < popupHeight && rect.top > popupHeight
+    setPos({
+      top: flipUp ? rect.top - 4 : rect.bottom + 4,
+      left: rect.left,
+      flipUp,
+    })
   }, [open])
 
   const currentLabel = assignment.function_label ?? null
   const staffSkillCodes = new Set(staffSkills.map((s) => s.skill))
   const staffDept = DEPT_FOR_ROLE[assignment.staff.role]
 
-  // Show only técnicas from the staff's department that they are certified/trained in
   const availableTecnicas = tecnicas.filter((t) =>
     t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
   )
@@ -276,12 +294,21 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
   if (availableTecnicas.length === 0 || isPublished) return <>{children}</>
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={triggerRef}>
       <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
         {children}
       </div>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
+      {open && createPortal(
+        <div
+          ref={popupRef}
+          className="fixed z-[100] bg-background border border-border rounded-lg shadow-xl py-1.5 w-52"
+          style={{
+            left: pos.left,
+            ...(pos.flipUp
+              ? { bottom: window.innerHeight - pos.top }
+              : { top: pos.top }),
+          }}
+        >
           <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Técnica principal</p>
           <div className="flex flex-col">
             {availableTecnicas.map((tec) => {
@@ -298,7 +325,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                   }}
                   className={cn(
                     "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                    isActive ? "bg-primary/5" : "hover:bg-muted/50"
+                    isActive ? "bg-blue-50" : "hover:bg-slate-100"
                   )}
                 >
                   <span className={cn(
@@ -309,12 +336,13 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                     {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
                     {tec.codigo}
                   </span>
-                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
+                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-slate-600")}>{tec.nombre_es}</span>
                 </button>
               )
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
