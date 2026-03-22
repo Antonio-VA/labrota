@@ -4,7 +4,8 @@ import { useEffect, useTransition, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
-import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog } from "lucide-react"
+import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog, HelpCircle } from "lucide-react"
+import { SupportModal } from "@/components/support-modal"
 import { AccountPanel, applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit } from "@/lib/role-context"
@@ -84,6 +85,7 @@ function AvatarMenu({
   const t    = useTranslations("nav")
   const [open, setOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -127,6 +129,13 @@ function AvatarMenu({
                 Mi cuenta
               </button>
               <button
+                onClick={() => { setOpen(false); setSupportOpen(true) }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
+              >
+                <HelpCircle className="size-3.5" />
+                Soporte
+              </button>
+              <button
                 onClick={() => { setOpen(false); onSignOut() }}
                 className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
               >
@@ -137,6 +146,7 @@ function AvatarMenu({
           )}
 
           <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} user={user} />
+          <SupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
         </>
       )}
     </div>
