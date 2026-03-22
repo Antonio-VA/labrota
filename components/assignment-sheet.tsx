@@ -43,14 +43,14 @@ const ROLE_LABEL: Record<string, string> = {
 const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
 
 const TECNICA_PILL: Record<string, string> = {
-  amber:  "bg-amber-50 border-amber-300 text-amber-800",
-  blue:   "bg-blue-50 border-blue-300 text-blue-700",
-  green:  "bg-green-50 border-green-300 text-green-700",
-  purple: "bg-purple-50 border-purple-200 text-purple-700",
-  coral:  "bg-red-50 border-red-300 text-red-700",
-  teal:   "bg-teal-50 border-teal-300 text-teal-700",
-  slate:  "bg-slate-100 border-slate-300 text-slate-600",
-  red:    "bg-red-50 border-red-400 text-red-800",
+  amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
+  blue:   "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
+  green:  "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400",
+  purple: "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400",
+  coral:  "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
+  teal:   "bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400",
+  slate:  "bg-muted border-border text-muted-foreground",
+  red:    "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
 }
 
 const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "andrology" }

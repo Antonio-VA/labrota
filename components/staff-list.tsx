@@ -592,7 +592,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
   const overflow = sorted.slice(maxVisible)
 
   const badgeClass = variant === "training"
-    ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+    ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
     : "shrink-0 inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground"
 
   return (
@@ -691,7 +691,8 @@ function StaffTable({
               checked={isSelected}
               onChange={() => onToggle(member.id)}
               onClick={(e) => e.stopPropagation()}
-              className="size-4 rounded border-border cursor-pointer accent-primary"
+              className="size-4 rounded cursor-pointer accent-primary"
+              style={{ borderColor: "var(--border)" }}
               aria-label={`Seleccionar ${member.first_name} ${member.last_name}`}
             />
 

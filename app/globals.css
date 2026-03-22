@@ -75,6 +75,7 @@
 }
 
 :root {
+  color-scheme: light;
   /* LabRota Clinical Design System */
 
   /* Base */
@@ -141,6 +142,7 @@
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
+  color-scheme: dark;
   --background: #0f172a;
   --foreground: #e2e8f0;
 
@@ -188,6 +190,12 @@
   --chart-5: #f87171;
 }
 
+/* ── Body base — ensures dark bg before Tailwind loads ───────────────────────── */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
 /* ── Calendar shimmer skeleton ────────────────────────────────────────────────
    background-attachment: fixed ties the gradient to viewport coordinates so
    every shimmer-bar animates in sync — one light source sweeping the full page.
@@ -205,9 +213,9 @@
 .shimmer-bar {
   background: linear-gradient(
     90deg,
-    #f0f0f0 25%,
-    #e0e8f4 50%,
-    #f0f0f0 75%
+    var(--muted) 25%,
+    var(--border) 50%,
+    var(--muted) 75%
   );
   background-size: 200% 100%;
   background-attachment: fixed;

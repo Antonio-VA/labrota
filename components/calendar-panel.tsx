@@ -88,14 +88,14 @@ const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
 
 // Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
 const TECNICA_PILL: Record<string, string> = {
-  amber:  "bg-amber-50 border-amber-300 text-amber-800",
-  blue:   "bg-blue-50 border-blue-300 text-blue-700",
-  green:  "bg-green-50 border-green-300 text-green-700",
-  purple: "bg-purple-50 border-purple-300 text-purple-700",
-  coral:  "bg-red-50 border-red-300 text-red-700",
-  teal:   "bg-teal-50 border-teal-300 text-teal-700",
-  slate:  "bg-slate-100 border-slate-300 text-muted-foreground",
-  red:    "bg-red-50 border-red-400 text-red-800",
+  amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
+  blue:   "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
+  green:  "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400",
+  purple: "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400",
+  coral:  "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
+  teal:   "bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400",
+  slate:  "bg-muted border-border text-muted-foreground",
+  red:    "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
 }
 
 function sortAssignments<T extends { staff: { role: string }; shift_type: string }>(arr: T[]): T[] {
@@ -422,7 +422,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
           <TooltipTrigger render={
             <button
               onClick={(e) => { e.stopPropagation(); onChange(date, null) }}
-              className="text-[10px] font-bold text-amber-500 hover:text-amber-700 transition-colors leading-none"
+              className="text-[10px] font-bold text-amber-500 hover:text-amber-600 dark:text-amber-400 transition-colors leading-none"
             >
               *
             </button>
@@ -701,7 +701,7 @@ function StaffProfilePanel({
                           "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium cursor-default",
                           sk.level === "certified"
                             ? "bg-blue-50 border-blue-200 text-blue-700"
-                            : "bg-amber-50 border-amber-200 text-amber-700"
+                            : "bg-amber-50 border-amber-200 text-amber-600 dark:text-amber-400"
                         )}>
                           {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
                           {skillLabel(sk.skill)}
@@ -1150,7 +1150,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[12px] font-medium hover:bg-amber-100 transition-colors shrink-0"
+        className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-medium hover:bg-amber-500/20 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>
@@ -2068,7 +2068,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                   "text-[9px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap",
                   weekStatus === "published"
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                    : "bg-amber-50 text-amber-600 dark:text-amber-400 border border-amber-200"
                 )}>
                   {weekStatus === "published" ? "Publicada" : "Borrador"}
                 </span>
@@ -2208,10 +2208,10 @@ function DayView({ day, loading, locale }: {
   return (
     <div className="flex flex-col gap-5 max-w-lg mx-auto w-full">
       {(day.skillGaps.length > 0) && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 flex items-start gap-2">
           <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-medium text-amber-800">{t("insufficientCoverage")}</p>
+            <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">{t("insufficientCoverage")}</p>
             <div className="flex flex-wrap gap-1 mt-1">
               {day.skillGaps.map((sk) => (
                 <Badge key={sk} variant="skill-gap">
@@ -2271,7 +2271,7 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "strict_template", icon: <BookmarkX className="size-5" />,
     title: "Plantilla estricta",
     desc: "Usa una plantilla guardada como base. Las asignaciones se copian exactamente, respetando solo ausencias aprobadas.",
-    badge: "HARD", badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
+    badge: "HARD", badgeColor: "bg-amber-50 text-amber-600 dark:text-amber-400 border-amber-200",
   },
   {
     key: "flexible_template", icon: <Bookmark className="size-5" />,
@@ -2355,9 +2355,9 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
               {loadingTpl ? (
                 <div className="shimmer-bar h-10 w-full rounded-lg" />
               ) : templates.length === 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-[13px] text-amber-800">No hay plantillas guardadas</p>
-                  <p className="text-[12px] text-amber-700 mt-0.5">
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                  <p className="text-[13px] text-amber-600 dark:text-amber-400">No hay plantillas guardadas</p>
+                  <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-0.5">
                     Guarda una desde el calendario o ve a{" "}
                     <a href="/lab" className="underline font-medium">Configuración → Plantillas</a>
                   </p>
@@ -3184,9 +3184,9 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                   </div>
                   {/* Copy confirmation */}
                   {showCopyConfirm && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 max-w-sm">
-                      <p className="text-[13px] text-amber-800 font-medium mb-1">¿Copiar semana anterior?</p>
-                      <p className="text-[12px] text-amber-700 mb-3">Se creará una guardia borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
+                      <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">¿Copiar semana anterior?</p>
+                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">Se creará una guardia borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => {
                           setShowCopyConfirm(false)
