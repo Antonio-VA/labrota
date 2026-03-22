@@ -1678,8 +1678,8 @@ function ShiftGrid({
     >
       <div className="rounded-lg border border-[#CCDDEE] bg-white overflow-hidden w-full">
 
-        {/* Header row — 52px, white, subtle border */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 bg-white z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52 }}>
+        {/* Header row — light blue tint matching PDF export */}
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-[#CCDDEE]" style={{ minHeight: 52, background: "#f1f5fb" }}>
           <div className="border-r border-[#CCDDEE]" />
           {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
@@ -1716,13 +1716,13 @@ function ShiftGrid({
                   onClick={() => onDateClick?.(day.date)}
                   className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
-                  <span className="text-[11px] text-slate-400 uppercase tracking-wider leading-none">{wday}</span>
+                  <span className="text-[11px] uppercase tracking-wider leading-none" style={{ color: "#64748b" }}>{wday}</span>
                   <div className={cn(
                     "size-7 flex items-center justify-center rounded-full font-medium leading-none",
                     today
                       ? "bg-primary text-primary-foreground text-[15px]"
-                      : day.isWeekend ? "text-[20px] text-slate-500" : "text-[20px] text-slate-800"
-                  )}>
+                      : day.isWeekend ? "text-[20px]" : "text-[20px]"
+                  )} style={!today ? { color: day.isWeekend ? "#94a3b8" : "#1b4f8a" } : undefined}>
                     {dayN}
                   </div>
                 </button>
@@ -1746,9 +1746,9 @@ function ShiftGrid({
         {SHIFT_ROWS.map((shiftRow) => (
           <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#CCDDEE]">
             {/* Shift label — right-aligned, three-line: code / start / end */}
-            <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2">
-              <span className="text-[10px] text-slate-400 leading-tight font-medium">{shiftRow}</span>
-              <span className="text-[13px] font-medium text-slate-700 leading-tight tabular-nums">
+            <div className="border-r border-[#CCDDEE] flex flex-col items-end justify-center px-2.5 py-2" style={{ background: "#f8fafd" }}>
+              <span className="text-[10px] leading-tight font-medium" style={{ color: "#64748b" }}>{shiftRow}</span>
+              <span className="text-[13px] font-medium leading-tight tabular-nums" style={{ color: "#1b4f8a" }}>
                 {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
               </span>
               {shiftTypeMap[shiftRow]?.end_time && (
