@@ -166,15 +166,13 @@ export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
   const t = useTranslations("agent")
   const { messages, sendMessage, status } = useChat({ transport })
   const [input, setInput]       = useState("")
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("agentPanelCollapsed") === "true"
+  })
   const bottomRef               = useRef<HTMLDivElement>(null)
   const inputRef                = useRef<HTMLInputElement>(null)
   const isLoading               = status === "submitted" || status === "streaming"
-
-  // Restore collapsed state from localStorage after mount
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("agentPanelCollapsed") === "true")
-  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
