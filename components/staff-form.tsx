@@ -83,10 +83,12 @@ export function StaffForm({
   mode,
   staff,
   tecnicas,
+  departments: deptsProp,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
   tecnicas?: Tecnica[]
+  departments?: import("@/lib/types/database").Department[]
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -179,9 +181,17 @@ export function StaffForm({
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("fields.role")} required>
             <Select name="role" defaultValue={staff?.role ?? "lab"} disabled={isPending} onChange={setRole}>
-              <option value="lab">{t("roles.lab")}</option>
-              <option value="andrology">{t("roles.andrology")}</option>
-              <option value="admin">{t("roles.admin")}</option>
+              {deptsProp && deptsProp.length > 0 ? (
+                deptsProp.map((d) => (
+                  <option key={d.code} value={d.code}>{d.name}</option>
+                ))
+              ) : (
+                <>
+                  <option value="lab">{t("roles.lab")}</option>
+                  <option value="andrology">{t("roles.andrology")}</option>
+                  <option value="admin">{t("roles.admin")}</option>
+                </>
+              )}
             </Select>
           </Field>
           <Field label={t("fields.onboardingStatus")} required>

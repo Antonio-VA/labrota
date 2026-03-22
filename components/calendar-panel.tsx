@@ -59,12 +59,11 @@ const ROLE_DOT: Record<string, string> = {
   admin:     "bg-slate-400",
 }
 
+// Department colours/labels — defaults for the 3 standard departments.
+// Phase 2 will replace these with fully dynamic lookups from departments table.
 const ROLE_BORDER: Record<string, string> = {
-  lab:       "#60A5FA",
-  andrology: "#34D399",
-  admin:     "#94A3B8",
+  lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8",
 }
-
 const ROLE_LABEL: Record<string, string> = {
   lab: "Embriología", andrology: "Andrología", admin: "Admin",
 }

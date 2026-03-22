@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
-import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
+import type { StaffWithSkills, Tecnica, Department } from "@/lib/types/database"
 
 export default async function EditStaffPage({
   params,
@@ -14,15 +14,17 @@ export default async function EditStaffPage({
   const supabase = await createClient()
   const t = await getTranslations("staff")
 
-  const [staffRes, tecnicasRes] = await Promise.all([
+  const [staffRes, tecnicasRes, deptRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").eq("id", id).single() as unknown as Promise<{ data: StaffWithSkills | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
+    supabase.from("departments").select("*").order("sort_order"),
   ])
 
   if (!staffRes.data) notFound()
 
-  const staff    = staffRes.data as StaffWithSkills
-  const tecnicas = (tecnicasRes.data ?? []) as Tecnica[]
+  const staff       = staffRes.data as StaffWithSkills
+  const tecnicas    = (tecnicasRes.data ?? []) as Tecnica[]
+  const departments = (deptRes.data ?? []) as Department[]
 
   return (
     <>
@@ -35,7 +37,7 @@ export default async function EditStaffPage({
                 {staff.first_name} {staff.last_name}
               </p>
             </div>
-            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} />
+            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} />
           </div>
         </MobileGate>
       </div>

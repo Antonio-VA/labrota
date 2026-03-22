@@ -4,7 +4,20 @@
 // ============================================================
 
 // ── Enums ────────────────────────────────────────────────────────────────────
-export type StaffRole         = 'lab' | 'andrology' | 'admin'
+export type StaffRole         = string  // maps to departments.code
+
+export interface Department {
+  id:              string
+  organisation_id: string
+  code:            string
+  name:            string
+  name_en:         string
+  abbreviation:    string
+  colour:          string
+  is_default:      boolean
+  sort_order:      number
+  created_at:      string
+}
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
 export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
@@ -347,6 +360,12 @@ export interface Database {
         Row:    RotaTemplate
         Insert: { organisation_id: string; name: string; assignments: unknown }
         Update: { name?: string; assignments?: unknown }
+        Relationships: []
+      }
+      departments: {
+        Row:    Department
+        Insert: { organisation_id: string; code: string; name: string; name_en?: string; abbreviation?: string; colour?: string; is_default?: boolean; sort_order?: number }
+        Update: { name?: string; name_en?: string; abbreviation?: string; colour?: string; sort_order?: number }
         Relationships: []
       }
       organisation_members: {

@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["turnos", "configuracion", "reglas", "tecnicas", "plantillas"] as const
+const TAB_KEYS = ["configuracion", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
+  departamentos: "Departamentos",
   turnos:        "Turnos",
   configuracion: "Configuración",
   reglas:        "Reglas",
@@ -15,16 +16,17 @@ const TAB_LABELS: Record<TabKey, string> = {
 }
 
 export function LabPageTabs({
-  turnos, configuracion, reglas, tecnicas, plantillas,
+  departamentos, turnos, configuracion, reglas, tecnicas, plantillas,
 }: {
+  departamentos: React.ReactNode
   turnos:        React.ReactNode
   configuracion: React.ReactNode
   reglas:        React.ReactNode
   tecnicas:      React.ReactNode
   plantillas:    React.ReactNode
 }) {
-  const [active, setActive] = useState<TabKey>("turnos")
-  const content: Record<TabKey, React.ReactNode> = { turnos, configuracion, reglas, tecnicas, plantillas }
+  const [active, setActive] = useState<TabKey>("configuracion")
+  const content: Record<TabKey, React.ReactNode> = { departamentos, turnos, configuracion, reglas, tecnicas, plantillas }
 
   return (
     <div className="flex flex-col gap-6">

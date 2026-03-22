@@ -181,7 +181,7 @@
     "columns": {
       "name": "Nombre",
       "role": "Departamento",
-      "skills": "Habilidades",
+      "skills": "Técnicas",
       "capacidades": "Técnicas",
       "training": "En formación",
       "shiftsThisWeek": "Turnos esta semana",
@@ -197,7 +197,7 @@
       "lastName": "Apellidos",
       "email": "Correo electrónico",
       "role": "Departamento",
-      "skills": "Habilidades",
+      "skills": "Técnicas",
       "skillHint": "1 clic = en formación · 2 clics = certificado",
       "workingPattern": "Disponibilidad",
       "contractedHours": "Horas contratadas semanales",

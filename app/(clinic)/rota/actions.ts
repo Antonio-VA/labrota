@@ -55,6 +55,7 @@ export interface RotaWeekData {
   /** date → holiday name for Spanish national holidays */
   publicHolidays: Record<string, string>
   tecnicas: Tecnica[]
+  departments: import("@/lib/types/database").Department[]
 }
 
 // ── Spanish national public holidays ─────────────────────────────────────────
@@ -117,7 +118,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const dates = getWeekDates(weekStart)
 
   // Fetch rota record, lab config, approved leaves, shift types, and técnicas in parallel.
-  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes] = await Promise.all([
+  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes] = await Promise.all([
     supabase
       .from("rotas")
       .select("*")
@@ -132,6 +133,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
     supabase.from("shift_types").select("*").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
+    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
   ])
 
   const rotaData  = rotaResult.data
@@ -184,7 +186,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [] }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -306,7 +308,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [] }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────

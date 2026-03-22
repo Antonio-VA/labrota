@@ -2,13 +2,17 @@ import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
-import type { Tecnica } from "@/lib/types/database"
+import type { Tecnica, Department } from "@/lib/types/database"
 
 export default async function NewStaffPage() {
   const t = await getTranslations("staff")
   const supabase = await createClient()
-  const { data } = await supabase.from("tecnicas").select("*").order("orden").order("created_at")
-  const tecnicas = (data ?? []) as Tecnica[]
+  const [tecRes, deptRes] = await Promise.all([
+    supabase.from("tecnicas").select("*").order("orden").order("created_at"),
+    supabase.from("departments").select("*").order("sort_order"),
+  ])
+  const tecnicas = (tecRes.data ?? []) as Tecnica[]
+  const departments = (deptRes.data ?? []) as Department[]
 
   return (
     <>
@@ -18,7 +22,7 @@ export default async function NewStaffPage() {
             <div>
               <h1 className="text-[18px] font-medium">{t("addStaff")}</h1>
             </div>
-            <StaffForm mode="create" tecnicas={tecnicas} />
+            <StaffForm mode="create" tecnicas={tecnicas} departments={departments} />
           </div>
         </MobileGate>
       </div>
