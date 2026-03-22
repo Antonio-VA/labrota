@@ -1123,7 +1123,15 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
   )
 
   const totalIssues = Object.values(byCategory).reduce((sum, arr) => sum + arr.reduce((s, e) => s + e.messages.length, 0), 0)
-  if (totalIssues === 0) return null
+
+  if (totalIssues === 0) {
+    return (
+      <div className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] font-medium">
+        <CheckCircle2 className="size-3 shrink-0" />
+        Sin avisos
+      </div>
+    )
+  }
 
   return (
     <div ref={ref} className="relative">
