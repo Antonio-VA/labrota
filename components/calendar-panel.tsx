@@ -2335,12 +2335,12 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 className={cn(
                   "relative flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all",
                   selected === card.key
-                    ? "border-primary bg-blue-50/50 ring-1 ring-primary/20"
-                    : "border-border hover:border-primary/30 hover:bg-muted/50/50"
+                    ? "border-primary border-2 bg-primary/10"
+                    : "border-border hover:border-primary/30 hover:bg-muted"
                 )}
               >
-                <div className="text-muted-foreground">{card.icon}</div>
-                <p className="text-[14px] font-medium leading-tight">{card.title}</p>
+                <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
+                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{card.title}</p>
                 <p className="text-[12px] text-muted-foreground leading-snug">{card.desc}</p>
                 <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
                   {card.badge}
