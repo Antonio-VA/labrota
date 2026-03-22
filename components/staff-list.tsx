@@ -43,11 +43,8 @@ function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ROLE_BORDER_COLOR: Record<string, string> = {
-  lab:       "#60A5FA",
-  andrology: "#34D399",
-  admin:     "#94A3B8",
-}
+import { DEFAULT_DEPT_BORDER } from "@/lib/department-colors"
+const ROLE_BORDER_COLOR = DEFAULT_DEPT_BORDER
 
 
 // ── Dropdown wrapper ───────────────────────────────────────────────────────────
@@ -596,7 +593,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
   const badgeClass = variant === "training"
     ? "shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
-    : "shrink-0 inline-flex items-center rounded border border-slate-200 bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground"
+    : "shrink-0 inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground"
 
   return (
     <div className="flex items-center gap-1">
@@ -723,7 +720,7 @@ function StaffTable({
             {/* Department */}
             <div className="hidden md:flex items-center">
               <span
-                className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-slate-200"
+                className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-border"
                 style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
               >
                 {deptLabel[member.role] ?? member.role}

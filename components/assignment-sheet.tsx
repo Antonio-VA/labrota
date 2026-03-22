@@ -35,11 +35,8 @@ const ROLE_DOT: Record<string, string> = {
   andrology: "bg-emerald-400",
   admin:     "bg-slate-400",
 }
-const ROLE_BORDER: Record<string, string> = {
-  lab:       "#60A5FA",
-  andrology: "#34D399",
-  admin:     "#94A3B8",
-}
+import { DEFAULT_DEPT_BORDER } from "@/lib/department-colors"
+const ROLE_BORDER: Record<string, string> = { ...DEFAULT_DEPT_BORDER }
 const ROLE_LABEL: Record<string, string> = {
   lab: "Emb", andrology: "And", admin: "Adm",
 }
@@ -865,7 +862,7 @@ export function AssignmentSheet({
             )}
             {activeOffStaff && (
               <div
-                className="flex items-center gap-2 py-1.5 bg-background text-[12px] shadow-md w-[330px] text-slate-600 border border-border"
+                className="flex items-center gap-2 py-1.5 bg-background text-[12px] shadow-md w-[330px] text-muted-foreground border border-border"
                 style={{ borderLeft: `3px solid ${ROLE_BORDER[activeOffStaff.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 8, paddingRight: 10 }}
               >
                 <span className="truncate">{activeOffStaff.first_name} {activeOffStaff.last_name}</span>

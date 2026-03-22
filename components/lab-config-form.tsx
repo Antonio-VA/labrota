@@ -184,10 +184,10 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-slate-100 border-b border-border">
-              <th className="px-4 py-2.5 text-left font-medium text-slate-600 w-[30%]">{t("coverageTable.day")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.labMin")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.andrologyMin")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t("coverageTable.adminMin")}</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-[30%]">{t("coverageTable.day")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.labMin")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.andrologyMin")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.adminMin")}</th>
             </tr>
           </thead>
           <tbody>
@@ -198,10 +198,10 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
                   key={day}
                   className={cn(
                     "border-b border-border last:border-0",
-                    isWeekend ? "bg-slate-50" : "bg-white"
+                    isWeekend ? "bg-muted" : "bg-background"
                   )}
                 >
-                  <td className="px-4 py-2.5 font-medium text-slate-600">{t(`days.${day}`)}</td>
+                  <td className="px-4 py-2.5 font-medium text-muted-foreground">{t(`days.${day}`)}</td>
                   {(["lab", "andrology", "admin"] as const).map((role) => (
                     <td key={role} className="px-4 py-2.5 text-center">
                       <input

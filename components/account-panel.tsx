@@ -165,7 +165,7 @@ export function AccountPanel({ open, onClose, user }: {
           <div className="px-5 py-4 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Apariencia</p>
 
-            <p className="text-[12px] text-slate-600 font-medium mb-2">Modo</p>
+            <p className="text-[12px] text-muted-foreground font-medium mb-2">Modo</p>
             <div className="flex gap-2 mb-4">
               {THEME_OPTIONS.map((opt) => (
                 <button
@@ -184,7 +184,7 @@ export function AccountPanel({ open, onClose, user }: {
               ))}
             </div>
 
-            <p className="text-[12px] text-slate-600 font-medium mb-2">Color de acento</p>
+            <p className="text-[12px] text-muted-foreground font-medium mb-2">Color de acento</p>
             <div className="flex gap-2 flex-wrap">
               {ACCENT_COLORS.map((c) => (
                 <button

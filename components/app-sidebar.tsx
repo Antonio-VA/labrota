@@ -59,7 +59,7 @@ function NavItem({
               "flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] transition-colors",
               isActive
                 ? "bg-blue-100 text-blue-700"
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           />
         }

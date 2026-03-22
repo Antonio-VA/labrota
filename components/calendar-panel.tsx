@@ -55,13 +55,14 @@ type Assignment    = RotaDay["assignments"][0]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Dynamic department maps — built from departments table, with fallbacks
+import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL, DEFAULT_DEPT_ORDER } from "@/lib/department-colors"
+
 type DeptMaps = { border: Record<string, string>; label: Record<string, string>; order: Record<string, number> }
 
 const DEFAULT_DEPT_MAPS: DeptMaps = {
-  border: { lab: "#60A5FA", andrology: "#34D399", admin: "#94A3B8" },
-  label:  { lab: "Embriología", andrology: "Andrología", admin: "Admin" },
-  order:  { lab: 0, andrology: 1, admin: 2 },
+  border: DEFAULT_DEPT_BORDER,
+  label:  DEFAULT_DEPT_LABEL,
+  order:  DEFAULT_DEPT_ORDER,
 }
 
 function buildDeptMaps(departments: import("@/lib/types/database").Department[]): DeptMaps {
@@ -92,7 +93,7 @@ const TECNICA_PILL: Record<string, string> = {
   purple: "bg-purple-50 border-purple-300 text-purple-700",
   coral:  "bg-red-50 border-red-300 text-red-700",
   teal:   "bg-teal-50 border-teal-300 text-teal-700",
-  slate:  "bg-slate-100 border-slate-300 text-slate-600",
+  slate:  "bg-slate-100 border-slate-300 text-muted-foreground",
   red:    "bg-red-50 border-red-400 text-red-800",
 }
 
@@ -342,7 +343,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
                     {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
                     {tec.codigo}
                   </span>
-                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-slate-600")}>{tec.nombre_es}</span>
+                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
                 </button>
               )
             })}
@@ -906,7 +907,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   function renderPill(id: string, s: { first: string; last: string; role: string; count: number; daysPerWeek: number }) {
     const over  = s.count > s.daysPerWeek
     const under = s.count < s.daysPerWeek
-    const color = s.count === 0 ? "text-slate-400" : over ? "text-red-600" : under ? "text-amber-600" : "text-slate-600"
+    const color = s.count === 0 ? "text-slate-400" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
     return (
       <Tooltip key={id}>
         <TooltipTrigger render={
@@ -990,7 +991,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
         {entries.map(([id, s], i) => {
           const expected = Math.round(s.daysPerWeek * weeksInMonth)
           const over = s.count > expected
-          const color = s.count === 0 ? "text-slate-400" : over ? "text-amber-600" : "text-slate-600"
+          const color = s.count === 0 ? "text-slate-400" : over ? "text-amber-600" : "text-muted-foreground"
           return (
             <Fragment key={id}>
               {i > 0 && <span className="text-slate-300 text-[10px] select-none">·</span>}
@@ -1067,7 +1068,7 @@ function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
                 {WARNING_CATEGORY_LABEL[cat] ?? cat}
               </p>
               {groups[cat].map((msg, i) => (
-                <p key={i} className="text-[11px] text-slate-600">· {msg}</p>
+                <p key={i} className="text-[11px] text-muted-foreground">· {msg}</p>
               ))}
             </div>
           ))}
@@ -1165,7 +1166,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
               {byCategory[cat].map(({ day, messages }) => (
                 <div key={day} className="mb-1 last:mb-0">
                   <span className="text-[12px] font-medium capitalize">{day}: </span>
-                  <span className="text-[11px] text-slate-600">{messages.join(", ")}</span>
+                  <span className="text-[11px] text-muted-foreground">{messages.join(", ")}</span>
                 </div>
               ))}
             </div>
@@ -2287,7 +2288,7 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "manual", icon: <Grid3X3 className="size-5" />,
     title: "Semana en blanco",
     desc: "Empieza con una guardia vacía y asigna los turnos manualmente.",
-    badge: "MANUAL", badgeColor: "bg-slate-50 text-slate-600 border-border",
+    badge: "MANUAL", badgeColor: "bg-slate-50 text-muted-foreground border-border",
   },
 ]
 
