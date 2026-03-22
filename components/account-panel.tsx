@@ -224,8 +224,12 @@ export function AccountPanel({ open, onClose, user }: {
 export function applyTheme(prefs: UserPreferences) {
   const root = document.documentElement
 
-  // Persist to localStorage for the blocking script in layout.tsx
-  try { localStorage.setItem("labrota_theme", JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor })) } catch {}
+  // Persist to localStorage + cookie (cookie is read server-side in layout.tsx)
+  const themeData = JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor })
+  try {
+    localStorage.setItem("labrota_theme", themeData)
+    document.cookie = `labrota_theme=${encodeURIComponent(themeData)};path=/;max-age=${365 * 86400};SameSite=Lax`
+  } catch {}
 
   // Accent colour — override --primary in both light and dark
   if (prefs.accentColor) {

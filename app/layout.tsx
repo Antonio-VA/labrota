@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
@@ -33,21 +34,36 @@ export default async function RootLayout({
   const locale = await getLocale()
   const messages = await getMessages()
 
+  // Read theme from cookie (set by client on save)
+  const cookieStore = await cookies()
+  const themeCookie = cookieStore.get("labrota_theme")?.value
+  let dataTheme: string | undefined
+  let accentColor: string | undefined
+  try {
+    if (themeCookie) {
+      const p = JSON.parse(themeCookie)
+      if (p.theme === "dark") dataTheme = "dark"
+      if (p.accentColor) accentColor = p.accentColor
+    }
+  } catch {}
+
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      {...(dataTheme ? { "data-theme": dataTheme } : {})}
+      {...(accentColor ? { style: { "--primary": accentColor, "--ring": accentColor, "--sidebar-primary": accentColor, "--sidebar-ring": accentColor } as React.CSSProperties } : {})}
+    >
       <head>
+        {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
-            const p = JSON.parse(localStorage.getItem('labrota_theme') || '{}');
-            const theme = p.theme || 'light';
-            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-              document.documentElement.setAttribute('data-theme', 'dark');
-            }
-            if (p.accentColor) {
-              document.documentElement.style.setProperty('--primary', p.accentColor);
-              document.documentElement.style.setProperty('--ring', p.accentColor);
-              document.documentElement.style.setProperty('--sidebar-primary', p.accentColor);
-              document.documentElement.style.setProperty('--sidebar-ring', p.accentColor);
+            const c = document.cookie.match(/labrota_theme=([^;]+)/);
+            if (c) {
+              const p = JSON.parse(decodeURIComponent(c[1]));
+              if (p.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+              }
             }
           } catch(e) {}
         `}} />
