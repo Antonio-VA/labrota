@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Timer } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -66,7 +66,7 @@ const ROLE_BORDER: Record<string, string> = {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  lab: "Embriólogo", andrology: "Andrología", admin: "Admin",
+  lab: "Embriología", andrology: "Andrología", admin: "Admin",
 }
 
 const ROLE_ORDER: Record<string, number>  = { lab: 0, andrology: 1, admin: 2 }
@@ -379,7 +379,7 @@ function AssignmentPopover({ assignment, staffSkills, onFunctionSave, isPublishe
                     isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
                   )}
                 >
-                  {isTraining && <Timer className="size-2 text-amber-500" />}
+                  {isTraining && <Hourglass className="size-2 text-amber-500" />}
                   {fn}
                 </button>
               )
@@ -728,7 +728,7 @@ function StaffProfilePanel({
                             ? "bg-blue-50 border-blue-200 text-blue-700"
                             : "bg-amber-50 border-amber-200 text-amber-700"
                         )}>
-                          {sk.level === "training" && <Timer className="size-2.5 text-amber-500 shrink-0" />}
+                          {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
                           {ts(SKILL_KEYS[sk.skill] ?? sk.skill as never)}
                         </span>
                       } />
@@ -1178,7 +1178,7 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  lab: "Embriólogo", andrology: "Andrología", admin: "Administración",
+  lab: "Embriología", andrology: "Andrología", admin: "Administración",
 }
 
 function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Timer } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -686,10 +686,9 @@ function StaffTable({
                 <Tooltip key={sk.skill}>
                   <TooltipTrigger render={
                     <span
-                      className="shrink-0 inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 cursor-default"
-                      style={{ borderLeftColor: "#f59e0b", borderLeftWidth: 2 }}
+                      className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 cursor-default"
                     >
-                      <Timer className="size-2.5 text-amber-500 shrink-0" />
+                      <Hourglass className="size-2.5 text-amber-500 shrink-0" />
                       {ts(SKILL_KEYS[sk.skill] as Parameters<typeof ts>[0])}
                     </span>
                   } />

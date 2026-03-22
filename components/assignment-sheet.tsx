@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Timer } from "lucide-react"
+import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass } from "lucide-react"
 import { toast } from "sonner"
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -148,7 +148,7 @@ function AssignmentPopover({
                         isActive ? "ring-1 ring-offset-1 ring-current" : "opacity-70 hover:opacity-100"
                       )}
                     >
-                      {isTraining && <Timer className="size-2 text-amber-500" />}
+                      {isTraining && <Hourglass className="size-2 text-amber-500" />}
                       {fn}
                     </button>
                   )

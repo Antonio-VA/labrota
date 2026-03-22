@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import type { Tecnica, SkillName } from "@/lib/types/database"
+import type { Tecnica } from "@/lib/types/database"
 
 async function getOrgId(): Promise<string | null> {
   const supabase = await createClient()
@@ -104,14 +104,18 @@ export async function seedDefaultTecnicas(): Promise<{ seeded: boolean; error?: 
 
   const defaults: Array<{
     nombre_es: string; nombre_en: string; codigo: string; color: string
-    required_skill: SkillName | null; activa: boolean; orden: number
+    department: string; activa: boolean; orden: number
   }> = [
-    { nombre_es: "Punción folicular", nombre_en: "Egg collection",  codigo: "OPU", color: "amber",  required_skill: "egg_collection",  activa: true, orden: 0 },
-    { nombre_es: "ICSI",              nombre_en: "ICSI",            codigo: "ICS", color: "blue",   required_skill: "icsi",            activa: true, orden: 1 },
-    { nombre_es: "Transferencia",     nombre_en: "Embryo transfer", codigo: "ET",  color: "green",  required_skill: "embryo_transfer", activa: true, orden: 2 },
-    { nombre_es: "Biopsia",           nombre_en: "Biopsy",          codigo: "BX",  color: "purple", required_skill: "biopsy",          activa: true, orden: 3 },
-    { nombre_es: "Denudación",        nombre_en: "Denudation",      codigo: "DEN", color: "teal",   required_skill: "denudation",      activa: true, orden: 4 },
-    { nombre_es: "Andrología",        nombre_en: "Andrology",       codigo: "AND", color: "coral",  required_skill: null,              activa: true, orden: 5 },
+    // Embriología
+    { nombre_es: "Punción folicular", nombre_en: "Egg collection",    codigo: "OPU", color: "amber",  department: "lab",       activa: true, orden: 0 },
+    { nombre_es: "ICSI",              nombre_en: "ICSI",              codigo: "ICS", color: "blue",   department: "lab",       activa: true, orden: 1 },
+    { nombre_es: "Transferencia",     nombre_en: "Embryo transfer",   codigo: "ET",  color: "green",  department: "lab",       activa: true, orden: 2 },
+    { nombre_es: "Biopsia",           nombre_en: "Biopsy",            codigo: "BX",  color: "purple", department: "lab",       activa: true, orden: 3 },
+    { nombre_es: "Denudación",        nombre_en: "Denudation",        codigo: "DEN", color: "teal",   department: "lab",       activa: true, orden: 4 },
+    // Andrología
+    { nombre_es: "Congelación",       nombre_en: "Sperm freezing",    codigo: "CNG", color: "coral",  department: "andrology", activa: true, orden: 5 },
+    { nombre_es: "Análisis seminal",  nombre_en: "Semen analysis",    codigo: "SEM", color: "slate",  department: "andrology", activa: true, orden: 6 },
+    { nombre_es: "Preparación",       nombre_en: "Sperm preparation", codigo: "PRE", color: "red",    department: "andrology", activa: true, orden: 7 },
   ]
 
   const { error } = await supabase

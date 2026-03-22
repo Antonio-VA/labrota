@@ -180,7 +180,7 @@
     "hideHistory": "Hide inactive members",
     "columns": {
       "name": "Name",
-      "role": "Role",
+      "role": "Department",
       "skills": "Skills",
       "capacidades": "Competencies",
       "training": "In training",
@@ -196,7 +196,7 @@
       "firstName": "First name",
       "lastName": "Last name",
       "email": "Email address",
-      "role": "Role",
+      "role": "Department",
       "skills": "Skills",
       "skillHint": "1 click = in training · 2 clicks = certified",
       "workingPattern": "Availability",
@@ -234,7 +234,7 @@
     "upcomingLeave": "Upcoming leave",
     "sections": {
       "personalInfo": "Personal information",
-      "roleAndStatus": "Role & status",
+      "roleAndStatus": "Department & status",
       "capabilities": "Capabilities"
     },
     "skillLevels": {

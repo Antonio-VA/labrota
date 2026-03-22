@@ -180,7 +180,7 @@
     "hideHistory": "Ocultar personal inactivo",
     "columns": {
       "name": "Nombre",
-      "role": "Rol",
+      "role": "Departamento",
       "skills": "Habilidades",
       "capacidades": "Capacidades",
       "training": "En formación",
@@ -188,7 +188,7 @@
       "status": "Estado"
     },
     "roles": {
-      "lab": "Embriólogo",
+      "lab": "Embriología",
       "andrology": "Andrología",
       "admin": "Administración"
     },
@@ -196,7 +196,7 @@
       "firstName": "Nombre",
       "lastName": "Apellidos",
       "email": "Correo electrónico",
-      "role": "Rol",
+      "role": "Departamento",
       "skills": "Habilidades",
       "skillHint": "1 clic = en formación · 2 clics = certificado",
       "workingPattern": "Disponibilidad",
@@ -234,7 +234,7 @@
     "upcomingLeave": "Próximas ausencias",
     "sections": {
       "personalInfo": "Datos personales",
-      "roleAndStatus": "Rol y estado",
+      "roleAndStatus": "Departamento y estado",
       "capabilities": "Capacidades"
     },
     "skillLevels": {

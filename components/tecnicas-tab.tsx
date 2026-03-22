@@ -130,14 +130,14 @@ function TecnicaRow({
             <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">Dept.</span>
+            <span className="text-[12px] text-muted-foreground shrink-0">Departamento</span>
             <select
               value={tecnica.department}
               onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
               disabled={disabled}
               className="h-7 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
             >
-              <option value="lab">Embriólogo</option>
+              <option value="lab">Embriología</option>
               <option value="andrology">Andrología</option>
             </select>
           </div>
@@ -295,10 +295,10 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
         </div>
       )}
 
-      {/* Embriólogo técnicas */}
+      {/* Embriología técnicas */}
       {tecnicas.some((t) => t.department === "lab") && (
         <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Embriólogo</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Embriología</p>
           <div className="flex flex-col gap-3">
             {tecnicas.map((t, i) => t.department === "lab" ? (
               <TecnicaRow
