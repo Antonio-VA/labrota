@@ -978,6 +978,84 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
   return { count: toInsert.length }
 }
 
+export async function copyPreviousWeek(weekStart: string): Promise<{ error?: string; count?: number }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // Previous week start
+  const prevDate = new Date(weekStart + "T12:00:00")
+  prevDate.setDate(prevDate.getDate() - 7)
+  const prevWeekStart = prevDate.toISOString().split("T")[0]
+  const prevDates = getWeekDates(prevWeekStart)
+  const currDates = getWeekDates(weekStart)
+
+  // Fetch previous week's assignments
+  const { data: prevAssignments } = await supabase
+    .from("rota_assignments")
+    .select("staff_id, date, shift_type, function_label")
+    .gte("date", prevDates[0])
+    .lte("date", prevDates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
+
+  if (!prevAssignments || prevAssignments.length === 0) {
+    return { error: "No hay asignaciones en la semana anterior." }
+  }
+
+  // Upsert rota
+  const { data: rotaRow } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .select("id")
+    .single() as unknown as { data: { id: string } | null }
+  if (!rotaRow) return { error: "Error creando la guardia." }
+
+  // Check leaves for this week
+  const { data: leaves } = await supabase
+    .from("leaves")
+    .select("staff_id, start_date, end_date")
+    .lte("start_date", currDates[6])
+    .gte("end_date", currDates[0])
+    .eq("status", "approved") as unknown as { data: { staff_id: string; start_date: string; end_date: string }[] | null }
+
+  const onLeave: Record<string, Set<string>> = {}
+  for (const l of leaves ?? []) {
+    const s = new Date(l.start_date + "T12:00:00")
+    const e = new Date(l.end_date + "T12:00:00")
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().split("T")[0]
+      if (!onLeave[iso]) onLeave[iso] = new Set()
+      onLeave[iso].add(l.staff_id)
+    }
+  }
+
+  // Map previous assignments to current week (same day offset)
+  const toInsert = prevAssignments
+    .map((a) => {
+      const dayOffset = prevDates.indexOf(a.date)
+      if (dayOffset < 0) return null
+      const newDate = currDates[dayOffset]
+      if (onLeave[newDate]?.has(a.staff_id)) return null
+      return {
+        organisation_id: orgId,
+        rota_id: rotaRow.id,
+        staff_id: a.staff_id,
+        date: newDate,
+        shift_type: a.shift_type,
+        is_manual_override: false,
+        function_label: a.function_label,
+      }
+    })
+    .filter(Boolean)
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath("/")
+  return { count: toInsert.length }
+}
+
 export async function clearWeek(weekStart: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)

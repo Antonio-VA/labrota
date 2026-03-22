@@ -40,6 +40,7 @@ import {
   getTemplates,
   applyTemplate,
   clearWeek,
+  copyPreviousWeek,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -2637,6 +2638,8 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
+  const [showCopyConfirm, setShowCopyConfirm] = useState(false)
+  const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [isPending, startTransition]    = useTransition()
 
   // Staff for assignment sheet
@@ -2755,6 +2758,16 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   }, [])
 
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
+
+  // Check if previous week has a rota (for "copy previous week" button)
+  useEffect(() => {
+    const prev = new Date(weekStart + "T12:00:00")
+    prev.setDate(prev.getDate() - 7)
+    const prevWs = prev.toISOString().split("T")[0]
+    getRotaWeek(prevWs).then((d) => {
+      setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
+    }).catch(() => setPrevWeekHasRota(false))
+  }, [weekStart])
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart)
   }, [monthStart, view, fetchMonth])
@@ -3109,12 +3122,42 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {!weekData?.rota && !loadingWeek && !isPending ? (
-                <EmptyState
-                  icon={CalendarDays}
-                  title={t("noRota")}
-                  description={t("noRotaDescription")}
-                  action={{ label: t("generateRota"), onClick: handleGenerateClick }}
-                />
+                <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
+                  <CalendarDays className="size-10 text-muted-foreground/30" />
+                  <div className="text-center">
+                    <p className="text-[14px] font-medium">{t("noRota")}</p>
+                    <p className="text-[13px] text-muted-foreground mt-1">{t("noRotaDescription")}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleGenerateClick}>{t("generateRota")}</Button>
+                    {prevWeekHasRota && (
+                      <Button size="sm" variant="outline" onClick={() => setShowCopyConfirm(true)}>
+                        Copiar semana anterior
+                      </Button>
+                    )}
+                  </div>
+                  {/* Copy confirmation */}
+                  {showCopyConfirm && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 max-w-sm">
+                      <p className="text-[13px] text-amber-800 font-medium mb-1">¿Copiar semana anterior?</p>
+                      <p className="text-[12px] text-amber-700 mb-3">Se creará una guardia borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => {
+                          setShowCopyConfirm(false)
+                          startTransition(async () => {
+                            const result = await copyPreviousWeek(weekStart)
+                            if (result.error) { toast.error(result.error); return }
+                            toast.success(`${result.count} asignaciones copiadas`)
+                            fetchWeek(weekStart)
+                          })
+                        }}>
+                          Copiar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>Cancelar</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
                   data={weekData}
