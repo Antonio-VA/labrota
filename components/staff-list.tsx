@@ -833,7 +833,7 @@ export function StaffList({ staff, tecnicas = [] }: { staff: StaffWithSkills[]; 
               onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }}
               className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <option value="all">Todas las capacidades</option>
+              <option value="all">Todas las técnicas</option>
               {allSkillCodes.map((code) => (
                 <option key={code} value={code}>{code}</option>
               ))}

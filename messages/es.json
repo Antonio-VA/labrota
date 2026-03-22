@@ -182,7 +182,7 @@
       "name": "Nombre",
       "role": "Departamento",
       "skills": "Habilidades",
-      "capacidades": "Capacidades",
+      "capacidades": "Técnicas",
       "training": "En formación",
       "shiftsThisWeek": "Turnos esta semana",
       "status": "Estado"
@@ -235,7 +235,7 @@
     "sections": {
       "personalInfo": "Datos personales",
       "roleAndStatus": "Departamento y estado",
-      "capabilities": "Capacidades"
+      "capabilities": "Técnicas"
     },
     "skillLevels": {
       "certified": "Competente",

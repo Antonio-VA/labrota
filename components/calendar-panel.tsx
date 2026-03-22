@@ -629,9 +629,9 @@ function StaffProfilePanel({
           {/* Capacidades (skills) */}
           {staff && (
             <div className="px-5 py-3 border-b border-[#CCDDEE]">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Capacidades</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Técnicas</p>
               {staff.staff_skills.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground italic">Sin capacidades registradas</p>
+                <p className="text-[12px] text-muted-foreground italic">Sin técnicas registradas</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {staff.staff_skills.map((sk) => (
