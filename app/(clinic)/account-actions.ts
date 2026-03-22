@@ -23,6 +23,33 @@ export async function getUserPreferences(): Promise<UserPreferences> {
   return data?.preferences ?? {}
 }
 
+export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated." }
+
+  const file = formData.get("avatar") as File
+  if (!file || file.size === 0) return { error: "No file provided." }
+  if (file.size > 2 * 1024 * 1024) return { error: "Máximo 2MB." }
+
+  const ext = file.name.split(".").pop() ?? "jpg"
+  const path = `avatars/${user.id}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true, contentType: file.type })
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path)
+  const url = `${urlData.publicUrl}?t=${Date.now()}`
+
+  // Update user metadata
+  await supabase.auth.updateUser({ data: { avatar_url: url } })
+
+  revalidatePath("/")
+  return { url }
+}
+
 export async function saveUserPreferences(prefs: UserPreferences): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

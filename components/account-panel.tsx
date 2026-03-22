@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { X, Sun, Moon, Monitor, Check } from "lucide-react"
+import { useRef } from "react"
+import { X, Sun, Moon, Monitor, Check, Camera } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   getUserPreferences,
   saveUserPreferences,
+  uploadAvatar,
   type UserPreferences,
 } from "@/app/(clinic)/account-actions"
 import type { User } from "@supabase/supabase-js"
@@ -67,6 +69,23 @@ export function AccountPanel({ open, onClose, user }: {
 
   const firstName = (user?.user_metadata?.full_name as string)?.split(" ")[0] ?? ""
   const initials = firstName ? firstName.slice(0, 2).toUpperCase() : (user?.email ?? "").slice(0, 2).toUpperCase()
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    (user?.user_metadata?.avatar_url as string) ?? null
+  )
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("avatar", file)
+    const result = await uploadAvatar(fd)
+    setUploading(false)
+    if (result.error) { toast.error(result.error); return }
+    if (result.url) { setAvatarUrl(result.url); toast.success("Foto actualizada") }
+  }
 
   return (
     <>
@@ -90,15 +109,32 @@ export function AccountPanel({ open, onClose, user }: {
           <div className="px-5 py-4 border-b border-[#CCDDEE]">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Perfil</p>
             <div className="flex items-center gap-3 mb-3">
-              <div
-                className="size-12 rounded-full flex items-center justify-center text-[16px] font-bold text-white shrink-0"
+              {/* Avatar with upload */}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="relative size-14 rounded-full shrink-0 overflow-hidden group"
                 style={{ background: prefs.accentColor ?? "#1b4f8a" }}
               >
-                {initials}
-              </div>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+                ) : (
+                  <span className="flex items-center justify-center size-full text-[18px] font-bold text-white">{initials}</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="size-4 text-white" />
+                </div>
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span className="text-[10px] text-white font-medium">…</span>
+                  </div>
+                )}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
               <div className="min-w-0">
                 <p className="text-[14px] font-medium truncate">{user?.user_metadata?.full_name ?? "—"}</p>
                 <p className="text-[12px] text-muted-foreground truncate">{user?.email ?? "—"}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">Pulsa la foto para cambiar</p>
               </div>
             </div>
           </div>
