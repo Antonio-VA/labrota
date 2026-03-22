@@ -103,16 +103,7 @@ export function runRotaEngine({
     workloadScore[a.staff_id] = (workloadScore[a.staff_id] ?? 0) + 1
   }
 
-  // Pre-compute each staff member's weekend pattern days in this week.
-  // Used to reserve weekly budget so weekday greedy assignment doesn't
-  // exhaust the quota before weekend days are processed.
   const allWeekDates = getWeekDates(weekStart)
-  const staffWeekendDays: Record<string, string[]> = {}
-  for (const s of staff) {
-    staffWeekendDays[s.id] = allWeekDates.filter(
-      (d) => isWeekend(d) && (s.working_pattern ?? []).includes(getDayCode(d))
-    )
-  }
 
   // Weekly shift counter — resets at the start of each generated week
   const weeklyShiftCount: Record<string, number> = {}
@@ -189,20 +180,13 @@ export function runRotaEngine({
       if (s.end_date && s.end_date < date) return false
       if (!(s.working_pattern ?? []).includes(dayCode)) return false
       if (leaveMap[s.id]?.has(date)) return false
-      // Budget check: don't exceed days_per_week (adjusted for leave).
-      // On weekdays, reserve at most 1 slot for a weekend day (if the staff
-      // works weekends) to avoid starving Friday entirely. But never reserve
-      // more than what's actually left in the budget after today.
+      // Budget check: simply don't exceed days_per_week (adjusted for leave).
+      // No weekend reservation — the budget is the only constraint.
+      // If someone works Mon-Sat with budget 5, they get Mon-Fri and Sat
+      // is naturally excluded. This ensures even distribution across weekdays.
       const totalBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
       const used        = weeklyShiftCount[s.id] ?? 0
       if (used >= totalBudget) return false
-      if (!weekend) {
-        const futureWeekendDays = staffWeekendDays[s.id].filter((d) => d > date).length
-        const remaining = totalBudget - used
-        // Only reserve if there are multiple remaining slots; never starve
-        // the current day just for a weekend reservation
-        if (futureWeekendDays > 0 && remaining <= 1) return false
-      }
       return true
     })
 
