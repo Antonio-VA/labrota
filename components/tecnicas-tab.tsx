@@ -193,6 +193,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
+  const [deletedIds, setDeletedIds] = useState<string[]>([])
 
   function addRow() {
     setTecnicas((prev) => [
@@ -228,6 +229,8 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
   }
 
   function deleteRow(index: number) {
+    const toDelete = tecnicas[index]
+    if (toDelete?.id) setDeletedIds((prev) => [...prev, toDelete.id!])
     setTecnicas((prev) => prev.filter((_, i) => i !== index).map((t, i) => ({ ...t, orden: i })))
   }
 
@@ -241,6 +244,13 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     }
 
     startTransition(async () => {
+      // Delete removed técnicas from DB
+      for (const id of deletedIds) {
+        const r = await deleteTecnica(id)
+        if (r.error) { setErrorMsg(r.error); setStatus("error"); return }
+      }
+      setDeletedIds([])
+
       // Save each técnica (upsert)
       const results = await Promise.all(
         tecnicas.map((t, i) => saveTecnica({ ...t, orden: i }))
