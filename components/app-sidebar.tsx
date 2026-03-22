@@ -4,7 +4,7 @@ import { useEffect, useTransition, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
-import { CalendarDays, Users, Plane, FlaskConical, BarChart3, Settings, LogOut } from "lucide-react"
+import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -195,7 +195,6 @@ export function AppSidebar() {
     { key: "leaves",   icon: Plane,        href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports",  disabled: true },
-    { key: "settings", icon: Settings,     href: "/settings", disabled: true },
   ] as const
 
   return (
