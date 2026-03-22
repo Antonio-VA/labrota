@@ -35,15 +35,6 @@ function makeSkillLabel(tecnicas: Tecnica[]) {
   return (code: string) => codeMap[code] ?? LEGACY_SKILL_NAMES[code] ?? code
 }
 
-const BULK_SKILLS: SkillName[] = ["biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation"]
-
-const BULK_SKILL_LABELS: Record<string, string> = {
-  biopsy:          "Biopsia",
-  icsi:            "ICSI",
-  egg_collection:  "Recogida de óvulos",
-  embryo_transfer: "Transferencia embrionaria",
-  denudation:      "Denudación",
-}
 
 const ROLE_ORDER: Record<StaffRole, number> = { lab: 0, andrology: 1, admin: 2 }
 function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
@@ -98,16 +89,17 @@ function DropdownPanel({
 // ── Add skill dropdown ─────────────────────────────────────────────────────────
 
 function AddSkillDropdown({
-  open, onClose, onConfirm, isPending,
+  open, onClose, onConfirm, isPending, skills, skillLabel,
 }: {
   open: boolean
   onClose: () => void
   onConfirm: (skill: SkillName, level: SkillLevel) => void
   isPending: boolean
+  skills: string[]
+  skillLabel: (code: string) => string
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
-  const ts = useTranslations("skills")
   const [skill, setSkill] = useState<SkillName | null>(null)
   const [level, setLevel] = useState<SkillLevel>("certified")
 
@@ -119,7 +111,7 @@ function AddSkillDropdown({
     <DropdownPanel open={open} onClose={onClose} className="w-[240px]">
       <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.addSkillTitle")}</p>
       <div className="flex flex-col gap-1 mb-3">
-        {BULK_SKILLS.map((s) => (
+        {skills.map((s) => (
           <button
             key={s}
             onClick={() => setSkill(s)}
@@ -130,7 +122,7 @@ function AddSkillDropdown({
                 : "border-transparent hover:bg-muted text-foreground"
             )}
           >
-            {BULK_SKILL_LABELS[s] ?? s}
+            {skillLabel(s)}
           </button>
         ))}
       </div>
@@ -169,27 +161,28 @@ function AddSkillDropdown({
 // ── Remove skill dropdown ──────────────────────────────────────────────────────
 
 function RemoveSkillDropdown({
-  open, onClose, onConfirm, isPending,
+  open, onClose, onConfirm, isPending, skills, skillLabel,
 }: {
   open: boolean
   onClose: () => void
   onConfirm: (skill: SkillName) => void
   isPending: boolean
+  skills: string[]
+  skillLabel: (code: string) => string
 }) {
   const t  = useTranslations("staff")
-  const ts = useTranslations("skills")
   return (
     <DropdownPanel open={open} onClose={onClose} className="w-[220px]">
       <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.removeSkillTitle")}</p>
       <div className="flex flex-col gap-1">
-        {BULK_SKILLS.map((s) => (
+        {skills.map((s) => (
           <button
             key={s}
             disabled={isPending}
             onClick={() => onConfirm(s)}
             className="text-left text-[13px] px-2.5 py-1.5 rounded-lg border border-transparent hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-colors"
           >
-            {BULK_SKILL_LABELS[s] ?? s}
+            {skillLabel(s)}
           </button>
         ))}
       </div>
@@ -382,13 +375,17 @@ function BulkToolbar({
   selectedIds,
   selectedStaff,
   onClear,
+  tecnicas: bulkTecnicas,
 }: {
   selectedIds: Set<string>
   selectedStaff: StaffWithSkills[]
   onClear: () => void
+  tecnicas: Tecnica[]
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
+  const bulkSkills = bulkTecnicas.filter((t) => t.activa).map((t) => t.codigo)
+  const bulkSkillLabel = makeSkillLabel(bulkTecnicas)
   const [isPending, startTransition] = useTransition()
   const [addOpen,        setAddOpen]        = useState(false)
   const [removeOpen,     setRemoveOpen]     = useState(false)
@@ -487,6 +484,8 @@ function BulkToolbar({
             onClose={() => setAddOpen(false)}
             onConfirm={handleAddSkill}
             isPending={isPending}
+            skills={bulkSkills}
+            skillLabel={bulkSkillLabel}
           />
         </div>
 
@@ -504,6 +503,8 @@ function BulkToolbar({
             onClose={() => setRemoveOpen(false)}
             onConfirm={handleRemoveSkill}
             isPending={isPending}
+            skills={bulkSkills}
+            skillLabel={bulkSkillLabel}
           />
         </div>
 
@@ -983,6 +984,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           selectedIds={effectiveSelectedIds}
           selectedStaff={staff}
           onClear={clearSelection}
+          tecnicas={tecnicas}
         />
       )}
     </div>

@@ -3048,8 +3048,10 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 onClick: () => setCompact((c) => !c),
               }] : []),
               {
-                label: colorChips ? "Técnicas en gris" : "Mostrar colores en técnicas",
-                icon: <Rows3 className="size-3.5" />,
+                label: colorChips ? "Técnicas en gris" : "Técnicas en color",
+                icon: colorChips
+                  ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
+                  : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               },
               ...(hasAssignments && !isPublished ? [{
