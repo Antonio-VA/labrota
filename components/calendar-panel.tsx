@@ -953,8 +953,9 @@ const WARNING_CATEGORY_LABEL: Record<string, string> = {
   coverage: "Cobertura insuficiente",
   skill_gap: "Habilidades sin cubrir",
   rule: "Reglas de planificación",
+  budget: "Carga de turnos",
 }
-const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, rule: 2 }
+const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, budget: 2, rule: 3 }
 
 /** Click-to-open popover for per-day warnings in column headers. */
 function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
@@ -1007,9 +1008,8 @@ function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
 }
 
 /** Toolbar pill summarising all warnings for the week. Click to expand. */
-function WarningsPill({ days }: { days: RotaDay[] }) {
+function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffWithSkills[] }) {
   const t = useTranslations("schedule")
-  const ts = useTranslations("skills")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const locale = useLocale()
@@ -1033,11 +1033,29 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
     for (const w of day.warnings) {
       if (!byCategory[w.category]) byCategory[w.category] = []
       const existing = byCategory[w.category].find((e) => e.day === dayLabel)
-      const msg = w.category === "skill_gap"
-        ? w.message
-        : w.message
-      if (existing) existing.messages.push(msg)
-      else byCategory[w.category].push({ day: dayLabel, messages: [msg] })
+      if (existing) existing.messages.push(w.message)
+      else byCategory[w.category].push({ day: dayLabel, messages: [w.message] })
+    }
+  }
+
+  // Compute shift budget warnings (over/under for the week)
+  if (staffList && staffList.length > 0) {
+    const shiftCounts: Record<string, number> = {}
+    for (const day of days) {
+      for (const a of day.assignments) {
+        shiftCounts[a.staff_id] = (shiftCounts[a.staff_id] ?? 0) + 1
+      }
+    }
+    const budgetWarnings: string[] = []
+    for (const s of staffList) {
+      const count = shiftCounts[s.id] ?? 0
+      const expected = s.days_per_week ?? 5
+      if (count > expected) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (+${count - expected})`)
+      else if (count < expected && count > 0) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (${count - expected})`)
+    }
+    if (budgetWarnings.length > 0) {
+      if (!byCategory["budget"]) byCategory["budget"] = []
+      byCategory["budget"].push({ day: "Semana", messages: budgetWarnings })
     }
   }
 
@@ -1045,8 +1063,8 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
     (a, b) => (WARNING_CATEGORY_ORDER[a] ?? 9) - (WARNING_CATEGORY_ORDER[b] ?? 9)
   )
 
-  const totalDays = days.filter((d) => d.warnings.length > 0).length
-  if (totalDays === 0) return null
+  const totalIssues = Object.values(byCategory).reduce((sum, arr) => sum + arr.reduce((s, e) => s + e.messages.length, 0), 0)
+  if (totalIssues === 0) return null
 
   return (
     <div ref={ref} className="relative">
@@ -1056,7 +1074,7 @@ function WarningsPill({ days }: { days: RotaDay[] }) {
       >
         <AlertTriangle className="size-3 shrink-0" />
         <span className="hidden sm:inline">{t("warnings")}</span>
-        <span className="font-semibold">{totalDays}</span>
+        <span className="font-semibold">{totalIssues}</span>
       </button>
 
       {open && (
@@ -2874,7 +2892,7 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             </div>
           )}
           {weekData && (
-            <WarningsPill days={weekData.days} />
+            <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
           {showActions && !isPublished && (
             <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
