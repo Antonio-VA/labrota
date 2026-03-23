@@ -398,32 +398,10 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
 
   const label = value > 0 ? `P:${value}` : "P:—"
 
-  // Ratio calculation: certified lab staff / punciones
-  const hasRatio = certifiedLabCount !== undefined && value > 0
-  const ratio = hasRatio ? certifiedLabCount / value : 0
-  const optThreshold = ratioOptimal ?? 1.0
-  const minThreshold = ratioMinimum ?? 0.75
-  const ratioColor = !hasRatio ? "" : ratio >= optThreshold ? "text-emerald-500 dark:text-emerald-400" : ratio >= minThreshold ? "text-amber-500 dark:text-amber-400" : "text-destructive"
-  const ratioLabel = !hasRatio ? "" : ratio >= optThreshold ? "Ratio óptimo" : ratio >= minThreshold ? "Ratio aceptable" : "Ratio insuficiente"
-
-  const ratioSpan = hasRatio ? (
-    <Tooltip>
-      <TooltipTrigger render={
-        <span className={cn("text-[10px] font-medium tabular-nums cursor-default", ratioColor)}>
-          R:{ratio.toFixed(1)}
-        </span>
-      } />
-      <TooltipContent side="bottom">
-        {certifiedLabCount} embriólogos certificados · {value} punciones · {ratioLabel}
-      </TooltipContent>
-    </Tooltip>
-  ) : null
-
   if (disabled) {
     return (
       <span className={cn("flex items-center gap-0.5 text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
         {label}
-        {ratioSpan}
         {isOverride && (
           <Tooltip>
             <TooltipTrigger render={<span className="text-amber-500 font-bold cursor-default">*</span>} />
@@ -446,7 +424,6 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
       >
         {label}
       </button>
-      {ratioSpan}
       {isOverride && (
         <Tooltip>
           <TooltipTrigger render={
@@ -2333,9 +2310,15 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (() => {
                       const isOverride = punctionsOverride[day.date] !== undefined
                       const effectiveP = punctionsOverride[day.date] ?? day.punctions
-                      const ratio = effectiveP > 0 && day.labCount > 0 ? day.labCount / effectiveP : 0
-                      const opt = (summary as RotaMonthSummary).ratioOptimal ?? 1.0
-                      const min = (summary as RotaMonthSummary).ratioMinimum ?? 0.75
+                      // Biopsy forecast for this day
+                      const s = summary as RotaMonthSummary
+                      const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+                      const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+                      const d5str = d5ago.toISOString().split("T")[0]
+                      const d6str = d6ago.toISOString().split("T")[0]
+                      const p5src = s.days.find((dd) => dd.date === d5str)?.punctions ?? 0
+                      const p6src = s.days.find((dd) => dd.date === d6str)?.punctions ?? 0
+                      const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                       return (
                         <div className="flex items-center gap-1.5 mt-1">
                           {effectiveP > 0 && (
@@ -2347,12 +2330,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                               onChange={onPunctionsChange}
                             />
                           )}
-                          {effectiveP > 0 && day.labCount > 0 && (
-                            <span className={cn(
-                              "text-[11px] font-medium tabular-nums",
-                              ratio >= opt ? "text-emerald-500 dark:text-emerald-400" : ratio >= min ? "text-amber-500 dark:text-amber-400" : "text-destructive"
-                            )}>
-                              R:{ratio.toFixed(1)}
+                          {bForecast > 0 && (
+                            <span className="text-[11px] font-medium tabular-nums text-purple-600 dark:text-purple-400">
+                              B:~{bForecast}
                             </span>
                           )}
                           {day.leaveCount > 0 && (
