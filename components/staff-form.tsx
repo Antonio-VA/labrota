@@ -224,6 +224,14 @@ export function StaffForm({
         </div>
         <Field label={t("fields.email")}>
           <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} className="rounded-[8px]" />
+          {mode === "create" && (
+            <label className="flex items-start gap-2 mt-2 cursor-pointer">
+              <input type="checkbox" name="invite_viewer" value="on" className="mt-0.5 size-4 rounded border-border accent-primary" />
+              <span className="text-[12px] text-muted-foreground leading-tight">
+                Enviar invitación como visor — recibirá un email para crear su cuenta con acceso de solo lectura al calendario
+              </span>
+            </label>
+          )}
         </Field>
       </Section>
 
