@@ -108,6 +108,7 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
     setStatus("idle")
     startTransition(async () => {
       const result = await updateLabConfig({
+        coverage_by_day:      coverageByDay,
         punctions_by_day:     values.punctions_by_day,
         autonomous_community: values.region || values.autonomous_community || null,
         ratio_optimal:        values.ratio_optimal,
@@ -235,7 +236,7 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
                         max={10}
                         value={coverageByDay[day][role]}
                         onChange={(e) => setCoverage(day, role, e.target.value)}
-                        disabled={coveragePending}
+                        disabled={isPending}
                         className="w-16 h-8 rounded-[8px] border border-input bg-transparent text-center text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 mx-auto block"
                       />
                     </td>
@@ -245,23 +246,6 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
             })}
           </tbody>
         </table>
-        <div className="px-5 py-3 border-t border-border flex items-center gap-3">
-          <Button type="button" onClick={handleCoverageSave} disabled={coveragePending}>
-            {coveragePending ? t("saving") : t("saveCoverage")}
-          </Button>
-          {coverageStatus === "success" && (
-            <span className="flex items-center gap-1.5 text-[14px] text-emerald-600">
-              <CheckCircle2 className="size-4" />
-              {t("updateSuccess")}
-            </span>
-          )}
-          {coverageStatus === "error" && (
-            <span className="flex items-center gap-1.5 text-[14px] text-destructive">
-              <AlertCircle className="size-4" />
-              {coverageErrorMsg}
-            </span>
-          )}
-        </div>
       </div>
 
       </>}
