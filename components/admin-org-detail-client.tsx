@@ -72,45 +72,41 @@ export function AdminOrgDetailClient({
       {/* Configuración regional */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>
-        <div className="rounded-lg border border-border bg-background p-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
-              <label className="text-[14px] font-medium shrink-0">País</label>
+        <div className="rounded-lg border border-border bg-background px-4 py-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] text-muted-foreground shrink-0">País</label>
               <select
                 value={country}
                 onChange={(e) => handleCountryChange(e.target.value)}
                 disabled={isPending}
-                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring min-w-[220px]"
+                className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
               >
-                <option value="">— Seleccionar —</option>
+                <option value="">—</option>
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.name_en}</option>
                 ))}
               </select>
             </div>
-
             {countryConfig && countryConfig.regions.length > 0 && (
-              <div className="flex items-center justify-between gap-4">
-                <label className="text-[14px] font-medium shrink-0">Región</label>
+              <div className="flex items-center gap-2">
+                <label className="text-[13px] text-muted-foreground shrink-0">Región</label>
                 <select
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
                   disabled={isPending}
-                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring min-w-[220px]"
+                  className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
                 >
-                  <option value="">— Seleccionar —</option>
+                  <option value="">—</option>
                   {countryConfig.regions.map((r) => (
                     <option key={r.code} value={r.code}>{r.name}</option>
                   ))}
                 </select>
               </div>
             )}
-
-            <div className="flex justify-end">
-              <Button size="sm" onClick={handleSaveRegional} disabled={isPending}>
-                {isPending ? "Guardando…" : "Guardar"}
-              </Button>
-            </div>
+            <Button size="sm" onClick={handleSaveRegional} disabled={isPending} className="ml-auto">
+              {isPending ? "Guardando…" : "Guardar"}
+            </Button>
           </div>
         </div>
       </div>
