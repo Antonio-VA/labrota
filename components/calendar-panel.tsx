@@ -3274,7 +3274,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 disabled: isPending || loadingWeek,
               }] : []),
               // ── Group 1: Export & Publish ──
-              ...(hasAssignments ? [{
+              ...(hasAssignments && view === "week" ? [{
                 label: t("exportPdf"),
                 icon: <FileDown className="size-3.5" />,
                 onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
