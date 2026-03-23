@@ -258,12 +258,13 @@ export function runRotaEngine({
       if (s.start_date > date) return false
       if (s.end_date && s.end_date < date) return false
       if (leaveMap[s.id]?.has(date)) return false
-      const totalBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
+      const baseBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
+      // On weekends, drafted extras get bonus budget so they can work the
+      // weekend ON TOP of their normal weekday assignments.
+      const bonus = weekend ? (weekendReservation[s.id] ?? 0) : 0
+      const totalBudget = baseBudget + bonus
       const used = weeklyShiftCount[s.id] ?? 0
-      // On weekdays, reserve budget slots for weekend drafts so staff aren't
-      // exhausted before Sat/Sun. On weekends, use full remaining budget.
-      const reserved = weekend ? 0 : (weekendReservation[s.id] ?? 0)
-      if (used >= totalBudget - reserved) return false
+      if (used >= totalBudget) return false
       return true
     }
 
@@ -432,13 +433,14 @@ export function runRotaEngine({
         } else if (s.role === "admin") {
           shift = activeShiftSet.has(adminDefaultShift) ? adminDefaultShift : (defaultShiftCodes[0] ?? "T1")
         } else {
-          // Check if staff has a primary técnica with typical_shifts preference
-          const staffSkillCodes = s.staff_skills.map((sk) => sk.skill)
+          // Check técnica typical_shifts — prioritise certified skills over training
+          const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
+          const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
+          const orderedCodes   = [...certifiedCodes, ...trainingCodes]
           let preferredFromTecnica: string | null = null
-          for (const code of staffSkillCodes) {
+          for (const code of orderedCodes) {
             const typical = tecnicaTypicalShifts[code]
             if (typical && typical.size > 0) {
-              // Only match active shifts
               const match = defaultShiftCodes.find((sc) => typical.has(sc))
               if (match) { preferredFromTecnica = match; break }
             }
