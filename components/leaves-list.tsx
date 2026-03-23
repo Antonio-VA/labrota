@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
   CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX,
-  UserX, Calendar, CalendarClock, CalendarDays,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -296,28 +295,21 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
     next30Days += daysBetween(clampStart, clampEnd)
   }
 
-  const cards: { label: string; subtitle: string; value: number; icon: React.ElementType; accent: string }[] = [
-    { label: "Ausentes hoy",     subtitle: "Personas fuera hoy",         value: absentToday, icon: UserX,         accent: "border-l-red-500" },
-    { label: "Esta semana",      subtitle: "Días de ausencia totales",    value: thisWeekDays, icon: Calendar,     accent: "border-l-blue-500" },
-    { label: "Próx. ausencias",  subtitle: "En los próximos 7 días",     value: upcoming,    icon: CalendarClock, accent: "border-l-amber-500" },
-    { label: "Próximos 30 días", subtitle: "Días de ausencia programados", value: next30Days, icon: CalendarDays,  accent: "border-l-purple-500" },
+  const cards = [
+    { label: "Ausentes hoy", value: absentToday },
+    { label: "Esta semana", value: thisWeekDays },
+    { label: "Próx. ausencias", value: upcoming },
+    { label: "Próximos 30 días", value: next30Days },
   ]
 
   return (
     <div className="grid grid-cols-4 gap-3">
-      {cards.map((kpi) => {
-        const Icon = kpi.icon
-        return (
-          <div key={kpi.label} className={cn("rounded-xl border border-border/60 bg-background px-4 py-3 border-l-[3px]", kpi.accent)}>
-            <div className="flex items-center justify-between">
-              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-              <Icon className="size-4 text-muted-foreground/50" />
-            </div>
-            <p className="text-[20px] font-medium text-foreground mt-0.5 leading-tight">{kpi.value}</p>
-            <p className="text-[12px] text-muted-foreground mt-0.5">{kpi.subtitle}</p>
-          </div>
-        )
-      })}
+      {cards.map((kpi) => (
+        <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
+          <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+          <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+        </div>
+      ))}
     </div>
   )
 }

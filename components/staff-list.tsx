@@ -596,7 +596,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
     : "shrink-0 inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground"
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {visible.map((sk) => (
         <span key={sk.skill} className={badgeClass}>
           {variant === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
@@ -606,7 +606,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
       {overflow.length > 0 && (
         <Tooltip>
           <TooltipTrigger render={
-            <span className="shrink-0 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 cursor-default">
+            <span className="shrink-0 inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground cursor-default">
               +{overflow.length}
             </span>
           } />
@@ -621,7 +621,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]"
+const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(300px,2.5fr)_minmax(120px,0.8fr)_40px]"
 
 function StaffTable({
   members, t, ts, muted,
@@ -681,7 +681,7 @@ function StaffTable({
             key={member.id}
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
-              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(0,2.5fr)_minmax(0,0.8fr)_40px]",
+              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(300px,2.5fr)_minmax(120px,0.8fr)_40px]",
               isSelected ? "bg-primary/5" : "hover:bg-accent"
             )}
           >
@@ -744,7 +744,7 @@ function StaffTable({
             </div>
 
             {/* En formación (training) */}
-            <div className="hidden md:flex items-center gap-1 overflow-hidden">
+            <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
               {isAdmin || trainingSkills.length === 0 ? (
                 <span className="text-[13px] text-muted-foreground/40">—</span>
               ) : (
