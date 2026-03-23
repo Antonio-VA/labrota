@@ -789,23 +789,37 @@ export interface RotaMonthSummary {
   ratioMinimum: number
 }
 
-export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonthSummary> {
+export async function getRotaMonthSummary(monthStart: string, weekStartOverride?: string): Promise<RotaMonthSummary> {
   const supabase = await createClient()
 
-  const first = new Date(monthStart + "T12:00:00")
-  const last  = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12)
+  let gridDates: string[]
 
-  const gridStart = new Date(first)
-  const startDow  = gridStart.getDay()
-  gridStart.setDate(gridStart.getDate() - (startDow === 0 ? 6 : startDow - 1))
+  if (weekStartOverride) {
+    // 4-week rolling view: exactly 28 days from the given Monday
+    gridDates = []
+    const base = new Date(weekStartOverride + "T12:00:00")
+    for (let i = 0; i < 28; i++) {
+      const d = new Date(base)
+      d.setDate(base.getDate() + i)
+      gridDates.push(d.toISOString().split("T")[0])
+    }
+  } else {
+    // Legacy month grid
+    const first = new Date(monthStart + "T12:00:00")
+    const last  = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12)
 
-  const gridEnd = new Date(last)
-  const endDow  = gridEnd.getDay()
-  if (endDow !== 0) gridEnd.setDate(gridEnd.getDate() + (7 - endDow))
+    const gridStart = new Date(first)
+    const startDow  = gridStart.getDay()
+    gridStart.setDate(gridStart.getDate() - (startDow === 0 ? 6 : startDow - 1))
 
-  const gridDates: string[] = []
-  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
-    gridDates.push(d.toISOString().split("T")[0])
+    const gridEnd = new Date(last)
+    const endDow  = gridEnd.getDay()
+    if (endDow !== 0) gridEnd.setDate(gridEnd.getDate() + (7 - endDow))
+
+    gridDates = []
+    for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+      gridDates.push(d.toISOString().split("T")[0])
+    }
   }
 
   const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes] = await Promise.all([
@@ -909,7 +923,7 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
       adminCount: entries.filter((e) => e.role === "admin").length,
       hasSkillGaps,
       isWeekend: dow === 0 || dow === 6,
-      isCurrentMonth: date.startsWith(currentMonthPrefix),
+      isCurrentMonth: weekStartOverride ? true : date.startsWith(currentMonthPrefix),
       punctions: puncByDay[dowKey] ?? 0,
       leaveCount: leaveByDate[date] ?? 0,
       holidayName: holidays[date] ?? null,

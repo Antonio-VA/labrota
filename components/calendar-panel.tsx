@@ -150,8 +150,13 @@ function getMonthStart(isoDate: string): string {
 
 function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: string, locale: string): string {
   if (view === "month") {
-    const d = new Date(currentDate + "T12:00:00")
-    return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(d)
+    // 4-week rolling view: show date range
+    const start = new Date(weekStart + "T12:00:00")
+    const end = new Date(weekStart + "T12:00:00")
+    end.setDate(start.getDate() + 27) // 4 weeks = 28 days
+    const s = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(start)
+    const e = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(end)
+    return `${s} – ${e}`
   }
   // week
   const start = new Date(weekStart + "T12:00:00")
@@ -2061,10 +2066,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
             <div key={h} className="text-center text-[11px] font-medium text-muted-foreground py-1">{h}</div>
           ))}
         </div>
-        {Array.from({ length: 5 }).map((_, w) => (
-          <div key={w} className="grid grid-cols-7 gap-1">
+        {Array.from({ length: 4 }).map((_, w) => (
+          <div key={w} className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: 7 }).map((_, d) => (
-              <Skeleton key={d} className="h-20 rounded-lg" />
+              <Skeleton key={d} className="h-[120px] rounded-lg" />
             ))}
           </div>
         ))}
@@ -2114,7 +2119,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                   <button
                     onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
                     className={cn(
-                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[100px]",
+                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[120px]",
                       !day.isCurrentMonth
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
@@ -2813,10 +2818,10 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     }).catch(() => {/* ignore — grid stays as-is */})
   }, [])
 
-  // Fetch month summary
-  const fetchMonth = useCallback((ms: string) => {
+  // Fetch 4-week rolling summary
+  const fetchMonth = useCallback((ms: string, ws?: string) => {
     setLoadingMonth(true)
-    getRotaMonthSummary(ms).then((d) => {
+    getRotaMonthSummary(ms, ws).then((d) => {
       setMonthSummary(d)
       setLoadingMonth(false)
     })
@@ -2837,13 +2842,13 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     return () => { cancelled = true }
   }, [weekStart])
   useEffect(() => {
-    if (view === "month") fetchMonth(monthStart)
+    if (view === "month") fetchMonth(monthStart, weekStart)
   }, [monthStart, view, fetchMonth])
 
   useEffect(() => {
     if (refreshKey === 0) return
     fetchWeek(weekStart)
-    if (view === "month") fetchMonth(monthStart)
+    if (view === "month") fetchMonth(monthStart, weekStart)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
@@ -2851,11 +2856,10 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     getActiveStaff().then(setStaffList)
   }, [])
 
-  // Navigation
+  // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
     setShowStrategyModal(false)
-    if (view === "week")  setCurrentDate((d) => addDays(d, dir * 7))
-    else                  setCurrentDate((d) => addMonths(d, dir))
+    setCurrentDate((d) => addDays(d, dir * 7))
   }
 
   function goToToday() {
@@ -3348,7 +3352,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         punctionsOverride={punctionsOverride}
         rota={weekData?.rota ?? null}
         isPublished={!!isPublished || !canEdit}
-        onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
+        onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
         onPunctionsChange={handlePunctionsChange}
       />
 
@@ -3400,7 +3404,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         open={applyTemplateOpen}
         weekStart={weekStart}
         onClose={() => setApplyTemplateOpen(false)}
-        onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart) }}
+        onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
       />
     </main>
   )

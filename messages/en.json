@@ -100,7 +100,7 @@
   "schedule": {
     "title": "Schedule",
     "weekView": "Week",
-    "monthView": "Month",
+    "monthView": "4 weeks",
     "dayView": "Day",
     "shiftLayout": "By shift",
     "personLayout": "By person",

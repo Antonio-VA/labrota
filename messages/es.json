@@ -100,7 +100,7 @@
   "schedule": {
     "title": "Calendario",
     "weekView": "Semana",
-    "monthView": "Mes",
+    "monthView": "4 semanas",
     "dayView": "Día",
     "shiftLayout": "Por turno",
     "personLayout": "Por persona",
