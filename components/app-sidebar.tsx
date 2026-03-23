@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useTransition, useState, useRef } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { useLocale } from "next-intl"
-import { usePathname, useRouter } from "next/navigation"
-import { CalendarDays, Users, Plane, FlaskConical, BarChart3, LogOut, UserCog, HelpCircle } from "lucide-react"
-import { SupportModal } from "@/components/support-modal"
-import { AccountPanel, applyTheme } from "@/components/account-panel"
+import { usePathname } from "next/navigation"
+import { CalendarDays, Users, Plane, FlaskConical, BarChart3 } from "lucide-react"
+import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
@@ -17,7 +15,6 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
-import { setLocale } from "@/lib/locale-action"
 import type { User } from "@supabase/supabase-js"
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
@@ -74,94 +71,13 @@ function NavItem({
   )
 }
 
-// ── Avatar menu ───────────────────────────────────────────────────────────────
-
-function AvatarMenu({
-  user, firstName, initials, avatarUrl, onSignOut,
-}: {
-  user: User | null; firstName: string; initials: string; avatarUrl: string | null
-  onSignOut: () => void
-}) {
-  const t    = useTranslations("nav")
-  const [open, setOpen] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
-  const [supportOpen, setSupportOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="border-t border-border py-3 flex flex-col items-center gap-2 px-2 relative">
-      {user && (
-        <>
-          {/* Clickable avatar — opens menu */}
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
-            title={firstName}
-          >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
-            ) : (
-              initials
-            )}
-          </button>
-
-          {/* Dropdown menu */}
-          {open && (
-            <div className="absolute bottom-0 left-full ml-2 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden z-50">
-              <div className="px-3 py-2.5 border-b border-border">
-                <p className="text-[13px] font-medium truncate">{firstName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-              </div>
-              <button
-                onClick={() => { setOpen(false); setAccountOpen(true) }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
-              >
-                <UserCog className="size-3.5" />
-                Mi cuenta
-              </button>
-              <button
-                onClick={() => { setOpen(false); setSupportOpen(true) }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
-              >
-                <HelpCircle className="size-3.5" />
-                Soporte
-              </button>
-              <button
-                onClick={() => { setOpen(false); onSignOut() }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
-              >
-                <LogOut className="size-3.5" />
-                {t("signOut")}
-              </button>
-            </div>
-          )}
-
-          <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} user={user} />
-          <SupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
-        </>
-      )}
-    </div>
-  )
-}
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function AppSidebar() {
   const t        = useTranslations("nav")
   const pathname = usePathname()
-  const router   = useRouter()
-  const locale   = useLocale()
 
-  const [isPending, startTransition] = useTransition()
   const [user, setUser]              = useState<User | null>(null)
 
   useEffect(() => {
@@ -180,34 +96,6 @@ export function AppSidebar() {
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  function toggleLocale() {
-    const next = locale === "es" ? "en" : "es"
-    startTransition(async () => {
-      await setLocale(next as "es" | "en")
-      router.refresh()
-    })
-  }
-
-  async function signOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-  }
-
-  function firstName() {
-    const name = (user?.user_metadata?.full_name as string | undefined) ?? ""
-    if (name) return name.split(" ")[0]
-    return (user?.email ?? "").split("@")[0]
-  }
-
-  function initials() {
-    const name = (user?.user_metadata?.full_name as string | undefined) ?? ""
-    if (name) return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    return (user?.email ?? "").slice(0, 2).toUpperCase()
-  }
-
-  const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? null
 
   const canEdit = useCanEdit()
 
@@ -243,14 +131,6 @@ export function AppSidebar() {
           })}
         </div>
 
-        {/* Bottom: account section */}
-        <AvatarMenu
-          user={user}
-          firstName={firstName()}
-          initials={initials()}
-          avatarUrl={avatarUrl}
-          onSignOut={signOut}
-        />
       </TooltipProvider>
     </nav>
   )

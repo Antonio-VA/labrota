@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 import { Check, ChevronDown } from "lucide-react"
 import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
+import { UserAvatarMenu } from "@/components/user-avatar-menu"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import type { User } from "@supabase/supabase-js"
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +29,12 @@ export function ClinicTopBar({
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const orgMenuRef                    = useRef<HTMLDivElement>(null)
   const [isSwitching, startSwitch]    = useTransition()
+  const [user, setUser]               = useState<User | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null))
+  }, [])
 
   useEffect(() => {
     if (!orgMenuOpen) return
@@ -94,8 +103,11 @@ export function ClinicTopBar({
 
       <div className="flex-1" />
 
-      {/* Right: notifications */}
-      <NotificationBell />
+      {/* Right: bell + avatar */}
+      <div className="flex items-center gap-3">
+        <NotificationBell />
+        {user && <UserAvatarMenu user={user} />}
+      </div>
     </header>
   )
 }
