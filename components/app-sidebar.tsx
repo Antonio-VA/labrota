@@ -133,7 +133,7 @@ export function AppSidebar() {
 
       </TooltipProvider>
       <div className="py-3 text-center">
-        <span className="text-[11px] text-muted-foreground/60 leading-none">
+        <span className="text-[13px] text-muted-foreground/50 leading-none">
           <span className="font-light">lab</span><span className="font-medium">rota</span>
         </span>
       </div>

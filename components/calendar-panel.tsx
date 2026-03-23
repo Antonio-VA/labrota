@@ -3030,7 +3030,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
         {/* RIGHT: dept filter · warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
-          {view === "week" && (
+          {view === "week" && hasAssignments && (
             <div className="hidden lg:block">
               <DepartmentFilterDropdown
                 selected={deptFilter}
@@ -3044,7 +3044,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               />
             </div>
           )}
-          {weekData && (
+          {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
           {showActions && !isPublished && !chatOpen && (
