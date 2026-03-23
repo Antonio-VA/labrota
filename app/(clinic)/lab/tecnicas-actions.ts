@@ -3,18 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type { Tecnica } from "@/lib/types/database"
-
-async function getOrgId(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase
-    .from("profiles")
-    .select("organisation_id")
-    .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
-  return data?.organisation_id ?? null
-}
+import { getOrgId } from "@/lib/get-org-id"
 
 export async function getTecnicas(): Promise<Tecnica[]> {
   const supabase = await createClient()

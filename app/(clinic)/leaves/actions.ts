@@ -4,18 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
-
-async function getOrgId(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase
-    .from("profiles")
-    .select("organisation_id")
-    .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
-  return data?.organisation_id ?? null
-}
+import { getOrgId } from "@/lib/get-org-id"
 
 function parseLeaveForm(formData: FormData) {
   return {
@@ -56,7 +45,7 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
       staffName: `${staffData.first_name} ${staffData.last_name}`,
       startDate: leave.start_date,
       endDate: leave.end_date,
-    }).catch(() => {}) // fire and forget
+    }).catch((err) => console.error("[leave] notifyLeaveImpact failed:", err))
   }
 
   revalidatePath("/leaves")

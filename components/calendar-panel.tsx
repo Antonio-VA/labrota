@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition, Fragment } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -2710,17 +2710,18 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
   // Department filter — persisted in localStorage
-  // Dynamic department data from weekData (or defaults)
+  // Dynamic department data from weekData (or defaults) — memoised to avoid re-creating every render
   const departments = weekData?.departments ?? []
-  const globalDeptMaps = buildDeptMaps(departments)
-  const ALL_DEPTS = departments.length > 0
-    ? departments.map((d) => d.code)
-    : ["lab", "andrology", "admin"]
-  const deptAbbrMap = Object.fromEntries(
+  const globalDeptMaps = useMemo(() => buildDeptMaps(departments), [departments])
+  const ALL_DEPTS = useMemo(() =>
+    departments.length > 0 ? departments.map((d) => d.code) : ["lab", "andrology", "admin"],
+    [departments]
+  )
+  const deptAbbrMap = useMemo(() => Object.fromEntries(
     departments.length > 0
       ? departments.map((d) => [d.code, d.abbreviation || d.name.slice(0, 3)])
       : [["lab", "Emb"], ["andrology", "And"], ["admin", "Adm"]]
-  )
+  ), [departments])
   const [deptFilter, setDeptFilter] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set(ALL_DEPTS)
     try {

@@ -203,6 +203,7 @@ export async function createOrgUser(formData: FormData) {
   const appRole  = (formData.get("appRole")  as string | null)?.trim() ?? "admin"
 
   if (!orgId || !email) return { error: "Organisation and email are required." }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Invalid email format." }
 
   const admin = createAdminClient()
 

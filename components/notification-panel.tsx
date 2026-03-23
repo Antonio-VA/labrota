@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, X, Check, AlertTriangle, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -23,15 +23,30 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
 
-  const refresh = useCallback(() => {
-    getUnreadCount().then(setCount)
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const delayRef = useRef(30_000) // start at 30s
+
+  const scheduleNext = useCallback(() => {
+    if (intervalRef.current) clearTimeout(intervalRef.current)
+    intervalRef.current = setTimeout(() => {
+      getUnreadCount().then((n) => {
+        setCount(n)
+        // Reset to 30s on success; back off on zero change
+        delayRef.current = 30_000
+        scheduleNext()
+      }).catch(() => {
+        // Back off on failure: double up to 5 minutes
+        delayRef.current = Math.min(delayRef.current * 2, 300_000)
+        scheduleNext()
+      })
+    }, delayRef.current)
   }, [])
 
   useEffect(() => {
-    refresh()
-    const interval = setInterval(refresh, 30000) // poll every 30s
-    return () => clearInterval(interval)
-  }, [refresh])
+    getUnreadCount().then(setCount)
+    scheduleNext()
+    return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
+  }, [scheduleNext])
 
   function handleOpen() {
     setOpen(true)

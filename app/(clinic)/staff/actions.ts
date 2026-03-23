@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 function parseSkillsFromForm(formData: FormData): { skill: string; level: SkillLevel }[] {
   const skills: { skill: string; level: SkillLevel }[] = []
@@ -56,6 +57,9 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   if (!orgId) return { error: "No organisation found." }
 
   const { staff, skills } = parseFormData(formData)
+
+  if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
+  if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
   const { data: newStaff, error } = await supabase
     .from("staff")
@@ -115,6 +119,9 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 export async function updateStaff(id: string, _prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const { staff, skills } = parseFormData(formData)
+
+  if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
+  if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
   const { error: updateError } = await supabase
     .from("staff")
