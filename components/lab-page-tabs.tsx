@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["regional", "cobertura", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
+const TAB_KEYS = ["cobertura", "reglas", "plantillas", "tecnicas", "departamentos", "turnos", "regional"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
@@ -27,7 +27,7 @@ export function LabPageTabs({
   departamentos: React.ReactNode
   turnos:        React.ReactNode
 }) {
-  const [active, setActive] = useState<TabKey>("regional")
+  const [active, setActive] = useState<TabKey>("cobertura")
   const content: Record<TabKey, React.ReactNode> = { regional, cobertura, reglas, plantillas, tecnicas, departamentos, turnos }
 
   return (

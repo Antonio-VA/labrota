@@ -1532,6 +1532,7 @@ function ShiftGrid({
   punctionsDefault, punctionsOverride, onPunctionsChange,
   onRefresh, weekStart, compact, colorChips, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
+  biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1556,6 +1557,9 @@ function ShiftGrid({
   ratioOptimal?: number
   ratioMinimum?: number
   timeFormat?: string
+  biopsyConversionRate?: number
+  biopsyDay5Pct?: number
+  biopsyDay6Pct?: number
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1859,6 +1863,34 @@ function ShiftGrid({
                   ratioOptimal={ratioOptimal}
                   ratioMinimum={ratioMinimum}
                 />
+
+                {/* Biopsy forecast */}
+                {(() => {
+                  // Forecast biopsies from punciones 5 and 6 days ago
+                  const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+                  const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+                  const d5str = d5ago.toISOString().split("T")[0]
+                  const d6str = d6ago.toISOString().split("T")[0]
+                  const p5 = punctionsOverride[d5str] ?? punctionsDefault[d5str] ?? 0
+                  const p6 = punctionsOverride[d6str] ?? punctionsDefault[d6str] ?? 0
+                  const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
+                  if (forecast <= 0) return null
+                  const sources: string[] = []
+                  if (p5 > 0) sources.push(`${p5} punciones el ${formatDate(d5str, locale as "es" | "en")}`)
+                  if (p6 > 0) sources.push(`${p6} punciones el ${formatDate(d6str, locale as "es" | "en")}`)
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger render={
+                        <span className="text-[9px] font-medium tabular-nums text-purple-600 dark:text-purple-400 cursor-default">
+                          B:~{forecast}
+                        </span>
+                      } />
+                      <TooltipContent side="bottom">
+                        Biopsias previstas: ~{forecast} ({sources.join(", ")})
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                })()}
 
               </div>
             )
@@ -2753,7 +2785,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-lg border border-border bg-background shadow-lg py-1.5">
+        <div className="absolute right-0 top-full mt-1 z-50 min-w-[280px] rounded-lg border border-border bg-background shadow-lg py-1.5">
           {/* Toggle all */}
           <button
             onClick={() => { allSelected ? setOpen(false) : onSetAll() }}
@@ -3478,6 +3510,9 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   ratioOptimal={weekData?.ratioOptimal}
                   ratioMinimum={weekData?.ratioMinimum}
                   timeFormat={weekData?.timeFormat}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
                 />
               ) : (
                 <PersonGrid

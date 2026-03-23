@@ -73,6 +73,9 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
     country:              config.country ?? "",
     region:               config.region ?? "",
     time_format:          config.time_format ?? "24h",
+    biopsy_conversion_rate: config.biopsy_conversion_rate ?? 0.5,
+    biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
+    biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -114,6 +117,9 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
         ratio_optimal:        values.ratio_optimal,
         ratio_minimum:        values.ratio_minimum,
         first_day_of_week:    values.first_day_of_week,
+        biopsy_conversion_rate: values.biopsy_conversion_rate,
+        biopsy_day5_pct:       values.biopsy_day5_pct,
+        biopsy_day6_pct:       values.biopsy_day6_pct,
         country:              values.country || undefined,
         region:               values.region || undefined,
         time_format:          values.time_format,
@@ -193,6 +199,70 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
               disabled={isPending}
               className="w-20 text-center"
             />
+          </FieldRow>
+        </div>
+      </div>
+
+      {/* ── BIOPSIAS ──────────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Biopsias" />
+        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia en día 5 o día 6">
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={Math.round(values.biopsy_conversion_rate * 100)}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_conversion_rate: v / 100 }))
+                }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <span className="text-[13px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada de biopsias entre día 5 y día 6 post-punción">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D5</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(values.biopsy_day5_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day5_pct: v / 100, biopsy_day6_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-[11px] text-muted-foreground">/</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D6</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(values.biopsy_day6_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day6_pct: v / 100, biopsy_day5_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-[11px] text-muted-foreground">%</span>
+            </div>
           </FieldRow>
         </div>
       </div>

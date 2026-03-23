@@ -183,6 +183,9 @@ export interface LabConfig {
   country:                  string
   region:                   string
   time_format:              string  // "24h" | "12h"
+  biopsy_conversion_rate:   number  // 0-1, default 0.5
+  biopsy_day5_pct:          number  // 0-1, default 0.5
+  biopsy_day6_pct:          number  // 0-1, default 0.5
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -225,6 +228,9 @@ export type LabConfigUpdate = {
   country?:                  string
   region?:                   string
   time_format?:              string
+  biopsy_conversion_rate?:   number
+  biopsy_day5_pct?:          number
+  biopsy_day6_pct?:          number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string
