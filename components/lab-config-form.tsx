@@ -49,7 +49,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config }: { config: LabConfig }) {
+export function LabConfigForm({ config, section = "all" }: { config: LabConfig; section?: "all" | "regional" | "cobertura" }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -130,6 +130,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
+      {(section === "all" || section === "cobertura") && <>
       {/* ── COBERTURA MÍNIMA ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
@@ -263,6 +264,9 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         </div>
       </div>
 
+      </>}
+
+      {(section === "all" || section === "regional") && <>
       {/* ── CONFIGURACIÓN REGIONAL ──────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title="Configuración regional" />
@@ -357,6 +361,8 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
           </div>
         )}
       </div>
+
+      </>}
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">

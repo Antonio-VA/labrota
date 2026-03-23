@@ -43,6 +43,41 @@ export default async function LabConfigPage() {
           </div>
 
           <LabPageTabs
+            regional={
+              config ? (
+                <LabConfigForm config={config} section="regional" />
+              ) : (
+                <p className="text-[14px] text-muted-foreground">
+                  Lab configuration not found. Please contact your administrator.
+                </p>
+              )
+            }
+            cobertura={
+              config ? (
+                <LabConfigForm config={config} section="cobertura" />
+              ) : (
+                <p className="text-[14px] text-muted-foreground">
+                  Lab configuration not found. Please contact your administrator.
+                </p>
+              )
+            }
+            reglas={<RulesSection rules={rules} staff={staff} />}
+            plantillas={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                  Plantillas
+                </p>
+                <PlantillasTab initialTemplates={templates} />
+              </div>
+            }
+            tecnicas={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                  Técnicas
+                </p>
+                <TécnicasTab initialTecnicas={tecnicas} />
+              </div>
+            }
             departamentos={
               <div className="rounded-lg border border-border bg-background px-5 py-4">
                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
@@ -57,32 +92,6 @@ export default async function LabConfigPage() {
                   {t("sections.shifts")}
                 </p>
                 <ShiftTypesTable initialTypes={shiftTypes} />
-              </div>
-            }
-            configuracion={
-              config ? (
-                <LabConfigForm config={config} />
-              ) : (
-                <p className="text-[14px] text-muted-foreground">
-                  Lab configuration not found. Please contact your administrator.
-                </p>
-              )
-            }
-            reglas={<RulesSection rules={rules} staff={staff} />}
-            tecnicas={
-              <div className="rounded-lg border border-border bg-background px-5 py-4">
-                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                  Técnicas
-                </p>
-                <TécnicasTab initialTecnicas={tecnicas} />
-              </div>
-            }
-            plantillas={
-              <div className="rounded-lg border border-border bg-background px-5 py-4">
-                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                  Plantillas
-                </p>
-                <PlantillasTab initialTemplates={templates} />
               </div>
             }
           />
