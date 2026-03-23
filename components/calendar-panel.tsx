@@ -402,7 +402,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
   const ratio = hasRatio ? certifiedLabCount / value : 0
   const optThreshold = ratioOptimal ?? 1.0
   const minThreshold = ratioMinimum ?? 0.75
-  const ratioColor = !hasRatio ? "" : ratio >= optThreshold ? "text-emerald-600 dark:text-emerald-400" : ratio >= minThreshold ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+  const ratioColor = !hasRatio ? "" : ratio >= optThreshold ? "text-emerald-500 dark:text-emerald-400" : ratio >= minThreshold ? "text-amber-500 dark:text-amber-400" : "text-destructive"
   const ratioLabel = !hasRatio ? "" : ratio >= optThreshold ? "Ratio óptimo" : ratio >= minThreshold ? "Ratio aceptable" : "Ratio insuficiente"
 
   const ratioSpan = hasRatio ? (
@@ -2232,10 +2232,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       !day.isCurrentMonth
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
-                        ? "bg-amber-50/40 border-amber-200/60"
+                        ? "bg-amber-500/10 border-amber-500/20"
                         : day.isWeekend
-                        ? "bg-muted/40 border-border hover:bg-muted/50"
-                        : "bg-background border-border hover:bg-muted/20"
+                        ? "bg-muted/40 border-border hover:bg-accent/20"
+                        : "bg-background border-border hover:bg-accent/10"
                     )}
                   >
                     {/* Top row: date + status icon */}
@@ -2252,27 +2252,27 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                       {day.staffCount > 0 && (
                         day.hasSkillGaps
-                          ? <AlertTriangle className="size-4 text-amber-500" />
-                          : <CheckCircle2 className="size-4 text-emerald-400" />
+                          ? <AlertTriangle className="size-4 text-destructive/70" />
+                          : <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400" />
                       )}
                     </div>
 
                     {/* Holiday name */}
                     {day.holidayName && day.isCurrentMonth && (
-                      <span className="text-[10px] text-amber-600 leading-tight truncate w-full mt-1">{day.holidayName}</span>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department chips — centered in cell */}
+                    {/* Department chips */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
                       <div className="flex items-center gap-2 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{day.labCount}E</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300">{day.labCount}E</span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{day.andrologyCount}A</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">{day.andrologyCount}A</span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{day.adminCount}Ad</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-muted text-muted-foreground">{day.adminCount}Ad</span>
                         )}
                       </div>
                     )}
@@ -2303,7 +2303,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           {effectiveP > 0 && day.labCount > 0 && (
                             <span className={cn(
                               "text-[11px] font-medium tabular-nums",
-                              ratio >= opt ? "text-emerald-600 dark:text-emerald-400" : ratio >= min ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                              ratio >= opt ? "text-emerald-500 dark:text-emerald-400" : ratio >= min ? "text-amber-500 dark:text-amber-400" : "text-destructive"
                             )}>
                               R:{ratio.toFixed(1)}
                             </span>
