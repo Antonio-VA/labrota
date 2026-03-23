@@ -2838,6 +2838,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
+    setMonthSummary(null)
     setLoadingMonth(true)
     getRotaMonthSummary(ms, ws).then((d) => {
       setMonthSummary(d)
