@@ -302,10 +302,13 @@ export function runRotaEngine({
       adminPool = [...adminPool, ...extraAdmin.slice(0, adminRequired - adminPool.length)]
     }
 
-    // 5. Assign all preferred + needed extras; admin all-or-none based on requirement
-    let assignedLab       = labPool
-    let assignedAndrology = andrologyPool
-    let assignedAdmin     = adminRequired > 0 ? adminPool : []
+    // 5. Assign staff:
+    //    - Weekdays: all eligible (budget naturally limits across the week)
+    //    - Weekends: cap to coverage requirement (don't waste budget on overstaffing
+    //      Saturday when Sunday also needs coverage)
+    let assignedLab       = weekend ? labPool.slice(0, labRequired) : labPool
+    let assignedAndrology = weekend ? andrologyPool.slice(0, andrologyRequired) : andrologyPool
+    let assignedAdmin     = adminRequired > 0 ? (weekend ? adminPool.slice(0, adminRequired) : adminPool) : []
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
