@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react"
 import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass } from "lucide-react"
 import { toast } from "sonner"
+import { formatTime } from "@/lib/format-time"
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   useSensor, useSensors, PointerSensor, type DragEndEvent,
@@ -216,13 +217,14 @@ function DraggableCard({
 // ── Draggable OFF staff chip ───────────────────────────────────────────────────
 
 function DraggableOffChip({
-  staff, shiftTypes, onAddToShift, disabled, onLeave,
+  staff, shiftTypes, onAddToShift, disabled, onLeave, timeFormat = "24h",
 }: {
   staff: StaffWithSkills
   shiftTypes: ShiftTypeDefinition[]
   onAddToShift: (staffId: string, shift: ShiftType) => void
   disabled: boolean
   onLeave: boolean
+  timeFormat?: string
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `off-${staff.id}`,
@@ -252,7 +254,7 @@ function DraggableOffChip({
       {onLeave ? (
         <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
       ) : !disabled && shiftTypes.length > 0 ? (
-        <ShiftPickerButton shiftTypes={shiftTypes} onSelect={(shift) => onAddToShift(staff.id, shift)} />
+        <ShiftPickerButton shiftTypes={shiftTypes} onSelect={(shift) => onAddToShift(staff.id, shift)} timeFormat={timeFormat} />
       ) : null}
     </div>
   )
@@ -260,7 +262,7 @@ function DraggableOffChip({
 
 // ── Shift picker for OFF chips ────────────────────────────────────────────────
 
-function ShiftPickerButton({ shiftTypes, onSelect }: { shiftTypes: ShiftTypeDefinition[]; onSelect: (shift: ShiftType) => void }) {
+function ShiftPickerButton({ shiftTypes, onSelect, timeFormat = "24h" }: { shiftTypes: ShiftTypeDefinition[]; onSelect: (shift: ShiftType) => void; timeFormat?: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -302,7 +304,7 @@ function ShiftPickerButton({ shiftTypes, onSelect }: { shiftTypes: ShiftTypeDefi
               className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-muted/50 transition-colors text-[12px]"
             >
               <span className="font-medium">{st.code}</span>
-              <span className="text-muted-foreground text-[10px]">{st.start_time}</span>
+              <span className="text-muted-foreground text-[10px]">{formatTime(st.start_time, timeFormat)}</span>
             </button>
           ))}
         </div>
@@ -413,12 +415,14 @@ interface Props {
   isPublished: boolean
   onSaved: () => void
   onPunctionsChange: (date: string, value: number | null) => void
+  timeFormat?: string
 }
 
 export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
   shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
+  timeFormat = "24h",
 }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -708,7 +712,7 @@ export function AssignmentSheet({
               const available = offStaff.filter((s) => !assignedIds.has(s.id))
 
               const timeLabel = shiftTimes?.[shift]
-                ? ` · ${shiftTimes[shift].start}–${shiftTimes[shift].end}`
+                ? ` · ${formatTime(shiftTimes[shift].start, timeFormat)}–${formatTime(shiftTimes[shift].end, timeFormat)}`
                 : ""
 
               return (
@@ -782,6 +786,7 @@ export function AssignmentSheet({
                     onAddToShift={handleAdd}
                     disabled={isPublished || !rota}
                     onLeave={false}
+                    timeFormat={timeFormat}
                   />
                 ))}
                 {onLeaveStaff.map((s) => (
@@ -792,6 +797,7 @@ export function AssignmentSheet({
                     onAddToShift={() => {}}
                     disabled={true}
                     onLeave={true}
+                    timeFormat={timeFormat}
                   />
                 ))}
                 {offStaff.length === 0 && onLeaveStaff.length === 0 && (

@@ -6,6 +6,7 @@ import { getRotaWeek } from "@/app/(clinic)/rota/actions"
 import { formatDateWithYear, formatDate } from "@/lib/format-date"
 import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL } from "@/lib/department-colors"
 import { createClient } from "@/lib/supabase/server"
+import { formatTime } from "@/lib/format-time"
 
 export default async function PrintRotaPage({
   params,
@@ -154,8 +155,8 @@ export default async function PrintRotaPage({
                     <div style={{ fontSize: 9, color: "#64748b", fontWeight: 600 }}>{shiftCode}</div>
                     {time && (
                       <>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1b4f8a", lineHeight: 1.2 }}>{time.start}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{time.end}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1b4f8a", lineHeight: 1.2 }}>{formatTime(time.start, data.timeFormat)}</div>
+                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{formatTime(time.end, data.timeFormat)}</div>
                       </>
                     )}
                   </td>

@@ -45,6 +45,7 @@ import {
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
+import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
@@ -1532,7 +1533,7 @@ function ShiftGrid({
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
   onRefresh, weekStart, compact, colorChips, onDateClick, onLocalDaysChange,
-  ratioOptimal, ratioMinimum,
+  ratioOptimal, ratioMinimum, timeFormat = "24h",
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1556,6 +1557,7 @@ function ShiftGrid({
   onLocalDaysChange?: (days: RotaDay[]) => void
   ratioOptimal?: number
   ratioMinimum?: number
+  timeFormat?: string
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1872,11 +1874,11 @@ function ShiftGrid({
             <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
               <span className="text-[10px] leading-tight font-medium" style={{ color: "var(--muted-foreground)" }}>{shiftRow}</span>
               <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
-                {shiftTypeMap[shiftRow]?.start_time ?? shiftRow}
+                {shiftTypeMap[shiftRow]?.start_time ? formatTime(shiftTypeMap[shiftRow].start_time, timeFormat) : shiftRow}
               </span>
               {shiftTypeMap[shiftRow]?.end_time && (
                 <span className="text-[11px] text-muted-foreground leading-tight tabular-nums">
-                  {shiftTypeMap[shiftRow].end_time}
+                  {formatTime(shiftTypeMap[shiftRow].end_time, timeFormat)}
                 </span>
               )}
             </div>
@@ -3424,6 +3426,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   onLocalDaysChange={setLiveDays}
                   ratioOptimal={weekData?.ratioOptimal}
                   ratioMinimum={weekData?.ratioMinimum}
+                  timeFormat={weekData?.timeFormat}
                 />
               ) : (
                 <PersonGrid
@@ -3490,6 +3493,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         isPublished={!!isPublished || !canEdit}
         onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
         onPunctionsChange={handlePunctionsChange}
+        timeFormat={weekData?.timeFormat}
       />
 
       {/* Staff profile panel */}
