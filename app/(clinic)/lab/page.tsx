@@ -43,15 +43,6 @@ export default async function LabConfigPage() {
           </div>
 
           <LabPageTabs
-            regional={
-              config ? (
-                <LabConfigForm config={config} section="regional" />
-              ) : (
-                <p className="text-[14px] text-muted-foreground">
-                  Lab configuration not found. Please contact your administrator.
-                </p>
-              )
-            }
             cobertura={
               config ? (
                 <LabConfigForm config={config} section="cobertura" />

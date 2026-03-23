@@ -55,6 +55,8 @@ export function AccountPanel({ open, onClose, user }: {
         locale: p.locale ?? "browser",
         theme: p.theme ?? "light",
         accentColor: p.accentColor ?? "#1b4f8a",
+        timeFormat: p.timeFormat ?? "24h",
+        firstDayOfWeek: p.firstDayOfWeek ?? 0,
       })
       setDepartment(dept)
       setLoading(false)
@@ -208,6 +210,45 @@ export function AccountPanel({ open, onClose, user }: {
                   {prefs.accentColor === c.hex && <Check className="size-3.5 text-white" />}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Preferences — time format + first day */}
+          <div className="px-5 py-4 border-b border-border">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Preferencias</p>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[13px] font-medium">Formato de hora</span>
+              <div className="flex rounded-lg border border-input overflow-hidden">
+                {(["24h", "12h"] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => setPrefs((p) => ({ ...p, timeFormat: fmt }))}
+                    className={cn(
+                      "px-3 py-1 text-[12px] font-medium transition-colors",
+                      prefs.timeFormat === fmt
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-transparent text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {fmt === "24h" ? "24h" : "12h"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-medium">Primer día de la semana</span>
+              <select
+                value={prefs.firstDayOfWeek ?? 0}
+                onChange={(e) => setPrefs((p) => ({ ...p, firstDayOfWeek: parseInt(e.target.value, 10) }))}
+                className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
+              >
+                <option value={0}>Lunes</option>
+                <option value={6}>Domingo</option>
+                <option value={5}>Sábado</option>
+              </select>
             </div>
           </div>
         </div>

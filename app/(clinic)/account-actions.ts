@@ -7,6 +7,8 @@ export interface UserPreferences {
   locale?: "browser" | "es" | "en"
   theme?: "light" | "dark" | "auto"
   accentColor?: string
+  timeFormat?: "24h" | "12h"
+  firstDayOfWeek?: number // 0=Mon, 5=Sat, 6=Sun
 }
 
 export async function getUserDepartment(): Promise<string | null> {

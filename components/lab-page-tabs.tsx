@@ -3,11 +3,10 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["cobertura", "reglas", "plantillas", "tecnicas", "departamentos", "turnos", "regional"] as const
+const TAB_KEYS = ["cobertura", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
-  regional:      "Regional",
   cobertura:     "Cobertura",
   reglas:        "Reglas",
   plantillas:    "Plantillas",
@@ -17,9 +16,8 @@ const TAB_LABELS: Record<TabKey, string> = {
 }
 
 export function LabPageTabs({
-  regional, cobertura, reglas, plantillas, tecnicas, departamentos, turnos,
+  cobertura, reglas, plantillas, tecnicas, departamentos, turnos,
 }: {
-  regional:      React.ReactNode
   cobertura:     React.ReactNode
   reglas:        React.ReactNode
   plantillas:    React.ReactNode
@@ -28,7 +26,7 @@ export function LabPageTabs({
   turnos:        React.ReactNode
 }) {
   const [active, setActive] = useState<TabKey>("cobertura")
-  const content: Record<TabKey, React.ReactNode> = { regional, cobertura, reglas, plantillas, tecnicas, departamentos, turnos }
+  const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, plantillas, tecnicas, departamentos, turnos }
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,7 +49,7 @@ export function LabPageTabs({
         ))}
       </div>
 
-      {/* Tab content — min-height prevents layout shift from scrollbar toggling */}
+      {/* Tab content */}
       <div className="min-h-[400px]">{content[active]}</div>
     </div>
   )

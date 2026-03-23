@@ -3095,7 +3095,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         } else if (weeksToGenerate.length > 1) {
           toast.success(`${successCount} semanas generadas`)
         } else {
-          toast.success(t("templateApplied"))
+          toast.success("Horario generado")
         }
 
         fetchWeek(weekStart)

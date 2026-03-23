@@ -5,9 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import { toast } from "sonner"
 import type { LabConfig, PunctionsByDay, CoverageByDay } from "@/lib/types/database"
-import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -49,7 +47,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all" }: { config: LabConfig; section?: "all" | "regional" | "cobertura" }) {
+export function LabConfigForm({ config, section = "all" }: { config: LabConfig; section?: "all" | "cobertura" }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -69,10 +67,6 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
     autonomous_community: config.autonomous_community ?? "",
     ratio_optimal:        config.ratio_optimal ?? 1.0,
     ratio_minimum:        config.ratio_minimum ?? 0.75,
-    first_day_of_week:    config.first_day_of_week ?? 0,
-    country:              config.country ?? "",
-    region:               config.region ?? "",
-    time_format:          config.time_format ?? "24h",
     biopsy_conversion_rate: config.biopsy_conversion_rate ?? 0.5,
     biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
@@ -113,16 +107,12 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
       const result = await updateLabConfig({
         coverage_by_day:      coverageByDay,
         punctions_by_day:     values.punctions_by_day,
-        autonomous_community: values.region || values.autonomous_community || null,
+        autonomous_community: values.autonomous_community || null,
         ratio_optimal:        values.ratio_optimal,
         ratio_minimum:        values.ratio_minimum,
-        first_day_of_week:    values.first_day_of_week,
         biopsy_conversion_rate: values.biopsy_conversion_rate,
         biopsy_day5_pct:       values.biopsy_day5_pct,
         biopsy_day6_pct:       values.biopsy_day6_pct,
-        country:              values.country || undefined,
-        region:               values.region || undefined,
-        time_format:          values.time_format,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -320,103 +310,6 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
 
       </>}
 
-      {(section === "all" || section === "regional") && <>
-      {/* ── CONFIGURACIÓN REGIONAL ──────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Configuración regional" />
-        <div className="flex flex-col gap-0">
-          {/* País */}
-          <FieldRow label="País">
-            <select
-              value={values.country}
-              onChange={(e) => {
-                const code = e.target.value
-                const cfg = getCountry(code)
-                setValues((p) => ({
-                  ...p,
-                  country: code,
-                  region: "",
-                  ...(cfg ? { time_format: cfg.timeFormat, first_day_of_week: cfg.firstDayOfWeek } : {}),
-                }))
-                if (cfg) toast.success("Actualizado según el país")
-              }}
-              disabled={isPending}
-              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 min-w-[220px]"
-            >
-              <option value="">— Seleccionar —</option>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name_es}</option>
-              ))}
-            </select>
-          </FieldRow>
-
-          {/* Región */}
-          {values.country && (() => {
-            const cfg = getCountry(values.country)
-            if (!cfg || cfg.regions.length === 0) return null
-            return (
-              <FieldRow label="Región" hint="Determina los festivos que se cargan automáticamente">
-                <select
-                  value={values.region}
-                  onChange={(e) => setValues((p) => ({ ...p, region: e.target.value }))}
-                  disabled={isPending}
-                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 min-w-[220px]"
-                >
-                  <option value="">— Seleccionar —</option>
-                  {cfg.regions.map((r) => (
-                    <option key={r.code} value={r.code}>{r.name}</option>
-                  ))}
-                </select>
-              </FieldRow>
-            )
-          })()}
-
-          {/* Formato de hora */}
-          <FieldRow label="Formato de hora">
-            <div className="flex rounded-lg border border-input overflow-hidden">
-              {(["24h", "12h"] as const).map((fmt) => (
-                <button
-                  key={fmt}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => setValues((p) => ({ ...p, time_format: fmt }))}
-                  className={cn(
-                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
-                    values.time_format === fmt
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-transparent text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {fmt === "24h" ? "24h" : "12h (AM/PM)"}
-                </button>
-              ))}
-            </div>
-          </FieldRow>
-
-          {/* Primer día de la semana */}
-          <FieldRow label={t("fields.firstDay")} hint={t("fields.firstDayHint")}>
-            <select
-              value={values.first_day_of_week}
-              onChange={(e) => setValues((p) => ({ ...p, first_day_of_week: parseInt(e.target.value, 10) }))}
-              disabled={isPending}
-              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-            >
-              <option value={0}>{t("fields.firstDayMon")}</option>
-              <option value={6}>{t("fields.firstDaySun")}</option>
-              <option value={5}>{t("fields.firstDaySat")}</option>
-            </select>
-          </FieldRow>
-        </div>
-
-        {values.region && (
-          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 mb-3">
-            <Info className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-            <p className="text-[13px] text-muted-foreground">{t("holidaysHint")}</p>
-          </div>
-        )}
-      </div>
-
-      </>}
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
