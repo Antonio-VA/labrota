@@ -1037,7 +1037,6 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
           )
         })}
       </div>
-      <span className="text-[12px] text-muted-foreground shrink-0 ml-auto capitalize">{monthLabel}</span>
     </div>
   )
 }
