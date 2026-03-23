@@ -677,13 +677,12 @@ export function AssignmentSheet({
           {assignments.length > 0 && effectiveP > 0 && (() => {
             const labCount = assignments.filter((a) => a.staff.role === "lab").length
             const ratio = labCount / effectiveP
+            const color = ratio >= 0.5 ? "text-emerald-600 dark:text-emerald-400" : ratio >= 0.33 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
             return (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-muted-foreground">Ratio embriólogo/punción:</span>
-                <span className={cn(
-                  "text-[12px] font-medium",
-                  ratio >= 0.5 ? "text-emerald-600" : ratio >= 0.33 ? "text-amber-600" : "text-red-600"
-                )}>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={cn("size-1.5 rounded-full shrink-0", ratio >= 0.5 ? "bg-emerald-500" : ratio >= 0.33 ? "bg-amber-500" : "bg-red-500")} />
+                <span className="text-[12px] text-muted-foreground">Ratio:</span>
+                <span className={cn("text-[12px] font-medium", color)}>
                   {labCount}:{effectiveP} ({ratio.toFixed(2)})
                 </span>
               </div>
