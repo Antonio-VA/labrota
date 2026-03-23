@@ -5,7 +5,7 @@ import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, CheckCircle2, Alert
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { saveTecnica, deleteTecnica, reorderTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
+import { bulkSaveTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
 import type { Tecnica } from "@/lib/types/database"
 
 // ── Color options ──────────────────────────────────────────────────────────────
@@ -276,39 +276,17 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     }
 
     startTransition(async () => {
-      // Delete removed técnicas from DB
-      for (const id of deletedIds) {
-        const r = await deleteTecnica(id)
-        if (r.error) { setErrorMsg(r.error); setStatus("error"); return }
-      }
-      setDeletedIds([])
-
-      // Save each técnica (upsert)
-      const results = await Promise.all(
-        tecnicas.map((t, i) => saveTecnica({ ...t, orden: i }))
-      )
-      const firstError = results.find((r): r is { error: string } => "error" in r)
-      if (firstError) {
-        setErrorMsg(firstError.error)
+      const result = await bulkSaveTecnicas(tecnicas, deletedIds)
+      if (result.error) {
+        setErrorMsg(result.error)
         setStatus("error")
         return
       }
-
+      setDeletedIds([])
       // Sync IDs back into state
       setTecnicas((prev) =>
-        prev.map((t, i) => {
-          const res = results[i]
-          return !t.id && "id" in res ? { ...t, id: res.id } : t
-        })
+        prev.map((t, i) => ({ ...t, id: t.id ?? result.ids[i] }))
       )
-
-      // Persist order
-      const ids = tecnicas.map((t, i) => {
-        const res = results[i]
-        return t.id ?? ("id" in res ? res.id : "")
-      }).filter(Boolean)
-      await reorderTecnicas(ids)
-
       setStatus("success")
       setTimeout(() => setStatus("idle"), 3000)
     })

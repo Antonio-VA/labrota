@@ -3047,12 +3047,12 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {showActions && !isPublished && !chatOpen && (
-            <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
+          {showActions && !isPublished && !chatOpen && !loadingWeek && (
+            <Button size="sm" onClick={handleGenerateClick} disabled={isPending}>
               {isPending ? tc("generating") : t("generateRota")}
             </Button>
           )}
-          {(showActions || hasAssignments) && (
+          {(showActions || hasAssignments) && !loadingWeek && (
             <OverflowMenu items={[
               // ── Generate (inside overflow when chat is open) ──
               ...(showActions && !isPublished && chatOpen ? [{

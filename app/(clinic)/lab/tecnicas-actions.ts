@@ -101,6 +101,57 @@ export async function reorderTecnicas(orderedIds: string[]): Promise<{ error?: s
   return {}
 }
 
+/** Bulk save: delete removed, upsert all, reorder — single server action call. */
+export async function bulkSaveTecnicas(
+  tecnicas: Array<Partial<Tecnica> & { nombre_es: string; nombre_en: string; codigo: string; color: string }>,
+  deleteIds: string[]
+): Promise<{ ids: string[]; error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { ids: [], error: "No organisation found." }
+
+  // 1. Delete removed técnicas
+  for (const id of deleteIds) {
+    const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
+    await supabase.from("tecnicas").delete().eq("id", id)
+    if (tec) await supabase.from("staff_skills").delete().eq("skill", tec.codigo).eq("organisation_id", tec.organisation_id)
+  }
+
+  // 2. Upsert all técnicas
+  const resultIds: string[] = []
+  for (let i = 0; i < tecnicas.length; i++) {
+    const t = tecnicas[i]
+    const row = {
+      nombre_es:      t.nombre_es,
+      nombre_en:      t.nombre_en,
+      codigo:         t.codigo.toUpperCase().slice(0, 3),
+      color:          t.color,
+      required_skill: t.required_skill ?? null,
+      department:     t.department ?? "lab",
+      typical_shifts: t.typical_shifts ?? [],
+      activa:         t.activa ?? true,
+      orden:          i,
+    }
+
+    if (t.id) {
+      await supabase.from("tecnicas").update(row as never).eq("id", t.id)
+      resultIds.push(t.id)
+    } else {
+      const { data, error } = await supabase
+        .from("tecnicas")
+        .insert({ ...row, organisation_id: orgId } as never)
+        .select("id")
+        .single()
+      if (error || !data) return { ids: [], error: error?.message ?? "Failed to create técnica." }
+      resultIds.push((data as { id: string }).id)
+    }
+  }
+
+  revalidatePath("/lab")
+  revalidatePath("/staff")
+  return { ids: resultIds }
+}
+
 // Seed canonical defaults — skips if org already has técnicas
 export async function seedDefaultTecnicas(): Promise<{ seeded: boolean; error?: string }> {
   const supabase = await createClient()
