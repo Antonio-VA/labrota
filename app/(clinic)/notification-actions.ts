@@ -55,13 +55,11 @@ export async function notifyLeaveImpact(params: {
 }): Promise<void> {
   const admin = createAdminClient()
 
-  // Check for published rotas that overlap this leave period
-  // A rota covers weekStart to weekStart+6
+  // Check for any rotas (draft or published) that overlap this leave period
   const { data: rotas } = await admin
     .from("rotas")
     .select("id, week_start, status")
     .eq("organisation_id", params.orgId)
-    .eq("status", "published")
     .lte("week_start", params.endDate) as unknown as { data: { id: string; week_start: string; status: string }[] | null }
 
   // Filter to rotas whose week actually overlaps the leave
@@ -93,7 +91,7 @@ export async function notifyLeaveImpact(params: {
     user_id: userId,
     type: "leave_impact",
     title: "Ausencia afecta guardia publicada",
-    message: `${params.staffName} tiene ausencia del ${params.startDate} al ${params.endDate}. Afecta ${overlapping.length} guardia${overlapping.length > 1 ? "s" : ""} publicada${overlapping.length > 1 ? "s" : ""}.`,
+    message: `${params.staffName} tiene ausencia del ${params.startDate} al ${params.endDate}. Sus turnos han sido eliminados de ${overlapping.length} guardia${overlapping.length > 1 ? "s" : ""}.`,
     data: {
       staffName: params.staffName,
       startDate: params.startDate,

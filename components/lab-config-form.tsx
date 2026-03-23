@@ -301,7 +301,7 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
             const cfg = getCountry(values.country)
             if (!cfg || cfg.regions.length === 0) return null
             return (
-              <FieldRow label="Ciudad / Región" hint="Determina los festivos que se cargan automáticamente">
+              <FieldRow label="Región" hint="Determina los festivos que se cargan automáticamente">
                 <select
                   value={values.region}
                   onChange={(e) => setValues((p) => ({ ...p, region: e.target.value }))}
