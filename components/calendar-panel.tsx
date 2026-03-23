@@ -441,8 +441,8 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
           className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-44 flex flex-col gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground shrink-0">Punciones:</span>
+          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
+            <span className="text-[11px] text-muted-foreground text-right">Punciones</span>
             <input
               autoFocus
               type="number"
@@ -452,9 +452,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
               onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
               className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground shrink-0">Biopsias:</span>
+            <span className="text-[11px] text-muted-foreground text-right">Biopsias</span>
             <input
               type="number"
               min={0}
