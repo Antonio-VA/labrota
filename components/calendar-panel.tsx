@@ -92,7 +92,7 @@ const TECNICA_PILL: Record<string, string> = {
   amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
   blue:   "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
   green:  "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400",
-  purple: "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400",
+  purple: "bg-purple-500/10 border-purple-500/30 text-muted-foreground",
   coral:  "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
   teal:   "bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400",
   slate:  "bg-muted border-border text-muted-foreground",
@@ -397,7 +397,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
   }
 
   const pLabel = `P:${value}`
-  const bLabel = biopsyForecast > 0 ? `B:~${biopsyForecast}` : "B:0"
+  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
 
   if (disabled) {
     return (
@@ -405,7 +405,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
         <TooltipTrigger render={
           <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground cursor-default">
             <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
-            <span className="text-purple-600 dark:text-purple-400">{bLabel}</span>
+            <span className="text-muted-foreground">{bLabel}</span>
           </span>
         } />
         <TooltipContent side="bottom">
@@ -424,7 +424,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
             className="flex items-center gap-1 text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
           >
             <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
-            <span className="text-purple-600 dark:text-purple-400">{bLabel}</span>
+            <span className="text-muted-foreground">{bLabel}</span>
           </button>
         } />
         {!open && (
@@ -454,7 +454,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
           {biopsyForecast > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-muted-foreground shrink-0">Biopsias:</span>
-              <span className="text-[12px] font-medium text-purple-600 dark:text-purple-400">~{biopsyForecast}</span>
+              <span className="text-[12px] font-medium text-muted-foreground">{biopsyForecast}</span>
             </div>
           )}
           <div className="flex gap-1">
@@ -1834,17 +1834,28 @@ function ShiftGrid({
 
                 {/* Punciones + biopsias — single clickable area */}
                 {(() => {
+                  // Biopsy forecast: punciones from 5 and 6 days ago
+                  const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+                  function getPuncForDate(dateStr: string): number {
+                    // Try override, then default map, then lab config by weekday
+                    if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
+                    if (punctionsDefault[dateStr] !== undefined) return punctionsDefault[dateStr]
+                    // Fallback: use weekday default from punctionsDefault of same weekday in current week
+                    const dow = new Date(dateStr + "T12:00:00").getDay()
+                    const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
+                    return sameDow ? sameDow[1] : 0
+                  }
                   const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
                   const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
                   const d5str = d5ago.toISOString().split("T")[0]
                   const d6str = d6ago.toISOString().split("T")[0]
-                  const p5 = punctionsOverride[d5str] ?? punctionsDefault[d5str] ?? 0
-                  const p6 = punctionsOverride[d6str] ?? punctionsDefault[d6str] ?? 0
+                  const p5 = getPuncForDate(d5str)
+                  const p6 = getPuncForDate(d6str)
                   const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
                   const sources: string[] = []
-                  if (p5 > 0) sources.push(`${p5} punciones el ${formatDate(d5str, locale as "es" | "en")}`)
-                  if (p6 > 0) sources.push(`${p6} punciones el ${formatDate(d6str, locale as "es" | "en")}`)
-                  const tooltip = forecast > 0 ? `Biopsias previstas: ~${forecast} (${sources.join(", ")})` : `${effectiveP} punciones`
+                  if (p5 > 0) sources.push(`${p5} punciones D-5`)
+                  if (p6 > 0) sources.push(`${p6} punciones D-6`)
+                  const tooltip = forecast > 0 ? `Biopsias previstas: ${forecast} (${sources.join(", ")})` : `${effectiveP} punciones`
                   return (
                     <DayStatsInput
                       date={day.date}
@@ -2297,34 +2308,36 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     )}
 
                     {/* Punctions + ratio + leave */}
-                    {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (() => {
+                    {day.isCurrentMonth && (() => {
                       const isOverride = punctionsOverride[day.date] !== undefined
                       const effectiveP = punctionsOverride[day.date] ?? day.punctions
-                      // Biopsy forecast for this day
+                      // Biopsy forecast — use summary days or weekday fallback
                       const s = summary as RotaMonthSummary
                       const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
                       const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
                       const d5str = d5ago.toISOString().split("T")[0]
                       const d6str = d6ago.toISOString().split("T")[0]
-                      const p5src = s.days.find((dd) => dd.date === d5str)?.punctions ?? 0
-                      const p6src = s.days.find((dd) => dd.date === d6str)?.punctions ?? 0
+                      function getPuncFromSummary(dateStr: string): number {
+                        const found = s.days.find((dd) => dd.date === dateStr)
+                        if (found) return found.punctions
+                        // Fallback: same weekday from any day in summary
+                        const dow = new Date(dateStr + "T12:00:00").getDay()
+                        const sameDow = s.days.find((dd) => new Date(dd.date + "T12:00:00").getDay() === dow)
+                        return sameDow?.punctions ?? 0
+                      }
+                      const p5src = getPuncFromSummary(d5str)
+                      const p6src = getPuncFromSummary(d6str)
                       const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                       return (
                         <div className="flex items-center gap-1.5 mt-1">
-                          {effectiveP > 0 && (
-                            <MonthPunctionsEdit
-                              date={day.date}
-                              value={effectiveP}
-                              defaultValue={day.punctions}
-                              isOverride={isOverride}
-                              onChange={onPunctionsChange}
-                            />
-                          )}
-                          {bForecast > 0 && (
-                            <span className="text-[11px] font-medium tabular-nums text-purple-600 dark:text-purple-400">
-                              B:~{bForecast}
-                            </span>
-                          )}
+                          <MonthPunctionsEdit
+                            date={day.date}
+                            value={effectiveP}
+                            defaultValue={day.punctions}
+                            isOverride={isOverride}
+                            onChange={onPunctionsChange}
+                          />
+                          <span className="text-[11px] font-medium tabular-nums text-muted-foreground">B:{bForecast}</span>
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
                               <Briefcase className="size-3" />{day.leaveCount}
@@ -2462,7 +2475,7 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
     title: "Óptimo IA",
     desc: "El agente genera la horario óptimo desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
-    badge: "IA", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    badge: "IA", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
   },
   {
     key: "manual", icon: <Grid3X3 className="size-5" />,
@@ -3550,6 +3563,21 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
         onPunctionsChange={handlePunctionsChange}
         timeFormat={weekData?.timeFormat}
+        biopsyForecast={(() => {
+          if (!sheetDate || !weekData) return 0
+          const pd = weekData.punctionsDefault
+          function getPunc(dateStr: string): number {
+            if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
+            if (pd[dateStr] !== undefined) return pd[dateStr]
+            const dow = new Date(dateStr + "T12:00:00").getDay()
+            const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
+            return sameDow ? sameDow[1] : 0
+          }
+          const d5 = new Date(sheetDate + "T12:00:00"); d5.setDate(d5.getDate() - 5)
+          const d6 = new Date(sheetDate + "T12:00:00"); d6.setDate(d6.getDate() - 6)
+          const cr = weekData.biopsyConversionRate ?? 0.5
+          return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
+        })()}
       />
 
       {/* Multi-week generation scope dialog */}

@@ -416,13 +416,14 @@ interface Props {
   onSaved: () => void
   onPunctionsChange: (date: string, value: number | null) => void
   timeFormat?: string
+  biopsyForecast?: number
 }
 
 export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
   shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
-  timeFormat = "24h",
+  timeFormat = "24h", biopsyForecast,
 }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -677,21 +678,13 @@ export function AssignmentSheet({
               </button>
             )}
           </div>
-          {/* Embryologist / punction ratio */}
-          {assignments.length > 0 && effectiveP > 0 && (() => {
-            const labCount = assignments.filter((a) => a.staff.role === "lab").length
-            const ratio = labCount / effectiveP
-            const color = ratio >= 0.5 ? "text-emerald-600 dark:text-emerald-400" : ratio >= 0.33 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
-            return (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className={cn("size-1.5 rounded-full shrink-0", ratio >= 0.5 ? "bg-emerald-500" : ratio >= 0.33 ? "bg-amber-500" : "bg-red-500")} />
-                <span className="text-[12px] text-muted-foreground">Ratio:</span>
-                <span className={cn("text-[12px] font-medium", color)}>
-                  {labCount}:{effectiveP} ({ratio.toFixed(2)})
-                </span>
-              </div>
-            )
-          })()}
+          {/* Biopsias previstas */}
+          {biopsyForecast !== undefined && biopsyForecast > 0 && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[12px] text-muted-foreground">Biopsias previstas:</span>
+              <span className="text-[12px] font-medium text-foreground">{biopsyForecast}</span>
+            </div>
+          )}
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
