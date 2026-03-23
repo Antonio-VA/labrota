@@ -61,17 +61,23 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
-        title={firstName}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-        ) : (
-          initials
-        )}
-      </button>
+      {avatarUrl ? (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="size-8 rounded-full shrink-0 overflow-hidden hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
+          title={firstName}
+        >
+          <img src={avatarUrl} alt="Avatar" className="size-8 rounded-full object-cover block" />
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
+          title={firstName}
+        >
+          {initials}
+        </button>
+      )}
 
       {open && (
         <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
