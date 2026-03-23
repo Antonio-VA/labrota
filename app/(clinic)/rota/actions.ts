@@ -761,6 +761,9 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
 export interface MonthDaySummary {
   date: string
   staffCount: number
+  labCount: number
+  andrologyCount: number
+  adminCount: number
   hasSkillGaps: boolean
   isWeekend: boolean
   isCurrentMonth: boolean
@@ -782,6 +785,8 @@ export interface RotaMonthSummary {
   weekStatuses: MonthWeekStatus[]
   /** staff_id → total assignments in this month's grid */
   staffTotals: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }>
+  ratioOptimal: number
+  ratioMinimum: number
 }
 
 export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonthSummary> {
@@ -899,6 +904,9 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
     return {
       date,
       staffCount: staffIds.length,
+      labCount: entries.filter((e) => e.role === "lab").length,
+      andrologyCount: entries.filter((e) => e.role === "andrology").length,
+      adminCount: entries.filter((e) => e.role === "admin").length,
       hasSkillGaps,
       isWeekend: dow === 0 || dow === 6,
       isCurrentMonth: date.startsWith(currentMonthPrefix),
@@ -909,7 +917,11 @@ export async function getRotaMonthSummary(monthStart: string): Promise<RotaMonth
     }
   })
 
-  return { monthStart, days, weekStatuses, staffTotals }
+  const ratioConfigRes = await supabase.from("lab_config").select("ratio_optimal, ratio_minimum").maybeSingle()
+  const ratioOptimal = (ratioConfigRes.data as { ratio_optimal?: number } | null)?.ratio_optimal ?? 1.0
+  const ratioMinimum = (ratioConfigRes.data as { ratio_minimum?: number } | null)?.ratio_minimum ?? 0.75
+
+  return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum }
 }
 
 // ── getStaffProfile ───────────────────────────────────────────────────────────

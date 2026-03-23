@@ -2159,27 +2159,36 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[9px] text-amber-600 leading-tight truncate w-full">{day.holidayName}</span>
                     )}
 
-                    {/* Staff info */}
+                    {/* Department breakdown */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1 mt-auto">
-                        <span className="text-[11px] text-muted-foreground">{day.staffCount}p</span>
-                        {/* Role dots */}
-                        <div className="flex gap-0.5">
-                          {day.staffRoles.map((role, i) => (
-                            <span key={i} className={cn("size-1.5 rounded-full", ROLE_DOT[role] ?? "bg-slate-400")} />
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-1.5 mt-auto">
+                        {day.labCount > 0 && <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400">{day.labCount}E</span>}
+                        {day.andrologyCount > 0 && <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">{day.andrologyCount}A</span>}
+                        {day.adminCount > 0 && <span className="text-[9px] font-medium text-slate-500">{day.adminCount}Ad</span>}
                       </div>
                     )}
 
-                    {/* Bottom row: punctions + leave */}
+                    {/* Bottom row: punctions + ratio + leave */}
                     {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-1 mt-0.5">
                         {day.punctions > 0 && (
-                          <span className="text-[10px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
+                          <span className="text-[9px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
                         )}
+                        {day.punctions > 0 && day.labCount > 0 && (() => {
+                          const ratio = day.labCount / day.punctions
+                          const opt = (summary as RotaMonthSummary).ratioOptimal ?? 1.0
+                          const min = (summary as RotaMonthSummary).ratioMinimum ?? 0.75
+                          return (
+                            <span className={cn(
+                              "text-[9px] font-medium tabular-nums",
+                              ratio >= opt ? "text-emerald-600 dark:text-emerald-400" : ratio >= min ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                            )}>
+                              {ratio.toFixed(1)}
+                            </span>
+                          )
+                        })()}
                         {day.leaveCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+                          <span className="flex items-center gap-0.5 text-[9px] text-amber-500">
                             <Briefcase className="size-2.5" />{day.leaveCount}
                           </span>
                         )}
