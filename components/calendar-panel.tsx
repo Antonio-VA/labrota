@@ -362,12 +362,12 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
   )
 }
 
-// ── Punctions input ────────────────────────────────────────────────────────────
+// ── Day stats (punciones + biopsy forecast) ──────────────────────────────────
 
-function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disabled, certifiedLabCount, ratioOptimal, ratioMinimum }: {
+function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabled, biopsyForecast, biopsyTooltip }: {
   date: string; value: number; defaultValue: number; isOverride: boolean
   onChange: (date: string, value: number | null) => void; disabled: boolean
-  certifiedLabCount?: number; ratioOptimal?: number; ratioMinimum?: number
+  biopsyForecast: number; biopsyTooltip: string
 }) {
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
@@ -396,49 +396,49 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
     setOpen(false)
   }
 
-  const label = value > 0 ? `P:${value}` : "P:—"
+  const pLabel = `P:${value}`
+  const bLabel = biopsyForecast > 0 ? `B:~${biopsyForecast}` : "B:0"
 
   if (disabled) {
     return (
-      <span className={cn("flex items-center gap-0.5 text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
-        {label}
-        {isOverride && (
-          <Tooltip>
-            <TooltipTrigger render={<span className="text-amber-500 font-bold cursor-default">*</span>} />
-            <TooltipContent side="bottom">Valor personalizado — por defecto: {defaultValue}</TooltipContent>
-          </Tooltip>
-        )}
-      </span>
+      <Tooltip>
+        <TooltipTrigger render={
+          <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground cursor-default">
+            <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
+            <span className="text-purple-600 dark:text-purple-400">{bLabel}</span>
+          </span>
+        } />
+        <TooltipContent side="bottom">
+          {biopsyForecast > 0 ? biopsyTooltip : `${value} punciones`}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 
   return (
-    <div ref={popRef} className="relative flex items-center gap-0.5">
-      <button
-        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-        className={cn(
-          "text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted",
-          isOverride ? "text-primary" : "text-muted-foreground"
+    <div ref={popRef} className="relative">
+      <Tooltip>
+        <TooltipTrigger render={
+          <button
+            onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+            className="flex items-center gap-1 text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
+          >
+            <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
+            <span className="text-purple-600 dark:text-purple-400">{bLabel}</span>
+          </button>
+        } />
+        {!open && (
+          <TooltipContent side="bottom">
+            Click para editar{isOverride ? ` · Default: ${defaultValue}` : ""}
+          </TooltipContent>
         )}
-        title="Editar punciones"
-      >
-        {label}
-      </button>
-      {isOverride && (
-        <Tooltip>
-          <TooltipTrigger render={
-            <button
-              onClick={(e) => { e.stopPropagation(); onChange(date, null) }}
-              className="text-[10px] font-bold text-amber-500 hover:text-amber-600 dark:text-amber-400 transition-colors leading-none"
-            >
-              *
-            </button>
-          } />
-          <TooltipContent side="bottom">Valor personalizado — por defecto: {defaultValue}. Click para restablecer</TooltipContent>
-        </Tooltip>
-      )}
+      </Tooltip>
+
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-36 flex flex-col gap-2">
+        <div
+          className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-44 flex flex-col gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-muted-foreground shrink-0">Punciones:</span>
             <input
@@ -448,10 +448,15 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
-              className="w-10 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
-              onClick={(e) => e.stopPropagation()}
+              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
           </div>
+          {biopsyForecast > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground shrink-0">Biopsias:</span>
+              <span className="text-[12px] font-medium text-purple-600 dark:text-purple-400">~{biopsyForecast}</span>
+            </div>
+          )}
           <div className="flex gap-1">
             <button
               onClick={save}
@@ -463,7 +468,6 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
               <button
                 onClick={reset}
                 className="flex-1 text-[11px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
-                title={`Restaurar predeterminado (${defaultValue})`}
               >
                 Reset
               </button>
@@ -1828,22 +1832,8 @@ function ShiftGrid({
                   </div>
                 </button>
 
-                {/* Punctions + ratio — clickable popover */}
-                <PunctionsInput
-                  date={day.date}
-                  value={effectiveP}
-                  defaultValue={defaultP}
-                  isOverride={hasOverride}
-                  onChange={onPunctionsChange}
-                  disabled={isPublished || !data.rota}
-                  certifiedLabCount={day.assignments.length > 0 ? day.assignments.filter((a) => a.staff.role === "lab").length : undefined}
-                  ratioOptimal={ratioOptimal}
-                  ratioMinimum={ratioMinimum}
-                />
-
-                {/* Biopsy forecast */}
+                {/* Punciones + biopsias — single clickable area */}
                 {(() => {
-                  // Forecast biopsies from punciones 5 and 6 days ago
                   const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
                   const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
                   const d5str = d5ago.toISOString().split("T")[0]
@@ -1851,21 +1841,21 @@ function ShiftGrid({
                   const p5 = punctionsOverride[d5str] ?? punctionsDefault[d5str] ?? 0
                   const p6 = punctionsOverride[d6str] ?? punctionsDefault[d6str] ?? 0
                   const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
-                  if (forecast <= 0) return null
                   const sources: string[] = []
                   if (p5 > 0) sources.push(`${p5} punciones el ${formatDate(d5str, locale as "es" | "en")}`)
                   if (p6 > 0) sources.push(`${p6} punciones el ${formatDate(d6str, locale as "es" | "en")}`)
+                  const tooltip = forecast > 0 ? `Biopsias previstas: ~${forecast} (${sources.join(", ")})` : `${effectiveP} punciones`
                   return (
-                    <Tooltip>
-                      <TooltipTrigger render={
-                        <span className="text-[9px] font-medium tabular-nums text-purple-600 dark:text-purple-400 cursor-default">
-                          B:~{forecast}
-                        </span>
-                      } />
-                      <TooltipContent side="bottom">
-                        Biopsias previstas: ~{forecast} ({sources.join(", ")})
-                      </TooltipContent>
-                    </Tooltip>
+                    <DayStatsInput
+                      date={day.date}
+                      value={effectiveP}
+                      defaultValue={defaultP}
+                      isOverride={hasOverride}
+                      onChange={onPunctionsChange}
+                      disabled={isPublished || !data.rota}
+                      biopsyForecast={forecast}
+                      biopsyTooltip={tooltip}
+                    />
                   )
                 })()}
 
