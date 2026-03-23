@@ -320,7 +320,7 @@ export function ChatPanel({
 
   if (mobile) {
     return (
-      <aside className="flex flex-col border-t bg-background flex-1 overflow-hidden">
+      <aside className="flex flex-col border-t bg-background flex-1 overflow-hidden min-h-0">
         <div className="flex items-center gap-2 border-b px-3 h-10 shrink-0">
           <Bot className="size-4 text-primary shrink-0" />
           <span className="text-[13px] font-medium">{t("title")}</span>
@@ -334,7 +334,7 @@ export function ChatPanel({
     <aside
       className={`
         hidden md:flex flex-col border-l bg-background shrink-0
-        overflow-hidden
+        overflow-hidden h-full
         ${!mounted ? "w-10" : `transition-[width] duration-300 ease-in-out ${collapsed ? "w-10" : "w-80"}`}
       `}
     >
