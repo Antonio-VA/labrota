@@ -127,6 +127,7 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
         start_time: r.start_time,
         end_time: r.end_time,
         sort_order: 0, // overwritten by saveShiftTypes
+        active: true,
       }))
       const result = await saveShiftTypes(types)
       if (result.error) {

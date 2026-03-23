@@ -6,9 +6,11 @@
  *  1. Determine eligible staff (active, in employment window, works that weekday,
  *     not on leave, has weekly shift budget remaining)
  *  2. Sort by preferred days (soft), then historical workload (fewer = higher priority)
- *  3. Assign ALL eligible lab + andrology staff; max 1 admin
- *  4. Compute minimum coverage requirements (dynamic from punctions/embryologist ratio)
- *  5. Compute skill gaps
+ *  3. Compute coverage requirements from lab config (cobertura mínima table)
+ *  4. Select exactly the required number of staff per role (lowest workload first)
+ *  5. Apply scheduling rules (max consecutive days, weekend distribution, etc.)
+ *  6. Distribute selected staff across shifts via per-day round-robin
+ *  7. Compute skill gaps
  */
 
 import type {
@@ -129,10 +131,12 @@ export function runRotaEngine({
     leaveThisWeek[staffId] = allWeekDates.filter((d) => leaveMap[staffId].has(d)).length
   }
 
-  // Shift codes sorted by sort_order — used to distribute staff across all available shifts.
-  const shiftCodes = [...shiftTypes]
+  // Shift codes sorted by sort_order — only active shifts are used for assignment.
+  const activeShiftTypes = shiftTypes.filter((st) => st.active !== false)
+  const shiftCodes = [...activeShiftTypes]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
+  const activeShiftSet = new Set(shiftCodes)
 
   // Técnica → typical shifts lookup (for soft shift preference)
   const tecnicaTypicalShifts: Record<string, Set<string>> = {}
@@ -142,9 +146,7 @@ export function runRotaEngine({
     }
   }
 
-  // Global round-robin index — carried across days so different shifts get
-  // first picks on different days (prevents T1/T2 always getting all staff)
-  let globalRrIdx = 0
+  // Round-robin index — reset per day so shift distribution is even within each day
 
   // Canonical skills tracked for gap detection — only these five matter for rota coverage.
   // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
@@ -215,8 +217,7 @@ export function runRotaEngine({
     const andrologyPool = sorted.filter((s) => s.role === "andrology")
     const adminPool     = sorted.filter((s) => s.role === "admin")
 
-    // 4. Compute minimum coverage requirements
-    //    Lab minimum = max(static minimum, ceil(daily_punctions / punctions_per_embryologist))
+    // 4. Compute coverage requirements for this day
     const punctionsForDay = punctionsOverride?.[date]
       ?? labConfig.punctions_by_day?.[dayCode]
       ?? 0
@@ -231,14 +232,14 @@ export function runRotaEngine({
     const andrologyRequired = dayCoverage?.andrology ?? (weekend
       ? labConfig.min_weekend_andrology
       : labConfig.min_andrology_coverage)
-    const includeAdmin = dayCoverage
-      ? dayCoverage.admin > 0
-      : (!weekend || labConfig.admin_on_weekends)
+    const adminRequired     = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
 
-    // 5. Assign ALL eligible lab + andrology (budget-limited); max 1 admin
-    let assignedLab       = labPool
-    let assignedAndrology = andrologyPool
-    let assignedAdmin     = includeAdmin ? adminPool.slice(0, 1) : []
+    // 5. Select only the required number of staff per role.
+    //    Pools are already sorted by preferred-day then workload (lowest first),
+    //    so .slice(0, N) picks the fairest candidates.
+    let assignedLab       = labPool.slice(0, labRequired)
+    let assignedAndrology = andrologyPool.slice(0, andrologyRequired)
+    let assignedAdmin     = adminPool.slice(0, adminRequired)
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
@@ -339,19 +340,18 @@ export function runRotaEngine({
     const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? (shiftCodes[0] ?? "T1")
     const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
-    // Distribute staff across shifts:
-    // 1. Staff with preferred_shift → use it
-    // 2. Admin → admin default shift
-    // 3. Staff with a primary técnica that has typical_shifts → prefer those shifts
-    // 4. Everyone else → round-robin across all shifts (global index)
+    // Distribute staff across shifts — round-robin resets each day so every
+    // shift gets roughly equal coverage within a single day.
+    let dayRrIdx = 0
     days.push({
       date,
       assignments: assigned.map((s) => {
         let shift: ShiftType
-        if (s.preferred_shift) {
+        if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
+          // Only honour preference if the shift is active
           shift = s.preferred_shift as ShiftType
         } else if (s.role === "admin") {
-          shift = adminDefaultShift
+          shift = activeShiftSet.has(adminDefaultShift) ? adminDefaultShift : (defaultShiftCodes[0] ?? "T1")
         } else {
           // Check if staff has a primary técnica with typical_shifts preference
           const staffSkillCodes = s.staff_skills.map((sk) => sk.skill)
@@ -359,7 +359,7 @@ export function runRotaEngine({
           for (const code of staffSkillCodes) {
             const typical = tecnicaTypicalShifts[code]
             if (typical && typical.size > 0) {
-              // Pick the first typical shift that's in our shift catalogue
+              // Only match active shifts
               const match = defaultShiftCodes.find((sc) => typical.has(sc))
               if (match) { preferredFromTecnica = match; break }
             }
@@ -367,8 +367,8 @@ export function runRotaEngine({
           if (preferredFromTecnica) {
             shift = preferredFromTecnica as ShiftType
           } else {
-            shift = defaultShiftCodes[globalRrIdx % defaultShiftCodes.length] as ShiftType
-            globalRrIdx++
+            shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+            dayRrIdx++
           }
         }
         return { staff_id: s.id, shift_type: shift }
