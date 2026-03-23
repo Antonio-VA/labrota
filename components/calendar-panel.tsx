@@ -961,8 +961,6 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
           )}
         </div>
       )}
-      {/* Right: week range */}
-      <span className="text-[12px] text-muted-foreground shrink-0 ml-auto capitalize">{weekLabel}</span>
     </div>
   )
 }
