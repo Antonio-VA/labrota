@@ -64,15 +64,15 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-8 rounded-full shrink-0 overflow-hidden hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
+          className="size-7 rounded-full shrink-0 overflow-hidden hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" className="size-8 rounded-full object-cover block" />
+          <img src={avatarUrl} alt="Avatar" className="size-7 rounded-full object-cover block" />
         </button>
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
+          className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
           title={firstName}
         >
           {initials}

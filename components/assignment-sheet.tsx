@@ -673,6 +673,22 @@ export function AssignmentSheet({
               </button>
             )}
           </div>
+          {/* Embryologist / punction ratio */}
+          {assignments.length > 0 && effectiveP > 0 && (() => {
+            const labCount = assignments.filter((a) => a.staff.role === "lab").length
+            const ratio = labCount / effectiveP
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] text-muted-foreground">Ratio embriólogo/punción:</span>
+                <span className={cn(
+                  "text-[12px] font-medium",
+                  ratio >= 0.5 ? "text-emerald-600" : ratio >= 0.33 ? "text-amber-600" : "text-red-600"
+                )}>
+                  {labCount}:{effectiveP} ({ratio.toFixed(2)})
+                </span>
+              </div>
+            )
+          })()}
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
