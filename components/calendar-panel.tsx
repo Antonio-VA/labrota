@@ -1319,7 +1319,7 @@ function PersonGrid({
         </div>
         <div className="flex items-center justify-center py-1">
           <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? "Generando guardia…" : "Cargando…"}
+            {isGenerating ? "Generando horario…" : "Cargando…"}
           </span>
         </div>
       </div>
@@ -1751,7 +1751,7 @@ function ShiftGrid({
         </div>
         <div className="flex items-center justify-center py-1">
           <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? "Generando guardia…" : "Cargando…"}
+            {isGenerating ? "Generando horario…" : "Cargando…"}
           </span>
         </div>
       </div>
@@ -2292,9 +2292,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                     )}
 
-                    {/* Sin guardia */}
+                    {/* Sin horario */}
                     {day.staffCount === 0 && day.isCurrentMonth && !day.holidayName && (
-                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">Sin guardia</span>
+                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">Sin horario</span>
                     )}
 
                     {/* Punctions + ratio + leave */}
@@ -2459,13 +2459,13 @@ const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: s
   {
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
     title: "Óptimo IA",
-    desc: "El agente genera la guardia óptima desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
+    desc: "El agente genera la horario óptimo desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
     badge: "IA", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
   },
   {
     key: "manual", icon: <Grid3X3 className="size-5" />,
     title: "Semana en blanco",
-    desc: "Empieza con una guardia vacía y asigna los turnos manualmente.",
+    desc: "Empieza con una horario vacío y asigna los turnos manualmente.",
     badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
   },
 ]
@@ -2498,7 +2498,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[15px] font-medium">Generar guardia — <span className="capitalize">{weekLabel}</span></p>
+          <p className="text-[15px] font-medium">Generar horario — <span className="capitalize">{weekLabel}</span></p>
         </div>
 
         {/* Strategy cards — 2×2 grid */}
@@ -3069,7 +3069,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         fetchWeek(weekStart)
         if (view === "month") fetchMonth(monthStart, weekStart)
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error generando la guardia."
+        const msg = e instanceof Error ? e.message : "Error generando el horario."
         setError(msg)
         toast.error(msg)
       }
@@ -3156,7 +3156,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
       setPunctionsOverrideLocal(newData.rota?.punctions_override ?? {})
       const newGaps = newData.days.find((d) => d.date === date)?.skillGaps ?? []
       if (newGaps.length > prevGaps.length) {
-        toast.warning("Cobertura insuficiente tras el cambio — considera regenerar la guardia")
+        toast.warning("Cobertura insuficiente tras el cambio — considera regenerar el horario")
       } else if (newGaps.length === 0 && prevGaps.length > 0) {
         toast.success("Cobertura correcta")
       }
@@ -3329,7 +3329,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               }] : []),
               // ── Group 4: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{
-                label: view === "month" ? "Eliminar 4 semanas" : "Eliminar guardia",
+                label: view === "month" ? "Eliminar 4 semanas" : "Eliminar horario",
                 icon: <Trash2 className="size-3.5" />,
                 onClick: () => {
                   const msg = view === "month"
@@ -3354,7 +3354,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                       } else {
                         const result = await clearWeek(weekStart)
                         if (result.error) toast.error(result.error)
-                        else { toast.success("Guardia eliminada"); fetchWeek(weekStart) }
+                        else { toast.success("Horario eliminado"); fetchWeek(weekStart) }
                       }
                     })
                   }
@@ -3435,7 +3435,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   {showCopyConfirm && (
                     <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
                       <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">¿Copiar semana anterior?</p>
-                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">Se creará una guardia borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
+                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">Se creará un horario borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => {
                           setShowCopyConfirm(false)
@@ -3564,13 +3564,13 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
             <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
             <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
               <p className="text-[15px] font-medium">
-                {allHaveRota ? "¿Regenerar las 4 semanas?" : "Generar guardia — 4 semanas"}
+                {allHaveRota ? "¿Regenerar las 4 semanas?" : "Generar horarios — 4 semanas"}
               </p>
 
               {allHaveRota ? (
                 <>
                   <p className="text-[13px] text-muted-foreground">
-                    Esto sobreescribirá las guardias existentes de las 4 semanas.
+                    Esto sobreescribirá los horarios existentes de las 4 semanas.
                   </p>
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
@@ -3597,8 +3597,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
                     >
                       <div className="flex-1">
-                        <p className="text-[14px] font-medium">Generar semanas sin guardia</p>
-                        <p className="text-[12px] text-muted-foreground">{withoutRota.length} semana{withoutRota.length !== 1 ? "s" : ""} sin guardia</p>
+                        <p className="text-[14px] font-medium">Generar semanas sin horario</p>
+                        <p className="text-[12px] text-muted-foreground">{withoutRota.length} semana{withoutRota.length !== 1 ? "s" : ""} sin horario</p>
                       </div>
                     </button>
                     <button
@@ -3612,7 +3612,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                       <AlertTriangle className="size-4 text-amber-500 shrink-0" />
                       <div className="flex-1">
                         <p className="text-[14px] font-medium">Regenerar todas las semanas</p>
-                        <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá guardias existentes</p>
+                        <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá horarios existentes</p>
                       </div>
                     </button>
                   </div>
