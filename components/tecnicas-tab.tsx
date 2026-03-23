@@ -123,12 +123,14 @@ function TecnicaRow({
           )}
         </div>
 
-        {/* Row 2: Color / Skill / Activa */}
+        {/* Row 2: Color swatches */}
+        <div className="col-span-3 flex items-center gap-2 pt-1">
+          <span className="text-[12px] text-muted-foreground shrink-0">Color</span>
+          <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
+        </div>
+
+        {/* Row 3: Department / Turno típico / Activa */}
         <div className="col-span-3 flex items-center gap-4 pt-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">Color</span>
-            <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
-          </div>
           <div className="flex items-center gap-2">
             <span className="text-[12px] text-muted-foreground shrink-0">Departamento</span>
             <select

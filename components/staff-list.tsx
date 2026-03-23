@@ -858,8 +858,40 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
   const visibleIdSet = new Set(visibleIds.map((s) => s.id))
   const effectiveSelectedIds = new Set([...selectedIds].filter((id) => visibleIdSet.has(id)))
 
+  // KPI metrics (computed once, rendered above toolbar)
+  const kpiActiveStaff = staff.filter((s) => s.onboarding_status !== "inactive")
+  const kpiActiveTecnicas = tecnicas.filter((t) => t.activa)
+  const kpiAllCodes = kpiActiveTecnicas.map((t) => t.codigo)
+  const kpiCoveredCount = kpiAllCodes.filter((code) =>
+    kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.skill === code && sk.level === "certified")).length >= 2
+  ).length
+  const kpiFullyValidated = kpiActiveStaff.filter((s) => {
+    if (s.role === "admin") return false
+    const deptTecnicas = kpiActiveTecnicas.filter((t) => t.department === s.role)
+    if (deptTecnicas.length === 0) return false
+    const certifiedCodes = new Set(s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))
+    return deptTecnicas.every((t) => certifiedCodes.has(t.codigo))
+  }).length
+
   return (
     <div className="flex flex-col gap-4">
+      {/* KPI cards */}
+      {staff.length > 0 && (
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: "Activos", value: kpiActiveStaff.length },
+            { label: "En formación", value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
+            { label: "Cobertura técnicas", value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
+            { label: "Validación completa", value: kpiFullyValidated },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -907,36 +939,6 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           {t("addStaff")}
         </Button>
       </div>
-
-      {/* KPI cards */}
-      {staff.length > 0 && (() => {
-        const activeStaff = staff.filter((s) => s.onboarding_status !== "inactive")
-        const activeCount = activeStaff.length
-        const trainingCount = activeStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length
-        const tecnicaCodes = tecnicas.map((t) => t.codigo)
-        const coveredCount = tecnicaCodes.filter((code) => {
-          const certified = activeStaff.filter((s) => s.staff_skills.some((sk) => sk.skill === code && sk.level === "certified"))
-          return certified.length >= 2
-        }).length
-        const fullyValidated = tecnicaCodes.length > 0
-          ? activeStaff.filter((s) => tecnicaCodes.every((code) => s.staff_skills.some((sk) => sk.skill === code && sk.level === "certified"))).length
-          : 0
-        return (
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "Activos", value: activeCount },
-              { label: "En formación", value: trainingCount },
-              { label: "Cobertura técnicas", value: `${coveredCount}/${tecnicaCodes.length}` },
-              { label: "Validación completa", value: fullyValidated },
-            ].map((kpi) => (
-              <div key={kpi.label} className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
-                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
-              </div>
-            ))}
-          </div>
-        )
-      })()}
 
       {/* Empty state — no staff at all */}
       {staff.length === 0 && (

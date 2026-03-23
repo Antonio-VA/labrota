@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftTypeDefinition } from "@/lib/types/database"
+import type { LabConfig, PunctionsByDay, CoverageByDay } from "@/lib/types/database"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -33,31 +33,6 @@ const COMMUNITIES = [
 ]
 
 const DAY_KEYS: (keyof PunctionsByDay)[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-
-// ── Toggle switch ─────────────────────────────────────────────────────────────
-function Toggle({ checked, onChange, disabled }: {
-  checked: boolean; onChange: (v: boolean) => void; disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        checked ? "bg-primary" : "bg-muted-foreground/30",
-        disabled && "cursor-not-allowed opacity-50"
-      )}
-    >
-      <span className={cn(
-        "pointer-events-none inline-block size-4 rounded-full bg-white shadow ring-0 transition-transform",
-        checked ? "translate-x-4" : "translate-x-0"
-      )} />
-    </button>
-  )
-}
 
 // ── Field row ─────────────────────────────────────────────────────────────────
 function FieldRow({ label, hint, children }: {
@@ -94,7 +69,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shiftTypes: ShiftTypeDefinition[] }) {
+export function LabConfigForm({ config }: { config: LabConfig }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -111,16 +86,8 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
 
   const [values, setValues] = useState({
     punctions_by_day:     config.punctions_by_day ?? DEFAULT_PUNCTIONS,
-    staffing_ratio:       config.staffing_ratio,
-    admin_on_weekends:    config.admin_on_weekends,
-    admin_default_shift:  config.admin_default_shift ?? (shiftTypes[0]?.code ?? ""),
     autonomous_community: config.autonomous_community ?? "",
   })
-
-  function setFloat(field: keyof typeof values, raw: string) {
-    const v = parseFloat(raw)
-    if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, [field]: v }))
-  }
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
     const v = parseInt(raw, 10)
@@ -156,9 +123,6 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
     startTransition(async () => {
       const result = await updateLabConfig({
         punctions_by_day:     values.punctions_by_day,
-        staffing_ratio:       values.staffing_ratio,
-        admin_on_weekends:    values.admin_on_weekends,
-        admin_default_shift:  values.admin_default_shift || null,
         autonomous_community: values.autonomous_community || null,
       })
       if (result.error) {
@@ -187,7 +151,10 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-[30%]">{t("coverageTable.day")}</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.labMin")}</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.andrologyMin")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.adminMin")}</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                {t("coverageTable.adminMin")}
+                <p className="text-[10px] font-normal text-muted-foreground/70 mt-0.5">Pon 0 para no requerir admin ese día</p>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -264,35 +231,6 @@ export function LabConfigForm({ config, shiftTypes }: { config: LabConfig; shift
             ))}
           </div>
         </div>
-      </div>
-
-      {/* ── RATIO DE PERSONAL ────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.staffing")} />
-        <FieldRow label={t("fields.staffingRatio")} hint={t("fields.staffingRatioHint")}>
-          <Input type="number" min={0.1} max={10} step={0.1} value={values.staffing_ratio}
-            onChange={(e) => setFloat("staffing_ratio", e.target.value)}
-            disabled={isPending} className="w-20 text-center" />
-        </FieldRow>
-        <FieldRow label={t("fields.adminOnWeekends")}>
-          <Toggle
-            checked={values.admin_on_weekends}
-            onChange={(v) => setValues((p) => ({ ...p, admin_on_weekends: v }))}
-            disabled={isPending}
-          />
-        </FieldRow>
-        <FieldRow label={t("fields.adminDefaultShift")} hint={t("fields.adminDefaultShiftHint")}>
-          <select
-            value={values.admin_default_shift}
-            onChange={(e) => setValues((p) => ({ ...p, admin_default_shift: e.target.value }))}
-            disabled={isPending}
-            className="h-8 rounded-lg border border-border bg-background px-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-ring/50"
-          >
-            {shiftTypes.map((st) => (
-              <option key={st.code} value={st.code}>{st.code} — {st.name_es}</option>
-            ))}
-          </select>
-        </FieldRow>
       </div>
 
       {/* ── FESTIVOS ─────────────────────────────────────────────────────── */}

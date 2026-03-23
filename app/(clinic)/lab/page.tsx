@@ -61,7 +61,7 @@ export default async function LabConfigPage() {
             }
             configuracion={
               config ? (
-                <LabConfigForm config={config} shiftTypes={shiftTypes} />
+                <LabConfigForm config={config} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">
                   Lab configuration not found. Please contact your administrator.

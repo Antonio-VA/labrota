@@ -1285,10 +1285,7 @@ function PersonGrid({
                 </div>
                 {Array.from({ length: 7 }).map((_, j) => (
                   <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px]">
-                    {j < 5
-                      ? <div className="shimmer-bar h-9 w-full rounded" />
-                      : (i % 3 !== 0) && <div className="shimmer-bar h-9 w-full rounded opacity-50" />
-                    }
+                    <div className={`shimmer-bar h-9 w-full rounded ${j >= 5 ? "opacity-50" : ""}`} />
                   </div>
                 ))}
               </Fragment>
@@ -1715,9 +1712,8 @@ function ShiftGrid({
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-background">
-                  {row !== "off" && (i < 5
-                    ? <div className="shimmer-bar h-5 w-full" />
-                    : (i === 5) && <div className="shimmer-bar h-5 w-full opacity-50" />
+                  {row !== "off" && (
+                    <div className={`shimmer-bar h-5 w-full ${i >= 5 ? "opacity-50" : ""}`} />
                   )}
                 </div>
               ))}
@@ -2640,14 +2636,28 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   const locale = useLocale()
   const canEdit = useCanEdit()
 
-  const [view, setView]                 = useState<ViewMode>("week")
+  const [view, setViewState]            = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "week"
+    return (sessionStorage.getItem("labrota_view") as ViewMode) || "week"
+  })
+  const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
   const [compact, setCompact] = useState(false)
   const [colorChips, setColorChips] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("labrota_color_chips") !== "false"
   })
-  const [currentDate, setCurrentDate]   = useState(TODAY)
+  const [currentDate, setCurrentDateState] = useState(() => {
+    if (typeof window === "undefined") return TODAY
+    return sessionStorage.getItem("labrota_current_date") || TODAY
+  })
+  const setCurrentDate: typeof setCurrentDateState = (v) => {
+    setCurrentDateState((prev) => {
+      const next = typeof v === "function" ? v(prev) : v
+      sessionStorage.setItem("labrota_current_date", next)
+      return next
+    })
+  }
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
@@ -3128,29 +3138,24 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         </div>
       </div>
 
-      {/* Mobile toolbar */}
+      {/* Mobile toolbar — day-by-day navigation */}
       <div className="flex md:hidden items-center justify-between border-b px-4 py-2 gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
             {tc("today")}
           </Button>
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} aria-label={t("previousPeriod")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => setCurrentDate((d) => addDays(d, -1))} aria-label={t("previousPeriod")}>
               <ChevronLeft />
             </Button>
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(1)} aria-label={t("nextPeriod")}>
+            <Button variant="ghost" size="icon-sm" onClick={() => setCurrentDate((d) => addDays(d, 1))} aria-label={t("nextPeriod")}>
               <ChevronRight />
             </Button>
           </div>
           <span className="text-[13px] font-medium capitalize">
-            {formatToolbarLabel(view, currentDate, weekStart, locale)}
+            {formatDate(currentDate, locale as "es" | "en")}
           </span>
         </div>
-        {showActions && !isPublished && (
-          <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
-            {isPending ? tc("generating") : t("generateRota")}
-          </Button>
-        )}
       </div>
 
       {/* Banners */}

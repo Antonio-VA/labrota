@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { notFound } from "next/navigation"
 import { getLocale } from "next-intl/server"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"

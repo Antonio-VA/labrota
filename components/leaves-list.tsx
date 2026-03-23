@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Umbrella, Cross, User, GraduationCap, Baby, CalendarX,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,7 +39,7 @@ const LEAVE_TYPE_CONFIG: Record<LeaveType, {
   bg: string         // light background
   border: string     // subtle border
 }> = {
-  annual:    { icon: Umbrella,      color: "text-sky-600 dark:text-sky-400",       bg: "bg-sky-50 dark:bg-sky-950/40",       border: "border-sky-200 dark:border-sky-800" },
+  annual:    { icon: Plane,          color: "text-sky-600 dark:text-sky-400",       bg: "bg-sky-50 dark:bg-sky-950/40",       border: "border-sky-200 dark:border-sky-800" },
   sick:      { icon: Cross,         color: "text-red-600 dark:text-red-400",       bg: "bg-red-50 dark:bg-red-950/40",       border: "border-red-200 dark:border-red-800" },
   personal:  { icon: User,          color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-200 dark:border-violet-800" },
   training:  { icon: GraduationCap, color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   border: "border-amber-200 dark:border-amber-800" },
@@ -347,6 +347,9 @@ export function LeavesList({
 
   return (
     <>
+      {/* KPI cards */}
+      {leaves.length > 0 && <KpiCards leaves={leaves} />}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <select
@@ -361,9 +364,6 @@ export function LeavesList({
         </select>
         <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
       </div>
-
-      {/* KPI cards */}
-      {leaves.length > 0 && <KpiCards leaves={leaves} />}
 
       {/* Empty state — no leaves at all */}
       {leaves.length === 0 && (
