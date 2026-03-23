@@ -65,11 +65,14 @@ function LeaveForm({
   staff,
   editing,
   onSuccess,
+  viewerStaffId,
 }: {
   staff: Staff[]
   editing: LeaveWithStaff | null
   onSuccess: () => void
+  viewerStaffId?: string | null
 }) {
+  const isViewerMode = !!viewerStaffId
   const t  = useTranslations("leaves")
   const tc = useTranslations("common")
 
@@ -100,20 +103,29 @@ function LeaveForm({
       {/* Staff */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[14px] font-medium">{t("fields.staff")}</label>
-        <select
-          name="staff_id"
-          defaultValue={editing?.staff_id ?? ""}
-          disabled={isPending}
-          required
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-        >
-          <option value="" disabled>— {t("fields.staff")} —</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.first_name} {s.last_name}
-            </option>
-          ))}
-        </select>
+        {isViewerMode ? (
+          <>
+            <input type="hidden" name="staff_id" value={viewerStaffId!} />
+            <div className="h-8 w-full rounded-lg border border-input bg-muted/50 px-2.5 text-sm flex items-center text-muted-foreground">
+              {staff.find((s) => s.id === viewerStaffId)?.first_name ?? ""} {staff.find((s) => s.id === viewerStaffId)?.last_name ?? ""}
+            </div>
+          </>
+        ) : (
+          <select
+            name="staff_id"
+            defaultValue={editing?.staff_id ?? ""}
+            disabled={isPending}
+            required
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+          >
+            <option value="" disabled>— {t("fields.staff")} —</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.first_name} {s.last_name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Type */}
@@ -175,12 +187,12 @@ function LeaveForm({
             </Button>
           </div>
 
-          {editing && !confirmDelete && (
+          {editing && !confirmDelete && (!isViewerMode || editing.staff_id === viewerStaffId) && (
             <Button type="button" variant="destructive" disabled={isPending || isDeleting} onClick={() => setConfirmDelete(true)}>
               {tc("delete")}
             </Button>
           )}
-          {editing && confirmDelete && (
+          {editing && confirmDelete && (!isViewerMode || editing.staff_id === viewerStaffId) && (
             <div className="flex items-center gap-2">
               <Button type="button" variant="destructive" disabled={isDeleting} onClick={handleDelete}>
                 {isDeleting ? "…" : tc("confirm")}
@@ -318,10 +330,15 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
 export function LeavesList({
   leaves,
   staff,
+  userRole = "admin",
+  viewerStaffId,
 }: {
   leaves: LeaveWithStaff[]
   staff: Staff[]
+  userRole?: "admin" | "manager" | "viewer"
+  viewerStaffId?: string | null
 }) {
+  const isViewer = userRole === "viewer"
   const t      = useTranslations("leaves")
   const locale = useLocale() as "es" | "en"
   const router = useRouter()
@@ -345,6 +362,8 @@ export function LeavesList({
   }
 
   function openEdit(leave: LeaveWithStaff) {
+    // Viewers can only edit their own leaves
+    if (isViewer && leave.staff_id !== viewerStaffId) return
     setEditing(leave)
     setOpen(true)
   }
@@ -435,6 +454,7 @@ export function LeavesList({
               staff={staff}
               editing={editing}
               onSuccess={closeSheet}
+              viewerStaffId={isViewer ? viewerStaffId : undefined}
             />
           </div>
         </SheetContent>

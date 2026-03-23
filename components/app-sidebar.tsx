@@ -107,6 +107,7 @@ export function AppSidebar() {
     { key: "reports",  icon: BarChart3,    href: "/reports",  disabled: true },
   ] as const : [
     { key: "schedule", icon: CalendarDays, href: "/" },
+    { key: "leaves",   icon: Plane,        href: "/leaves" },
   ] as const
 
   return (
