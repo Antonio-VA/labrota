@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
-import { CalendarDays, Users, Plane, FlaskConical, BarChart3 } from "lucide-react"
+import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3 } from "lucide-react"
 import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit } from "@/lib/role-context"
@@ -102,12 +102,12 @@ export function AppSidebar() {
   const navItems = canEdit ? [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "staff",    icon: Users,        href: "/staff" },
-    { key: "leaves",   icon: Plane,        href: "/leaves" },
+    { key: "leaves",   icon: Briefcase,        href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports",  disabled: true },
   ] as const : [
     { key: "schedule", icon: CalendarDays, href: "/" },
-    { key: "leaves",   icon: Plane,        href: "/leaves" },
+    { key: "leaves",   icon: Briefcase,        href: "/leaves" },
   ] as const
 
   return (

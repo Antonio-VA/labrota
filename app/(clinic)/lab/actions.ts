@@ -33,7 +33,7 @@ export async function updateLabConfig(data: LabConfigUpdate) {
     .single() as { data: { role: string } | null }
 
   if (!membership || membership.role === "viewer") {
-    return { error: "No tienes permiso para modificar la configuración." }
+    return { error: "Permission denied." }
   }
 
   const { error } = await supabase

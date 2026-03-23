@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Plus, Trash2, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,8 @@ type Draft = {
 }
 
 export function DepartmentsTab({ initialDepartments }: { initialDepartments: Department[] }) {
+  const t = useTranslations("departments")
+  const tc = useTranslations("common")
   const [departments, setDepartments] = useState<Draft[]>(
     initialDepartments.map((d) => ({
       id: d.id, code: d.code, name: d.name, name_en: d.name_en,
@@ -81,14 +84,14 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
     // Validation
     for (const d of departments) {
       if (!d.name.trim()) {
-        setErrorMsg("Todos los departamentos necesitan un nombre.")
+        setErrorMsg(t("allNeedName"))
         setStatus("error")
         return
       }
     }
     const abbrs = departments.map((d) => d.abbreviation.toUpperCase()).filter(Boolean)
     if (new Set(abbrs).size !== abbrs.length) {
-      setErrorMsg("Las abreviaturas deben ser únicas.")
+      setErrorMsg(t("duplicateAbbr"))
       setStatus("error")
       return
     }
@@ -135,11 +138,11 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
           <div className="flex-1 flex flex-col gap-2">
             <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
               <Input value={dept.name} onChange={(e) => updateRow(i, { ...dept, name: e.target.value })}
-                disabled={isPending} placeholder="Nombre (ES)" className="h-8 text-[13px]" />
+                disabled={isPending} placeholder={t("nameEs")} className="h-8 text-[13px]" />
               <Input value={dept.name_en} onChange={(e) => updateRow(i, { ...dept, name_en: e.target.value })}
-                disabled={isPending} placeholder="Name (EN)" className="h-8 text-[13px]" />
+                disabled={isPending} placeholder={t("nameEn")} className="h-8 text-[13px]" />
               <Input value={dept.abbreviation} onChange={(e) => updateRow(i, { ...dept, abbreviation: e.target.value.toUpperCase().slice(0, 3) })}
-                disabled={isPending} placeholder="ABR" maxLength={3} className="h-8 text-[13px] font-mono uppercase" />
+                disabled={isPending} placeholder={t("abbreviation")} maxLength={3} className="h-8 text-[13px] font-mono uppercase" />
             </div>
             <div className="flex items-center gap-3">
               <div className="flex gap-1.5">
@@ -183,11 +186,11 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
 
       <div className="flex items-center gap-3 pt-2 border-t border-border">
         <Button type="button" onClick={handleSave} disabled={isPending || departments.length === 0}>
-          {isPending ? "Guardando…" : "Guardar departamentos"}
+          {isPending ? tc("saving") : t("saveDepartments")}
         </Button>
         {status === "success" && (
           <span className="flex items-center gap-1.5 text-[14px] text-emerald-600">
-            <CheckCircle2 className="size-4" />Guardado
+            <CheckCircle2 className="size-4" />{tc("saved")}
           </span>
         )}
         {status === "error" && (

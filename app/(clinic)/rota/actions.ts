@@ -486,7 +486,7 @@ export async function generateRota(
              ((s as { working_pattern: unknown[] }).working_pattern).length > 0
     )
     if (staffWithPattern.length === 0) {
-      return { error: `All ${staffCount} staff members have no working days set. Go to Team and set the "Disponibilidad" for each person.` }
+      return { error: `All ${staffCount} staff members have no working days set. Go to Team and set the availability for each person.` }
     }
     return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check that working patterns include weekdays in this week and no one is on leave all week.` }
   }
@@ -1001,7 +1001,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     .eq("date", lastWeek) as unknown as { data: { staff_id: string; shift_type: string; function_label: string | null }[] | null }
 
   if (!lastWeekAssignments || lastWeekAssignments.length === 0) {
-    return { error: "No hay asignaciones el mismo día de la semana anterior." }
+    return { error: "No assignments on the same day last week." }
   }
 
   // Ensure rota exists
@@ -1010,7 +1010,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
-  if (!rotaRow) return { error: "Error creando la guardia." }
+  if (!rotaRow) return { error: "Error creating rota." }
 
   // Check who's on leave
   const { data: leaves } = await supabase
@@ -1062,7 +1062,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     .lte("date", prevDates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
 
   if (!prevAssignments || prevAssignments.length === 0) {
-    return { error: "No hay asignaciones en la semana anterior." }
+    return { error: "No assignments in the previous week." }
   }
 
   // Upsert rota
@@ -1071,7 +1071,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
-  if (!rotaRow) return { error: "Error creando la guardia." }
+  if (!rotaRow) return { error: "Error creating rota." }
 
   // Check leaves for this week
   const { data: leaves } = await supabase
@@ -1135,7 +1135,7 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
     .single() as unknown as { data: { id: string } | null; error: { message: string } | null }
 
   if (upsertErr) return { error: upsertErr.message }
-  if (!rotaRow) return { error: "Error creando la guardia." }
+  if (!rotaRow) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
   await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id).then(() => {})
@@ -1161,7 +1161,7 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
     .gte("date", dates[0])
     .lte("date", dates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
 
-  if (!assignments || assignments.length === 0) return { error: "No hay turnos para guardar." }
+  if (!assignments || assignments.length === 0) return { error: "No shifts to save." }
 
   const templateAssignments: RotaTemplateAssignment[] = assignments.map((a) => {
     const dayIndex = dates.indexOf(a.date)
@@ -1201,7 +1201,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
     .select("*")
     .eq("id", templateId)
     .single() as unknown as { data: RotaTemplate | null }
-  if (!template) return { error: "Plantilla no encontrada." }
+  if (!template) return { error: "Template not found." }
 
   const dates = getWeekDates(weekStart)
 
@@ -1211,7 +1211,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
     .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id, week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
-  if (!rota) return { error: "Error creando la guardia." }
+  if (!rota) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
   await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" } as never).eq("id", rota.id).then(() => {})

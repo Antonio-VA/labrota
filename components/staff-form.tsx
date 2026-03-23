@@ -81,6 +81,7 @@ function Select({
 // ── End date toggle ───────────────────────────────────────────────────────────
 
 function EndDateField({ initialValue, disabled, label }: { initialValue: string | null; disabled: boolean; label: string }) {
+  const t = useTranslations("staff")
   const [showDate, setShowDate] = useState(!!initialValue)
   const [value, setValue] = useState(initialValue ?? "")
 
@@ -119,7 +120,7 @@ function EndDateField({ initialValue, disabled, label }: { initialValue: string 
         disabled={disabled}
         onClick={() => { setShowDate(false); setValue("") }}
         className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 shrink-0 mb-0.5"
-        title="Eliminar fecha de baja"
+        title={t("removeEndDate")}
       >
         <X className="size-4" />
       </button>
@@ -228,7 +229,7 @@ export function StaffForm({
             <label className="flex items-start gap-2 mt-2 cursor-pointer">
               <input type="checkbox" name="invite_viewer" value="on" className="mt-0.5 size-4 rounded border-border accent-primary" />
               <span className="text-[12px] text-muted-foreground leading-tight">
-                Enviar invitación como visor — recibirá un email para crear su cuenta con acceso de solo lectura al calendario
+                {t("inviteViewerLabel")}
               </span>
             </label>
           )}
@@ -291,9 +292,9 @@ export function StaffForm({
       </Section>
 
       {/* Días disponibles (hard constraint) */}
-      <Section label="Días disponibles">
+      <Section label={t("daysAvailable")}>
         <p className="text-[12px] text-muted-foreground mb-2">
-          Días contratados. El generador nunca asigna fuera de estos días.
+          {t("daysAvailableHint")}
         </p>
         <div className="flex gap-2 flex-wrap">
           {ALL_DAYS.map((day) => {
@@ -325,9 +326,9 @@ export function StaffForm({
 
       {/* Días preferidos (soft constraint) */}
       {selectedDays.length > 0 && (
-        <Section label="Días preferidos">
+        <Section label={t("daysPreferred")}>
           <p className="text-[12px] text-muted-foreground mb-2">
-            Días que prefiere trabajar (dentro de los disponibles). El generador intenta respetar pero puede ajustar si es necesario.
+            {t("daysPreferredHint")}
           </p>
           <div className="flex gap-2 flex-wrap">
             {ALL_DAYS.map((day) => {
@@ -354,7 +355,7 @@ export function StaffForm({
             })}
           </div>
           {preferredDays.length === 0 && (
-            <p className="text-[11px] text-slate-400 italic mt-1">Sin preferencia — todos los días disponibles son iguales.</p>
+            <p className="text-[11px] text-slate-400 italic mt-1">{t("noPreference")}</p>
           )}
           {ALL_DAYS.map((day) =>
             preferredDays.includes(day) ? (

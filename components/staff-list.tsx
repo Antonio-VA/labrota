@@ -405,8 +405,8 @@ function BulkToolbar({
     startTransition(async () => {
       const result = await bulkAddSkill(ids, skill, level)
       if (result.error) { toast.error(result.error); return }
-      const skippedMsg = result.skipped > 0 ? ` ${result.skipped} ya la tenían.` : ""
-      toast.success(`Habilidad añadida a ${result.added} miembro${result.added !== 1 ? "s" : ""}.${skippedMsg}`)
+      const skippedMsg = result.skipped > 0 ? ` ${t("bulk.skippedAlreadyHad", { count: result.skipped })}` : ""
+      toast.success(`${t("bulk.skillAdded", { count: result.added })}${skippedMsg}`)
       onClear()
     })
   }
@@ -416,7 +416,7 @@ function BulkToolbar({
     startTransition(async () => {
       const result = await bulkRemoveSkill(ids, skill)
       if (result.error) { toast.error(result.error); return }
-      toast.success(`Habilidad eliminada de ${result.removed} miembro${result.removed !== 1 ? "s" : ""}.`)
+      toast.success(t("bulk.skillRemoved", { count: result.removed }))
       onClear()
     })
   }
@@ -426,7 +426,7 @@ function BulkToolbar({
     startTransition(async () => {
       const result = await bulkUpdateStatus(ids, status)
       if (result.error) { toast.error(result.error); return }
-      toast.success(`Estado actualizado para ${result.updated} miembro${result.updated !== 1 ? "s" : ""}.`)
+      toast.success(t("bulk.statusUpdated", { count: result.updated }))
       onClear()
     })
   }
@@ -436,7 +436,7 @@ function BulkToolbar({
     startTransition(async () => {
       const result = await bulkSoftDeleteStaff(ids)
       if (result.error) { toast.error(result.error); return }
-      toast.success(`${result.deleted} miembro${result.deleted !== 1 ? "s" : ""} desactivado${result.deleted !== 1 ? "s" : ""}.`)
+      toast.success(t("bulk.deactivated", { count: result.deleted }))
       onClear()
     })
   }
@@ -446,7 +446,7 @@ function BulkToolbar({
     startTransition(async () => {
       const result = await hardDeleteStaff(ids)
       if (result.error) { toast.error(result.error); return }
-      toast.success(`${result.deleted} miembro${result.deleted !== 1 ? "s" : ""} borrado${result.deleted !== 1 ? "s" : ""} definitivamente.`)
+      toast.success(t("bulk.hardDeleted", { count: result.deleted }))
       onClear()
     })
   }
@@ -880,10 +880,10 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Activos", value: kpiActiveStaff.length },
-              { label: "En formación", value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
-              { label: "Cobertura técnicas", value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
-              { label: "Validación completa", value: kpiFullyValidated },
+              { label: t("kpiActive"), value: kpiActiveStaff.length },
+              { label: t("kpiTraining"), value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
+              { label: t("kpiCoverage"), value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
+              { label: t("kpiFullValidation"), value: kpiFullyValidated },
             ].map((kpi) => (
               <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
                 <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
@@ -921,7 +921,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
               onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }}
               className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <option value="all">Todas las técnicas</option>
+              <option value="all">{t("allSkills")}</option>
               {allSkillCodes.map((code) => (
                 <option key={code} value={code}>{skillLabel(code)}</option>
               ))}

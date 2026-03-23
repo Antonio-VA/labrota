@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,6 +65,7 @@ function TecnicaRow({
   onChange: (t: Draft) => void; onMoveUp: () => void; onMoveDown: () => void
   onDelete: () => void; disabled: boolean
 }) {
+  const t = useTranslations("tecnicas")
   const colorDef = COLORS.find((c) => c.key === tecnica.color) ?? COLORS[0]
 
   return (
@@ -94,14 +96,14 @@ function TecnicaRow({
           value={tecnica.nombre_es}
           onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value })}
           disabled={disabled}
-          placeholder="Nombre (ES)"
+          placeholder={t("nameEs")}
           className="h-8 text-[13px]"
         />
         <Input
           value={tecnica.nombre_en}
           onChange={(e) => onChange({ ...tecnica, nombre_en: e.target.value })}
           disabled={disabled}
-          placeholder="Name (EN)"
+          placeholder={t("nameEn")}
           className="h-8 text-[13px]"
         />
         <div className="relative">
@@ -125,26 +127,26 @@ function TecnicaRow({
 
         {/* Row 2: Color swatches */}
         <div className="col-span-3 flex items-center gap-2 pt-1">
-          <span className="text-[12px] text-muted-foreground shrink-0">Color</span>
+          <span className="text-[12px] text-muted-foreground shrink-0">{t("color")}</span>
           <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
         </div>
 
         {/* Row 3: Department / Turno típico / Activa */}
         <div className="col-span-3 flex items-center gap-4 pt-1">
           <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">Departamento</span>
+            <span className="text-[12px] text-muted-foreground shrink-0">{t("department")}</span>
             <select
               value={tecnica.department}
               onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
               disabled={disabled}
               className="h-7 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
             >
-              <option value="lab">Embriología</option>
-              <option value="andrology">Andrología</option>
+              <option value="lab">{t("embriologia")}</option>
+              <option value="andrology">{t("andrologia")}</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">Turno típico</span>
+            <span className="text-[12px] text-muted-foreground shrink-0">{t("typicalShift")}</span>
             <div className="flex gap-1">
               {["T1", "T2", "T3", "T4", "T5"].map((shift) => {
                 const active = tecnica.typical_shifts.includes(shift)
@@ -173,7 +175,7 @@ function TecnicaRow({
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[12px] text-muted-foreground">Activa</span>
+            <span className="text-[12px] text-muted-foreground">{t("active")}</span>
             <button
               type="button"
               disabled={disabled}
@@ -209,6 +211,8 @@ function TecnicaRow({
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }) {
+  const t = useTranslations("tecnicas")
+  const tc = useTranslations("common")
   const [tecnicas, setTecnicas] = useState<Draft[]>(
     initialTecnicas.map((t) => ({
       id:             t.id,
@@ -270,7 +274,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     setStatus("idle")
     const invalid = tecnicas.filter((t) => !t.nombre_es.trim() || !t.codigo.trim())
     if (invalid.length > 0) {
-      setErrorMsg("Todas las técnicas necesitan nombre y código.")
+      setErrorMsg(t("allNeedNameCode"))
       setStatus("error")
       return
     }
@@ -308,9 +312,9 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
     <div className="flex flex-col gap-4">
       {tecnicas.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-[14px] text-muted-foreground mb-3">No hay técnicas definidas.</p>
+          <p className="text-[14px] text-muted-foreground mb-3">{t("noTecnicas")}</p>
           <Button type="button" variant="outline" size="sm" onClick={handleSeed} disabled={isPending}>
-            Cargar defaults (OPU, ICS, ET, BX, DEN, AND)
+            {t("loadDefaults")}
           </Button>
         </div>
       )}
@@ -318,7 +322,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       {/* Embriología técnicas */}
       {tecnicas.some((t) => t.department === "lab") && (
         <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Embriología</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("embriologia")}</p>
           <div className="flex flex-col gap-3">
             {tecnicas.map((t, i) => t.department === "lab" ? (
               <TecnicaRow
@@ -336,7 +340,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       {/* Andrología técnicas */}
       {tecnicas.some((t) => t.department === "andrology") && (
         <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Andrología</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("andrologia")}</p>
           <div className="flex flex-col gap-3">
             {tecnicas.map((t, i) => t.department === "andrology" ? (
               <TecnicaRow
@@ -359,17 +363,17 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
         className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1"
       >
         <Plus className="size-3.5" />
-        Añadir técnica
+        {t("addTecnica")}
       </button>
 
       {/* Footer */}
       <div className="flex items-center gap-3 pt-2 border-t border-border">
         <Button type="button" onClick={handleSave} disabled={isPending || tecnicas.length === 0}>
-          {isPending ? "Guardando…" : "Guardar técnicas"}
+          {isPending ? tc("saving") : t("saveTecnicas")}
         </Button>
         {status === "success" && (
           <span className="flex items-center gap-1.5 text-[14px] text-emerald-600">
-            <CheckCircle2 className="size-4" />Guardado
+            <CheckCircle2 className="size-4" />{tc("saved")}
           </span>
         )}
         {status === "error" && (

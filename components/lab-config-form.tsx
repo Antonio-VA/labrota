@@ -159,7 +159,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.andrologyMin")}</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
                 {t("coverageTable.adminMin")}
-                <p className="text-[10px] font-normal text-muted-foreground/70 mt-0.5">Pon 0 para no requerir admin ese día</p>
+                <p className="text-[10px] font-normal text-muted-foreground/70 mt-0.5">{t("fields.adminHint")}</p>
               </th>
             </tr>
           </thead>
@@ -241,10 +241,10 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
 
       {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Ratio de cobertura" />
-        <p className="text-[13px] text-muted-foreground mb-3">Embriólogos certificados por punción. Se muestra en la cabecera del calendario.</p>
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
         <div className="flex flex-col gap-0">
-          <FieldRow label="Ratio óptimo (verde)" hint="Por encima de este valor el indicador es verde">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
             <Input
               type="number"
               min={0.1}
@@ -259,7 +259,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
               className="w-20 text-center"
             />
           </FieldRow>
-          <FieldRow label="Ratio mínimo (ámbar)" hint="Por debajo = rojo. Entre mínimo y óptimo = ámbar">
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
             <Input
               type="number"
               min={0.1}
@@ -279,18 +279,18 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
 
       {/* ── PRIMER DÍA DE LA SEMANA ──────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Primer día de la semana" />
+        <SectionHeader title={t("sections.firstDayOfWeek")} />
         <div className="py-3">
-          <FieldRow label="Día de inicio" hint="Afecta el orden de columnas en el calendario">
+          <FieldRow label={t("fields.firstDay")} hint={t("fields.firstDayHint")}>
             <select
               value={values.first_day_of_week}
               onChange={(e) => setValues((p) => ({ ...p, first_day_of_week: parseInt(e.target.value, 10) }))}
               disabled={isPending}
               className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
             >
-              <option value={0}>Lunes (predeterminado)</option>
-              <option value={6}>Domingo</option>
-              <option value={5}>Sábado</option>
+              <option value={0}>{t("fields.firstDayMon")}</option>
+              <option value={6}>{t("fields.firstDaySun")}</option>
+              <option value={5}>{t("fields.firstDaySat")}</option>
             </select>
           </FieldRow>
         </div>

@@ -262,7 +262,7 @@ export async function hardDeleteStaff(
     .neq("onboarding_status", "inactive") as { data: { id: string }[] | null; error: { message: string } | null }
 
   if (checkError) return { deleted: 0, error: checkError.message }
-  if ((check ?? []).length > 0) return { deleted: 0, error: "Solo se pueden borrar definitivamente miembros inactivos." }
+  if ((check ?? []).length > 0) return { deleted: 0, error: "Only inactive members can be permanently deleted." }
 
   const { error } = await supabase
     .from("staff")

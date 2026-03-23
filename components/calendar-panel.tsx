@@ -2094,12 +2094,20 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
   const weekStatusMap = Object.fromEntries(summary.weekStatuses.map((ws) => [ws.weekStart, ws.status]))
 
+  // Compute which column indices are weekends (Sat=5, Sun=6 in base, rotated)
+  const weekendIndices = new Set(
+    [5, 6].map((i) => ((i - firstDayOfWeek) % 7 + 7) % 7)
+  )
+
   return (
     <div className="flex flex-col gap-1.5">
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-1.5 mb-1">
-        {headers.map((h) => (
-          <div key={h} className="text-center text-[13px] font-semibold text-muted-foreground py-2">{h}</div>
+        {headers.map((h, i) => (
+          <div key={h} className={cn(
+            "text-center text-[13px] font-semibold py-2",
+            weekendIndices.has(i) ? "text-muted-foreground/60 bg-muted/40 rounded-t-lg" : "text-muted-foreground"
+          )}>{h}</div>
         ))}
       </div>
 
@@ -2135,7 +2143,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         : day.holidayName
                         ? "bg-amber-50/40 border-amber-200/60"
                         : day.isWeekend
-                        ? "bg-muted/30 border-border hover:bg-muted/50"
+                        ? "bg-muted/40 border-border hover:bg-muted/50"
                         : "bg-background border-border hover:bg-muted/20"
                     )}
                   >
