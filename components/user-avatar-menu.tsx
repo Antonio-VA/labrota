@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { LogOut, UserCog, HelpCircle } from "lucide-react"
+import { LogOut, UserCog, HelpCircle, Sun, Moon, Monitor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { applyTheme } from "@/components/account-panel"
 import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
+import { cn } from "@/lib/utils"
 import type { User } from "@supabase/supabase-js"
 
 interface InitialUser {
@@ -15,6 +17,12 @@ interface InitialUser {
   avatarUrl: string | null
 }
 
+const THEME_OPTIONS = [
+  { key: "light" as const, label: "Claro", icon: Sun },
+  { key: "dark" as const, label: "Oscuro", icon: Moon },
+  { key: "auto" as const, label: "Sistema", icon: Monitor },
+]
+
 export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
   const t = useTranslations("nav")
   const router = useRouter()
@@ -22,7 +30,19 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [fullUser, setFullUser] = useState<User | null>(null)
+  const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "auto">("light")
   const ref = useRef<HTMLDivElement>(null)
+
+  // Read current theme on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("labrota_theme")
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p.theme) setCurrentTheme(p.theme)
+      }
+    } catch {}
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -33,7 +53,6 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // Lazy-load full User only when account panel is needed
   function openAccount() {
     setOpen(false)
     if (!fullUser) {
@@ -45,6 +64,20 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
     } else {
       setAccountOpen(true)
     }
+  }
+
+  function handleThemeChange(theme: "light" | "dark" | "auto") {
+    setCurrentTheme(theme)
+    // Read existing prefs to preserve accent color
+    let accentColor = "#1b4f8a"
+    try {
+      const raw = localStorage.getItem("labrota_theme")
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p.accentColor) accentColor = p.accentColor
+      }
+    } catch {}
+    applyTheme({ theme, accentColor })
   }
 
   function signOut() {
@@ -80,32 +113,58 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       )}
 
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+        <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+          {/* User info */}
           <div className="px-3 py-2.5 border-b border-border">
-            <p className="text-[13px] font-medium truncate">{firstName}</p>
+            <p className="text-[13px] font-medium truncate">{fullName || firstName}</p>
             <p className="text-[11px] text-muted-foreground truncate">{initialUser.email}</p>
           </div>
+
+          {/* Preferences */}
           <button
             onClick={openAccount}
             className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
           >
             <UserCog className="size-3.5" />
-            Mi cuenta
+            Preferencias
           </button>
-          <button
-            onClick={() => { setOpen(false); setSupportOpen(true) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
-          >
-            <HelpCircle className="size-3.5" />
-            Soporte
-          </button>
-          <button
-            onClick={() => { setOpen(false); signOut() }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
-          >
-            <LogOut className="size-3.5" />
-            {t("signOut")}
-          </button>
+
+          {/* Theme section */}
+          <div className="border-t border-border">
+            <p className="px-3 pt-2 pb-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Tema</p>
+            {THEME_OPTIONS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => handleThemeChange(key)}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-muted/50 transition-colors"
+              >
+                <Icon className="size-3.5 text-muted-foreground" />
+                <span className="flex-1">{label}</span>
+                <span className={cn(
+                  "size-1.5 rounded-full shrink-0 transition-colors",
+                  currentTheme === key ? "bg-primary" : "bg-transparent"
+                )} />
+              </button>
+            ))}
+          </div>
+
+          {/* Support + Sign out */}
+          <div className="border-t border-border">
+            <button
+              onClick={() => { setOpen(false); setSupportOpen(true) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
+            >
+              <HelpCircle className="size-3.5" />
+              Soporte
+            </button>
+            <button
+              onClick={() => { setOpen(false); signOut() }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
+            >
+              <LogOut className="size-3.5" />
+              {t("signOut")}
+            </button>
+          </div>
         </div>
       )}
 
