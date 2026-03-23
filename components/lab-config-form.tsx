@@ -89,6 +89,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     autonomous_community: config.autonomous_community ?? "",
     ratio_optimal:        config.ratio_optimal ?? 1.0,
     ratio_minimum:        config.ratio_minimum ?? 0.75,
+    first_day_of_week:    config.first_day_of_week ?? 0,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -128,6 +129,7 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         autonomous_community: values.autonomous_community || null,
         ratio_optimal:        values.ratio_optimal,
         ratio_minimum:        values.ratio_minimum,
+        first_day_of_week:    values.first_day_of_week,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -271,6 +273,25 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
               disabled={isPending}
               className="w-20 text-center"
             />
+          </FieldRow>
+        </div>
+      </div>
+
+      {/* ── PRIMER DÍA DE LA SEMANA ──────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Primer día de la semana" />
+        <div className="py-3">
+          <FieldRow label="Día de inicio" hint="Afecta el orden de columnas en el calendario">
+            <select
+              value={values.first_day_of_week}
+              onChange={(e) => setValues((p) => ({ ...p, first_day_of_week: parseInt(e.target.value, 10) }))}
+              disabled={isPending}
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+            >
+              <option value={0}>Lunes (predeterminado)</option>
+              <option value={6}>Domingo</option>
+              <option value={5}>Sábado</option>
+            </select>
           </FieldRow>
         </div>
       </div>

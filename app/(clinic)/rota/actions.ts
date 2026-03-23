@@ -58,7 +58,9 @@ export interface RotaWeekData {
   departments: import("@/lib/types/database").Department[]
   ratioOptimal: number
   ratioMinimum: number
+  firstDayOfWeek: number
 }
+
 
 // ── Spanish national public holidays ─────────────────────────────────────────
 
@@ -192,7 +194,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75 }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0 }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -314,7 +316,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75 }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0 }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
@@ -787,6 +789,7 @@ export interface RotaMonthSummary {
   staffTotals: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }>
   ratioOptimal: number
   ratioMinimum: number
+  firstDayOfWeek: number
 }
 
 export async function getRotaMonthSummary(monthStart: string, weekStartOverride?: string): Promise<RotaMonthSummary> {
@@ -931,11 +934,12 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   })
 
-  const ratioConfigRes = await supabase.from("lab_config").select("ratio_optimal, ratio_minimum").maybeSingle()
+  const ratioConfigRes = await supabase.from("lab_config").select("ratio_optimal, ratio_minimum, first_day_of_week").maybeSingle()
   const ratioOptimal = (ratioConfigRes.data as { ratio_optimal?: number } | null)?.ratio_optimal ?? 1.0
   const ratioMinimum = (ratioConfigRes.data as { ratio_minimum?: number } | null)?.ratio_minimum ?? 0.75
+  const firstDayOfWeek = (ratioConfigRes.data as { first_day_of_week?: number } | null)?.first_day_of_week ?? 0
 
-  return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum }
+  return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum, firstDayOfWeek }
 }
 
 // ── getStaffProfile ───────────────────────────────────────────────────────────

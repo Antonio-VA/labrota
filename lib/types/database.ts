@@ -179,6 +179,7 @@ export interface LabConfig {
   autonomous_community:     string | null
   ratio_optimal:            number
   ratio_minimum:            number
+  first_day_of_week:        number  // 0=Mon, 5=Sat, 6=Sun
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -217,6 +218,7 @@ export type LabConfigUpdate = {
   autonomous_community?:     string | null
   ratio_optimal?:            number
   ratio_minimum?:            number
+  first_day_of_week?:        number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string

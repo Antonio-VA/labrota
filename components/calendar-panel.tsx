@@ -2048,15 +2048,25 @@ function ShiftGrid({
 const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek }: {
+/** Rotate an array by `offset` positions (e.g. offset=6 moves Sun to front) */
+function rotateArray<T>(arr: T[], offset: number): T[] {
+  if (offset === 0) return arr
+  const n = arr.length
+  const o = ((offset % n) + n) % n
+  return [...arr.slice(o), ...arr.slice(0, o)]
+}
+
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0 }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
   currentDate: string
   onSelectDay: (date: string) => void
   onSelectWeek: (weekStart: string) => void
+  firstDayOfWeek?: number
 }) {
-  const headers = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
+  const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
+  const headers = rotateArray(baseHeaders, firstDayOfWeek)
 
   if (loading || !summary) {
     return (
@@ -2079,7 +2089,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
   const weeks: (typeof summary.days)[] = []
   for (let i = 0; i < summary.days.length; i += 7) {
-    weeks.push(summary.days.slice(i, i + 7))
+    weeks.push(rotateArray(summary.days.slice(i, i + 7), firstDayOfWeek))
   }
 
   const weekStatusMap = Object.fromEntries(summary.weekStatuses.map((ws) => [ws.weekStart, ws.status]))
@@ -3321,6 +3331,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               currentDate={currentDate}
               onSelectDay={handleMonthDayClick}
               onSelectWeek={(ws) => { setCurrentDate(ws); setView("week") }}
+              firstDayOfWeek={weekData?.firstDayOfWeek ?? 0}
             />
           </div>
         )}
