@@ -5,33 +5,13 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
+import { toast } from "sonner"
 import type { LabConfig, PunctionsByDay, CoverageByDay } from "@/lib/types/database"
+import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ── Spanish autonomous communities ────────────────────────────────────────────
-const COMMUNITIES = [
-  { value: "and", label: "Andalucía" },
-  { value: "ara", label: "Aragón" },
-  { value: "ast", label: "Asturias (Principado de)" },
-  { value: "bal", label: "Baleares (Islas)" },
-  { value: "can", label: "Canarias" },
-  { value: "cnt", label: "Cantabria" },
-  { value: "clm", label: "Castilla-La Mancha" },
-  { value: "cyl", label: "Castilla y León" },
-  { value: "cat", label: "Cataluña" },
-  { value: "val", label: "Comunidad Valenciana" },
-  { value: "ext", label: "Extremadura" },
-  { value: "gal", label: "Galicia" },
-  { value: "rio", label: "La Rioja" },
-  { value: "mad", label: "Madrid (Comunidad de)" },
-  { value: "mur", label: "Murcia (Región de)" },
-  { value: "nav", label: "Navarra (Comunidad Foral de)" },
-  { value: "vac", label: "País Vasco" },
-  { value: "ceu", label: "Ceuta (Ciudad Autónoma de)" },
-  { value: "mel", label: "Melilla (Ciudad Autónoma de)" },
-]
-
 const DAY_KEYS: (keyof PunctionsByDay)[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 // ── Field row ─────────────────────────────────────────────────────────────────
@@ -90,6 +70,9 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     ratio_optimal:        config.ratio_optimal ?? 1.0,
     ratio_minimum:        config.ratio_minimum ?? 0.75,
     first_day_of_week:    config.first_day_of_week ?? 0,
+    country:              config.country ?? "",
+    region:               config.region ?? "",
+    time_format:          config.time_format ?? "24h",
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -126,10 +109,13 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
     startTransition(async () => {
       const result = await updateLabConfig({
         punctions_by_day:     values.punctions_by_day,
-        autonomous_community: values.autonomous_community || null,
+        autonomous_community: values.region || values.autonomous_community || null,
         ratio_optimal:        values.ratio_optimal,
         ratio_minimum:        values.ratio_minimum,
         first_day_of_week:    values.first_day_of_week,
+        country:              values.country || undefined,
+        region:               values.region || undefined,
+        time_format:          values.time_format,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -277,10 +263,79 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
         </div>
       </div>
 
-      {/* ── PRIMER DÍA DE LA SEMANA ──────────────────────────────────────── */}
+      {/* ── CONFIGURACIÓN REGIONAL ──────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.firstDayOfWeek")} />
-        <div className="py-3">
+        <SectionHeader title="Configuración regional" />
+        <div className="flex flex-col gap-0">
+          {/* País */}
+          <FieldRow label="País">
+            <select
+              value={values.country}
+              onChange={(e) => {
+                const code = e.target.value
+                const cfg = getCountry(code)
+                setValues((p) => ({
+                  ...p,
+                  country: code,
+                  region: "",
+                  ...(cfg ? { time_format: cfg.timeFormat, first_day_of_week: cfg.firstDayOfWeek } : {}),
+                }))
+                if (cfg) toast.success("Actualizado según el país")
+              }}
+              disabled={isPending}
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 min-w-[220px]"
+            >
+              <option value="">— Seleccionar —</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.name_es}</option>
+              ))}
+            </select>
+          </FieldRow>
+
+          {/* Región */}
+          {values.country && (() => {
+            const cfg = getCountry(values.country)
+            if (!cfg || cfg.regions.length === 0) return null
+            return (
+              <FieldRow label="Ciudad / Región" hint="Determina los festivos que se cargan automáticamente">
+                <select
+                  value={values.region}
+                  onChange={(e) => setValues((p) => ({ ...p, region: e.target.value }))}
+                  disabled={isPending}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 min-w-[220px]"
+                >
+                  <option value="">— Seleccionar —</option>
+                  {cfg.regions.map((r) => (
+                    <option key={r.code} value={r.code}>{r.name}</option>
+                  ))}
+                </select>
+              </FieldRow>
+            )
+          })()}
+
+          {/* Formato de hora */}
+          <FieldRow label="Formato de hora">
+            <div className="flex rounded-lg border border-input overflow-hidden">
+              {(["24h", "12h"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setValues((p) => ({ ...p, time_format: fmt }))}
+                  className={cn(
+                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
+                    values.time_format === fmt
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-transparent text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {fmt === "24h" ? "24h" : "12h (AM/PM)"}
+                </button>
+              ))}
+            </div>
+          </FieldRow>
+
+          {/* Primer día de la semana */}
           <FieldRow label={t("fields.firstDay")} hint={t("fields.firstDayHint")}>
             <select
               value={values.first_day_of_week}
@@ -294,33 +349,13 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
             </select>
           </FieldRow>
         </div>
-      </div>
 
-      {/* ── FESTIVOS ─────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.holidays")} />
-        <div className="py-3 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-8">
-            <span className="text-[14px] font-medium">{t("fields.autonomousCommunity")}</span>
-            <select
-              value={values.autonomous_community}
-              onChange={(e) => setValues((p) => ({ ...p, autonomous_community: e.target.value }))}
-              disabled={isPending}
-              className="h-8 rounded-lg border border-border bg-background px-2 text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 min-w-[220px]"
-            >
-              <option value="">{t("noRegion")}</option>
-              {COMMUNITIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
+        {values.region && (
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 mb-3">
+            <Info className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-[13px] text-muted-foreground">{t("holidaysHint")}</p>
           </div>
-          {values.autonomous_community && (
-            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-              <Info className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-              <p className="text-[13px] text-muted-foreground">{t("holidaysHint")}</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}

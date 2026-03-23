@@ -180,6 +180,9 @@ export interface LabConfig {
   ratio_optimal:            number
   ratio_minimum:            number
   first_day_of_week:        number  // 0=Mon, 5=Sat, 6=Sun
+  country:                  string
+  region:                   string
+  time_format:              string  // "24h" | "12h"
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -219,6 +222,9 @@ export type LabConfigUpdate = {
   ratio_optimal?:            number
   ratio_minimum?:            number
   first_day_of_week?:        number
+  country?:                  string
+  region?:                   string
+  time_format?:              string
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string
