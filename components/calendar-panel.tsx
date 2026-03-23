@@ -2839,6 +2839,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
+  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
+  const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
   const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [isPending, startTransition]    = useTransition()
@@ -3004,38 +3006,70 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
   // Generate / publish / unlock
   function handleGenerateClick() {
+    if (view === "month" && monthSummary) {
+      // 4-week view: check which weeks have rotas
+      const allWeekStarts: string[] = []
+      for (let i = 0; i < (monthSummary.days.length ?? 0); i += 7) {
+        if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
+      }
+      const withRota = new Set(
+        monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
+      )
+      const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
+
+      if (withoutRota.length === allWeekStarts.length) {
+        // NO weeks have rota — go straight to strategy for all
+        setMultiWeekScope(allWeekStarts)
+        setShowStrategyModal(true)
+      } else if (withoutRota.length > 0) {
+        // SOME weeks missing — show scope dialog
+        setShowMultiWeekDialog(true)
+      } else {
+        // ALL weeks have rota — show scope dialog (regenerate confirmation)
+        setShowMultiWeekDialog(true)
+      }
+      return
+    }
     setShowStrategyModal(true)
   }
 
   function handleStrategyGenerate(strategy: GenerationStrategy, templateId?: string) {
     setShowStrategyModal(false)
+    const weeksToGenerate = multiWeekScope ?? [weekStart]
+    setMultiWeekScope(null)
+
     startTransition(async () => {
       try {
-        if (strategy === "manual") {
-          const result = await clearWeek(weekStart)
-          if (result.error) { toast.error(result.error); return }
-          fetchWeek(weekStart)
-          return
-        }
-        if ((strategy === "strict_template" || strategy === "flexible_template") && templateId) {
-          const result = await applyTemplate(templateId, weekStart, strategy === "strict_template")
-          if (result.error) { toast.error(result.error); return }
-          if (result.skipped && result.skipped.length > 0) {
-            toast.info(t("templateAppliedSkipped", { count: result.skipped.length }))
+        let successCount = 0
+        let errorMsg: string | null = null
+
+        for (const ws of weeksToGenerate) {
+          if (strategy === "manual") {
+            const result = await clearWeek(ws)
+            if (result.error) { errorMsg = result.error; break }
+            successCount++
+          } else if ((strategy === "strict_template" || strategy === "flexible_template") && templateId) {
+            const result = await applyTemplate(templateId, ws, strategy === "strict_template")
+            if (result.error) { errorMsg = result.error; break }
+            successCount++
           } else {
-            toast.success(t("templateApplied"))
+            const result = await generateRota(ws, false, "ai_optimal")
+            if (result.error) { errorMsg = result.error; break }
+            successCount++
           }
-          fetchWeek(weekStart)
-          return
         }
-        // ai_optimal — run the engine
-        const result = await generateRota(weekStart, false, "ai_optimal")
-        if (result.error) {
-          setError(result.error)
-          toast.error(result.error)
+
+        if (errorMsg) {
+          setError(errorMsg)
+          toast.error(errorMsg)
+        } else if (weeksToGenerate.length > 1) {
+          toast.success(`${successCount} semanas generadas`)
         } else {
-          fetchWeek(weekStart)
+          toast.success(t("templateApplied"))
         }
+
+        fetchWeek(weekStart)
+        if (view === "month") fetchMonth(monthStart, weekStart)
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Error generando la guardia."
         setError(msg)
@@ -3495,6 +3529,87 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         onPunctionsChange={handlePunctionsChange}
         timeFormat={weekData?.timeFormat}
       />
+
+      {/* Multi-week generation scope dialog */}
+      {showMultiWeekDialog && monthSummary && (() => {
+        const allWeekStarts: string[] = []
+        for (let i = 0; i < monthSummary.days.length; i += 7) {
+          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
+        }
+        const withRota = new Set(
+          monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
+        )
+        const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
+        const allHaveRota = withoutRota.length === 0
+
+        return (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
+            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
+              <p className="text-[15px] font-medium">
+                {allHaveRota ? "¿Regenerar las 4 semanas?" : "Generar guardia — 4 semanas"}
+              </p>
+
+              {allHaveRota ? (
+                <>
+                  <p className="text-[13px] text-muted-foreground">
+                    Esto sobreescribirá las guardias existentes de las 4 semanas.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
+                      Cancelar
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => {
+                      setShowMultiWeekDialog(false)
+                      setMultiWeekScope(allWeekStarts)
+                      setShowStrategyModal(true)
+                    }}>
+                      Regenerar 4 semanas
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        setShowMultiWeekDialog(false)
+                        setMultiWeekScope(withoutRota)
+                        setShowStrategyModal(true)
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="text-[14px] font-medium">Generar semanas sin guardia</p>
+                        <p className="text-[12px] text-muted-foreground">{withoutRota.length} semana{withoutRota.length !== 1 ? "s" : ""} sin guardia</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMultiWeekDialog(false)
+                        setMultiWeekScope(allWeekStarts)
+                        setShowStrategyModal(true)
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
+                    >
+                      <AlertTriangle className="size-4 text-amber-500 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[14px] font-medium">Regenerar todas las semanas</p>
+                        <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá guardias existentes</p>
+                      </div>
+                    </button>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
       {/* Staff profile panel */}
       <StaffProfilePanel
