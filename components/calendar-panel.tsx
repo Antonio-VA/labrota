@@ -2877,7 +2877,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
     setShowStrategyModal(false)
-    setCurrentDate((d) => addDays(d, dir * 7))
+    const days = view === "month" ? 28 : 7
+    setCurrentDate((d) => addDays(d, dir * days))
   }
 
   function goToToday() {
