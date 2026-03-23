@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
-import { Hourglass } from "lucide-react"
+import { Hourglass, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -75,6 +75,55 @@ function Select({
     >
       {children}
     </select>
+  )
+}
+
+// ── End date toggle ───────────────────────────────────────────────────────────
+
+function EndDateField({ initialValue, disabled, label }: { initialValue: string | null; disabled: boolean; label: string }) {
+  const [showDate, setShowDate] = useState(!!initialValue)
+  const [value, setValue] = useState(initialValue ?? "")
+
+  if (!showDate) {
+    return (
+      <>
+        <input type="hidden" name="end_date" value="" />
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setShowDate(true)}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <Plus className="size-3.5" />
+          {label}
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex flex-col gap-1.5 flex-1">
+        <span className="text-[14px] font-medium">{label}</span>
+        <Input
+          name="end_date"
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={disabled}
+          className="rounded-[8px]"
+        />
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { setShowDate(false); setValue("") }}
+        className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 shrink-0 mb-0.5"
+        title="Eliminar fecha de baja"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
   )
 }
 
@@ -204,14 +253,10 @@ export function StaffForm({
             </Select>
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label={t("fields.startDate")} required>
-            <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
-          </Field>
-          <Field label={t("fields.endDate")}>
-            <Input name="end_date" type="date" defaultValue={staff?.end_date ?? undefined} disabled={isPending} className="rounded-[8px]" />
-          </Field>
-        </div>
+        <Field label={t("fields.startDate")} required>
+          <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
+        </Field>
+        <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
         <Field label={t("fields.daysPerWeek")} required>
           <Input
             name="days_per_week"
