@@ -234,9 +234,8 @@ export default async function PrintRotaPage({
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: 12, color: "#94a3b8", fontSize: 9, borderTop: "1px solid #ccddee", paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
-          <span>LabRota · {weekLabel}</span>
-          <span>{today}</span>
+        <div style={{ marginTop: 12, color: "#94a3b8", fontSize: 9, borderTop: "1px solid #ccddee", paddingTop: 6, textAlign: "center" }}>
+          LabRota
         </div>
       </div>
     </>

@@ -147,7 +147,54 @@ export function runRotaEngine({
     }
   }
 
-  // Round-robin index — reset per day so shift distribution is even within each day
+  // ── Weekend reservation ──────────────────────────────────────────────────
+  // Pre-compute how many weekend days each staff member is reserved for.
+  // If Sat/Sun coverage requires more staff than have those days in their
+  // working pattern, we draft extra staff (lowest workload) and reduce their
+  // effective weekly budget so weekdays don't exhaust them before the weekend.
+  const weekendReservation: Record<string, number> = {}
+  for (const wkd of ["sat", "sun"] as const) {
+    const wkDate = allWeekDates.find((d) => getDayCode(d) === wkd)
+    if (!wkDate) continue
+    const dayCov = labConfig.coverage_by_day?.[wkd]
+    if (!dayCov) continue
+
+    for (const role of ["lab", "andrology", "admin"] as const) {
+      const required = dayCov[role] ?? 0
+      if (required === 0) continue
+
+      // Staff who naturally work this weekend day and have budget
+      const natural = staff.filter((s) => {
+        if (s.onboarding_status === "inactive") return false
+        if (s.role !== role) return false
+        if (s.start_date > wkDate) return false
+        if (s.end_date && s.end_date < wkDate) return false
+        if (leaveMap[s.id]?.has(wkDate)) return false
+        if (!(s.working_pattern ?? []).includes(wkd)) return false
+        return true
+      })
+
+      const deficit = required - natural.length
+      if (deficit <= 0) continue
+
+      // Draft extra staff for this weekend day (those not in pattern but base-eligible)
+      const extras = staff
+        .filter((s) => {
+          if (s.onboarding_status === "inactive") return false
+          if (s.role !== role) return false
+          if (s.start_date > wkDate) return false
+          if (s.end_date && s.end_date < wkDate) return false
+          if (leaveMap[s.id]?.has(wkDate)) return false
+          if ((s.working_pattern ?? []).includes(wkd)) return false // already natural
+          return true
+        })
+        .sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+
+      for (let i = 0; i < Math.min(deficit, extras.length); i++) {
+        weekendReservation[extras[i].id] = (weekendReservation[extras[i].id] ?? 0) + 1
+      }
+    }
+  }
 
   // Canonical skills tracked for gap detection — only these five matter for rota coverage.
   // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
@@ -213,7 +260,10 @@ export function runRotaEngine({
       if (leaveMap[s.id]?.has(date)) return false
       const totalBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
       const used = weeklyShiftCount[s.id] ?? 0
-      if (used >= totalBudget) return false
+      // On weekdays, reserve budget slots for weekend drafts so staff aren't
+      // exhausted before Sat/Sun. On weekends, use full remaining budget.
+      const reserved = weekend ? 0 : (weekendReservation[s.id] ?? 0)
+      if (used >= totalBudget - reserved) return false
       return true
     }
 
