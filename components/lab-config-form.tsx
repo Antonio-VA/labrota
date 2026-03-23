@@ -131,6 +131,71 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {(section === "all" || section === "cobertura") && <>
+      {/* ── PUNCIONES ────────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.punctions")} />
+        <div className="py-2 pb-3">
+          <p className="text-[13px] text-muted-foreground mb-3">{t("fields.punctionsByDay")}</p>
+          <div className="flex flex-col gap-0">
+            {DAY_KEYS.map((day) => (
+              <div
+                key={day}
+                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+              >
+                <span className="text-[14px] font-medium">{t(`days.${day}`)}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={values.punctions_by_day[day]}
+                  onChange={(e) => setPunction(day, e.target.value)}
+                  disabled={isPending}
+                  className="w-20 text-center"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
+            <Input
+              type="number"
+              min={0.1}
+              max={5}
+              step={0.05}
+              value={values.ratio_optimal}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v }))
+              }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
+            <Input
+              type="number"
+              min={0.1}
+              max={5}
+              step={0.05}
+              value={values.ratio_minimum}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v }))
+              }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+        </div>
+      </div>
+
       {/* ── COBERTURA MÍNIMA ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
@@ -196,71 +261,6 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
               {coverageErrorMsg}
             </span>
           )}
-        </div>
-      </div>
-
-      {/* ── PUNCIONES ────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.punctions")} />
-        <div className="py-2 pb-3">
-          <p className="text-[13px] text-muted-foreground mb-3">{t("fields.punctionsByDay")}</p>
-          <div className="flex flex-col gap-0">
-            {DAY_KEYS.map((day) => (
-              <div
-                key={day}
-                className="flex items-center justify-between py-2 border-b border-border last:border-0"
-              >
-                <span className="text-[14px] font-medium">{t(`days.${day}`)}</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={values.punctions_by_day[day]}
-                  onChange={(e) => setPunction(day, e.target.value)}
-                  disabled={isPending}
-                  className="w-20 text-center"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.ratioCobertura")} />
-        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
-            <Input
-              type="number"
-              min={0.1}
-              max={5}
-              step={0.05}
-              value={values.ratio_optimal}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v }))
-              }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
-            <Input
-              type="number"
-              min={0.1}
-              max={5}
-              step={0.05}
-              value={values.ratio_minimum}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v }))
-              }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
         </div>
       </div>
 
