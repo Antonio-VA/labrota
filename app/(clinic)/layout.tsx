@@ -67,6 +67,7 @@ export default async function ClinicLayout({
         orgLogoUrl={orgLogoUrl}
         allOrgs={allOrgs}
         activeOrgId={activeOrgId}
+        initialUser={user ? { email: user.email ?? null, fullName: (user.user_metadata?.full_name as string) ?? null, avatarUrl: (user.user_metadata?.avatar_url as string) ?? null } : null}
       />
       <RoleProvider role={userRole}>
         <div className="flex flex-1 overflow-hidden">

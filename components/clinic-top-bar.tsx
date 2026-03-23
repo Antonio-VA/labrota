@@ -6,22 +6,28 @@ import { Check, ChevronDown } from "lucide-react"
 import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
 import { UserAvatarMenu } from "@/components/user-avatar-menu"
-import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
-import type { User } from "@supabase/supabase-js"
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
+
+interface InitialUser {
+  email: string | null
+  fullName: string | null
+  avatarUrl: string | null
+}
 
 export function ClinicTopBar({
   orgName,
   orgLogoUrl,
   allOrgs = [],
   activeOrgId,
+  initialUser,
 }: {
   orgName: string | null
   orgLogoUrl?: string | null
   allOrgs?: { id: string; name: string; logo_url: string | null }[]
   activeOrgId?: string | null
+  initialUser?: InitialUser | null
 }) {
   const router = useRouter()
 
@@ -29,12 +35,6 @@ export function ClinicTopBar({
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const orgMenuRef                    = useRef<HTMLDivElement>(null)
   const [isSwitching, startSwitch]    = useTransition()
-  const [user, setUser]               = useState<User | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null))
-  }, [])
 
   useEffect(() => {
     if (!orgMenuOpen) return
@@ -106,7 +106,7 @@ export function ClinicTopBar({
       {/* Right: bell + avatar */}
       <div className="flex items-center gap-3">
         <NotificationBell />
-        {user && <UserAvatarMenu user={user} />}
+        {initialUser && <UserAvatarMenu initialUser={initialUser} />}
       </div>
     </header>
   )

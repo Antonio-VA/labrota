@@ -9,12 +9,19 @@ import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
 import type { User } from "@supabase/supabase-js"
 
-export function UserAvatarMenu({ user }: { user: User }) {
+interface InitialUser {
+  email: string | null
+  fullName: string | null
+  avatarUrl: string | null
+}
+
+export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
   const t = useTranslations("nav")
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [fullUser, setFullUser] = useState<User | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,27 +33,41 @@ export function UserAvatarMenu({ user }: { user: User }) {
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
+  // Lazy-load full User only when account panel is needed
+  function openAccount() {
+    setOpen(false)
+    if (!fullUser) {
+      const supabase = createClient()
+      supabase.auth.getUser().then(({ data }) => {
+        setFullUser(data.user ?? null)
+        setAccountOpen(true)
+      })
+    } else {
+      setAccountOpen(true)
+    }
+  }
+
   function signOut() {
     const supabase = createClient()
     supabase.auth.signOut().then(() => router.push("/login"))
   }
 
-  const fullName = (user.user_metadata?.full_name as string) ?? ""
-  const firstName = fullName.split(" ")[0] || user.email?.split("@")[0] || ""
+  const fullName = initialUser.fullName ?? ""
+  const firstName = fullName.split(" ")[0] || initialUser.email?.split("@")[0] || ""
   const initials = fullName
     ? fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : (user.email ?? "").slice(0, 2).toUpperCase()
-  const avatarUrl = (user.user_metadata?.avatar_url as string) ?? null
+    : (initialUser.email ?? "").slice(0, 2).toUpperCase()
+  const avatarUrl = initialUser.avatarUrl
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
+        className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
         title={firstName}
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+          <img src={avatarUrl} alt="Avatar" className="size-8 rounded-full object-cover" />
         ) : (
           initials
         )}
@@ -56,10 +77,10 @@ export function UserAvatarMenu({ user }: { user: User }) {
         <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-[13px] font-medium truncate">{firstName}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{initialUser.email}</p>
           </div>
           <button
-            onClick={() => { setOpen(false); setAccountOpen(true) }}
+            onClick={openAccount}
             className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
           >
             <UserCog className="size-3.5" />
@@ -82,7 +103,7 @@ export function UserAvatarMenu({ user }: { user: User }) {
         </div>
       )}
 
-      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} user={user} />
+      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} user={fullUser} />
       <SupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   )

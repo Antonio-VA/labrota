@@ -874,24 +874,28 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
   }).length
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* KPI cards */}
+    <div className="flex flex-col">
+      {/* KPI summary band */}
       {staff.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: "Activos", value: kpiActiveStaff.length },
-            { label: "En formación", value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
-            { label: "Cobertura técnicas", value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
-            { label: "Validación completa", value: kpiFullyValidated },
-          ].map((kpi) => (
-            <div key={kpi.label} className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
-              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
-            </div>
-          ))}
+        <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Activos", value: kpiActiveStaff.length },
+              { label: "En formación", value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
+              { label: "Cobertura técnicas", value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
+              { label: "Validación completa", value: kpiFullyValidated },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
+      {/* Content section */}
+      <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -1017,6 +1021,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           tecnicas={tecnicas}
         />
       )}
+      </div>
     </div>
   )
 }

@@ -295,11 +295,11 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-4 gap-3">
       {cards.map((kpi) => {
         const Icon = kpi.icon
         return (
-          <div key={kpi.label} className={cn("rounded-xl border border-border/60 bg-muted/30 px-4 py-3 border-l-[3px]", kpi.accent)}>
+          <div key={kpi.label} className={cn("rounded-xl border border-border/60 bg-background px-4 py-3 border-l-[3px]", kpi.accent)}>
             <div className="flex items-center justify-between">
               <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
               <Icon className="size-4 text-muted-foreground/50" />
@@ -354,10 +354,16 @@ export function LeavesList({
   }
 
   return (
-    <>
-      {/* KPI cards */}
-      {leaves.length > 0 && <KpiCards leaves={leaves} />}
+    <div className="flex flex-col">
+      {/* KPI summary band */}
+      {leaves.length > 0 && (
+        <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
+          <KpiCards leaves={leaves} />
+        </div>
+      )}
 
+      {/* Content section */}
+      <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <select
@@ -432,6 +438,7 @@ export function LeavesList({
           </div>
         </SheetContent>
       </Sheet>
-    </>
+      </div>
+    </div>
   )
 }
