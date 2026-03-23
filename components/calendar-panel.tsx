@@ -2092,21 +2092,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
         const weekStart = week[0].date
         const weekStatus = weekStatusMap[weekStart] ?? null
         return (
-          <div key={wi} className="relative group/week">
-            {/* Week status pill */}
-            {weekStatus && (
-              <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full z-10 hidden lg:block">
-                <span className={cn(
-                  "text-[9px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap",
-                  weekStatus === "published"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-amber-50 text-amber-600 dark:text-amber-400 border border-amber-200"
-                )}>
-                  {weekStatus === "published" ? "Publicada" : "Borrador"}
-                </span>
-              </div>
-            )}
-
+          <div key={wi}>
             <div
               className="grid grid-cols-7 gap-1 rounded-lg transition-colors cursor-pointer group-hover/week:bg-blue-50/40"
               onClick={() => onSelectWeek(weekStart)}
@@ -2131,19 +2117,21 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     className={cn(
                       "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[80px]",
                       !day.isCurrentMonth
-                        ? "bg-muted border-border/50"
+                        ? "bg-muted/50 border-border/30"
                         : day.holidayName
                         ? "bg-amber-50/40 border-amber-100"
+                        : day.isWeekend
+                        ? "bg-muted/30 border-border hover:bg-muted/50"
                         : "bg-background border-border hover:bg-muted/30"
                     )}
                   >
                     {/* Top row: date + coverage indicator */}
                     <div className="flex items-center justify-between w-full mb-1">
                       <div className={cn(
-                        "size-6 flex items-center justify-center rounded-full text-[13px] leading-none",
+                        "size-7 flex items-center justify-center rounded-full text-[18px] leading-none",
                         isToday ? "bg-primary text-primary-foreground font-semibold"
-                          : !day.isCurrentMonth ? "text-muted-foreground/40 font-normal"
-                          : "font-medium text-foreground"
+                          : !day.isCurrentMonth ? "text-muted-foreground/30 font-normal text-[14px]"
+                          : "font-semibold text-foreground"
                       )}>
                         {dayNum}
                       </div>
@@ -2159,13 +2147,24 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[9px] text-amber-600 leading-tight truncate w-full">{day.holidayName}</span>
                     )}
 
-                    {/* Department breakdown */}
+                    {/* Department breakdown chips */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1.5 mt-auto">
-                        {day.labCount > 0 && <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400">{day.labCount}E</span>}
-                        {day.andrologyCount > 0 && <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">{day.andrologyCount}A</span>}
-                        {day.adminCount > 0 && <span className="text-[9px] font-medium text-slate-500">{day.adminCount}Ad</span>}
+                      <div className="flex items-center gap-1 mt-auto flex-wrap">
+                        {day.labCount > 0 && (
+                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{day.labCount}E</span>
+                        )}
+                        {day.andrologyCount > 0 && (
+                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{day.andrologyCount}A</span>
+                        )}
+                        {day.adminCount > 0 && (
+                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{day.adminCount}Ad</span>
+                        )}
                       </div>
+                    )}
+
+                    {/* Sin guardia label */}
+                    {day.staffCount === 0 && day.isCurrentMonth && !day.holidayName && (
+                      <span className="text-[9px] text-muted-foreground/40 italic mt-auto">Sin guardia</span>
                     )}
 
                     {/* Bottom row: punctions + ratio + leave */}
