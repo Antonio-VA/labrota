@@ -33,6 +33,16 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
 
   if (error) return { error: error.message }
 
+  // Auto-remove conflicting rota assignments for this staff during leave period
+  await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("staff_id", leave.staff_id)
+    .eq("organisation_id", orgId)
+    .gte("date", leave.start_date)
+    .lte("date", leave.end_date)
+  revalidatePath("/")
+
   // Notify admins if this leave impacts published rotas
   const { data: staffData } = await supabase
     .from("staff")
@@ -64,6 +74,19 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
     .eq("id", id)
 
   if (error) return { error: error.message }
+
+  // Auto-remove conflicting rota assignments for updated leave period
+  const orgId = await getOrgId()
+  if (orgId) {
+    await supabase
+      .from("rota_assignments")
+      .delete()
+      .eq("staff_id", leave.staff_id)
+      .eq("organisation_id", orgId)
+      .gte("date", leave.start_date)
+      .lte("date", leave.end_date)
+    revalidatePath("/")
+  }
 
   revalidatePath("/leaves")
   return { success: true }
