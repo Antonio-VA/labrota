@@ -619,18 +619,18 @@ export function AssignmentSheet({
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="border-b px-4 py-3 flex flex-col gap-1.5 shrink-0">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
             <p className="text-[14px] font-medium capitalize leading-tight">{dateLabel}</p>
             {/* Coverage indicator */}
             {assignments.length > 0 && (
               allCovered ? (
-                <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
               ) : (
                 <Tooltip>
                   <TooltipTrigger render={
-                    <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5 cursor-default" />
+                    <AlertTriangle className="size-3.5 text-amber-500 shrink-0 cursor-default" />
                   } />
-                  <TooltipContent side="left" className="max-w-[200px]">
+                  <TooltipContent side="bottom" className="max-w-[200px]">
                     <p className="font-medium text-[12px] mb-1">Técnicas sin cobertura</p>
                     {skillGaps.map((sk) => (
                       <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
