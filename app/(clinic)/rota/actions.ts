@@ -418,7 +418,7 @@ export async function generateRota(
   })
 
   // Run engine
-  const { days } = runRotaEngine({
+  const { days, warnings: engineWarnings } = runRotaEngine({
     weekStart,
     staff: normalizedStaff,
     leaves: (leavesRes.data ?? []) as Leave[],
@@ -429,6 +429,21 @@ export async function generateRota(
     rules: (rulesRes.data ?? []) as RotaRule[],
     tecnicas: (tecnicasForEngine.data ?? []).map((t) => ({ codigo: t.codigo, typical_shifts: t.typical_shifts ?? [] })),
   })
+
+  // Log engine warnings for debugging
+  if (engineWarnings.length > 0) {
+    console.log("[rota-engine] Warnings:", engineWarnings)
+  }
+  // Log per-day assignment counts
+  for (const day of days) {
+    const byRole: Record<string, number> = {}
+    for (const a of day.assignments) {
+      const s = normalizedStaff.find((st) => st.id === a.staff_id)
+      const role = s?.role ?? "?"
+      byRole[role] = (byRole[role] ?? 0) + 1
+    }
+    console.log(`[rota-engine] ${day.date}: ${day.assignments.length} assignments`, byRole)
+  }
 
   // Insert new assignments (skip override dates)
   const toInsert = days
