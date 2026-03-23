@@ -2975,7 +2975,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   }, [weekStart])
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart, weekStart)
-  }, [monthStart, view, fetchMonth])
+  }, [monthStart, weekStart, view, fetchMonth])
 
   useEffect(() => {
     if (refreshKey === 0) return
