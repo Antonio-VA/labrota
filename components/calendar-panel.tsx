@@ -2266,7 +2266,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                       {day.staffCount > 0 && (
                         day.hasSkillGaps
-                          ? <AlertTriangle className="size-4 text-destructive/70" />
+                          ? <AlertTriangle className="size-4 text-amber-500" />
                           : <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400" />
                       )}
                     </div>
