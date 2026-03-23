@@ -2750,7 +2750,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     localStorage.setItem("labrota_calendar_layout", layout)
   }
 
-  // Fetch week data — keep previous weekData visible during load to avoid flash
+  // Fetch week data
   const fetchWeek = useCallback((ws: string) => {
     setLoadingWeek(true)
     setError(null)
@@ -2759,7 +2759,6 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
     }).catch((e: unknown) => {
-      setWeekData(null)
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
@@ -3184,7 +3183,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
         {/* Week view */}
         {view === "week" && (
-          <div className={cn("hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden transition-opacity duration-150", weekData && loadingWeek && "opacity-50 pointer-events-none")}>
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {(!weekData?.rota || (weekData && !weekData.days.some((d) => d.assignments.length > 0))) && !loadingWeek && !isPending ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
@@ -3227,7 +3226,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 <ShiftGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={!weekData && (loadingWeek || isPending)}
+                  loading={loadingWeek || isPending}
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
@@ -3250,7 +3249,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 <PersonGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={!weekData && (loadingWeek || isPending)}
+                  loading={loadingWeek || isPending}
                   isGenerating={isPending}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
