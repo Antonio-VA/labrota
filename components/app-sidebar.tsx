@@ -134,7 +134,7 @@ export function AppSidebar() {
 
       </TooltipProvider>
       <div className="py-3 text-center">
-        <span className="text-[13px] text-muted-foreground/50 leading-none">
+        <span className="text-[15px] leading-none" style={{ color: "var(--muted-foreground)", opacity: 0.35, textShadow: "0 1px 0 rgba(255,255,255,0.4), 0 -1px 0 rgba(0,0,0,0.1)" }}>
           <span className="font-light">lab</span><span className="font-medium">rota</span>
         </span>
       </div>

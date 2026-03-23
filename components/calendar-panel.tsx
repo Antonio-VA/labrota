@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2 } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -409,7 +409,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
     <Tooltip>
       <TooltipTrigger render={
         <span className={cn("text-[10px] font-medium tabular-nums cursor-default", ratioColor)}>
-          {ratio.toFixed(1)}
+          R:{ratio.toFixed(1)}
         </span>
       } />
       <TooltipContent side="bottom">
@@ -422,7 +422,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
     return (
       <span className={cn("flex items-center gap-0.5 text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
         {label}
-        {ratioSpan && <><span className="text-muted-foreground/40">·</span>{ratioSpan}</>}
+        {ratioSpan}
         {isOverride && (
           <Tooltip>
             <TooltipTrigger render={<span className="text-amber-500 font-bold cursor-default">*</span>} />
@@ -445,7 +445,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
       >
         {label}
       </button>
-      {ratioSpan && <><span className="text-[10px] text-muted-foreground/40">·</span>{ratioSpan}</>}
+      {ratioSpan}
       {isOverride && (
         <Tooltip>
           <TooltipTrigger render={
@@ -2045,6 +2045,95 @@ function ShiftGrid({
 
 // ── Month view ────────────────────────────────────────────────────────────────
 
+// ── Month punctions inline editor ──────────────────────────────────────────
+
+function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }: {
+  date: string; value: number; defaultValue: number; isOverride: boolean
+  onChange?: (date: string, value: number | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  function save() {
+    if (onChange) onChange(date, draft === defaultValue ? null : draft)
+    setOpen(false)
+  }
+
+  if (!onChange) {
+    return (
+      <span className={cn("text-[11px] tabular-nums", isOverride ? "text-primary font-medium" : "text-muted-foreground")}>
+        P:{value}
+      </span>
+    )
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <Tooltip>
+        <TooltipTrigger render={
+          <button
+            onClick={(e) => { e.stopPropagation(); setDraft(value); setOpen((o) => !o) }}
+            className={cn(
+              "text-[11px] tabular-nums rounded px-0.5 transition-colors hover:bg-muted group/pedit",
+              isOverride ? "text-primary font-medium" : "text-muted-foreground"
+            )}
+          >
+            P:{value}
+            <Pencil className="size-2 ml-0.5 inline opacity-0 group-hover/pedit:opacity-50 transition-opacity" />
+          </button>
+        } />
+        <TooltipContent side="top">
+          {isOverride ? `Valor personalizado — default: ${defaultValue}` : "Click para editar punciones"}
+        </TooltipContent>
+      </Tooltip>
+
+      {open && (
+        <div
+          className="absolute left-0 bottom-full mb-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-32 flex flex-col gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between gap-1">
+            <button
+              onClick={() => setDraft((d) => Math.max(0, d - 1))}
+              className="size-6 rounded border border-border flex items-center justify-center text-[13px] hover:bg-muted transition-colors"
+            >−</button>
+            <input
+              type="number"
+              min={0}
+              value={draft}
+              onChange={(e) => setDraft(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              className="w-10 text-center text-[12px] border border-input rounded px-1 py-0.5 outline-none bg-background"
+            />
+            <button
+              onClick={() => setDraft((d) => d + 1)}
+              className="size-6 rounded border border-border flex items-center justify-center text-[13px] hover:bg-muted transition-colors"
+            >+</button>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={save} className="flex-1 text-[10px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90">OK</button>
+            {isOverride && (
+              <button
+                onClick={() => { if (onChange) onChange(date, null); setOpen(false) }}
+                className="flex-1 text-[10px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted"
+              >Reset</button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
 
@@ -2056,7 +2145,7 @@ function rotateArray<T>(arr: T[], offset: number): T[] {
   return [...arr.slice(o), ...arr.slice(0, o)]
 }
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0 }: {
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
@@ -2064,6 +2153,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   onSelectDay: (date: string) => void
   onSelectWeek: (weekStart: string) => void
   firstDayOfWeek?: number
+  punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
 }) {
   const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
   const headers = rotateArray(baseHeaders, firstDayOfWeek)
@@ -2192,31 +2283,39 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     )}
 
                     {/* Punctions + ratio + leave */}
-                    {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {day.punctions > 0 && (
-                          <span className="text-[11px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
-                        )}
-                        {day.punctions > 0 && day.labCount > 0 && (() => {
-                          const ratio = day.labCount / day.punctions
-                          const opt = (summary as RotaMonthSummary).ratioOptimal ?? 1.0
-                          const min = (summary as RotaMonthSummary).ratioMinimum ?? 0.75
-                          return (
+                    {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (() => {
+                      const isOverride = punctionsOverride[day.date] !== undefined
+                      const effectiveP = punctionsOverride[day.date] ?? day.punctions
+                      const ratio = effectiveP > 0 && day.labCount > 0 ? day.labCount / effectiveP : 0
+                      const opt = (summary as RotaMonthSummary).ratioOptimal ?? 1.0
+                      const min = (summary as RotaMonthSummary).ratioMinimum ?? 0.75
+                      return (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {effectiveP > 0 && (
+                            <MonthPunctionsEdit
+                              date={day.date}
+                              value={effectiveP}
+                              defaultValue={day.punctions}
+                              isOverride={isOverride}
+                              onChange={onPunctionsChange}
+                            />
+                          )}
+                          {effectiveP > 0 && day.labCount > 0 && (
                             <span className={cn(
                               "text-[11px] font-medium tabular-nums",
                               ratio >= opt ? "text-emerald-600 dark:text-emerald-400" : ratio >= min ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                             )}>
-                              {ratio.toFixed(1)}
+                              R:{ratio.toFixed(1)}
                             </span>
-                          )
-                        })()}
-                        {day.leaveCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
-                            <Briefcase className="size-3" />{day.leaveCount}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                          )}
+                          {day.leaveCount > 0 && (
+                            <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
+                              <Briefcase className="size-3" />{day.leaveCount}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </button>
                     } />
                     {tooltipText && <TooltipContent side="top">{tooltipText}</TooltipContent>}
@@ -3342,6 +3441,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               onSelectDay={handleMonthDayClick}
               onSelectWeek={(ws) => { setCurrentDate(ws); setView("week") }}
               firstDayOfWeek={weekData?.firstDayOfWeek ?? 0}
+              punctionsOverride={punctionsOverride}
+              onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
             />
           </div>
         )}
