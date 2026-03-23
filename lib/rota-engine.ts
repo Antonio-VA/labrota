@@ -7,9 +7,10 @@
  *     not on leave, has weekly shift budget remaining)
  *  2. Sort by preferred days (soft), then historical workload (fewer = higher priority)
  *  3. Compute coverage requirements from lab config (cobertura mínima table)
- *  4. Select exactly the required number of staff per role (lowest workload first)
+ *  4. Assign all eligible lab + andrology staff; admin capped to config
+ *     (weekly budget in step 1 prevents over-assignment across the week)
  *  5. Apply scheduling rules (max consecutive days, weekend distribution, etc.)
- *  6. Distribute selected staff across shifts via per-day round-robin
+ *  6. Distribute staff across shifts via per-day round-robin
  *  7. Compute skill gaps
  */
 
@@ -234,12 +235,13 @@ export function runRotaEngine({
       : labConfig.min_andrology_coverage)
     const adminRequired     = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
 
-    // 5. Select only the required number of staff per role.
-    //    Pools are already sorted by preferred-day then workload (lowest first),
-    //    so .slice(0, N) picks the fairest candidates.
-    let assignedLab       = labPool.slice(0, labRequired)
-    let assignedAndrology = andrologyPool.slice(0, andrologyRequired)
-    let assignedAdmin     = adminPool.slice(0, adminRequired)
+    // 5. Assign ALL eligible lab + andrology staff (budget-limited by eligibility
+    //    filter above); admin capped to the configured requirement.
+    //    The weekly budget check in the eligibility filter (step 1) naturally
+    //    distributes staff across the week — no need to artificially cap here.
+    let assignedLab       = labPool
+    let assignedAndrology = andrologyPool
+    let assignedAdmin     = adminRequired > 0 ? adminPool : []
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
