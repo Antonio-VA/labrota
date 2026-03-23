@@ -371,9 +371,11 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
 }) {
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
+  const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
   const popRef            = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setDraft(String(value)) }, [value])
+  useEffect(() => { setBiopsyDraft(String(biopsyForecast)) }, [biopsyForecast])
 
   useEffect(() => {
     if (!open) return
@@ -451,12 +453,17 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
               className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
           </div>
-          {biopsyForecast > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground shrink-0">Biopsias:</span>
-              <span className="text-[12px] font-medium text-muted-foreground">{biopsyForecast}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground shrink-0">Biopsias:</span>
+            <input
+              type="number"
+              min={0}
+              value={biopsyDraft}
+              onChange={(e) => setBiopsyDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save() }}
+              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
+            />
+          </div>
           <div className="flex gap-1">
             <button
               onClick={save}

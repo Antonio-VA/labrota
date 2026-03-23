@@ -219,7 +219,7 @@ body {
   );
   background-size: 200% 100%;
   background-attachment: fixed;
-  animation: shimmer 1.5s infinite ease-in-out;
+  animation: shimmer 2.5s infinite ease-in-out;
   border-radius: 4px;
   flex-shrink: 0;
 }
