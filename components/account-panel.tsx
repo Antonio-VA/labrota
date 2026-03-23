@@ -62,11 +62,11 @@ export function AccountPanel({ open, onClose, user }: {
   }, [open, user])
 
   function handleSave() {
+    // Apply theme immediately — don't wait for server save
+    applyTheme(prefs)
     startTransition(async () => {
       const result = await saveUserPreferences(prefs)
       if (result.error) { toast.error(result.error); return }
-      // Apply theme immediately
-      applyTheme(prefs)
       toast.success("Preferencias guardadas")
       onClose()
     })
@@ -172,7 +172,11 @@ export function AccountPanel({ open, onClose, user }: {
               {THEME_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
-                  onClick={() => setPrefs((p) => ({ ...p, theme: opt.key }))}
+                  onClick={() => {
+                    const next = { ...prefs, theme: opt.key }
+                    setPrefs(next as typeof prefs)
+                    applyTheme(next as UserPreferences)
+                  }}
                   className={cn(
                     "flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all text-[12px]",
                     prefs.theme === opt.key
