@@ -54,7 +54,7 @@ function ColorPicker({ value, onChange, disabled }: {
 type Draft = {
   id?: string
   nombre_es: string; nombre_en: string; codigo: string
-  color: string; department: "lab" | "andrology"; activa: boolean; orden: number
+  color: string; department: "lab" | "andrology"; typical_shifts: string[]; activa: boolean; orden: number
 }
 
 function TecnicaRow({
@@ -141,6 +141,35 @@ function TecnicaRow({
               <option value="andrology">Andrología</option>
             </select>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-muted-foreground shrink-0">Turno típico</span>
+            <div className="flex gap-1">
+              {["T1", "T2", "T3", "T4", "T5"].map((shift) => {
+                const active = tecnica.typical_shifts.includes(shift)
+                return (
+                  <button
+                    key={shift}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      const next = active
+                        ? tecnica.typical_shifts.filter((s) => s !== shift)
+                        : [...tecnica.typical_shifts, shift]
+                      onChange({ ...tecnica, typical_shifts: next })
+                    }}
+                    className={cn(
+                      "h-6 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                    )}
+                  >
+                    {shift}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[12px] text-muted-foreground">Activa</span>
             <button
@@ -186,6 +215,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       codigo:         t.codigo,
       color:          t.color,
       department:     t.department ?? "lab" as const,
+      typical_shifts: t.typical_shifts ?? [],
       activa:         t.activa,
       orden:          t.orden,
     }))
@@ -200,7 +230,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
       ...prev,
       {
         nombre_es: "", nombre_en: "", codigo: "",
-        color: "blue", department: "lab" as const, activa: true,
+        color: "blue", department: "lab" as const, typical_shifts: [], activa: true,
         orden: prev.length,
       },
     ])

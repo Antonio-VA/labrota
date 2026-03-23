@@ -45,6 +45,7 @@ export interface EngineParams {
   shiftTypes?: ShiftTypeDefinition[]   // org shift catalogue — used to fill all shifts
   punctionsOverride?: Record<string, number>  // per-date overrides from rota record
   rules?: RotaRule[]             // enabled scheduling rules
+  tecnicas?: { codigo: string; typical_shifts: string[] }[]  // for shift preference
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ export function runRotaEngine({
   shiftTypes = [],
   punctionsOverride,
   rules = [],
+  tecnicas = [],
 }: EngineParams): RotaEngineResult {
   const days: DayPlan[] = []
   const warnings: string[] = []
@@ -131,6 +133,14 @@ export function runRotaEngine({
   const shiftCodes = [...shiftTypes]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
+
+  // Técnica → typical shifts lookup (for soft shift preference)
+  const tecnicaTypicalShifts: Record<string, Set<string>> = {}
+  for (const t of tecnicas) {
+    if (t.typical_shifts.length > 0) {
+      tecnicaTypicalShifts[t.codigo] = new Set(t.typical_shifts)
+    }
+  }
 
   // Global round-robin index — carried across days so different shifts get
   // first picks on different days (prevents T1/T2 always getting all staff)
@@ -329,9 +339,11 @@ export function runRotaEngine({
     const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? (shiftCodes[0] ?? "T1")
     const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
-    // Distribute staff without a preferred_shift round-robin across all available shifts.
-    // Uses global index so different days start from different shifts, ensuring
-    // T4/T5 get coverage over the week (not just T1/T2 every day).
+    // Distribute staff across shifts:
+    // 1. Staff with preferred_shift → use it
+    // 2. Admin → admin default shift
+    // 3. Staff with a primary técnica that has typical_shifts → prefer those shifts
+    // 4. Everyone else → round-robin across all shifts (global index)
     days.push({
       date,
       assignments: assigned.map((s) => {
@@ -341,8 +353,23 @@ export function runRotaEngine({
         } else if (s.role === "admin") {
           shift = adminDefaultShift
         } else {
-          shift = defaultShiftCodes[globalRrIdx % defaultShiftCodes.length] as ShiftType
-          globalRrIdx++
+          // Check if staff has a primary técnica with typical_shifts preference
+          const staffSkillCodes = s.staff_skills.map((sk) => sk.skill)
+          let preferredFromTecnica: string | null = null
+          for (const code of staffSkillCodes) {
+            const typical = tecnicaTypicalShifts[code]
+            if (typical && typical.size > 0) {
+              // Pick the first typical shift that's in our shift catalogue
+              const match = defaultShiftCodes.find((sc) => typical.has(sc))
+              if (match) { preferredFromTecnica = match; break }
+            }
+          }
+          if (preferredFromTecnica) {
+            shift = preferredFromTecnica as ShiftType
+          } else {
+            shift = defaultShiftCodes[globalRrIdx % defaultShiftCodes.length] as ShiftType
+            globalRrIdx++
+          }
         }
         return { staff_id: s.id, shift_type: shift }
       }),

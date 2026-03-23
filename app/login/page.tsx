@@ -59,7 +59,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center pt-[20vh] px-4">
+    <div className="min-h-screen bg-muted flex items-start justify-center pt-[20vh] px-4">
 
       {/* Language toggle — top right */}
       <div className="absolute top-4 right-4">

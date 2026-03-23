@@ -40,6 +40,7 @@ export async function saveTecnica(
         color:          tecnica.color,
         required_skill: tecnica.required_skill ?? null,
         department:     tecnica.department ?? "lab",
+        typical_shifts: tecnica.typical_shifts ?? [],
         activa:         tecnica.activa ?? true,
         orden:          tecnica.orden ?? 0,
       } as never)
@@ -59,6 +60,7 @@ export async function saveTecnica(
       color:           tecnica.color,
       required_skill:  tecnica.required_skill ?? null,
       department:      tecnica.department ?? "lab",
+      typical_shifts:  tecnica.typical_shifts ?? [],
       activa:          tecnica.activa ?? true,
       orden:           tecnica.orden ?? 0,
     } as never)
