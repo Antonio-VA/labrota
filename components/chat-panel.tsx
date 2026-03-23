@@ -162,16 +162,27 @@ function ExamplePrompts({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
+export function ChatPanel({
+  onRefresh,
+  collapsed: controlledCollapsed,
+  onToggleCollapsed,
+}: {
+  onRefresh?: () => void
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+}) {
   const t = useTranslations("agent")
   const { messages, sendMessage, status } = useChat({ transport })
   const [input, setInput]       = useState("")
   const [mounted, setMounted] = useState(false)
-  const [collapsed, setCollapsed] = useState(true) // default collapsed to avoid flash
+  const [internalCollapsed, setInternalCollapsed] = useState(true) // default collapsed to avoid flash
+  const collapsed = controlledCollapsed ?? internalCollapsed
   useEffect(() => {
-    setCollapsed(localStorage.getItem("agentPanelCollapsed") === "true")
+    if (controlledCollapsed === undefined) {
+      setInternalCollapsed(localStorage.getItem("agentPanelCollapsed") === "true")
+    }
     setMounted(true)
-  }, [])
+  }, [controlledCollapsed])
   const bottomRef               = useRef<HTMLDivElement>(null)
   const inputRef                = useRef<HTMLInputElement>(null)
   const isLoading               = status === "submitted" || status === "streaming"
@@ -181,9 +192,13 @@ export function ChatPanel({ onRefresh }: { onRefresh?: () => void }) {
   }, [messages])
 
   function toggleCollapse() {
-    const next = !collapsed
-    setCollapsed(next)
-    localStorage.setItem("agentPanelCollapsed", String(next))
+    if (onToggleCollapsed) {
+      onToggleCollapsed()
+    } else {
+      const next = !internalCollapsed
+      setInternalCollapsed(next)
+      localStorage.setItem("agentPanelCollapsed", String(next))
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {

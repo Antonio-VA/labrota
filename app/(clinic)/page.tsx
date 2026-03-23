@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { CalendarPanel } from "@/components/calendar-panel"
 import { ChatPanel } from "@/components/chat-panel"
@@ -9,8 +9,21 @@ import { MobileBottomNav, type MobileTab } from "@/components/mobile-bottom-nav"
 export default function SchedulePage() {
   const [mobileTab, setMobileTab]           = useState<MobileTab>("schedule")
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
+  const [chatCollapsed, setChatCollapsed]   = useState(true)
   const tnav   = useTranslations("nav")
   const tagent = useTranslations("agent")
+
+  useEffect(() => {
+    setChatCollapsed(localStorage.getItem("agentPanelCollapsed") === "true")
+  }, [])
+
+  const toggleChat = useCallback(() => {
+    setChatCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem("agentPanelCollapsed", String(next))
+      return next
+    })
+  }, [])
 
   return (
     <>
@@ -24,10 +37,14 @@ export default function SchedulePage() {
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         <div className={`flex flex-1 overflow-hidden ${mobileTab === "chat" ? "hidden md:flex" : "flex"}`}>
-          <CalendarPanel refreshKey={calendarRefreshKey} />
+          <CalendarPanel refreshKey={calendarRefreshKey} chatOpen={!chatCollapsed} />
         </div>
         <div className={`${mobileTab === "chat" ? "flex flex-1" : "hidden"} md:flex`}>
-          <ChatPanel onRefresh={() => setCalendarRefreshKey((k) => k + 1)} />
+          <ChatPanel
+            onRefresh={() => setCalendarRefreshKey((k) => k + 1)}
+            collapsed={chatCollapsed}
+            onToggleCollapsed={toggleChat}
+          />
         </div>
       </div>
 

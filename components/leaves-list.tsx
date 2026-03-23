@@ -4,10 +4,11 @@ import { useActionState, useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarOff } from "lucide-react"
+import {
+  CalendarOff, Umbrella, Cross, User, GraduationCap, Baby, CalendarX,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
 import {
   Sheet,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/sheet"
 import { createLeave, updateLeave, deleteLeave } from "@/app/(clinic)/leaves/actions"
 import { formatDateWithYear } from "@/lib/format-date"
+import { cn } from "@/lib/utils"
 import type { LeaveWithStaff, Staff, LeaveType } from "@/lib/types/database"
 
 // ── Days between two ISO date strings (inclusive) ─────────────────────────────
@@ -29,12 +31,33 @@ function daysBetween(start: string, end: string): number {
 
 const TODAY = new Date().toISOString().split("T")[0]
 
-// ── Leave type badge ───────────────────────────────────────────────────────────
-const TYPE_VARIANTS: Record<LeaveType, "destructive" | "secondary" | "outline"> = {
-  annual:   "secondary",
-  sick:     "destructive",
-  personal: "outline",
-  other:    "outline",
+// ── Leave type config (icon + color) ─────────────────────────────────────────
+
+const LEAVE_TYPE_CONFIG: Record<LeaveType, {
+  icon: React.ElementType
+  color: string      // text color
+  bg: string         // light background
+  border: string     // subtle border
+}> = {
+  annual:    { icon: Umbrella,      color: "text-sky-600 dark:text-sky-400",       bg: "bg-sky-50 dark:bg-sky-950/40",       border: "border-sky-200 dark:border-sky-800" },
+  sick:      { icon: Cross,         color: "text-red-600 dark:text-red-400",       bg: "bg-red-50 dark:bg-red-950/40",       border: "border-red-200 dark:border-red-800" },
+  personal:  { icon: User,          color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-200 dark:border-violet-800" },
+  training:  { icon: GraduationCap, color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   border: "border-amber-200 dark:border-amber-800" },
+  maternity: { icon: Baby,          color: "text-pink-600 dark:text-pink-400",     bg: "bg-pink-50 dark:bg-pink-950/40",     border: "border-pink-200 dark:border-pink-800" },
+  other:     { icon: CalendarX,     color: "text-slate-600 dark:text-slate-400",   bg: "bg-slate-50 dark:bg-slate-950/40",   border: "border-slate-200 dark:border-slate-800" },
+}
+
+const ALL_LEAVE_TYPES: LeaveType[] = ["annual", "sick", "personal", "training", "maternity", "other"]
+
+function LeaveTypeBadge({ type, label }: { type: LeaveType; label: string }) {
+  const cfg = LEAVE_TYPE_CONFIG[type] ?? LEAVE_TYPE_CONFIG.other
+  const Icon = cfg.icon
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[12px] font-medium", cfg.bg, cfg.border, cfg.color)}>
+      <Icon className="size-3" />
+      {label}
+    </span>
+  )
 }
 
 // ── Inner form (keyed to reset on open/edit change) ───────────────────────────
@@ -102,10 +125,9 @@ function LeaveForm({
           disabled={isPending}
           className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
         >
-          <option value="annual">{t("types.annual")}</option>
-          <option value="sick">{t("types.sick")}</option>
-          <option value="personal">{t("types.personal")}</option>
-          <option value="other">{t("types.other")}</option>
+          {ALL_LEAVE_TYPES.map((lt) => (
+            <option key={lt} value={lt}>{t(`types.${lt}`)}</option>
+          ))}
         </select>
       </div>
 
@@ -214,9 +236,7 @@ function LeavesTable({
                 {leave.staff.first_name} {leave.staff.last_name}
               </td>
               <td className="px-4 py-2.5">
-                <Badge variant={TYPE_VARIANTS[leave.type]} className={muted ? "opacity-60" : ""}>
-                  {t(`types.${leave.type}`)}
-                </Badge>
+                <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
               </td>
               <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
               <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
@@ -226,6 +246,61 @@ function LeavesTable({
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ── KPI cards ────────────────────────────────────────────────────────────────
+
+function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
+  // Ausentes hoy — distinct staff off today
+  const absentToday = new Set(
+    leaves.filter((l) => l.start_date <= TODAY && l.end_date >= TODAY).map((l) => l.staff_id)
+  ).size
+
+  // Esta semana — total absence-days overlapping this Mon–Sun
+  const todayDate = new Date(TODAY + "T12:00:00")
+  const dayOfWeek = todayDate.getDay()
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const weekStart = new Date(todayDate)
+  weekStart.setDate(todayDate.getDate() + mondayOffset)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  const wsISO = weekStart.toISOString().split("T")[0]
+  const weISO = weekEnd.toISOString().split("T")[0]
+
+  let thisWeekDays = 0
+  for (const l of leaves) {
+    if (l.end_date < wsISO || l.start_date > weISO) continue
+    const clampStart = l.start_date < wsISO ? wsISO : l.start_date
+    const clampEnd = l.end_date > weISO ? weISO : l.end_date
+    thisWeekDays += daysBetween(clampStart, clampEnd)
+  }
+
+  // Proximas ausencias — leaves starting within next 7 days (not today)
+  const sevenDaysOut = new Date(todayDate)
+  sevenDaysOut.setDate(todayDate.getDate() + 7)
+  const sevenISO = sevenDaysOut.toISOString().split("T")[0]
+  const upcoming = leaves.filter((l) => l.start_date > TODAY && l.start_date <= sevenISO).length
+
+  // Pendiente aprobar
+  const pendingApproval = leaves.filter((l) => l.status === "pending").length
+
+  const cards = [
+    { label: "Ausentes hoy", value: absentToday },
+    { label: "Esta semana", value: `${thisWeekDays}d` },
+    { label: "Prox. ausencias", value: upcoming },
+    { label: "Pendiente aprobar", value: pendingApproval },
+  ]
+
+  return (
+    <div className="grid grid-cols-4 gap-3 mb-4">
+      {cards.map((kpi) => (
+        <div key={kpi.label} className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+          <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+          <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+        </div>
+      ))}
     </div>
   )
 }
@@ -280,13 +355,15 @@ export function LeavesList({
           className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="all">{t("columns.type")}: —</option>
-          <option value="annual">{t("types.annual")}</option>
-          <option value="sick">{t("types.sick")}</option>
-          <option value="personal">{t("types.personal")}</option>
-          <option value="other">{t("types.other")}</option>
+          {ALL_LEAVE_TYPES.map((lt) => (
+            <option key={lt} value={lt}>{t(`types.${lt}`)}</option>
+          ))}
         </select>
         <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
       </div>
+
+      {/* KPI cards */}
+      {leaves.length > 0 && <KpiCards leaves={leaves} />}
 
       {/* Empty state — no leaves at all */}
       {leaves.length === 0 && (

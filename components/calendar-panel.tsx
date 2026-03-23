@@ -519,7 +519,8 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
 // ── Staff profile panel ───────────────────────────────────────────────────────
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
-  annual: "Vacaciones", sick: "Baja médica", personal: "Personal", other: "Otro",
+  annual: "Vacaciones", sick: "Baja médica", personal: "Personal",
+  training: "Formación", maternity: "Maternidad/Paternidad", other: "Otro",
 }
 
 function StaffProfilePanel({
@@ -1284,7 +1285,10 @@ function PersonGrid({
                 </div>
                 {Array.from({ length: 7 }).map((_, j) => (
                   <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px]">
-                    {j < 5 && <div className="shimmer-bar h-9 w-full rounded" />}
+                    {j < 5
+                      ? <div className="shimmer-bar h-9 w-full rounded" />
+                      : (i % 3 !== 0) && <div className="shimmer-bar h-9 w-full rounded opacity-50" />
+                    }
                   </div>
                 ))}
               </Fragment>
@@ -1424,7 +1428,7 @@ function PersonGrid({
                                 </div>
                               } />
                               <TooltipContent side="right">
-                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}
+                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}{assignment.function_label && (s.staff_skills ?? []).find((sk) => sk.skill === assignment.function_label)?.level === "training" ? " · En formación" : ""}
                               </TooltipContent>
                             </Tooltip>
                           </AssignmentPopover>
@@ -1711,7 +1715,10 @@ function ShiftGrid({
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-background">
-                  {row !== "off" && i < 3 && <div className="shimmer-bar h-5 w-full" />}
+                  {row !== "off" && (i < 5
+                    ? <div className="shimmer-bar h-5 w-full" />
+                    : (i === 5) && <div className="shimmer-bar h-5 w-full opacity-50" />
+                  )}
                 </div>
               ))}
             </div>
@@ -1899,7 +1906,7 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}{a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training" ? " · En formación" : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
@@ -2626,7 +2633,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey?: number; chatOpen?: boolean }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -3030,13 +3037,20 @@ export function CalendarPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           {weekData && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {showActions && !isPublished && (
+          {showActions && !isPublished && !chatOpen && (
             <Button size="sm" onClick={handleGenerateClick} disabled={isPending || loadingWeek}>
               {isPending ? tc("generating") : t("generateRota")}
             </Button>
           )}
           {(showActions || hasAssignments) && (
             <OverflowMenu items={[
+              // ── Generate (inside overflow when chat is open) ──
+              ...(showActions && !isPublished && chatOpen ? [{
+                label: isPending ? tc("generating") : t("generateRota"),
+                icon: <Sparkles className="size-3.5" />,
+                onClick: handleGenerateClick,
+                disabled: isPending || loadingWeek,
+              }] : []),
               // ── Group 1: Export & Publish ──
               ...(hasAssignments ? [{
                 label: t("exportPdf"),

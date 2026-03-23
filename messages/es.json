@@ -310,6 +310,8 @@
       "annual": "Vacaciones",
       "sick": "Baja médica",
       "personal": "Asuntos propios",
+      "training": "Formación",
+      "maternity": "Maternidad/Paternidad",
       "other": "Otros"
     },
     "status": {

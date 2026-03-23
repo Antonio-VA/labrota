@@ -908,6 +908,36 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
         </Button>
       </div>
 
+      {/* KPI cards */}
+      {staff.length > 0 && (() => {
+        const activeStaff = staff.filter((s) => s.onboarding_status !== "inactive")
+        const activeCount = activeStaff.length
+        const trainingCount = activeStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length
+        const tecnicaCodes = tecnicas.map((t) => t.codigo)
+        const coveredCount = tecnicaCodes.filter((code) => {
+          const certified = activeStaff.filter((s) => s.staff_skills.some((sk) => sk.skill === code && sk.level === "certified"))
+          return certified.length >= 2
+        }).length
+        const fullyValidated = tecnicaCodes.length > 0
+          ? activeStaff.filter((s) => tecnicaCodes.every((code) => s.staff_skills.some((sk) => sk.skill === code && sk.level === "certified"))).length
+          : 0
+        return (
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Activos", value: activeCount },
+              { label: "En formación", value: trainingCount },
+              { label: "Cobertura técnicas", value: `${coveredCount}/${tecnicaCodes.length}` },
+              { label: "Validación completa", value: fullyValidated },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* Empty state — no staff at all */}
       {staff.length === 0 && (
         <EmptyState

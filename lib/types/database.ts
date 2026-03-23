@@ -21,7 +21,7 @@ export interface Department {
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
 export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
-export type LeaveType         = 'annual' | 'sick' | 'personal' | 'other'
+export type LeaveType         = 'annual' | 'sick' | 'personal' | 'training' | 'maternity' | 'other'
 export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
 export type SkillName = string
 

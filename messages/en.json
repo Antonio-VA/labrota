@@ -310,6 +310,8 @@
       "annual": "Annual leave",
       "sick": "Sick leave",
       "personal": "Personal leave",
+      "training": "Training",
+      "maternity": "Maternity/Paternity",
       "other": "Other"
     },
     "status": {
