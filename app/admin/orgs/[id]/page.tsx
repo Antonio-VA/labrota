@@ -9,6 +9,8 @@ import type { Organisation } from "@/lib/types/database"
 import { ArrowLeft, Users } from "lucide-react"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminUsersTable, type UserRow } from "@/components/admin-users-table"
+import { AdminRegionalSettings } from "@/components/admin-regional-settings"
+import { updateOrgRegional } from "@/app/admin/actions"
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value }: { label: string; value: string | number }) {
@@ -38,6 +40,7 @@ export default async function OrgDetailPage({
     rotasRes,
     recentRotasRes,
     profilesRes,
+    labConfigRes,
   ] = await Promise.all([
     admin.from("organisations").select("*").eq("id", id).single(),
     admin
@@ -58,6 +61,11 @@ export default async function OrgDetailPage({
       .from("organisation_members")
       .select("user_id, role, display_name")
       .eq("organisation_id", id),
+    admin
+      .from("lab_config")
+      .select("country, region")
+      .eq("organisation_id", id)
+      .maybeSingle(),
   ])
 
   if (!orgRes.data) notFound()
@@ -122,6 +130,19 @@ export default async function OrgDetailPage({
         <StatCard label="Rotas (all time)"  value={rotasRes.count ?? 0} />
         <StatCard label="Rotas (30 days)"   value={recentRotasRes.count ?? 0} />
         <StatCard label="Last login"        value={lastLoginOverall ? fmt(lastLoginOverall) : "Never"} />
+      </div>
+
+      {/* Regional settings */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-[18px] font-medium">Regional settings</h2>
+        <div className="rounded-lg border border-border bg-background p-5">
+          <AdminRegionalSettings
+            orgId={id}
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+            onSave={updateOrgRegional}
+          />
+        </div>
       </div>
 
       {/* Users */}
