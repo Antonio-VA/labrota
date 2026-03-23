@@ -87,6 +87,8 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
   const [values, setValues] = useState({
     punctions_by_day:     config.punctions_by_day ?? DEFAULT_PUNCTIONS,
     autonomous_community: config.autonomous_community ?? "",
+    ratio_optimal:        config.ratio_optimal ?? 1.0,
+    ratio_minimum:        config.ratio_minimum ?? 0.75,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -124,6 +126,8 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
       const result = await updateLabConfig({
         punctions_by_day:     values.punctions_by_day,
         autonomous_community: values.autonomous_community || null,
+        ratio_optimal:        values.ratio_optimal,
+        ratio_minimum:        values.ratio_minimum,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -230,6 +234,44 @@ export function LabConfigForm({ config }: { config: LabConfig }) {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Ratio de cobertura" />
+        <p className="text-[13px] text-muted-foreground mb-3">Embriólogos certificados por punción. Se muestra en la cabecera del calendario.</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label="Ratio óptimo (verde)" hint="Por encima de este valor el indicador es verde">
+            <Input
+              type="number"
+              min={0.1}
+              max={5}
+              step={0.05}
+              value={values.ratio_optimal}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v }))
+              }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+          <FieldRow label="Ratio mínimo (ámbar)" hint="Por debajo = rojo. Entre mínimo y óptimo = ámbar">
+            <Input
+              type="number"
+              min={0.1}
+              max={5}
+              step={0.05}
+              value={values.ratio_minimum}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v }))
+              }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
         </div>
       </div>
 

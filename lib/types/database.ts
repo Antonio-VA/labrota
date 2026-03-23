@@ -177,6 +177,8 @@ export interface LabConfig {
   admin_on_weekends:        boolean
   admin_default_shift:      string | null
   autonomous_community:     string | null
+  ratio_optimal:            number
+  ratio_minimum:            number
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -213,6 +215,8 @@ export type LabConfigUpdate = {
   admin_on_weekends?:        boolean
   admin_default_shift?:      string | null
   autonomous_community?:     string | null
+  ratio_optimal?:            number
+  ratio_minimum?:            number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string

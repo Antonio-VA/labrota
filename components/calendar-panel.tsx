@@ -358,9 +358,10 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
 
 // ── Punctions input ────────────────────────────────────────────────────────────
 
-function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disabled }: {
+function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disabled, certifiedLabCount, ratioOptimal, ratioMinimum }: {
   date: string; value: number; defaultValue: number; isOverride: boolean
   onChange: (date: string, value: number | null) => void; disabled: boolean
+  certifiedLabCount?: number; ratioOptimal?: number; ratioMinimum?: number
 }) {
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
@@ -391,10 +392,32 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
 
   const label = value > 0 ? `P:${value}` : "P:—"
 
+  // Ratio calculation: certified lab staff / punciones
+  const hasRatio = certifiedLabCount !== undefined && value > 0
+  const ratio = hasRatio ? certifiedLabCount / value : 0
+  const optThreshold = ratioOptimal ?? 1.0
+  const minThreshold = ratioMinimum ?? 0.75
+  const ratioColor = !hasRatio ? "" : ratio >= optThreshold ? "text-emerald-600 dark:text-emerald-400" : ratio >= minThreshold ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+  const ratioLabel = !hasRatio ? "" : ratio >= optThreshold ? "Ratio óptimo" : ratio >= minThreshold ? "Ratio aceptable" : "Ratio insuficiente"
+
+  const ratioSpan = hasRatio ? (
+    <Tooltip>
+      <TooltipTrigger render={
+        <span className={cn("text-[10px] font-medium tabular-nums cursor-default", ratioColor)}>
+          {ratio.toFixed(1)}
+        </span>
+      } />
+      <TooltipContent side="bottom">
+        {certifiedLabCount} embriólogos certificados · {value} punciones · {ratioLabel}
+      </TooltipContent>
+    </Tooltip>
+  ) : null
+
   if (disabled) {
     return (
       <span className={cn("flex items-center gap-0.5 text-[10px] font-medium tabular-nums", isOverride ? "text-primary" : "text-muted-foreground")}>
         {label}
+        {ratioSpan && <><span className="text-muted-foreground/40">·</span>{ratioSpan}</>}
         {isOverride && (
           <Tooltip>
             <TooltipTrigger render={<span className="text-amber-500 font-bold cursor-default">*</span>} />
@@ -417,6 +440,7 @@ function PunctionsInput({ date, value, defaultValue, isOverride, onChange, disab
       >
         {label}
       </button>
+      {ratioSpan && <><span className="text-[10px] text-muted-foreground/40">·</span>{ratioSpan}</>}
       {isOverride && (
         <Tooltip>
           <TooltipTrigger render={
@@ -1504,6 +1528,7 @@ function ShiftGrid({
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
   onRefresh, weekStart, compact, colorChips, onDateClick, onLocalDaysChange,
+  ratioOptimal, ratioMinimum,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1525,6 +1550,8 @@ function ShiftGrid({
   colorChips?: boolean
   onDateClick?: (date: string) => void
   onLocalDaysChange?: (days: RotaDay[]) => void
+  ratioOptimal?: number
+  ratioMinimum?: number
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -1816,7 +1843,7 @@ function ShiftGrid({
                   </div>
                 </button>
 
-                {/* Punctions — clickable popover */}
+                {/* Punctions + ratio — clickable popover */}
                 <PunctionsInput
                   date={day.date}
                   value={effectiveP}
@@ -1824,6 +1851,9 @@ function ShiftGrid({
                   isOverride={hasOverride}
                   onChange={onPunctionsChange}
                   disabled={isPublished || !data.rota}
+                  certifiedLabCount={day.assignments.length > 0 ? day.assignments.filter((a) => a.staff.role === "lab").length : undefined}
+                  ratioOptimal={ratioOptimal}
+                  ratioMinimum={ratioMinimum}
                 />
 
               </div>
@@ -3245,6 +3275,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   colorChips={colorChips}
                   onDateClick={handleMonthDayClick}
                   onLocalDaysChange={setLiveDays}
+                  ratioOptimal={weekData?.ratioOptimal}
+                  ratioMinimum={weekData?.ratioMinimum}
                 />
               ) : (
                 <PersonGrid

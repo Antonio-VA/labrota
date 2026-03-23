@@ -56,6 +56,8 @@ export interface RotaWeekData {
   publicHolidays: Record<string, string>
   tecnicas: Tecnica[]
   departments: import("@/lib/types/database").Department[]
+  ratioOptimal: number
+  ratioMinimum: number
 }
 
 // ── Spanish national public holidays ─────────────────────────────────────────
@@ -190,7 +192,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [] }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75 }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -312,7 +314,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [] }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75 }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────

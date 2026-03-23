@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"
 import { formatDateWithYear, formatDate } from "@/lib/format-date"
 import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL } from "@/lib/department-colors"
+import { createClient } from "@/lib/supabase/server"
 
 export default async function PrintRotaPage({
   params,
@@ -14,6 +15,18 @@ export default async function PrintRotaPage({
   const { weekStart } = await params
   const locale = (await getLocale()) as "es" | "en"
   const data = await getRotaWeek(weekStart)
+
+  // Fetch org name
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  let orgName = "LabRota"
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("organisation_id").eq("id", user.id).single() as { data: { organisation_id: string | null } | null }
+    if (profile?.organisation_id) {
+      const { data: org } = await supabase.from("organisations").select("name").eq("id", profile.organisation_id).single() as { data: { name: string } | null }
+      if (org) orgName = org.name
+    }
+  }
 
   if (!data.rota && data.days.every((d) => d.assignments.length === 0)) {
     notFound()
@@ -77,7 +90,7 @@ export default async function PrintRotaPage({
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1b4f8a", paddingBottom: 10, marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#1b4f8a", marginBottom: 2 }}>LabRota</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#1b4f8a", marginBottom: 2 }}>{orgName}</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{weekLabel}</div>
           </div>
           <div style={{ textAlign: "right", color: "#64748b", fontSize: 10, lineHeight: 1.6 }}>
@@ -114,6 +127,9 @@ export default async function PrintRotaPage({
                       color: isToday ? "#fff" : day.isWeekend ? "#94a3b8" : "#1b4f8a",
                       ...(isToday ? { background: "#1b4f8a", borderRadius: "50%", width: 24, height: 24, lineHeight: "24px", margin: "2px auto 0", textAlign: "center" as const } : {}),
                     }}>{dayNum}</div>
+                    <div style={{ fontSize: 8, color: "#94a3b8", marginTop: 1 }}>
+                      P:{data.punctionsDefault[day.date] ?? 0}
+                    </div>
                     {day.skillGaps.length > 0 && (
                       <div style={{ color: "#d97706", fontSize: 9, marginTop: 1 }}>⚠ {day.skillGaps.length}</div>
                     )}
@@ -210,7 +226,7 @@ export default async function PrintRotaPage({
                 if (!counts[a.staff_id]) {
                   counts[a.staff_id] = {
                     name: `${a.staff.first_name} ${a.staff.last_name[0]}.`,
-                    role: a.staff.role, count: 0, budget: 5,
+                    role: a.staff.role, count: 0, budget: (a.staff as { days_per_week?: number }).days_per_week ?? 6,
                   }
                 }
                 counts[a.staff_id].count++
