@@ -2080,20 +2080,20 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   const weekStatusMap = Object.fromEntries(summary.weekStatuses.map((ws) => [ws.weekStart, ws.status]))
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="grid grid-cols-7 gap-1 mb-1">
+    <div className="flex flex-col gap-1.5">
+      {/* Day headers */}
+      <div className="grid grid-cols-7 gap-1.5 mb-1">
         {headers.map((h) => (
-          <div key={h} className="text-center text-[11px] font-medium text-muted-foreground py-1">{h}</div>
+          <div key={h} className="text-center text-[13px] font-semibold text-muted-foreground py-2">{h}</div>
         ))}
       </div>
 
       {weeks.map((week, wi) => {
         const weekStart = week[0].date
-        const weekStatus = weekStatusMap[weekStart] ?? null
         return (
           <div key={wi}>
             <div
-              className="grid grid-cols-7 gap-1 rounded-lg transition-colors cursor-pointer group-hover/week:bg-blue-50/40"
+              className="grid grid-cols-7 gap-1.5 cursor-pointer"
               onClick={() => onSelectWeek(weekStart)}
             >
               {week.map((day) => {
@@ -2114,63 +2114,65 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                   <button
                     onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
                     className={cn(
-                      "relative flex flex-col items-start p-2 rounded-lg border text-left transition-colors min-h-[80px]",
+                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[100px]",
                       !day.isCurrentMonth
-                        ? "bg-muted/50 border-border/30"
+                        ? "bg-muted/40 border-border/30"
                         : day.holidayName
-                        ? "bg-amber-50/40 border-amber-100"
+                        ? "bg-amber-50/40 border-amber-200/60"
                         : day.isWeekend
                         ? "bg-muted/30 border-border hover:bg-muted/50"
-                        : "bg-background border-border hover:bg-muted/30"
+                        : "bg-background border-border hover:bg-muted/20"
                     )}
                   >
-                    {/* Top row: date + coverage indicator */}
-                    <div className="flex items-center justify-between w-full mb-1">
+                    {/* Top row: date + status icon */}
+                    <div className="flex items-start justify-between w-full">
                       <div className={cn(
-                        "size-7 flex items-center justify-center rounded-full text-[18px] leading-none",
-                        isToday ? "bg-primary text-primary-foreground font-semibold"
-                          : !day.isCurrentMonth ? "text-muted-foreground/30 font-normal text-[14px]"
-                          : "font-semibold text-foreground"
+                        "flex items-center justify-center rounded-full leading-none",
+                        isToday
+                          ? "size-8 bg-primary text-primary-foreground text-[20px] font-bold"
+                          : !day.isCurrentMonth
+                          ? "text-muted-foreground/25 text-[16px] font-normal"
+                          : "text-[20px] font-bold text-foreground"
                       )}>
                         {dayNum}
                       </div>
                       {day.staffCount > 0 && (
                         day.hasSkillGaps
-                          ? <AlertTriangle className="size-3 text-amber-500" />
-                          : <CheckCircle2 className="size-3 text-emerald-400" />
+                          ? <AlertTriangle className="size-4 text-amber-500" />
+                          : <CheckCircle2 className="size-4 text-emerald-400" />
                       )}
                     </div>
 
                     {/* Holiday name */}
                     {day.holidayName && day.isCurrentMonth && (
-                      <span className="text-[9px] text-amber-600 leading-tight truncate w-full">{day.holidayName}</span>
+                      <span className="text-[10px] text-amber-600 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department breakdown chips */}
+                    {/* Department chips — centered in cell */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1 mt-auto flex-wrap">
+                      <div className="flex items-center gap-2 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{day.labCount}E</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{day.labCount}E</span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{day.andrologyCount}A</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{day.andrologyCount}A</span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{day.adminCount}Ad</span>
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{day.adminCount}Ad</span>
                         )}
                       </div>
                     )}
 
-                    {/* Sin guardia label */}
+                    {/* Sin guardia */}
                     {day.staffCount === 0 && day.isCurrentMonth && !day.holidayName && (
-                      <span className="text-[9px] text-muted-foreground/40 italic mt-auto">Sin guardia</span>
+                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">Sin guardia</span>
                     )}
 
-                    {/* Bottom row: punctions + ratio + leave */}
+                    {/* Punctions + ratio + leave */}
                     {day.isCurrentMonth && (day.punctions > 0 || day.leaveCount > 0) && (
-                      <div className="flex items-center gap-1 mt-0.5">
+                      <div className="flex items-center gap-1.5 mt-1">
                         {day.punctions > 0 && (
-                          <span className="text-[9px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
+                          <span className="text-[11px] text-muted-foreground tabular-nums">P:{day.punctions}</span>
                         )}
                         {day.punctions > 0 && day.labCount > 0 && (() => {
                           const ratio = day.labCount / day.punctions
@@ -2178,7 +2180,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           const min = (summary as RotaMonthSummary).ratioMinimum ?? 0.75
                           return (
                             <span className={cn(
-                              "text-[9px] font-medium tabular-nums",
+                              "text-[11px] font-medium tabular-nums",
                               ratio >= opt ? "text-emerald-600 dark:text-emerald-400" : ratio >= min ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                             )}>
                               {ratio.toFixed(1)}
@@ -2186,8 +2188,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           )
                         })()}
                         {day.leaveCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-[9px] text-amber-500">
-                            <Briefcase className="size-2.5" />{day.leaveCount}
+                          <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
+                            <Briefcase className="size-3" />{day.leaveCount}
                           </span>
                         )}
                       </div>
