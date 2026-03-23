@@ -207,7 +207,7 @@ export function StaffForm({
             <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
           </Field>
           <Field label={t("fields.endDate")}>
-            <Input name="end_date" type="date" defaultValue={staff?.end_date ?? ""} disabled={isPending} className="rounded-[8px]" />
+            <Input name="end_date" type="date" defaultValue={staff?.end_date ?? undefined} disabled={isPending} className="rounded-[8px]" />
           </Field>
         </div>
         <Field label={t("fields.daysPerWeek")} required>
