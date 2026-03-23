@@ -3331,14 +3331,33 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               }] : []),
               // ── Group 4: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{
-                label: "Eliminar guardia",
+                label: view === "month" ? "Eliminar 4 semanas" : "Eliminar guardia",
                 icon: <Trash2 className="size-3.5" />,
                 onClick: () => {
-                  if (confirm("¿Eliminar todas las asignaciones de esta semana?")) {
+                  const msg = view === "month"
+                    ? "¿Eliminar todas las asignaciones de las 4 semanas visibles?"
+                    : "¿Eliminar todas las asignaciones de esta semana?"
+                  if (confirm(msg)) {
                     startTransition(async () => {
-                      const result = await clearWeek(weekStart)
-                      if (result.error) toast.error(result.error)
-                      else { toast.success("Guardia eliminada"); fetchWeek(weekStart) }
+                      if (view === "month" && monthSummary) {
+                        const allWeekStarts: string[] = []
+                        for (let i = 0; i < monthSummary.days.length; i += 7) {
+                          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
+                        }
+                        let errors = 0
+                        for (const ws of allWeekStarts) {
+                          const result = await clearWeek(ws)
+                          if (result.error) errors++
+                        }
+                        if (errors > 0) toast.error(`${errors} semanas con error`)
+                        else toast.success("4 semanas eliminadas")
+                        fetchWeek(weekStart)
+                        fetchMonth(monthStart, weekStart)
+                      } else {
+                        const result = await clearWeek(weekStart)
+                        if (result.error) toast.error(result.error)
+                        else { toast.success("Guardia eliminada"); fetchWeek(weekStart) }
+                      }
                     })
                   }
                 },
