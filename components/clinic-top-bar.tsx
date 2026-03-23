@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState, useTransition } from "react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Check, ChevronDown } from "lucide-react"
 import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
@@ -40,39 +39,23 @@ export function ClinicTopBar({
   return (
     <header className="hidden md:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4 gap-4">
 
-      {/* Left: LabRota wordmark */}
-      <a href="/" className="flex items-center shrink-0">
-        <Image
-          src="/brand/logo-wordmark.svg"
-          alt="LabRota"
-          width={88}
-          height={18}
-          priority
-        />
-      </a>
-
-      <div className="flex-1" />
-
-      {/* Notifications */}
-      <NotificationBell />
-
-      {/* Right: org logo + name */}
+      {/* Left: org selector */}
       {orgName && (
         allOrgs.length > 1 ? (
           <div className="relative" ref={orgMenuRef}>
             <button
               onClick={() => setOrgMenuOpen((v) => !v)}
               disabled={isSwitching}
-              className="flex items-center gap-2 text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 text-[14px] font-medium text-foreground hover:text-foreground/80 transition-colors disabled:opacity-60"
             >
-              {orgName}
               {orgLogoUrl && !logoError && (
                 <img src={orgLogoUrl} alt="" className="h-6 w-auto max-w-[120px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
               )}
+              {orgName}
               <ChevronDown className="size-3.5 opacity-50" />
             </button>
             {orgMenuOpen && (
-              <div className="absolute right-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+              <div className="absolute left-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
                 {allOrgs.map((org) => (
                   <button
                     key={org.id}
@@ -101,13 +84,18 @@ export function ClinicTopBar({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-medium text-muted-foreground">{orgName}</span>
             {orgLogoUrl && !logoError && (
               <img src={orgLogoUrl} alt="" className="h-6 w-auto max-w-[120px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
             )}
+            <span className="text-[14px] font-medium text-foreground">{orgName}</span>
           </div>
         )
       )}
+
+      <div className="flex-1" />
+
+      {/* Right: notifications */}
+      <NotificationBell />
     </header>
   )
 }
