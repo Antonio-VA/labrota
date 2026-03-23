@@ -2753,6 +2753,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
   // Fetch week data
   const fetchWeek = useCallback((ws: string) => {
     setLoadingWeek(true)
+    setLiveDays(null)
     setError(null)
     getRotaWeek(ws).then((d) => {
       setWeekData(d)
