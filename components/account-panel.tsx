@@ -97,9 +97,9 @@ export function AccountPanel({ open, onClose, user }: {
       {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
 
       <div className={cn(
-        "fixed left-0 top-0 bottom-0 z-50 bg-background border-r border-border shadow-xl",
+        "fixed right-0 top-0 bottom-0 z-50 bg-background border-l border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[360px]",
-        open ? "translate-x-0" : "-translate-x-full",
+        open ? "translate-x-0" : "translate-x-full",
       )}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">

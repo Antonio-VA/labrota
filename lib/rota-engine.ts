@@ -390,17 +390,13 @@ export function runRotaEngine({
       }
     }
 
-    // 7. Warnings for coverage shortfalls + debug info
-    if (assigned.length < labRequired + andrologyRequired + adminRequired) {
-      const prefCount = preferred.length
-      const extraCount = extra.length
-      warnings.push(
-        `${date} (${dayCode}): assigned ${assignedLab.length}L+${assignedAndrology.length}A+${assignedAdmin.length}Ad = ${assigned.length} ` +
-        `(need ${labRequired}L+${andrologyRequired}A+${adminRequired}Ad) | ` +
-        `preferred=${prefCount} extra=${extraCount} | ` +
-        `coverage_by_day.${dayCode}=${JSON.stringify(dayCoverage ?? "null")}`
-      )
-    }
+    // 7. Debug: always log assignment counts per day
+    warnings.push(
+      `[debug] ${date} (${dayCode}): ${assignedLab.length}L+${assignedAndrology.length}A+${assignedAdmin.length}Ad = ${assigned.length} assigned` +
+      ` | need ${labRequired}L+${andrologyRequired}A+${adminRequired}Ad` +
+      ` | eligible preferred=${preferred.length} extra=${extra.length}` +
+      ` | labPool=${labPool.length} weekend=${weekend}`
+    )
     if (labPool.length < labRequired) {
       warnings.push(`${date}: only ${labPool.length} lab staff available (need ${labRequired})`)
     }
