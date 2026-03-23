@@ -3319,7 +3319,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
       />
 
       {/* Bottom taskbar — hidden for viewers */}
-      {canEdit && view === "week" && weekData && (
+      {canEdit && view === "week" && weekData && !loadingWeek && (
         <ShiftBudgetBar
           data={weekData}
           staffList={filteredStaffList}
@@ -3329,7 +3329,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
           deptFilter={deptFilter}
         />
       )}
-      {canEdit && view === "month" && monthSummary && (
+      {canEdit && view === "month" && monthSummary && !loadingMonth && (
         <MonthBudgetBar
           summary={monthSummary}
           monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}
