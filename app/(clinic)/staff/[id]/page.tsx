@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
-import type { StaffWithSkills, Tecnica, Department } from "@/lib/types/database"
+import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition } from "@/lib/types/database"
 
 export default async function EditStaffPage({
   params,
@@ -16,10 +16,11 @@ export default async function EditStaffPage({
   const supabase = await createClient()
   const t = await getTranslations("staff")
 
-  const [staffRes, tecnicasRes, deptRes] = await Promise.all([
+  const [staffRes, tecnicasRes, deptRes, shiftTypesRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").eq("id", id).single() as unknown as Promise<{ data: StaffWithSkills | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("departments").select("*").order("sort_order"),
+    supabase.from("shift_types").select("*").order("sort_order"),
   ])
 
   if (!staffRes.data) notFound()
@@ -27,6 +28,7 @@ export default async function EditStaffPage({
   const staff       = staffRes.data as StaffWithSkills
   const tecnicas    = (tecnicasRes.data ?? []) as Tecnica[]
   const departments = (deptRes.data ?? []) as Department[]
+  const shiftTypes  = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
 
   return (
     <>
@@ -39,7 +41,7 @@ export default async function EditStaffPage({
                 {staff.first_name} {staff.last_name}
               </p>
             </div>
-            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} />
+            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} />
           </div>
         </MobileGate>
       </div>

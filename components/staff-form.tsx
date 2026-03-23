@@ -84,11 +84,13 @@ export function StaffForm({
   staff,
   tecnicas,
   departments: deptsProp,
+  shiftTypes = [],
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
   tecnicas?: Tecnica[]
   departments?: import("@/lib/types/database").Department[]
+  shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -225,10 +227,9 @@ export function StaffForm({
         <Field label={t("fields.preferredShift")}>
           <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
             <option value="">{t("fields.preferredShiftNone")}</option>
-            <option value="T1">T1</option>
-            <option value="T2">T2</option>
-            <option value="T3">T3</option>
-            <option value="T4">T4</option>
+            {shiftTypes.filter((st) => st.active !== false).map((st) => (
+              <option key={st.code} value={st.code}>{st.code} — {st.name_es}</option>
+            ))}
           </Select>
           <p className="text-[12px] text-muted-foreground mt-1">
             {t("fields.preferredShiftHint")}
