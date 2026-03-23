@@ -281,7 +281,7 @@ export function StaffForm({
           <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
             <option value="">{t("fields.preferredShiftNone")}</option>
             {shiftTypes.filter((st) => st.active !== false).map((st) => (
-              <option key={st.code} value={st.code}>{st.code} — {st.name_es}</option>
+              <option key={st.code} value={st.code}>{st.code} — {st.name_es} ({st.start_time}–{st.end_time})</option>
             ))}
           </Select>
           <p className="text-[12px] text-muted-foreground mt-1">
