@@ -961,8 +961,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
-      style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
+      className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
     >
       {/* Left: label + pills */}
       <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
@@ -1013,8 +1012,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-30 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
-      style={{ left: 80, boxShadow: "0 -1px 4px rgba(0,0,0,0.06)" }}
+      className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
     >
       <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
       <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
@@ -3416,7 +3414,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 pb-12 gap-0 overflow-hidden">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {(!weekData?.rota || (weekData && !weekData.days.some((d) => d.assignments.length > 0))) && !loadingWeek && !isPending ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
@@ -3502,7 +3500,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
         {/* Month view */}
         {view === "month" && (
-          <div className="hidden md:block overflow-auto flex-1 px-4 py-3 pb-14">
+          <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
             <MonthGrid
               summary={monthSummary}
               loading={loadingMonth}
