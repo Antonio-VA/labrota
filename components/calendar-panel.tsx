@@ -2162,13 +2162,15 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   if (loading || !summary) {
     return (
       <div className="flex flex-col gap-1">
-        <div className="grid grid-cols-7 gap-1 mb-1">
+        <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
+          <div />
           {headers.map((h) => (
             <div key={h} className="text-center text-[11px] font-medium text-muted-foreground py-1">{h}</div>
           ))}
         </div>
         {Array.from({ length: 4 }).map((_, w) => (
-          <div key={w} className="grid grid-cols-7 gap-1.5">
+          <div key={w} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5">
+            <Skeleton className="h-[120px] rounded-lg" />
             {Array.from({ length: 7 }).map((_, d) => (
               <Skeleton key={d} className="h-[120px] rounded-lg" />
             ))}
@@ -2192,8 +2194,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1.5 mb-1">
+      {/* Day headers — with week number column */}
+      <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
+        <div className="text-center text-[11px] font-medium text-muted-foreground/40 py-2">S</div>
         {headers.map((h, i) => (
           <div key={h} className={cn(
             "text-center text-[13px] font-semibold py-2",
@@ -2204,12 +2207,24 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
       {weeks.map((week, wi) => {
         const weekStart = week[0].date
+        // ISO week number
+        const d = new Date(weekStart + "T12:00:00")
+        const jan1 = new Date(d.getFullYear(), 0, 1)
+        const weekNum = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
         return (
-          <div key={wi}>
-            <div
-              className="grid grid-cols-7 gap-1.5 cursor-pointer"
-              onClick={() => onSelectWeek(weekStart)}
-            >
+          <div key={wi} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5">
+            {/* Week number */}
+            <Tooltip>
+              <TooltipTrigger render={
+                <button
+                  onClick={() => onSelectWeek(weekStart)}
+                  className="flex items-center justify-center h-full text-[11px] font-medium text-muted-foreground/50 hover:text-primary hover:bg-accent/10 rounded-lg transition-colors"
+                >
+                  {weekNum}
+                </button>
+              } />
+              <TooltipContent side="left">Ir a semana {weekNum}</TooltipContent>
+            </Tooltip>
               {week.map((day) => {
                 const isToday    = day.date === TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
@@ -2234,7 +2249,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         : day.holidayName
                         ? "bg-amber-500/10 border-amber-500/20"
                         : day.isWeekend
-                        ? "bg-muted/40 border-border hover:bg-accent/20"
+                        ? "bg-muted/60 border-border hover:bg-accent/20"
                         : "bg-background border-border hover:bg-accent/10"
                     )}
                   >
@@ -2322,7 +2337,6 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                   </Tooltip>
                 )
               })}
-            </div>
           </div>
         )
       })}
