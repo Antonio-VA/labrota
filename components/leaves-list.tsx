@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
   CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX,
-  UserX, Calendar, CalendarClock, Clock,
+  UserX, Calendar, CalendarClock, CalendarDays,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -284,14 +284,23 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   const sevenISO = sevenDaysOut.toISOString().split("T")[0]
   const upcoming = leaves.filter((l) => l.start_date > TODAY && l.start_date <= sevenISO).length
 
-  // Pendiente aprobar
-  const pendingApproval = leaves.filter((l) => l.status === "pending").length
+  // Próximos 30 días — total absence days in next 30 days
+  const thirtyDaysOut = new Date(todayDate)
+  thirtyDaysOut.setDate(todayDate.getDate() + 30)
+  const thirtyISO = thirtyDaysOut.toISOString().split("T")[0]
+  let next30Days = 0
+  for (const l of leaves) {
+    if (l.end_date < TODAY || l.start_date > thirtyISO) continue
+    const clampStart = l.start_date < TODAY ? TODAY : l.start_date
+    const clampEnd = l.end_date > thirtyISO ? thirtyISO : l.end_date
+    next30Days += daysBetween(clampStart, clampEnd)
+  }
 
   const cards: { label: string; subtitle: string; value: number; icon: React.ElementType; accent: string }[] = [
-    { label: "Ausentes hoy",     subtitle: "Personas fuera hoy",       value: absentToday,     icon: UserX,         accent: "border-l-red-500" },
-    { label: "Esta semana",      subtitle: "Días de ausencia totales",  value: thisWeekDays,    icon: Calendar,      accent: "border-l-blue-500" },
-    { label: "Próx. ausencias",  subtitle: "En los próximos 7 días",   value: upcoming,        icon: CalendarClock, accent: "border-l-amber-500" },
-    { label: "Pendiente aprobar", subtitle: "Solicitudes sin revisar", value: pendingApproval, icon: Clock,         accent: "border-l-orange-500" },
+    { label: "Ausentes hoy",     subtitle: "Personas fuera hoy",         value: absentToday, icon: UserX,         accent: "border-l-red-500" },
+    { label: "Esta semana",      subtitle: "Días de ausencia totales",    value: thisWeekDays, icon: Calendar,     accent: "border-l-blue-500" },
+    { label: "Próx. ausencias",  subtitle: "En los próximos 7 días",     value: upcoming,    icon: CalendarClock, accent: "border-l-amber-500" },
+    { label: "Próximos 30 días", subtitle: "Días de ausencia programados", value: next30Days, icon: CalendarDays,  accent: "border-l-purple-500" },
   ]
 
   return (
@@ -304,7 +313,7 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
               <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
               <Icon className="size-4 text-muted-foreground/50" />
             </div>
-            <p className="text-[24px] font-medium text-foreground mt-1 leading-tight">{kpi.value}</p>
+            <p className="text-[20px] font-medium text-foreground mt-0.5 leading-tight">{kpi.value}</p>
             <p className="text-[12px] text-muted-foreground mt-0.5">{kpi.subtitle}</p>
           </div>
         )
