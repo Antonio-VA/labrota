@@ -49,8 +49,8 @@ export function LabPageTabs({
         ))}
       </div>
 
-      {/* Tab content */}
-      <div>{content[active]}</div>
+      {/* Tab content — min-height prevents layout shift from scrollbar toggling */}
+      <div className="min-h-[400px]">{content[active]}</div>
     </div>
   )
 }
