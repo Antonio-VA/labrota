@@ -40,11 +40,17 @@ export interface ParsedRota {
 
 // ── Detection constants ───────────────────────────────────────────────────────
 
-const TASK_KEYWORDS = new Set([
-  "opu", "icsi", "biopsy", "fert check", "fert", "denudation", "et", "fet",
-  "thaw", "freeze", "tesa", "genomix", "transport", "admin", "off",
-  "qc", "keep timing", "dish", "media prep", "ov", "tubing",
-  "egg collection", "embryo transfer", "denudación",
+// Technique/procedure keywords — matched case-insensitively against header cells
+const TASK_HEADERS = new Set([
+  "qc", "fert", "fert check", "opu", "icsi", "ov", "ov / icsi", "ov/icsi",
+  "keep", "keep timing", "thaw", "freeze", "thaw / freeze", "thaw/freeze",
+  "biopsy", "biopsy + tubing", "biopsy+tubing", "tubing",
+  "et", "fet", "et / fet", "et/fet",
+  "dish", "dish & media prep", "media prep", "prep",
+  "genomix", "transport", "tesa", "admin", "off",
+  "denudation", "denudación", "vitrification", "vitrificación",
+  "congelación", "análisis seminal", "preparación",
+  "transferencia", "punción", "control de calidad",
 ])
 
 const SHIFT_KEYWORDS = new Set([
@@ -53,29 +59,21 @@ const SHIFT_KEYWORDS = new Set([
   "t1", "t2", "t3", "t4", "t5", "t6",
 ])
 
-const DAY_NAMES = new Set([
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-  "mon", "tue", "wed", "thu", "fri", "sat", "sun",
-  "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo",
-  "lun", "mar", "mié", "jue", "vie", "sáb", "dom",
-])
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function normalise(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-záéíóúñü0-9\s]/g, "")
+function norm(s: string): string {
+  return s.toLowerCase().trim()
 }
 
 function isDate(cell: unknown): Date | null {
   if (cell instanceof Date) return cell
   if (typeof cell === "number") {
-    // Excel serial date
     const d = XLSX.SSF.parse_date_code(cell)
     if (d) return new Date(d.y, d.m - 1, d.d)
   }
   if (typeof cell === "string") {
     const d = new Date(cell)
-    if (!isNaN(d.getTime())) return d
+    if (!isNaN(d.getTime()) && cell.length > 4) return d
   }
   return null
 }
@@ -94,7 +92,17 @@ function getMondayOfWeek(d: Date): string {
 }
 
 function looksLikeInitials(s: string): boolean {
-  return /^[A-Z]{2,4}$/.test(s.trim())
+  return /^[A-Z]{2,3}$/.test(s.trim())
+}
+
+function isTaskHeader(s: string): boolean {
+  const n = norm(s)
+  if (TASK_HEADERS.has(n)) return true
+  // Also match partial: "OPU 1", "ICSI AM", etc.
+  for (const kw of TASK_HEADERS) {
+    if (n.startsWith(kw + " ") || n.startsWith(kw + "/") || n === kw) return true
+  }
+  return false
 }
 
 // ── Main parser ───────────────────────────────────────────────────────────────
@@ -112,157 +120,121 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
   const data: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })
   if (data.length < 2) throw new Error("Sheet has insufficient data")
 
-  // Find the header row — first row with multiple non-empty cells
+  // Find the header row — first row with multiple non-empty cells (at least 5)
   let headerRowIdx = 0
   for (let i = 0; i < Math.min(data.length, 10); i++) {
     const nonEmpty = (data[i] ?? []).filter((c) => String(c ?? "").trim()).length
-    if (nonEmpty >= 3) { headerRowIdx = i; break }
+    if (nonEmpty >= 5) { headerRowIdx = i; break }
   }
 
   const headerRow = (data[headerRowIdx] ?? []).map((c) => String(c ?? "").trim())
 
-  // Detect mode from headers
+  // ── Mode detection ──────────────────────────────────────────────────────
+  // Count how many header cells match task vs shift patterns
   let taskCount = 0
   let shiftCount = 0
+  const headerTexts: string[] = []
+
   for (const h of headerRow) {
-    const norm = normalise(h)
-    if (norm.length < 2) continue
-    for (const kw of TASK_KEYWORDS) {
-      if (norm.includes(kw)) { taskCount++; break }
-    }
+    if (!h) continue
+    headerTexts.push(h)
+    if (isTaskHeader(h)) taskCount++
+    const n = norm(h)
     for (const kw of SHIFT_KEYWORDS) {
-      if (norm.includes(kw)) { shiftCount++; break }
+      if (n === kw || n.includes(kw)) { shiftCount++; break }
     }
   }
 
-  const mode: "by_task" | "by_shift" = taskCount > shiftCount ? "by_task" : "by_shift"
+  const mode: "by_task" | "by_shift" = taskCount >= 3 ? "by_task" : shiftCount > taskCount ? "by_shift" : taskCount > 0 ? "by_task" : "by_shift"
 
-  // Extract column indices — find date columns and task/shift columns
+  // ── Build header → column index map ─────────────────────────────────────
+  // Collect all header values that are technique names (to exclude from staff)
+  const headerValueSet = new Set(headerRow.map((h) => h.toUpperCase()).filter((h) => h.length >= 2))
+
   const staffSet = new Map<string, ParsedStaff>()
   const techniques: ParsedTechnique[] = []
   const shifts: ParsedShift[] = []
   const leaves: ParsedLeave[] = []
   const assignments: { date: string; initials: string; task?: string; shift?: string }[] = []
 
-  // Detect date columns or row dates
+  // Detect dates in first column (rows = days)
   const dates: string[] = []
-  let dateColumnIndices: number[] = []
-
-  // Check if dates are in the header (columns = days)
-  for (let col = 0; col < headerRow.length; col++) {
-    const d = isDate(data[headerRowIdx]?.[col])
-    if (d) {
-      dates.push(toISO(d))
-      dateColumnIndices.push(col)
-    }
-  }
-
-  // If dates are in a column (rows = days), detect differently
-  let dateRowMode = false
-  if (dates.length < 3) {
-    dates.length = 0
-    dateColumnIndices = []
-    dateRowMode = true
-    // Look for dates in first column
-    for (let row = headerRowIdx + 1; row < data.length; row++) {
-      const cell = data[row]?.[0]
-      const d = isDate(cell)
-      if (d) {
-        dates.push(toISO(d))
-      } else if (typeof cell === "string" && DAY_NAMES.has(normalise(cell))) {
-        // Day name without date — try to infer
-      }
-    }
+  for (let row = headerRowIdx + 1; row < data.length; row++) {
+    const cell = data[row]?.[0]
+    const d = isDate(cell)
+    if (d) dates.push(toISO(d))
   }
 
   const weekStart = dates.length > 0 ? getMondayOfWeek(new Date(dates[0] + "T12:00:00")) : toISO(new Date())
 
   if (mode === "by_task") {
-    // Headers are technique names
+    // ── By task: headers are technique names ────────────────────────────
+    // Find technique columns (skip first column which is dates/day names)
     let order = 0
+    const techColumns: { col: number; name: string }[] = []
+
     for (let col = 1; col < headerRow.length; col++) {
       const h = headerRow[col]
       if (!h || h.length < 2) continue
-      const norm = normalise(h)
-      let isTask = false
-      for (const kw of TASK_KEYWORDS) {
-        if (norm.includes(kw)) { isTask = true; break }
-      }
-      if (isTask || col <= headerRow.length) {
-        techniques.push({ name: h, qualifiedInitials: [], order: order++ })
+      // If it looks like a task header, add it
+      if (isTaskHeader(h) || taskCount >= 3) {
+        techniques.push({ name: h, qualifiedInitials: [], order: order })
+        techColumns.push({ col, name: h })
+        order++
       }
     }
 
-    // Parse body rows — each row is a day, cells contain initials
+    // Parse body rows — each row is a day, cells contain staff initials
     for (let row = headerRowIdx + 1; row < data.length; row++) {
       const rowData = data[row] ?? []
-      let rowDate = ""
+      const rowDate = dates[row - headerRowIdx - 1] ?? ""
 
-      // First cell might be a date or day name
-      const firstCell = rowData[0]
-      const d = isDate(firstCell)
-      if (d) {
-        rowDate = toISO(d)
-      } else if (typeof firstCell === "string" && firstCell.trim()) {
-        // Try to match to a date from the dates array
-        if (dates[row - headerRowIdx - 1]) rowDate = dates[row - headerRowIdx - 1]
-      }
-
-      if (!rowDate && dates.length > row - headerRowIdx - 1) {
-        rowDate = dates[row - headerRowIdx - 1] ?? ""
-      }
-
-      // Parse cells
-      for (let col = 1; col < rowData.length && col - 1 < techniques.length; col++) {
-        const cellValue = String(rowData[col] ?? "").trim()
+      for (const tc of techColumns) {
+        const cellValue = String(rowData[tc.col] ?? "").trim()
         if (!cellValue) continue
 
-        const technique = techniques[col - 1]
-
-        // Cell might contain multiple initials separated by / , or space
-        const parts = cellValue.split(/[\/,\s]+/).filter((p) => p.length >= 2)
-        for (const part of parts) {
-          const upper = part.toUpperCase()
-          if (looksLikeInitials(upper) || part.length >= 2) {
-            const initials = upper.slice(0, 3)
-            if (!staffSet.has(initials)) {
-              staffSet.set(initials, { initials, firstName: "", lastName: "", department: "lab" })
-            }
-            if (!technique.qualifiedInitials.includes(initials)) {
-              technique.qualifiedInitials.push(initials)
-            }
-            if (rowDate) {
-              assignments.push({ date: rowDate, initials, task: technique.name })
-            }
-          }
+        // "All" / "Todo" detection
+        const cellNorm = norm(cellValue)
+        if (cellNorm === "all" || cellNorm === "todo" || cellNorm === "todos") {
+          if (rowDate) assignments.push({ date: rowDate, initials: "ALL", task: tc.name })
+          continue
         }
 
-        // Check for "All" / "Todo"
-        if (normalise(cellValue) === "all" || normalise(cellValue) === "todo" || normalise(cellValue) === "todos") {
-          if (rowDate) {
-            assignments.push({ date: rowDate, initials: "ALL", task: technique.name })
+        // Split cell into individual initials/names
+        const parts = cellValue.split(/[\/,\n]+/).map((p) => p.trim()).filter(Boolean)
+        for (const part of parts) {
+          const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
+          // Must be 2-3 uppercase letters AND not a header/technique name
+          if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
+            if (!staffSet.has(upper)) {
+              staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+            }
+            // Track qualified staff per technique
+            const tech = techniques.find((t) => t.name === tc.name)
+            if (tech && !tech.qualifiedInitials.includes(upper)) {
+              tech.qualifiedInitials.push(upper)
+            }
+            if (rowDate) {
+              assignments.push({ date: rowDate, initials: upper, task: tc.name })
+            }
           }
         }
       }
     }
   } else {
-    // By shift mode — detect shift labels from headers or row groupings
+    // ── By shift: detect staff from cells ────────────────────────────────
     for (let col = 1; col < headerRow.length; col++) {
       const h = headerRow[col]
       if (!h) continue
-      const norm = normalise(h)
+      const n = norm(h)
       let isShift = false
       for (const kw of SHIFT_KEYWORDS) {
-        if (norm.includes(kw)) { isShift = true; break }
+        if (n === kw || n.includes(kw)) { isShift = true; break }
       }
-      if (isShift) {
-        shifts.push({ name: h, start: "", end: "" })
-      }
+      if (isShift) shifts.push({ name: h, start: "", end: "" })
     }
 
-    if (shifts.length === 0) {
-      shifts.push({ name: "T1", start: "07:30", end: "15:30" })
-    }
+    if (shifts.length === 0) shifts.push({ name: "T1", start: "07:30", end: "15:30" })
 
     // Parse body — cells contain staff initials
     for (let row = headerRowIdx + 1; row < data.length; row++) {
@@ -270,31 +242,29 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
       for (let col = 0; col < rowData.length; col++) {
         const cellValue = String(rowData[col] ?? "").trim()
         if (!cellValue) continue
-        const parts = cellValue.split(/[\/,\s]+/).filter((p) => looksLikeInitials(p.toUpperCase()))
+        const parts = cellValue.split(/[\/,\n\s]+/).filter((p) => looksLikeInitials(p.toUpperCase()))
         for (const part of parts) {
-          const initials = part.toUpperCase()
-          if (!staffSet.has(initials)) {
-            staffSet.set(initials, { initials, firstName: "", lastName: "", department: "lab" })
+          const upper = part.toUpperCase()
+          if (!headerValueSet.has(upper)) {
+            if (!staffSet.has(upper)) {
+              staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+            }
           }
         }
       }
     }
   }
 
-  // Detect leave — look for cells containing "leave", "off", "annual", "baja", "vacaciones"
+  // Detect leave from cells
   const TODAY = toISO(new Date())
   for (let row = 0; row < data.length; row++) {
     for (let col = 0; col < (data[row]?.length ?? 0); col++) {
-      const cell = String(data[row]?.[col] ?? "").toLowerCase()
+      const cell = norm(String(data[row]?.[col] ?? ""))
       if (cell.includes("leave") || cell.includes("baja") || cell.includes("vacaciones") || cell.includes("annual")) {
-        // Try to find initials and dates nearby
-        // Simple heuristic: look for initials in same row
         for (let c2 = 0; c2 < (data[row]?.length ?? 0); c2++) {
-          const v = String(data[row]?.[c2] ?? "").trim()
-          if (looksLikeInitials(v.toUpperCase()) && staffSet.has(v.toUpperCase())) {
-            const from = TODAY
-            const to = "" // Can't determine without more context
-            leaves.push({ initials: v.toUpperCase(), from, to, type: "annual" })
+          const v = String(data[row]?.[c2] ?? "").trim().toUpperCase()
+          if (looksLikeInitials(v) && staffSet.has(v)) {
+            leaves.push({ initials: v, from: TODAY, to: "", type: "annual" })
           }
         }
       }

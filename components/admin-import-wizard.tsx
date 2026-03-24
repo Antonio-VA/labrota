@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { Upload, ArrowLeft, ArrowRight, Check, AlertTriangle, FileSpreadsheet, X, Trash2 } from "lucide-react"
+import { Upload, ArrowLeft, ArrowRight, Check, AlertTriangle, FileSpreadsheet, X, Trash2, Plus } from "lucide-react"
 import { getSheetNames, parseSheet, type ParsedRota, type ParsedStaff, type ParsedTechnique, type ParsedShift, type ParsedLeave } from "@/lib/parse-excel-rota"
 import { importOrganisation, type ImportPayload } from "@/app/admin/import-actions"
 
@@ -243,10 +243,30 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
           </div>
         </div>
 
+        {/* Départamentos */}
+        <div>
+          <p className="text-[13px] font-medium text-muted-foreground mb-2">Departamentos ({depts.length})</p>
+          <div className="flex flex-col gap-1.5">
+            {depts.map((d, i) => (
+              <div key={d.code} className="flex items-center gap-2">
+                <input type="color" value={d.colour} onChange={(e) => setDepts((prev) => prev.map((p, j) => j === i ? { ...p, colour: e.target.value } : p))} className="size-6 rounded border-0 cursor-pointer" />
+                <Input value={d.name} onChange={(e) => setDepts((prev) => prev.map((p, j) => j === i ? { ...p, name: e.target.value } : p))} className="h-7 text-[12px] flex-1" />
+                <button onClick={() => setDepts((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive"><X className="size-3.5" /></button>
+              </div>
+            ))}
+            <button onClick={() => setDepts((prev) => [...prev, { name: "", code: `dept_${Date.now()}`, colour: "#94A3B8" }])} className="text-[12px] text-muted-foreground hover:text-foreground flex items-center gap-1 mt-1">
+              <Plus className="size-3" /> Añadir departamento
+            </button>
+          </div>
+        </div>
+
         {/* Techniques (by_task) */}
-        {mode === "by_task" && techniques.length > 0 && (
+        {mode === "by_task" && (
           <div>
-            <p className="text-[13px] font-medium text-muted-foreground mb-2">Técnicas detectadas ({techniques.length})</p>
+            <p className="text-[13px] font-medium text-muted-foreground mb-2">Técnicas ({techniques.length})</p>
+            {techniques.length === 0 && (
+              <p className="text-[12px] text-muted-foreground/60 italic">No se detectaron técnicas en el archivo.</p>
+            )}
             <div className="flex flex-col gap-2">
               {techniques.map((t, i) => (
                 <div key={i} className="rounded-lg border border-border px-3 py-2">
@@ -256,6 +276,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
                       onChange={(e) => setTechniques((prev) => prev.map((p, j) => j === i ? { ...p, name: e.target.value } : p))}
                       className="h-7 text-[13px] flex-1"
                     />
+                    <button onClick={() => setTechniques((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive shrink-0"><X className="size-3.5" /></button>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {staff.map((s) => {
