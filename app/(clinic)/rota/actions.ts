@@ -273,9 +273,10 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Only include assignments whose shift_type exists in this org's shift_types table.
   // Assignments with stale codes (e.g. 'am'/'pm'/'full' from before the shift_types migration)
   // would otherwise make staff invisible: they'd be in assignedIds but match no shift row.
-  const validShiftCodes = shiftTypesData.length > 0
-    ? new Set(shiftTypesData.map((st) => st.code))
-    : null  // null = no filtering (shift_types not configured yet)
+  // Skip this filter for by_task orgs — shift_type is irrelevant there.
+  const validShiftCodes = (orgDisplayMode === "by_task" || shiftTypesData.length === 0)
+    ? null  // null = no filtering
+    : new Set(shiftTypesData.map((st) => st.code))
 
   // Populate day assignments
   for (const a of assignmentsData ?? []) {

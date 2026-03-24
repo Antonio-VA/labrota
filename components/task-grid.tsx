@@ -300,11 +300,11 @@ function TaskCell({
 
 // ── OFF cell ─────────────────────────────────────────────────────────────────
 
-function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, isSat, onMakeOff }: {
+function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff }: {
   date: string; day: RotaDay
   unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
   staffList: StaffWithSkills[]; assignedIds: Set<string>
-  isPublished: boolean; isSat: boolean
+  isPublished: boolean
   onMakeOff: (staffId: string) => Promise<void>
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -342,8 +342,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
       ref={cellRef}
       className={cn(
         "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]",
-        isSat && "border-l border-dashed border-l-border"
-      )}
+              )}
     >
       {onLeave.map((s) => (
         <Tooltip key={s.id}>
@@ -585,7 +584,7 @@ export function TaskGrid({
       weekStart,
       staffId,
       date,
-      shiftType: "T1" as ShiftType,
+      shiftType: (data?.shiftTypes?.[0]?.code ?? "T1") as ShiftType,
       functionLabel: tecnicaCodigo,
     })
     if (result.error) { toast.error(result.error); return }
@@ -627,7 +626,7 @@ export function TaskGrid({
           const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
           const dayNum = d.getDate()
           const isToday = day.date === new Date().toISOString().split("T")[0]
-          const isSat = d.getDay() === 6
+
 
           // Punciones + biopsy forecast
           const defaultP = punctionsDefault[day.date] ?? 0
@@ -650,7 +649,7 @@ export function TaskGrid({
           return (
             <div
               key={day.date}
-              className={cn("border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted", isSat && "border-l border-dashed")}
+              className={cn("border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted", )}
             >
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
               <span className={cn(
@@ -689,14 +688,13 @@ export function TaskGrid({
                 (a) => a.function_label === tecnica.codigo
               ) as unknown as Assignment[]
               const conflictStaff = getConflictStaff(day)
-              const isSat = new Date(day.date + "T12:00:00").getDay() === 6
+
               const hasEmpty = dayAssignments.length === 0
               return (
                 <div
                   key={`${tecnica.id}-${day.date}`}
                   className={cn(
                     "border-b border-r last:border-r-0 border-border",
-                    isSat && "border-l border-dashed border-l-border",
                     hasEmpty && "bg-muted/20",
                     day.isWeekend && "bg-muted/30"
                   )}
@@ -740,7 +738,6 @@ export function TaskGrid({
               staffList={staffList}
               assignedIds={assignedIds}
               isPublished={isPublished}
-              isSat={isSat}
               onMakeOff={async (staffId) => {
                 // Remove all assignments for this staff on this day
                 const toRemove = day.assignments.filter((a) => a.staff_id === staffId)
