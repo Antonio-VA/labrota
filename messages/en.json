@@ -575,8 +575,9 @@
   "tecnicas": {
     "embriologia": "Embryology",
     "andrologia": "Andrology",
-    "nameEs": "Name (ES)",
+    "nameEs": "Name",
     "nameEn": "Name (EN)",
+    "shortName": "Short name",
     "code": "Code",
     "color": "Colour",
     "department": "Department",

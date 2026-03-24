@@ -133,19 +133,22 @@ function SortableRow({
         <GripVertical className="size-4" />
       </button>
 
-      {/* Line 1: Color · Name · Code */}
-      {/* Line 2: Department · Turno típico */}
       <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+        {/* Line 1: Color · Name · Short name */}
         <div className="flex items-center gap-2">
           <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
-          <Input
-            value={tecnica.nombre_es}
-            onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value, nombre_en: e.target.value })}
-            disabled={disabled}
-            placeholder={t("nameEs")}
-            className="h-7 text-[13px] flex-1"
-          />
-          <div className="relative w-[72px] shrink-0">
+          <div className="flex-1 flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground leading-none">{t("nameEs")}</span>
+            <Input
+              value={tecnica.nombre_es}
+              onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value, nombre_en: e.target.value })}
+              disabled={disabled}
+              placeholder="ICSI"
+              className="h-7 text-[13px]"
+            />
+          </div>
+          <div className="w-[72px] shrink-0 flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground leading-none">{t("shortName")}</span>
             <Input
               value={tecnica.codigo}
               onChange={(e) => onChange({ ...tecnica, codigo: e.target.value.toUpperCase().slice(0, 3) })}
@@ -157,24 +160,28 @@ function SortableRow({
           </div>
         </div>
 
+        {/* Line 2: Department · Turno típico */}
         <div className="flex items-center gap-3">
-          <select
-            value={tecnica.department}
-            onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
-            disabled={disabled}
-            className="h-6 rounded border border-input bg-transparent px-1.5 text-[11px] outline-none focus-visible:border-ring"
-          >
-            {departments.length > 0 ? (
-              departments.map((d) => (
-                <option key={d.id} value={d.code}>{d.name}</option>
-              ))
-            ) : (
-              <>
-                <option value="lab">{t("embriologia")}</option>
-                <option value="andrology">{t("andrologia")}</option>
-              </>
-            )}
-          </select>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground leading-none">{t("department")}</span>
+            <select
+              value={tecnica.department}
+              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
+              disabled={disabled}
+              className="h-6 rounded border border-input bg-transparent px-1.5 text-[11px] outline-none focus-visible:border-ring"
+            >
+              {departments.length > 0 ? (
+                departments.map((d) => (
+                  <option key={d.id} value={d.code}>{d.name}</option>
+                ))
+              ) : (
+                <>
+                  <option value="lab">{t("embriologia")}</option>
+                  <option value="andrology">{t("andrologia")}</option>
+                </>
+              )}
+            </select>
+          </div>
           {shiftCodes.length > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-muted-foreground">{t("typicalShift")}</span>
