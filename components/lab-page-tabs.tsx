@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["cobertura", "reglas", "plantillas", "tecnicas", "departamentos", "turnos", "notas"] as const
+const TAB_KEYS = ["cobertura", "notas", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {

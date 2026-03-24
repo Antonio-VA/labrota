@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { Department } from "@/lib/types/database"
-import { saveDepartments } from "@/app/(clinic)/lab/department-actions"
+import { saveDepartments, seedDefaultDepartments } from "@/app/(clinic)/lab/department-actions"
 
 const COLOUR_PRESETS = [
   { hex: "#60A5FA", label: "Azul" },
@@ -44,6 +44,15 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
+
+  function handleSeed() {
+    if (departments.length > 0 && !confirm("Esto reemplazará los departamentos actuales con los valores predeterminados. ¿Continuar?")) return
+    startTransition(async () => {
+      const result = await seedDefaultDepartments()
+      if (result.error) { setErrorMsg(result.error); setStatus("error"); return }
+      if (result.seeded) window.location.reload()
+    })
+  }
 
   function addRow() {
     const nextOrder = departments.length
@@ -120,6 +129,21 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
 
   return (
     <div className="flex flex-col gap-4">
+      {departments.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-[14px] text-muted-foreground mb-3">No hay departamentos definidos.</p>
+          <Button type="button" variant="outline" size="sm" onClick={handleSeed} disabled={isPending}>
+            Cargar defaults (Embriología, Andrología, Admin)
+          </Button>
+        </div>
+      )}
+      {departments.length > 0 && (
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" size="sm" onClick={handleSeed} disabled={isPending} className="text-[12px] text-muted-foreground">
+            Cargar defaults
+          </Button>
+        </div>
+      )}
       {departments.map((dept, i) => (
         <div key={dept.id ?? `new-${i}`} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background">
           {/* Reorder */}
