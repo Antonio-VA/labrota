@@ -897,16 +897,26 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const isByTask = data.rotaDisplayMode === "by_task"
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
+
+  // Seed all active staff so 0-assignment members appear too
+  for (const s of staffList) {
+    if (deptFilter && !deptFilter.has(s.role)) continue
+    staffMap[s.id] = {
+      first: s.first_name, last: s.last_name, role: s.role,
+      count: 0, daysPerWeek: s.days_per_week ?? 5,
+    }
+    staffDaySeen[s.id] = new Set()
+  }
+
   for (const day of days) {
     for (const a of day.assignments) {
       if (deptFilter && !deptFilter.has(a.staff.role)) continue
       // In by_task mode, only count assignments that have a function_label (task assignments)
       if (isByTask && !a.function_label) continue
       if (!staffMap[a.staff_id]) {
-        const member = staffList.find((s) => s.id === a.staff_id)
         staffMap[a.staff_id] = {
           first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role,
-          count: 0, daysPerWeek: member?.days_per_week ?? 5,
+          count: 0, daysPerWeek: 5,
         }
         staffDaySeen[a.staff_id] = new Set()
       }
