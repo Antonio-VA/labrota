@@ -32,7 +32,7 @@ function StaffColorPicker({ value, onChange, disabled }: { value: string; onChan
   }, [open])
 
   return (
-    <div ref={ref} className="relative shrink-0 mb-1">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         disabled={disabled}
@@ -298,12 +298,14 @@ export function StaffForm({
             <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} required className="rounded-[8px]" />
           </Field>
         </div>
-        <div className="flex items-end gap-3">
-          <div className="flex-1"><Field label={t("fields.email")}>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={t("fields.email")}>
             <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} className="rounded-[8px]" />
-          </Field></div>
-          <StaffColorPicker value={selectedColor} onChange={setSelectedColor} disabled={isPending} />
-          <input type="hidden" name="color" value={selectedColor} />
+          </Field>
+          <Field label="Color">
+            <StaffColorPicker value={selectedColor} onChange={setSelectedColor} disabled={isPending} />
+            <input type="hidden" name="color" value={selectedColor} />
+          </Field>
         </div>
         {mode === "create" && (
           <label className="flex items-start gap-2 cursor-pointer">
