@@ -3297,6 +3297,19 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 label: t("exportPdf"),
                 icon: <FileDown className="size-3.5" />,
                 onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
+              }, {
+                label: "Exportar Excel",
+                icon: <FileDown className="size-3.5" />,
+                onClick: () => {
+                  if (!weekData) return
+                  import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByTask }) => {
+                    if (weekData.rotaDisplayMode === "by_task") {
+                      exportWeekByTask(weekData, weekData.tecnicas ?? [], locale)
+                    } else {
+                      exportWeekByShift(weekData, locale)
+                    }
+                  })
+                },
               }] : []),
               ...(canEdit && isDraft && hasAssignments ? [{
                 label: t("publishRota"),

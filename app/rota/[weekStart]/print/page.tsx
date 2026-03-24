@@ -105,7 +105,49 @@ export default async function PrintRotaPage({
           </div>
         </div>
 
-        {/* Grid — shift rows × days (matches on-screen calendar) */}
+        {/* Grid */}
+        {data.rotaDisplayMode === "by_task" ? (
+        /* ── BY TASK grid ─────────────────────────────────────────── */
+        <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ccddee", borderRadius: 6, overflow: "hidden" }}>
+          <thead>
+            <tr style={{ background: "#f1f5fb" }}>
+              <th style={{ width: 100, padding: "6px 4px", borderRight: "1px solid #ccddee", borderBottom: "1px solid #ccddee", textAlign: "left", fontSize: 9, fontWeight: 600, color: "#64748b" }}>Técnica</th>
+              {data.days.map((day) => {
+                const d = new Date(day.date + "T12:00:00")
+                const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
+                const dayNum = d.getDate()
+                return (
+                  <th key={day.date} style={{ padding: "6px 4px", textAlign: "center", borderRight: "1px solid #ccddee", borderBottom: "1px solid #ccddee", background: day.isWeekend ? "#e8eef7" : "#f1f5fb" }}>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: "#64748b" }}>{wday}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1b4f8a", marginTop: 1 }}>{dayNum}</div>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {(tecnicas ?? []).filter((t: { activa: boolean }) => t.activa).sort((a: { orden: number }, b: { orden: number }) => a.orden - b.orden).map((tecnica: { id: string; nombre_es: string; codigo: string; color: string }) => (
+              <tr key={tecnica.id} style={{ borderBottom: "1px solid #ccddee" }}>
+                <td style={{ padding: "4px 6px", borderRight: "1px solid #ccddee", background: "#f8fafd", fontSize: 10, fontWeight: 600 }}>{tecnica.nombre_es}</td>
+                {data.days.map((day) => {
+                  const techAssignments = day.assignments.filter((a) => a.function_label === tecnica.codigo)
+                  const names = techAssignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+                  return (
+                    <td key={day.date} style={{ padding: "4px", borderRight: "1px solid #ccddee", verticalAlign: "top", fontSize: 10, background: day.isWeekend ? "#f8fafd" : "#fff" }}>
+                      {names.length === 0 ? (
+                        <span style={{ color: "#cbd5e1" }}>—</span>
+                      ) : (
+                        names.join(" / ")
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        ) : (
+        /* ── BY SHIFT grid ────────────────────────────────────────── */
         <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ccddee", borderRadius: 6, overflow: "hidden" }}>
           {/* Day headers */}
           <thead>
@@ -216,6 +258,7 @@ export default async function PrintRotaPage({
             })}
           </tbody>
         </table>
+        )}
 
         {/* Shift budget summary */}
         <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
