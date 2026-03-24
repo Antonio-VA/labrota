@@ -104,7 +104,7 @@ export function AppSidebar() {
     { key: "staff",    icon: Users,        href: "/staff" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
-    { key: "reports",  icon: BarChart3,    href: "/reports",  disabled: true },
+    { key: "reports",  icon: BarChart3,    href: "/reports" },
   ] as const : [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
@@ -126,7 +126,7 @@ export function AppSidebar() {
                 icon={item.icon}
                 label={t(item.key)}
                 isActive={isActive}
-                disabled={"disabled" in item && item.disabled}
+                disabled={"disabled" in item ? !!(item as { disabled?: boolean }).disabled : false}
               />
             )
           })}
