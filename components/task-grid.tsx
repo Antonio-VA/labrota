@@ -298,6 +298,91 @@ function TaskCell({
   )
 }
 
+// ── Punciones + Biopsy editable ───────────────────────────────────────────────
+
+function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast, onChange, disabled }: {
+  date: string; value: number; defaultValue: number; isOverride: boolean
+  biopsyForecast: number; onChange?: (date: string, value: number | null) => void; disabled: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  const popRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setDraft(String(value)) }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  function save() {
+    const n = parseInt(draft, 10)
+    if (!isNaN(n) && n >= 0) onChange?.(date, n === defaultValue ? null : n)
+    else setDraft(String(value))
+    setOpen(false)
+  }
+
+  const pLabel = `P:${value}`
+  const bLabel = `B:${biopsyForecast}`
+
+  if (disabled) {
+    return (value > 0 || biopsyForecast > 0) ? (
+      <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+        <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
+        <span>{bLabel}</span>
+      </span>
+    ) : null
+  }
+
+  return (
+    <div ref={popRef} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+        className="flex items-center gap-1 text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-background/80 cursor-pointer"
+      >
+        <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
+        <span className="text-muted-foreground">{bLabel}</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-40 flex flex-col gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
+            <span className="text-[11px] text-muted-foreground text-right">Punciones</span>
+            <input
+              autoFocus
+              type="number"
+              min={0}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false) }}
+              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
+            />
+            <span className="text-[11px] text-muted-foreground text-right">Biopsias</span>
+            <span className="text-[12px] text-center text-muted-foreground tabular-nums">{biopsyForecast}</span>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={save} className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity">
+              Guardar
+            </button>
+            {isOverride && (
+              <button onClick={() => { onChange?.(date, null); setOpen(false) }} className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main grid ─────────────────────────────────────────────────────────────────
 
 export function TaskGrid({
@@ -456,12 +541,15 @@ export function TaskGrid({
               )}>
                 {dayNum}
               </span>
-              {(effectiveP > 0 || biopsyForecast > 0) && (
-                <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground">
-                  <span className={hasOverride ? "text-primary" : ""}>P:{effectiveP}</span>
-                  <span>B:{biopsyForecast}</span>
-                </span>
-              )}
+              <PuncBiopsyEdit
+                date={day.date}
+                value={effectiveP}
+                defaultValue={defaultP}
+                isOverride={hasOverride}
+                biopsyForecast={biopsyForecast}
+                onChange={onPunctionsChange}
+                disabled={isPublished || !data.rota}
+              />
             </div>
           )
         })}
