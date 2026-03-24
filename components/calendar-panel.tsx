@@ -2257,6 +2257,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
               {week.map((day) => {
                 const isToday    = day.date === TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
+                const isSat      = new Date(day.date + "T12:00:00").getDay() === 6
 
                 const tooltipParts: string[] = []
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
@@ -2271,6 +2272,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     <TooltipTrigger render={
                   <button
                     onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
+                    style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
                     className={cn(
                       "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[120px]",
                       !day.isCurrentMonth
