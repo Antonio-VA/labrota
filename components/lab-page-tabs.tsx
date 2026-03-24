@@ -32,15 +32,15 @@ export function LabPageTabs({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Tab bar */}
-      <div className="flex gap-0 border-b border-border -mb-2 flex-wrap">
+      {/* Tab bar — fixed position */}
+      <div className="flex border-b border-border -mb-2">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => setActive(key)}
             className={cn(
-              "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
+              "px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
               active === key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -51,8 +51,12 @@ export function LabPageTabs({
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="min-h-[400px]">{content[active]}</div>
+      {/* Tab content — all rendered, only active visible */}
+      {TAB_KEYS.map((key) => (
+        <div key={key} className={key !== active ? "hidden" : undefined}>
+          {content[key]}
+        </div>
+      ))}
     </div>
   )
 }
