@@ -9,6 +9,7 @@ import { ArrowLeft, Users, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
+import { AdminHistoryUpload } from "@/components/admin-history-upload"
 import { updateOrgRegional } from "@/app/admin/actions"
 
 export default async function OrgDetailPage({
@@ -109,6 +110,9 @@ export default async function OrgDetailPage({
         initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
         initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
       />
+
+      {/* Historical rota upload */}
+      <AdminHistoryUpload orgId={id} />
     </div>
   )
 }

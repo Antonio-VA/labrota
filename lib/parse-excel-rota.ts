@@ -47,10 +47,17 @@ const TASK_HEADERS = new Set([
   "biopsy", "biopsy + tubing", "biopsy+tubing", "tubing",
   "et", "fet", "et / fet", "et/fet",
   "dish", "dish & media prep", "media prep", "prep",
-  "genomix", "transport", "tesa", "admin", "off",
+  "genomix", "transport", "tesa",
+  "admin", "off", "holiday", "holidays", "sick", "leave", "annual",
   "denudation", "denudación", "vitrification", "vitrificación",
   "congelación", "análisis seminal", "preparación",
   "transferencia", "punción", "control de calidad",
+])
+
+// Headers that are NOT real techniques — recognized for mode detection but excluded from technique list
+const NON_TECHNIQUE_HEADERS = new Set([
+  "off", "admin", "holiday", "holidays", "sick", "leave", "annual",
+  "transport", "day off", "free", "libre", "vacaciones", "baja",
 ])
 
 const SHIFT_KEYWORDS = new Set([
@@ -267,10 +274,12 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
         const cell = String(data[row]?.[0] ?? "").trim()
         if (!cell) continue
         if (isTaskHeader(cell)) {
-          techniques.push({ name: cell, qualifiedInitials: [], order: order })
-          techRows.push({ row, name: cell })
-          order++
           headerValueSet.add(cell.toUpperCase())
+          if (!NON_TECHNIQUE_HEADERS.has(norm(cell))) {
+            techniques.push({ name: cell, qualifiedInitials: [], order: order })
+            order++
+          }
+          techRows.push({ row, name: cell })
         }
       }
 
@@ -293,7 +302,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
             const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
             if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
               if (!staffSet.has(upper)) {
-                staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+                staffSet.set(upper, { initials: upper, firstName: upper[0] ?? "", lastName: upper[1] ?? "", department: "lab" })
               }
               const tech = techniques.find((t) => t.name === tr.name)
               if (tech && !tech.qualifiedInitials.includes(upper)) {
@@ -313,9 +322,11 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
         const h = headerRow[col]
         if (!h || h.length < 2) continue
         if (isTaskHeader(h) || headerTaskCount >= 3) {
-          techniques.push({ name: h, qualifiedInitials: [], order: order })
           techColumns.push({ col, name: h })
-          order++
+          if (!NON_TECHNIQUE_HEADERS.has(norm(h))) {
+            techniques.push({ name: h, qualifiedInitials: [], order: order })
+            order++
+          }
         }
       }
 
@@ -366,7 +377,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
             const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
             if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
               if (!staffSet.has(upper)) {
-                staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+                staffSet.set(upper, { initials: upper, firstName: upper[0] ?? "", lastName: upper[1] ?? "", department: "lab" })
               }
               const tech = techniques.find((t) => t.name === tc.name)
               if (tech && !tech.qualifiedInitials.includes(upper)) {
@@ -404,7 +415,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
           const upper = part.toUpperCase()
           if (!headerValueSet.has(upper)) {
             if (!staffSet.has(upper)) {
-              staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+              staffSet.set(upper, { initials: upper, firstName: upper[0] ?? "", lastName: upper[1] ?? "", department: "lab" })
             }
           }
         }

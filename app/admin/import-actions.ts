@@ -209,3 +209,129 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
   revalidatePath("/admin")
   return { orgId }
 }
+
+// ── Import historical rota (enrich existing staff with skills/leaves) ────────
+
+interface HistoricalPayload {
+  staff: { initials: string; firstName: string; lastName: string }[]
+  techniques: { name: string; qualifiedInitials: string[] }[]
+  assignments: { date: string; initials: string; task?: string }[]
+  leaves: { initials: string; from: string; to: string; type: string }[]
+  weekStart: string
+}
+
+export async function importHistoricalRota(
+  orgId: string,
+  payload: HistoricalPayload
+): Promise<{ error?: string; skillsAdded?: number; leavesAdded?: number }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.app_metadata?.role !== "super_admin") {
+    return { error: "Unauthorised." }
+  }
+
+  const admin = createAdminClient()
+  let skillsAdded = 0
+  let leavesAdded = 0
+
+  // Load existing staff for this org — match by initials (first_name[0] + last_name[0])
+  const { data: existingStaff } = await admin
+    .from("staff")
+    .select("id, first_name, last_name")
+    .eq("organisation_id", orgId) as { data: { id: string; first_name: string; last_name: string }[] | null }
+
+  const staffByInitials: Record<string, string> = {}
+  for (const s of existingStaff ?? []) {
+    const initials = `${(s.first_name?.[0] ?? "").toUpperCase()}${(s.last_name?.[0] ?? "").toUpperCase()}`
+    staffByInitials[initials] = s.id
+  }
+
+  // Load existing skills to avoid duplicates
+  const { data: existingSkills } = await admin
+    .from("staff_skills")
+    .select("staff_id, skill")
+    .eq("organisation_id", orgId) as { data: { staff_id: string; skill: string }[] | null }
+
+  const skillSet = new Set((existingSkills ?? []).map((sk) => `${sk.staff_id}:${sk.skill}`))
+
+  // Load existing técnicas to get code mapping
+  const { data: existingTecnicas } = await admin
+    .from("tecnicas")
+    .select("codigo, nombre_es")
+    .eq("organisation_id", orgId) as { data: { codigo: string; nombre_es: string }[] | null }
+
+  const tecnicaCodeByName: Record<string, string> = {}
+  for (const t of existingTecnicas ?? []) {
+    tecnicaCodeByName[t.nombre_es.toLowerCase()] = t.codigo
+    tecnicaCodeByName[t.codigo.toLowerCase()] = t.codigo
+  }
+
+  // Extract skills from assignments — who was assigned to which technique
+  const skillsToAdd: { staffId: string; skill: string }[] = []
+
+  for (const a of payload.assignments) {
+    if (!a.task || a.initials === "ALL") continue
+    const staffId = staffByInitials[a.initials]
+    if (!staffId) continue
+
+    // Resolve technique name to code
+    const taskNorm = a.task.toLowerCase()
+    const code = tecnicaCodeByName[taskNorm] ??
+      a.task.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3)
+
+    const key = `${staffId}:${code}`
+    if (!skillSet.has(key)) {
+      skillSet.add(key)
+      skillsToAdd.push({ staffId, skill: code })
+    }
+  }
+
+  // Also use the technique.qualifiedInitials from parsing
+  for (const tech of payload.techniques) {
+    const taskNorm = tech.name.toLowerCase()
+    const code = tecnicaCodeByName[taskNorm] ??
+      tech.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3)
+
+    for (const initials of tech.qualifiedInitials) {
+      const staffId = staffByInitials[initials]
+      if (!staffId) continue
+      const key = `${staffId}:${code}`
+      if (!skillSet.has(key)) {
+        skillSet.add(key)
+        skillsToAdd.push({ staffId, skill: code })
+      }
+    }
+  }
+
+  // Insert new skills
+  for (const { staffId, skill } of skillsToAdd) {
+    await admin.from("staff_skills").insert({
+      organisation_id: orgId,
+      staff_id: staffId,
+      skill,
+      level: "certified",
+    } as never)
+    skillsAdded++
+  }
+
+  // Process leaves — only future or spanning-current
+  const TODAY = new Date().toISOString().split("T")[0]
+  for (const l of payload.leaves) {
+    if (l.to && l.to < TODAY) continue // Past leave, skip
+    const staffId = staffByInitials[l.initials]
+    if (!staffId || !l.from) continue
+
+    await admin.from("leaves").insert({
+      organisation_id: orgId,
+      staff_id: staffId,
+      type: l.type || "annual",
+      start_date: l.from < TODAY ? TODAY : l.from,
+      end_date: l.to || l.from,
+      status: "approved",
+    } as never)
+    leavesAdded++
+  }
+
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { skillsAdded, leavesAdded }
+}
