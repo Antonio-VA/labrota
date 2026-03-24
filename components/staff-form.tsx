@@ -280,7 +280,7 @@ export function StaffForm({
               tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            {t === "datos" ? "Datos" : t === "disponibilidad" ? "Disponibilidad" : "Tareas"}
+            {t === "datos" ? "Datos" : t === "disponibilidad" ? "Disponibilidad" : "Habilidades"}
           </button>
         ))}
       </div>
