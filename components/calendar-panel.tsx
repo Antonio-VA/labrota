@@ -947,7 +947,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onClick={() => onPillClick?.(id)}
             className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
           >
-            <span className="font-medium">{s.first}</span>{" "}
+            <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
           </button>
         } />
@@ -1028,7 +1028,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
                     onClick={() => onPillClick?.(id)}
                     className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
                   >
-                    <span className="font-medium">{s.first}</span>{" "}
+                    <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
                     <span className="font-normal tabular-nums">{s.count}/{expected}</span>
                   </button>
                 } />
