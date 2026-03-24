@@ -1,14 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Check, ChevronDown } from "lucide-react"
-import { switchOrg as switchOrgAction } from "@/app/(clinic)/org-actions"
+import { Check, ChevronDown, Star } from "lucide-react"
+import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
 import { UserAvatarMenu } from "@/components/user-avatar-menu"
 import { cn } from "@/lib/utils"
-
-// ── Top bar ───────────────────────────────────────────────────────────────────
 
 interface InitialUser {
   email: string | null
@@ -21,20 +18,21 @@ export function ClinicTopBar({
   orgLogoUrl,
   allOrgs = [],
   activeOrgId,
+  defaultOrgId,
   initialUser,
 }: {
   orgName: string | null
   orgLogoUrl?: string | null
   allOrgs?: { id: string; name: string; logo_url: string | null }[]
   activeOrgId?: string | null
+  defaultOrgId?: string | null
   initialUser?: InitialUser | null
 }) {
-  const router = useRouter()
-
   const [logoError, setLogoError]     = useState(false)
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const orgMenuRef                    = useRef<HTMLDivElement>(null)
   const [isSwitching, startSwitch]    = useTransition()
+  const [localDefault, setLocalDefault] = useState(defaultOrgId ?? null)
 
   useEffect(() => {
     if (!orgMenuOpen) return
@@ -44,6 +42,12 @@ export function ClinicTopBar({
     document.addEventListener("mousedown", onMouseDown)
     return () => document.removeEventListener("mousedown", onMouseDown)
   }, [orgMenuOpen])
+
+  function handleSetDefault(orgId: string) {
+    const next = localDefault === orgId ? null : orgId
+    setLocalDefault(next)
+    setDefaultOrg(next)
+  }
 
   return (
     <header className="hidden md:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4 gap-4">
@@ -64,29 +68,45 @@ export function ClinicTopBar({
               <ChevronDown className="size-3.5 opacity-50" />
             </button>
             {orgMenuOpen && (
-              <div className="absolute left-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+              <div className="absolute left-0 top-9 z-50 w-60 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
                 {allOrgs.map((org) => (
-                  <button
+                  <div
                     key={org.id}
-                    onClick={() => {
-                      if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
-                      setOrgMenuOpen(false)
-                      localStorage.setItem("activeOrgId", org.id)
-                      startSwitch(async () => {
-                        await switchOrgAction(org.id)
-                        window.location.href = "/"
-                      })
-                    }}
                     className={cn(
-                      "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left transition-colors",
+                      "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] transition-colors",
                       org.id === activeOrgId
                         ? "bg-accent text-accent-foreground font-medium"
                         : "hover:bg-muted text-foreground"
                     )}
                   >
-                    {org.name}
-                    {org.id === activeOrgId && <Check className="size-3.5 ml-auto" />}
-                  </button>
+                    <button
+                      onClick={() => {
+                        if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
+                        setOrgMenuOpen(false)
+                        localStorage.setItem("activeOrgId", org.id)
+                        startSwitch(async () => {
+                          await switchOrgAction(org.id)
+                          window.location.href = "/"
+                        })
+                      }}
+                      className="flex-1 text-left truncate"
+                    >
+                      {org.name}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSetDefault(org.id) }}
+                      className="shrink-0 p-0.5"
+                      title={localDefault === org.id ? "Quitar como predeterminado" : "Establecer como predeterminado"}
+                    >
+                      <Star className={cn(
+                        "size-3.5 transition-colors",
+                        localDefault === org.id
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-muted-foreground/30 hover:text-amber-400"
+                      )} />
+                    </button>
+                    {org.id === activeOrgId && <Check className="size-3.5 shrink-0" />}
+                  </div>
                 ))}
               </div>
             )}

@@ -15,17 +15,34 @@ export default async function ClinicLayout({
   let orgName: string | null = null
   let orgLogoUrl: string | null = null
   let activeOrgId: string | null = null
+  let defaultOrgId: string | null = null
   let allOrgs: { id: string; name: string; logo_url: string | null }[] = []
   let userRole: "admin" | "manager" | "viewer" = "admin"
 
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("organisation_id")
+      .select("organisation_id, default_organisation_id")
       .eq("id", user.id)
-      .single() as { data: { organisation_id: string | null } | null }
+      .single() as { data: { organisation_id: string | null; default_organisation_id: string | null } | null }
 
     activeOrgId = profile?.organisation_id ?? null
+    defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
+
+    // Auto-switch to default org on first load if no active org or different
+    if (defaultOrgId && activeOrgId !== defaultOrgId) {
+      const admin0 = createAdminClient()
+      const { data: isMember } = await admin0
+        .from("organisation_members")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("organisation_id", defaultOrgId)
+        .single()
+      if (isMember) {
+        await admin0.from("profiles").update({ organisation_id: defaultOrgId } as never).eq("id", user.id)
+        activeOrgId = defaultOrgId
+      }
+    }
 
     if (activeOrgId) {
       const { data: org } = await supabase
@@ -67,6 +84,7 @@ export default async function ClinicLayout({
         orgLogoUrl={orgLogoUrl}
         allOrgs={allOrgs}
         activeOrgId={activeOrgId}
+        defaultOrgId={defaultOrgId}
         initialUser={user ? { email: user.email ?? null, fullName: (user.user_metadata?.full_name as string) ?? null, avatarUrl: (user.user_metadata?.avatar_url as string) ?? null } : null}
       />
       <RoleProvider role={userRole}>
