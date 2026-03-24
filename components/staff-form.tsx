@@ -219,8 +219,30 @@ export function StaffForm({
     })
   }
 
+  const [tab, setTab] = useState<"datos" | "disponibilidad" | "tareas">("datos")
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
+
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-border -mb-2">
+        {(["datos", "disponibilidad", "tareas"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors",
+              tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t === "datos" ? "Datos" : t === "disponibilidad" ? "Disponibilidad" : "Tareas"}
+          </button>
+        ))}
+      </div>
+
+      {/* === TAB: Datos === */}
+      <div className={tab !== "datos" ? "hidden" : ""}>
 
       {/* Personal info */}
       <Section label={t("sections.personalInfo")}>
@@ -320,6 +342,11 @@ export function StaffForm({
         </div>
       </Section>
 
+      </div>
+
+      {/* === TAB: Disponibilidad === */}
+      <div className={cn("flex flex-col gap-6", tab !== "disponibilidad" && "hidden")}>
+
       {/* Días disponibles (hard constraint) */}
       <Section label={t("daysAvailable")}>
         <p className="text-[12px] text-muted-foreground mb-2">
@@ -394,6 +421,11 @@ export function StaffForm({
         </Section>
       )}
 
+      </div>
+
+      {/* === TAB: Tareas === */}
+      <div className={cn("flex flex-col gap-6", tab !== "tareas" && "hidden")}>
+
       {/* Capacidades */}
       <Section label={t("sections.capabilities")}>
         <div className="flex flex-wrap gap-2">
@@ -450,7 +482,9 @@ export function StaffForm({
         )}
       </Section>
 
-      {/* Notes */}
+      </div>
+
+      {/* Notes — always visible */}
       <Section label={t("fields.notes")}>
         <textarea
           name="notes"
