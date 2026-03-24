@@ -193,7 +193,7 @@ export function AccountPanel({ open, onClose, user }: {
             </div>
 
             <p className="text-[12px] text-muted-foreground font-medium mb-2">Color de acento</p>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap mb-4">
               {ACCENT_COLORS.map((c) => (
                 <button
                   key={c.key}
@@ -211,6 +211,8 @@ export function AccountPanel({ open, onClose, user }: {
                 </button>
               ))}
             </div>
+
+            <FontScaleSlider value={prefs.fontScale ?? "m"} onChange={(v) => { setPrefs((p) => ({ ...p, fontScale: v })); applyTheme({ ...prefs, fontScale: v }) }} />
           </div>
 
           {/* Preferences — time format + first day */}
@@ -253,35 +255,6 @@ export function AccountPanel({ open, onClose, user }: {
           </div>
         </div>
 
-        {/* Font size */}
-        <div className="px-5 py-3 border-b border-border">
-          <p className="text-[12px] text-muted-foreground font-medium mb-2">Tamaño de texto</p>
-          <div className="flex gap-2">
-            {([
-              { key: "s" as const, label: "Pequeño", sample: "text-[12px]" },
-              { key: "m" as const, label: "Normal", sample: "text-[14px]" },
-              { key: "l" as const, label: "Grande", sample: "text-[16px]" },
-            ]).map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => {
-                  setPrefs((p) => ({ ...p, fontScale: opt.key }))
-                  applyTheme({ ...prefs, fontScale: opt.key })
-                }}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-center transition-colors",
-                  (prefs.fontScale ?? "m") === opt.key
-                    ? "border-primary bg-primary/10 text-primary font-medium"
-                    : "border-border hover:bg-muted text-muted-foreground"
-                )}
-              >
-                <span className={opt.sample}>{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Footer */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
@@ -291,6 +264,49 @@ export function AccountPanel({ open, onClose, user }: {
         </div>
       </div>
     </>
+  )
+}
+
+// ── Font scale slider (shared between dropdown + panel) ──────────────────────
+
+const FONT_SCALES = [
+  { key: "s" as const, label: "Pequeño" },
+  { key: "m" as const, label: "Normal" },
+  { key: "l" as const, label: "Grande" },
+]
+
+export function FontScaleSlider({ value, onChange }: { value: "s" | "m" | "l"; onChange: (v: "s" | "m" | "l") => void }) {
+  const idx = FONT_SCALES.findIndex((s) => s.key === value)
+  return (
+    <div>
+      <p className="text-[12px] text-muted-foreground font-medium mb-2">Tamaño de texto</p>
+      <div className="flex items-center gap-3">
+        <span className="text-[11px] text-muted-foreground font-medium">A</span>
+        <div className="flex-1 flex items-center">
+          {FONT_SCALES.map((s, i) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => onChange(s.key)}
+              className="flex-1 flex flex-col items-center gap-1"
+            >
+              <div className={cn(
+                "size-3 rounded-full border-2 transition-all",
+                i === idx ? "bg-primary border-primary scale-125" : "bg-background border-border hover:border-primary/50"
+              )} />
+              <span className={cn(
+                "transition-all",
+                s.key === "s" ? "text-[11px]" : s.key === "l" ? "text-[15px]" : "text-[13px]",
+                i === idx ? "text-foreground font-medium" : "text-muted-foreground"
+              )}>
+                {s.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <span className="text-[16px] text-muted-foreground font-medium">A</span>
+      </div>
+    </div>
   )
 }
 

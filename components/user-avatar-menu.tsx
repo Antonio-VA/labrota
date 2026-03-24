@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { LogOut, UserCog, HelpCircle, Sun, Moon, Monitor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { applyTheme } from "@/components/account-panel"
+import { applyTheme, FontScaleSlider } from "@/components/account-panel"
 import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
 import { cn } from "@/lib/utils"
@@ -33,13 +33,16 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
   const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "auto">("light")
   const ref = useRef<HTMLDivElement>(null)
 
-  // Read current theme on mount
+  const [currentFontScale, setCurrentFontScale] = useState<"s" | "m" | "l">("m")
+
+  // Read current theme + font scale on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem("labrota_theme")
       if (raw) {
         const p = JSON.parse(raw)
         if (p.theme) setCurrentTheme(p.theme)
+        if (p.fontScale) setCurrentFontScale(p.fontScale)
       }
     } catch {}
   }, [])
@@ -153,6 +156,22 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
                 )} />
               </button>
             ))}
+          </div>
+
+          {/* Font scale */}
+          <div className="border-t border-border px-3 py-2.5">
+            <FontScaleSlider
+              value={currentFontScale}
+              onChange={(v) => {
+                setCurrentFontScale(v)
+                let accentColor = "#1b4f8a"
+                try {
+                  const raw = localStorage.getItem("labrota_theme")
+                  if (raw) { const p = JSON.parse(raw); if (p.accentColor) accentColor = p.accentColor }
+                } catch {}
+                applyTheme({ theme: currentTheme, accentColor, fontScale: v })
+              }}
+            />
           </div>
 
           {/* Sign out */}
