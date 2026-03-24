@@ -48,6 +48,7 @@ import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-da
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { TaskGrid } from "@/components/task-grid"
+import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -3700,6 +3701,9 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
       />
+
+      {/* Week notes — only in week view */}
+      {view === "week" && <WeekNotes weekStart={weekStart} />}
 
       {/* Bottom taskbar — hidden for viewers */}
       {canEdit && view === "week" && weekData && !loadingWeek && (

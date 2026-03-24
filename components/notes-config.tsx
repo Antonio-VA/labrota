@@ -1,0 +1,153 @@
+"use client"
+
+import { useState, useTransition } from "react"
+import { Plus, Pencil, Trash2, Check, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { addNoteTemplate, updateNoteTemplate, deleteNoteTemplate } from "@/app/(clinic)/notes-actions"
+import { updateLabConfig } from "@/app/(clinic)/lab/actions"
+
+export function NotesConfig({
+  initialTemplates,
+  initialEnabled,
+}: {
+  initialTemplates: { id: string; text: string }[]
+  initialEnabled: boolean
+}) {
+  const [enabled, setEnabled] = useState(initialEnabled)
+  const [templates, setTemplates] = useState(initialTemplates)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
+  const [newText, setNewText] = useState("")
+  const [isPending, startTransition] = useTransition()
+
+  function handleToggle() {
+    const next = !enabled
+    setEnabled(next)
+    startTransition(async () => {
+      const result = await updateLabConfig({ enable_notes: next })
+      if (result.error) toast.error(result.error)
+    })
+  }
+
+  function handleAdd() {
+    if (!newText.trim()) return
+    startTransition(async () => {
+      const result = await addNoteTemplate(newText.trim())
+      if (result.error) { toast.error(result.error); return }
+      setTemplates((prev) => [...prev, { id: result.id!, text: newText.trim() }])
+      setNewText("")
+    })
+  }
+
+  function handleSaveEdit(id: string) {
+    if (!editText.trim()) return
+    startTransition(async () => {
+      const result = await updateNoteTemplate(id, editText.trim())
+      if (result.error) { toast.error(result.error); return }
+      setTemplates((prev) => prev.map((t) => t.id === id ? { ...t, text: editText.trim() } : t))
+      setEditingId(null)
+    })
+  }
+
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      const result = await deleteNoteTemplate(id)
+      if (result.error) { toast.error(result.error); return }
+      setTemplates((prev) => prev.filter((t) => t.id !== id))
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-[14px] font-medium">Notas semanales</span>
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={isPending}
+          className={cn(
+            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+            enabled ? "bg-primary" : "bg-muted-foreground/30",
+            isPending && "cursor-not-allowed opacity-50"
+          )}
+        >
+          <span className={cn(
+            "inline-block size-4 rounded-full bg-white shadow transition-transform",
+            enabled ? "translate-x-4" : "translate-x-0"
+          )} />
+        </button>
+      </div>
+
+      {enabled && (
+        <>
+          <p className="text-[12px] text-muted-foreground -mt-2">
+            Notas predeterminadas que aparecen cada semana. Se pueden descartar individualmente por semana.
+          </p>
+
+          {/* Template list */}
+          <div className="flex flex-col gap-1.5">
+            {templates.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                {editingId === t.id ? (
+                  <>
+                    <Input
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(t.id); if (e.key === "Escape") setEditingId(null) }}
+                      disabled={isPending}
+                      className="flex-1 h-7 text-[13px]"
+                      autoFocus
+                    />
+                    <button onClick={() => handleSaveEdit(t.id)} disabled={isPending} className="text-emerald-600 hover:text-emerald-700">
+                      <Check className="size-3.5" />
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-[13px]">{t.text}</span>
+                    <button
+                      onClick={() => { setEditingId(t.id); setEditText(t.text) }}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil className="size-3" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t.id)}
+                      disabled={isPending}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add new */}
+          <div className="flex items-center gap-2">
+            <Input
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAdd() }}
+              placeholder="Nueva nota predeterminada..."
+              disabled={isPending}
+              className="flex-1 h-8 text-[13px]"
+            />
+            <Button size="sm" onClick={handleAdd} disabled={isPending || !newText.trim()}>
+              <Plus className="size-3.5" />
+              Añadir
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

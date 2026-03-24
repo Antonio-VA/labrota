@@ -9,6 +9,8 @@ import { TécnicasTab } from "@/components/tecnicas-tab"
 import { PlantillasTab } from "@/components/plantillas-tab"
 import { DepartmentsTab } from "@/components/departments-tab"
 import { LabPageTabs } from "@/components/lab-page-tabs"
+import { NotesConfig } from "@/components/notes-config"
+import { getNoteTemplates } from "@/app/(clinic)/notes-actions"
 import type { LabConfig, RotaRule, Staff, ShiftTypeDefinition, Tecnica, RotaTemplate, Department } from "@/lib/types/database"
 
 export default async function LabConfigPage() {
@@ -37,6 +39,7 @@ export default async function LabConfigPage() {
     }
   }
 
+  const noteTemplates = await getNoteTemplates()
   const config     = configRes.data as LabConfig | null
   const rules      = (rulesRes.data ?? []) as RotaRule[]
   const staff      = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
@@ -94,6 +97,14 @@ export default async function LabConfigPage() {
                   {t("sections.shifts")}
                 </p>
                 <ShiftTypesTable initialTypes={shiftTypes} />
+              </div>
+            }
+            notas={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <NotesConfig
+                  initialTemplates={noteTemplates}
+                  initialEnabled={config?.enable_notes ?? true}
+                />
               </div>
             }
           />
