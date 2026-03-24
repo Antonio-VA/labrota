@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp,
 } from "lucide-react"
+import { LeaveFileImport } from "@/components/leave-file-import"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -347,6 +348,7 @@ export function LeavesList({
   const [editing, setEditing] = useState<LeaveWithStaff | null>(null)
   const [typeFilter, setTypeFilter] = useState<LeaveType | "all">("all")
   const [showHistory, setShowHistory] = useState(false)
+  const [fileImportOpen, setFileImportOpen] = useState(false)
 
   const filtered = leaves.filter((l) => {
     if (typeFilter !== "all" && l.type !== typeFilter) return false
@@ -396,7 +398,13 @@ export function LeavesList({
             <option key={lt} value={lt}>{t(`types.${lt}`)}</option>
           ))}
         </select>
-        <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
+        <div className="flex items-center gap-2">
+          <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
+          <Button size="lg" variant="outline" onClick={() => setFileImportOpen(true)}>
+            <FileUp className="size-4" />
+            Añadir desde archivo
+          </Button>
+        </div>
       </div>
 
       {/* Empty state — no leaves at all */}
@@ -459,6 +467,19 @@ export function LeavesList({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* File import modal */}
+      {fileImportOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setFileImportOpen(false)} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[600px] max-h-[80vh] overflow-y-auto p-6">
+            <LeaveFileImport
+              staff={staff.map((s) => ({ id: s.id, first_name: s.first_name, last_name: s.last_name }))}
+              onClose={() => setFileImportOpen(false)}
+            />
+          </div>
+        </>
+      )}
       </div>
     </div>
   )
