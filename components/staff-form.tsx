@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
-import { Hourglass, Plus, X, ChevronLeft } from "lucide-react"
+import { Hourglass, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -267,12 +267,6 @@ export function StaffForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-
-      {/* Back button */}
-      <Button type="button" variant="ghost" size="sm" render={<Link href="/staff" />} className="self-start -mb-4 text-muted-foreground">
-        <ChevronLeft className="size-4" />
-        {t("backToList")}
-      </Button>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-border -mb-2">

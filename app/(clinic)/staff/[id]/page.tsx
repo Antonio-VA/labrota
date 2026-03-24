@@ -1,10 +1,12 @@
 import { requireEditor } from "@/lib/require-editor"
 import { notFound } from "next/navigation"
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
 import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition } from "@/lib/types/database"
+import { ChevronLeft } from "lucide-react"
 
 export default async function EditStaffPage({
   params,
@@ -36,7 +38,10 @@ export default async function EditStaffPage({
         <MobileGate>
           <div className="max-w-2xl mx-auto flex flex-col gap-6">
             <div>
-              <h1 className="text-[18px] font-medium">{t("editStaff")}</h1>
+              <h1 className="text-[18px] font-medium flex items-center gap-1">
+                <Link href="/staff" className="text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="size-5" /></Link>
+                {t("editStaff")}
+              </h1>
               <p className="text-[14px] text-muted-foreground mt-1">
                 {staff.first_name} {staff.last_name}
               </p>
