@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -3296,11 +3296,11 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               // ── Group 1: Export & Publish ──
               ...(hasAssignments && view === "week" ? [{
                 label: t("exportPdf"),
-                icon: <FileDown className="size-3.5" />,
+                icon: <FileText className="size-3.5" />,
                 onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
               }, {
                 label: "Exportar Excel",
-                icon: <FileDown className="size-3.5" />,
+                icon: <Sheet className="size-3.5" />,
                 onClick: () => {
                   if (!weekData) return
                   import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByTask }) => {

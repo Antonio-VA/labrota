@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { ArrowLeft, AlertCircle } from "lucide-react"
+import { AdminImportWizard } from "@/components/admin-import-wizard"
 
 export default function NewOrgPage() {
   const router = useRouter()
@@ -16,6 +17,7 @@ export default function NewOrgPage() {
   const [slug, setSlug]     = useState("")
   const [slugEdited, setSlugEdited] = useState(false)
   const [error, setError]   = useState("")
+  const [createMode, setCreateMode] = useState<"scratch" | "import">("scratch")
 
   function handleNameChange(value: string) {
     setName(value)
@@ -50,6 +52,29 @@ export default function NewOrgPage() {
         <h1 className="text-[18px] font-medium">New organisation</h1>
       </div>
 
+      {/* Mode toggle */}
+      <div className="flex rounded-lg border border-input overflow-hidden w-fit">
+        <button
+          type="button"
+          onClick={() => setCreateMode("scratch")}
+          className={`px-4 py-2 text-[13px] font-medium transition-colors ${createMode === "scratch" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"}`}
+        >
+          Empezar desde cero
+        </button>
+        <button
+          type="button"
+          onClick={() => setCreateMode("import")}
+          className={`px-4 py-2 text-[13px] font-medium transition-colors ${createMode === "import" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"}`}
+        >
+          Importar desde Excel
+        </button>
+      </div>
+
+      {createMode === "import" ? (
+        <div className="rounded-lg border border-border bg-background p-6">
+          <AdminImportWizard />
+        </div>
+      ) : (
       <div className="rounded-lg border border-border bg-background p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
@@ -104,6 +129,7 @@ export default function NewOrgPage() {
           </div>
         </form>
       </div>
+      )}
     </div>
   )
 }
