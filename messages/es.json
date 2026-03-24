@@ -319,14 +319,20 @@
     "kpiCoverage": "Cobertura tareas",
     "kpiFullValidation": "Validación completa",
     "bulk": {
-      "addSkill": "Añadir habilidad",
-      "removeSkill": "Quitar habilidad",
+      "addSkill": "Añadir tarea",
+      "removeSkill": "Quitar tarea",
       "changeStatus": "Estado",
       "deactivate": "Desactivar",
       "deactivating": "Desactivando…",
       "hardDelete": "Borrar",
       "hardDeleting": "Borrando…",
-      "hardDeletePermanently": "Borrar definitivamente"
+      "hardDeletePermanently": "Borrar definitivamente",
+      "skillAdded": "{count} tarea(s) añadida(s)",
+      "skippedAlreadyHad": "{count} ya la tenían",
+      "skillRemoved": "{count} tarea(s) eliminada(s)",
+      "statusUpdated": "{count} estado(s) actualizado(s)",
+      "deactivated": "{count} miembro(s) desactivado(s)",
+      "hardDeleted": "{count} miembro(s) borrado(s)"
     },
     "deactivateModal": {
       "description": "Se marcarán como inactivos con fecha de fin hoy",

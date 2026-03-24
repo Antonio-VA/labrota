@@ -319,14 +319,20 @@
     "kpiCoverage": "Task coverage",
     "kpiFullValidation": "Fully validated",
     "bulk": {
-      "addSkill": "Add skill",
-      "removeSkill": "Remove skill",
+      "addSkill": "Add task",
+      "removeSkill": "Remove task",
       "changeStatus": "Status",
       "deactivate": "Deactivate",
       "deactivating": "Deactivating…",
       "hardDelete": "Delete",
       "hardDeleting": "Deleting…",
-      "hardDeletePermanently": "Delete permanently"
+      "hardDeletePermanently": "Delete permanently",
+      "skillAdded": "{count} task(s) added",
+      "skippedAlreadyHad": "{count} already had it",
+      "skillRemoved": "{count} task(s) removed",
+      "statusUpdated": "{count} status(es) updated",
+      "deactivated": "{count} member(s) deactivated",
+      "hardDeleted": "{count} member(s) deleted"
     },
     "deactivateModal": {
       "description": "They will be marked as inactive with today as the end date",
