@@ -159,15 +159,21 @@ export async function seedDefaultTecnicas(): Promise<{ seeded: boolean; error?: 
     department: string; activa: boolean; orden: number
   }> = [
     // Embriología
-    { nombre_es: "Punción folicular", nombre_en: "Egg collection",    codigo: "OPU", color: "amber",  department: "lab",       activa: true, orden: 0 },
-    { nombre_es: "ICSI",              nombre_en: "ICSI",              codigo: "ICS", color: "blue",   department: "lab",       activa: true, orden: 1 },
-    { nombre_es: "Transferencia",     nombre_en: "Embryo transfer",   codigo: "ET",  color: "green",  department: "lab",       activa: true, orden: 2 },
-    { nombre_es: "Biopsia",           nombre_en: "Biopsy",            codigo: "BX",  color: "purple", department: "lab",       activa: true, orden: 3 },
-    { nombre_es: "Denudación",        nombre_en: "Denudation",        codigo: "DEN", color: "teal",   department: "lab",       activa: true, orden: 4 },
+    { nombre_es: "ICSI",                         nombre_en: "ICSI",               codigo: "ICS", color: "blue",   department: "lab",       activa: true, orden: 0 },
+    { nombre_es: "Biopsia",                      nombre_en: "Biopsy",             codigo: "BX",  color: "purple", department: "lab",       activa: true, orden: 1 },
+    { nombre_es: "Punción folicular",            nombre_en: "Egg collection",     codigo: "OPU", color: "amber",  department: "lab",       activa: true, orden: 2 },
+    { nombre_es: "Transferencia",                nombre_en: "Embryo transfer",    codigo: "ET",  color: "green",  department: "lab",       activa: true, orden: 3 },
+    { nombre_es: "Denudación",                   nombre_en: "Denudation",         codigo: "DEN", color: "teal",   department: "lab",       activa: true, orden: 4 },
+    { nombre_es: "Vitrificación",                nombre_en: "Vitrification",      codigo: "VIT", color: "blue",   department: "lab",       activa: true, orden: 5 },
     // Andrología
-    { nombre_es: "Congelación",       nombre_en: "Sperm freezing",    codigo: "CNG", color: "coral",  department: "andrology", activa: true, orden: 5 },
-    { nombre_es: "Análisis seminal",  nombre_en: "Semen analysis",    codigo: "SEM", color: "slate",  department: "andrology", activa: true, orden: 6 },
-    { nombre_es: "Preparación",       nombre_en: "Sperm preparation", codigo: "PRE", color: "red",    department: "andrology", activa: true, orden: 7 },
+    { nombre_es: "Congelación",                  nombre_en: "Sperm freezing",     codigo: "CNG", color: "slate",  department: "andrology", activa: true, orden: 6 },
+    { nombre_es: "Análisis seminal",             nombre_en: "Semen analysis",     codigo: "SEM", color: "purple", department: "andrology", activa: true, orden: 7 },
+    // Embriología (continued)
+    { nombre_es: "Tubing",                       nombre_en: "Tubing",             codigo: "TUB", color: "teal",   department: "lab",       activa: true, orden: 8 },
+    { nombre_es: "Preparación",                  nombre_en: "Sperm preparation",  codigo: "PRE", color: "blue",   department: "andrology", activa: true, orden: 9 },
+    { nombre_es: "Descongelación",               nombre_en: "Thawing",            codigo: "TW",  color: "slate",  department: "lab",       activa: true, orden: 10 },
+    { nombre_es: "Control de calidad",           nombre_en: "Morning check list", codigo: "QC",  color: "green",  department: "lab",       activa: true, orden: 11 },
+    { nombre_es: "Preparación medios de cultivo", nombre_en: "Media preparation", codigo: "MP",  color: "blue",   department: "lab",       activa: true, orden: 12 },
   ]
 
   const { error } = await supabase
