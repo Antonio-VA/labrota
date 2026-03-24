@@ -26,9 +26,9 @@ const ACCENT_COLORS = [
 ]
 
 const THEME_OPTIONS: { key: UserPreferences["theme"]; label: string; icon: React.ReactNode }[] = [
-  { key: "light", label: "Claro",      icon: <Sun className="size-4" /> },
-  { key: "dark",  label: "Oscuro",     icon: <Moon className="size-4" /> },
-  { key: "auto",  label: "Automático", icon: <Monitor className="size-4" /> },
+  { key: "light", label: "Claro",      icon: <Sun className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
+  { key: "dark",  label: "Oscuro",     icon: <Moon className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
+  { key: "auto",  label: "Automático", icon: <Monitor className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
 ]
 
 export function AccountPanel({ open, onClose, user }: {
@@ -106,8 +106,8 @@ export function AccountPanel({ open, onClose, user }: {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Mi cuenta</p>
-          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted">
-            <X className="size-4 text-slate-500" />
+          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted transition-all duration-200 ease-out">
+            <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110" />
           </button>
         </div>
 
@@ -128,8 +128,8 @@ export function AccountPanel({ open, onClose, user }: {
                 ) : (
                   <span className="flex items-center justify-center size-full text-[18px] font-bold text-white">{initials}</span>
                 )}
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="size-4 text-white" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 ease-out">
+                  <Camera className="size-4 text-white transition-transform duration-200 ease-out group-hover:scale-110" />
                 </div>
                 {uploading && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -180,10 +180,10 @@ export function AccountPanel({ open, onClose, user }: {
                     applyTheme(next as UserPreferences)
                   }}
                   className={cn(
-                    "flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all text-[12px]",
+                    "group/btn flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all duration-200 ease-out text-[12px] hover:shadow-sm",
                     prefs.theme === opt.key
                       ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border text-muted-foreground hover:bg-muted/50"
+                      : "border-border text-muted-foreground hover:bg-muted/50 hover:border-border/80"
                   )}
                 >
                   {opt.icon}
@@ -200,14 +200,14 @@ export function AccountPanel({ open, onClose, user }: {
                   onClick={() => setPrefs((p) => ({ ...p, accentColor: c.hex }))}
                   title={c.label}
                   className={cn(
-                    "size-8 rounded-full border-2 flex items-center justify-center transition-all",
+                    "size-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-out",
                     prefs.accentColor === c.hex
                       ? "border-foreground scale-110"
-                      : "border-transparent hover:scale-105"
+                      : "border-transparent hover:scale-110 hover:shadow-sm"
                   )}
                   style={{ background: c.hex }}
                 >
-                  {prefs.accentColor === c.hex && <Check className="size-3.5 text-white" />}
+                  {prefs.accentColor === c.hex && <Check className="size-3.5 text-white transition-transform duration-200 ease-out" />}
                 </button>
               ))}
             </div>
@@ -291,8 +291,8 @@ export function FontScaleSlider({ value, onChange }: { value: "s" | "m" | "l"; o
               className="flex-1 flex flex-col items-center gap-1"
             >
               <div className={cn(
-                "size-3 rounded-full border-2 transition-all",
-                i === idx ? "bg-primary border-primary scale-125" : "bg-background border-border hover:border-primary/50"
+                "size-3 rounded-full border-2 transition-all duration-200 ease-out",
+                i === idx ? "bg-primary border-primary scale-125" : "bg-background border-border hover:border-primary/50 hover:scale-110"
               )} />
               <span className={cn(
                 "transition-all",
