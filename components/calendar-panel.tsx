@@ -2986,26 +2986,19 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
       ? departments.map((d) => [d.code, d.abbreviation || d.name.slice(0, 3)])
       : [["lab", "Emb"], ["andrology", "And"], ["admin", "Adm"]]
   ), [departments])
-  const [deptFilter, setDeptFilter] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set(ALL_DEPTS)
-    try {
-      const saved = localStorage.getItem("labrota_dept_filter")
-      return saved ? new Set(JSON.parse(saved)) : new Set(ALL_DEPTS)
-    } catch { return new Set(ALL_DEPTS) }
-  })
-  const allDeptsSelected = deptFilter.size === ALL_DEPTS.length
+  const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set(ALL_DEPTS))
+  // Reset filter when org departments change
+  useEffect(() => { setDeptFilter(new Set(ALL_DEPTS)) }, [ALL_DEPTS])
+  const allDeptsSelected = deptFilter.size >= ALL_DEPTS.length
   function toggleDept(dept: string) {
     setDeptFilter((prev) => {
       const next = new Set(prev)
       next.has(dept) ? next.delete(dept) : next.add(dept)
-      localStorage.setItem("labrota_dept_filter", JSON.stringify([...next]))
       return next
     })
   }
   function setAllDepts() {
-    const next = new Set(ALL_DEPTS)
-    setDeptFilter(next)
-    localStorage.setItem("labrota_dept_filter", JSON.stringify(ALL_DEPTS))
+    setDeptFilter(new Set(ALL_DEPTS))
   }
   function setOnlyDept(dept: string) {
     const next = new Set([dept])
