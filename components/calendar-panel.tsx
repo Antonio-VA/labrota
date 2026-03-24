@@ -1103,10 +1103,11 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 const WARNING_CATEGORY_LABEL: Record<string, string> = {
   coverage: "Cobertura insuficiente",
   skill_gap: "Tareas sin cubrir",
+  technique_shift_gap: "Tarea sin cobertura en turno",
   rule: "Reglas de planificación",
   budget: "Carga de turnos",
 }
-const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, budget: 2, rule: 3 }
+const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, technique_shift_gap: 2, budget: 3, rule: 4 }
 
 /** Click-to-open popover for per-day warnings in column headers. */
 function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {

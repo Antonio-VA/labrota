@@ -19,7 +19,7 @@ import type {
 // ── Shared types exported to client ──────────────────────────────────────────
 
 export interface RotaDayWarning {
-  category: "coverage" | "skill_gap" | "rule"
+  category: "coverage" | "skill_gap" | "rule" | "technique_shift_gap"
   message: string
 }
 
@@ -332,6 +332,26 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       }
       if (andCount < andMin) {
         day.warnings.push({ category: "coverage", message: `Andrología: ${andCount}/${andMin}` })
+      }
+    }
+
+    // Technique-shift gap warnings (by_shift only)
+    if (orgDisplayMode === "by_shift" && tecnicas.length > 0 && day.assignments.length > 0) {
+      for (const tec of tecnicas) {
+        if (!tec.typical_shifts || tec.typical_shifts.length === 0) continue
+        for (const shiftCode of tec.typical_shifts) {
+          const staffInShift = day.assignments.filter((a) => a.shift_type === shiftCode)
+          const hasCoverage = staffInShift.some((a) => {
+            const skills = staffSkillMap[a.staff_id] ?? []
+            return skills.includes(tec.codigo as SkillName)
+          })
+          if (!hasCoverage) {
+            day.warnings.push({
+              category: "technique_shift_gap",
+              message: `${shiftCode}: sin personal cualificado para ${tec.nombre_es ?? tec.codigo}`,
+            })
+          }
+        }
       }
     }
   }

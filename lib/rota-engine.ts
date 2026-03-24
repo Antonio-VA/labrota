@@ -453,6 +453,95 @@ export function runRotaEngine({
       skillGaps,
     })
 
+    // ── Technique-shift alignment pass (by_shift only) ──────────────────────
+    // Check each technique's typical_shift for coverage. If a shift is missing
+    // a qualified person for a mapped technique, try to reassign or add one.
+    const dayPlan = days[days.length - 1]
+    const assignedById = new Map(assigned.map((s) => [s.id, s]))
+
+    // Group techniques by their typical shift
+    const techByShift: Record<string, string[]> = {} // shift_code → [tecnica_codigo...]
+    for (const [codigo, shifts] of Object.entries(tecnicaTypicalShifts)) {
+      for (const sc of shifts) {
+        if (!techByShift[sc]) techByShift[sc] = []
+        techByShift[sc].push(codigo)
+      }
+    }
+
+    // For each shift, check technique coverage
+    for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
+      if (!activeShiftSet.has(shiftCode)) continue
+      const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
+      const staffIdsInShift = new Set(staffInShift.map((a) => a.staff_id))
+
+      for (const techCode of techCodes) {
+        // Check if at least one qualified person is in this shift
+        const hasCoverage = staffInShift.some((a) => {
+          const member = assignedById.get(a.staff_id)
+          return member?.staff_skills.some((sk) => sk.skill === techCode)
+        })
+        if (hasCoverage) continue
+
+        // Gap found — try to resolve
+        // 1. Try to swap: find someone in ANOTHER shift who is qualified and swap them
+        let resolved = false
+        const qualifiedInOtherShifts = dayPlan.assignments.filter((a) =>
+          a.shift_type !== shiftCode &&
+          assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)
+        )
+
+        if (qualifiedInOtherShifts.length > 0) {
+          // Pick rarest: person whose qualification is shared by fewest others
+          const scored = qualifiedInOtherShifts.map((a) => {
+            const qualCount = assigned.filter((s) =>
+              s.staff_skills.some((sk) => sk.skill === techCode)
+            ).length
+            return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
+          }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
+
+          const best = scored[0]
+          // Only swap if the person doesn't have a preferred_shift or manual preference for their current shift
+          const member = assignedById.get(best.a.staff_id)
+          if (member && member.preferred_shift !== best.a.shift_type) {
+            best.a.shift_type = shiftCode as ShiftType
+            resolved = true
+          }
+        }
+
+        if (!resolved) {
+          // 2. Try to add: find an unassigned qualified staff member
+          const unassigned = staff.filter((s) =>
+            !(assignedByDate[date] ?? new Set()).has(s.id) &&
+            !leaveMap[s.id]?.has(date) &&
+            s.onboarding_status === "active" &&
+            s.staff_skills.some((sk) => sk.skill === techCode)
+          )
+          if (unassigned.length > 0) {
+            // Pick rarest then least-assigned
+            const scored = unassigned.map((s) => {
+              const qualCount = staff.filter((o) =>
+                o.staff_skills.some((sk) => sk.skill === techCode)
+              ).length
+              return { s, rarity: qualCount, workload: workloadScore[s.id] ?? 0 }
+            }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
+
+            const pick = scored[0].s
+            dayPlan.assignments.push({ staff_id: pick.id, shift_type: shiftCode as ShiftType })
+            assigned.push(pick)
+            if (!assignedByDate[date]) assignedByDate[date] = new Set()
+            assignedByDate[date].add(pick.id)
+            resolved = true
+          }
+        }
+
+        if (!resolved) {
+          const shiftDef = shiftTypes.find((st) => st.code === shiftCode)
+          const shiftName = shiftDef ? shiftDef.code : shiftCode
+          warnings.push(`${date}: ${shiftName} sin personal cualificado para ${techCode}`)
+        }
+      }
+    }
+
     // Update scores so later days in the week account for earlier assignments
     for (const s of assigned) {
       workloadScore[s.id]    = (workloadScore[s.id]    ?? 0) + 1
