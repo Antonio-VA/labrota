@@ -29,8 +29,8 @@ export default async function ClinicLayout({
     activeOrgId = profile?.organisation_id ?? null
     defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
 
-    // Auto-switch to default org on first load if no active org or different
-    if (defaultOrgId && activeOrgId !== defaultOrgId) {
+    // Auto-switch to default org only if no active org is set (first login)
+    if (defaultOrgId && !activeOrgId) {
       const admin0 = createAdminClient()
       const { data: isMember } = await admin0
         .from("organisation_members")
