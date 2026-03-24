@@ -2224,24 +2224,36 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
       {weeks.map((week, wi) => {
         const weekStart = week[0].date
+        const weekStatus = weekStatusMap[weekStart] ?? null
+        const isWeekPublished = weekStatus === "published"
         // ISO week number
         const d = new Date(weekStart + "T12:00:00")
         const jan1 = new Date(d.getFullYear(), 0, 1)
         const weekNum = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
         return (
           <div key={wi} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5">
-            {/* Week number */}
-            <Tooltip>
-              <TooltipTrigger render={
-                <button
-                  onClick={() => onSelectWeek(weekStart)}
-                  className="flex items-center justify-center h-full text-[11px] font-medium text-muted-foreground/50 hover:text-primary hover:bg-accent/10 rounded-lg transition-colors"
-                >
-                  {weekNum}
-                </button>
-              } />
-              <TooltipContent side="left">Ir a semana {weekNum}</TooltipContent>
-            </Tooltip>
+            {/* Week number + publish lock */}
+            <div className="flex flex-col items-center justify-center gap-0.5">
+              <Tooltip>
+                <TooltipTrigger render={
+                  <button
+                    onClick={() => onSelectWeek(weekStart)}
+                    className="text-[11px] font-medium text-muted-foreground/50 hover:text-primary transition-colors"
+                  >
+                    S{weekNum}
+                  </button>
+                } />
+                <TooltipContent side="left">Ir a semana {weekNum}</TooltipContent>
+              </Tooltip>
+              {isWeekPublished && (
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Lock className="size-3 text-emerald-500 cursor-default" />
+                  } />
+                  <TooltipContent side="left">Publicado</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
               {week.map((day) => {
                 const isToday    = day.date === TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
@@ -3293,14 +3305,14 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 onClick: handleGenerateClick,
                 disabled: isPending || loadingWeek,
               }] : []),
-              // ── Group 1: Publish (first, own section) ──
-              ...(canEdit && isDraft && hasAssignments ? [{
+              // ── Group 1: Publish (week view only) ──
+              ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
                 label: t("publishRota"),
                 icon: <Lock className="size-3.5" />,
                 onClick: handlePublish,
                 disabled: isPending,
               }] : []),
-              ...(canEdit && isPublished ? [{
+              ...(canEdit && isPublished && view === "week" ? [{
                 label: t("unlockRota"),
                 icon: <Lock className="size-3.5" />,
                 onClick: handleUnlock,
