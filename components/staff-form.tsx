@@ -7,7 +7,13 @@ import { Hourglass, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { createStaff, updateStaff, deleteStaff, STAFF_PASTEL_COLORS } from "@/app/(clinic)/staff/actions"
+import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
+
+const STAFF_PASTEL_COLORS = [
+  "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+  "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+  "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+]
 import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Tecnica } from "@/lib/types/database"
 

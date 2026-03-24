@@ -58,7 +58,6 @@ function parseFormData(formData: FormData) {
   }
 }
 
-export { STAFF_PASTEL_COLORS }
 
 export async function createStaff(_prevState: unknown, formData: FormData) {
   const supabase = await createClient()
