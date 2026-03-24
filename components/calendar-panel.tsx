@@ -154,21 +154,27 @@ function getMonthStart(isoDate: string): string {
 
 function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: string, locale: string): string {
   if (view === "month") {
-    // 4-week rolling view: show date range
     const start = new Date(weekStart + "T12:00:00")
     const end = new Date(weekStart + "T12:00:00")
-    end.setDate(start.getDate() + 27) // 4 weeks = 28 days
-    const s = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(start)
-    const e = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(end)
-    return `${s} – ${e}`
+    end.setDate(start.getDate() + 27)
+    // Compact: "23 mar – 19 abr 2026"
+    const sDay = start.getDate()
+    const eDay = end.getDate()
+    const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
+    const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
+    const yr = end.getFullYear()
+    return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
   }
-  // week
+  // week — compact: "23–29 mar 2026"
   const start = new Date(weekStart + "T12:00:00")
   const end = new Date(weekStart + "T12:00:00")
   end.setDate(start.getDate() + 6)
-  const s = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(start)
-  const e = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(end)
-  return `${s} – ${e}`
+  const sDay = start.getDate()
+  const eDay = end.getDate()
+  const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
+  const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
+  const yr = end.getFullYear()
+  return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
 }
 
 // ── Staff chip (Vista por persona) ────────────────────────────────────────────
@@ -1219,9 +1225,9 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
   if (totalIssues === 0) {
     return (
-      <div className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
+      <div className="flex items-center gap-1.5 h-7 px-2 xl:px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
         <CheckCircle2 className="size-3 shrink-0" />
-        Sin avisos
+        <span className="hidden xl:inline">Sin avisos</span>
       </div>
     )
   }
@@ -1230,10 +1236,10 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 h-7 px-3 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-medium hover:bg-amber-500/20 transition-colors shrink-0"
+        className="flex items-center gap-1 h-7 px-2 xl:px-3 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-medium hover:bg-amber-500/20 transition-colors shrink-0"
       >
         <AlertTriangle className="size-3 shrink-0" />
-        <span className="hidden sm:inline">{t("warnings")}</span>
+        <span className="hidden xl:inline">{t("warnings")}</span>
         <span className="font-semibold">{totalIssues}</span>
       </button>
 
@@ -3378,14 +3384,16 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
           {showActions && !isPublished && !chatOpen && (
-            <Button size="sm" onClick={handleGenerateClick} disabled={isPending}>
-              {isPending ? tc("generating") : t("generateRota")}
-            </Button>
+            <div className="hidden xl:block">
+              <Button size="sm" onClick={handleGenerateClick} disabled={isPending}>
+                {isPending ? tc("generating") : t("generateRota")}
+              </Button>
+            </div>
           )}
           {(showActions || hasAssignments) && !loadingWeek && (
             <OverflowMenu items={[
-              // ── Generate (inside overflow when chat is open) ──
-              ...(showActions && !isPublished && chatOpen ? [{
+              // ── Generate (inside overflow when chat open OR narrow screen) ──
+              ...(showActions && !isPublished ? [{
                 label: isPending ? tc("generating") : t("generateRota"),
                 icon: <Sparkles className="size-3.5" />,
                 onClick: handleGenerateClick,
@@ -3448,7 +3456,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               }, {
                 label: highlightHover ? "Resaltar persona ✓" : "Resaltar persona",
-                icon: <Pencil className="size-3.5" />,
+                icon: <Pencil className="size-3.5 text-amber-500" />,
                 onClick: () => setHighlightHover(!highlightHover),
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
