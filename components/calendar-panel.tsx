@@ -620,8 +620,6 @@ function StaffProfilePanel({
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
                   <span className="text-muted-foreground/40">·</span>
-                  <span>{staff.contracted_hours}h/sem</span>
-                  <span className="text-muted-foreground/40">·</span>
                   <span>{staff.days_per_week}d/sem</span>
                 </div>
               </>
