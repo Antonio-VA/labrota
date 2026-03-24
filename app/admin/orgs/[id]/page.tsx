@@ -6,6 +6,7 @@ import { getLocale } from "next-intl/server"
 import { formatDateWithYear } from "@/lib/format-date"
 import type { Organisation } from "@/lib/types/database"
 import { ArrowLeft, Users, Plus } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 import { updateOrgRegional } from "@/app/admin/actions"
@@ -80,9 +81,6 @@ export default async function OrgDetailPage({
         <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
           <ArrowLeft className="size-4" />
         </Button>
-        <div className="size-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-[14px] font-bold shrink-0">
-          {initials}
-        </div>
         <div className="flex-1 min-w-0">
           <AdminOrgHeaderActions org={org} />
         </div>
@@ -91,14 +89,14 @@ export default async function OrgDetailPage({
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Personal activo", value: staffRes.count ?? 0 },
-          { label: "Horarios (total)", value: rotasRes.count ?? 0 },
-          { label: "Horarios (30 días)", value: recentRotasRes.count ?? 0 },
-          { label: "Último acceso", value: lastLoginOverall ? fmt(lastLoginOverall) : "Nunca" },
+          { label: "Personal activo", value: String(staffRes.count ?? 0), isNumber: true },
+          { label: "Horarios (total)", value: String(rotasRes.count ?? 0), isNumber: true },
+          { label: "Horarios (30 días)", value: String(recentRotasRes.count ?? 0), isNumber: true },
+          { label: "Último acceso", value: lastLoginOverall ? fmt(lastLoginOverall) : "Nunca", isNumber: false },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
             <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+            <p className={cn("mt-0.5 leading-tight", kpi.isNumber ? "text-[22px] font-semibold text-foreground" : "text-[14px] font-medium text-foreground")}>{kpi.value}</p>
           </div>
         ))}
       </div>
