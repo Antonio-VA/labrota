@@ -179,7 +179,10 @@ function TaskCell({
   isPublished,
   onAssign,
   onRemove,
+  onAssignSilent,
+  onRemoveSilent,
   onToggleWholeTeam,
+  onRefresh,
 }: {
   tecnica: Tecnica
   date: string
@@ -190,7 +193,10 @@ function TaskCell({
   isPublished: boolean
   onAssign: (staffId: string, tecnicaCodigo: string, date: string) => void
   onRemove: (assignmentId: string) => void
+  onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<void>
+  onRemoveSilent: (assignmentId: string) => Promise<void>
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
+  onRefresh: () => void
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -231,7 +237,7 @@ function TaskCell({
                 "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
                 onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
                 hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100"
               )}>
                 {`${a.staff.first_name[0]}${a.staff.last_name[0]}`}
                 {!isPublished && (
@@ -268,21 +274,20 @@ function TaskCell({
               if (!result) return
               const { staffIds: selected, wholeTeam } = result
 
-              // Handle whole_team toggle
-              if (wholeTeam !== isWholeTeam) {
-                onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)
-              }
-
-              // Compute diff: add new, remove deselected
+              // Compute diff
               const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
               const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
-              for (const id of toRemove) {
-                const a = assignments.find((x) => x.staff_id === id)
-                if (a) await onRemove(a.id)
-              }
-              for (const id of toAdd) {
-                await onAssign(id, tecnica.codigo, date)
-              }
+
+              // Run all mutations in parallel, refresh once
+              await Promise.all([
+                ...(wholeTeam !== isWholeTeam ? [onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)] : []),
+                ...toRemove.map((id) => {
+                  const a = assignments.find((x) => x.staff_id === id)
+                  return a ? onRemoveSilent(a.id) : Promise.resolve()
+                }),
+                ...toAdd.map((id) => onAssignSilent(id, tecnica.codigo, date)),
+              ])
+              onRefresh()
             }}
             tecnica={tecnica}
             availableStaff={staffList}
@@ -342,7 +347,8 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
       ref={cellRef}
       className={cn(
         "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]",
-              )}
+        new Date(date + "T12:00:00").getDay() === 6 && "border-l border-l-border/50 border-dashed"
+      )}
     >
       {onLeave.map((s) => (
         <Tooltip key={s.id}>
@@ -579,33 +585,31 @@ export function TaskGrid({
   // Compute weekStart from data
   const weekStart = data.weekStart
 
-  async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
+  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as ShiftType
+
+  async function assignSilent(staffId: string, tecnicaCodigo: string, date: string) {
     const result = await upsertAssignment({
-      weekStart,
-      staffId,
-      date,
-      shiftType: (data?.shiftTypes?.[0]?.code ?? "T1") as ShiftType,
-      functionLabel: tecnicaCodigo,
+      weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo,
     })
-    if (result.error) { toast.error(result.error); return }
+    if (result.error) toast.error(result.error)
+  }
+
+  async function removeSilent(assignmentId: string) {
+    const result = await removeAssignment(assignmentId)
+    if (result.error) toast.error(result.error)
+  }
+
+  async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
+    await assignSilent(staffId, tecnicaCodigo, date)
     onRefresh()
   }
 
   async function handleRemove(assignmentId: string) {
-    const result = await removeAssignment(assignmentId)
-    if (result.error) toast.error(result.error)
-    else onRefresh()
+    await removeSilent(assignmentId)
+    onRefresh()
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
-    // If toggling ON and no assignments exist, we need to create one first
-    // so the whole_team flag has a row to live on
-    const dayData = days.find((d) => d.date === date)
-    const existingForLabel = (dayData?.assignments ?? []).filter((a) => a.function_label === tecnicaCodigo)
-    if (!current && existingForLabel.length === 0 && staffList.length > 0) {
-      // Create a placeholder assignment with the first available staff
-      await handleAssign(staffList[0].id, tecnicaCodigo, date)
-    }
     const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
     if (result.error) toast.error(result.error)
     onRefresh()
@@ -649,7 +653,10 @@ export function TaskGrid({
           return (
             <div
               key={day.date}
-              className={cn("border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted", )}
+              className={cn(
+                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted",
+                d.getDay() === 6 && "border-l border-l-border/50 border-dashed"
+              )}
             >
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
               <span className={cn(
@@ -695,6 +702,7 @@ export function TaskGrid({
                   key={`${tecnica.id}-${day.date}`}
                   className={cn(
                     "border-b border-r last:border-r-0 border-border",
+                    new Date(day.date + "T12:00:00").getDay() === 6 && "border-l border-l-border/50 border-dashed",
                     hasEmpty && "bg-muted/20",
                     day.isWeekend && "bg-muted/30"
                   )}
@@ -709,7 +717,10 @@ export function TaskGrid({
                     isPublished={isPublished}
                     onAssign={handleAssign}
                     onRemove={handleRemove}
+                    onAssignSilent={assignSilent}
+                    onRemoveSilent={removeSilent}
                     onToggleWholeTeam={handleToggleWholeTeam}
+                    onRefresh={onRefresh}
                   />
                 </div>
               )
