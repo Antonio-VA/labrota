@@ -60,7 +60,7 @@ export function ClinicTopBar({
               {orgLogoUrl && !logoError && (
                 <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
               )}
-              {orgName}
+              <span data-org-name>{orgName}</span>
               <ChevronDown className="size-3.5 opacity-50" />
             </button>
             {orgMenuOpen && (
@@ -96,7 +96,7 @@ export function ClinicTopBar({
             {orgLogoUrl && !logoError && (
               <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
             )}
-            <span className="text-[14px] font-medium text-foreground/70">{orgName}</span>
+            <span className="text-[14px] font-medium text-foreground/70" data-org-name>{orgName}</span>
           </div>
         )
       )}

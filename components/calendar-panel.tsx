@@ -3293,11 +3293,35 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 onClick: handleGenerateClick,
                 disabled: isPending || loadingWeek,
               }] : []),
-              // ── Group 1: Export & Publish ──
+              // ── Group 1: Publish (first, own section) ──
+              ...(canEdit && isDraft && hasAssignments ? [{
+                label: t("publishRota"),
+                icon: <Lock className="size-3.5" />,
+                onClick: handlePublish,
+                disabled: isPending,
+              }] : []),
+              ...(canEdit && isPublished ? [{
+                label: t("unlockRota"),
+                icon: <Lock className="size-3.5" />,
+                onClick: handleUnlock,
+                disabled: isPending,
+              }] : []),
+              // ── Group 2: Export ──
               ...(hasAssignments && view === "week" ? [{
                 label: t("exportPdf"),
                 icon: <FileText className="size-3.5" />,
-                onClick: () => window.open(`/rota/${weekStart}/print`, "_blank"),
+                dividerBefore: true,
+                onClick: () => {
+                  if (!weekData) return
+                  import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
+                    const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+                    if (weekData.rotaDisplayMode === "by_task") {
+                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale)
+                    } else {
+                      exportPdfByShift(weekData, on, locale)
+                    }
+                  })
+                },
               }, {
                 label: "Exportar Excel",
                 icon: <Sheet className="size-3.5" />,
@@ -3312,19 +3336,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   })
                 },
               }] : []),
-              ...(canEdit && isDraft && hasAssignments ? [{
-                label: t("publishRota"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handlePublish,
-                disabled: isPending,
-              }] : []),
-              ...(canEdit && isPublished ? [{
-                label: t("unlockRota"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handleUnlock,
-                disabled: isPending,
-              }] : []),
-              // ── Group 2: View options ──
+              // ── Group 3: View options ──
               ...(view === "week" && calendarLayout === "shift" ? [{
                 label: compact ? "Vista normal" : "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
@@ -3451,7 +3463,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         {view === "week" && (
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-              {(!weekData?.rota || (weekData && !weekData.days.some((d) => d.assignments.length > 0))) && !loadingWeek && !isPending ? (
+              {weekData && (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) && !loadingWeek && !isPending ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
                   <CalendarDays className="size-10 text-muted-foreground/30" />
                   <div className="text-center">
