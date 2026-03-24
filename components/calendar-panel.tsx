@@ -706,9 +706,9 @@ function StaffProfilePanel({
           {/* Capacidades (skills) */}
           {staff && (
             <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Técnicas</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Tareas</p>
               {staff.staff_skills.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground italic">Sin técnicas registradas</p>
+                <p className="text-[12px] text-muted-foreground italic">Sin tareas registradas</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {staff.staff_skills.map((sk) => (
@@ -1080,7 +1080,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
 const WARNING_CATEGORY_LABEL: Record<string, string> = {
   coverage: "Cobertura insuficiente",
-  skill_gap: "Técnicas sin cubrir",
+  skill_gap: "Tareas sin cubrir",
   rule: "Reglas de planificación",
   budget: "Carga de turnos",
 }
@@ -2308,7 +2308,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
                 if (day.punctions > 0) tooltipParts.push(`${day.punctions} punciones`)
                 if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ausencias`)
-                if (day.hasSkillGaps) tooltipParts.push("Técnicas sin cubrir")
+                if (day.hasSkillGaps) tooltipParts.push("Tareas sin cubrir")
                 if (day.holidayName) tooltipParts.push(day.holidayName)
                 const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
 
@@ -3399,18 +3399,19 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 },
               }] : []),
               // ── Group 3: View options (week view only) ──
-              ...(view === "week" && calendarLayout === "shift" ? [{
+              ...(view === "week" ? [{
                 label: compact ? "Vista normal" : "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 dividerBefore: true,
-              }, {
-                label: colorChips ? "Técnicas en gris" : "Técnicas en color",
+              },
+              ...(calendarLayout === "shift" ? [{
+                label: colorChips ? "Tareas en gris" : "Tareas en color",
                 icon: colorChips
                   ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
-              }] : []),
+              }] : [])] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
@@ -3570,6 +3571,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
                   shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
+                  compact={compact}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid

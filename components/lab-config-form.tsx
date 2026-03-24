@@ -200,7 +200,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         <div className="rounded-lg border border-border bg-background px-5">
           <SectionHeader title="Conflicto por tarea" />
           <div className="flex flex-col gap-0">
-            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X técnicas en el mismo día">
+            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X tareas en el mismo día">
               <Input
                 type="number"
                 min={2}

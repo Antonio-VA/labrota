@@ -10,7 +10,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   cobertura:     "Cobertura",
   reglas:        "Reglas",
   plantillas:    "Plantillas",
-  tecnicas:      "Técnicas",
+  tecnicas:      "Tareas",
   departamentos: "Departamentos",
   turnos:        "Turnos",
   notas:         "Notas",

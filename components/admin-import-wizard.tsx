@@ -315,9 +315,9 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
         {/* Techniques (by_task) */}
         {mode === "by_task" && (
           <div>
-            <p className="text-[13px] font-medium text-muted-foreground mb-2">Técnicas ({techniques.length})</p>
+            <p className="text-[13px] font-medium text-muted-foreground mb-2">Tareas ({techniques.length})</p>
             {techniques.length === 0 && (
-              <p className="text-[12px] text-muted-foreground/60 italic">No se detectaron técnicas en el archivo.</p>
+              <p className="text-[12px] text-muted-foreground/60 italic">No se detectaron tareas en el archivo.</p>
             )}
             <div className="flex flex-col gap-2">
               {techniques.map((t, i) => (
@@ -453,7 +453,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
         <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Modo</span><span className="font-medium">{mode === "by_task" ? "Por tarea" : "Por turno"}</span></div>
         <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Personal</span><span className="font-medium">{staff.length}</span></div>
         <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Departamentos</span><span className="font-medium">{depts.length}</span></div>
-        <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">{mode === "by_task" ? "Técnicas" : "Turnos"}</span><span className="font-medium">{mode === "by_task" ? techniques.length : shifts.length}</span></div>
+        <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">{mode === "by_task" ? "Tareas" : "Turnos"}</span><span className="font-medium">{mode === "by_task" ? techniques.length : shifts.length}</span></div>
         <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Ausencias</span><span className="font-medium">{leaves.length}</span></div>
         <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Asignaciones</span><span className="font-medium">{parsed?.assignments.length ?? 0}</span></div>
       </div>

@@ -184,7 +184,7 @@
     "noWarnings": "Sin avisos",
     "noService": "Sin servicio",
     "noGuardia": "Sin horario",
-    "noTecnicas": "Sin técnicas registradas",
+    "noTecnicas": "Sin tareas registradas",
     "noRecentShifts": "Sin turnos recientes",
     "noLeavesScheduled": "Sin vacaciones programadas",
     "allStaffAssigned": "Todo el personal asignado",
@@ -200,14 +200,14 @@
     "ratioOptimal": "Ratio óptimo",
     "ratioAcceptable": "Ratio aceptable",
     "ratioInsufficient": "Ratio insuficiente",
-    "tecnicasSinCobertura": "Técnicas sin cobertura",
-    "tecnicaPrincipal": "Técnica principal",
+    "tecnicasSinCobertura": "Tareas sin cobertura",
+    "tecnicaPrincipal": "Tarea principal",
     "persona": "persona",
     "personas": "personas",
     "compactView": "Vista compacta",
     "normalView": "Vista normal",
-    "colorChipsOn": "Técnicas en color",
-    "colorChipsOff": "Técnicas en gris",
+    "colorChipsOn": "Tareas en color",
+    "colorChipsOff": "Tareas en gris",
     "deleteRota": "Eliminar horario",
     "generateStrategy": "Generar horario",
     "noPrevAssignments": "No hay asignaciones en la semana anterior.",
@@ -235,8 +235,8 @@
     "columns": {
       "name": "Nombre",
       "role": "Departamento",
-      "skills": "Técnicas",
-      "capacidades": "Técnicas",
+      "skills": "Tareas",
+      "capacidades": "Tareas",
       "training": "En formación",
       "shiftsThisWeek": "Turnos esta semana",
       "status": "Estado"
@@ -251,7 +251,7 @@
       "lastName": "Apellidos",
       "email": "Correo electrónico",
       "role": "Departamento",
-      "skills": "Técnicas",
+      "skills": "Tareas",
       "skillHint": "1 clic = en formación · 2 clics = certificado",
       "workingPattern": "Disponibilidad",
       "contractedHours": "Horas contratadas semanales",
@@ -289,7 +289,7 @@
     "sections": {
       "personalInfo": "Datos personales",
       "roleAndStatus": "Departamento y estado",
-      "capabilities": "Técnicas"
+      "capabilities": "Tareas"
     },
     "skillLevels": {
       "certified": "Competente",
@@ -315,7 +315,7 @@
     "membersDeleted": "{count} miembro(s) borrado(s) definitivamente.",
     "kpiActive": "Activos",
     "kpiTraining": "En formación",
-    "kpiCoverage": "Cobertura técnicas",
+    "kpiCoverage": "Cobertura tareas",
     "kpiFullValidation": "Validación completa",
     "bulk": {
       "addSkill": "Añadir habilidad",
@@ -584,10 +584,10 @@
     "department": "Departamento",
     "typicalShift": "Turno típico",
     "active": "Activa",
-    "addTecnica": "Añadir técnica",
-    "saveTecnicas": "Guardar técnicas",
-    "allNeedNameCode": "Todas las técnicas necesitan nombre y código.",
-    "noTecnicas": "No hay técnicas definidas.",
+    "addTecnica": "Añadir tarea",
+    "saveTecnicas": "Guardar tareas",
+    "allNeedNameCode": "Todas las tareas necesitan nombre y código.",
+    "noTecnicas": "No hay tareas definidas.",
     "loadDefaults": "Cargar defaults (ICSI, Biopsia, OPU, ET, DEN, VIT, CNG, SEM, TUB, PRE, TW, QC, MP)"
   },
   "departments": {

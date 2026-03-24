@@ -96,7 +96,7 @@ export function AdminOrgDetailClient({
               ))}
             </div>
             <span className="text-[11px] text-muted-foreground">
-              {displayMode === "by_shift" ? "Personal asignado a turnos por día" : "Personal asignado a técnicas por día"}
+              {displayMode === "by_shift" ? "Personal asignado a turnos por día" : "Personal asignado a tareas por día"}
             </span>
           </div>
         </div>

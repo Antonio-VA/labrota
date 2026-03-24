@@ -195,6 +195,7 @@ function TaskCell({
   onOptimisticRemove,
   onToggleWholeTeam,
   onRefresh,
+  compact = false,
 }: {
   tecnica: Tecnica
   date: string
@@ -212,6 +213,7 @@ function TaskCell({
   onOptimisticRemove: (assignmentId: string) => void
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
   onRefresh: () => void
+  compact?: boolean
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -227,7 +229,7 @@ function TaskCell({
   }
 
   return (
-    <div ref={cellRef} className="relative p-1 min-h-[36px] flex items-center gap-0.5 flex-wrap">
+    <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5 flex-wrap", compact ? "min-h-[28px]" : "min-h-[36px]")}>
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)
@@ -251,7 +253,7 @@ function TaskCell({
             <TooltipContent side="top">
               {a.staff.first_name} {a.staff.last_name}
               {onLeave && " · De baja hoy"}
-              {hasConflict && ` · Asignado a múltiples técnicas`}
+              {hasConflict && ` · Asignado a múltiples tareas`}
             </TooltipContent>
           </Tooltip>
         )
@@ -570,6 +572,7 @@ export function TaskGrid({
   biopsyDay5Pct = 0.5,
   biopsyDay6Pct = 0.5,
   shiftLabel,
+  compact = false,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -585,6 +588,7 @@ export function TaskGrid({
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
   shiftLabel?: string
+  compact?: boolean
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -638,7 +642,7 @@ export function TaskGrid({
   if (tecnicas.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <span className="text-[13px] text-muted-foreground">Sin técnicas configuradas</span>
+        <span className="text-[13px] text-muted-foreground">Sin tareas configuradas</span>
       </div>
     )
   }
@@ -730,13 +734,13 @@ export function TaskGrid({
 
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-background">
-      <div style={{ display: "grid", gridTemplateColumns: `120px repeat(${days.length}, 1fr)` }}>
+      <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(${days.length}, 1fr)` }}>
         {/* Header row */}
-        <div className="border-b border-r border-border bg-muted px-3 py-2 flex flex-col justify-center">
-          {shiftLabel && (
+        <div className={cn("border-b border-r border-border bg-muted flex flex-col justify-center", compact ? "px-2 py-1" : "px-3 py-2")}>
+          {shiftLabel && !compact && (
             <span className="text-[10px] tabular-nums text-muted-foreground/70">{shiftLabel}</span>
           )}
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Técnica</span>
+          <span className={cn("font-medium text-muted-foreground uppercase tracking-wide", compact ? "text-[9px]" : "text-[11px]")}>Tarea</span>
         </div>
         {days.map((day) => {
           const d = new Date(day.date + "T12:00:00")
@@ -767,14 +771,16 @@ export function TaskGrid({
             <div
               key={day.date}
               className={cn(
-                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted",
+                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px] bg-muted",
+                compact ? "py-1" : "py-1.5",
                 d.getDay() === 6 && "border-l border-l-border/50 border-dashed"
               )}
             >
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+              <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
               <span className={cn(
-                "text-[15px] font-semibold leading-none mt-0.5",
-                isToday ? "size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center" : "text-primary"
+                "font-semibold leading-none",
+                compact ? "text-[13px]" : "text-[15px] mt-0.5",
+                isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center" : "text-primary"
               )}>
                 {dayNum}
               </span>
@@ -797,10 +803,10 @@ export function TaskGrid({
             {/* Technique label */}
             <div
               key={`label-${tecnica.id}`}
-              className="border-b border-r border-border px-3 py-2 flex items-center gap-1.5"
+              className={cn("border-b border-r border-border flex items-center gap-1.5", compact ? "px-2 py-1" : "px-3 py-2")}
               style={{ borderLeft: `3px solid ${resolveColor(tecnica.color)}` }}
             >
-              <span className="text-[12px] font-medium truncate">{tecnica.nombre_es}</span>
+              <span className={cn("font-medium truncate", compact ? "text-[10px]" : "text-[12px]")}>{tecnica.nombre_es}</span>
             </div>
             {/* Day cells for this technique */}
             {days.map((day) => {
@@ -837,6 +843,7 @@ export function TaskGrid({
                     onOptimisticRemove={optimisticRemove}
                     onToggleWholeTeam={handleToggleWholeTeam}
                     onRefresh={onRefresh}
+                    compact={compact}
                   />
                 </div>
               )
