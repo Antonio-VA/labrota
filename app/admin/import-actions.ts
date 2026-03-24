@@ -210,7 +210,7 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
       if (assignmentRows.length > 0) {
         // Batch in chunks of 100 to avoid payload limits
         for (let i = 0; i < assignmentRows.length; i += 100) {
-          await admin.from("rota_assignments").insert(assignmentRows.slice(i, i + 100) as never)
+          await admin.from("rota_assignments").upsert(assignmentRows.slice(i, i + 100) as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
         }
       }
     }

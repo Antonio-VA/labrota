@@ -1799,17 +1799,15 @@ function ShiftGrid({
               </div>
             ))}
           </div>
-          {/* Rows */}
-          {["T1", "T2", "T3", "off"].map((row) => (
-            <div key={row} className={cn("grid grid-cols-[80px_repeat(7,1fr)]", row !== "off" && "border-b border-border")}>
+          {/* Rows — enough to cover up to 5 shifts + off */}
+          {Array.from({ length: 6 }).map((_, row) => (
+            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
               <div className="border-r border-border flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-background">
-                  {row !== "off" && (
-                    <div className={`shimmer-bar h-5 w-full ${i >= 5 ? "opacity-50" : ""}`} />
-                  )}
+                  <div className={`shimmer-bar h-5 w-full ${i >= 5 ? "opacity-50" : ""}`} />
                 </div>
               ))}
             </div>
@@ -3573,13 +3571,11 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                     <p className="text-[14px] font-medium">{t("noRota")}</p>
                     <p className="text-[13px] text-muted-foreground mt-1">{t("noRotaDescription")}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-h-[36px]">
                     <Button size="sm" onClick={handleGenerateClick}>{t("generateRota")}</Button>
-                    {prevWeekHasRota && (
-                      <Button size="sm" variant="outline" onClick={() => setShowCopyConfirm(true)}>
-                        Copiar semana anterior
-                      </Button>
-                    )}
+                    <Button size="sm" variant="outline" onClick={() => setShowCopyConfirm(true)} className={prevWeekHasRota ? "" : "invisible"}>
+                      Copiar semana anterior
+                    </Button>
                   </div>
                   {/* Copy confirmation */}
                   {showCopyConfirm && (

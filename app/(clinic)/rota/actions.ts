@@ -534,7 +534,7 @@ export async function generateRota(
   if (toInsert.length > 0) {
     const { error: insertError } = await supabase
       .from("rota_assignments")
-      .insert(toInsert as never)
+      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
     if (insertError) return { error: insertError.message }
   }
