@@ -3449,8 +3449,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               }, {
-                label: highlightHover ? "Resaltado de persona: On" : "Resaltado de persona: Off",
-                icon: <Users className="size-3.5" />,
+                label: highlightHover ? "Resaltar persona ✓" : "Resaltar persona",
+                icon: <Pencil className="size-3.5" />,
                 onClick: () => setHighlightHover(!highlightHover),
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
@@ -3559,7 +3559,14 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         {view === "week" && (
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-              {weekData && (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) && !loadingWeek && !isPending ? (
+              {loadingWeek || isPending ? (
+                /* Show the appropriate grid in loading state — it renders shimmer */
+                weekData?.rotaDisplayMode === "by_task" ? (
+                  <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} compact={compact} />
+                ) : (
+                  <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+                )
+              ) : weekData && (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
                   <CalendarDays className="size-10 text-muted-foreground/30" />
                   <div className="text-center">
@@ -3600,7 +3607,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 <TaskGrid
                   data={weekData}
                   staffList={staffList}
-                  loading={loadingWeek || isPending}
+                  loading={false}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   onRefresh={() => fetchWeekSilent(weekStart)}
@@ -3619,7 +3626,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 <ShiftGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={loadingWeek || isPending}
+                  loading={false}
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
@@ -3648,7 +3655,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 <PersonGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={loadingWeek || isPending}
+                  loading={false}
                   isGenerating={isPending}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}

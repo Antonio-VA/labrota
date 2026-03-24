@@ -672,8 +672,32 @@ export function TaskGrid({
 
   if (loading || !data) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <span className="text-[13px] text-muted-foreground">{t("noRota")}</span>
+      <div className="rounded-lg border border-border overflow-hidden bg-background">
+        <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, 1fr)` }}>
+          {/* Header shimmer */}
+          <div className="border-b border-r border-border bg-muted px-3 py-2">
+            <div className="shimmer-bar h-3 w-12 rounded" />
+          </div>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-2 gap-1 bg-muted">
+              <div className="shimmer-bar h-2.5 w-6 rounded" />
+              <div className="shimmer-bar w-6 h-6 rounded-full" />
+            </div>
+          ))}
+          {/* Row shimmers (4 technique rows + OFF) */}
+          {Array.from({ length: 5 }).map((_, row) => (
+            <div key={row} className="contents">
+              <div className="border-b border-r border-border px-3 py-2 flex items-center">
+                <div className="shimmer-bar h-3 w-16 rounded" />
+              </div>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className={cn("border-b border-r last:border-r-0 border-border p-1", compact ? "min-h-[28px]" : "min-h-[36px]")}>
+                  {row < 4 && <div className={`shimmer-bar h-5 w-full rounded ${i >= 5 ? "opacity-50" : ""}`} />}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
