@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,41 +11,71 @@ import type { Tecnica } from "@/lib/types/database"
 
 // ── Color options ──────────────────────────────────────────────────────────────
 
-const COLORS = [
-  { key: "amber",  label: "Amber",  dot: "bg-amber-400",  pill: "bg-amber-50 border-amber-300 text-amber-800" },
-  { key: "blue",   label: "Blue",   dot: "bg-blue-400",   pill: "bg-blue-50 border-blue-300 text-blue-700" },
-  { key: "green",  label: "Green",  dot: "bg-green-400",  pill: "bg-green-50 border-green-300 text-green-700" },
-  { key: "purple", label: "Purple", dot: "bg-purple-400", pill: "bg-purple-50 border-purple-300 text-purple-700" },
-  { key: "coral",  label: "Coral",  dot: "bg-red-400",    pill: "bg-red-50 border-red-300 text-red-700" },
-  { key: "teal",   label: "Teal",   dot: "bg-teal-400",   pill: "bg-teal-50 border-teal-300 text-teal-700" },
-  { key: "slate",  label: "Slate",  dot: "bg-slate-400",  pill: "bg-slate-100 border-slate-300 text-slate-600" },
-  { key: "red",    label: "Red",    dot: "bg-red-500",    pill: "bg-red-50 border-red-400 text-red-800" },
-] as const
+const COLOR_PALETTE = [
+  "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899",
+  "#06B6D4", "#84CC16", "#6366F1", "#D946EF", "#0EA5E9", "#22C55E", "#A855F7", "#F43F5E",
+  "#64748B", "#78716C", "#0D9488", "#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#CA8A04",
+]
 
-export type TecnicaColor = typeof COLORS[number]["key"]
+// Map legacy named colors → hex for backward compat
+const LEGACY_COLOR_HEX: Record<string, string> = {
+  amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6",
+  coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444",
+}
+function resolveHex(color: string): string {
+  if (color.startsWith("#")) return color
+  return LEGACY_COLOR_HEX[color] ?? "#64748B"
+}
+
+export type TecnicaColor = string
 
 
-// ── Color picker ───────────────────────────────────────────────────────────────
+// ── Color picker (circle + popover) ─────────────────────────────────────────
 
 function ColorPicker({ value, onChange, disabled }: {
   value: string; onChange: (c: string) => void; disabled?: boolean
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const hex = resolveHex(value)
+
   return (
-    <div className="flex gap-1.5 flex-wrap">
-      {COLORS.map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(c.key)}
-          title={c.label}
-          className={cn(
-            "size-5 rounded-full border-2 transition-all disabled:opacity-50",
-            c.dot,
-            value === c.key ? "border-foreground scale-110" : "border-transparent hover:scale-105"
-          )}
-        />
-      ))}
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className="size-5 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow disabled:opacity-50"
+        style={{ backgroundColor: hex }}
+      />
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
+          <div className="grid grid-cols-8 gap-1">
+            {COLOR_PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { onChange(c); setOpen(false) }}
+                className={cn(
+                  "size-5 rounded-full transition-transform hover:scale-125",
+                  c === hex && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -59,14 +89,14 @@ type Draft = {
 }
 
 function TecnicaRow({
-  tecnica, index, total, onChange, onMoveUp, onMoveDown, onDelete, disabled,
+  tecnica, index, total, onChange, onMoveUp, onMoveDown, onDelete, disabled, shiftCodes,
 }: {
   tecnica: Draft; index: number; total: number
   onChange: (t: Draft) => void; onMoveUp: () => void; onMoveDown: () => void
-  onDelete: () => void; disabled: boolean
+  onDelete: () => void; disabled: boolean; shiftCodes: string[]
 }) {
   const t = useTranslations("tecnicas")
-  const colorDef = COLORS.find((c) => c.key === tecnica.color) ?? COLORS[0]
+  const hex = resolveHex(tecnica.color)
 
   return (
     <div className={cn(
@@ -116,10 +146,10 @@ function TecnicaRow({
             className="h-8 text-[13px] font-mono uppercase pr-8"
           />
           {tecnica.codigo && (
-            <span className={cn(
-              "absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1 py-0.5 rounded border",
-              colorDef.pill
-            )}>
+            <span
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1 py-0.5 rounded border"
+              style={{ backgroundColor: hex + "1A", borderColor: hex + "66", color: hex }}
+            >
               {tecnica.codigo}
             </span>
           )}
@@ -148,7 +178,7 @@ function TecnicaRow({
           <div className="flex items-center gap-2">
             <span className="text-[12px] text-muted-foreground shrink-0">{t("typicalShift")}</span>
             <div className="flex gap-1">
-              {["T1", "T2", "T3", "T4", "T5"].map((shift) => {
+              {shiftCodes.map((shift) => {
                 const active = tecnica.typical_shifts.includes(shift)
                 return (
                   <button
@@ -210,7 +240,7 @@ function TecnicaRow({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }) {
+export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] }: { initialTecnicas: Tecnica[]; shiftCodes?: string[] }) {
   const t = useTranslations("tecnicas")
   const tc = useTranslations("common")
   const [tecnicas, setTecnicas] = useState<Draft[]>(
@@ -330,7 +360,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
                 tecnica={t} index={i} total={tecnicas.length}
                 onChange={(draft) => updateRow(i, draft)}
                 onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
-                onDelete={() => deleteRow(i)} disabled={isPending}
+                onDelete={() => deleteRow(i)} disabled={isPending} shiftCodes={shiftCodes}
               />
             ) : null)}
           </div>
@@ -348,7 +378,7 @@ export function TécnicasTab({ initialTecnicas }: { initialTecnicas: Tecnica[] }
                 tecnica={t} index={i} total={tecnicas.length}
                 onChange={(draft) => updateRow(i, draft)}
                 onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
-                onDelete={() => deleteRow(i)} disabled={isPending}
+                onDelete={() => deleteRow(i)} disabled={isPending} shiftCodes={shiftCodes}
               />
             ) : null)}
           </div>

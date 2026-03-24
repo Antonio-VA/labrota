@@ -287,6 +287,7 @@ export function TaskGrid({
   biopsyConversionRate = 0.5,
   biopsyDay5Pct = 0.5,
   biopsyDay6Pct = 0.5,
+  shiftLabel,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -301,6 +302,7 @@ export function TaskGrid({
   biopsyConversionRate?: number
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
+  shiftLabel?: string
 }) {
   const t = useTranslations("schedule")
 
@@ -376,7 +378,10 @@ export function TaskGrid({
     <div className="rounded-lg border border-border overflow-visible bg-background">
       <div style={{ display: "grid", gridTemplateColumns: `120px repeat(${days.length}, 1fr)` }}>
         {/* Header row */}
-        <div className="border-b border-r border-border bg-muted px-3 py-2">
+        <div className="border-b border-r border-border bg-muted px-3 py-2 flex flex-col justify-center">
+          {shiftLabel && (
+            <span className="text-[10px] tabular-nums text-muted-foreground/70">{shiftLabel}</span>
+          )}
           <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Técnica</span>
         </div>
         {days.map((day) => {

@@ -3537,6 +3537,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   biopsyConversionRate={weekData?.biopsyConversionRate}
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid

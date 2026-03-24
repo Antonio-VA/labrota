@@ -80,7 +80,7 @@ export default async function LabConfigPage() {
                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
                   Técnicas
                 </p>
-                <TécnicasTab initialTecnicas={tecnicas} />
+                <TécnicasTab initialTecnicas={tecnicas} shiftCodes={shiftTypes.filter((s) => s.active !== false).map((s) => s.code)} />
               </div>
             }
             departamentos={

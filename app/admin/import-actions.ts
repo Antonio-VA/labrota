@@ -145,6 +145,17 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
     if (skillRows.length > 0) {
       await admin.from("staff_skills").insert(skillRows as never)
     }
+
+    // Create a default shift for by_task orgs (needed for assignments)
+    await admin.from("shift_types").insert({
+      organisation_id: orgId,
+      code: "T1",
+      name_es: "Jornada",
+      name_en: "Day shift",
+      start_time: "09:00",
+      end_time: "17:00",
+      sort_order: 0,
+    } as never)
   } else {
     const shiftRows = payload.shifts.map((s, i) => ({
       organisation_id: orgId,
