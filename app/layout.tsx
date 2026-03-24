@@ -55,6 +55,7 @@ export default async function RootLayout({
       {...(accentColor ? { style: { "--primary": accentColor, "--ring": accentColor, "--sidebar-primary": accentColor, "--sidebar-ring": accentColor } as React.CSSProperties } : {})}
     >
       <head>
+        <link rel="icon" href="/icon.png?v=2" type="image/png" />
         {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
