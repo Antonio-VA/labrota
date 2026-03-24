@@ -97,10 +97,10 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-7 rounded-full shrink-0 overflow-hidden hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
+          className="size-8 rounded-full shrink-0 overflow-hidden hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" className="size-7 rounded-full object-cover block" />
+          <img src={avatarUrl} alt="Avatar" className="size-8 rounded-full object-cover object-center block" />
         </button>
       ) : (
         <button
