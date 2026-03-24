@@ -220,6 +220,7 @@
     "directory": "Staff directory",
     "addStaff": "Add member",
     "editStaff": "Edit member",
+    "backToList": "Back to team",
     "searchPlaceholder": "Search by name…",
     "filterByRole": "Filter by role",
     "filterByStatus": "Filter by status",

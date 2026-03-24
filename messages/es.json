@@ -220,6 +220,7 @@
     "directory": "Directorio de personal",
     "addStaff": "Añadir miembro",
     "editStaff": "Editar miembro",
+    "backToList": "Volver al equipo",
     "searchPlaceholder": "Buscar por nombre…",
     "filterByRole": "Filtrar por rol",
     "filterByStatus": "Filtrar por estado",
