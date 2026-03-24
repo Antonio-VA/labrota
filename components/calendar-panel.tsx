@@ -3594,6 +3594,8 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
           const cr = weekData.biopsyConversionRate ?? 0.5
           return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
         })()}
+        rotaDisplayMode={weekData?.rotaDisplayMode}
+        taskConflictThreshold={weekData?.taskConflictThreshold}
       />
 
       {/* Multi-week generation scope dialog */}

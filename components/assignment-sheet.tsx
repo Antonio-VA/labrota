@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass } from "lucide-react"
+import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
 import {
@@ -417,13 +417,15 @@ interface Props {
   onPunctionsChange: (date: string, value: number | null) => void
   timeFormat?: string
   biopsyForecast?: number
+  rotaDisplayMode?: string
+  taskConflictThreshold?: number
 }
 
 export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
   shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
-  timeFormat = "24h", biopsyForecast,
+  timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold = 3,
 }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -696,7 +698,83 @@ export function AssignmentSheet({
         >
           <div className="flex-1 overflow-y-auto">
 
-            {/* Shift sections */}
+            {/* Task swimlane view (by_task mode) */}
+            {rotaDisplayMode === "by_task" && (() => {
+              const activeTecnicas = (tecnicas ?? []).filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+              const leaveSet = new Set(onLeaveStaffIds)
+
+              // Count technique assignments per staff for conflict detection
+              const techCountByStaff: Record<string, number> = {}
+              for (const a of assignments) {
+                if (a.function_label) techCountByStaff[a.staff_id] = (techCountByStaff[a.staff_id] ?? 0) + 1
+              }
+              const conflictIds = new Set(Object.entries(techCountByStaff).filter(([, c]) => c > taskConflictThreshold).map(([id]) => id))
+
+              return (
+                <div className="flex flex-col">
+                  {activeTecnicas.map((tecnica) => {
+                    const techAssignments = assignments.filter((a) => a.function_label === tecnica.codigo)
+                    const assignedIds = new Set(techAssignments.map((a) => a.staff_id))
+                    const qualifiedStaff = staffList.filter((s) => s.staff_skills.some((sk) => sk.skill === tecnica.codigo))
+                    const isWholeTeam = techAssignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
+
+                    return (
+                      <div key={tecnica.id} className="border-b border-border px-4 py-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ background: tecnica.color === "blue" ? "#60A5FA" : tecnica.color === "green" ? "#34D399" : tecnica.color === "amber" ? "#FBBF24" : tecnica.color === "purple" ? "#A78BFA" : tecnica.color === "coral" ? "#F87171" : tecnica.color === "teal" ? "#2DD4BF" : "#94A3B8" }}
+                          />
+                          <span className="text-[14px] font-medium">{tecnica.nombre_es}</span>
+                          <span className="text-[11px] text-muted-foreground">({techAssignments.length}/3)</span>
+                        </div>
+
+                        {isWholeTeam ? (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-1 text-[12px] font-semibold">
+                              <Users className="size-3" /> Todo el equipo
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {techAssignments.map((a) => {
+                              const onLeave = leaveSet.has(a.staff_id)
+                              const hasConflict = conflictIds.has(a.staff_id)
+                              return (
+                                <span
+                                  key={a.id}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium",
+                                    onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                                    hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                                    "bg-muted text-foreground"
+                                  )}
+                                >
+                                  {a.staff.first_name} {a.staff.last_name[0]}.
+                                  {!isPublished && (
+                                    <button onClick={() => handleRemove(a.id)} className="hover:text-destructive">
+                                      <X className="size-3" />
+                                    </button>
+                                  )}
+                                </span>
+                              )
+                            })}
+                            {!isPublished && techAssignments.length < 3 && (
+                              <span className="text-[11px] text-muted-foreground italic">
+                                {techAssignments.length === 0 ? "Sin asignar" : ""}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
+            {/* Shift sections (by_shift mode) */}
+            {rotaDisplayMode !== "by_task" && <>
             {shiftTypes.map((shiftDef) => {
               const shift = shiftDef.code
               const shiftAssignments = assignments
@@ -857,6 +935,7 @@ export function AssignmentSheet({
                 ))}
               </div>
             )}
+          </>}
           </div>
 
           {/* Drag overlay */}
