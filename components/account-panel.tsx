@@ -253,6 +253,35 @@ export function AccountPanel({ open, onClose, user }: {
           </div>
         </div>
 
+        {/* Font size */}
+        <div className="px-5 py-3 border-b border-border">
+          <p className="text-[12px] text-muted-foreground font-medium mb-2">Tamaño de texto</p>
+          <div className="flex gap-2">
+            {([
+              { key: "s" as const, label: "Pequeño", sample: "text-[12px]" },
+              { key: "m" as const, label: "Normal", sample: "text-[14px]" },
+              { key: "l" as const, label: "Grande", sample: "text-[16px]" },
+            ]).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => {
+                  setPrefs((p) => ({ ...p, fontScale: opt.key }))
+                  applyTheme({ ...prefs, fontScale: opt.key })
+                }}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-center transition-colors",
+                  (prefs.fontScale ?? "m") === opt.key
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-border hover:bg-muted text-muted-foreground"
+                )}
+              >
+                <span className={opt.sample}>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
@@ -270,7 +299,7 @@ export function applyTheme(prefs: UserPreferences) {
   const root = document.documentElement
 
   // Persist to localStorage + cookie (cookie is read server-side in layout.tsx)
-  const themeData = JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor })
+  const themeData = JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor, fontScale: prefs.fontScale })
   try {
     localStorage.setItem("labrota_theme", themeData)
     document.cookie = `labrota_theme=${encodeURIComponent(themeData)};path=/;max-age=${365 * 86400};SameSite=Lax`
@@ -283,6 +312,11 @@ export function applyTheme(prefs: UserPreferences) {
     root.style.setProperty("--sidebar-primary", prefs.accentColor)
     root.style.setProperty("--sidebar-ring", prefs.accentColor)
   }
+
+  // Font scale — applied via zoom on html element
+  const scale = prefs.fontScale === "s" ? "0.9" : prefs.fontScale === "l" ? "1.1" : "1"
+  root.style.setProperty("--font-scale", scale)
+  root.style.zoom = scale
 
   // Dark mode via data-theme attribute (matches CSS selectors in globals.css)
   if (prefs.theme === "dark") {

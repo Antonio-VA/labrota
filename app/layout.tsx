@@ -38,20 +38,35 @@ export default async function RootLayout({
   const themeCookie = cookieStore.get("labrota_theme")?.value
   let dataTheme: string | undefined
   let accentColor: string | undefined
+  let fontScale: string | undefined
   try {
     if (themeCookie) {
       const p = JSON.parse(themeCookie)
       if (p.theme === "dark") dataTheme = "dark"
       if (p.accentColor) accentColor = p.accentColor
+      if (p.fontScale === "s") fontScale = "0.9"
+      else if (p.fontScale === "l") fontScale = "1.1"
     }
   } catch {}
+
+  const rootStyle: Record<string, string> = {}
+  if (accentColor) {
+    rootStyle["--primary"] = accentColor
+    rootStyle["--ring"] = accentColor
+    rootStyle["--sidebar-primary"] = accentColor
+    rootStyle["--sidebar-ring"] = accentColor
+  }
+  if (fontScale) {
+    rootStyle["--font-scale"] = fontScale
+    rootStyle["zoom"] = fontScale
+  }
 
   return (
     <html
       lang={locale}
       suppressHydrationWarning
       {...(dataTheme ? { "data-theme": dataTheme } : {})}
-      {...(accentColor ? { style: { "--primary": accentColor, "--ring": accentColor, "--sidebar-primary": accentColor, "--sidebar-ring": accentColor } as React.CSSProperties } : {})}
+      {...(Object.keys(rootStyle).length > 0 ? { style: rootStyle as React.CSSProperties } : {})}
     >
       <head>
         {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}

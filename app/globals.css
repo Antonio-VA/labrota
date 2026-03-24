@@ -232,6 +232,9 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+  :root {
+    --font-scale: 1;
+  }
   body {
     @apply bg-background text-foreground font-sans;
     font-size: 14px;

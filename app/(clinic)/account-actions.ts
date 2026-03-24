@@ -9,6 +9,7 @@ export interface UserPreferences {
   accentColor?: string
   timeFormat?: "24h" | "12h"
   firstDayOfWeek?: number // 0=Mon, 5=Sat, 6=Sun
+  fontScale?: "s" | "m" | "l" // s=90%, m=100%, l=110%
 }
 
 export async function getUserDepartment(): Promise<string | null> {
