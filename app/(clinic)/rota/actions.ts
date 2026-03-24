@@ -543,6 +543,7 @@ export async function upsertAssignment(params: {
   notes?: string | null
   traineeStaffId?: string | null
   isOpu?: boolean
+  functionLabel?: string | null
 }): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
@@ -588,6 +589,7 @@ export async function upsertAssignment(params: {
         is_manual_override: true,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
+        ...(params.functionLabel ? { function_label: params.functionLabel } : {}),
       } as never)
       .select("id")
       .single()

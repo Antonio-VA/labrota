@@ -21,8 +21,10 @@ export const metadata: Metadata = {
   title: "LabRota",
   description: "Embryology lab shift scheduling and AI assistant",
   icons: {
-    icon: "/brand/favicon.svg",
-    apple: "/brand/logo-icon.svg",
+    icon: [
+      { url: "/brand/favicon.svg?v=3", type: "image/svg+xml" },
+    ],
+    apple: "/brand/logo-icon.svg?v=3",
   },
 }
 
@@ -55,7 +57,7 @@ export default async function RootLayout({
       {...(accentColor ? { style: { "--primary": accentColor, "--ring": accentColor, "--sidebar-primary": accentColor, "--sidebar-ring": accentColor } as React.CSSProperties } : {})}
     >
       <head>
-        <link rel="icon" href="/icon.png?v=2" type="image/png" />
+        <link rel="icon" href="/brand/favicon.svg?v=3" type="image/svg+xml" />
         {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {

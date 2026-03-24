@@ -3271,7 +3271,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                         : "text-muted-foreground hover:bg-muted"
                     )}
                   >
-                    {t(`${l}Layout`)}
+                    {l === "shift" && weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t(`${l}Layout`)}
                   </button>
                 ))}
               </div>
@@ -3520,6 +3520,12 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   isPublished={!!isPublished || !canEdit}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={handlePunctionsChange}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid

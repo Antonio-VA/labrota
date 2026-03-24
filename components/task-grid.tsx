@@ -31,34 +31,30 @@ function StaffSelector({
   open,
   onClose,
   tecnica,
-  date,
   availableStaff,
   assignedStaffIds,
   leaveStaffIds,
   isWholeTeam,
-  onToggleStaff,
-  onToggleWholeTeam,
   allowWholeTeam,
 }: {
   open: boolean
-  onClose: () => void
+  onClose: (selected: string[] | null) => void
   tecnica: Tecnica
-  date: string
   availableStaff: StaffWithSkills[]
   assignedStaffIds: Set<string>
   leaveStaffIds: Set<string>
   isWholeTeam: boolean
-  onToggleStaff: (staffId: string) => void
-  onToggleWholeTeam: () => void
   allowWholeTeam: boolean
 }) {
   const [search, setSearch] = useState("")
+  const [localSelected, setLocalSelected] = useState<Set<string>>(new Set(assignedStaffIds))
+  const [localWholeTeam, setLocalWholeTeam] = useState(isWholeTeam)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose(null)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -66,20 +62,28 @@ function StaffSelector({
 
   if (!open) return null
 
-  // Filter staff who have this technique as a skill
-  const qualifiedStaff = availableStaff.filter((s) =>
-    s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
-  )
+  // Show ALL staff, not just qualified — let manager decide
+  const allStaff = availableStaff
 
-  const filtered = qualifiedStaff.filter((s) => {
+  const filtered = allStaff.filter((s) => {
     if (!search) return true
     const name = `${s.first_name} ${s.last_name}`.toLowerCase()
     const initials = `${s.first_name[0]}${s.last_name[0]}`.toLowerCase()
     return name.includes(search.toLowerCase()) || initials.includes(search.toLowerCase())
   })
 
-  const assignedCount = assignedStaffIds.size
-  const atCap = assignedCount >= 3
+  const selectedCount = localSelected.size
+  const atCap = selectedCount >= 3
+
+  function toggle(id: string) {
+    setLocalSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else if (next.size < 3) next.add(id)
+      return next
+    })
+    setLocalWholeTeam(false)
+  }
 
   return (
     <div
@@ -97,52 +101,53 @@ function StaffSelector({
         />
       </div>
       <div className="max-h-48 overflow-y-auto">
-        {/* Whole team option */}
         {allowWholeTeam && (
           <button
-            onClick={onToggleWholeTeam}
+            onClick={() => { setLocalWholeTeam(!localWholeTeam); if (!localWholeTeam) setLocalSelected(new Set()) }}
             className={cn(
               "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
-              isWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
+              localWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
             )}
           >
             <Users className="size-3.5" />
             <span className="flex-1">Todo el equipo</span>
-            {isWholeTeam && <span className="text-[10px]">✓</span>}
+            {localWholeTeam && <span className="text-[10px]">✓</span>}
           </button>
         )}
         {allowWholeTeam && <div className="h-px bg-border" />}
 
         {filtered.length === 0 && (
-          <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal cualificado</p>
+          <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal</p>
         )}
         {filtered.map((s) => {
-          const isAssigned = assignedStaffIds.has(s.id)
+          const isSelected = localSelected.has(s.id)
           const onLeave = leaveStaffIds.has(s.id)
-          const disabled = (atCap && !isAssigned) || onLeave || isWholeTeam
+          const isQualified = s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
+          const disabled = (atCap && !isSelected) || onLeave || localWholeTeam
 
           return (
             <button
               key={s.id}
-              onClick={() => { if (!disabled) onToggleStaff(s.id) }}
+              onClick={() => { if (!disabled) toggle(s.id) }}
               disabled={disabled}
               className={cn(
                 "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
-                isAssigned ? "bg-primary/10 text-primary font-medium" : disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50"
+                isSelected ? "bg-primary/10 text-primary font-medium" : disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50"
               )}
             >
               <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
                 {s.first_name[0]}{s.last_name[0]}
               </span>
               <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
-              {onLeave && <span className="text-[9px] text-amber-500">De baja</span>}
-              {isAssigned && <span className="text-[10px]">✓</span>}
+              {!isQualified && <span className="text-[9px] text-muted-foreground/50">—</span>}
+              {onLeave && <span className="text-[9px] text-amber-500">Baja</span>}
+              {isSelected && <span className="text-[10px]">✓</span>}
             </button>
           )
         })}
       </div>
       <div className="p-2 border-t border-border">
-        <Button size="sm" className="w-full text-[11px]" onClick={onClose}>Confirmar</Button>
+        <Button size="sm" className="w-full text-[11px]" onClick={() => onClose([...localSelected])}>Confirmar</Button>
       </div>
     </div>
   )
@@ -196,14 +201,14 @@ function TaskCell({
               <Tooltip key={a.id}>
                 <TooltipTrigger render={
                   <span className={cn(
-                    "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold",
+                    "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
                     onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
                     hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
                     "bg-muted text-foreground"
                   )}>
                     {a.staff.first_name[0]}{a.staff.last_name[0]}
                     {!isPublished && (
-                      <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="hover:text-destructive">
+                      <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
                         <X className="size-2.5" />
                       </button>
                     )}
@@ -231,22 +236,25 @@ function TaskCell({
       {selectorOpen && (
         <StaffSelector
           open={selectorOpen}
-          onClose={() => setSelectorOpen(false)}
+          onClose={async (selected) => {
+            setSelectorOpen(false)
+            if (!selected) return
+            // Compute diff: add new, remove deselected
+            const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
+            const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
+            for (const id of toRemove) {
+              const a = assignments.find((x) => x.staff_id === id)
+              if (a) await onRemove(a.id)
+            }
+            for (const id of toAdd) {
+              await onAssign(id, tecnica.codigo, date)
+            }
+          }}
           tecnica={tecnica}
-          date={date}
           availableStaff={staffList}
           assignedStaffIds={assignedStaffIds}
           leaveStaffIds={leaveStaffIds}
           isWholeTeam={isWholeTeam}
-          onToggleStaff={(staffId) => {
-            if (assignedStaffIds.has(staffId)) {
-              const a = assignments.find((x) => x.staff_id === staffId)
-              if (a) onRemove(a.id)
-            } else {
-              onAssign(staffId, tecnica.codigo, date)
-            }
-          }}
-          onToggleWholeTeam={() => onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)}
           allowWholeTeam={true}
         />
       )}
@@ -264,6 +272,12 @@ export function TaskGrid({
   isPublished,
   onRefresh,
   taskConflictThreshold,
+  punctionsDefault = {},
+  punctionsOverride = {},
+  onPunctionsChange,
+  biopsyConversionRate = 0.5,
+  biopsyDay5Pct = 0.5,
+  biopsyDay6Pct = 0.5,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -272,6 +286,12 @@ export function TaskGrid({
   isPublished: boolean
   onRefresh: () => void
   taskConflictThreshold: number
+  punctionsDefault?: Record<string, number>
+  punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
+  biopsyConversionRate?: number
+  biopsyDay5Pct?: number
+  biopsyDay6Pct?: number
 }) {
   const t = useTranslations("schedule")
 
@@ -325,13 +345,9 @@ export function TaskGrid({
       staffId,
       date,
       shiftType: "T1" as ShiftType,
+      functionLabel: tecnicaCodigo,
     })
     if (result.error) { toast.error(result.error); return }
-    // Set function_label on the new assignment
-    if (result.id) {
-      const { setFunctionLabel } = await import("@/app/(clinic)/rota/actions")
-      await setFunctionLabel(result.id, tecnicaCodigo)
-    }
     onRefresh()
   }
 
@@ -360,10 +376,29 @@ export function TaskGrid({
           const dayNum = d.getDate()
           const isToday = day.date === new Date().toISOString().split("T")[0]
           const isSat = d.getDay() === 6
+
+          // Punciones + biopsy forecast
+          const defaultP = punctionsDefault[day.date] ?? 0
+          const effectiveP = punctionsOverride[day.date] ?? defaultP
+          const hasOverride = punctionsOverride[day.date] !== undefined
+
+          function getPuncForDate(dateStr: string): number {
+            if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
+            if (punctionsDefault[dateStr] !== undefined) return punctionsDefault[dateStr]
+            const dow = new Date(dateStr + "T12:00:00").getDay()
+            const sameDow = Object.entries(punctionsDefault).find(([dd]) => new Date(dd + "T12:00:00").getDay() === dow)
+            return sameDow ? sameDow[1] : 0
+          }
+          const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+          const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+          const p5 = getPuncForDate(d5ago.toISOString().split("T")[0])
+          const p6 = getPuncForDate(d6ago.toISOString().split("T")[0])
+          const biopsyForecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
+
           return (
             <div
               key={day.date}
-              className={cn("border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 bg-muted", isSat && "border-l border-dashed")}
+              className={cn("border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-1.5 gap-[2px] bg-muted", isSat && "border-l border-dashed")}
             >
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
               <span className={cn(
@@ -372,6 +407,12 @@ export function TaskGrid({
               )}>
                 {dayNum}
               </span>
+              {(effectiveP > 0 || biopsyForecast > 0) && (
+                <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+                  <span className={hasOverride ? "text-primary" : ""}>P:{effectiveP}</span>
+                  <span>B:{biopsyForecast}</span>
+                </span>
+              )}
             </div>
           )
         })}
