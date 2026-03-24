@@ -1,15 +1,23 @@
 "use client"
 
-import { useState, useTransition, useRef, useEffect } from "react"
+import { useState, useTransition, useRef, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react"
+import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { bulkSaveTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
 import type { Tecnica } from "@/lib/types/database"
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove, SortableContext, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
-// ── Color options ──────────────────────────────────────────────────────────────
+// ── Color palette ────────────────────────────────────────────────────────────
 
 const COLOR_PALETTE = [
   "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899",
@@ -17,7 +25,6 @@ const COLOR_PALETTE = [
   "#64748B", "#78716C", "#0D9488", "#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#CA8A04",
 ]
 
-// Map legacy named colors → hex for backward compat
 const LEGACY_COLOR_HEX: Record<string, string> = {
   amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6",
   coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444",
@@ -29,8 +36,7 @@ function resolveHex(color: string): string {
 
 export type TecnicaColor = string
 
-
-// ── Color picker (circle + popover) ─────────────────────────────────────────
+// ── Color picker (circle + popover) ──────────────────────────────────────────
 
 function ColorPicker({ value, onChange, disabled }: {
   value: string; onChange: (c: string) => void; disabled?: boolean
@@ -80,148 +86,118 @@ function ColorPicker({ value, onChange, disabled }: {
   )
 }
 
-// ── Row ────────────────────────────────────────────────────────────────────────
+// ── Draft type ───────────────────────────────────────────────────────────────
 
 type Draft = {
   id?: string
+  sortId: string // stable key for dnd-kit
   nombre_es: string; nombre_en: string; codigo: string
   color: string; department: "lab" | "andrology"; typical_shifts: string[]; activa: boolean; orden: number
 }
 
-function TecnicaRow({
-  tecnica, index, total, onChange, onMoveUp, onMoveDown, onDelete, disabled, shiftCodes,
+// ── Sortable row ─────────────────────────────────────────────────────────────
+
+function SortableRow({
+  tecnica, onChange, onDelete, disabled, shiftCodes,
 }: {
-  tecnica: Draft; index: number; total: number
-  onChange: (t: Draft) => void; onMoveUp: () => void; onMoveDown: () => void
-  onDelete: () => void; disabled: boolean; shiftCodes: string[]
+  tecnica: Draft
+  onChange: (t: Draft) => void; onDelete: () => void
+  disabled: boolean; shiftCodes: string[]
 }) {
   const t = useTranslations("tecnicas")
   const hex = resolveHex(tecnica.color)
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: tecnica.sortId })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
+  }
 
   return (
-    <div className={cn(
-      "flex items-start gap-3 p-3 rounded-lg border border-border bg-background",
-      !tecnica.activa && "opacity-60"
-    )}>
-      {/* Reorder */}
-      <div className="flex flex-col gap-0.5 pt-1 shrink-0">
-        <button
-          type="button"
-          disabled={disabled || index === 0}
-          onClick={onMoveUp}
-          className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-        ><ChevronUp className="size-3.5" /></button>
-        <button
-          type="button"
-          disabled={disabled || index === total - 1}
-          onClick={onMoveDown}
-          className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-        ><ChevronDown className="size-3.5" /></button>
-      </div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-background"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </button>
 
-      {/* Fields */}
-      <div className="flex-1 grid grid-cols-[1fr_1fr_80px] gap-2">
-        {/* Row 1: Nombre ES / Nombre EN / Código */}
-        <Input
-          value={tecnica.nombre_es}
-          onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value })}
-          disabled={disabled}
-          placeholder={t("nameEs")}
-          className="h-8 text-[13px]"
-        />
-        <Input
-          value={tecnica.nombre_en}
-          onChange={(e) => onChange({ ...tecnica, nombre_en: e.target.value })}
-          disabled={disabled}
-          placeholder={t("nameEn")}
-          className="h-8 text-[13px]"
-        />
-        <div className="relative">
-          <Input
-            value={tecnica.codigo}
-            onChange={(e) => onChange({ ...tecnica, codigo: e.target.value.toUpperCase().slice(0, 3) })}
-            disabled={disabled}
-            placeholder="OPU"
-            maxLength={3}
-            className="h-8 text-[13px] font-mono uppercase pr-8"
-          />
-          {tecnica.codigo && (
-            <span
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1 py-0.5 rounded border"
-              style={{ backgroundColor: hex + "1A", borderColor: hex + "66", color: hex }}
-            >
-              {tecnica.codigo}
-            </span>
-          )}
-        </div>
-
-        {/* Row 2: Color swatches */}
-        <div className="col-span-3 flex items-center gap-2 pt-1">
-          <span className="text-[12px] text-muted-foreground shrink-0">{t("color")}</span>
+      {/* Line 1: Color · Name · Code */}
+      {/* Line 2: Department · Turno típico */}
+      <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+        <div className="flex items-center gap-2">
           <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
+          <Input
+            value={tecnica.nombre_es}
+            onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value, nombre_en: e.target.value })}
+            disabled={disabled}
+            placeholder={t("nameEs")}
+            className="h-7 text-[13px] flex-1"
+          />
+          <div className="relative w-[72px] shrink-0">
+            <Input
+              value={tecnica.codigo}
+              onChange={(e) => onChange({ ...tecnica, codigo: e.target.value.toUpperCase().slice(0, 3) })}
+              disabled={disabled}
+              placeholder="OPU"
+              maxLength={3}
+              className="h-7 text-[13px] font-mono uppercase"
+            />
+          </div>
         </div>
 
-        {/* Row 3: Department / Turno típico / Activa */}
-        <div className="col-span-3 flex items-center gap-4 pt-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">{t("department")}</span>
-            <select
-              value={tecnica.department}
-              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
-              disabled={disabled}
-              className="h-7 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none focus-visible:border-ring"
-            >
-              <option value="lab">{t("embriologia")}</option>
-              <option value="andrology">{t("andrologia")}</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground shrink-0">{t("typicalShift")}</span>
-            <div className="flex gap-1">
-              {shiftCodes.map((shift) => {
-                const active = tecnica.typical_shifts.includes(shift)
-                return (
-                  <button
-                    key={shift}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => {
-                      const next = active
-                        ? tecnica.typical_shifts.filter((s) => s !== shift)
-                        : [...tecnica.typical_shifts, shift]
-                      onChange({ ...tecnica, typical_shifts: next })
-                    }}
-                    className={cn(
-                      "h-6 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
-                      active
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
-                    )}
-                  >
-                    {shift}
-                  </button>
-                )
-              })}
+        <div className="flex items-center gap-3">
+          <select
+            value={tecnica.department}
+            onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
+            disabled={disabled}
+            className="h-6 rounded border border-input bg-transparent px-1.5 text-[11px] outline-none focus-visible:border-ring"
+          >
+            <option value="lab">{t("embriologia")}</option>
+            <option value="andrology">{t("andrologia")}</option>
+          </select>
+          {shiftCodes.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground">{t("typicalShift")}</span>
+              <div className="flex gap-0.5">
+                {shiftCodes.map((shift) => {
+                  const active = tecnica.typical_shifts.includes(shift)
+                  return (
+                    <button
+                      key={shift}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        const next = active
+                          ? tecnica.typical_shifts.filter((s) => s !== shift)
+                          : [...tecnica.typical_shifts, shift]
+                        onChange({ ...tecnica, typical_shifts: next })
+                      }}
+                      className={cn(
+                        "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                      )}
+                    >
+                      {shift}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[12px] text-muted-foreground">{t("active")}</span>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange({ ...tecnica, activa: !tecnica.activa })}
-              className={cn(
-                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                tecnica.activa ? "bg-primary" : "bg-muted-foreground/30",
-                disabled && "cursor-not-allowed opacity-50"
-              )}
-            >
-              <span className={cn(
-                "inline-block size-4 rounded-full bg-white shadow transition-transform",
-                tecnica.activa ? "translate-x-4" : "translate-x-0"
-              )} />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -230,7 +206,7 @@ function TecnicaRow({
         type="button"
         disabled={disabled}
         onClick={onDelete}
-        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 shrink-0 mt-0.5"
+        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 shrink-0"
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -238,7 +214,9 @@ function TecnicaRow({
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+let _counter = 0
 
 export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] }: { initialTecnicas: Tecnica[]; shiftCodes?: string[] }) {
   const t = useTranslations("tecnicas")
@@ -246,6 +224,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
   const [tecnicas, setTecnicas] = useState<Draft[]>(
     initialTecnicas.map((t) => ({
       id:             t.id,
+      sortId:         t.id || `init-${_counter++}`,
       nombre_es:      t.nombre_es,
       nombre_en:      t.nombre_en,
       codigo:         t.codigo,
@@ -261,43 +240,43 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
   const [errorMsg, setErrorMsg] = useState("")
   const [deletedIds, setDeletedIds] = useState<string[]>([])
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setTecnicas((prev) => {
+      const oldIndex = prev.findIndex((t) => t.sortId === active.id)
+      const newIndex = prev.findIndex((t) => t.sortId === over.id)
+      return arrayMove(prev, oldIndex, newIndex).map((t, i) => ({ ...t, orden: i }))
+    })
+  }
+
   function addRow() {
+    const sortId = `new-${_counter++}`
     setTecnicas((prev) => [
       ...prev,
       {
+        sortId,
         nombre_es: "", nombre_en: "", codigo: "",
-        color: "blue", department: "lab" as const, typical_shifts: [], activa: true,
+        color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
+        department: "lab" as const, typical_shifts: [], activa: true,
         orden: prev.length,
       },
     ])
   }
 
-  function updateRow(index: number, draft: Draft) {
-    setTecnicas((prev) => prev.map((t, i) => i === index ? draft : t))
-  }
+  const updateRow = useCallback((sortId: string, draft: Draft) => {
+    setTecnicas((prev) => prev.map((t) => t.sortId === sortId ? draft : t))
+  }, [])
 
-  function moveUp(index: number) {
-    if (index === 0) return
-    setTecnicas((prev) => {
-      const next = [...prev]
-      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
-      return next.map((t, i) => ({ ...t, orden: i }))
-    })
-  }
-
-  function moveDown(index: number) {
-    setTecnicas((prev) => {
-      if (index >= prev.length - 1) return prev
-      const next = [...prev]
-      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
-      return next.map((t, i) => ({ ...t, orden: i }))
-    })
-  }
-
-  function deleteRow(index: number) {
-    const toDelete = tecnicas[index]
+  function deleteRow(sortId: string) {
+    const toDelete = tecnicas.find((t) => t.sortId === sortId)
     if (toDelete?.id) setDeletedIds((prev) => [...prev, toDelete.id!])
-    setTecnicas((prev) => prev.filter((_, i) => i !== index).map((t, i) => ({ ...t, orden: i })))
+    setTecnicas((prev) => prev.filter((t) => t.sortId !== sortId).map((t, i) => ({ ...t, orden: i })))
   }
 
   function handleSave() {
@@ -317,9 +296,8 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
         return
       }
       setDeletedIds([])
-      // Sync IDs back into state
       setTecnicas((prev) =>
-        prev.map((t, i) => ({ ...t, id: t.id ?? result.ids[i] }))
+        prev.map((t, i) => ({ ...t, id: t.id ?? result.ids[i], sortId: t.id ?? result.ids[i] ?? t.sortId }))
       )
       setStatus("success")
       setTimeout(() => setStatus("idle"), 3000)
@@ -338,6 +316,9 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
     })
   }
 
+  const labTecnicas = tecnicas.filter((t) => t.department === "lab")
+  const androTecnicas = tecnicas.filter((t) => t.department === "andrology")
+
   return (
     <div className="flex flex-col gap-4">
       {tecnicas.length === 0 && (
@@ -349,41 +330,49 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
         </div>
       )}
 
-      {/* Embriología técnicas */}
-      {tecnicas.some((t) => t.department === "lab") && (
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("embriologia")}</p>
-          <div className="flex flex-col gap-3">
-            {tecnicas.map((t, i) => t.department === "lab" ? (
-              <TecnicaRow
-                key={t.id ?? `new-${i}`}
-                tecnica={t} index={i} total={tecnicas.length}
-                onChange={(draft) => updateRow(i, draft)}
-                onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
-                onDelete={() => deleteRow(i)} disabled={isPending} shiftCodes={shiftCodes}
-              />
-            ) : null)}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        {/* Embriología */}
+        {labTecnicas.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("embriologia")}</p>
+            <SortableContext items={labTecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-2">
+                {labTecnicas.map((tec) => (
+                  <SortableRow
+                    key={tec.sortId}
+                    tecnica={tec}
+                    onChange={(draft) => updateRow(tec.sortId, draft)}
+                    onDelete={() => deleteRow(tec.sortId)}
+                    disabled={isPending}
+                    shiftCodes={shiftCodes}
+                  />
+                ))}
+              </div>
+            </SortableContext>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Andrología técnicas */}
-      {tecnicas.some((t) => t.department === "andrology") && (
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("andrologia")}</p>
-          <div className="flex flex-col gap-3">
-            {tecnicas.map((t, i) => t.department === "andrology" ? (
-              <TecnicaRow
-                key={t.id ?? `new-${i}`}
-                tecnica={t} index={i} total={tecnicas.length}
-                onChange={(draft) => updateRow(i, draft)}
-                onMoveUp={() => moveUp(i)} onMoveDown={() => moveDown(i)}
-                onDelete={() => deleteRow(i)} disabled={isPending} shiftCodes={shiftCodes}
-              />
-            ) : null)}
+        {/* Andrología */}
+        {androTecnicas.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("andrologia")}</p>
+            <SortableContext items={androTecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-2">
+                {androTecnicas.map((tec) => (
+                  <SortableRow
+                    key={tec.sortId}
+                    tecnica={tec}
+                    onChange={(draft) => updateRow(tec.sortId, draft)}
+                    onDelete={() => deleteRow(tec.sortId)}
+                    disabled={isPending}
+                    shiftCodes={shiftCodes}
+                  />
+                ))}
+              </div>
+            </SortableContext>
           </div>
-        </div>
-      )}
+        )}
+      </DndContext>
 
       {/* Add row */}
       <button
