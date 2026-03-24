@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   title: "LabRota",
   description: "Embryology lab shift scheduling and AI assistant",
   icons: {
+    icon: "/favicon-v4.png",
     apple: "/brand/logo-icon.svg",
   },
 }
