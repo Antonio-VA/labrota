@@ -193,53 +193,55 @@ function TaskCell({
 
   return (
     <div className="relative p-1 min-h-[36px] flex items-center gap-0.5 flex-wrap">
-      {isWholeTeam ? (
-        <button
-          onClick={() => !isPublished && setSelectorOpen(true)}
-          className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold"
-        >
-          <Users className="size-2.5" />
-          All
-        </button>
-      ) : (
-        <>
-          {assignments.map((a) => {
-            const onLeave = leaveStaffIds.has(a.staff_id)
-            const hasConflict = conflictStaffIds.has(a.staff_id)
-            return (
-              <Tooltip key={a.id}>
-                <TooltipTrigger render={
-                  <span className={cn(
-                    "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
-                    onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
-                    hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                    "bg-muted text-foreground"
-                  )}>
-                    {a.staff.first_name[0]}{a.staff.last_name[0]}
-                    {!isPublished && (
-                      <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
-                        <X className="size-2.5" />
-                      </button>
-                    )}
-                  </span>
-                } />
-                <TooltipContent side="top">
-                  {a.staff.first_name} {a.staff.last_name}
-                  {onLeave && " · De baja hoy"}
-                  {hasConflict && ` · Asignado a múltiples técnicas`}
-                </TooltipContent>
-              </Tooltip>
-            )
-          })}
-          {!isPublished && assignments.length < 3 && (
+      {isWholeTeam && (
+        <Tooltip>
+          <TooltipTrigger render={
             <button
-              onClick={() => setSelectorOpen(true)}
-              className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+              onClick={() => !isPublished && setSelectorOpen(true)}
+              className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold"
             >
-              <Plus className="size-3" />
+              <Users className="size-2.5" />
+              All
             </button>
-          )}
-        </>
+          } />
+          <TooltipContent side="top">Todo el equipo</TooltipContent>
+        </Tooltip>
+      )}
+      {assignments.map((a) => {
+        const onLeave = leaveStaffIds.has(a.staff_id)
+        const hasConflict = conflictStaffIds.has(a.staff_id)
+        return (
+          <Tooltip key={a.id}>
+            <TooltipTrigger render={
+              <span className={cn(
+                "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
+                onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                "bg-muted text-foreground"
+              )}>
+                {a.staff.first_name[0]}{a.staff.last_name[0]}
+                {!isPublished && (
+                  <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
+                    <X className="size-2.5" />
+                  </button>
+                )}
+              </span>
+            } />
+            <TooltipContent side="top">
+              {a.staff.first_name} {a.staff.last_name}
+              {onLeave && " · De baja hoy"}
+              {hasConflict && ` · Asignado a múltiples técnicas`}
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+      {!isPublished && (
+        <button
+          onClick={() => setSelectorOpen(true)}
+          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+        >
+          <Plus className="size-3" />
+        </button>
       )}
 
       {selectorOpen && (
