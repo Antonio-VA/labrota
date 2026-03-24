@@ -2636,11 +2636,12 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 type="button"
                 onClick={() => { setSelected(card.key); setSelectedTplId(null) }}
                 className={cn(
-                  "relative flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all",
+                  "relative flex flex-col items-start gap-2 rounded-lg p-3.5 text-left transition-all",
                   selected === card.key
-                    ? "border-primary border-2 bg-primary/10"
-                    : "border-border hover:border-primary/30 hover:bg-muted"
+                    ? "bg-primary/10"
+                    : "hover:bg-muted"
                 )}
+                style={{ border: `2px solid ${selected === card.key ? "var(--primary)" : "var(--border)"}` }}
               >
                 <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
                 <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{card.title}</p>
