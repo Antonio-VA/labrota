@@ -47,6 +47,7 @@ import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
+import { TaskGrid } from "@/components/task-grid"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -3473,6 +3474,16 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                     </div>
                   )}
                 </div>
+              ) : weekData?.rotaDisplayMode === "by_task" ? (
+                <TaskGrid
+                  data={weekData}
+                  staffList={staffList}
+                  loading={loadingWeek || isPending}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
+                />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
                   data={weekData}

@@ -26,6 +26,17 @@ export default async function LabConfigPage() {
     supabase.from("departments").select("*").order("sort_order"),
   ])
 
+  // Fetch org display mode
+  const { data: { user } } = await supabase.auth.getUser()
+  let rotaDisplayMode = "by_shift"
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("organisation_id").eq("id", user.id).single() as { data: { organisation_id: string | null } | null }
+    if (profile?.organisation_id) {
+      const { data: org } = await supabase.from("organisations").select("rota_display_mode").eq("id", profile.organisation_id).single() as { data: { rota_display_mode?: string } | null }
+      rotaDisplayMode = org?.rota_display_mode ?? "by_shift"
+    }
+  }
+
   const config     = configRes.data as LabConfig | null
   const rules      = (rulesRes.data ?? []) as RotaRule[]
   const staff      = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
@@ -45,7 +56,7 @@ export default async function LabConfigPage() {
           <LabPageTabs
             cobertura={
               config ? (
-                <LabConfigForm config={config} section="cobertura" />
+                <LabConfigForm config={config} section="cobertura" rotaDisplayMode={rotaDisplayMode} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">
                   Lab configuration not found. Please contact your administrator.

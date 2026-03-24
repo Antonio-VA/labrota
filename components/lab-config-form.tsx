@@ -47,7 +47,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all" }: { config: LabConfig; section?: "all" | "cobertura" }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift" }: { config: LabConfig; section?: "all" | "cobertura"; rotaDisplayMode?: string }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -70,6 +70,7 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
     biopsy_conversion_rate: config.biopsy_conversion_rate ?? 0.5,
     biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
+    task_conflict_threshold: config.task_conflict_threshold ?? 3,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -113,6 +114,7 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
         biopsy_conversion_rate: values.biopsy_conversion_rate,
         biopsy_day5_pct:       values.biopsy_day5_pct,
         biopsy_day6_pct:       values.biopsy_day6_pct,
+        task_conflict_threshold: values.task_conflict_threshold,
       })
       if (result.error) {
         setErrorMsg(result.error)
@@ -192,6 +194,29 @@ export function LabConfigForm({ config, section = "all" }: { config: LabConfig; 
           </FieldRow>
         </div>
       </div>
+
+      {/* ── CONFLICTO POR TAREA (solo by_task) ─────────────────────────── */}
+      {rotaDisplayMode === "by_task" && (
+        <div className="rounded-lg border border-border bg-background px-5">
+          <SectionHeader title="Conflicto por tarea" />
+          <div className="flex flex-col gap-0">
+            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X técnicas en el mismo día">
+              <Input
+                type="number"
+                min={2}
+                max={10}
+                value={values.task_conflict_threshold}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 2) setValues((p) => ({ ...p, task_conflict_threshold: v }))
+                }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+            </FieldRow>
+          </div>
+        </div>
+      )}
 
       {/* ── BIOPSIAS ──────────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
