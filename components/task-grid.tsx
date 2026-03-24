@@ -38,15 +38,12 @@ interface Assignment {
 
 // ── Staff selector popover ────────────────────────────────────────────────────
 
-interface SelectorResult {
-  staffIds: string[]
-  wholeTeam: boolean
-}
-
 function StaffSelector({
   open,
   onClose,
-  onApply,
+  onAdd,
+  onRemoveStaff,
+  onToggleWholeTeam: onWtToggle,
   tecnica,
   availableStaff,
   assignedStaffIds,
@@ -56,7 +53,9 @@ function StaffSelector({
 }: {
   open: boolean
   onClose: () => void
-  onApply: (result: SelectorResult) => void
+  onAdd: (staffId: string) => void
+  onRemoveStaff: (staffId: string) => void
+  onToggleWholeTeam: () => void
   tecnica: Tecnica
   availableStaff: StaffWithSkills[]
   assignedStaffIds: Set<string>
@@ -65,8 +64,6 @@ function StaffSelector({
   allowWholeTeam: boolean
 }) {
   const [search, setSearch] = useState("")
-  const [localSelected, setLocalSelected] = useState<Set<string>>(new Set(assignedStaffIds))
-  const [localWholeTeam, setLocalWholeTeam] = useState(isWholeTeam)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -93,18 +90,14 @@ function StaffSelector({
     return name.includes(search.toLowerCase()) || initials.includes(search.toLowerCase())
   }).sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name))
 
-  const selectedCount = localSelected.size
-  const atCap = selectedCount >= 3
+  const atCap = assignedStaffIds.size >= 3
 
   function toggle(id: string) {
-    setLocalSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else if (next.size < 3) next.add(id)
-      // Auto-apply immediately
-      setTimeout(() => onApply({ staffIds: [...next], wholeTeam: localWholeTeam }), 0)
-      return next
-    })
+    if (assignedStaffIds.has(id)) {
+      onRemoveStaff(id)
+    } else if (assignedStaffIds.size < 3) {
+      onAdd(id)
+    }
   }
 
   return (
@@ -125,15 +118,15 @@ function StaffSelector({
       <div className="max-h-48 overflow-y-auto">
         {allowWholeTeam && (
           <button
-            onClick={() => { const next = !localWholeTeam; setLocalWholeTeam(next); onApply({ staffIds: [...localSelected], wholeTeam: next }) }}
+            onClick={() => onWtToggle()}
             className={cn(
               "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
-              localWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
+              isWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
             )}
           >
             <Users className="size-3.5" />
             <span className="flex-1">Todo el equipo</span>
-            {localWholeTeam && <span className="text-[10px]">✓</span>}
+            {isWholeTeam && <span className="text-[10px]">✓</span>}
           </button>
         )}
         {allowWholeTeam && <div className="h-px bg-border" />}
@@ -142,7 +135,7 @@ function StaffSelector({
           <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal cualificado</p>
         )}
         {filtered.map((s) => {
-          const isSelected = localSelected.has(s.id)
+          const isSelected = assignedStaffIds.has(s.id)
           const onLeave = leaveStaffIds.has(s.id)
           const disabled = (atCap && !isSelected) || onLeave
 
@@ -226,12 +219,9 @@ function TaskCell({
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
   const isWholeTeam = isWholeTeamOverride ?? assignments.some((a) => a.whole_team)
   const assignedStaffIds = new Set(assignments.map((a) => a.staff_id))
-  // Track the snapshot of assignments when popup opened, for diffing
-  const openSnapshotRef = useRef(assignments)
 
   function openSelector() {
     if (isPublished) return
-    openSnapshotRef.current = assignments
     const rect = cellRef.current?.getBoundingClientRect()
     if (rect) setPopupPos({ top: rect.bottom + 4, left: rect.left })
     setSelectorOpen(true)
@@ -309,35 +299,18 @@ function TaskCell({
           <StaffSelector
             open={selectorOpen}
             onClose={() => { setSelectorOpen(false); setPopupPos(null) }}
-            onApply={async (result) => {
-              const { staffIds: selected, wholeTeam } = result
-              const snap = openSnapshotRef.current
-              const snapIds = new Set(snap.map((x) => x.staff_id))
-              const toAdd = selected.filter((id) => !snapIds.has(id))
-              const toRemove = [...snapIds].filter((id) => !selected.includes(id))
-
-              // Optimistic
-              for (const id of toRemove) {
-                const a = snap.find((x) => x.staff_id === id)
-                if (a) onOptimisticRemove(a.id)
-              }
-              for (const id of toAdd) {
-                onOptimisticAdd(id, tecnica.codigo, date)
-              }
-              // Update snapshot for next toggle
-              openSnapshotRef.current = snap.filter((a) => !toRemove.includes(a.staff_id))
-
-              // Server sync
-              await Promise.all([
-                ...(wholeTeam !== isWholeTeam ? [onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)] : []),
-                ...toRemove.map((id) => {
-                  const a = snap.find((x) => x.staff_id === id)
-                  return a ? onRemoveSilent(a.id) : Promise.resolve()
-                }),
-                ...toAdd.map((id) => onAssignSilent(id, tecnica.codigo, date)),
-              ])
-              onRefresh()
+            onAdd={(staffId) => {
+              onOptimisticAdd(staffId, tecnica.codigo, date)
+              onAssignSilent(staffId, tecnica.codigo, date).then(onRefresh)
             }}
+            onRemoveStaff={(staffId) => {
+              const a = assignments.find((x) => x.staff_id === staffId)
+              if (a) {
+                onOptimisticRemove(a.id)
+                onRemoveSilent(a.id).then(onRefresh)
+              }
+            }}
+            onToggleWholeTeam={() => onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)}
             tecnica={tecnica}
             availableStaff={staffList}
             assignedStaffIds={assignedStaffIds}
@@ -401,7 +374,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   return (
     <div
       ref={cellRef}
-      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]"
+      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px] group/off"
       style={new Date(date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
     >
       {onLeave.map((s) => {
@@ -441,12 +414,12 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
         )
       })}
       {!isPublished && (
-        <button
+        <div
           onClick={openPicker}
-          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/off:opacity-100 transition-opacity rounded hover:bg-muted/50"
         >
-          <Plus className="size-3" />
-        </button>
+          <Plus className="size-3 text-muted-foreground" />
+        </div>
       )}
 
       {pickerOpen && popupPos && createPortal(
