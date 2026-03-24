@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { X, Plus, Users, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -76,10 +77,12 @@ function StaffSelector({
 
   if (!open) return null
 
-  // Show ALL staff, not just qualified — let manager decide
-  const allStaff = availableStaff
+  // Only show staff with the skill for this technique
+  const qualifiedStaff = availableStaff.filter((s) =>
+    s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
+  )
 
-  const filtered = allStaff.filter((s) => {
+  const filtered = qualifiedStaff.filter((s) => {
     if (!search) return true
     const name = `${s.first_name} ${s.last_name}`.toLowerCase()
     const initials = `${s.first_name[0]}${s.last_name[0]}`.toLowerCase()
@@ -101,7 +104,7 @@ function StaffSelector({
   return (
     <div
       ref={ref}
-      className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden"
+      className="bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="p-2 border-b border-border">
@@ -135,7 +138,6 @@ function StaffSelector({
         {filtered.map((s) => {
           const isSelected = localSelected.has(s.id)
           const onLeave = leaveStaffIds.has(s.id)
-          const isQualified = s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
           const disabled = (atCap && !isSelected) || onLeave
 
           return (
@@ -149,10 +151,9 @@ function StaffSelector({
               )}
             >
               <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
-                {s.first_name[0]}{s.last_name[0]}
+                {`${s.first_name[0]}${s.last_name[0]}`}
               </span>
               <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
-              {!isQualified && <span className="text-[9px] text-muted-foreground/50">—</span>}
               {onLeave && <span className="text-[9px] text-amber-500">Baja</span>}
               {isSelected && <span className="text-[10px]">✓</span>}
             </button>
@@ -192,16 +193,25 @@ function TaskCell({
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
+  const cellRef = useRef<HTMLDivElement>(null)
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
   const isWholeTeam = assignments.some((a) => a.whole_team)
   const assignedStaffIds = new Set(assignments.map((a) => a.staff_id))
 
+  function openSelector() {
+    if (isPublished) return
+    const rect = cellRef.current?.getBoundingClientRect()
+    if (rect) setPopupPos({ top: rect.bottom + 4, left: rect.left })
+    setSelectorOpen(true)
+  }
+
   return (
-    <div className="relative p-1 min-h-[36px] flex items-center gap-0.5 flex-wrap">
+    <div ref={cellRef} className="relative p-1 min-h-[36px] flex items-center gap-0.5 flex-wrap">
       {isWholeTeam && (
         <Tooltip>
           <TooltipTrigger render={
             <button
-              onClick={() => !isPublished && setSelectorOpen(true)}
+              onClick={() => openSelector()}
               className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold"
             >
               <Users className="size-2.5" />
@@ -221,9 +231,9 @@ function TaskCell({
                 "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
                 onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
                 hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                "bg-muted text-foreground"
+                "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
               )}>
-                {a.staff.first_name[0]}{a.staff.last_name[0]}
+                {`${a.staff.first_name[0]}${a.staff.last_name[0]}`}
                 {!isPublished && (
                   <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
                     <X className="size-2.5" />
@@ -241,44 +251,48 @@ function TaskCell({
       })}
       {!isPublished && (
         <button
-          onClick={() => setSelectorOpen(true)}
+          onClick={() => openSelector()}
           className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
         >
           <Plus className="size-3" />
         </button>
       )}
 
-      {selectorOpen && (
-        <StaffSelector
-          open={selectorOpen}
-          onClose={async (result) => {
-            setSelectorOpen(false)
-            if (!result) return
-            const { staffIds: selected, wholeTeam } = result
+      {selectorOpen && popupPos && createPortal(
+        <div style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200 }}>
+          <StaffSelector
+            open={selectorOpen}
+            onClose={async (result) => {
+              setSelectorOpen(false)
+              setPopupPos(null)
+              if (!result) return
+              const { staffIds: selected, wholeTeam } = result
 
-            // Handle whole_team toggle
-            if (wholeTeam !== isWholeTeam) {
-              onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)
-            }
+              // Handle whole_team toggle
+              if (wholeTeam !== isWholeTeam) {
+                onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)
+              }
 
-            // Compute diff: add new, remove deselected
-            const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
-            const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
-            for (const id of toRemove) {
-              const a = assignments.find((x) => x.staff_id === id)
-              if (a) await onRemove(a.id)
-            }
-            for (const id of toAdd) {
-              await onAssign(id, tecnica.codigo, date)
-            }
-          }}
-          tecnica={tecnica}
-          availableStaff={staffList}
-          assignedStaffIds={assignedStaffIds}
-          leaveStaffIds={leaveStaffIds}
-          isWholeTeam={isWholeTeam}
-          allowWholeTeam={true}
-        />
+              // Compute diff: add new, remove deselected
+              const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
+              const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
+              for (const id of toRemove) {
+                const a = assignments.find((x) => x.staff_id === id)
+                if (a) await onRemove(a.id)
+              }
+              for (const id of toAdd) {
+                await onAssign(id, tecnica.codigo, date)
+              }
+            }}
+            tecnica={tecnica}
+            availableStaff={staffList}
+            assignedStaffIds={assignedStaffIds}
+            leaveStaffIds={leaveStaffIds}
+            isWholeTeam={isWholeTeam}
+            allowWholeTeam={true}
+          />
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -396,7 +410,7 @@ export function TaskGrid({
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-visible bg-background">
+    <div className="rounded-lg border border-border overflow-hidden bg-background">
       <div style={{ display: "grid", gridTemplateColumns: `120px repeat(${days.length}, 1fr)` }}>
         {/* Header row */}
         <div className="border-b border-r border-border bg-muted px-3 py-2 flex flex-col justify-center">
@@ -498,6 +512,55 @@ export function TaskGrid({
             })}
           </>
         ))}
+
+        {/* OFF row — unassigned + on leave */}
+        <div className="border-r border-border px-3 py-2 flex items-center gap-1.5 bg-muted/40">
+          <span className="text-[12px] font-medium text-muted-foreground">OFF</span>
+        </div>
+        {days.map((day) => {
+          const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+          const leaveIds = leaveByDate[day.date] ?? new Set<string>()
+          const isSat = new Date(day.date + "T12:00:00").getDay() === 6
+
+          // Unassigned: staff not in any assignment this day and not on leave
+          const unassigned = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
+          // On leave
+          const onLeave = staffList.filter((s) => leaveIds.has(s.id))
+
+          return (
+            <div
+              key={`off-${day.date}`}
+              className={cn(
+                "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 bg-muted/10",
+                isSat && "border-l border-dashed border-l-border"
+              )}
+            >
+              {onLeave.map((s) => (
+                <Tooltip key={s.id}>
+                  <TooltipTrigger render={
+                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                      {`${s.first_name[0]}${s.last_name[0]}`}
+                    </span>
+                  } />
+                  <TooltipContent side="top">{s.first_name} {s.last_name} · De baja</TooltipContent>
+                </Tooltip>
+              ))}
+              {unassigned.map((s) => (
+                <Tooltip key={s.id}>
+                  <TooltipTrigger render={
+                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {`${s.first_name[0]}${s.last_name[0]}`}
+                    </span>
+                  } />
+                  <TooltipContent side="top">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
+                </Tooltip>
+              ))}
+              {onLeave.length === 0 && unassigned.length === 0 && (
+                <span className="text-[10px] text-muted-foreground/40 italic">—</span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
