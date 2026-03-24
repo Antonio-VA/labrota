@@ -49,9 +49,9 @@ export default async function LabConfigPage() {
   const departments  = (departmentsRes.data ?? []) as Department[]
 
   return (
-    <div className="flex-1 overflow-auto p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-8">
       <MobileGate>
-        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+        <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
           <div>
             <h1 className="text-[18px] font-medium">{t("configuration")}</h1>
           </div>
