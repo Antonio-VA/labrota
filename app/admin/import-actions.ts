@@ -118,13 +118,13 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
 
   // 5. Create techniques (by_task) or shifts (by_shift)
   if (payload.mode === "by_task") {
-    const COLORS = ["blue", "green", "amber", "purple", "coral", "teal", "slate", "red"]
+    const FALLBACK_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899"]
     const tecRows = payload.techniques.map((t, i) => ({
       organisation_id: orgId,
       nombre_es: t.name,
       nombre_en: t.name,
       codigo: t.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) || `T${i}`,
-      color: t.color || COLORS[i % COLORS.length],
+      color: t.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
       department: "lab",
       activa: true,
       orden: t.order,

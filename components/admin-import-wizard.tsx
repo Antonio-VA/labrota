@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useRef } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { getSheetNames, parseSheet, type ParsedRota, type ParsedStaff, type Pars
 import { importOrganisation, type ImportPayload } from "@/app/admin/import-actions"
 
 type Step = "upload" | "sheet" | "mapping" | "confirm"
+type TechniqueWithColor = ParsedTechnique & { color: string }
 
 const DEFAULT_DEPTS = [
   { name: "Lab", code: "lab", colour: "#2563EB" },
@@ -19,7 +20,54 @@ const DEFAULT_DEPTS = [
   { name: "Transport", code: "transport", colour: "#F59E0B" },
 ]
 
-const COLORS = ["blue", "green", "amber", "purple", "coral", "teal", "slate", "red"]
+const TECHNIQUE_COLORS = [
+  "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899",
+  "#06B6D4", "#84CC16", "#6366F1", "#D946EF", "#0EA5E9", "#22C55E", "#A855F7", "#F43F5E",
+  "#64748B", "#78716C", "#0D9488", "#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#CA8A04",
+]
+
+function ColorCirclePicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="size-6 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow"
+        style={{ backgroundColor: value }}
+      />
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
+          <div className="grid grid-cols-8 gap-1">
+            {TECHNIQUE_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { onChange(c); setOpen(false) }}
+                className={cn(
+                  "size-5 rounded-full transition-transform hover:scale-125",
+                  c === value && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: string }) {
   const router = useRouter()
@@ -39,7 +87,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
   const [mode, setMode] = useState<"by_task" | "by_shift">("by_shift")
   const [staff, setStaff] = useState<ParsedStaff[]>([])
   const [depts, setDepts] = useState(DEFAULT_DEPTS)
-  const [techniques, setTechniques] = useState<ParsedTechnique[]>([])
+  const [techniques, setTechniques] = useState<TechniqueWithColor[]>([])
   const [shifts, setShifts] = useState<ParsedShift[]>([])
   const [leaves, setLeaves] = useState<ParsedLeave[]>([])
 
@@ -82,7 +130,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
       setOrgName(externalOrgName || sheet || fileName.replace(/\.(xlsx?)/i, ""))
       setMode(result.mode)
       setStaff(result.staff)
-      setTechniques(result.techniques)
+      setTechniques(result.techniques.map((t, i) => ({ ...t, color: TECHNIQUE_COLORS[i % TECHNIQUE_COLORS.length] })))
       setShifts(result.shifts.length > 0 ? result.shifts : [{ name: "T1", start: "07:30", end: "15:30" }])
       setLeaves(result.leaves)
       setStep("mapping")
@@ -100,7 +148,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
           mode,
           staff,
           departments: depts,
-          techniques: techniques.map((t, i) => ({ ...t, color: COLORS[i % COLORS.length] })),
+          techniques: techniques.map((t) => ({ ...t, color: t.color })),
           shifts,
           leaves,
           assignments: parsed?.assignments ?? [],
@@ -275,6 +323,10 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
               {techniques.map((t, i) => (
                 <div key={i} className="rounded-lg border border-border px-3 py-2">
                   <div className="flex items-center gap-2 mb-1">
+                    <ColorCirclePicker
+                      value={t.color}
+                      onChange={(c) => setTechniques((prev) => prev.map((p, j) => j === i ? { ...p, color: c } : p))}
+                    />
                     <Input
                       value={t.name}
                       onChange={(e) => setTechniques((prev) => prev.map((p, j) => j === i ? { ...p, name: e.target.value } : p))}

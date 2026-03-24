@@ -11,6 +11,15 @@ import type { StaffWithSkills, Tecnica, ShiftType } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment } from "@/app/(clinic)/rota/actions"
 
+const COLOR_HEX: Record<string, string> = {
+  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
+  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
+}
+function resolveColor(color: string): string {
+  if (color.startsWith("#")) return color
+  return COLOR_HEX[color] ?? "#94A3B8"
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Assignment {
@@ -424,7 +433,7 @@ export function TaskGrid({
             <div
               key={`label-${tecnica.id}`}
               className="border-b border-r border-border px-3 py-2 flex items-center gap-1.5"
-              style={{ borderLeft: `3px solid ${tecnica.color === "blue" ? "#60A5FA" : tecnica.color === "green" ? "#34D399" : tecnica.color === "amber" ? "#FBBF24" : tecnica.color === "purple" ? "#A78BFA" : tecnica.color === "coral" ? "#F87171" : tecnica.color === "teal" ? "#2DD4BF" : "#94A3B8"}` }}
+              style={{ borderLeft: `3px solid ${resolveColor(tecnica.color)}` }}
             >
               <span className="text-[12px] font-medium truncate">{tecnica.nombre_es}</span>
             </div>
