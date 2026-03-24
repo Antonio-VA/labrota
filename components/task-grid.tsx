@@ -824,7 +824,7 @@ export function TaskGrid({
           const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
           const dayNum = d.getDate()
           const isToday = day.date === new Date().toISOString().split("T")[0]
-
+          const holidayName = data.publicHolidays?.[day.date]
 
           // Punciones + biopsy forecast
           const defaultP = punctionsDefault[day.date] ?? 0
@@ -848,8 +848,9 @@ export function TaskGrid({
             <div
               key={day.date}
               className={cn(
-                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px] bg-muted",
+                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px]",
                 compact ? "py-1" : "py-1.5",
+                holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted",
               )}
               style={d.getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
             >
@@ -857,10 +858,14 @@ export function TaskGrid({
               <span className={cn(
                 "font-semibold leading-none",
                 compact ? "text-[13px]" : "text-[15px] mt-0.5",
-                isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center" : "text-primary"
+                isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
               )}>
                 {dayNum}
               </span>
+              {holidayName && (
+                <span className="text-[9px] text-amber-600 dark:text-amber-400 leading-tight truncate max-w-full px-1">{holidayName}</span>
+              )}
               <PuncBiopsyEdit
                 date={day.date}
                 value={effectiveP}

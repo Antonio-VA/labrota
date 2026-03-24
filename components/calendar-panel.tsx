@@ -1882,18 +1882,12 @@ function ShiftGrid({
             return (
               <div
                 key={day.date}
-                className="relative flex flex-col items-center justify-center py-1 gap-[2px]"
+                className={cn(
+                  "relative flex flex-col items-center justify-center py-1 gap-[2px]",
+                  holidayName && "bg-amber-50/60 dark:bg-amber-950/20"
+                )}
                 style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
               >
-                {holidayName && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 cursor-default" />
-                    } />
-                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
-                  </Tooltip>
-                )}
-
                 {day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
                 )}
@@ -1908,10 +1902,13 @@ function ShiftGrid({
                     today
                       ? "bg-primary text-primary-foreground text-[15px]"
                       : day.isWeekend ? "text-[20px]" : "text-[20px]"
-                  )} style={!today ? { color: day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
+                  )} style={!today ? { color: holidayName ? "#D97706" : day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
                     {dayN}
                   </div>
                 </button>
+                {holidayName && (
+                  <span className="text-[9px] text-amber-600 dark:text-amber-400 leading-tight truncate max-w-full px-1">{holidayName}</span>
+                )}
 
                 {/* Punciones + biopsias — single clickable area */}
                 {(() => {
