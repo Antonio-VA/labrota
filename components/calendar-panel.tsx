@@ -3733,13 +3733,11 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                         setMultiWeekScope(allWeekStarts)
                         setShowStrategyModal(true)
                       }}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
+                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
                     >
-                      <AlertTriangle className="size-4 text-amber-500 shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-[14px] font-medium">Regenerar todas las semanas</p>
-                        <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá horarios existentes</p>
-                      </div>
+                      <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
+                      <p className="text-[14px] font-medium">Regenerar todas las semanas</p>
+                      <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá horarios existentes</p>
                     </button>
                   </div>
                   <div className="flex justify-end">
