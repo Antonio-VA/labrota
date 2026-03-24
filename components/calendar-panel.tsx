@@ -2257,7 +2257,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
               {week.map((day) => {
                 const isToday    = day.date === TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
-                const isSat      = new Date(day.date + "T12:00:00").getDay() === 6
+                const dayDow     = new Date(day.date + "T12:00:00").getDay()
+                const isSat      = dayDow === 6
+                const isSun      = dayDow === 0
 
                 const tooltipParts: string[] = []
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
@@ -2272,7 +2274,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     <TooltipTrigger render={
                   <button
                     onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
-                    style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
+                    style={{
+                      ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
+                      ...(isSun ? { borderRight: "1px dashed var(--border)" } : {}),
+                    }}
                     className={cn(
                       "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[120px]",
                       !day.isCurrentMonth
@@ -2308,17 +2313,17 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department chips */}
+                    {/* Department pills with left border */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-2 mt-auto flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300">{day.labCount}E</span>
+                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #60A5FA" }}>{day.labCount} Em</span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">{day.andrologyCount}A</span>
+                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #34D399" }}>{day.andrologyCount} An</span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold bg-muted text-muted-foreground">{day.adminCount}Ad</span>
+                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #94A3B8" }}>{day.adminCount} Ad</span>
                         )}
                       </div>
                     )}
@@ -3293,7 +3298,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {showActions && !isPublished && !chatOpen && !loadingWeek && (
+          {showActions && !isPublished && !chatOpen && (
             <Button size="sm" onClick={handleGenerateClick} disabled={isPending}>
               {isPending ? tc("generating") : t("generateRota")}
             </Button>
@@ -3350,40 +3355,32 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   })
                 },
               }] : []),
-              // ── Group 3: View options ──
+              // ── Group 3: View options (week view only) ──
               ...(view === "week" && calendarLayout === "shift" ? [{
                 label: compact ? "Vista normal" : "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 dividerBefore: true,
-              }] : [{
-                label: colorChips ? "Técnicas en gris" : "Técnicas en color",
-                icon: colorChips
-                  ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
-                  : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
-                onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
-                dividerBefore: true,
-              }]),
-              ...(view === "week" && calendarLayout === "shift" ? [{
+              }, {
                 label: colorChips ? "Técnicas en gris" : "Técnicas en color",
                 icon: colorChips
                   ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               }] : []),
-              // ── Group 3: Templates (editors only) ──
-              ...(canEdit && hasAssignments && !isPublished ? [{
+              // ── Group 4: Templates (week view, editors only) ──
+              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
-              }] : canEdit ? [{
+              }] : view === "week" && canEdit ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
               }] : []),
-              ...(canEdit && hasAssignments && !isPublished ? [{
+              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
