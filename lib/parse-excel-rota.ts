@@ -120,11 +120,21 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
   const data: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })
   if (data.length < 2) throw new Error("Sheet has insufficient data")
 
-  // Find the header row — first row with multiple non-empty cells (at least 5)
+  // Find the header row — the row with the MOST task/shift keyword matches
+  // This handles title rows ("OT 1", "QC", "TEAM A") that precede the real header
   let headerRowIdx = 0
-  for (let i = 0; i < Math.min(data.length, 10); i++) {
-    const nonEmpty = (data[i] ?? []).filter((c) => String(c ?? "").trim()).length
-    if (nonEmpty >= 5) { headerRowIdx = i; break }
+  let bestHeaderScore = 0
+  for (let i = 0; i < Math.min(data.length, 15); i++) {
+    const row = (data[i] ?? []).map((c) => String(c ?? "").trim())
+    const nonEmpty = row.filter((c) => c).length
+    if (nonEmpty < 3) continue
+    let score = 0
+    for (const cell of row) {
+      if (isTaskHeader(cell)) score += 2
+      const n = norm(cell)
+      for (const kw of SHIFT_KEYWORDS) { if (n === kw || n.includes(kw)) { score++; break } }
+    }
+    if (score > bestHeaderScore) { bestHeaderScore = score; headerRowIdx = i }
   }
 
   const headerRow = (data[headerRowIdx] ?? []).map((c) => String(c ?? "").trim())
@@ -196,14 +206,51 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
     else if (DAY_NAMES.has(norm(headerRow[col]))) headerDates.push("") // placeholder
   }
 
-  // Check first column for dates
+  // Check first column for dates — handle "MONDAY 23", plain dates, or "23" embedded in text
+  // Also scan title rows for date ranges like "23-29 MARCH" to establish the month/year
+  let refMonth = new Date().getMonth()
+  let refYear = new Date().getFullYear()
+  for (let i = 0; i <= headerRowIdx; i++) {
+    for (let c = 0; c < (data[i]?.length ?? 0); c++) {
+      const cell = String(data[i]?.[c] ?? "")
+      // Match patterns like "23-29 MARCH", "23-29 MARCH 2026"
+      const rangeMatch = cell.match(/(\d{1,2})\s*[-–]\s*(\d{1,2})\s+([A-Za-záéíóúñ]+)\s*(\d{4})?/i)
+      if (rangeMatch) {
+        const monthNames: Record<string, number> = {
+          january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+          july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+          enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+          julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
+          mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+        }
+        const mn = monthNames[rangeMatch[3].toLowerCase()]
+        if (mn !== undefined) refMonth = mn
+        if (rangeMatch[4]) refYear = parseInt(rangeMatch[4], 10)
+      }
+    }
+  }
+
   for (let row = headerRowIdx + 1; row < data.length; row++) {
     const cell = data[row]?.[0]
     const d = isDate(cell)
-    if (d) dates.push(toISO(d))
+    if (d) { dates.push(toISO(d)); continue }
+    // Try "MONDAY 23" or "23" pattern
+    const cellStr = String(cell ?? "").trim()
+    const numMatch = cellStr.match(/(\d{1,2})/)
+    if (numMatch && cellStr.length > 1) {
+      const dayNum = parseInt(numMatch[1], 10)
+      if (dayNum >= 1 && dayNum <= 31) {
+        const constructed = new Date(refYear, refMonth, dayNum, 12, 0, 0)
+        if (!isNaN(constructed.getTime())) {
+          dates.push(toISO(constructed))
+        }
+      }
+    }
   }
 
-  const allDates = dates.length > 0 ? dates : headerDates.filter(Boolean)
+  // Deduplicate dates (multi-row days produce duplicates)
+  const uniqueDates = [...new Set(dates)]
+  const allDates = uniqueDates.length > 0 ? uniqueDates : headerDates.filter(Boolean)
   const weekStart = allDates.length > 0 ? getMondayOfWeek(new Date(allDates[0] + "T12:00:00")) : toISO(new Date())
 
   if (mode === "by_task") {
@@ -272,9 +319,37 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
         }
       }
 
+      // Parse body — handle multi-row days (day label in col A, continuation rows blank in col A)
+      let currentDate = ""
       for (let row = headerRowIdx + 1; row < data.length; row++) {
         const rowData = data[row] ?? []
-        const rowDate = dates[row - headerRowIdx - 1] ?? ""
+
+        // Check column A for a day label (e.g. "MONDAY 23", "TUESDAY 24", or a date)
+        const colA = String(rowData[0] ?? "").trim()
+        if (colA) {
+          // Try to extract a date from "MONDAY 23" or "23" or an actual date
+          const dateMatch = colA.match(/(\d{1,2})\s*$/) // trailing number = day of month
+          const fullDate = isDate(rowData[0])
+          if (fullDate) {
+            currentDate = toISO(fullDate)
+          } else if (dateMatch && allDates.length > 0) {
+            // Find a date in allDates whose day matches
+            const dayNum = parseInt(dateMatch[1], 10)
+            const match = allDates.find((d) => new Date(d + "T12:00:00").getDate() === dayNum)
+            if (match) currentDate = match
+          } else if (DAY_NAMES.has(norm(colA.split(/\s+/)[0]))) {
+            // Day name like "MONDAY" — try to find next date
+            const dayNum = colA.match(/\d+/)
+            if (dayNum) {
+              const num = parseInt(dayNum[0], 10)
+              const match = allDates.find((d) => new Date(d + "T12:00:00").getDate() === num)
+              if (match) currentDate = match
+            }
+          }
+        }
+        // If colA is blank, this is a continuation row for the same day — keep currentDate
+
+        if (!currentDate) continue
 
         for (const tc of techColumns) {
           const cellValue = String(rowData[tc.col] ?? "").trim()
@@ -282,7 +357,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
 
           const cellNorm = norm(cellValue)
           if (cellNorm === "all" || cellNorm === "todo" || cellNorm === "todos") {
-            if (rowDate) assignments.push({ date: rowDate, initials: "ALL", task: tc.name })
+            if (currentDate) assignments.push({ date: currentDate, initials: "ALL", task: tc.name })
             continue
           }
 
@@ -297,7 +372,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
               if (tech && !tech.qualifiedInitials.includes(upper)) {
                 tech.qualifiedInitials.push(upper)
               }
-              if (rowDate) assignments.push({ date: rowDate, initials: upper, task: tc.name })
+              if (currentDate) assignments.push({ date: currentDate, initials: upper, task: tc.name })
             }
           }
         }
