@@ -181,6 +181,8 @@ function TaskCell({
   onRemove,
   onAssignSilent,
   onRemoveSilent,
+  onOptimisticAdd,
+  onOptimisticRemove,
   onToggleWholeTeam,
   onRefresh,
 }: {
@@ -195,6 +197,8 @@ function TaskCell({
   onRemove: (assignmentId: string) => void
   onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<void>
   onRemoveSilent: (assignmentId: string) => Promise<void>
+  onOptimisticAdd: (staffId: string, functionLabel: string, date: string) => void
+  onOptimisticRemove: (assignmentId: string) => void
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
   onRefresh: () => void
 }) {
@@ -278,7 +282,16 @@ function TaskCell({
               const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
               const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
 
-              // Run all mutations in parallel, refresh once
+              // Optimistic: update UI instantly
+              for (const id of toRemove) {
+                const a = assignments.find((x) => x.staff_id === id)
+                if (a) onOptimisticRemove(a.id)
+              }
+              for (const id of toAdd) {
+                onOptimisticAdd(id, tecnica.codigo, date)
+              }
+
+              // Server sync in background, refresh once done
               await Promise.all([
                 ...(wholeTeam !== isWholeTeam ? [onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)] : []),
                 ...toRemove.map((id) => {
@@ -557,6 +570,10 @@ export function TaskGrid({
   shiftLabel?: string
 }) {
   const t = useTranslations("schedule")
+  const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
+
+  // Sync from server whenever data changes
+  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
 
   if (loading || !data) {
     return (
@@ -567,7 +584,7 @@ export function TaskGrid({
   }
 
   const tecnicas = (data.tecnicas ?? []).filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-  const days = data.days
+  const days = localDays
 
   if (tecnicas.length === 0) {
     return (
@@ -603,6 +620,30 @@ export function TaskGrid({
   const weekStart = data.weekStart
 
   const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as ShiftType
+  const staffLookup = Object.fromEntries(staffList.map((s) => [s.id, s]))
+
+  // Optimistic patch helpers
+  function optimisticAdd(staffId: string, functionLabel: string, date: string) {
+    const s = staffLookup[staffId]
+    if (!s) return
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
+      ...d,
+      assignments: [...d.assignments, {
+        id: tempId, staff_id: staffId, shift_type: defaultShiftCode,
+        is_manual_override: true, trainee_staff_id: null, notes: null,
+        function_label: functionLabel, tecnica_id: null, whole_team: false,
+        staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role as never },
+      }],
+    }))
+  }
+
+  function optimisticRemove(assignmentId: string) {
+    setLocalDays((prev) => prev.map((d) => ({
+      ...d,
+      assignments: d.assignments.filter((a) => a.id !== assignmentId),
+    })))
+  }
 
   async function assignSilent(staffId: string, tecnicaCodigo: string, date: string) {
     const result = await upsertAssignment({
@@ -617,11 +658,13 @@ export function TaskGrid({
   }
 
   async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
+    optimisticAdd(staffId, tecnicaCodigo, date)
     await assignSilent(staffId, tecnicaCodigo, date)
     onRefresh()
   }
 
   async function handleRemove(assignmentId: string) {
+    optimisticRemove(assignmentId)
     await removeSilent(assignmentId)
     onRefresh()
   }
@@ -736,6 +779,8 @@ export function TaskGrid({
                     onRemove={handleRemove}
                     onAssignSilent={assignSilent}
                     onRemoveSilent={removeSilent}
+                    onOptimisticAdd={optimisticAdd}
+                    onOptimisticRemove={optimisticRemove}
                     onToggleWholeTeam={handleToggleWholeTeam}
                     onRefresh={onRefresh}
                   />
@@ -769,9 +814,11 @@ export function TaskGrid({
               onMakeOff={async (staffId) => {
                 // Remove all assignments for this staff on this day
                 const toRemove = day.assignments.filter((a) => a.staff_id === staffId)
-                for (const a of toRemove) {
-                  await handleRemove(a.id)
-                }
+                // Optimistic: remove from UI instantly
+                for (const a of toRemove) optimisticRemove(a.id)
+                // Server sync in parallel
+                await Promise.all(toRemove.map((a) => removeSilent(a.id)))
+                onRefresh()
               }}
             />
           )
