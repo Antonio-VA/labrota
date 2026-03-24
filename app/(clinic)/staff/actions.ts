@@ -30,6 +30,12 @@ async function getOrgId(): Promise<string | null> {
   return data?.organisation_id ?? null
 }
 
+const STAFF_PASTEL_COLORS = [
+  "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+  "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+  "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+]
+
 function parseFormData(formData: FormData) {
   return {
     staff: {
@@ -46,10 +52,13 @@ function parseFormData(formData: FormData) {
       end_date:          ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
       preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
+      color:             (formData.get("color") as string) || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)],
     },
     skills: parseSkillsFromForm(formData),
   }
 }
+
+export { STAFF_PASTEL_COLORS }
 
 export async function createStaff(_prevState: unknown, formData: FormData) {
   const supabase = await createClient()

@@ -7,7 +7,7 @@ import { Hourglass, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
+import { createStaff, updateStaff, deleteStaff, STAFF_PASTEL_COLORS } from "@/app/(clinic)/staff/actions"
 import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Tecnica } from "@/lib/types/database"
 
@@ -155,6 +155,9 @@ export function StaffForm({
     staff?.preferred_days ?? []
   )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
+  const [selectedColor, setSelectedColor] = useState<string>(
+    staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
+  )
 
   // Derive capacidades from técnicas matching the staff's department
   const dept = DEPT_MAP[role]
@@ -289,6 +292,26 @@ export function StaffForm({
             {t("fields.preferredShiftHint")}
           </p>
         </Field>
+      </Section>
+
+      {/* Color personal */}
+      <Section label="Color">
+        <input type="hidden" name="color" value={selectedColor} />
+        <div className="flex gap-1.5 flex-wrap">
+          {STAFF_PASTEL_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={isPending}
+              onClick={() => setSelectedColor(c)}
+              className={cn(
+                "size-6 rounded-full border-2 transition-all disabled:opacity-50",
+                selectedColor === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
+              )}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
       </Section>
 
       {/* Días disponibles (hard constraint) */}

@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import type { StaffWithSkills, Tecnica, ShiftType } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
+import { useStaffHover } from "@/components/staff-hover-context"
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
@@ -228,20 +229,30 @@ function TaskCell({
     setSelectorOpen(true)
   }
 
+  const { hoveredStaffId, setHovered } = useStaffHover()
+  const staffColorMap = Object.fromEntries(staffList.map((s) => [s.id, s.color]))
+
   return (
     <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5 flex-wrap", compact ? "min-h-[28px]" : "min-h-[36px]")}>
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)
+        const isHovered = hoveredStaffId === a.staff_id
+        const staffColor = staffColorMap[a.staff_id]
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
-              <span className={cn(
-                "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip",
-                onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
-                hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100"
-              )}>
+              <span
+                onMouseEnter={() => setHovered(a.staff_id)}
+                onMouseLeave={() => setHovered(null)}
+                className={cn(
+                  "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
+                  onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                  hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                  "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100"
+                )}
+                style={isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+              >
                 {`${a.staff.first_name[0]}${a.staff.last_name[0]}`}
                 {!isPublished && (
                   <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
@@ -372,6 +383,8 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
     setBusy((prev) => { const next = new Set(prev); next.delete(s.id); return next })
   }
 
+  const { hoveredStaffId, setHovered } = useStaffHover()
+
   return (
     <div
       ref={cellRef}
@@ -380,26 +393,42 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
         new Date(date + "T12:00:00").getDay() === 6 && "border-l border-l-border/50 border-dashed"
       )}
     >
-      {onLeave.map((s) => (
+      {onLeave.map((s) => {
+        const isHovered = hoveredStaffId === s.id
+        return (
         <Tooltip key={s.id}>
           <TooltipTrigger render={
-            <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+            <span
+              onMouseEnter={() => setHovered(s.id)}
+              onMouseLeave={() => setHovered(null)}
+              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 transition-colors duration-150"
+              style={isHovered && s.color ? { backgroundColor: s.color, color: "#1e293b" } : undefined}
+            >
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
           } />
           <TooltipContent side="top">{s.first_name} {s.last_name} · De baja</TooltipContent>
         </Tooltip>
-      ))}
-      {unassigned.map((s) => (
+        )
+      })}
+      {unassigned.map((s) => {
+        const isHov = hoveredStaffId === s.id
+        return (
         <Tooltip key={s.id}>
           <TooltipTrigger render={
-            <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span
+              onMouseEnter={() => setHovered(s.id)}
+              onMouseLeave={() => setHovered(null)}
+              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150"
+              style={isHov && s.color ? { backgroundColor: s.color, color: "#1e293b" } : undefined}
+            >
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
           } />
           <TooltipContent side="top">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
         </Tooltip>
-      ))}
+        )
+      })}
       {!isPublished && (
         <button
           onClick={openPicker}

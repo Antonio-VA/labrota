@@ -48,6 +48,7 @@ import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-da
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { TaskGrid } from "@/components/task-grid"
+import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 
@@ -962,6 +963,9 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     return () => document.removeEventListener("mousedown", handler)
   }, [overflowOpen])
 
+  const { hoveredStaffId, setHovered } = useStaffHover()
+  const staffColorLookup = Object.fromEntries(staffList.map((s) => [s.id, s.color ?? ""]))
+
   if (entries.length === 0) return null
 
   const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
@@ -971,13 +975,18 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     const over  = s.count > s.daysPerWeek
     const under = s.count < s.daysPerWeek
     const color = s.count === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
+    const isHov = isByTask && hoveredStaffId === id
+    const staffColor = staffColorLookup[id]
     return (
       <Tooltip key={id}>
         <TooltipTrigger render={
           <button
             data-pill
             onClick={() => onPillClick?.(id)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
+            onMouseEnter={() => isByTask && setHovered(id)}
+            onMouseLeave={() => isByTask && setHovered(null)}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent", color)}
+            style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
@@ -3259,6 +3268,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
 
   return (
+    <StaffHoverProvider>
     <main className="flex flex-1 flex-col overflow-hidden">
       {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
       <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
@@ -3820,5 +3830,6 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
       />
     </main>
+    </StaffHoverProvider>
   )
 }
