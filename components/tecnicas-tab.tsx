@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { bulkSaveTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
-import type { Tecnica } from "@/lib/types/database"
+import type { Tecnica, Department } from "@/lib/types/database"
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -98,11 +98,11 @@ type Draft = {
 // ── Sortable row ─────────────────────────────────────────────────────────────
 
 function SortableRow({
-  tecnica, onChange, onDelete, disabled, shiftCodes,
+  tecnica, onChange, onDelete, disabled, shiftCodes, departments,
 }: {
   tecnica: Draft
   onChange: (t: Draft) => void; onDelete: () => void
-  disabled: boolean; shiftCodes: string[]
+  disabled: boolean; shiftCodes: string[]; departments: Department[]
 }) {
   const t = useTranslations("tecnicas")
   const hex = resolveHex(tecnica.color)
@@ -164,8 +164,16 @@ function SortableRow({
             disabled={disabled}
             className="h-6 rounded border border-input bg-transparent px-1.5 text-[11px] outline-none focus-visible:border-ring"
           >
-            <option value="lab">{t("embriologia")}</option>
-            <option value="andrology">{t("andrologia")}</option>
+            {departments.length > 0 ? (
+              departments.map((d) => (
+                <option key={d.id} value={d.code}>{d.name}</option>
+              ))
+            ) : (
+              <>
+                <option value="lab">{t("embriologia")}</option>
+                <option value="andrology">{t("andrologia")}</option>
+              </>
+            )}
           </select>
           {shiftCodes.length > 0 && (
             <div className="flex items-center gap-1.5">
@@ -218,7 +226,7 @@ function SortableRow({
 
 let _counter = 0
 
-export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] }: { initialTecnicas: Tecnica[]; shiftCodes?: string[] }) {
+export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"], departments = [] }: { initialTecnicas: Tecnica[]; shiftCodes?: string[]; departments?: Department[] }) {
   const t = useTranslations("tecnicas")
   const tc = useTranslations("common")
   const [tecnicas, setTecnicas] = useState<Draft[]>(
@@ -316,8 +324,13 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
     })
   }
 
-  const labTecnicas = tecnicas.filter((t) => t.department === "lab")
-  const androTecnicas = tecnicas.filter((t) => t.department === "andrology")
+  // Group by department
+  const deptGroups = departments.length > 0
+    ? departments.map((d) => ({ code: d.code, name: d.name, items: tecnicas.filter((t) => t.department === d.code) })).filter((g) => g.items.length > 0)
+    : [
+        { code: "lab", name: t("embriologia"), items: tecnicas.filter((t) => t.department === "lab") },
+        { code: "andrology", name: t("andrologia"), items: tecnicas.filter((t) => t.department === "andrology") },
+      ].filter((g) => g.items.length > 0)
 
   return (
     <div className="flex flex-col gap-4">
@@ -331,13 +344,12 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        {/* Embriología */}
-        {labTecnicas.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("embriologia")}</p>
-            <SortableContext items={labTecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
+        {deptGroups.map((group) => (
+          <div key={group.code}>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{group.name}</p>
+            <SortableContext items={group.items.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2">
-                {labTecnicas.map((tec) => (
+                {group.items.map((tec) => (
                   <SortableRow
                     key={tec.sortId}
                     tecnica={tec}
@@ -345,33 +357,13 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"] 
                     onDelete={() => deleteRow(tec.sortId)}
                     disabled={isPending}
                     shiftCodes={shiftCodes}
+                    departments={departments}
                   />
                 ))}
               </div>
             </SortableContext>
           </div>
-        )}
-
-        {/* Andrología */}
-        {androTecnicas.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("andrologia")}</p>
-            <SortableContext items={androTecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col gap-2">
-                {androTecnicas.map((tec) => (
-                  <SortableRow
-                    key={tec.sortId}
-                    tecnica={tec}
-                    onChange={(draft) => updateRow(tec.sortId, draft)}
-                    onDelete={() => deleteRow(tec.sortId)}
-                    disabled={isPending}
-                    shiftCodes={shiftCodes}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </div>
-        )}
+        ))}
       </DndContext>
 
       {/* Add row */}

@@ -1,27 +1,81 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
-import { Plus, Trash2, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react"
+import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { Department } from "@/lib/types/database"
 import { saveDepartments, seedDefaultDepartments } from "@/app/(clinic)/lab/department-actions"
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove, SortableContext, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
-const COLOUR_PRESETS = [
-  { hex: "#60A5FA", label: "Azul" },
-  { hex: "#34D399", label: "Esmeralda" },
-  { hex: "#94A3B8", label: "Gris" },
-  { hex: "#F59E0B", label: "Ámbar" },
-  { hex: "#EF4444", label: "Rojo" },
-  { hex: "#A855F7", label: "Púrpura" },
-  { hex: "#EC4899", label: "Rosa" },
-  { hex: "#14B8A6", label: "Teal" },
+// ── Color palette ────────────────────────────────────────────────────────────
+
+const COLOR_PALETTE = [
+  "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899",
+  "#06B6D4", "#84CC16", "#6366F1", "#D946EF", "#0EA5E9", "#22C55E", "#A855F7", "#F43F5E",
+  "#64748B", "#78716C", "#0D9488", "#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#CA8A04",
 ]
+
+function ColorCircle({ value, onChange, disabled }: {
+  value: string; onChange: (c: string) => void; disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className="size-5 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow disabled:opacity-50"
+        style={{ backgroundColor: value }}
+      />
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
+          <div className="grid grid-cols-8 gap-1">
+            {COLOR_PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { onChange(c); setOpen(false) }}
+                className={cn(
+                  "size-5 rounded-full transition-transform hover:scale-125",
+                  c === value && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type Draft = {
   id?: string
+  sortId: string
   code: string
   name: string
   name_en: string
@@ -31,12 +85,92 @@ type Draft = {
   sort_order: number
 }
 
+// ── Sortable row ─────────────────────────────────────────────────────────────
+
+function SortableRow({ dept, onChange, onDelete, disabled }: {
+  dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean
+}) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: dept.sortId })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-background"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </button>
+
+      {/* Color · Name · Abbreviation */}
+      <ColorCircle value={dept.colour} onChange={(c) => onChange({ ...dept, colour: c })} disabled={disabled} />
+      <Input
+        value={dept.name}
+        onChange={(e) => onChange({ ...dept, name: e.target.value, name_en: e.target.value })}
+        disabled={disabled}
+        placeholder="Nombre"
+        className="h-7 text-[13px] flex-1"
+      />
+      <Input
+        value={dept.abbreviation}
+        onChange={(e) => onChange({ ...dept, abbreviation: e.target.value.toUpperCase().slice(0, 3) })}
+        disabled={disabled}
+        placeholder="ABR"
+        maxLength={3}
+        className="h-7 text-[13px] font-mono uppercase w-[64px] shrink-0"
+      />
+
+      {/* Preview pill */}
+      <span
+        className="text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5 shrink-0"
+        style={{ borderLeft: `3px solid ${dept.colour}`, borderRadius: 4 }}
+      >
+        {dept.abbreviation || dept.name.slice(0, 3) || "—"}
+      </span>
+
+      {/* Delete */}
+      {!dept.is_default ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onDelete}
+          className="shrink-0 p-1 rounded text-muted-foreground/30 hover:text-destructive transition-colors disabled:opacity-50"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      ) : (
+        <div className="size-[26px] shrink-0" /> /* spacer to keep alignment */
+      )}
+    </div>
+  )
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+let _counter = 0
+
 export function DepartmentsTab({ initialDepartments }: { initialDepartments: Department[] }) {
   const t = useTranslations("departments")
   const tc = useTranslations("common")
   const [departments, setDepartments] = useState<Draft[]>(
     initialDepartments.map((d) => ({
-      id: d.id, code: d.code, name: d.name, name_en: d.name_en,
+      id: d.id, sortId: d.id || `init-${_counter++}`,
+      code: d.code, name: d.name, name_en: d.name_en,
       abbreviation: d.abbreviation, colour: d.colour,
       is_default: d.is_default, sort_order: d.sort_order,
     }))
@@ -44,6 +178,21 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setDepartments((prev) => {
+      const oldIndex = prev.findIndex((d) => d.sortId === active.id)
+      const newIndex = prev.findIndex((d) => d.sortId === over.id)
+      return arrayMove(prev, oldIndex, newIndex).map((d, i) => ({ ...d, sort_order: i }))
+    })
+  }
 
   function handleSeed() {
     if (departments.length > 0 && !confirm("Esto reemplazará los departamentos actuales con los valores predeterminados. ¿Continuar?")) return
@@ -55,42 +204,23 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
   }
 
   function addRow() {
-    const nextOrder = departments.length
-    const nextCode = `dept_${Date.now()}`
+    const sortId = `new-${_counter++}`
     setDepartments((prev) => [
       ...prev,
-      { code: nextCode, name: "", name_en: "", abbreviation: "", colour: "#94A3B8", is_default: false, sort_order: nextOrder },
+      { sortId, code: `dept_${Date.now()}`, name: "", name_en: "", abbreviation: "",
+        colour: COLOR_PALETTE[prev.length % COLOR_PALETTE.length], is_default: false, sort_order: prev.length },
     ])
   }
 
-  function updateRow(index: number, draft: Draft) {
-    setDepartments((prev) => prev.map((d, i) => i === index ? draft : d))
-  }
+  const updateRow = useCallback((sortId: string, draft: Draft) => {
+    setDepartments((prev) => prev.map((d) => d.sortId === sortId ? draft : d))
+  }, [])
 
-  function moveUp(index: number) {
-    if (index === 0) return
-    setDepartments((prev) => {
-      const next = [...prev]
-      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
-      return next.map((d, i) => ({ ...d, sort_order: i }))
-    })
-  }
-
-  function moveDown(index: number) {
-    if (index === departments.length - 1) return
-    setDepartments((prev) => {
-      const next = [...prev]
-      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
-      return next.map((d, i) => ({ ...d, sort_order: i }))
-    })
-  }
-
-  function deleteRow(index: number) {
-    setDepartments((prev) => prev.filter((_, i) => i !== index).map((d, i) => ({ ...d, sort_order: i })))
+  function deleteRow(sortId: string) {
+    setDepartments((prev) => prev.filter((d) => d.sortId !== sortId).map((d, i) => ({ ...d, sort_order: i })))
   }
 
   function handleSave() {
-    // Validation
     for (const d of departments) {
       if (!d.name.trim()) {
         setErrorMsg(t("allNeedName"))
@@ -108,14 +238,9 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
     setStatus("idle")
     startTransition(async () => {
       const result = await saveDepartments(departments.map((d, i) => ({
-        id: d.id,
-        code: d.code,
-        name: d.name.trim(),
-        name_en: d.name_en.trim(),
+        id: d.id, code: d.code, name: d.name.trim(), name_en: d.name_en.trim(),
         abbreviation: d.abbreviation.trim().toUpperCase().slice(0, 3),
-        colour: d.colour,
-        is_default: d.is_default,
-        sort_order: i,
+        colour: d.colour, is_default: d.is_default, sort_order: i,
       })))
       if (result.error) {
         setErrorMsg(result.error)
@@ -144,63 +269,22 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
           </Button>
         </div>
       )}
-      {departments.map((dept, i) => (
-        <div key={dept.id ?? `new-${i}`} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background">
-          {/* Reorder */}
-          <div className="flex flex-col gap-0.5 pt-1 shrink-0">
-            <button type="button" disabled={isPending || i === 0} onClick={() => moveUp(i)}
-              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
-              <ChevronUp className="size-3.5" />
-            </button>
-            <button type="button" disabled={isPending || i === departments.length - 1} onClick={() => moveDown(i)}
-              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
-              <ChevronDown className="size-3.5" />
-            </button>
-          </div>
 
-          {/* Colour + fields */}
-          <div className="flex-1 flex flex-col gap-2">
-            <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
-              <Input value={dept.name} onChange={(e) => updateRow(i, { ...dept, name: e.target.value })}
-                disabled={isPending} placeholder={t("nameEs")} className="h-8 text-[13px]" />
-              <Input value={dept.name_en} onChange={(e) => updateRow(i, { ...dept, name_en: e.target.value })}
-                disabled={isPending} placeholder={t("nameEn")} className="h-8 text-[13px]" />
-              <Input value={dept.abbreviation} onChange={(e) => updateRow(i, { ...dept, abbreviation: e.target.value.toUpperCase().slice(0, 3) })}
-                disabled={isPending} placeholder={t("abbreviation")} maxLength={3} className="h-8 text-[13px] font-mono uppercase" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {COLOUR_PRESETS.map((c) => (
-                  <button key={c.hex} type="button" disabled={isPending} onClick={() => updateRow(i, { ...dept, colour: c.hex })}
-                    title={c.label}
-                    className={cn(
-                      "size-5 rounded-full border-2 transition-all disabled:opacity-50",
-                      dept.colour === c.hex ? "border-foreground scale-110" : "border-transparent hover:scale-105"
-                    )}
-                    style={{ background: c.hex }}
-                  />
-                ))}
-              </div>
-              {dept.is_default && (
-                <span className="text-[10px] text-muted-foreground bg-slate-100 px-1.5 py-0.5 rounded font-medium">Por defecto</span>
-              )}
-              {/* Preview */}
-              <span className="ml-auto text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5"
-                style={{ borderLeft: `3px solid ${dept.colour}`, borderRadius: 4 }}>
-                {dept.abbreviation || dept.name.slice(0, 3) || "—"}
-              </span>
-            </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={departments.map((d) => d.sortId)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-2">
+            {departments.map((dept) => (
+              <SortableRow
+                key={dept.sortId}
+                dept={dept}
+                onChange={(draft) => updateRow(dept.sortId, draft)}
+                onDelete={() => deleteRow(dept.sortId)}
+                disabled={isPending}
+              />
+            ))}
           </div>
-
-          {/* Delete */}
-          {!dept.is_default && (
-            <button type="button" disabled={isPending} onClick={() => deleteRow(i)}
-              className="shrink-0 p-1 rounded text-muted-foreground/30 hover:text-destructive transition-colors disabled:opacity-50 mt-1">
-              <Trash2 className="size-4" />
-            </button>
-          )}
-        </div>
-      ))}
+        </SortableContext>
+      </DndContext>
 
       <button type="button" onClick={addRow} disabled={isPending}
         className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1">
