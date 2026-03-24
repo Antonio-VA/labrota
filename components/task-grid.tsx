@@ -134,7 +134,7 @@ function StaffSelector({
         {allowWholeTeam && <div className="h-px bg-border" />}
 
         {filtered.length === 0 && (
-          <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal</p>
+          <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal cualificado</p>
         )}
         {filtered.map((s) => {
           const isSelected = localSelected.has(s.id)
@@ -148,15 +148,23 @@ function StaffSelector({
               disabled={disabled}
               className={cn(
                 "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
-                isSelected ? "bg-primary/10 text-primary font-medium" : disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50"
+                disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50"
               )}
             >
-              <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
+              <span className={cn(
+                "size-4 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors",
+                isSelected ? "bg-primary border-primary text-primary-foreground" :
+                onLeave ? "border-red-300 bg-red-100" :
+                "border-border bg-background"
+              )}>
+                {(isSelected || onLeave) && "✓"}
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground w-5 shrink-0">
                 {`${s.first_name[0]}${s.last_name[0]}`}
               </span>
               <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
-              {onLeave && <span className="text-[9px] text-amber-500">Baja</span>}
-              {isSelected && <span className="text-[10px]">✓</span>}
+              {onLeave && <span className="text-[9px] text-red-500 shrink-0">Baja</span>}
+              {isSelected && !onLeave && <span className="text-[9px] text-muted-foreground shrink-0">Asignado</span>}
             </button>
           )
         })}
@@ -411,8 +419,11 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
                   {onLeave.map((s) => (
                     <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-[12px] opacity-40">
                       <span className="size-4 rounded border border-red-300 bg-red-100 flex items-center justify-center text-[9px] text-red-600 shrink-0">✓</span>
-                      <span className="truncate">{s.first_name} {s.last_name}</span>
-                      <span className="text-[9px] text-red-500 ml-auto shrink-0">Baja</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground w-5 shrink-0">
+                        {`${s.first_name[0]}${s.last_name[0]}`}
+                      </span>
+                      <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
+                      <span className="text-[9px] text-red-500 shrink-0">Baja</span>
                     </div>
                   ))}
                   <div className="h-px bg-border mx-2 my-1" />
@@ -439,9 +450,12 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
                     )}>
                       {isOff && "✓"}
                     </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground w-5 shrink-0">
+                      {`${s.first_name[0]}${s.last_name[0]}`}
+                    </span>
                     <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
-                    {isOff && <span className="text-[9px] text-muted-foreground">OFF</span>}
-                    {!isOff && <span className="text-[9px] text-muted-foreground/50">Asignado</span>}
+                    {isOff && <span className="text-[9px] text-muted-foreground shrink-0">OFF</span>}
+                    {!isOff && <span className="text-[9px] text-muted-foreground/50 shrink-0">Asignado</span>}
                   </button>
                 )
               })}
