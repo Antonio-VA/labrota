@@ -79,7 +79,6 @@ export function ClinicTopBar({
                         : "hover:bg-muted text-foreground"
                     )}
                   >
-                    {org.id === activeOrgId && <Check className="size-3.5 shrink-0 text-primary" />}
                     <button
                       onClick={() => {
                         if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
@@ -94,6 +93,7 @@ export function ClinicTopBar({
                     >
                       {org.name}
                     </button>
+                    {org.id === activeOrgId && <Check className="size-3.5 shrink-0 text-primary" />}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleSetDefault(org.id) }}
                       className={cn(
