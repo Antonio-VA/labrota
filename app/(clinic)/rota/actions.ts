@@ -577,10 +577,10 @@ export async function upsertAssignment(params: {
     revalidatePath("/")
     return { id: params.assignmentId }
   } else {
-    // Insert new
+    // Upsert — handles duplicate gracefully (same staff+date+function_label)
     const { data: row, error } = await supabase
       .from("rota_assignments")
-      .insert({
+      .upsert({
         organisation_id: orgId,
         rota_id: rotaId,
         staff_id: params.staffId,
@@ -589,8 +589,8 @@ export async function upsertAssignment(params: {
         is_manual_override: true,
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
-        ...(params.functionLabel ? { function_label: params.functionLabel } : {}),
-      } as never)
+        function_label: params.functionLabel ?? "",
+      } as never, { onConflict: "rota_id,staff_id,date,function_label" })
       .select("id")
       .single()
     if (error) return { error: error.message }
@@ -770,7 +770,7 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
   const supabase = await createClient()
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ function_label: label } as never)
+    .update({ function_label: label ?? "" } as never)
     .eq("id", assignmentId)
   if (error) return { error: error.message }
   revalidatePath("/")
@@ -1059,7 +1059,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
       date,
       shift_type: a.shift_type,
       is_manual_override: true,
-      function_label: a.function_label,
+      function_label: a.function_label ?? "",
     }))
 
   if (toInsert.length > 0) {
@@ -1135,7 +1135,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
         date: newDate,
         shift_type: a.shift_type,
         is_manual_override: false,
-        function_label: a.function_label,
+        function_label: a.function_label ?? "",
       }
     })
     .filter(Boolean)
@@ -1280,7 +1280,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
 
   // Insert template assignments, skipping leave/inactive
   const skipped: string[] = []
-  const toInsert: { organisation_id: string; rota_id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; function_label: string | null }[] = []
+  const toInsert: { organisation_id: string; rota_id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; function_label: string }[] = []
 
   for (const a of template.assignments) {
     const date = dates[a.day_offset]
@@ -1294,7 +1294,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
       date,
       shift_type: a.shift_type,
       is_manual_override: false,
-      function_label: a.function_label,
+      function_label: a.function_label ?? "",
     })
   }
 

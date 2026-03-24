@@ -193,7 +193,7 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
           staff_id: staffIdMap[a.initials],
           date: a.date,
           shift_type: "T1",
-          function_label: a.task ? a.task.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) : null,
+          function_label: a.task ? a.task.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) : "",
           is_manual_override: false,
         }))
       if (assignmentRows.length > 0) {
