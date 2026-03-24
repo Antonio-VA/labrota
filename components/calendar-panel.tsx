@@ -900,6 +900,8 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   for (const day of days) {
     for (const a of day.assignments) {
       if (deptFilter && !deptFilter.has(a.staff.role)) continue
+      // In by_task mode, only count assignments that have a function_label (task assignments)
+      if (isByTask && !a.function_label) continue
       if (!staffMap[a.staff_id]) {
         const member = staffList.find((s) => s.id === a.staff_id)
         staffMap[a.staff_id] = {
@@ -3771,7 +3773,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
           staffList={filteredStaffList}
           weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
           onPillClick={openProfile}
-          liveDays={liveDays}
+          liveDays={weekData?.rotaDisplayMode === "by_task" ? null : liveDays}
           deptFilter={deptFilter}
         />
       )}
