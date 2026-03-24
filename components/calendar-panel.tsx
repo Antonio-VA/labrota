@@ -2346,15 +2346,15 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
                     {/* Department pills with left border */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1.5 mt-auto flex-wrap">
+                      <div className="flex items-center gap-1 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #60A5FA" }}>{day.labCount} Em</span>
+                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #60A5FA" }}>{day.labCount}</span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #34D399" }}>{day.andrologyCount} An</span>
+                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #34D399" }}>{day.andrologyCount}</span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center rounded-md pl-1.5 pr-2 py-0.5 text-[10px] font-semibold bg-muted/50 text-foreground" style={{ borderLeft: "3px solid #94A3B8" }}>{day.adminCount} Ad</span>
+                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #94A3B8" }}>{day.adminCount}</span>
                         )}
                       </div>
                     )}
