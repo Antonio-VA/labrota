@@ -221,9 +221,12 @@ type ShiftBadgeProps = {
   borderColor?: string
   isTrainingTecnica?: boolean
   colorChips?: boolean
+  staffId?: string
+  staffColor?: string
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor }: ShiftBadgeProps) {
+  const { hoveredStaffId, setHovered } = useStaffHover()
   const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
   const pillColor = !colorChips
     ? "bg-slate-100 border-border text-muted-foreground"
@@ -237,10 +240,16 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded border border-border font-medium w-full bg-background text-foreground",
+        "group flex items-center gap-1.5 rounded border border-border font-medium w-full bg-background text-foreground transition-colors duration-150",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
       )}
-      style={{ borderLeft: `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`, borderRadius: 4 }}
+      style={{
+        borderLeft: `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`,
+        borderRadius: 4,
+        ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor } : {}),
+      }}
+      onMouseEnter={() => staffId && setHovered(staffId)}
+      onMouseLeave={() => staffId && setHovered(null)}
     >
       <span className="truncate">{first} {last[0]}.</span>
       {pillLabel && pillColor ? (
@@ -1610,6 +1619,13 @@ function ShiftGrid({
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
 
+  // Staff color map with fallbacks
+  const FALLBACK_COLORS_SHIFT = [
+    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+  ]
+  const staffColorMap = Object.fromEntries(staffList.map((s, i) => [s.id, s.color || FALLBACK_COLORS_SHIFT[i % FALLBACK_COLORS_SHIFT.length]]))
+
   // Require 5px movement before drag activates — allows click events to pass through
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -2005,6 +2021,8 @@ function ShiftGrid({
                                 isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
                                 colorChips={colorChips}
                                 readOnly={isPublished}
+                                staffId={a.staff_id}
+                                staffColor={staffColorMap[a.staff_id]}
                               />
                             </div>
                           } />

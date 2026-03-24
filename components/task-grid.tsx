@@ -46,6 +46,7 @@ interface SelectorResult {
 function StaffSelector({
   open,
   onClose,
+  onApply,
   tecnica,
   availableStaff,
   assignedStaffIds,
@@ -54,7 +55,8 @@ function StaffSelector({
   allowWholeTeam,
 }: {
   open: boolean
-  onClose: (result: SelectorResult | null) => void
+  onClose: () => void
+  onApply: (result: SelectorResult) => void
   tecnica: Tecnica
   availableStaff: StaffWithSkills[]
   assignedStaffIds: Set<string>
@@ -70,7 +72,7 @@ function StaffSelector({
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose(null)
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -99,6 +101,8 @@ function StaffSelector({
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else if (next.size < 3) next.add(id)
+      // Auto-apply immediately
+      setTimeout(() => onApply({ staffIds: [...next], wholeTeam: localWholeTeam }), 0)
       return next
     })
   }
@@ -121,7 +125,7 @@ function StaffSelector({
       <div className="max-h-48 overflow-y-auto">
         {allowWholeTeam && (
           <button
-            onClick={() => setLocalWholeTeam(!localWholeTeam)}
+            onClick={() => { const next = !localWholeTeam; setLocalWholeTeam(next); onApply({ staffIds: [...localSelected], wholeTeam: next }) }}
             className={cn(
               "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
               localWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
@@ -169,9 +173,6 @@ function StaffSelector({
             </button>
           )
         })}
-      </div>
-      <div className="p-2 border-t border-border">
-        <Button size="sm" className="w-full text-[11px]" onClick={() => onClose({ staffIds: [...localSelected], wholeTeam: localWholeTeam })}>Confirmar</Button>
       </div>
     </div>
   )
@@ -234,7 +235,7 @@ function TaskCell({
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   return (
-    <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5 flex-wrap", compact ? "min-h-[28px]" : "min-h-[36px]")}>
+    <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5", compact ? "min-h-[28px]" : "min-h-[36px]")}>
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)
@@ -250,7 +251,7 @@ function TaskCell({
                   "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
                   onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
                   hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                  "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100"
+                  "bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
                 )}
                 style={isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
               >
@@ -287,7 +288,7 @@ function TaskCell({
       {!isPublished && (
         <button
           onClick={() => openSelector()}
-          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors ml-auto shrink-0"
         >
           <Plus className="size-3" />
         </button>
@@ -297,17 +298,14 @@ function TaskCell({
         <div style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200 }}>
           <StaffSelector
             open={selectorOpen}
-            onClose={async (result) => {
-              setSelectorOpen(false)
-              setPopupPos(null)
-              if (!result) return
+            onClose={() => { setSelectorOpen(false); setPopupPos(null) }}
+            onApply={async (result) => {
               const { staffIds: selected, wholeTeam } = result
+              const currentIds = new Set(assignments.map((x) => x.staff_id))
+              const toAdd = selected.filter((id) => !currentIds.has(id))
+              const toRemove = [...currentIds].filter((id) => !selected.includes(id))
 
-              // Compute diff
-              const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
-              const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
-
-              // Optimistic: update UI instantly
+              // Optimistic
               for (const id of toRemove) {
                 const a = assignments.find((x) => x.staff_id === id)
                 if (a) onOptimisticRemove(a.id)
@@ -316,7 +314,7 @@ function TaskCell({
                 onOptimisticAdd(id, tecnica.codigo, date)
               }
 
-              // Server sync in background, refresh once done
+              // Server sync
               await Promise.all([
                 ...(wholeTeam !== isWholeTeam ? [onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)] : []),
                 ...toRemove.map((id) => {
