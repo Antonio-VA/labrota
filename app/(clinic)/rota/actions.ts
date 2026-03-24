@@ -1165,7 +1165,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     }))
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -1243,7 +1243,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     .filter(Boolean)
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -1401,7 +1401,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   }
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").insert(toInsert as never)
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
