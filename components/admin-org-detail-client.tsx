@@ -44,12 +44,8 @@ export function AdminOrgDetailClient({
     setRegion("")
   }
 
-  function handleSaveRegional() {
-    startTransition(async () => {
-      const result = await updateOrgRegional(orgId, country, region)
-      if (result.error) toast.error(result.error)
-      else toast.success("Configuración guardada")
-    })
+  async function handleSaveRegional(): Promise<{ error?: string }> {
+    return updateOrgRegional(orgId, country, region)
   }
 
   function handleAddUser() {
@@ -104,21 +100,6 @@ export function AdminOrgDetailClient({
             </span>
           </div>
         </div>
-        {displayMode !== initialDisplayMode && (
-          <Button size="sm" className="w-fit" onClick={() => {
-            if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
-              setDisplayMode(initialDisplayMode)
-              return
-            }
-            startTransition(async () => {
-              const result = await updateOrgDisplayMode(orgId, displayMode)
-              if (result.error) toast.error(result.error)
-              else toast.success("Modo actualizado")
-            })
-          }} disabled={isPending}>
-            {isPending ? "Guardando…" : "Guardar modo"}
-          </Button>
-        )}
       </div>
 
       {/* Configuración regional */}
@@ -158,10 +139,29 @@ export function AdminOrgDetailClient({
             )}
           </div>
         </div>
-        <Button size="sm" onClick={handleSaveRegional} disabled={isPending} className="w-fit">
-          {isPending ? "Guardando…" : "Guardar regional"}
-        </Button>
       </div>
+
+      {/* Single save button for both sections */}
+      <Button onClick={() => {
+        if (displayMode !== initialDisplayMode) {
+          if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
+            setDisplayMode(initialDisplayMode)
+            return
+          }
+        }
+        startTransition(async () => {
+          let hasError = false
+          if (displayMode !== initialDisplayMode) {
+            const r = await updateOrgDisplayMode(orgId, displayMode)
+            if (r.error) { toast.error(r.error); hasError = true }
+          }
+          const r2 = await handleSaveRegional()
+          if (r2.error) { toast.error(r2.error); hasError = true }
+          if (!hasError) toast.success("Configuración guardada")
+        })
+      }} disabled={isPending} className="w-fit">
+        {isPending ? "Guardando…" : "Guardar"}
+      </Button>
 
       {/* Usuarios */}
       <div className="flex flex-col gap-3">

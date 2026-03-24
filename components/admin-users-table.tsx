@@ -19,9 +19,9 @@ export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: str
     <table className="w-full text-[14px]">
       <thead>
         <tr className="border-b border-border bg-muted">
-          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
-          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Role</th>
-          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Last login</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nombre</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rol</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Último acceso</th>
           <th className="px-4 py-3" />
         </tr>
       </thead>

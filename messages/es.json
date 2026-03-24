@@ -586,7 +586,7 @@
     "saveTecnicas": "Guardar técnicas",
     "allNeedNameCode": "Todas las técnicas necesitan nombre y código.",
     "noTecnicas": "No hay técnicas definidas.",
-    "loadDefaults": "Cargar defaults (OPU, ICS, ET, BX, DEN, AND)"
+    "loadDefaults": "Cargar defaults (ICSI, Biopsia, OPU, ET, DEN, VIT, CNG, SEM, TUB, PRE, TW, QC, MP)"
   },
   "departments": {
     "nameEs": "Nombre (ES)",
