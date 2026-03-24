@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useState, useTransition } from "react"
+import { useActionState, useState, useTransition, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
 import { Hourglass, Plus, X } from "lucide-react"
@@ -18,6 +18,50 @@ import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Tecnica } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+function StaffColorPicker({ value, onChange, disabled }: { value: string; onChange: (c: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative shrink-0 mb-1">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className="size-8 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow disabled:opacity-50"
+        style={{ backgroundColor: value }}
+        title="Color"
+      />
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
+          <div className="grid grid-cols-8 gap-1">
+            {STAFF_PASTEL_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { onChange(c); setOpen(false) }}
+                className={cn(
+                  "size-5 rounded-full transition-transform hover:scale-125",
+                  c === value && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const DEPT_MAP: Record<string, string> = { lab: "lab", andrology: "andrology" }
 
@@ -254,17 +298,21 @@ export function StaffForm({
             <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} required className="rounded-[8px]" />
           </Field>
         </div>
-        <Field label={t("fields.email")}>
-          <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} className="rounded-[8px]" />
-          {mode === "create" && (
-            <label className="flex items-start gap-2 mt-2 cursor-pointer">
-              <input type="checkbox" name="invite_viewer" value="on" className="mt-0.5 size-4 rounded border-border accent-primary" />
-              <span className="text-[12px] text-muted-foreground leading-tight">
-                {t("inviteViewerLabel")}
-              </span>
-            </label>
-          )}
-        </Field>
+        <div className="flex items-end gap-3">
+          <div className="flex-1"><Field label={t("fields.email")}>
+            <Input name="email" type="email" defaultValue={staff?.email ?? ""} disabled={isPending} className="rounded-[8px]" />
+          </Field></div>
+          <StaffColorPicker value={selectedColor} onChange={setSelectedColor} disabled={isPending} />
+          <input type="hidden" name="color" value={selectedColor} />
+        </div>
+        {mode === "create" && (
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" name="invite_viewer" value="on" className="mt-0.5 size-4 rounded border-border accent-primary" />
+            <span className="text-[12px] text-muted-foreground leading-tight">
+              {t("inviteViewerLabel")}
+            </span>
+          </label>
+        )}
       </Section>
 
       {/* Role & status */}
@@ -297,26 +345,6 @@ export function StaffForm({
           <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
         </Field>
         <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
-      </Section>
-
-      {/* Color personal */}
-      <Section label="Color">
-        <input type="hidden" name="color" value={selectedColor} />
-        <div className="flex gap-1.5 flex-wrap">
-          {STAFF_PASTEL_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              disabled={isPending}
-              onClick={() => setSelectedColor(c)}
-              className={cn(
-                "size-6 rounded-full border-2 transition-all disabled:opacity-50",
-                selectedColor === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
-              )}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
       </Section>
 
       </div>
