@@ -3813,6 +3813,16 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
       {view === "week" && <WeekNotes weekStart={weekStart} />}
 
       {/* Bottom taskbar — hidden for viewers */}
+      {canEdit && view === "week" && loadingWeek && (
+        <div className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-2">
+          <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+          <div className="h-5 w-14 rounded bg-muted animate-pulse" />
+          <div className="h-5 w-14 rounded bg-muted animate-pulse" />
+          <div className="h-5 w-14 rounded bg-muted animate-pulse" />
+          <div className="h-5 w-14 rounded bg-muted animate-pulse" />
+          <div className="h-5 w-14 rounded bg-muted animate-pulse" />
+        </div>
+      )}
       {canEdit && view === "week" && weekData && !loadingWeek && (
         <ShiftBudgetBar
           data={weekData}

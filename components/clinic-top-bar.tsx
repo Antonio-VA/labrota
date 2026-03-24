@@ -73,12 +73,13 @@ export function ClinicTopBar({
                   <div
                     key={org.id}
                     className={cn(
-                      "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] transition-colors",
+                      "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] transition-colors group/org",
                       org.id === activeOrgId
                         ? "bg-accent text-accent-foreground font-medium"
                         : "hover:bg-muted text-foreground"
                     )}
                   >
+                    {org.id === activeOrgId && <Check className="size-3.5 shrink-0 text-primary" />}
                     <button
                       onClick={() => {
                         if (org.id === activeOrgId) { setOrgMenuOpen(false); return }
@@ -95,7 +96,10 @@ export function ClinicTopBar({
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleSetDefault(org.id) }}
-                      className="shrink-0 p-0.5"
+                      className={cn(
+                        "shrink-0 p-0.5",
+                        localDefault === org.id ? "" : "opacity-0 group-hover/org:opacity-100 transition-opacity"
+                      )}
                       title={localDefault === org.id ? "Quitar como predeterminado" : "Establecer como predeterminado"}
                     >
                       <Star className={cn(
@@ -105,7 +109,6 @@ export function ClinicTopBar({
                           : "text-muted-foreground/30 hover:text-amber-400"
                       )} />
                     </button>
-                    {org.id === activeOrgId && <Check className="size-3.5 shrink-0" />}
                   </div>
                 ))}
               </div>
