@@ -698,9 +698,7 @@ function StaffTable({
 
             {/* Name */}
             <div className="flex items-center gap-2 min-w-0 pr-2">
-              {member.color && (
-                <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: member.color }} />
-              )}
+              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: member.color || "#D4D4D8" }} />
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="text-[14px] font-medium truncate">
