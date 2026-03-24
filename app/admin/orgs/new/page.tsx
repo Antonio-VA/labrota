@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createOrganisation } from "@/app/admin/actions"
 import { generateSlug } from "@/lib/utils"
@@ -13,26 +13,24 @@ import { AdminImportWizard } from "@/components/admin-import-wizard"
 export default function NewOrgPage() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [name, setName]     = useState("")
-  const [slug, setSlug]     = useState("")
-  const [slugEdited, setSlugEdited] = useState(false)
-  const [error, setError]   = useState("")
+  const [name, setName] = useState("")
+  const [error, setError] = useState("")
   const [createMode, setCreateMode] = useState<"scratch" | "import">("scratch")
+  const [showImportWizard, setShowImportWizard] = useState(false)
 
-  function handleNameChange(value: string) {
-    setName(value)
-    if (!slugEdited) setSlug(generateSlug(value))
-  }
-
-  function handleSlugChange(value: string) {
-    setSlugEdited(true)
-    setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
-  }
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  function handleCreate() {
+    if (!name.trim()) return
     setError("")
-    const fd = new FormData(e.currentTarget)
+
+    if (createMode === "import") {
+      setShowImportWizard(true)
+      return
+    }
+
+    // Create from scratch
+    const fd = new FormData()
+    fd.set("name", name.trim())
+    fd.set("slug", generateSlug(name.trim()))
 
     startTransition(async () => {
       const result = await createOrganisation(fd)
@@ -43,104 +41,75 @@ export default function NewOrgPage() {
     })
   }
 
+  if (showImportWizard) {
+    return (
+      <div className="flex flex-col gap-6 max-w-2xl">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon-sm" onClick={() => setShowImportWizard(false)}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <h1 className="text-[18px] font-medium">Importar — {name}</h1>
+        </div>
+        <AdminImportWizard orgName={name} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-md">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="text-[18px] font-medium">New organisation</h1>
+        <h1 className="text-[18px] font-medium">Nueva organización</h1>
       </div>
 
-      {/* Org name — always visible */}
-      <div className="rounded-lg border border-border bg-background p-4">
-        <label className="text-[13px] font-medium text-muted-foreground">Nombre de la organización</label>
+      {/* Org name */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[14px] font-medium">Nombre de la organización</label>
         <Input
           value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Clínica FIV Madrid"
-          className="mt-1"
+          disabled={isPending}
         />
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex rounded-lg border border-input overflow-hidden w-fit">
-        <button
-          type="button"
-          onClick={() => setCreateMode("scratch")}
-          className={`px-4 py-2 text-[13px] font-medium transition-colors ${createMode === "scratch" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"}`}
-        >
-          Empezar desde cero
-        </button>
-        <button
-          type="button"
-          onClick={() => setCreateMode("import")}
-          className={`px-4 py-2 text-[13px] font-medium transition-colors ${createMode === "import" ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"}`}
-        >
-          Importar desde Excel
-        </button>
+      {/* Mode — radio buttons */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[14px] font-medium">Método de creación</label>
+        <label className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors">
+          <input type="radio" name="mode" checked={createMode === "scratch"} onChange={() => setCreateMode("scratch")} className="accent-primary" />
+          <div>
+            <span className="text-[14px] font-medium">Empezar desde cero</span>
+            <p className="text-[12px] text-muted-foreground">Organización vacía — configuras todo manualmente</p>
+          </div>
+        </label>
+        <label className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors">
+          <input type="radio" name="mode" checked={createMode === "import"} onChange={() => setCreateMode("import")} className="accent-primary" />
+          <div>
+            <span className="text-[14px] font-medium">Importar desde Excel</span>
+            <p className="text-[12px] text-muted-foreground">Sube un archivo .xlsx con el horario existente</p>
+          </div>
+        </label>
       </div>
 
-      {createMode === "import" ? (
-        <div className="rounded-lg border border-border bg-background p-6">
-          <AdminImportWizard orgName={name} />
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <AlertCircle className="size-4 text-red-500 mt-0.5 shrink-0" />
+          <p className="text-[14px] text-red-600">{error}</p>
         </div>
-      ) : (
-      <div className="rounded-lg border border-border bg-background p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-              <AlertCircle className="size-4 text-red-500 mt-0.5 shrink-0" />
-              <p className="text-[14px] text-red-600">{error}</p>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="name" className="text-[14px] font-medium">
-              Organisation name
-            </label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="Clínica FIV Madrid"
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              required
-              disabled={isPending}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="slug" className="text-[14px] font-medium">
-              Slug <span className="text-muted-foreground font-normal">(URL identifier, must be unique)</span>
-            </label>
-            <Input
-              id="slug"
-              name="slug"
-              placeholder="clinica-fiv-madrid"
-              value={slug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              required
-              disabled={isPending}
-            />
-            {slug && (
-              <p className="text-[13px] text-muted-foreground">
-                labrota.app/{slug}
-              </p>
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isPending || !name || !slug}>
-              {isPending ? "Creating…" : "Create organisation"}
-            </Button>
-            <Button variant="outline" render={<Link href="/" />}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </div>
       )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button onClick={handleCreate} disabled={isPending || !name.trim()}>
+          {isPending ? "Creando…" : "Crear organización"}
+        </Button>
+        <Button variant="outline" render={<Link href="/" />}>
+          Cancelar
+        </Button>
+      </div>
     </div>
   )
 }
