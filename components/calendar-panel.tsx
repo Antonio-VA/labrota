@@ -874,7 +874,9 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const overflowRef = useRef<HTMLDivElement>(null)
 
   const days = liveDays ?? data.days
+  const isByTask = data.rotaDisplayMode === "by_task"
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
+  const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
   for (const day of days) {
     for (const a of day.assignments) {
       if (deptFilter && !deptFilter.has(a.staff.role)) continue
@@ -884,8 +886,17 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
           first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role,
           count: 0, daysPerWeek: member?.days_per_week ?? 5,
         }
+        staffDaySeen[a.staff_id] = new Set()
       }
-      staffMap[a.staff_id].count++
+      if (isByTask) {
+        // Count unique days, not individual task assignments
+        if (!staffDaySeen[a.staff_id].has(day.date)) {
+          staffDaySeen[a.staff_id].add(day.date)
+          staffMap[a.staff_id].count++
+        }
+      } else {
+        staffMap[a.staff_id].count++
+      }
     }
   }
 

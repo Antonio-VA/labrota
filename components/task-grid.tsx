@@ -103,7 +103,7 @@ function StaffSelector({
       <div className="max-h-48 overflow-y-auto">
         {allowWholeTeam && (
           <button
-            onClick={() => { setLocalWholeTeam(!localWholeTeam); if (!localWholeTeam) setLocalSelected(new Set()) }}
+            onClick={() => setLocalWholeTeam(!localWholeTeam)}
             className={cn(
               "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
               localWholeTeam ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
@@ -123,7 +123,7 @@ function StaffSelector({
           const isSelected = localSelected.has(s.id)
           const onLeave = leaveStaffIds.has(s.id)
           const isQualified = s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
-          const disabled = (atCap && !isSelected) || onLeave || localWholeTeam
+          const disabled = (atCap && !isSelected) || onLeave
 
           return (
             <button
@@ -364,7 +364,7 @@ export function TaskGrid({
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden bg-background">
+    <div className="rounded-lg border border-border overflow-visible bg-background">
       <div style={{ display: "grid", gridTemplateColumns: `120px repeat(${days.length}, 1fr)` }}>
         {/* Header row */}
         <div className="border-b border-r border-border bg-muted px-3 py-2">
