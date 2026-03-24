@@ -197,6 +197,7 @@ function TaskCell({
   onToggleWholeTeam,
   onRefresh,
   compact = false,
+  staffColorMap,
 }: {
   tecnica: Tecnica
   date: string
@@ -215,6 +216,7 @@ function TaskCell({
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
   onRefresh: () => void
   compact?: boolean
+  staffColorMap: Record<string, string>
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -230,7 +232,6 @@ function TaskCell({
   }
 
   const { hoveredStaffId, setHovered } = useStaffHover()
-  const staffColorMap = Object.fromEntries(staffList.map((s) => [s.id, s.color]))
 
   return (
     <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5 flex-wrap", compact ? "min-h-[28px]" : "min-h-[36px]")}>
@@ -342,12 +343,13 @@ function TaskCell({
 
 // ── OFF cell ─────────────────────────────────────────────────────────────────
 
-function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff }: {
+function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap }: {
   date: string; day: RotaDay
   unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
   staffList: StaffWithSkills[]; assignedIds: Set<string>
   isPublished: boolean
   onMakeOff: (staffId: string) => Promise<void>
+  staffColorMap: Record<string, string>
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState<Set<string>>(new Set())
@@ -402,7 +404,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
               className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 transition-colors duration-150"
-              style={isHovered && s.color ? { backgroundColor: s.color, color: "#1e293b" } : undefined}
+              style={isHovered && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
@@ -420,7 +422,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
               className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150"
-              style={isHov && s.color ? { backgroundColor: s.color, color: "#1e293b" } : undefined}
+              style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
@@ -676,6 +678,17 @@ export function TaskGrid({
     )
   }
 
+  // Build stable color map — auto-assign for staff without a color
+  const FALLBACK_COLORS = [
+    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+    "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+  ]
+  const staffColorMap: Record<string, string> = {}
+  staffList.forEach((s, i) => {
+    staffColorMap[s.id] = s.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length]
+  })
+
   // Build leave map: date → set of staff_ids
   const leaveByDate: Record<string, Set<string>> = {}
   for (const [date, ids] of Object.entries(data.onLeaveByDate)) {
@@ -873,6 +886,7 @@ export function TaskGrid({
                     onToggleWholeTeam={handleToggleWholeTeam}
                     onRefresh={onRefresh}
                     compact={compact}
+                    staffColorMap={staffColorMap}
                   />
                 </div>
               )
@@ -910,6 +924,7 @@ export function TaskGrid({
                 await Promise.all(toRemove.map((a) => removeSilent(a.id)))
                 onRefresh()
               }}
+              staffColorMap={staffColorMap}
             />
           )
         })}

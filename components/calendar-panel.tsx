@@ -964,7 +964,12 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   }, [overflowOpen])
 
   const { hoveredStaffId, setHovered } = useStaffHover()
-  const staffColorLookup = Object.fromEntries(staffList.map((s) => [s.id, s.color ?? ""]))
+  const FALLBACK_COLORS = [
+    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+    "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+  ]
+  const staffColorLookup = Object.fromEntries(staffList.map((s, i) => [s.id, s.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length]]))
 
   if (entries.length === 0) return null
 
