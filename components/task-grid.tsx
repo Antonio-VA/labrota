@@ -91,7 +91,7 @@ function StaffSelector({
     const name = `${s.first_name} ${s.last_name}`.toLowerCase()
     const initials = `${s.first_name[0]}${s.last_name[0]}`.toLowerCase()
     return name.includes(search.toLowerCase()) || initials.includes(search.toLowerCase())
-  })
+  }).sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name))
 
   const selectedCount = localSelected.size
   const atCap = selectedCount >= 3

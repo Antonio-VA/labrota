@@ -36,9 +36,12 @@ function makeSkillLabel(tecnicas: Tecnica[]) {
 }
 
 
-const ROLE_ORDER: Record<StaffRole, number> = { lab: 0, andrology: 1, admin: 2 }
+function sortByName(a: StaffWithSkills, b: StaffWithSkills) {
+  return a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+}
 function sortByRole(a: StaffWithSkills, b: StaffWithSkills) {
-  return ROLE_ORDER[a.role] - ROLE_ORDER[b.role]
+  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+  return (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -627,6 +630,7 @@ function StaffTable({
   members, t, ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
   deptBorder, deptLabel, skillOrder, tecnicas,
+  sortCol, onSortChange,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -640,6 +644,8 @@ function StaffTable({
   deptLabel: Record<string, string>
   skillOrder: Record<string, number>
   tecnicas: Tecnica[]
+  sortCol?: "name" | "role"
+  onSortChange?: (col: "name" | "role") => void
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -656,8 +662,12 @@ function StaffTable({
           className="size-4 rounded border-border cursor-pointer accent-primary"
           aria-label="Seleccionar todos"
         />
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.name")}</span>
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.role")}</span>
+        <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+          {t("columns.name")} {sortCol === "name" && "↓"}
+        </button>
+        <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+          {t("columns.role")} {sortCol === "role" && "↓"}
+        </button>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
@@ -806,6 +816,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
   const [skillFilter,  setSkillFilter]  = useState<string>("all")
   const [showHistory,  setShowHistory]  = useState(false)
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
+  const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   const filtered = staff.filter((s) => {
     const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
@@ -816,8 +827,9 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
     return true
   })
 
-  const activeFiltered   = filtered.filter((s) => s.onboarding_status !== "inactive").sort(sortByRole)
-  const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortByRole)
+  const sortFn = sortCol === "name" ? sortByName : sortByRole
+  const activeFiltered   = filtered.filter((s) => s.onboarding_status !== "inactive").sort(sortFn)
+  const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortFn)
 
   // Collect all unique skill codes for the filter dropdown
   const allSkillCodes = [...new Set(staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))].sort()
@@ -979,6 +991,8 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           deptLabel={deptLabel}
           skillOrder={skillOrder}
           tecnicas={tecnicas}
+          sortCol={sortCol}
+          onSortChange={setSortCol}
         />
       )}
 

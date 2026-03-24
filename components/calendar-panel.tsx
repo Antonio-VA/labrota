@@ -942,10 +942,9 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     }
   }
 
-  const entries = Object.entries(staffMap).sort((a, b) => {
-    const roleOrder = { lab: 0, andrology: 1, admin: 2 }
-    return (roleOrder[a[1].role as keyof typeof roleOrder] ?? 9) - (roleOrder[b[1].role as keyof typeof roleOrder] ?? 9)
-  })
+  const entries = Object.entries(staffMap).sort((a, b) =>
+    a[1].first.localeCompare(b[1].first) || a[1].last.localeCompare(b[1].last)
+  )
 
   // Measure overflow after render
   useEffect(() => {
@@ -1054,8 +1053,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 }) {
   const t = useTranslations("schedule")
   const entries = Object.entries(summary.staffTotals).sort((a, b) => {
-    const roleOrder: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-    return (roleOrder[a[1].role] ?? 9) - (roleOrder[b[1].role] ?? 9)
+    return a[1].first.localeCompare(b[1].first) || a[1].last.localeCompare(b[1].last)
   })
 
   if (entries.length === 0) return null
@@ -1972,7 +1970,7 @@ function ShiftGrid({
               )}
             </div>
             {localDays.map((day) => {
-              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))]
+              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))].sort((a, b) => a.staff.first_name.localeCompare(b.staff.first_name) || a.staff.last_name.localeCompare(b.staff.last_name))
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
               const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
               const cellId = `${shiftRow}-${day.date}`
