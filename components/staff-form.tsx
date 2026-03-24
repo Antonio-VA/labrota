@@ -297,29 +297,6 @@ export function StaffForm({
           <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
         </Field>
         <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
-        <Field label={t("fields.daysPerWeek")} required>
-          <Input
-            name="days_per_week"
-            type="number"
-            min={1}
-            max={7}
-            defaultValue={staff?.days_per_week ?? 5}
-            disabled={isPending}
-            className="max-w-28 rounded-[8px]"
-            required
-          />
-        </Field>
-        <Field label={t("fields.preferredShift")}>
-          <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
-            <option value="">{t("fields.preferredShiftNone")}</option>
-            {shiftTypes.filter((st) => st.active !== false).map((st) => (
-              <option key={st.code} value={st.code}>{st.code} — {st.name_es} ({st.start_time}–{st.end_time})</option>
-            ))}
-          </Select>
-          <p className="text-[12px] text-muted-foreground mt-1">
-            {t("fields.preferredShiftHint")}
-          </p>
-        </Field>
       </Section>
 
       {/* Color personal */}
@@ -346,6 +323,31 @@ export function StaffForm({
 
       {/* === TAB: Disponibilidad === */}
       <div className={cn("flex flex-col gap-6", tab !== "disponibilidad" && "hidden")}>
+
+      <Section label={t("fields.daysPerWeek")}>
+        <Input
+          name="days_per_week"
+          type="number"
+          min={1}
+          max={7}
+          defaultValue={staff?.days_per_week ?? 5}
+          disabled={isPending}
+          className="max-w-28 rounded-[8px]"
+          required
+        />
+      </Section>
+
+      <Section label={t("fields.preferredShift")}>
+        <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
+          <option value="">{t("fields.preferredShiftNone")}</option>
+          {shiftTypes.filter((st) => st.active !== false).map((st) => (
+            <option key={st.code} value={st.code}>{st.code} — {st.name_es} ({st.start_time}–{st.end_time})</option>
+          ))}
+        </Select>
+        <p className="text-[12px] text-muted-foreground mt-1">
+          {t("fields.preferredShiftHint")}
+        </p>
+      </Section>
 
       {/* Días disponibles (hard constraint) */}
       <Section label={t("daysAvailable")}>
