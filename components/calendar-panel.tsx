@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -988,7 +988,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     const over  = s.count > s.daysPerWeek
     const under = s.count < s.daysPerWeek
     const color = s.count === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
-    const isHov = isByTask && hoveredStaffId === id
+    const isHov = hoveredStaffId === id
     const staffColor = staffColorLookup[id]
     return (
       <Tooltip key={id}>
@@ -996,12 +996,12 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
           <button
             data-pill
             onClick={() => onPillClick?.(id)}
-            onMouseEnter={() => isByTask && setHovered(id)}
-            onMouseLeave={() => isByTask && setHovered(null)}
+            onMouseEnter={() => setHovered(id)}
+            onMouseLeave={() => setHovered(null)}
             className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
             style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
-            {isByTask && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
+            {staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
           </button>
@@ -1623,6 +1623,7 @@ function ShiftGrid({
     "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
   ]
   const staffColorMap = Object.fromEntries(staffList.map((s, i) => [s.id, s.color || FALLBACK_COLORS_SHIFT[i % FALLBACK_COLORS_SHIFT.length]]))
+  const { hoveredStaffId, setHovered } = useStaffHover()
 
   // Require 5px movement before drag activates — allows click events to pass through
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -2074,27 +2075,37 @@ function ShiftGrid({
                 className="p-1.5 flex flex-col gap-1 bg-muted"
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
-                {onLeaveStaff.map((s) => (
+                {onLeaveStaff.map((s) => {
+                  const isHov = hoveredStaffId === s.id
+                  return (
                   <div
                     key={s.id}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-default"
-                    style={{ borderLeft: "3px solid var(--muted-foreground)", borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
+                    onMouseEnter={() => setHovered(s.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-default transition-colors duration-150"
+                    style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id] } : {}) }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
                     <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
                   </div>
-                ))}
+                  )
+                })}
                 {/* Available — draggable */}
-                {availableOff.map((s) => (
+                {availableOff.map((s) => {
+                  const isHov = hoveredStaffId === s.id
+                  return (
                   <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
                     <div
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border"
-                      style={{ borderLeft: `3px solid ${ROLE_BORDER[s.role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6 }}
+                      onMouseEnter={() => setHovered(s.id)}
+                      onMouseLeave={() => setHovered(null)}
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border transition-colors duration-150"
+                      style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id] } : {}) }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
                     </div>
                   </DraggableOffStaff>
-                ))}
+                  )
+                })}
               </DroppableCell>
             )
           })}
@@ -2935,6 +2946,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     if (typeof window === "undefined") return true
     return localStorage.getItem("labrota_color_chips") !== "false"
   })
+  const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
   const [currentDate, setCurrentDateState] = useState(() => {
     if (typeof window === "undefined") return TODAY
     return sessionStorage.getItem("labrota_current_date") || TODAY
@@ -3435,6 +3447,10 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
+              }, {
+                label: highlightHover ? "Resaltado de persona: On" : "Resaltado de persona: Off",
+                icon: <Users className="size-3.5" />,
+                onClick: () => setHighlightHover(!highlightHover),
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
