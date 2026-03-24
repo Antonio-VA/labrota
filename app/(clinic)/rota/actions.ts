@@ -978,6 +978,8 @@ export interface StaffProfileData {
   recentAssignments: { date: string; shift_type: string; function_label: string | null }[]
   /** Future approved leaves */
   upcomingLeaves: { start_date: string; end_date: string; type: string }[]
+  /** Last 3 past leaves */
+  pastLeaves: { start_date: string; end_date: string; type: string }[]
 }
 
 export async function getStaffProfile(staffId: string): Promise<StaffProfileData> {
@@ -989,7 +991,7 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
   const since = eightWeeksAgo.toISOString().split("T")[0]
 
-  const [assignmentsRes, leavesRes] = await Promise.all([
+  const [assignmentsRes, leavesRes, pastLeavesRes] = await Promise.all([
     supabase
       .from("rota_assignments")
       .select("date, shift_type, function_label")
@@ -1006,11 +1008,20 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
       .gte("end_date", today)
       .order("start_date", { ascending: true })
       .limit(5) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
+    supabase
+      .from("leaves")
+      .select("start_date, end_date, type")
+      .eq("staff_id", staffId)
+      .eq("status", "approved")
+      .lt("end_date", today)
+      .order("end_date", { ascending: false })
+      .limit(3) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
   ])
 
   return {
     recentAssignments: assignmentsRes.data ?? [],
     upcomingLeaves: leavesRes.data ?? [],
+    pastLeaves: pastLeavesRes.data ?? [],
   }
 }
 

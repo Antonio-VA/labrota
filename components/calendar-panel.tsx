@@ -786,6 +786,28 @@ function StaffProfilePanel({
             )}
           </div>
 
+          {/* Past leaves */}
+          <div className="px-5 py-3 border-b border-border">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Últimas vacaciones</p>
+            {loading ? (
+              <div className="shimmer-bar h-4 w-40 rounded" />
+            ) : !data?.pastLeaves?.length ? (
+              <p className="text-[12px] text-muted-foreground italic">Sin registros</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {data.pastLeaves.map((leave, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <CalendarX className="size-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
+                      <p className="text-[11px] text-muted-foreground">{LEAVE_TYPE_LABEL[leave.type] ?? leave.type}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Key info */}
           {staff && (
             <div className="px-5 py-3">
