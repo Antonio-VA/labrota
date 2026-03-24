@@ -401,10 +401,8 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   return (
     <div
       ref={cellRef}
-      className={cn(
-        "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]",
-        new Date(date + "T12:00:00").getDay() === 6 && "border-l border-l-border/50 border-dashed"
-      )}
+      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]"
+      style={new Date(date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
     >
       {onLeave.map((s) => {
         const isHovered = hoveredStaffId === s.id
@@ -828,8 +826,8 @@ export function TaskGrid({
               className={cn(
                 "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px] bg-muted",
                 compact ? "py-1" : "py-1.5",
-                d.getDay() === 6 && "border-l border-l-border/50 border-dashed"
               )}
+              style={d.getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
             >
               <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
               <span className={cn(
@@ -876,10 +874,10 @@ export function TaskGrid({
                   key={`${tecnica.id}-${day.date}`}
                   className={cn(
                     "border-b border-r last:border-r-0 border-border",
-                    new Date(day.date + "T12:00:00").getDay() === 6 && "border-l border-l-border/50 border-dashed",
                     hasEmpty && "bg-muted/20",
                     day.isWeekend && "bg-muted/30"
                   )}
+                  style={new Date(day.date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
                 >
                   <TaskCell
                     tecnica={tecnica}
