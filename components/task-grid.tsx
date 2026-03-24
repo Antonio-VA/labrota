@@ -374,7 +374,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   return (
     <div
       ref={cellRef}
-      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px] group/off"
+      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/40 min-h-[36px] group/off"
       style={new Date(date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
     >
       {onLeave.map((s) => {
