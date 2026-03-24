@@ -94,21 +94,25 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
   // ── Confirm + create ────────────────────────────────────────────────────
   function handleCreate() {
     startTransition(async () => {
-      const payload: ImportPayload = {
-        orgName,
-        mode,
-        staff,
-        departments: depts,
-        techniques: techniques.map((t, i) => ({ ...t, color: COLORS[i % COLORS.length] })),
-        shifts,
-        leaves,
-        assignments: parsed?.assignments ?? [],
-        weekStart: parsed?.weekStart ?? new Date().toISOString().split("T")[0],
+      try {
+        const payload: ImportPayload = {
+          orgName,
+          mode,
+          staff,
+          departments: depts,
+          techniques: techniques.map((t, i) => ({ ...t, color: COLORS[i % COLORS.length] })),
+          shifts,
+          leaves,
+          assignments: parsed?.assignments ?? [],
+          weekStart: parsed?.weekStart ?? new Date().toISOString().split("T")[0],
+        }
+        const result = await importOrganisation(payload)
+        if (result.error) { toast.error(result.error); return }
+        toast.success("Organización creada desde Excel")
+        if (result.orgId) router.push(`/admin/orgs/${result.orgId}`)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Error creando la organización")
       }
-      const result = await importOrganisation(payload)
-      if (result.error) { toast.error(result.error); return }
-      toast.success("Organización creada desde Excel")
-      if (result.orgId) router.push(`/admin/orgs/${result.orgId}`)
     })
   }
 

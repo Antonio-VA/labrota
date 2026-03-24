@@ -67,6 +67,8 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
   const admin = createAdminClient()
   const slug = payload.orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
 
+  try {
+
   // 1. Create org
   const { data: org, error: orgErr } = await admin
     .from("organisations")
@@ -88,94 +90,92 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
     } as never)
   }
 
-  // 4. Create staff
-  const staffIdMap: Record<string, string> = {} // initials → staff id
-  for (const s of payload.staff) {
-    const { data: staffRow, error: staffErr } = await admin
+  // 4. Create staff (batch insert, then map initials → IDs)
+  const staffIdMap: Record<string, string> = {}
+  const today = new Date().toISOString().split("T")[0]
+  if (payload.staff.length > 0) {
+    const staffRows = payload.staff.map((s) => ({
+      organisation_id: orgId,
+      first_name: s.firstName || s.initials,
+      last_name: s.lastName || "",
+      role: s.department || "lab",
+      working_pattern: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      days_per_week: 6,
+      onboarding_status: "active",
+      start_date: today,
+      contracted_hours: 37,
+    }))
+    const { data: inserted } = await admin
       .from("staff")
-      .insert({
-        organisation_id: orgId,
-        first_name: s.firstName || s.initials,
-        last_name: s.lastName || "",
-        role: s.department || "lab",
-        working_pattern: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-        days_per_week: 6,
-        onboarding_status: "active",
-        start_date: new Date().toISOString().split("T")[0],
-        contracted_hours: 37,
-      } as never)
-      .select("id")
-      .single()
-    if (staffErr) continue
-    staffIdMap[s.initials] = (staffRow as { id: string }).id
+      .insert(staffRows as never)
+      .select("id, first_name, last_name")
+    if (inserted) {
+      for (let i = 0; i < payload.staff.length && i < inserted.length; i++) {
+        staffIdMap[payload.staff[i].initials] = (inserted[i] as { id: string }).id
+      }
+    }
   }
 
   // 5. Create techniques (by_task) or shifts (by_shift)
   if (payload.mode === "by_task") {
     const COLORS = ["blue", "green", "amber", "purple", "coral", "teal", "slate", "red"]
-    for (let i = 0; i < payload.techniques.length; i++) {
-      const t = payload.techniques[i]
-      const code = t.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) || `T${i}`
-      const { data: tecRow } = await admin
-        .from("tecnicas")
-        .insert({
-          organisation_id: orgId,
-          nombre_es: t.name,
-          nombre_en: t.name,
-          codigo: code,
-          color: t.color || COLORS[i % COLORS.length],
-          department: "lab",
-          activa: true,
-          orden: t.order,
-        } as never)
-        .select("id")
-        .single()
+    const tecRows = payload.techniques.map((t, i) => ({
+      organisation_id: orgId,
+      nombre_es: t.name,
+      nombre_en: t.name,
+      codigo: t.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) || `T${i}`,
+      color: t.color || COLORS[i % COLORS.length],
+      department: "lab",
+      activa: true,
+      orden: t.order,
+    }))
+    if (tecRows.length > 0) {
+      await admin.from("tecnicas").insert(tecRows as never)
+    }
 
-      // Add staff skills for qualified staff
-      if (tecRow) {
-        for (const initials of t.qualifiedInitials) {
-          const staffId = staffIdMap[initials]
-          if (staffId) {
-            await admin.from("staff_skills").insert({
-              organisation_id: orgId,
-              staff_id: staffId,
-              skill: code,
-              level: "certified",
-            } as never)
-          }
-        }
+    // Batch insert staff skills
+    const skillRows: { organisation_id: string; staff_id: string; skill: string; level: string }[] = []
+    for (const t of payload.techniques) {
+      const code = t.name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3)
+      for (const initials of t.qualifiedInitials) {
+        const staffId = staffIdMap[initials]
+        if (staffId) skillRows.push({ organisation_id: orgId, staff_id: staffId, skill: code, level: "certified" })
       }
     }
+    if (skillRows.length > 0) {
+      await admin.from("staff_skills").insert(skillRows as never)
+    }
   } else {
-    for (let i = 0; i < payload.shifts.length; i++) {
-      const s = payload.shifts[i]
-      await admin.from("shift_types").insert({
-        organisation_id: orgId,
-        code: `T${i + 1}`,
-        name_es: s.name,
-        name_en: s.name,
-        start_time: s.start || "07:30",
-        end_time: s.end || "15:30",
-        sort_order: i,
-      } as never)
+    const shiftRows = payload.shifts.map((s, i) => ({
+      organisation_id: orgId,
+      code: `T${i + 1}`,
+      name_es: s.name,
+      name_en: s.name,
+      start_time: s.start || "07:30",
+      end_time: s.end || "15:30",
+      sort_order: i,
+    }))
+    if (shiftRows.length > 0) {
+      await admin.from("shift_types").insert(shiftRows as never)
     }
   }
 
-  // 6. Create leave records
-  for (const l of payload.leaves) {
-    const staffId = staffIdMap[l.initials]
-    if (!staffId || !l.from || !l.to) continue
-    await admin.from("leaves").insert({
+  // 6. Create leave records (batch)
+  const leaveRows = payload.leaves
+    .filter((l) => staffIdMap[l.initials] && l.from && l.to)
+    .map((l) => ({
       organisation_id: orgId,
-      staff_id: staffId,
+      staff_id: staffIdMap[l.initials],
       type: l.type || "annual",
       start_date: l.from,
       end_date: l.to,
       status: "approved",
-    } as never)
+    }))
+  if (leaveRows.length > 0) {
+    await admin.from("leaves").insert(leaveRows as never)
   }
 
-  // 7. Create initial rota week
+  // 7. Create initial rota week (batch assignments)
   if (payload.assignments.length > 0) {
     const { data: rotaRow } = await admin
       .from("rotas")
@@ -185,18 +185,22 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
 
     if (rotaRow) {
       const rotaId = (rotaRow as { id: string }).id
-      for (const a of payload.assignments) {
-        const staffId = staffIdMap[a.initials]
-        if (!staffId) continue
-        await admin.from("rota_assignments").insert({
+      const assignmentRows = payload.assignments
+        .filter((a) => staffIdMap[a.initials])
+        .map((a) => ({
           organisation_id: orgId,
           rota_id: rotaId,
-          staff_id: staffId,
+          staff_id: staffIdMap[a.initials],
           date: a.date,
           shift_type: "T1",
           function_label: a.task ? a.task.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) : null,
           is_manual_override: false,
-        } as never)
+        }))
+      if (assignmentRows.length > 0) {
+        // Batch in chunks of 100 to avoid payload limits
+        for (let i = 0; i < assignmentRows.length; i += 100) {
+          await admin.from("rota_assignments").insert(assignmentRows.slice(i, i + 100) as never)
+        }
       }
     }
   }
@@ -208,6 +212,11 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
 
   revalidatePath("/admin")
   return { orgId }
+
+  } catch (e) {
+    console.error("[importOrganisation] Error:", e)
+    return { error: e instanceof Error ? e.message : "Error creating organisation." }
+  }
 }
 
 // ── Import historical rota (enrich existing staff with skills/leaves) ────────
