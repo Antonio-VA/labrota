@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { StaffWithSkills, Tecnica, ShiftType } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
-import { upsertAssignment, removeAssignment } from "@/app/(clinic)/rota/actions"
+import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
@@ -36,6 +36,11 @@ interface Assignment {
 
 // ── Staff selector popover ────────────────────────────────────────────────────
 
+interface SelectorResult {
+  staffIds: string[]
+  wholeTeam: boolean
+}
+
 function StaffSelector({
   open,
   onClose,
@@ -47,7 +52,7 @@ function StaffSelector({
   allowWholeTeam,
 }: {
   open: boolean
-  onClose: (selected: string[] | null) => void
+  onClose: (result: SelectorResult | null) => void
   tecnica: Tecnica
   availableStaff: StaffWithSkills[]
   assignedStaffIds: Set<string>
@@ -91,7 +96,6 @@ function StaffSelector({
       else if (next.size < 3) next.add(id)
       return next
     })
-    setLocalWholeTeam(false)
   }
 
   return (
@@ -156,7 +160,7 @@ function StaffSelector({
         })}
       </div>
       <div className="p-2 border-t border-border">
-        <Button size="sm" className="w-full text-[11px]" onClick={() => onClose([...localSelected])}>Confirmar</Button>
+        <Button size="sm" className="w-full text-[11px]" onClick={() => onClose({ staffIds: [...localSelected], wholeTeam: localWholeTeam })}>Confirmar</Button>
       </div>
     </div>
   )
@@ -247,9 +251,16 @@ function TaskCell({
       {selectorOpen && (
         <StaffSelector
           open={selectorOpen}
-          onClose={async (selected) => {
+          onClose={async (result) => {
             setSelectorOpen(false)
-            if (!selected) return
+            if (!result) return
+            const { staffIds: selected, wholeTeam } = result
+
+            // Handle whole_team toggle
+            if (wholeTeam !== isWholeTeam) {
+              onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)
+            }
+
             // Compute diff: add new, remove deselected
             const toAdd = selected.filter((id) => !assignedStaffIds.has(id))
             const toRemove = [...assignedStaffIds].filter((id) => !selected.includes(id))
@@ -371,8 +382,16 @@ export function TaskGrid({
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
-    // TODO: implement whole_team toggle via server action
-    toast.info(current ? "Todo el equipo desactivado" : "Todo el equipo activado")
+    // If toggling ON and no assignments exist, we need to create one first
+    // so the whole_team flag has a row to live on
+    const dayData = days.find((d) => d.date === date)
+    const existingForLabel = (dayData?.assignments ?? []).filter((a) => a.function_label === tecnicaCodigo)
+    if (!current && existingForLabel.length === 0 && staffList.length > 0) {
+      // Create a placeholder assignment with the first available staff
+      await handleAssign(staffList[0].id, tecnicaCodigo, date)
+    }
+    const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
+    if (result.error) toast.error(result.error)
     onRefresh()
   }
 

@@ -777,6 +777,39 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
   return {}
 }
 
+// ── setWholeTeam ─────────────────────────────────────────────────────────────
+
+export async function setWholeTeam(
+  weekStart: string,
+  functionLabel: string,
+  date: string,
+  wholeTeam: boolean
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // Find rota for this week
+  const { data: rota } = await supabase
+    .from("rotas")
+    .select("id")
+    .eq("organisation_id", orgId)
+    .eq("week_start", weekStart)
+    .single()
+  if (!rota) return { error: "No rota found." }
+
+  // Update all assignments for this function_label + date
+  const { error } = await supabase
+    .from("rota_assignments")
+    .update({ whole_team: wholeTeam } as never)
+    .eq("rota_id", (rota as { id: string }).id)
+    .eq("date", date)
+    .eq("function_label", functionLabel)
+  if (error) return { error: error.message }
+  revalidatePath("/")
+  return {}
+}
+
 // ── getRotaMonthSummary ───────────────────────────────────────────────────────
 
 export interface MonthDaySummary {
