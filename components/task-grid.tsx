@@ -199,6 +199,7 @@ function TaskCell({
   onRefresh,
   compact = false,
   staffColorMap,
+  colorBorders = true,
 }: {
   tecnica: Tecnica
   date: string
@@ -218,15 +219,19 @@ function TaskCell({
   onRefresh: () => void
   compact?: boolean
   staffColorMap: Record<string, string>
+  colorBorders?: boolean
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
   const isWholeTeam = isWholeTeamOverride ?? assignments.some((a) => a.whole_team)
   const assignedStaffIds = new Set(assignments.map((a) => a.staff_id))
+  // Track the snapshot of assignments when popup opened, for diffing
+  const openSnapshotRef = useRef(assignments)
 
   function openSelector() {
     if (isPublished) return
+    openSnapshotRef.current = assignments
     const rect = cellRef.current?.getBoundingClientRect()
     if (rect) setPopupPos({ top: rect.bottom + 4, left: rect.left })
     setSelectorOpen(true)
@@ -235,12 +240,13 @@ function TaskCell({
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   return (
-    <div ref={cellRef} className={cn("relative p-1 flex items-center gap-0.5", compact ? "min-h-[28px]" : "min-h-[36px]")}>
+    <div ref={cellRef} className={cn("relative flex items-center gap-0.5 group/cell", compact ? "min-h-[28px] p-0.5" : "min-h-[36px] p-1")}>
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)
         const isHovered = hoveredStaffId === a.staff_id
         const staffColor = staffColorMap[a.staff_id]
+        const borderLeft = colorBorders && staffColor ? staffColor : "#CBD5E1"
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
@@ -248,12 +254,16 @@ function TaskCell({
                 onMouseEnter={() => setHovered(a.staff_id)}
                 onMouseLeave={() => setHovered(null)}
                 className={cn(
-                  "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
-                  onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
-                  hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                  "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
+                  onLeave ? "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                  hasConflict ? "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
                   "bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
                 )}
-                style={isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+                style={{
+                  borderLeft: `2px solid ${borderLeft}`,
+                  borderRadius: 4,
+                  ...(isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
+                }}
               >
                 {`${a.staff.first_name[0]}${a.staff.last_name[0]}`}
                 {!isPublished && (
@@ -286,12 +296,12 @@ function TaskCell({
         </Tooltip>
       )}
       {!isPublished && (
-        <button
+        <div
           onClick={() => openSelector()}
-          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors ml-auto shrink-0"
+          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity rounded hover:bg-muted/50"
         >
-          <Plus className="size-3" />
-        </button>
+          <Plus className="size-3 text-muted-foreground" />
+        </div>
       )}
 
       {selectorOpen && popupPos && createPortal(
@@ -301,24 +311,27 @@ function TaskCell({
             onClose={() => { setSelectorOpen(false); setPopupPos(null) }}
             onApply={async (result) => {
               const { staffIds: selected, wholeTeam } = result
-              const currentIds = new Set(assignments.map((x) => x.staff_id))
-              const toAdd = selected.filter((id) => !currentIds.has(id))
-              const toRemove = [...currentIds].filter((id) => !selected.includes(id))
+              const snap = openSnapshotRef.current
+              const snapIds = new Set(snap.map((x) => x.staff_id))
+              const toAdd = selected.filter((id) => !snapIds.has(id))
+              const toRemove = [...snapIds].filter((id) => !selected.includes(id))
 
               // Optimistic
               for (const id of toRemove) {
-                const a = assignments.find((x) => x.staff_id === id)
+                const a = snap.find((x) => x.staff_id === id)
                 if (a) onOptimisticRemove(a.id)
               }
               for (const id of toAdd) {
                 onOptimisticAdd(id, tecnica.codigo, date)
               }
+              // Update snapshot for next toggle
+              openSnapshotRef.current = snap.filter((a) => !toRemove.includes(a.staff_id))
 
               // Server sync
               await Promise.all([
                 ...(wholeTeam !== isWholeTeam ? [onToggleWholeTeam(tecnica.codigo, date, isWholeTeam)] : []),
                 ...toRemove.map((id) => {
-                  const a = assignments.find((x) => x.staff_id === id)
+                  const a = snap.find((x) => x.staff_id === id)
                   return a ? onRemoveSilent(a.id) : Promise.resolve()
                 }),
                 ...toAdd.map((id) => onAssignSilent(id, tecnica.codigo, date)),
@@ -602,6 +615,7 @@ export function TaskGrid({
   biopsyDay6Pct = 0.5,
   shiftLabel,
   compact = false,
+  colorBorders = true,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -618,6 +632,7 @@ export function TaskGrid({
   biopsyDay6Pct?: number
   shiftLabel?: string
   compact?: boolean
+  colorBorders?: boolean
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -885,6 +900,7 @@ export function TaskGrid({
                     onRefresh={onRefresh}
                     compact={compact}
                     staffColorMap={staffColorMap}
+                    colorBorders={colorBorders}
                   />
                 </div>
               )

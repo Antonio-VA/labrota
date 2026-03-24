@@ -3438,14 +3438,13 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 dividerBefore: true,
-              },
-              ...(calendarLayout === "shift" ? [{
-                label: colorChips ? "Tareas en gris" : "Tareas en color",
+              }, {
+                label: colorChips ? "Colores en gris" : "Colores activos",
                 icon: colorChips
                   ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
                   : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
-              }] : [])] : []),
+              }] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
@@ -3606,6 +3605,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
                   shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
                   compact={compact}
+                  colorBorders={colorChips}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
