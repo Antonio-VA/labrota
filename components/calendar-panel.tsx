@@ -3447,7 +3447,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
       {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
-        {isPublished && (
+        {isPublished && view === "week" && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
             <Lock className="size-3.5 text-emerald-600 shrink-0" />
             <span className="text-[13px] text-emerald-700">

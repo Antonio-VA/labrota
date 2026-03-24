@@ -1,24 +1,25 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { Plus, Trash2, FileText } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Plus, Lock, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   getWeekNotes,
   addWeekNote,
-  updateWeekNote,
   deleteWeekNote,
   dismissTemplateNote,
   type WeekNoteData,
 } from "@/app/(clinic)/notes-actions"
 
+function truncate(s: string, max: number = 40): string {
+  return s.length > max ? s.slice(0, max) + "…" : s
+}
+
 export function WeekNotes({ weekStart }: { weekStart: string }) {
   const [data, setData] = useState<WeekNoteData | null>(null)
+  const [adding, setAdding] = useState(false)
   const [newText, setNewText] = useState("")
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editText, setEditText] = useState("")
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -27,23 +28,14 @@ export function WeekNotes({ weekStart }: { weekStart: string }) {
 
   if (!data || !data.enableNotes) return null
 
-  function handleAddNote() {
-    if (!newText.trim()) return
+  function handleAdd() {
+    if (!newText.trim()) { setAdding(false); return }
     startTransition(async () => {
       const result = await addWeekNote(weekStart, newText.trim())
       if (result.error) { toast.error(result.error); return }
       setData((prev) => prev ? { ...prev, adHocNotes: [...prev.adHocNotes, { id: result.id!, text: newText.trim() }] } : prev)
       setNewText("")
-    })
-  }
-
-  function handleUpdateNote(id: string) {
-    if (!editText.trim()) return
-    startTransition(async () => {
-      const result = await updateWeekNote(id, editText.trim())
-      if (result.error) { toast.error(result.error); return }
-      setData((prev) => prev ? { ...prev, adHocNotes: prev.adHocNotes.map((n) => n.id === id ? { ...n, text: editText.trim() } : n) } : prev)
-      setEditingId(null)
+      setAdding(false)
     })
   }
 
@@ -64,76 +56,61 @@ export function WeekNotes({ weekStart }: { weekStart: string }) {
     })
   }
 
-  const hasContent = data.templates.length > 0 || data.adHocNotes.length > 0
-
   return (
-    <div className="border-t border-border px-4 py-3 shrink-0">
-      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Notas</p>
+    <div className="border-t border-border px-4 py-2 shrink-0 flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] text-muted-foreground/60 font-medium shrink-0">notas</span>
 
-      {/* Template notes */}
+      {/* Template chips */}
       {data.templates.map((t) => (
-        <div key={t.id} className="flex items-center gap-2 py-1.5 group">
-          <span className="text-[13px] text-foreground flex-1">• {t.text}</span>
-          <span className="text-[9px] text-muted-foreground/50 font-medium uppercase shrink-0">nota</span>
+        <span key={t.id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border border-border/50 px-2 py-0.5 text-[11px] text-muted-foreground group">
+          <Lock className="size-2.5 shrink-0 opacity-50" />
+          <span className="truncate max-w-[160px]">{truncate(t.text)}</span>
           <button
             onClick={() => handleDismissTemplate(t.id)}
             disabled={isPending}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+            className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0 -mr-0.5"
           >
-            <Trash2 className="size-3" />
+            <X className="size-3" />
           </button>
-        </div>
+        </span>
       ))}
 
-      {/* Ad-hoc notes */}
+      {/* Ad-hoc chips */}
       {data.adHocNotes.map((n) => (
-        <div key={n.id} className="flex items-center gap-2 py-1.5 group">
-          {editingId === n.id ? (
-            <Input
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onBlur={() => handleUpdateNote(n.id)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleUpdateNote(n.id); if (e.key === "Escape") setEditingId(null) }}
-              disabled={isPending}
-              className="flex-1 h-7 text-[13px]"
-              autoFocus
-            />
-          ) : (
-            <span
-              className="text-[13px] text-foreground flex-1 cursor-text"
-              onClick={() => { setEditingId(n.id); setEditText(n.text) }}
-            >
-              • {n.text}
-            </span>
-          )}
+        <span key={n.id} className="inline-flex items-center gap-1 rounded-md bg-background border border-border px-2 py-0.5 text-[11px] text-foreground group">
+          <span className="text-muted-foreground/40 shrink-0">•</span>
+          <span className="truncate max-w-[160px]">{truncate(n.text)}</span>
           <button
             onClick={() => handleDeleteAdHoc(n.id)}
             disabled={isPending}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+            className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-all shrink-0 -mr-0.5"
           >
-            <Trash2 className="size-3" />
+            <X className="size-3" />
           </button>
-        </div>
+        </span>
       ))}
 
-      {/* Add new */}
-      <div className="flex items-center gap-2 mt-1">
-        <button
-          onClick={() => document.getElementById("week-note-input")?.focus()}
-          className="text-[12px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-        >
-          <Plus className="size-3" />
-        </button>
+      {/* Add inline */}
+      {adding ? (
         <input
-          id="week-note-input"
+          autoFocus
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAddNote() }}
-          placeholder="Añadir nota para esta semana..."
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAdding(false); setNewText("") } }}
+          onBlur={handleAdd}
           disabled={isPending}
-          className="flex-1 text-[12px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
+          placeholder="Nueva nota..."
+          className="text-[11px] bg-transparent border-b border-border outline-none px-1 py-0.5 w-40 text-foreground placeholder:text-muted-foreground/40"
         />
-      </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+        >
+          <Plus className="size-3" />
+          Añadir...
+        </button>
+      )}
     </div>
   )
 }
