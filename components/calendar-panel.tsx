@@ -990,9 +990,10 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onClick={() => onPillClick?.(id)}
             onMouseEnter={() => isByTask && setHovered(id)}
             onMouseLeave={() => isByTask && setHovered(null)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent", color)}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
             style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
+            {isByTask && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
           </button>
@@ -3086,7 +3087,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
   useEffect(() => {
     getActiveStaff().then(setStaffList)
-  }, [])
+  }, [refreshKey])
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
