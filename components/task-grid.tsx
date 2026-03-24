@@ -298,6 +298,124 @@ function TaskCell({
   )
 }
 
+// ── OFF cell ─────────────────────────────────────────────────────────────────
+
+function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, isSat, onMakeOff }: {
+  date: string; day: RotaDay
+  unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
+  staffList: StaffWithSkills[]; assignedIds: Set<string>
+  isPublished: boolean; isSat: boolean
+  onMakeOff: (staffId: string) => Promise<void>
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const cellRef = useRef<HTMLDivElement>(null)
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    function handler(e: MouseEvent) {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) { setPickerOpen(false); setSearch("") }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [pickerOpen])
+
+  // Staff currently assigned to techniques (can be moved to OFF)
+  const assignedStaff = staffList.filter((s) => assignedIds.has(s.id))
+  const filtered = assignedStaff.filter((s) => {
+    if (!search) return true
+    const name = `${s.first_name} ${s.last_name}`.toLowerCase()
+    return name.includes(search.toLowerCase())
+  })
+
+  function openPicker() {
+    if (isPublished) return
+    const rect = cellRef.current?.getBoundingClientRect()
+    if (rect) setPopupPos({ top: rect.top - 4, left: rect.left })
+    setPickerOpen(true)
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className={cn(
+        "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/10 min-h-[36px]",
+        isSat && "border-l border-dashed border-l-border"
+      )}
+    >
+      {onLeave.map((s) => (
+        <Tooltip key={s.id}>
+          <TooltipTrigger render={
+            <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+              {`${s.first_name[0]}${s.last_name[0]}`}
+            </span>
+          } />
+          <TooltipContent side="top">{s.first_name} {s.last_name} · De baja</TooltipContent>
+        </Tooltip>
+      ))}
+      {unassigned.map((s) => (
+        <Tooltip key={s.id}>
+          <TooltipTrigger render={
+            <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {`${s.first_name[0]}${s.last_name[0]}`}
+            </span>
+          } />
+          <TooltipContent side="top">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
+        </Tooltip>
+      ))}
+      {!isPublished && (
+        <button
+          onClick={openPicker}
+          className="size-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+        >
+          <Plus className="size-3" />
+        </button>
+      )}
+
+      {pickerOpen && popupPos && createPortal(
+        <div ref={popRef} style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200, transform: "translateY(-100%)" }}>
+          <div className="bg-background border border-border rounded-lg shadow-lg w-52 overflow-hidden">
+            <div className="p-2 border-b border-border">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar asignado..."
+                className="w-full text-[12px] px-2 py-1 border border-input rounded outline-none focus:border-primary bg-background"
+              />
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+              {filtered.length === 0 && (
+                <p className="px-3 py-2 text-[11px] text-muted-foreground">Nadie asignado</p>
+              )}
+              {filtered.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={async () => {
+                    await onMakeOff(s.id)
+                    setPickerOpen(false)
+                    setSearch("")
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left hover:bg-muted/50 transition-colors"
+                >
+                  <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
+                    {`${s.first_name[0]}${s.last_name[0]}`}
+                  </span>
+                  <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
+                  <span className="text-[9px] text-muted-foreground">→ OFF</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 // ── Punciones + Biopsy editable ───────────────────────────────────────────────
 
 function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast, onChange, disabled }: {
@@ -609,44 +727,28 @@ export function TaskGrid({
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const leaveIds = leaveByDate[day.date] ?? new Set<string>()
           const isSat = new Date(day.date + "T12:00:00").getDay() === 6
-
-          // Unassigned: staff not in any assignment this day and not on leave
           const unassigned = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
-          // On leave
           const onLeave = staffList.filter((s) => leaveIds.has(s.id))
 
           return (
-            <div
+            <OffCell
               key={`off-${day.date}`}
-              className={cn(
-                "border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 bg-muted/10",
-                isSat && "border-l border-dashed border-l-border"
-              )}
-            >
-              {onLeave.map((s) => (
-                <Tooltip key={s.id}>
-                  <TooltipTrigger render={
-                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                      {`${s.first_name[0]}${s.last_name[0]}`}
-                    </span>
-                  } />
-                  <TooltipContent side="top">{s.first_name} {s.last_name} · De baja</TooltipContent>
-                </Tooltip>
-              ))}
-              {unassigned.map((s) => (
-                <Tooltip key={s.id}>
-                  <TooltipTrigger render={
-                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {`${s.first_name[0]}${s.last_name[0]}`}
-                    </span>
-                  } />
-                  <TooltipContent side="top">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
-                </Tooltip>
-              ))}
-              {onLeave.length === 0 && unassigned.length === 0 && (
-                <span className="text-[10px] text-muted-foreground/40 italic">—</span>
-              )}
-            </div>
+              date={day.date}
+              day={day}
+              unassigned={unassigned}
+              onLeave={onLeave}
+              staffList={staffList}
+              assignedIds={assignedIds}
+              isPublished={isPublished}
+              isSat={isSat}
+              onMakeOff={async (staffId) => {
+                // Remove all assignments for this staff on this day
+                const toRemove = day.assignments.filter((a) => a.staff_id === staffId)
+                for (const a of toRemove) {
+                  await handleRemove(a.id)
+                }
+              }}
+            />
           )
         })}
       </div>
