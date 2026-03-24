@@ -801,14 +801,49 @@ export async function setWholeTeam(
     .single()
   if (!rota) return { error: "No rota found." }
 
-  // Update all assignments for this function_label + date
-  const { error } = await supabase
+  const rotaId = (rota as { id: string }).id
+
+  // Check if there are existing assignments for this function_label + date
+  const { data: existing } = await supabase
     .from("rota_assignments")
-    .update({ whole_team: wholeTeam } as never)
-    .eq("rota_id", (rota as { id: string }).id)
+    .select("id")
+    .eq("rota_id", rotaId)
     .eq("date", date)
     .eq("function_label", functionLabel)
-  if (error) return { error: error.message }
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    // Update existing assignments
+    const { error } = await supabase
+      .from("rota_assignments")
+      .update({ whole_team: wholeTeam } as never)
+      .eq("rota_id", rotaId)
+      .eq("date", date)
+      .eq("function_label", functionLabel)
+    if (error) return { error: error.message }
+  } else if (wholeTeam) {
+    // No assignments yet — create a marker row so whole_team persists
+    // Use a special staff_id placeholder (first org member)
+    const { data: firstStaff } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("organisation_id", orgId)
+      .limit(1)
+      .single()
+    if (firstStaff) {
+      await supabase.from("rota_assignments").upsert({
+        organisation_id: orgId,
+        rota_id: rotaId,
+        staff_id: (firstStaff as { id: string }).id,
+        date,
+        shift_type: "T1",
+        function_label: functionLabel,
+        whole_team: true,
+        is_manual_override: true,
+      } as never, { onConflict: "rota_id,staff_id,date,function_label" })
+    }
+  }
+
   revalidatePath("/")
   return {}
 }

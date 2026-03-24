@@ -228,20 +228,6 @@ function TaskCell({
 
   return (
     <div ref={cellRef} className="relative p-1 min-h-[36px] flex items-center gap-0.5 flex-wrap">
-      {isWholeTeam && (
-        <Tooltip>
-          <TooltipTrigger render={
-            <button
-              onClick={() => openSelector()}
-              className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold"
-            >
-              <Users className="size-2.5" />
-              All
-            </button>
-          } />
-          <TooltipContent side="top">Todo el equipo</TooltipContent>
-        </Tooltip>
-      )}
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)
@@ -270,6 +256,20 @@ function TaskCell({
           </Tooltip>
         )
       })}
+      {isWholeTeam && (
+        <Tooltip>
+          <TooltipTrigger render={
+            <button
+              onClick={() => openSelector()}
+              className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold"
+            >
+              <Users className="size-2.5" />
+              All
+            </button>
+          } />
+          <TooltipContent side="top">Todo el equipo</TooltipContent>
+        </Tooltip>
+      )}
       {!isPublished && (
         <button
           onClick={() => openSelector()}
@@ -595,16 +595,33 @@ export function TaskGrid({
   useEffect(() => {
     if (!data) return
     setLocalDays(data.days)
-    // Rebuild whole_team map from server assignments
-    const wt: Record<string, boolean> = {}
+    // Merge whole_team from server: keys with assignments get server truth,
+    // keys without assignments keep local state (optimistic toggle)
+    const serverWt: Record<string, boolean> = {}
+    const keysWithAssignments = new Set<string>()
     for (const day of data.days) {
       for (const a of day.assignments) {
-        if (a.whole_team && a.function_label) {
-          wt[`${a.function_label}:${day.date}`] = true
+        if (a.function_label) {
+          const key = `${a.function_label}:${day.date}`
+          keysWithAssignments.add(key)
+          if (a.whole_team) serverWt[key] = true
         }
       }
     }
-    setLocalWholeTeam(wt)
+    setLocalWholeTeam((prev) => {
+      const next: Record<string, boolean> = {}
+      // Server-known keys: use server truth
+      for (const key of keysWithAssignments) {
+        next[key] = serverWt[key] ?? false
+      }
+      // Keys without assignments: keep local optimistic state
+      for (const [key, val] of Object.entries(prev)) {
+        if (!keysWithAssignments.has(key) && val) {
+          next[key] = true
+        }
+      }
+      return next
+    })
   }, [data])
 
   if (loading || !data) {
