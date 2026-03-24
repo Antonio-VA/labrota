@@ -52,6 +52,17 @@ export default function NewOrgPage() {
         <h1 className="text-[18px] font-medium">New organisation</h1>
       </div>
 
+      {/* Org name — always visible */}
+      <div className="rounded-lg border border-border bg-background p-4">
+        <label className="text-[13px] font-medium text-muted-foreground">Nombre de la organización</label>
+        <Input
+          value={name}
+          onChange={(e) => handleNameChange(e.target.value)}
+          placeholder="Clínica FIV Madrid"
+          className="mt-1"
+        />
+      </div>
+
       {/* Mode toggle */}
       <div className="flex rounded-lg border border-input overflow-hidden w-fit">
         <button
@@ -72,7 +83,7 @@ export default function NewOrgPage() {
 
       {createMode === "import" ? (
         <div className="rounded-lg border border-border bg-background p-6">
-          <AdminImportWizard />
+          <AdminImportWizard orgName={name} />
         </div>
       ) : (
       <div className="rounded-lg border border-border bg-background p-6">

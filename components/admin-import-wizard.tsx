@@ -21,7 +21,7 @@ const DEFAULT_DEPTS = [
 
 const COLORS = ["blue", "green", "amber", "purple", "coral", "teal", "slate", "red"]
 
-export function AdminImportWizard() {
+export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: string }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>("upload")
   const [isPending, startTransition] = useTransition()
@@ -79,7 +79,7 @@ export function AdminImportWizard() {
     try {
       const result = parseSheet(buf, sheet)
       setParsed(result)
-      setOrgName(sheet || fileName.replace(/\.(xlsx?)/i, ""))
+      setOrgName(externalOrgName || sheet || fileName.replace(/\.(xlsx?)/i, ""))
       setMode(result.mode)
       setStaff(result.staff)
       setTechniques(result.techniques)
@@ -178,12 +178,6 @@ export function AdminImportWizard() {
   if (step === "mapping") {
     return (
       <div className="flex flex-col gap-6">
-        {/* Org name */}
-        <div>
-          <label className="text-[13px] font-medium text-muted-foreground">Nombre de la organización</label>
-          <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-1" />
-        </div>
-
         {/* Mode */}
         <div>
           <label className="text-[13px] font-medium text-muted-foreground">Modo detectado</label>
@@ -364,7 +358,7 @@ export function AdminImportWizard() {
           <Button variant="ghost" onClick={() => setStep(sheets.length > 1 ? "sheet" : "upload")}>
             <ArrowLeft className="size-4" /> Volver
           </Button>
-          <Button onClick={() => setStep("confirm")} disabled={!orgName.trim()}>
+          <Button onClick={() => { if (externalOrgName) setOrgName(externalOrgName); setStep("confirm") }} disabled={!(externalOrgName || orgName).trim()}>
             Revisar <ArrowRight className="size-4" />
           </Button>
         </div>
