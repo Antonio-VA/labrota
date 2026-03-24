@@ -44,8 +44,19 @@ export async function createOrganisation(formData: FormData) {
   // Seed lab_config row for the new org
   await admin.from("lab_config").insert({ organisation_id: orgId } as never)
 
+  // Seed a single default shift type (T1)
+  await admin.from("shift_types").insert({
+    organisation_id: orgId,
+    code: "T1",
+    name_es: "Mañana",
+    name_en: "Morning",
+    start_time: "07:30",
+    end_time: "15:30",
+    sort_order: 0,
+  } as never)
+
   revalidatePath("/admin")
-  redirect("/")
+  return { success: true, orgId }
 }
 
 // ── renameOrganisation ────────────────────────────────────────────────────────

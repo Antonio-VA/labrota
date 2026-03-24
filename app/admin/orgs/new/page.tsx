@@ -35,7 +35,9 @@ export default function NewOrgPage() {
     startTransition(async () => {
       const result = await createOrganisation(fd)
       if (result?.error) setError(result.error)
-      // On success, createOrganisation redirects — no else needed
+      else if ((result as { orgId?: string })?.orgId) {
+        router.push(`/admin/orgs/${(result as { orgId: string }).orgId}`)
+      }
     })
   }
 
