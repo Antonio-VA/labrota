@@ -87,14 +87,7 @@ export function AdminOrgDetailClient({
                   key={key}
                   type="button"
                   disabled={isPending}
-                  onClick={() => {
-                    setDisplayMode(key)
-                    startTransition(async () => {
-                      const result = await updateOrgDisplayMode(orgId, key)
-                      if (result.error) toast.error(result.error)
-                      else toast.success("Modo actualizado")
-                    })
-                  }}
+                  onClick={() => setDisplayMode(key)}
                   className={cn(
                     "px-4 py-1.5 text-[13px] font-medium transition-colors",
                     displayMode === key
@@ -111,6 +104,21 @@ export function AdminOrgDetailClient({
             </span>
           </div>
         </div>
+        {displayMode !== initialDisplayMode && (
+          <Button size="sm" className="w-fit" onClick={() => {
+            if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
+              setDisplayMode(initialDisplayMode)
+              return
+            }
+            startTransition(async () => {
+              const result = await updateOrgDisplayMode(orgId, displayMode)
+              if (result.error) toast.error(result.error)
+              else toast.success("Modo actualizado")
+            })
+          }} disabled={isPending}>
+            {isPending ? "Guardando…" : "Guardar modo"}
+          </Button>
+        )}
       </div>
 
       {/* Configuración regional */}
@@ -148,11 +156,11 @@ export function AdminOrgDetailClient({
                 </select>
               </div>
             )}
-            <Button size="sm" onClick={handleSaveRegional} disabled={isPending} className="ml-auto">
-              {isPending ? "Guardando…" : "Guardar"}
-            </Button>
           </div>
         </div>
+        <Button size="sm" onClick={handleSaveRegional} disabled={isPending} className="w-fit">
+          {isPending ? "Guardando…" : "Guardar regional"}
+        </Button>
       </div>
 
       {/* Usuarios */}
