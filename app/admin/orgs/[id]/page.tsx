@@ -109,6 +109,7 @@ export default async function OrgDetailPage({
         userRows={userRows}
         initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
         initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+        initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
       />
     </div>
   )

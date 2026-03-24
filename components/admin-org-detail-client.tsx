@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, MoreHorizontal, X } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, createOrgUser } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser } from "@/app/admin/actions"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
 
@@ -17,13 +17,16 @@ export function AdminOrgDetailClient({
   userRows,
   initialCountry,
   initialRegion,
+  initialDisplayMode = "by_shift",
 }: {
   orgId: string
   userRows: UserRow[]
   initialCountry: string
   initialRegion: string
+  initialDisplayMode?: "by_shift" | "by_task"
 }) {
   const router = useRouter()
+  const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [isPending, startTransition] = useTransition()
@@ -69,6 +72,47 @@ export function AdminOrgDetailClient({
 
   return (
     <>
+      {/* Modo de horario */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-[18px] font-medium">Modo de horario</h2>
+        <div className="rounded-lg border border-border bg-background px-4 py-3">
+          <div className="flex items-center gap-4">
+            <span className="text-[13px] text-muted-foreground shrink-0">Modo</span>
+            <div className="flex rounded-lg border border-input overflow-hidden">
+              {([
+                { key: "by_shift" as const, label: "Por turno" },
+                { key: "by_task" as const, label: "Por tarea" },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    setDisplayMode(key)
+                    startTransition(async () => {
+                      const result = await updateOrgDisplayMode(orgId, key)
+                      if (result.error) toast.error(result.error)
+                      else toast.success("Modo actualizado")
+                    })
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
+                    displayMode === key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-transparent text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {displayMode === "by_shift" ? "Personal asignado a turnos por día" : "Personal asignado a técnicas por día"}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Configuración regional */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>

@@ -43,13 +43,16 @@ export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 
 export type WorkingPattern    = WorkingDay[]
 
 // ── Row types (what you get back from SELECT) ─────────────────────────────────
+export type RotaDisplayMode = 'by_shift' | 'by_task'
+
 export interface Organisation {
-  id:         string
-  name:       string
-  slug:       string
-  is_active:  boolean
-  logo_url:   string | null
-  created_at: string
+  id:                 string
+  name:               string
+  slug:               string
+  is_active:          boolean
+  logo_url:           string | null
+  rota_display_mode:  RotaDisplayMode
+  created_at:         string
 }
 
 export interface Profile {
@@ -132,6 +135,7 @@ export interface RotaAssignment {
   is_opu:             boolean
   function_label:     string | null
   tecnica_id:         string | null
+  whole_team:         boolean
   created_at:         string
   updated_at:         string
 }
@@ -186,6 +190,7 @@ export interface LabConfig {
   biopsy_conversion_rate:   number  // 0-1, default 0.5
   biopsy_day5_pct:          number  // 0-1, default 0.5
   biopsy_day6_pct:          number  // 0-1, default 0.5
+  task_conflict_threshold:  number  // minimum 2, default 3
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -231,6 +236,7 @@ export type LabConfigUpdate = {
   biopsy_conversion_rate?:   number
   biopsy_day5_pct?:          number
   biopsy_day6_pct?:          number
+  task_conflict_threshold?:  number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string

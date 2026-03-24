@@ -30,9 +30,9 @@ export default async function ClinicLayout({
     if (activeOrgId) {
       const { data: org } = await supabase
         .from("organisations")
-        .select("name, logo_url")
+        .select("name, logo_url, rota_display_mode")
         .eq("id", activeOrgId)
-        .single() as { data: { name: string; logo_url: string | null } | null }
+        .single() as { data: { name: string; logo_url: string | null; rota_display_mode?: string } | null }
       if (org) { orgName = org.name; orgLogoUrl = org.logo_url }
     }
 

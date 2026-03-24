@@ -278,3 +278,18 @@ export async function updateOrgRegional(orgId: string, country: string, region: 
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }
+
+// ── updateOrgDisplayMode ──────────────────────────────────────────────────
+export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by_task") {
+  await assertSuperAdmin()
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ rota_display_mode: mode } as never)
+    .eq("id", orgId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
