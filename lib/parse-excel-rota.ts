@@ -130,26 +130,54 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
   const headerRow = (data[headerRowIdx] ?? []).map((c) => String(c ?? "").trim())
 
   // ── Mode detection ──────────────────────────────────────────────────────
-  // Count how many header cells match task vs shift patterns
-  let taskCount = 0
-  let shiftCount = 0
-  const headerTexts: string[] = []
+  // Check headers AND first column for task/shift/day patterns
+  let headerTaskCount = 0
+  let headerShiftCount = 0
+  let headerDayCount = 0
+  let col0TaskCount = 0
+
+  const DAY_NAMES = new Set([
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "mon", "tue", "wed", "thu", "fri", "sat", "sun",
+    "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo",
+    "lun", "mar", "mié", "jue", "vie", "sáb", "dom",
+  ])
 
   for (const h of headerRow) {
     if (!h) continue
-    headerTexts.push(h)
-    if (isTaskHeader(h)) taskCount++
+    if (isTaskHeader(h)) headerTaskCount++
+    if (DAY_NAMES.has(norm(h))) headerDayCount++
     const n = norm(h)
     for (const kw of SHIFT_KEYWORDS) {
-      if (n === kw || n.includes(kw)) { shiftCount++; break }
+      if (n === kw || n.includes(kw)) { headerShiftCount++; break }
     }
   }
 
-  const mode: "by_task" | "by_shift" = taskCount >= 3 ? "by_task" : shiftCount > taskCount ? "by_shift" : taskCount > 0 ? "by_task" : "by_shift"
+  // Check first column for task names (rows = tasks, columns = days)
+  for (let row = headerRowIdx + 1; row < Math.min(data.length, 30); row++) {
+    const cell = String(data[row]?.[0] ?? "").trim()
+    if (cell && isTaskHeader(cell)) col0TaskCount++
+  }
 
-  // ── Build header → column index map ─────────────────────────────────────
-  // Collect all header values that are technique names (to exclude from staff)
+  // Determine orientation: if days are columns and tasks are in first column, flip
+  const columnsAreDays = headerDayCount >= 3 || headerRow.some((h) => isDate(h) !== null)
+  const rowsAreTasks = col0TaskCount >= 3
+
+  const mode: "by_task" | "by_shift" =
+    (headerTaskCount >= 3) ? "by_task" :
+    (columnsAreDays && rowsAreTasks) ? "by_task" :
+    headerShiftCount > headerTaskCount ? "by_shift" :
+    headerTaskCount > 0 ? "by_task" :
+    col0TaskCount > 0 ? "by_task" :
+    "by_shift"
+
+  // ── Build exclusion set from all known non-staff values ──────────────────
   const headerValueSet = new Set(headerRow.map((h) => h.toUpperCase()).filter((h) => h.length >= 2))
+  // Also exclude first-column task names
+  for (let row = headerRowIdx + 1; row < Math.min(data.length, 30); row++) {
+    const cell = String(data[row]?.[0] ?? "").trim().toUpperCase()
+    if (cell.length >= 2) headerValueSet.add(cell)
+  }
 
   const staffSet = new Map<string, ParsedStaff>()
   const techniques: ParsedTechnique[] = []
@@ -157,65 +185,119 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
   const leaves: ParsedLeave[] = []
   const assignments: { date: string; initials: string; task?: string; shift?: string }[] = []
 
-  // Detect dates in first column (rows = days)
+  // Detect dates — could be in first column (rows=days) or header row (columns=days)
   const dates: string[] = []
+  const headerDates: string[] = []
+
+  // Check header for dates
+  for (let col = 1; col < headerRow.length; col++) {
+    const d = isDate(data[headerRowIdx]?.[col])
+    if (d) headerDates.push(toISO(d))
+    else if (DAY_NAMES.has(norm(headerRow[col]))) headerDates.push("") // placeholder
+  }
+
+  // Check first column for dates
   for (let row = headerRowIdx + 1; row < data.length; row++) {
     const cell = data[row]?.[0]
     const d = isDate(cell)
     if (d) dates.push(toISO(d))
   }
 
-  const weekStart = dates.length > 0 ? getMondayOfWeek(new Date(dates[0] + "T12:00:00")) : toISO(new Date())
+  const allDates = dates.length > 0 ? dates : headerDates.filter(Boolean)
+  const weekStart = allDates.length > 0 ? getMondayOfWeek(new Date(allDates[0] + "T12:00:00")) : toISO(new Date())
 
   if (mode === "by_task") {
-    // ── By task: headers are technique names ────────────────────────────
-    // Find technique columns (skip first column which is dates/day names)
-    let order = 0
-    const techColumns: { col: number; name: string }[] = []
+    // Determine orientation
+    const transposed = columnsAreDays && rowsAreTasks // rows=tasks, cols=days
 
-    for (let col = 1; col < headerRow.length; col++) {
-      const h = headerRow[col]
-      if (!h || h.length < 2) continue
-      // If it looks like a task header, add it
-      if (isTaskHeader(h) || taskCount >= 3) {
-        techniques.push({ name: h, qualifiedInitials: [], order: order })
-        techColumns.push({ col, name: h })
-        order++
-      }
-    }
+    if (transposed) {
+      // ── Transposed: rows = tasks, columns = days ──────────────────────
+      // First column = technique names, header row = day names/dates
+      let order = 0
+      const techRows: { row: number; name: string }[] = []
 
-    // Parse body rows — each row is a day, cells contain staff initials
-    for (let row = headerRowIdx + 1; row < data.length; row++) {
-      const rowData = data[row] ?? []
-      const rowDate = dates[row - headerRowIdx - 1] ?? ""
-
-      for (const tc of techColumns) {
-        const cellValue = String(rowData[tc.col] ?? "").trim()
-        if (!cellValue) continue
-
-        // "All" / "Todo" detection
-        const cellNorm = norm(cellValue)
-        if (cellNorm === "all" || cellNorm === "todo" || cellNorm === "todos") {
-          if (rowDate) assignments.push({ date: rowDate, initials: "ALL", task: tc.name })
-          continue
+      for (let row = headerRowIdx + 1; row < data.length; row++) {
+        const cell = String(data[row]?.[0] ?? "").trim()
+        if (!cell) continue
+        if (isTaskHeader(cell)) {
+          techniques.push({ name: cell, qualifiedInitials: [], order: order })
+          techRows.push({ row, name: cell })
+          order++
+          headerValueSet.add(cell.toUpperCase())
         }
+      }
 
-        // Split cell into individual initials/names
-        const parts = cellValue.split(/[\/,\n]+/).map((p) => p.trim()).filter(Boolean)
-        for (const part of parts) {
-          const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
-          // Must be 2-3 uppercase letters AND not a header/technique name
-          if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
-            if (!staffSet.has(upper)) {
-              staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+      // Parse body — each column (after first) is a day, cells contain staff initials
+      for (const tr of techRows) {
+        const rowData = data[tr.row] ?? []
+        for (let col = 1; col < rowData.length; col++) {
+          const colDate = headerDates[col - 1] ?? ""
+          const cellValue = String(rowData[col] ?? "").trim()
+          if (!cellValue) continue
+
+          const cellNorm = norm(cellValue)
+          if (cellNorm === "all" || cellNorm === "todo" || cellNorm === "todos") {
+            if (colDate) assignments.push({ date: colDate, initials: "ALL", task: tr.name })
+            continue
+          }
+
+          const parts = cellValue.split(/[\/,\n]+/).map((p) => p.trim()).filter(Boolean)
+          for (const part of parts) {
+            const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
+            if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
+              if (!staffSet.has(upper)) {
+                staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+              }
+              const tech = techniques.find((t) => t.name === tr.name)
+              if (tech && !tech.qualifiedInitials.includes(upper)) {
+                tech.qualifiedInitials.push(upper)
+              }
+              if (colDate) assignments.push({ date: colDate, initials: upper, task: tr.name })
             }
-            // Track qualified staff per technique
-            const tech = techniques.find((t) => t.name === tc.name)
-            if (tech && !tech.qualifiedInitials.includes(upper)) {
-              tech.qualifiedInitials.push(upper)
-            }
-            if (rowDate) {
-              assignments.push({ date: rowDate, initials: upper, task: tc.name })
+          }
+        }
+      }
+    } else {
+      // ── Standard: headers = technique names, rows = days ──────────────
+      let order = 0
+      const techColumns: { col: number; name: string }[] = []
+
+      for (let col = 1; col < headerRow.length; col++) {
+        const h = headerRow[col]
+        if (!h || h.length < 2) continue
+        if (isTaskHeader(h) || headerTaskCount >= 3) {
+          techniques.push({ name: h, qualifiedInitials: [], order: order })
+          techColumns.push({ col, name: h })
+          order++
+        }
+      }
+
+      for (let row = headerRowIdx + 1; row < data.length; row++) {
+        const rowData = data[row] ?? []
+        const rowDate = dates[row - headerRowIdx - 1] ?? ""
+
+        for (const tc of techColumns) {
+          const cellValue = String(rowData[tc.col] ?? "").trim()
+          if (!cellValue) continue
+
+          const cellNorm = norm(cellValue)
+          if (cellNorm === "all" || cellNorm === "todo" || cellNorm === "todos") {
+            if (rowDate) assignments.push({ date: rowDate, initials: "ALL", task: tc.name })
+            continue
+          }
+
+          const parts = cellValue.split(/[\/,\n]+/).map((p) => p.trim()).filter(Boolean)
+          for (const part of parts) {
+            const upper = part.toUpperCase().replace(/[^A-Z]/g, "")
+            if (upper.length >= 2 && upper.length <= 3 && !headerValueSet.has(upper) && !isTaskHeader(part)) {
+              if (!staffSet.has(upper)) {
+                staffSet.set(upper, { initials: upper, firstName: "", lastName: "", department: "lab" })
+              }
+              const tech = techniques.find((t) => t.name === tc.name)
+              if (tech && !tech.qualifiedInitials.includes(upper)) {
+                tech.qualifiedInitials.push(upper)
+              }
+              if (rowDate) assignments.push({ date: rowDate, initials: upper, task: tc.name })
             }
           }
         }
