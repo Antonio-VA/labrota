@@ -313,7 +313,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   onMakeOff: (staffId: string) => Promise<void>
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [search, setSearch] = useState("")
+  const [busy, setBusy] = useState<Set<string>>(new Set())
   const cellRef = useRef<HTMLDivElement>(null)
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
   const popRef = useRef<HTMLDivElement>(null)
@@ -321,25 +321,29 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   useEffect(() => {
     if (!pickerOpen) return
     function handler(e: MouseEvent) {
-      if (popRef.current && !popRef.current.contains(e.target as Node)) { setPickerOpen(false); setSearch("") }
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setPickerOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [pickerOpen])
 
-  // Staff currently assigned to techniques (can be moved to OFF)
-  const assignedStaff = staffList.filter((s) => assignedIds.has(s.id))
-  const filtered = assignedStaff.filter((s) => {
-    if (!search) return true
-    const name = `${s.first_name} ${s.last_name}`.toLowerCase()
-    return name.includes(search.toLowerCase())
-  })
+  // All non-leave staff, sorted: OFF first, then assigned
+  const offIds = new Set(unassigned.map((s) => s.id))
+  const leaveIds = new Set(onLeave.map((s) => s.id))
+  const nonLeaveStaff = staffList.filter((s) => !leaveIds.has(s.id))
 
   function openPicker() {
     if (isPublished) return
     const rect = cellRef.current?.getBoundingClientRect()
     if (rect) setPopupPos({ top: rect.top - 4, left: rect.left })
     setPickerOpen(true)
+  }
+
+  async function toggleOff(s: StaffWithSkills) {
+    if (busy.has(s.id)) return
+    setBusy((prev) => new Set(prev).add(s.id))
+    await onMakeOff(s.id)
+    setBusy((prev) => { const next = new Set(prev); next.delete(s.id); return next })
   }
 
   return (
@@ -381,37 +385,50 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
 
       {pickerOpen && popupPos && createPortal(
         <div ref={popRef} style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200, transform: "translateY(-100%)" }}>
-          <div className="bg-background border border-border rounded-lg shadow-lg w-52 overflow-hidden">
-            <div className="p-2 border-b border-border">
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar asignado..."
-                className="w-full text-[12px] px-2 py-1 border border-input rounded outline-none focus:border-primary bg-background"
-              />
+          <div className="bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden">
+            <div className="px-3 py-2 border-b border-border">
+              <span className="text-[11px] font-medium text-muted-foreground">Marcar OFF para este día</span>
             </div>
-            <div className="max-h-40 overflow-y-auto">
-              {filtered.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-muted-foreground">Nadie asignado</p>
+            <div className="max-h-52 overflow-y-auto py-1">
+              {onLeave.length > 0 && (
+                <>
+                  {onLeave.map((s) => (
+                    <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-[12px] opacity-40">
+                      <span className="size-4 rounded border border-red-300 bg-red-100 flex items-center justify-center text-[9px] text-red-600 shrink-0">✓</span>
+                      <span className="truncate">{s.first_name} {s.last_name}</span>
+                      <span className="text-[9px] text-red-500 ml-auto shrink-0">Baja</span>
+                    </div>
+                  ))}
+                  <div className="h-px bg-border mx-2 my-1" />
+                </>
               )}
-              {filtered.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={async () => {
-                    await onMakeOff(s.id)
-                    setPickerOpen(false)
-                    setSearch("")
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left hover:bg-muted/50 transition-colors"
-                >
-                  <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
-                    {`${s.first_name[0]}${s.last_name[0]}`}
-                  </span>
-                  <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
-                  <span className="text-[9px] text-muted-foreground">→ OFF</span>
-                </button>
-              ))}
+              {nonLeaveStaff.map((s) => {
+                const isOff = offIds.has(s.id)
+                const isBusy = busy.has(s.id)
+                return (
+                  <button
+                    key={s.id}
+                    disabled={isBusy}
+                    onClick={() => toggleOff(s)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
+                      isBusy ? "opacity-40" : "hover:bg-muted/50"
+                    )}
+                  >
+                    <span className={cn(
+                      "size-4 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors",
+                      isOff
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-border bg-background"
+                    )}>
+                      {isOff && "✓"}
+                    </span>
+                    <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
+                    {isOff && <span className="text-[9px] text-muted-foreground">OFF</span>}
+                    {!isOff && <span className="text-[9px] text-muted-foreground/50">Asignado</span>}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>,
