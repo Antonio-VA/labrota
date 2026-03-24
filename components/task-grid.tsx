@@ -77,9 +77,10 @@ function StaffSelector({
 
   if (!open) return null
 
-  // Only show staff with the skill for this technique
+  // Only show staff with the skill for this technique (case-insensitive match)
+  const tecCode = tecnica.codigo.toUpperCase()
   const qualifiedStaff = availableStaff.filter((s) =>
-    s.staff_skills.some((sk) => sk.skill === tecnica.codigo)
+    s.staff_skills.some((sk) => sk.skill.toUpperCase() === tecCode)
   )
 
   const filtered = qualifiedStaff.filter((s) => {
@@ -177,6 +178,7 @@ function TaskCell({
   leaveStaffIds,
   conflictStaffIds,
   isPublished,
+  isWholeTeamOverride,
   onAssign,
   onRemove,
   onAssignSilent,
@@ -193,6 +195,7 @@ function TaskCell({
   leaveStaffIds: Set<string>
   conflictStaffIds: Set<string>
   isPublished: boolean
+  isWholeTeamOverride?: boolean
   onAssign: (staffId: string, tecnicaCodigo: string, date: string) => void
   onRemove: (assignmentId: string) => void
   onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<void>
@@ -205,7 +208,7 @@ function TaskCell({
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
-  const isWholeTeam = assignments.some((a) => a.whole_team)
+  const isWholeTeam = isWholeTeamOverride ?? assignments.some((a) => a.whole_team)
   const assignedStaffIds = new Set(assignments.map((a) => a.staff_id))
 
   function openSelector() {
@@ -571,9 +574,24 @@ export function TaskGrid({
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
+  // Local whole_team state: "tecnicaCode:date" → boolean
+  const [localWholeTeam, setLocalWholeTeam] = useState<Record<string, boolean>>({})
 
   // Sync from server whenever data changes
-  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
+  useEffect(() => {
+    if (!data) return
+    setLocalDays(data.days)
+    // Rebuild whole_team map from server assignments
+    const wt: Record<string, boolean> = {}
+    for (const day of data.days) {
+      for (const a of day.assignments) {
+        if (a.whole_team && a.function_label) {
+          wt[`${a.function_label}:${day.date}`] = true
+        }
+      }
+    }
+    setLocalWholeTeam(wt)
+  }, [data])
 
   if (loading || !data) {
     return (
@@ -670,6 +688,10 @@ export function TaskGrid({
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
+    // Optimistic: toggle locally immediately
+    const key = `${tecnicaCodigo}:${date}`
+    setLocalWholeTeam((prev) => ({ ...prev, [key]: !current }))
+    // Server sync
     const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
     if (result.error) toast.error(result.error)
     onRefresh()
@@ -775,6 +797,7 @@ export function TaskGrid({
                     leaveStaffIds={leaveByDate[day.date] ?? new Set()}
                     conflictStaffIds={conflictStaff}
                     isPublished={isPublished}
+                    isWholeTeamOverride={localWholeTeam[`${tecnica.codigo}:${day.date}`] ?? undefined}
                     onAssign={handleAssign}
                     onRemove={handleRemove}
                     onAssignSilent={assignSilent}

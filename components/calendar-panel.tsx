@@ -1645,7 +1645,7 @@ function ShiftGrid({
           const optimistic = {
             id: `opt-${Date.now()}`, staff_id: staffId,
             staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
-            shift_type: destShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
+            shift_type: destShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false,
           }
           return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
         }))

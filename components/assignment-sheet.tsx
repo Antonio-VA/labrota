@@ -498,7 +498,7 @@ export function AssignmentSheet({
     const optimistic: Assignment = {
       id: tempId, staff_id: staffId, shift_type: shift,
       is_manual_override: true,
-      trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null,
+      trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false,
       staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
     }
     setAssignments((prev) => [...prev, optimistic].sort(

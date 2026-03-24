@@ -35,6 +35,7 @@ export interface RotaDay {
     notes: string | null
     function_label: string | null
     tecnica_id: string | null
+    whole_team: boolean
     staff: { id: string; first_name: string; last_name: string; role: StaffRole }
   }[]
   skillGaps: SkillName[]
@@ -219,7 +220,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null;
-    function_label: string | null; tecnica_id: string | null
+    function_label: string | null; tecnica_id: string | null; whole_team: boolean
   }
   type AssignmentRow = RawAssignment & {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
@@ -229,7 +230,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Try full column set; fallback handled below
     supabase
       .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team")
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
@@ -250,7 +251,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override")
       .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[] | null }
-    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null }))
+    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
   }
@@ -294,6 +295,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       notes: a.notes,
       function_label: a.function_label ?? null,
       tecnica_id: a.tecnica_id ?? null,
+      whole_team: (a as unknown as { whole_team?: boolean }).whole_team ?? false,
       staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
     })
   }
