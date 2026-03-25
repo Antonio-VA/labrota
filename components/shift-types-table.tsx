@@ -160,17 +160,18 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   return (
     <div className="flex flex-col gap-3">
       {/* Column headers */}
-      <div className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
+      <div className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
         <span />
         <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide text-center">Código</span>
         <span className="text-[12px] text-muted-foreground text-center">Inicio</span>
         <span className="text-[12px] text-muted-foreground text-center">Fin</span>
         <span className="text-[12px] text-muted-foreground text-center">Nombre</span>
+        <span className="text-[12px] text-muted-foreground text-center">Días activos</span>
         <span />
       </div>
 
       {/* Shift rows */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-3">
         {rows.map((row, idx) => {
           const code = row.code.trim().toUpperCase()
           const isDuplicate = code && duplicateCodes.has(code)
@@ -180,7 +181,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
           return (
             <div key={row.id}>
               <div
-                className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1.5rem] gap-2 items-center"
+                className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_auto_1.5rem] gap-2 items-center"
                 draggable
                 onDragStart={() => onDragStart(idx)}
                 onDragOver={(e) => onDragOver(e, idx)}
@@ -232,6 +233,34 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                   placeholder="Mañana"
                 />
 
+                {/* Day toggles — inline */}
+                <div className="flex items-center gap-0.5">
+                  {ALL_DAYS.map((day) => {
+                    const active = row.active_days.includes(day)
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          const next = active
+                            ? row.active_days.filter((d) => d !== day)
+                            : [...row.active_days, day]
+                          updateRow(row.id, { active_days: next })
+                        }}
+                        className={cn(
+                          "size-5 rounded text-[9px] font-semibold border transition-colors disabled:opacity-50",
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-transparent text-muted-foreground/40 border-border hover:border-primary/40"
+                        )}
+                      >
+                        {DAY_LABELS[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+
                 {/* Delete */}
                 <button
                   type="button"
@@ -251,34 +280,6 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
               {timeError && (
                 <p className="text-[11px] text-destructive pl-8 -mt-0.5">La hora de inicio debe ser anterior a la de fin</p>
               )}
-
-              {/* Day toggles */}
-              <div className="flex items-center gap-1 pl-8 mt-1">
-                {ALL_DAYS.map((day) => {
-                  const active = row.active_days.includes(day)
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        const next = active
-                          ? row.active_days.filter((d) => d !== day)
-                          : [...row.active_days, day]
-                        updateRow(row.id, { active_days: next })
-                      }}
-                      className={cn(
-                        "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-transparent text-muted-foreground/40 border-border hover:border-primary/40"
-                      )}
-                    >
-                      {DAY_LABELS[day]}
-                    </button>
-                  )
-                })}
-              </div>
 
               {/* Delete confirm */}
               {confirmDelete?.id === row.id && (
