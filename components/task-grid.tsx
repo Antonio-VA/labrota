@@ -748,6 +748,13 @@ export function TaskGrid({
     })))
   }
 
+  // Debounced refresh — batches rapid selections into one server fetch
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function debouncedRefresh() {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current)
+    refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
+  }
+
   async function assignSilent(staffId: string, tecnicaCodigo: string, date: string) {
     const result = await upsertAssignment({
       weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo,
@@ -762,14 +769,12 @@ export function TaskGrid({
 
   async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
     optimisticAdd(staffId, tecnicaCodigo, date)
-    await assignSilent(staffId, tecnicaCodigo, date)
-    onRefresh()
+    assignSilent(staffId, tecnicaCodigo, date).then(debouncedRefresh)
   }
 
   async function handleRemove(assignmentId: string) {
     optimisticRemove(assignmentId)
-    await removeSilent(assignmentId)
-    onRefresh()
+    removeSilent(assignmentId).then(debouncedRefresh)
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
@@ -902,7 +907,7 @@ export function TaskGrid({
                     onOptimisticAdd={optimisticAdd}
                     onOptimisticRemove={optimisticRemove}
                     onToggleWholeTeam={handleToggleWholeTeam}
-                    onRefresh={onRefresh}
+                    onRefresh={debouncedRefresh}
                     compact={compact}
                     staffColorMap={staffColorMap}
                     colorBorders={colorBorders}
@@ -941,7 +946,7 @@ export function TaskGrid({
                 for (const a of toRemove) optimisticRemove(a.id)
                 // Server sync in parallel
                 await Promise.all(toRemove.map((a) => removeSilent(a.id)))
-                onRefresh()
+                debouncedRefresh()
               }}
               staffColorMap={staffColorMap}
             />
