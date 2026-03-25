@@ -683,7 +683,7 @@ export async function upsertAssignment(params: {
     }
     if (error) return { error: error.message }
     revalidatePath("/")
-    return { id: (row as { id: string }).id }
+    return { id: (row as unknown as { id: string })?.id }
   }
 }
 
