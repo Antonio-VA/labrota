@@ -3473,7 +3473,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {showActions && !isPublished && !chatOpen && (
             <div className="hidden xl:block">
-              <Button size="sm" onClick={handleGenerateClick} disabled={isPending}>
+              <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending}>
                 {isPending ? tc("generating") : t("generateRota")}
               </Button>
             </div>

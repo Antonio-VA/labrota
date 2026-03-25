@@ -128,8 +128,8 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { registerSave?.(() => handleSave()) }, [registerSave])
+  const saveRef = useRef<() => void>(() => {})
+  useEffect(() => { registerSave?.(() => saveRef.current()) }, [registerSave])
   function handleSave() {
     setStatus("idle")
     startTransition(async () => {
@@ -156,6 +156,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
       }
     })
   }
+  saveRef.current = handleSave
 
   return (
     <div className="flex flex-col gap-3">
