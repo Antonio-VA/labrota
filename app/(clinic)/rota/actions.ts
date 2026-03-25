@@ -14,6 +14,7 @@ import type {
   StaffRole,
   ShiftTypeDefinition,
   Tecnica,
+  LabConfig,
 } from "@/lib/types/database"
 
 // ── Shared types exported to client ──────────────────────────────────────────
@@ -733,6 +734,88 @@ export async function deleteAllDayAssignments(
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
+}
+
+// ── regenerateDay ────────────────────────────────────────────────────────────
+
+export async function regenerateDay(
+  weekStart: string,
+  date: string,
+): Promise<{ error?: string; count?: number }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  const weekDates = getWeekDates(weekStart)
+  const fourWeeksAgo = new Date(weekStart + "T12:00:00")
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+
+  // Fetch data (same as full generate)
+  const [staffRes, leavesRes, recentRes, configRes, rulesRes, shiftRes, tecRes] = await Promise.all([
+    supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
+    supabase.from("leaves").select("*").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
+    supabase.from("rota_assignments").select("staff_id, date").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
+    supabase.from("lab_config").select("*").single(),
+    supabase.from("rota_rules").select("*").eq("enabled", true),
+    supabase.from("shift_types").select("*").order("sort_order"),
+    supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true),
+  ])
+
+  const labConfig = configRes.data as unknown as LabConfig | null
+  if (!labConfig) return { error: "No lab config found." }
+
+  // Run engine for the full week (needed for budget tracking)
+  const { days } = runRotaEngine({
+    weekStart,
+    staff: (staffRes.data ?? []) as StaffWithSkills[],
+    leaves: (leavesRes.data ?? []) as Leave[],
+    recentAssignments: (recentRes.data ?? []) as RotaAssignment[],
+    labConfig,
+    shiftTypes: (shiftRes.data ?? []) as ShiftTypeDefinition[],
+    rules: (rulesRes.data ?? []) as RotaRule[],
+    tecnicas: (tecRes.data ?? []).map((t: { codigo: string; typical_shifts: string[] }) => ({ codigo: t.codigo, typical_shifts: t.typical_shifts ?? [] })),
+    shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+  })
+
+  // Find the specific day's assignments from the engine output
+  const dayPlan = days.find((d) => d.date === date)
+  if (!dayPlan) return { error: "Date not in week range." }
+
+  // Upsert rota record
+  const { data: rotaRow, error: rotaError } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .select("id")
+    .single()
+  if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
+  const rotaId = (rotaRow as { id: string }).id
+
+  // Delete existing assignments for THIS DAY only (preserve manual overrides)
+  await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("rota_id", rotaId)
+    .eq("date", date)
+    .eq("is_manual_override", false)
+
+  // Insert engine assignments for this day
+  const toInsert = dayPlan.assignments.map((a) => ({
+    organisation_id: orgId,
+    rota_id: rotaId,
+    staff_id: a.staff_id,
+    date,
+    shift_type: a.shift_type,
+    is_manual_override: false,
+    function_label: "",
+  }))
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath("/")
+  return { count: toInsert.length }
 }
 
 // ── moveAssignment ────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users } from "lucide-react"
+import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
 import {
@@ -26,6 +26,7 @@ import type {
   StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica,
 } from "@/lib/types/database"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
+import { regenerateDay } from "@/app/(clinic)/rota/actions"
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -490,6 +491,8 @@ export function AssignmentSheet({
   const [editingP, setEditingP]       = useState(false)
   const [pDraft, setPDraft]           = useState("")
   const [showDeleteAll, setShowDeleteAll] = useState(false)
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false)
+  const [isRegenerating, startRegen] = useTransition()
 
   // Sync from day prop
   useEffect(() => {
@@ -950,13 +953,22 @@ export function AssignmentSheet({
                 )}
                 {/* Delete all */}
                 {assignments.length > 0 && (!showDeleteAll ? (
-                  <button
-                    onClick={() => setShowDeleteAll(true)}
-                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Eliminar turno del día
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setShowRegenConfirm(true)}
+                      className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Sparkles className="size-3.5" />
+                      Regenerar día
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteAll(true)}
+                      className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Eliminar turno del día
+                    </button>
+                  </div>
                 ) : (
                   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
                     <div className="flex items-start gap-2">
@@ -985,6 +997,40 @@ export function AssignmentSheet({
                     </div>
                   </div>
                 ))}
+                {/* Regenerar día confirmation */}
+                {showRegenConfirm && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2">
+                    <p className="text-[12px] text-foreground leading-snug">
+                      ¿Regenerar las asignaciones de este día? Las asignaciones actuales serán reemplazadas.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-[12px]"
+                        disabled={isRegenerating}
+                        onClick={() => {
+                          startRegen(async () => {
+                            const result = await regenerateDay(weekStart, date!)
+                            if (result.error) { toast.error(result.error); return }
+                            toast.success(`Día regenerado: ${result.count} asignaciones`)
+                            setShowRegenConfirm(false)
+                            onSaved()
+                          })
+                        }}
+                      >
+                        {isRegenerating ? "Regenerando…" : "Regenerar"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-3 text-[12px]"
+                        onClick={() => setShowRegenConfirm(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>}
