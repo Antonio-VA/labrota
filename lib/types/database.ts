@@ -38,6 +38,7 @@ export interface ShiftTypeDefinition {
   end_time:        string
   sort_order:      number
   active:          boolean
+  active_days:     string[]  // ["mon","tue","wed","thu","fri","sat","sun"]
   created_at:      string
 }
 export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'

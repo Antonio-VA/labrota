@@ -397,7 +397,13 @@ export function runRotaEngine({
       warnings.push(`${date}: skill gaps — ${skillGaps.join(", ")}`)
     }
 
-    const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
+    // Filter shifts active on this specific day
+    const dayShiftCodes = activeShiftTypes
+      .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((st) => st.code)
+    const dayShiftSet = new Set(dayShiftCodes)
+    const defaultShiftCodes = dayShiftCodes.length > 0 ? dayShiftCodes : (shiftCodes.length > 0 ? shiftCodes : ["T1"])
 
     // Distribute staff across shifts — same logic for all roles:
     // 1. Technique typical_shift  2. Preferred shift  3. Rotation fallback
@@ -423,7 +429,7 @@ export function runRotaEngine({
 
         if (preferredFromTecnica) {
           shift = preferredFromTecnica as ShiftType
-        } else if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
+        } else if (s.preferred_shift && dayShiftSet.has(s.preferred_shift)) {
           // 2. Staff preferred shift
           shift = s.preferred_shift as ShiftType
         } else {
@@ -434,7 +440,7 @@ export function runRotaEngine({
             const lastShift = recentAssignments
               .filter((a) => a.staff_id === s.id)
               .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
-            if (lastShift && activeShiftSet.has(lastShift)) {
+            if (lastShift && dayShiftSet.has(lastShift)) {
               shift = lastShift as ShiftType
             } else {
               shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
@@ -511,7 +517,7 @@ export function runRotaEngine({
 
     // For each shift, check technique coverage
     for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
-      if (!activeShiftSet.has(shiftCode)) continue
+      if (!dayShiftSet.has(shiftCode)) continue
       const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
       const staffIdsInShift = new Set(staffInShift.map((a) => a.staff_id))
 

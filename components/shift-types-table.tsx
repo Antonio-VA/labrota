@@ -8,6 +8,9 @@ import { saveShiftTypes, countAssignmentsForShift } from "@/app/(clinic)/lab/shi
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
+const ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+const DAY_LABELS: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
+
 interface ShiftRow {
   id: string           // local id (may be DB id or temp)
   code: string
@@ -15,6 +18,7 @@ interface ShiftRow {
   name_en: string
   start_time: string
   end_time: string
+  active_days: string[]
   isNew: boolean       // true = not yet saved to DB
 }
 
@@ -26,6 +30,7 @@ function rowFromDefinition(def: ShiftTypeDefinition): ShiftRow {
     name_en: def.name_en,
     start_time: def.start_time,
     end_time: def.end_time,
+    active_days: def.active_days ?? [...ALL_DAYS],
     isNew: false,
   }
 }
@@ -39,6 +44,7 @@ function newRow(): ShiftRow {
     name_en: "",
     start_time: "07:30",
     end_time: "15:30",
+    active_days: [...ALL_DAYS],
     isNew: true,
   }
 }
@@ -128,6 +134,7 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
         end_time: r.end_time,
         sort_order: 0, // overwritten by saveShiftTypes
         active: true,
+        active_days: r.active_days,
       }))
       const result = await saveShiftTypes(types)
       if (result.error) {
@@ -236,6 +243,35 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
               {timeError && (
                 <p className="text-[11px] text-destructive pl-8 -mt-0.5">La hora de inicio debe ser anterior a la de fin</p>
               )}
+
+              {/* Day toggles */}
+              <div className="flex items-center gap-1 pl-8 mt-1">
+                <span className="text-[10px] text-muted-foreground/60 mr-1">Días</span>
+                {ALL_DAYS.map((day) => {
+                  const active = row.active_days.includes(day)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => {
+                        const next = active
+                          ? row.active_days.filter((d) => d !== day)
+                          : [...row.active_days, day]
+                        updateRow(row.id, { active_days: next })
+                      }}
+                      className={cn(
+                        "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent text-muted-foreground/40 border-border hover:border-primary/40"
+                      )}
+                    >
+                      {DAY_LABELS[day]}
+                    </button>
+                  )
+                })}
+              </div>
 
               {/* Delete confirm */}
               {confirmDelete?.id === row.id && (
