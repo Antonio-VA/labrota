@@ -2,6 +2,7 @@ import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
 import { OrgUsersTable } from "@/components/org-users-table"
 import { AuditLogViewer } from "@/components/audit-log-viewer"
+import { SettingsTabs } from "@/components/settings-tabs"
 import { getOrgUsers, type OrgUser } from "./actions"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -47,21 +48,18 @@ export default async function SettingsPage() {
             )}
           </div>
 
-          {/* Users section */}
-          <div className="rounded-lg border border-border bg-background px-5 py-4">
-            <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-              Usuarios
-            </p>
-            <OrgUsersTable initialUsers={users} staff={staff} />
-          </div>
-
-          {/* Audit log */}
-          <div className="rounded-lg border border-border bg-background px-5 py-4">
-            <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-              Historial de cambios
-            </p>
-            <AuditLogViewer />
-          </div>
+          <SettingsTabs
+            usuarios={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <OrgUsersTable initialUsers={users} staff={staff} />
+              </div>
+            }
+            historial={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <AuditLogViewer />
+              </div>
+            }
+          />
         </div>
       </MobileGate>
     </div>

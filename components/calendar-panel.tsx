@@ -47,6 +47,7 @@ import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
+import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
 import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
@@ -615,6 +616,98 @@ const LEAVE_TYPE_LABEL: Record<string, string> = {
   training: "Formación", maternity: "Maternidad/Paternidad", other: "Otro",
 }
 
+function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCreated: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [type, setType] = useState("annual")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [notes, setNotes] = useState("")
+
+  function reset() {
+    setType("annual")
+    setStartDate("")
+    setEndDate("")
+    setNotes("")
+    setOpen(false)
+  }
+
+  function handleSubmit() {
+    if (!staffId || !startDate || !endDate) return
+    startTransition(async () => {
+      const result = await quickCreateLeave({ staffId, type, startDate, endDate, notes })
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Ausencia registrada")
+        reset()
+        onCreated()
+      }
+    })
+  }
+
+  if (!open) {
+    return (
+      <div className="px-5 py-2 border-t border-border">
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-[12px] text-primary hover:underline"
+        >
+          <CalendarPlus className="size-3.5" />
+          Añadir ausencia
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-5 py-3 border-t border-border flex flex-col gap-2">
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Nueva ausencia</p>
+      <select
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+        className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
+      >
+        <option value="annual">Vacaciones</option>
+        <option value="sick">Baja médica</option>
+        <option value="personal">Personal</option>
+        <option value="training">Formación</option>
+        <option value="maternity">Maternidad/Paternidad</option>
+        <option value="other">Otro</option>
+      </select>
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => { setStartDate(e.target.value); if (!endDate || endDate < e.target.value) setEndDate(e.target.value) }}
+          className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
+        />
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          min={startDate}
+          className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
+        />
+      </div>
+      <input
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Notas (opcional)"
+        className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
+      />
+      <div className="flex items-center gap-2 mt-1">
+        <Button size="sm" onClick={handleSubmit} disabled={isPending || !startDate || !endDate} className="text-[12px] h-7">
+          {isPending ? "Guardando…" : "Guardar"}
+        </Button>
+        <button onClick={reset} className="text-[12px] text-muted-foreground hover:underline">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function StaffProfilePanel({
   staffId, staffList, weekData, open, onClose,
 }: {
@@ -920,23 +1013,24 @@ function StaffProfilePanel({
           )}
         </div>
 
+        {/* ── Inline leave form ─────────────────────────────────── */}
+        <InlineLeaveForm staffId={staffId} onCreated={() => {
+          // Re-fetch profile to update leaves
+          if (staffId) {
+            setLoading(true)
+            getStaffProfile(staffId).then((d) => { setData(d); setLoading(false) })
+          }
+        }} />
+
         {/* ── Footer: quick actions ────────────────────────────── */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex items-center gap-2">
           <Button
             variant="outline" size="sm"
             className="flex-1 gap-1.5 text-[12px]"
-            render={<a href={`/team?staff=${staffId}`} />}
+            render={<a href={`/staff/${staffId}`} />}
           >
             <UserCog className="size-3.5" />
             Perfil
-          </Button>
-          <Button
-            variant="outline" size="sm"
-            className="flex-1 gap-1.5 text-[12px]"
-            render={<a href={`/leaves?staff=${staffId}`} />}
-          >
-            <CalendarPlus className="size-3.5" />
-            Ausencia
           </Button>
           {staff?.email && (
             <Button

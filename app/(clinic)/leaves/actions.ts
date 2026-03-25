@@ -92,6 +92,49 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
   return { success: true }
 }
 
+/** Quick-create leave from the rota screen (no FormData). */
+export async function quickCreateLeave(params: {
+  staffId: string
+  type: string
+  startDate: string
+  endDate: string
+  notes?: string
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  if (!params.staffId) return { error: "Staff member is required." }
+  if (params.endDate < params.startDate) return { error: "End date must be on or after start date." }
+
+  const { error } = await supabase
+    .from("leaves")
+    .insert({
+      staff_id: params.staffId,
+      type: params.type,
+      start_date: params.startDate,
+      end_date: params.endDate,
+      status: "approved",
+      notes: params.notes?.trim() || null,
+      organisation_id: orgId,
+    } as never)
+
+  if (error) return { error: error.message }
+
+  // Auto-remove conflicting rota assignments
+  await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("staff_id", params.staffId)
+    .eq("organisation_id", orgId)
+    .gte("date", params.startDate)
+    .lte("date", params.endDate)
+
+  revalidatePath("/")
+  revalidatePath("/leaves")
+  return {}
+}
+
 export async function deleteLeave(id: string) {
   const supabase = await createClient()
   await supabase.from("leaves").delete().eq("id", id)

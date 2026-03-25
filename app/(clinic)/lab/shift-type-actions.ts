@@ -22,7 +22,6 @@ export async function saveShiftTypes(
   const supabase = await createClient()
 
   if (types.length > 0) {
-    // Build rows — strip active_days if column might not exist yet
     const rows = types.map((t, i) => ({
       organisation_id: orgId,
       code: t.code,
@@ -35,34 +34,31 @@ export async function saveShiftTypes(
       ...(t.active_days ? { active_days: t.active_days } : {}),
     }))
 
-    // Try insert first to verify schema compatibility BEFORE deleting
-    const testRow = { ...rows[0] }
-    const { error: testError } = await supabase
+    // Delete all existing, then insert new ones
+    const { error: delError } = await supabase
       .from("shift_types")
-      .insert(testRow as never)
-      .select("id")
-      .single()
+      .delete()
+      .eq("organisation_id", orgId)
 
-    if (testError) {
-      // If active_days column doesn't exist, retry without it
-      if (testError.message?.includes("active_days")) {
+    if (delError) return { error: delError.message }
+
+    const { error: insError } = await supabase
+      .from("shift_types")
+      .insert(rows as never)
+
+    if (insError) {
+      // If active_days column doesn't exist yet, retry without it
+      if (insError.message?.includes("active_days")) {
         const rowsWithout = rows.map(({ active_days, ...rest }) => rest)
-        // Safe to delete now — we know the insert will work
-        await supabase.from("shift_types").delete().eq("organisation_id", orgId)
-        const { error: insError } = await supabase.from("shift_types").insert(rowsWithout as never)
-        if (insError) return { error: insError.message }
+        const { error: retryError } = await supabase
+          .from("shift_types")
+          .insert(rowsWithout as never)
+        if (retryError) return { error: retryError.message }
       } else {
-        return { error: testError.message }
+        return { error: insError.message }
       }
-    } else {
-      // Test insert succeeded — delete all old ones and insert the rest
-      // First delete the test row we just inserted
-      await supabase.from("shift_types").delete().eq("organisation_id", orgId)
-      const { error: insError } = await supabase.from("shift_types").insert(rows as never)
-      if (insError) return { error: insError.message }
     }
   } else {
-    // No types — just delete all
     await supabase.from("shift_types").delete().eq("organisation_id", orgId)
   }
 
