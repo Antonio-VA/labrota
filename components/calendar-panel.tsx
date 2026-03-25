@@ -3601,15 +3601,18 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         {/* Week view */}
         {view === "week" && (
           <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-              {loadingWeek || isPending ? (
-                /* Show the appropriate grid in loading state — it renders shimmer */
-                weekData?.rotaDisplayMode === "by_task" ? (
-                  <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} compact={compact} />
-                ) : (
-                  <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
-                )
-              ) : weekData && (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
+              {/* Shimmer overlay — covers previous content while loading */}
+              {(loadingWeek || isPending) && (
+                <div className="absolute inset-0 z-10">
+                  {weekData?.rotaDisplayMode === "by_task" ? (
+                    <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} compact={compact} />
+                  ) : (
+                    <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+                  )}
+                </div>
+              )}
+              {weekData && (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) && !loadingWeek && !isPending ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
                   <CalendarDays className="size-10 text-muted-foreground/30" />
                   <div className="text-center">

@@ -258,13 +258,10 @@ export function runRotaEngine({
       if (s.start_date > date) return false
       if (s.end_date && s.end_date < date) return false
       if (leaveMap[s.id]?.has(date)) return false
-      const baseBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
-      // On weekends, drafted extras get bonus budget so they can work the
-      // weekend ON TOP of their normal weekday assignments.
-      const bonus = weekend ? (weekendReservation[s.id] ?? 0) : 0
-      const totalBudget = baseBudget + bonus
       const used = weeklyShiftCount[s.id] ?? 0
-      if (used >= totalBudget) return false
+      const hardCap = s.days_per_week ?? 5
+      // Hard rule: never exceed days_per_week
+      if (used >= hardCap) return false
       return true
     }
 
@@ -518,6 +515,7 @@ export function runRotaEngine({
             !(assignedByDate[date] ?? new Set()).has(s.id) &&
             !leaveMap[s.id]?.has(date) &&
             s.onboarding_status === "active" &&
+            (weeklyShiftCount[s.id] ?? 0) < (s.days_per_week ?? 5) &&
             s.staff_skills.some((sk) => sk.skill === techCode)
           )
           if (unassigned.length > 0) {
