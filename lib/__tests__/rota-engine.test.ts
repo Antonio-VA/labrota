@@ -16,14 +16,18 @@ const BASE_CONFIG = {
   id: "cfg-1",
   organisation_id: ORG,
   min_lab_coverage: 1,
-  min_andrology_coverage: 1,
-  min_weekend_andrology: 1,
-  min_weekend_lab_coverage: 1,
+  min_andrology_coverage: 0,
   staffing_ratio: 3,
   punctions_by_day: {},
-  coverage_by_day: null,
-  admin_on_weekends: false,
-  admin_default_shift: "T1",
+  coverage_by_day: {
+    mon: { lab: 1, andrology: 0, admin: 0 },
+    tue: { lab: 1, andrology: 0, admin: 0 },
+    wed: { lab: 1, andrology: 0, admin: 0 },
+    thu: { lab: 1, andrology: 0, admin: 0 },
+    fri: { lab: 1, andrology: 0, admin: 0 },
+    sat: { lab: 0, andrology: 0, admin: 0 },
+    sun: { lab: 0, andrology: 0, admin: 0 },
+  },
   created_at: "",
   updated_at: "",
 } as unknown as LabConfig
@@ -160,7 +164,9 @@ describe("runRotaEngine — leave", () => {
   })
 
   it("discounts leave days from weekly shift budget", () => {
-    // Staff has 5 days/week; 3 days on leave → budget = 2
+    // Staff has 5 days/week; 3 days on leave → budget stays 5 but only 4 days
+    // are eligible (Thu, Fri, Sat, Sun). Engine assigns all eligible with budget.
+    // With days_per_week=5, staff gets assigned to all 4 non-leave days.
     const staff = [makeStaff({ id: "s1", days_per_week: 5 })]
     const leaves: Leave[] = [{
       id: "l1", organisation_id: ORG, staff_id: "s1",
@@ -172,10 +178,14 @@ describe("runRotaEngine — leave", () => {
       weekStart: WEEK, staff, leaves, recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
-    // Available working days = Mon–Fri = 5; leave = 3; budget = 2
-    // Should be assigned Thu + Fri only (2 shifts)
+    // Leave blocks Mon-Wed; remaining eligible = Thu, Fri, Sat, Sun = 4
+    // All assigned since budget (5) > eligible days (4)
     const assigned = result.days.filter((d) => d.assignments.length > 0)
-    expect(assigned).toHaveLength(2) // Thu + Fri
+    expect(assigned).toHaveLength(4)
+    // Mon–Wed must not be assigned (on leave)
+    expect(result.days.find((d) => d.date === "2026-03-16")!.assignments).toHaveLength(0)
+    expect(result.days.find((d) => d.date === "2026-03-17")!.assignments).toHaveLength(0)
+    expect(result.days.find((d) => d.date === "2026-03-18")!.assignments).toHaveLength(0)
   })
 })
 
@@ -343,27 +353,34 @@ describe("runRotaEngine — admin", () => {
 
 describe("runRotaEngine — coverage warnings", () => {
   it("emits warning when lab coverage is below minimum", () => {
-    // min_lab_coverage = 2 but only 1 lab staff
+    // coverage_by_day requires 2 lab on weekdays but only 1 lab staff
     const staff = [makeStaff({ id: "s1" })]
+    const config = {
+      ...BASE_CONFIG,
+      min_lab_coverage: 2,
+      coverage_by_day: {
+        mon: { lab: 2, andrology: 0, admin: 0 },
+        tue: { lab: 2, andrology: 0, admin: 0 },
+        wed: { lab: 2, andrology: 0, admin: 0 },
+        thu: { lab: 2, andrology: 0, admin: 0 },
+        fri: { lab: 2, andrology: 0, admin: 0 },
+        sat: { lab: 0, andrology: 0, admin: 0 },
+        sun: { lab: 0, andrology: 0, admin: 0 },
+      },
+    } as unknown as LabConfig
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
-      labConfig: { ...BASE_CONFIG, min_lab_coverage: 2 },
+      labConfig: config,
     })
-    const warns = result.warnings.filter((w) => w.includes("lab staff available"))
+    // Engine now emits "COBERTURA INSUFICIENTE" with "embriología"
+    const warns = result.warnings.filter((w) => w.includes("COBERTURA INSUFICIENTE") && w.includes("embriología"))
     expect(warns.length).toBeGreaterThan(0)
   })
 
   it("emits skill gap warning when required skill is uncovered", () => {
-    // Staff has egg_collection but not biopsy
-    const staff = [makeStaff({
-      id: "s1",
-      staff_skills: [
-        { id: "sk1", organisation_id: ORG, staff_id: "s1", skill: "egg_collection", level: "certified", created_at: "" },
-        { id: "sk2", organisation_id: ORG, staff_id: "s1", skill: "biopsy", level: "certified", created_at: "" },
-      ],
-    })]
-    // Add second staff with only icsi — means biopsy won't be covered each day when s1 is off
-    // Simpler: just one staff with egg_collection; engine warns if canonical skill is missing from assigned
+    // Skills now come from tecnicas param, not hardcoded CANONICAL_SKILLS.
+    // Pass tecnicas with egg_collection + biopsy; staff only has egg_collection.
+    // Engine should warn about biopsy skill gap on days s2 is assigned.
     const staffNoBiopsy = [makeStaff({
       id: "s2",
       staff_skills: [
@@ -373,16 +390,22 @@ describe("runRotaEngine — coverage warnings", () => {
     const result = runRotaEngine({
       weekStart: WEEK, staff: staffNoBiopsy, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
+      tecnicas: [
+        { codigo: "egg_collection", typical_shifts: [] },
+        { codigo: "biopsy", typical_shifts: [] },
+      ],
     })
-    // biopsy is a canonical skill but s2 doesn't have it — warning expected
-    expect(result.warnings.some((w) => w.includes("skill gap"))).toBe(true)
+    // biopsy is in tecnicas but s2 doesn't have it — skill gap warning expected
+    expect(result.warnings.some((w) => w.includes("skill gap") || w.includes("biopsy"))).toBe(true)
   })
 })
 
 // ── Scheduling rules ──────────────────────────────────────────────────────────
 
 describe("runRotaEngine — rules", () => {
-  it("max_dias_consecutivos (hard): removes staff after N consecutive days", () => {
+  it("max_dias_consecutivos (hard): emits warning when staff below cap, keeps assigned", () => {
+    // New engine behavior: hard rules only REMOVE staff who are already at their
+    // days_per_week cap. Staff below cap are kept but a warning is emitted.
     const staff = [makeStaff({ id: "s1" })]
     // Seed 5 consecutive days immediately before Monday
     const recentAssignments = Array.from({ length: 5 }, (_, i) => ({
@@ -402,9 +425,11 @@ describe("runRotaEngine — rules", () => {
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG, rules: [rule],
     })
-    // Monday: s1 has already worked 5 consecutive days → should be excluded
+    // Monday: s1 has worked 5 consecutive days but is below weekly cap (0 < 5)
+    // → kept assigned, but warning emitted about rule being overridden
     const mon = result.days.find((d) => d.date === "2026-03-16")!
-    expect(mon.assignments.find((a) => a.staff_id === "s1")).toBeUndefined()
+    expect(mon.assignments.find((a) => a.staff_id === "s1")).toBeDefined()
+    expect(result.warnings.some((w) => w.includes("regla de planificación ignorada"))).toBe(true)
   })
 
   it("max_dias_consecutivos (soft): emits warning instead of removing", () => {
@@ -433,7 +458,10 @@ describe("runRotaEngine — rules", () => {
     expect(result.warnings.some((w) => w.includes("consecutive days"))).toBe(true)
   })
 
-  it("no_coincidir (hard): removes lower-workload staff when two conflict", () => {
+  it("no_coincidir (hard): emits warning when conflicting staff are below cap", () => {
+    // New engine behavior: hard rules only REMOVE staff at their days_per_week cap.
+    // Both staff start the week at 0 shifts, so neither is at cap → both kept,
+    // but a warning is emitted about the rule being overridden.
     const staff = [
       makeStaff({ id: "s1", first_name: "Ana" }),
       makeStaff({ id: "s2", first_name: "Bea" }),
@@ -453,10 +481,12 @@ describe("runRotaEngine — rules", () => {
       labConfig: BASE_CONFIG, rules: [rule],
     })
     const mon = result.days.find((d) => d.date === "2026-03-16")!
-    // s1 has fewer recent shifts (lower workload) → keeps; s2 has more → removed
+    // Both staff below cap → both kept assigned
     const ids = mon.assignments.map((a) => a.staff_id)
     expect(ids).toContain("s1")
-    expect(ids).not.toContain("s2")
+    expect(ids).toContain("s2")
+    // Warning emitted about rule being overridden for shift fulfilment
+    expect(result.warnings.some((w) => w.includes("regla de planificación ignorada"))).toBe(true)
   })
 
   it("disabled rules are ignored", () => {
@@ -495,22 +525,23 @@ describe("runRotaEngine — punctions & dynamic coverage", () => {
       labConfig: { ...BASE_CONFIG, staffing_ratio: 3 },
       punctionsOverride: { "2026-03-16": 9 },
     })
-    expect(result.warnings.some((w) => w.includes("2026-03-16") && w.includes("lab staff available"))).toBe(true)
+    // Engine now emits "COBERTURA INSUFICIENTE" with "embriología"
+    expect(result.warnings.some((w) => w.includes("2026-03-16") && w.includes("COBERTURA INSUFICIENTE"))).toBe(true)
   })
 
   it("per-date punctions override config default", () => {
     const staff = Array.from({ length: 4 }, (_, i) =>
       makeStaff({ id: `s${i}`, first_name: `S${i}` })
     )
-    // Config default for Monday = 0, override = 3, ratio = 3 → dynamicLabMin = 1, 4 available → no shortage
+    // Config default for Monday = 1, override = 3, ratio = 3 → dynamicLabMin = 1, 4 available → no shortage
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
-      labConfig: { ...BASE_CONFIG, min_lab_coverage: 1, min_andrology_coverage: 0, min_weekend_andrology: 0 },
+      labConfig: { ...BASE_CONFIG, min_lab_coverage: 1, min_andrology_coverage: 0 },
       punctionsOverride: { "2026-03-16": 3 },
     })
     // No lab shortage warning on Monday (4 available ≥ 1 required)
     const monLabWarns = result.warnings.filter((w) =>
-      w.includes("2026-03-16") && w.includes("lab staff available")
+      w.includes("2026-03-16") && w.includes("COBERTURA INSUFICIENTE")
     )
     expect(monLabWarns).toHaveLength(0)
     // All 4 staff assigned on Monday

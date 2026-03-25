@@ -196,11 +196,14 @@ export function runRotaEngine({
         if (s.onboarding_status === "inactive" || s.role !== role) return false
         if (s.start_date > date || (s.end_date && s.end_date < date)) return false
         if (leaveMap[s.id]?.has(date)) return false
-        // Count how many days this person is already reserved for
         const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
         return reserved < (s.days_per_week ?? 5)
       }).sort((a, b) => {
-        // Prefer staff whose pattern includes this day
+        // Fewest reservations first — spreads assignments evenly across staff
+        const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
+        const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
+        if (aRes !== bRes) return aRes - bRes
+        // Then prefer pattern match
         const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
         const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
         if (aInPattern !== bInPattern) return aInPattern - bInPattern
@@ -226,34 +229,40 @@ export function runRotaEngine({
     const andrologyRequired = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
     const adminRequired = dayCoverage?.admin ?? 0
 
-    // Eligibility: not on leave, active, has budget
-    function isBaseEligible(s: StaffWithSkills): boolean {
+    // Basic eligibility (not budget-related)
+    function isAvailable(s: StaffWithSkills): boolean {
       if (s.onboarding_status === "inactive") return false
       if (s.start_date > date) return false
       if (s.end_date && s.end_date < date) return false
       if (leaveMap[s.id]?.has(date)) return false
-      const used = weeklyShiftCount[s.id] ?? 0
-      if (used >= (s.days_per_week ?? 5)) return false
       return true
     }
 
-    // Start with minimum coverage reservations (guaranteed)
-    const reservedIds = minCoverageReserved[date]
-    const reservedStaff = staff.filter((s) => reservedIds.has(s.id) && isBaseEligible(s))
+    function hasBudget(s: StaffWithSkills): boolean {
+      const used = weeklyShiftCount[s.id] ?? 0
+      // Budget = days_per_week minus days reserved for FUTURE days in Phase 1
+      const futureReserved = allDates
+        .filter((d) => d > date && minCoverageReserved[d]?.has(s.id))
+        .length
+      return used < (s.days_per_week ?? 5) - futureReserved
+    }
 
-    // Add ALL eligible staff who still have budget — preferred pattern first, then others
-    const remaining = staff.filter((s) => isBaseEligible(s) && !reservedIds.has(s.id))
-      .sort((a, b) => {
-        // Pattern match first
-        const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
-        const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
-        if (aInPattern !== bInPattern) return aInPattern - bInPattern
-        // Preferred days second
-        const aPref = a.preferred_days?.includes(dayCode) ? 0 : 1
-        const bPref = b.preferred_days?.includes(dayCode) ? 0 : 1
-        if (aPref !== bPref) return aPref - bPref
-        return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-      })
+    // Reserved staff are ALWAYS assigned (Phase 1 guaranteed their budget)
+    const reservedIds = minCoverageReserved[date]
+    const reservedStaff = staff.filter((s) => reservedIds.has(s.id) && isAvailable(s))
+
+    // Additional staff: must have budget after accounting for future reservations
+    const remaining = staff.filter((s) =>
+      isAvailable(s) && !reservedIds.has(s.id) && hasBudget(s)
+    ).sort((a, b) => {
+      const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
+      const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
+      if (aInPattern !== bInPattern) return aInPattern - bInPattern
+      const aPref = a.preferred_days?.includes(dayCode) ? 0 : 1
+      const bPref = b.preferred_days?.includes(dayCode) ? 0 : 1
+      if (aPref !== bPref) return aPref - bPref
+      return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+    })
 
     const assignedSet = new Set(reservedStaff.map((s) => s.id))
     for (const s of remaining) {
