@@ -479,7 +479,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     return (
       <Tooltip>
         <TooltipTrigger render={
-          <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground cursor-default">
+          <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground cursor-default">
             <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
             <span className="text-muted-foreground">{bLabel}</span>
           </span>
@@ -497,7 +497,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
         <TooltipTrigger render={
           <button
             onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-            className="flex items-center gap-1 text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
+            className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
           >
             <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
             <span className="text-muted-foreground">{bLabel}</span>

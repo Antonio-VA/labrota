@@ -516,7 +516,7 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
 
   if (disabled) {
     return (value > 0 || biopsyForecast > 0) ? (
-      <span className="flex items-center gap-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+      <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground">
         <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
         <span>{bLabel}</span>
       </span>
@@ -527,7 +527,7 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
     <div ref={popRef} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-        className="flex items-center gap-1 text-[10px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-background/80 cursor-pointer"
+        className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-background/80 cursor-pointer"
       >
         <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
         <span className="text-muted-foreground">{bLabel}</span>
