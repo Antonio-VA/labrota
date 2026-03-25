@@ -830,7 +830,7 @@ export function TaskGrid({
               <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
               <span className={cn(
                 "font-semibold leading-none",
-                compact ? "text-[13px]" : "text-[15px]",
+                compact ? "text-[13px]" : "text-[18px]",
                 isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
                 : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
               )}>

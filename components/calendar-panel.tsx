@@ -1956,8 +1956,8 @@ function ShiftGrid({
               <div
                 key={day.date}
                 className={cn(
-                  "relative flex flex-col items-center justify-center py-1 gap-[2px]",
-                  holidayName && "bg-amber-50/60 dark:bg-amber-950/20"
+                  "relative flex flex-col items-center justify-center py-1.5 gap-[2px]",
+                  holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted"
                 )}
                 style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
               >
@@ -1965,20 +1965,14 @@ function ShiftGrid({
                   <DayWarningPopover warnings={day.warnings} />
                 )}
 
-                <button
-                  onClick={() => onDateClick?.(day.date)}
-                  className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
-                >
-                  <span className="text-[11px] uppercase tracking-wider leading-none" style={{ color: "var(--muted-foreground)" }}>{wday}</span>
-                  <div className={cn(
-                    "flex items-center justify-center rounded-full font-medium leading-none",
-                    today
-                      ? "size-7 bg-primary text-primary-foreground text-[15px]"
-                      : "text-[20px]"
-                  )} style={!today ? { color: holidayName ? "#D97706" : day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
-                    {dayN}
-                  </div>
-                </button>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+                <span className={cn(
+                  "font-semibold leading-none text-[18px]",
+                  today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
+                  : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                )}>
+                  {dayN}
+                </span>
                 {holidayName && (
                   <Tooltip>
                     <TooltipTrigger render={
