@@ -3462,14 +3462,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {(showActions || hasAssignments) && (
             <OverflowMenu items={[
-              // ── Generate (inside overflow when chat open OR narrow screen) ──
+              // ── Group 1: Actions (generate, publish) ──
               ...(showActions && !isPublished ? [{
                 label: isPending ? tc("generating") : t("generateRota"),
                 icon: <Sparkles className="size-3.5" />,
                 onClick: handleGenerateClick,
                 disabled: isPending || loadingWeek,
               }] : []),
-              // ── Group 1: Publish (week view only) ──
               ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
                 label: t("publishRota"),
                 icon: <Lock className="size-3.5" />,
@@ -3514,11 +3513,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── Group 3: View options (week view only) ──
               ...(view === "week" ? [{
+                label: weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t("shiftLayout"),
+                icon: <Grid3X3 className="size-3.5" />,
+                onClick: () => setCalendarLayout(calendarLayout === "shift" ? "person" : "shift"),
+                active: calendarLayout === "shift",
+                dividerBefore: true,
+              }, {
+                label: t("personLayout"),
+                icon: <Users className="size-3.5" />,
+                onClick: () => setCalendarLayout("person"),
+                active: calendarLayout === "person",
+              }, {
                 label: "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 active: compact,
-                dividerBefore: true,
               }, {
                 label: "Colores de personal",
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
@@ -3536,18 +3545,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
+              }, {
+                label: t("applyTemplate"),
+                icon: <BookmarkCheck className="size-3.5" />,
+                onClick: () => setApplyTemplateOpen(true),
               }] : view === "week" && canEdit ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
               }] : []),
-              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-              }] : []),
-              // ── Group 4: Destructive (editors only) ──
+              // ── Group 5: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{
                 label: view === "month" ? "Eliminar 4 semanas" : "Eliminar horario",
                 icon: <Trash2 className="size-3.5" />,
