@@ -3415,20 +3415,38 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             <>
               <span className="h-4 border-l border-border" />
               <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-                {(["shift", "person"] as CalendarLayout[]).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setCalendarLayout(l)}
-                    className={cn(
-                      "rounded-md px-3 py-1 text-[13px] transition-colors",
-                      calendarLayout === l
-                        ? "bg-background shadow-sm font-medium"
-                        : "text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {l === "shift" && weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t(`${l}Layout`)}
-                  </button>
-                ))}
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <button
+                      onClick={() => setCalendarLayout("shift")}
+                      className={cn(
+                        "rounded-md p-1.5 transition-colors",
+                        calendarLayout === "shift"
+                          ? "bg-background shadow-sm text-primary"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Rows3 className="size-4" />
+                    </button>
+                  } />
+                  <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t("shiftLayout")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <button
+                      onClick={() => setCalendarLayout("person")}
+                      className={cn(
+                        "rounded-md p-1.5 transition-colors",
+                        calendarLayout === "person"
+                          ? "bg-background shadow-sm text-primary"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Users className="size-4" />
+                    </button>
+                  } />
+                  <TooltipContent side="bottom">{t("personLayout")}</TooltipContent>
+                </Tooltip>
               </div>
             </>
           )}
@@ -3513,21 +3531,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── Group 3: View options (week view only) ──
               ...(view === "week" ? [{
-                label: weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t("shiftLayout"),
-                icon: <Grid3X3 className="size-3.5" />,
-                onClick: () => setCalendarLayout(calendarLayout === "shift" ? "person" : "shift"),
-                active: calendarLayout === "shift",
-                dividerBefore: true,
-              }, {
-                label: t("personLayout"),
-                icon: <Users className="size-3.5" />,
-                onClick: () => setCalendarLayout("person"),
-                active: calendarLayout === "person",
-              }, {
                 label: "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 active: compact,
+                dividerBefore: true,
               }, {
                 label: "Colores de personal",
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
