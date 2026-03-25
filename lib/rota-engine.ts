@@ -259,9 +259,12 @@ export function runRotaEngine({
       if (s.end_date && s.end_date < date) return false
       if (leaveMap[s.id]?.has(date)) return false
       const used = weeklyShiftCount[s.id] ?? 0
-      const hardCap = s.days_per_week ?? 5
-      // Hard rule: never exceed days_per_week
-      if (used >= hardCap) return false
+      const baseBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
+      // On weekends, drafted extras get bonus budget so they can work
+      // the weekend ON TOP of their normal weekday assignments
+      const bonus = weekend ? (weekendReservation[s.id] ?? 0) : 0
+      const totalBudget = Math.min(baseBudget + bonus, s.days_per_week ?? 5)
+      if (used >= totalBudget) return false
       return true
     }
 
@@ -298,11 +301,33 @@ export function runRotaEngine({
     andrologyPool = [...andrologyPool, ...extraAndrology]
     adminPool = [...adminPool, ...extraAdmin]
 
-    // 5. Assign ALL eligible staff (budget is enforced by isBaseEligible)
-    //    Minimum coverage is guaranteed by including the extra pool
-    let assignedLab       = labPool
-    let assignedAndrology = andrologyPool
-    let assignedAdmin     = adminRequired > 0 ? adminPool : []
+    // 5. Assign staff:
+    //    - Weekdays: assign all from preferred pool + enough from extra to meet minimum
+    //    - Weekends: assign all eligible (budget reserves ensure they have capacity)
+    let assignedLab: StaffWithSkills[]
+    let assignedAndrology: StaffWithSkills[]
+    let assignedAdmin: StaffWithSkills[]
+
+    if (weekend) {
+      // Weekends: assign everyone eligible (reservation ensures budget)
+      assignedLab = labPool
+      assignedAndrology = andrologyPool
+      assignedAdmin = adminRequired > 0 ? adminPool : []
+    } else {
+      // Weekdays: preferred pool gets assigned + extras only to meet minimum
+      const prefLab = sortedPreferred.filter((s) => s.role === "lab")
+      const prefAnd = sortedPreferred.filter((s) => s.role === "andrology")
+      const prefAdm = sortedPreferred.filter((s) => s.role === "admin")
+      assignedLab = prefLab.length >= labRequired
+        ? prefLab
+        : [...prefLab, ...extraLab.slice(0, labRequired - prefLab.length)]
+      assignedAndrology = prefAnd.length >= andrologyRequired
+        ? prefAnd
+        : [...prefAnd, ...extraAndrology.slice(0, andrologyRequired - prefAnd.length)]
+      assignedAdmin = adminRequired > 0
+        ? (prefAdm.length >= adminRequired ? prefAdm : [...prefAdm, ...extraAdmin.slice(0, adminRequired - prefAdm.length)])
+        : []
+    }
 
     // Hard minimum: warn if we can't meet coverage
     if (assignedLab.length < labRequired) {
