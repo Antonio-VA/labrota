@@ -147,22 +147,9 @@ export function runRotaEngine({
     }
   }
 
-  // ── Weekend reservation ──────────────────────────────────────────────────
-  // Pre-compute how many weekend days each staff member is reserved for.
-  // If Sat/Sun coverage requires more staff than have those days in their
-  // working pattern, we draft extra staff (lowest workload) and reduce their
-  // effective weekly budget so weekdays don't exhaust them before the weekend.
-  // Weekend reservation removed — Phase 1 pre-planning handles all 7 days uniformly
-
-  // Canonical skills tracked for gap detection — only these five matter for rota coverage.
-  // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
-  const CANONICAL_SKILLS = new Set<SkillName>([
-    "biopsy", "icsi", "egg_collection", "embryo_transfer", "denudation",
-  ])
-  // Intersect with what this org's staff actually have (no point warning about unused skills)
+  // Skills for gap detection — derived from org's configured técnicas (not hardcoded)
   const allOrgSkills = new Set(
-    staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill))
-         .filter((sk) => CANONICAL_SKILLS.has(sk))
+    tecnicas.map((t) => t.codigo as SkillName)
   )
 
   // Assignment lookup for rules: date → set of staff_ids
@@ -237,7 +224,7 @@ export function runRotaEngine({
     const dayCoverage = labConfig.coverage_by_day?.[dayCode]
     const labRequired = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
     const andrologyRequired = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
-    const adminRequired = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
+    const adminRequired = dayCoverage?.admin ?? 0
 
     // Eligibility: not on leave, active, has budget
     function isBaseEligible(s: StaffWithSkills): boolean {
@@ -396,44 +383,38 @@ export function runRotaEngine({
       warnings.push(`${date}: skill gaps — ${skillGaps.join(", ")}`)
     }
 
-    const adminDefaultShift: ShiftType = labConfig.admin_default_shift ?? (shiftCodes[0] ?? "T1")
     const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
-    // Distribute staff across shifts — round-robin resets each day so every
-    // shift gets roughly equal coverage within a single day.
+    // Distribute staff across shifts — same logic for all roles:
+    // 1. Technique typical_shift  2. Preferred shift  3. Round-robin
     let dayRrIdx = 0
     days.push({
       date,
       assignments: assigned.map((s) => {
         let shift: ShiftType
 
-        if (s.role === "admin") {
-          shift = activeShiftSet.has(adminDefaultShift) ? adminDefaultShift : (defaultShiftCodes[0] ?? "T1")
-        } else {
-          // 1. Technique typical_shift — highest priority
-          const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
-          const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
-          const orderedCodes   = [...certifiedCodes, ...trainingCodes]
-          let preferredFromTecnica: string | null = null
-          for (const code of orderedCodes) {
-            const typical = tecnicaTypicalShifts[code]
-            if (typical && typical.size > 0) {
-              const match = defaultShiftCodes.find((sc) => typical.has(sc))
-              if (match) { preferredFromTecnica = match; break }
-            }
+        // 1. Technique typical_shift — highest priority
+        const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
+        const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
+        const orderedCodes   = [...certifiedCodes, ...trainingCodes]
+        let preferredFromTecnica: string | null = null
+        for (const code of orderedCodes) {
+          const typical = tecnicaTypicalShifts[code]
+          if (typical && typical.size > 0) {
+            const match = defaultShiftCodes.find((sc) => typical.has(sc))
+            if (match) { preferredFromTecnica = match; break }
           }
+        }
 
-          if (preferredFromTecnica) {
-            // Technique determines the shift
-            shift = preferredFromTecnica as ShiftType
-          } else if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
-            // 2. Staff preferred shift — only if no technique mapping
-            shift = s.preferred_shift as ShiftType
-          } else {
-            // 3. Round-robin fallback
-            shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
-            dayRrIdx++
-          }
+        if (preferredFromTecnica) {
+          shift = preferredFromTecnica as ShiftType
+        } else if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
+          // 2. Staff preferred shift
+          shift = s.preferred_shift as ShiftType
+        } else {
+          // 3. Round-robin fallback
+          shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+          dayRrIdx++
         }
         return { staff_id: s.id, shift_type: shift }
       }),
