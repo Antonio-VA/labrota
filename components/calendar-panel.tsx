@@ -3420,13 +3420,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <button
                       onClick={() => setCalendarLayout("shift")}
                       className={cn(
-                        "rounded-md p-1.5 transition-colors",
+                        "rounded-md px-2 py-1 transition-colors",
                         calendarLayout === "shift"
-                          ? "bg-background shadow-sm text-primary"
+                          ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       )}
                     >
-                      <Rows3 className="size-4" />
+                      <Rows3 className="size-[14px]" />
                     </button>
                   } />
                   <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t("shiftLayout")}</TooltipContent>
@@ -3436,13 +3436,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <button
                       onClick={() => setCalendarLayout("person")}
                       className={cn(
-                        "rounded-md p-1.5 transition-colors",
+                        "rounded-md px-2 py-1 transition-colors",
                         calendarLayout === "person"
-                          ? "bg-background shadow-sm text-primary"
+                          ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       )}
                     >
-                      <Users className="size-4" />
+                      <Users className="size-[14px]" />
                     </button>
                   } />
                   <TooltipContent side="bottom">{t("personLayout")}</TooltipContent>
