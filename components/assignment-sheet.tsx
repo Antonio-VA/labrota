@@ -101,13 +101,64 @@ function AssignmentPopover({
       </div>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
+          <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
+          {/* Departamento section */}
+          {(() => {
+            const subDepts = departments.filter((d) => d.parent_id != null)
+            if (subDepts.length === 0) return null
+            const parentMap = new Map(departments.filter((d) => d.parent_id == null).map((d) => [d.id, d]))
+            const grouped = new Map<string, typeof subDepts>()
+            for (const sd of subDepts) {
+              const pid = sd.parent_id!
+              if (!grouped.has(pid)) grouped.set(pid, [])
+              grouped.get(pid)!.push(sd)
+            }
+            return (
+              <>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
+                {[...grouped.entries()].map(([pid, children]) => {
+                  const parent = parentMap.get(pid)
+                  return (
+                    <div key={pid}>
+                      {parent && <p className="text-[10px] text-muted-foreground/60 px-2.5 pt-1 pb-0.5">{parent.name}</p>}
+                      <div className="flex flex-col">
+                        {children.map((dept) => {
+                          const isActive = currentLabel === dept.code
+                          return (
+                            <button
+                              key={dept.id}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onFunctionSave(assignment.id, isActive ? null : dept.code)
+                                setOpen(false)
+                              }}
+                              className={cn(
+                                "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                                isActive ? "bg-accent" : "hover:bg-muted"
+                              )}
+                            >
+                              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                              <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                              {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            )
+          })()}
+          {/* Tareas section */}
           {availableTecnicas.length > 0 && (
-            <div>
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Técnica principal</p>
+            <>
+              <div className="h-px bg-border mx-2 my-1" />
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Tareas</p>
               <div className="flex flex-col">
                 {availableTecnicas.map((tec) => {
                   const isActive = assignment.tecnica_id === tec.id
-                  const color    = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
+                  const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
                   return (
                     <button
                       key={tec.id}
@@ -118,7 +169,7 @@ function AssignmentPopover({
                       }}
                       className={cn(
                         "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                        isActive ? "bg-primary/5" : "hover:bg-muted/50"
+                        isActive ? "bg-accent" : "hover:bg-muted"
                       )}
                     >
                       <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", color, isActive && "ring-1 ring-offset-1 ring-current")}>
@@ -129,42 +180,8 @@ function AssignmentPopover({
                   )
                 })}
               </div>
-            </div>
+            </>
           )}
-          {/* Sub-departments as assignable labels */}
-          {(() => {
-            const subDepts = departments.filter((d) => d.parent_id != null)
-            if (subDepts.length === 0) return null
-            return (
-              <>
-                <div className="h-px bg-border mx-2 my-1" />
-                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Sub-departamento</p>
-                <div className="flex flex-col">
-                  {subDepts.map((dept) => {
-                    const isActive = currentLabel === dept.code
-                    return (
-                      <button
-                        key={dept.id}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onFunctionSave(assignment.id, isActive ? null : dept.code)
-                          setOpen(false)
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                          isActive ? "bg-primary/5" : "hover:bg-muted/50"
-                        )}
-                      >
-                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
-                        <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
-                        {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )
-          })()}
         </div>
       )}
     </div>
