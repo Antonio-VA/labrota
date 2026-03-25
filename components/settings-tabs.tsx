@@ -3,22 +3,24 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["usuarios", "historial"] as const
+const TAB_KEYS = ["organizacion", "usuarios", "historial"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
-  usuarios:  "Usuarios",
-  historial: "Historial de cambios",
+  organizacion: "Organización",
+  usuarios:     "Usuarios",
+  historial:    "Historial",
 }
 
 export function SettingsTabs({
-  usuarios, historial,
+  organizacion, usuarios, historial,
 }: {
-  usuarios:  React.ReactNode
-  historial: React.ReactNode
+  organizacion: React.ReactNode
+  usuarios:     React.ReactNode
+  historial:    React.ReactNode
 }) {
-  const [active, setActive] = useState<TabKey>("usuarios")
-  const content: Record<TabKey, React.ReactNode> = { usuarios, historial }
+  const [active, setActive] = useState<TabKey>("organizacion")
+  const content: Record<TabKey, React.ReactNode> = { organizacion, usuarios, historial }
 
   return (
     <div className="flex flex-col gap-6 w-full">

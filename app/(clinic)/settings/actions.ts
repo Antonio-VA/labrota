@@ -229,3 +229,73 @@ export async function linkUserToStaff(targetUserId: string, staffId: string | nu
   revalidatePath("/settings")
   return {}
 }
+
+// ── Org settings ──────────────────────────────────────────────────────────────
+
+export interface OrgSettings {
+  name: string
+  logoUrl: string | null
+  country: string
+  region: string
+}
+
+export async function getOrgSettings(): Promise<OrgSettings | null> {
+  const { orgId, admin } = await requireOrgAdmin()
+
+  const { data: org } = await admin
+    .from("organisations")
+    .select("name, logo_url")
+    .eq("id", orgId)
+    .single() as { data: { name: string; logo_url: string | null } | null }
+
+  const { data: config } = await admin
+    .from("lab_config")
+    .select("country, region")
+    .eq("organisation_id", orgId)
+    .maybeSingle() as { data: { country: string; region: string } | null }
+
+  if (!org) return null
+  return {
+    name: org.name,
+    logoUrl: org.logo_url,
+    country: config?.country ?? "",
+    region: config?.region ?? "",
+  }
+}
+
+export async function updateOrgName(name: string): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("organisations")
+    .update({ name } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  revalidatePath("/")
+  return {}
+}
+
+export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("organisations")
+    .update({ logo_url: logoUrl } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  revalidatePath("/")
+  return {}
+}
+
+export async function updateOrgRegional(country: string, region: string): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("lab_config")
+    .update({ country, region, autonomous_community: region || null } as never)
+    .eq("organisation_id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  return {}
+}
+
+export { getOrgId }

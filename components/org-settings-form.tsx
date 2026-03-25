@@ -1,0 +1,198 @@
+"use client"
+
+import { useState, useTransition, useRef } from "react"
+import { Upload, Pencil, Check, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
+import {
+  updateOrgName,
+  updateOrgLogo,
+  updateOrgRegional,
+  type OrgSettings,
+} from "@/app/(clinic)/settings/actions"
+
+const COUNTRIES = [
+  { code: "ES", label: "España" },
+  { code: "AE", label: "Emiratos Árabes" },
+  { code: "GB", label: "Reino Unido" },
+  { code: "US", label: "Estados Unidos" },
+  { code: "PT", label: "Portugal" },
+  { code: "IT", label: "Italia" },
+  { code: "FR", label: "Francia" },
+  { code: "DE", label: "Alemania" },
+]
+
+const ES_REGIONS = [
+  "Andalucía", "Aragón", "Asturias", "Baleares", "Canarias", "Cantabria",
+  "Castilla-La Mancha", "Castilla y León", "Cataluña", "Comunidad Valenciana",
+  "Extremadura", "Galicia", "La Rioja", "Madrid", "Murcia", "Navarra", "País Vasco",
+]
+
+export function OrgSettingsForm({
+  settings,
+  orgId,
+}: {
+  settings: OrgSettings
+  orgId: string
+}) {
+  const [isPending, startTransition] = useTransition()
+
+  // Name
+  const [editingName, setEditingName] = useState(false)
+  const [draftName, setDraftName] = useState(settings.name)
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  // Logo
+  const [logoUrl, setLogoUrl] = useState(settings.logoUrl)
+  const [uploading, setUploading] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
+  // Regional
+  const [country, setCountry] = useState(settings.country)
+  const [region, setRegion] = useState(settings.region)
+
+  function saveName() {
+    if (!draftName.trim()) return
+    startTransition(async () => {
+      const result = await updateOrgName(draftName.trim())
+      if (result.error) toast.error(result.error)
+      else { toast.success("Nombre actualizado"); setEditingName(false) }
+    })
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return }
+    setUploading(true)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split(".").pop() ?? "png"
+      const path = `${orgId}/logo.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from("org-logos")
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) { toast.error(uploadError.message); return }
+      const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path)
+      const result = await updateOrgLogo(publicUrl)
+      if (result.error) { toast.error(result.error); return }
+      setLogoUrl(publicUrl + `?t=${Date.now()}`)
+      toast.success("Logo actualizado")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function saveRegional() {
+    startTransition(async () => {
+      const result = await updateOrgRegional(country, region)
+      if (result.error) toast.error(result.error)
+      else toast.success("Configuración regional guardada")
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Logo + Name */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => logoInputRef.current?.click()}
+          disabled={uploading}
+          className="size-14 rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center overflow-hidden shrink-0 transition-colors"
+        >
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="size-full object-cover" />
+          ) : (
+            <Upload className="size-5 text-muted-foreground" />
+          )}
+        </button>
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml"
+          onChange={handleLogoUpload}
+          className="hidden"
+        />
+        <div className="flex-1 min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-1.5">
+              <Input
+                ref={nameRef}
+                autoFocus
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false) }}
+                className="h-8 text-[14px]"
+              />
+              <button onClick={saveName} disabled={isPending} className="text-primary hover:text-primary/80">
+                <Check className="size-4" />
+              </button>
+              <button onClick={() => { setEditingName(false); setDraftName(settings.name) }} className="text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-[14px] font-medium truncate">{draftName}</p>
+              <button onClick={() => { setEditingName(true); setTimeout(() => nameRef.current?.focus(), 50) }} className="text-muted-foreground hover:text-foreground">
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {uploading ? "Subiendo logo…" : "Haz clic en el icono para cambiar el logo"}
+          </p>
+        </div>
+      </div>
+
+      {/* Regional */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-medium text-muted-foreground">Configuración regional</p>
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={country}
+            onChange={(e) => { setCountry(e.target.value); if (e.target.value !== "ES") setRegion("") }}
+            className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
+          >
+            <option value="">País</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.label}</option>
+            ))}
+          </select>
+          {country === "ES" ? (
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
+            >
+              <option value="">Comunidad autónoma</option>
+              {ES_REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              placeholder="Región"
+              className="h-8 text-[13px]"
+            />
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={saveRegional}
+          disabled={isPending || (country === settings.country && region === settings.region)}
+          className="self-start text-[12px] h-7"
+        >
+          Guardar región
+        </Button>
+      </div>
+    </div>
+  )
+}

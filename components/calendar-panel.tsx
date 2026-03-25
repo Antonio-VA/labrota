@@ -230,19 +230,25 @@ type ShiftBadgeProps = {
   colorChips?: boolean
   staffId?: string
   staffColor?: string
+  departments?: import("@/lib/types/database").Department[]
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [] }: ShiftBadgeProps) {
   const { hoveredStaffId, setHovered } = useStaffHover()
-  const pillLabel = tecnica ? tecnica.codigo : (functionLabel ?? null)
+  // Resolve department code to abbreviation for pill display
+  const deptMatch = functionLabel ? departments.find((d) => d.code === functionLabel) : null
+  const pillLabel = tecnica ? tecnica.codigo : (deptMatch ? deptMatch.abbreviation : (functionLabel ?? null))
   const pillColor = !colorChips
     ? "bg-slate-100 border-border text-muted-foreground"
     : tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
+    : deptMatch
+    ? null // use inline style for dept color
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
     : pillLabel === "TRN" ? "bg-muted border-border text-muted-foreground"
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
+  const deptPillStyle = deptMatch ? { backgroundColor: `${deptMatch.colour}15`, borderColor: `${deptMatch.colour}40`, color: deptMatch.colour } : undefined
 
   return (
     <div
@@ -259,8 +265,11 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
       onMouseLeave={() => staffId && setHovered(null)}
     >
       <span className="truncate">{first} {last[0]}.</span>
-      {pillLabel && pillColor ? (
-        <span className={cn("font-semibold px-1 py-0.5 rounded border ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
+      {pillLabel && (pillColor || deptPillStyle) ? (
+        <span
+          className={cn("font-semibold px-1 py-0.5 rounded border ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}
+          style={deptPillStyle}
+        >
           {isTrainingTecnica && <Hourglass className="size-2 text-amber-500" />}
           {pillLabel}
         </span>
@@ -325,7 +334,11 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
     t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
   )
 
-  if (availableTecnicas.length === 0 || isPublished) return <>{children}</>
+  // Sub-departments for the staff member's role department
+  const roleDept = departments.find((d) => d.parent_id == null && d.code === assignment.staff.role)
+  const roleSubDepts = roleDept ? departments.filter((d) => d.parent_id === roleDept.id) : []
+
+  if ((availableTecnicas.length === 0 && roleSubDepts.length === 0) || isPublished) return <>{children}</>
 
   return (
     <div ref={triggerRef}>
@@ -344,62 +357,35 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
           }}
         >
           <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
-          {/* Departamento section */}
-          {departments.length > 0 && (() => {
-            const subDepts = departments.filter((d) => d.parent_id != null)
-            const rootDepts = departments.filter((d) => d.parent_id == null)
-            const hasHierarchy = subDepts.length > 0
-
-            function DeptButton({ dept }: { dept: typeof departments[0] }) {
-              const isActive = currentLabel === dept.code
-              return (
-                <button
-                  key={dept.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onFunctionSave(assignment.id, isActive ? null : dept.code)
-                    setOpen(false)
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                    isActive ? "bg-accent" : "hover:bg-muted"
-                  )}
-                >
-                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
-                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
-                  {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                </button>
-              )
-            }
-
-            return (
-              <>
-                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
-                {hasHierarchy ? (
-                  // Grouped: sub-departments under their parent
-                  <>
-                    {rootDepts.map((parent) => {
-                      const children = subDepts.filter((d) => d.parent_id === parent.id)
-                      if (children.length === 0) return <DeptButton key={parent.id} dept={parent} />
-                      return (
-                        <div key={parent.id}>
-                          <p className="text-[10px] text-muted-foreground/60 px-2.5 pt-1 pb-0.5">{parent.name}</p>
-                          <div className="flex flex-col">
-                            {children.map((dept) => <DeptButton key={dept.id} dept={dept} />)}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </>
-                ) : (
-                  // Flat list of all departments
-                  <div className="flex flex-col">
-                    {rootDepts.map((dept) => <DeptButton key={dept.id} dept={dept} />)}
-                  </div>
-                )}
-              </>
-            )
-          })()}
+          {/* Sub-departments for staff's role */}
+          {roleSubDepts.length > 0 && (
+            <>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
+              <div className="flex flex-col">
+                {roleSubDepts.map((dept) => {
+                  const isActive = currentLabel === dept.code
+                  return (
+                    <button
+                      key={dept.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onFunctionSave(assignment.id, isActive ? null : dept.code)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                        isActive ? "bg-accent" : "hover:bg-muted"
+                      )}
+                    >
+                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                      <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                      {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
           {/* Tareas section — techniques the staff member is qualified for */}
           {availableTecnicas.length > 0 && (
             <>
@@ -2200,6 +2186,7 @@ function ShiftGrid({
                                 readOnly={isPublished}
                                 staffId={a.staff_id}
                                 staffColor={staffColorMap[a.staff_id]}
+                                departments={data?.departments ?? []}
                               />
                             </div>
                           } />
@@ -2301,6 +2288,7 @@ function ShiftGrid({
               isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
               borderColor={ROLE_BORDER[activeAssignment.staff.role]}
+              departments={data?.departments ?? []}
               tecnica={activeAssignment.function_label
                 ? (data?.tecnicas ?? []).find((t) => t.codigo === activeAssignment.function_label) ?? null
                 : (data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}

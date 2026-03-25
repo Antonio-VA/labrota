@@ -1,12 +1,11 @@
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
 import { OrgUsersTable } from "@/components/org-users-table"
+import { OrgSettingsForm } from "@/components/org-settings-form"
 import { AuditLogViewer } from "@/components/audit-log-viewer"
 import { SettingsTabs } from "@/components/settings-tabs"
-import { getOrgUsers, type OrgUser } from "./actions"
+import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { getOrgId } from "@/lib/get-org-id"
 import type { Staff } from "@/lib/types/database"
 
 export default async function SettingsPage() {
@@ -15,10 +14,15 @@ export default async function SettingsPage() {
   const orgId = await getOrgId()
   let users: OrgUser[] = []
   let staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[] = []
-  let orgName = ""
+  let orgSettings: Awaited<ReturnType<typeof getOrgSettings>> = null
 
   if (orgId) {
-    users = await getOrgUsers()
+    const [usersData, settingsData] = await Promise.all([
+      getOrgUsers(),
+      getOrgSettings(),
+    ])
+    users = usersData
+    orgSettings = settingsData
 
     const supabase = await createClient()
     const { data: staffData } = await supabase
@@ -27,14 +31,6 @@ export default async function SettingsPage() {
       .neq("onboarding_status", "inactive")
       .order("first_name")
     staff = (staffData ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
-
-    const admin = createAdminClient()
-    const { data: org } = await admin
-      .from("organisations")
-      .select("name")
-      .eq("id", orgId)
-      .single() as { data: { name: string } | null }
-    orgName = org?.name ?? ""
   }
 
   return (
@@ -43,12 +39,18 @@ export default async function SettingsPage() {
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
           <div>
             <h1 className="text-[18px] font-medium">Administración</h1>
-            {orgName && (
-              <p className="text-[14px] text-muted-foreground mt-0.5">{orgName}</p>
-            )}
           </div>
 
           <SettingsTabs
+            organizacion={
+              orgSettings ? (
+                <div className="rounded-lg border border-border bg-background px-5 py-4">
+                  <OrgSettingsForm settings={orgSettings} orgId={orgId!} />
+                </div>
+              ) : (
+                <p className="text-[14px] text-muted-foreground">No se encontró la organización.</p>
+              )
+            }
             usuarios={
               <div className="rounded-lg border border-border bg-background px-5 py-4">
                 <OrgUsersTable initialUsers={users} staff={staff} />
