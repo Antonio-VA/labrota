@@ -240,11 +240,14 @@ export function runRotaEngine({
 
     function hasBudget(s: StaffWithSkills): boolean {
       const used = weeklyShiftCount[s.id] ?? 0
-      // Budget = days_per_week minus days reserved for FUTURE days in Phase 1
+      const cap = s.days_per_week ?? 5
+      if (used >= cap) return false
+      // Reserve slots for future days where this person is reserved in Phase 1
+      // (but not yet counted in weeklyShiftCount)
       const futureReserved = allDates
         .filter((d) => d > date && minCoverageReserved[d]?.has(s.id))
         .length
-      return used < (s.days_per_week ?? 5) - futureReserved
+      return (used + 1 + futureReserved) <= cap
     }
 
     // Reserved staff are ALWAYS assigned (Phase 1 guaranteed their budget)
@@ -430,10 +433,43 @@ export function runRotaEngine({
       skillGaps,
     })
 
+    // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
+    const dayPlan = days[days.length - 1]
+    if (defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
+      const shiftCount: Record<string, number> = {}
+      for (const sc of defaultShiftCodes) shiftCount[sc] = 0
+      for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
+
+      const emptyShifts = defaultShiftCodes.filter((sc) => (shiftCount[sc] ?? 0) === 0)
+      for (const emptyShift of emptyShifts) {
+        // Find the most overstaffed shift
+        const maxShift = defaultShiftCodes.reduce((best, sc) =>
+          (shiftCount[sc] ?? 0) > (shiftCount[best] ?? 0) ? sc : best
+        )
+        if ((shiftCount[maxShift] ?? 0) <= 1) break // can't move if only 1 person
+
+        // Move the last person from maxShift to emptyShift
+        // (prefer moving someone without a technique-driven shift preference)
+        const candidates = dayPlan.assignments.filter((a) => a.shift_type === maxShift)
+        const movable = candidates.find((a) => {
+          const s = assigned.find((st) => st.id === a.staff_id)
+          if (!s) return true
+          // Don't move if their technique specifically maps to this shift
+          const skills = s.staff_skills.map((sk) => sk.skill)
+          return !skills.some((sk) => tecnicaTypicalShifts[sk]?.has(maxShift))
+        }) ?? candidates[candidates.length - 1]
+
+        if (movable) {
+          movable.shift_type = emptyShift as ShiftType
+          shiftCount[maxShift]--
+          shiftCount[emptyShift] = 1
+        }
+      }
+    }
+
     // ── Technique-shift alignment pass (by_shift only) ──────────────────────
     // Check each technique's typical_shift for coverage. If a shift is missing
     // a qualified person for a mapped technique, try to reassign or add one.
-    const dayPlan = days[days.length - 1]
     const assignedById = new Map(assigned.map((s) => [s.id, s]))
 
     // Group techniques by their typical shift
