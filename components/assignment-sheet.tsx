@@ -295,15 +295,15 @@ function DraggableOffChip({
       {...(onLeave ? {} : listeners)}
       {...(onLeave ? {} : attributes)}
       className={cn(
-        "flex items-center gap-2 py-1.5 text-[12px] border border-border",
+        "flex items-center gap-1.5 py-1 px-2 text-[13px] font-medium border border-border rounded",
         onLeave
           ? "text-muted-foreground/50 cursor-not-allowed select-none bg-amber-500/5 border-amber-500/20"
           : disabled
           ? "text-muted-foreground cursor-default bg-background"
-          : "text-muted-foreground cursor-grab hover:bg-primary/5 hover:text-foreground transition-colors bg-background"
+          : "text-foreground cursor-grab hover:bg-primary/5 transition-colors bg-background"
       )}
     >
-      <span className="truncate flex-1">{staff.first_name} {staff.last_name}</span>
+      <span className="truncate flex-1">{staff.first_name} {staff.last_name[0]}.</span>
       {onLeave ? (
         <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
       ) : !disabled && shiftTypes.length > 0 ? (
@@ -735,11 +735,16 @@ export function AssignmentSheet({
               </button>
             )}
           </div>
-          {/* Biopsias previstas */}
-          {biopsyForecast !== undefined && biopsyForecast > 0 && (
+          {/* Biopsias previstas — editable */}
+          {biopsyForecast !== undefined && (
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-[12px] text-muted-foreground">Biopsias previstas:</span>
-              <span className="text-[12px] font-medium text-foreground">{biopsyForecast}</span>
+              <input
+                type="number"
+                min={0}
+                defaultValue={biopsyForecast}
+                className="w-10 text-[12px] font-medium text-center border border-input rounded px-1 py-0.5 bg-background outline-none focus:border-primary"
+              />
             </div>
           )}
         </div>
@@ -901,7 +906,7 @@ export function AssignmentSheet({
             }} />
             <DroppableOffSection className="transition-colors">
               <div className="px-4 pt-2 pb-1.5">
-                <span className="text-[12px] text-muted-foreground italic">OFF · No programados</span>
+                <span className="text-[12px] text-muted-foreground italic">OFF · Libres</span>
               </div>
               <div className="px-3 flex flex-col gap-1 pb-3 bg-muted/50 min-h-[40px]">
                 {offStaff.map((s) => (
@@ -932,10 +937,17 @@ export function AssignmentSheet({
               </div>
             </DroppableOffSection>
 
-            {/* Actions */}
+            {/* Actions — top bar */}
             {!isPublished && rota && (
-              <div className="px-4 py-3 flex flex-col gap-3">
-                {/* Copy from last week */}
+              <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
+                <button
+                  onClick={() => setShowRegenConfirm(true)}
+                  disabled={assignments.length === 0}
+                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                >
+                  <Sparkles className="size-3.5" />
+                  Regenerar día
+                </button>
                 {assignments.length === 0 && date && (
                   <button
                     onClick={() => {
@@ -945,31 +957,32 @@ export function AssignmentSheet({
                         else { toast.success(`${r.count} asignaciones copiadas`); onSaved() }
                       })
                     }}
-                    className="flex items-center gap-1.5 text-[12px] text-primary/70 hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
                   >
                     <Copy className="size-3.5" />
-                    Copiar de semana anterior
+                    Copiar semana anterior
                   </button>
                 )}
-                {/* Delete all */}
-                {assignments.length > 0 && (!showDeleteAll ? (
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => setShowRegenConfirm(true)}
-                      className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Sparkles className="size-3.5" />
-                      Regenerar día
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteAll(true)}
-                      className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Eliminar turno del día
-                    </button>
-                  </div>
-                ) : (
+                <div className="flex-1" />
+                {assignments.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <button
+                        onClick={() => setShowDeleteAll(true)}
+                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    } />
+                    <TooltipContent side="left">Eliminar turno del día</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+            {/* Confirmations */}
+            {!isPublished && rota && (
+              <div className="px-4 py-3 flex flex-col gap-3">
+                {assignments.length > 0 && showDeleteAll && (
                   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="size-3.5 text-destructive mt-0.5 shrink-0" />
@@ -996,7 +1009,7 @@ export function AssignmentSheet({
                       </Button>
                     </div>
                   </div>
-                ))}
+                )}
                 {/* Regenerar día confirmation */}
                 {showRegenConfirm && (
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2">
