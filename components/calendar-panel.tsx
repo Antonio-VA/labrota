@@ -1848,8 +1848,8 @@ function ShiftGrid({
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="p-2 flex flex-col gap-1 min-h-[64px] bg-background">
-                  <div className={`shimmer-bar h-5 w-full ${i >= 5 ? "opacity-50" : ""}`} />
+                <div key={i} className="p-2 flex items-center justify-center min-h-[64px] bg-background">
+                  <div className={`shimmer-bar h-5 w-full rounded ${i >= 5 ? "opacity-50" : ""}`} />
                 </div>
               ))}
             </div>
@@ -3197,6 +3197,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
     const weeksToGenerate = multiWeekScope ?? [weekStart]
     setMultiWeekScope(null)
 
+    setLoadingWeek(true)
     startTransition(async () => {
       try {
         let successCount = 0
@@ -3629,6 +3630,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => {
                           setShowCopyConfirm(false)
+                          setLoadingWeek(true)
                           startTransition(async () => {
                             const result = await copyPreviousWeek(weekStart)
                             if (result.error) { toast.error(result.error); return }
