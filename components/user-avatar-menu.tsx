@@ -124,14 +124,14 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
           {/* Preferences */}
           <button
             onClick={openAccount}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
           >
             <UserCog className="size-3.5" />
             Preferencias
           </button>
           <button
             onClick={() => { setOpen(false); setSupportOpen(true) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
           >
             <HelpCircle className="size-3.5" />
             Soporte
@@ -144,7 +144,7 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
               <button
                 key={key}
                 onClick={() => handleThemeChange(key)}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors duration-75"
               >
                 <Icon className="size-3.5 text-muted-foreground" />
                 <span className="flex-1">{label}</span>
@@ -160,7 +160,7 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
           <div className="border-t border-border">
             <button
               onClick={() => { setOpen(false); signOut() }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/5 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/10 transition-colors"
             >
               <LogOut className="size-3.5" />
               {t("signOut")}

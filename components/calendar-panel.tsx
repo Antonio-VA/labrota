@@ -586,9 +586,8 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
                 onClick={() => { item.onClick(); if (!item.active && item.active !== false) setOpen(false) }}
                 disabled={item.disabled}
                 className={cn(
-                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-[background-color] duration-75 disabled:opacity-50",
-                  item.destructive ? "text-destructive hover:bg-destructive/15" :
-                  item.active ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted"
+                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-colors duration-75 disabled:opacity-50",
+                  item.destructive ? "text-destructive hover:bg-destructive/10" : "hover:bg-accent"
                 )}
               >
                 {item.icon}
@@ -3574,22 +3573,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {showActions && !isPublished && !chatOpen && (
-            <div className="hidden xl:block">
-              <Button size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8">
-                {isPending ? tc("generating") : t("generateRota")}
-              </Button>
-            </div>
+          {showActions && !isPublished && (
+            <Button size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
+              {isPending ? tc("generating") : t("generateRota")}
+            </Button>
           )}
           {(showActions || hasAssignments) && (
             <OverflowMenu items={[
-              // ── Group 1: Actions (generate, publish) ──
-              ...(showActions && !isPublished ? [{
-                label: isPending ? tc("generating") : t("generateRota"),
-                icon: <Sparkles className="size-3.5" />,
-                onClick: handleGenerateClick,
-                disabled: isPending || loadingWeek,
-              }] : []),
+              // ── Group 1: Actions (publish) ──
               ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
                 label: t("publishRota"),
                 icon: <Lock className="size-3.5" />,
