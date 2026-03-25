@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
+import { logAuditEvent } from "@/lib/audit"
 import type {
   RotaStatus,
   StaffWithSkills,
@@ -598,6 +599,18 @@ export async function generateRota(
     if (insertError) return { error: insertError.message }
   }
 
+  // Audit log
+  const { data: { user: auditUser } } = await supabase.auth.getUser()
+  logAuditEvent({
+    orgId,
+    userId: auditUser?.id,
+    userEmail: auditUser?.email,
+    action: "rota_generated",
+    entityType: "rota",
+    entityId: rotaId,
+    metadata: { weekStart, method: generationType, assignmentCount: toInsert.length, preserveOverrides },
+  })
+
   revalidatePath("/")
   return { assignmentCount: toInsert.length }
 }
@@ -683,6 +696,14 @@ export async function upsertAssignment(params: {
       error = res.error
     }
     if (error) return { error: error.message }
+    // Audit
+    const { data: { user: auUser } } = await supabase.auth.getUser()
+    logAuditEvent({
+      orgId, userId: auUser?.id, userEmail: auUser?.email,
+      action: "assignment_changed",
+      entityType: "rota_assignment",
+      metadata: { staffId: params.staffId, date: params.date, shiftType: params.shiftType, functionLabel: params.functionLabel ?? "" },
+    })
     revalidatePath("/")
     return { id: (row as unknown as { id: string })?.id }
   }
@@ -879,6 +900,8 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
     .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName } as never)
     .eq("id", rotaId)
   if (error) return { error: error.message }
+  const orgId = await getOrgId(supabase)
+  if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
   revalidatePath("/")
   return {}
 }

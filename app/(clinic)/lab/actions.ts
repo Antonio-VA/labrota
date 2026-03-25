@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { logAuditEvent } from "@/lib/audit"
 import type { LabConfigUpdate } from "@/lib/types/database"
 
 export async function updateLabConfig(data: LabConfigUpdate) {
@@ -42,6 +43,12 @@ export async function updateLabConfig(data: LabConfigUpdate) {
     .eq("organisation_id", profile.organisation_id)
 
   if (error) return { error: error.message }
+
+  logAuditEvent({
+    orgId: profile.organisation_id, userId: user.id, userEmail: user.email,
+    action: "config_change", entityType: "lab_config",
+    changes: data as Record<string, unknown>,
+  })
 
   revalidatePath("/lab")
   return { success: true }

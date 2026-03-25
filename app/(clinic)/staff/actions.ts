@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { logAuditEvent } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
@@ -78,6 +79,14 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   if (error || !newStaff) return { error: error?.message ?? "Failed to create staff member." }
 
   const newStaffId = (newStaff as { id: string }).id
+
+  // Audit
+  const { data: { user: auUser } } = await supabase.auth.getUser()
+  logAuditEvent({
+    orgId, userId: auUser?.id, userEmail: auUser?.email,
+    action: "staff_created", entityType: "staff", entityId: newStaffId,
+    metadata: { firstName: staff.first_name, lastName: staff.last_name, role: staff.role },
+  })
 
   if (skills.length > 0) {
     const { error: skillsError } = await supabase.from("staff_skills").insert(

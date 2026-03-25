@@ -5,6 +5,7 @@ import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
 import { TurnosTab } from "@/components/turnos-tab"
+import { AuditLogViewer } from "@/components/audit-log-viewer"
 import { TécnicasTab } from "@/components/tecnicas-tab"
 import { PlantillasTab } from "@/components/plantillas-tab"
 import { DepartmentsTab } from "@/components/departments-tab"
@@ -103,6 +104,14 @@ export default async function LabConfigPage() {
                   initialTemplates={noteTemplates}
                   initialEnabled={config?.enable_notes ?? true}
                 />
+              </div>
+            }
+            historial={
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                  Historial de cambios
+                </p>
+                <AuditLogViewer />
               </div>
             }
           />
