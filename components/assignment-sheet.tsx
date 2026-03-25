@@ -104,50 +104,56 @@ function AssignmentPopover({
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
           <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
           {/* Departamento section */}
-          {(() => {
+          {departments.length > 0 && (() => {
             const subDepts = departments.filter((d) => d.parent_id != null)
-            if (subDepts.length === 0) return null
-            const parentMap = new Map(departments.filter((d) => d.parent_id == null).map((d) => [d.id, d]))
-            const grouped = new Map<string, typeof subDepts>()
-            for (const sd of subDepts) {
-              const pid = sd.parent_id!
-              if (!grouped.has(pid)) grouped.set(pid, [])
-              grouped.get(pid)!.push(sd)
+            const rootDepts = departments.filter((d) => d.parent_id == null)
+            const hasHierarchy = subDepts.length > 0
+
+            function DeptButton({ dept }: { dept: typeof departments[0] }) {
+              const isActive = currentLabel === dept.code
+              return (
+                <button
+                  key={dept.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onFunctionSave(assignment.id, isActive ? null : dept.code)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                    isActive ? "bg-accent" : "hover:bg-muted"
+                  )}
+                >
+                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                  {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                </button>
+              )
             }
+
             return (
               <>
                 <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
-                {[...grouped.entries()].map(([pid, children]) => {
-                  const parent = parentMap.get(pid)
-                  return (
-                    <div key={pid}>
-                      {parent && <p className="text-[10px] text-muted-foreground/60 px-2.5 pt-1 pb-0.5">{parent.name}</p>}
-                      <div className="flex flex-col">
-                        {children.map((dept) => {
-                          const isActive = currentLabel === dept.code
-                          return (
-                            <button
-                              key={dept.id}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onFunctionSave(assignment.id, isActive ? null : dept.code)
-                                setOpen(false)
-                              }}
-                              className={cn(
-                                "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                                isActive ? "bg-accent" : "hover:bg-muted"
-                              )}
-                            >
-                              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
-                              <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
-                              {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+                {hasHierarchy ? (
+                  <>
+                    {rootDepts.map((parent) => {
+                      const children = subDepts.filter((d) => d.parent_id === parent.id)
+                      if (children.length === 0) return <DeptButton key={parent.id} dept={parent} />
+                      return (
+                        <div key={parent.id}>
+                          <p className="text-[10px] text-muted-foreground/60 px-2.5 pt-1 pb-0.5">{parent.name}</p>
+                          <div className="flex flex-col">
+                            {children.map((dept) => <DeptButton key={dept.id} dept={dept} />)}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </>
+                ) : (
+                  <div className="flex flex-col">
+                    {rootDepts.map((dept) => <DeptButton key={dept.id} dept={dept} />)}
+                  </div>
+                )}
               </>
             )
           })()}
