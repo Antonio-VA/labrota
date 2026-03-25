@@ -123,7 +123,7 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
       const types = rows.map((r) => ({
         code: r.code.trim().toUpperCase(),
         name_es: r.name_es.trim(),
-        name_en: r.name_en.trim(),
+        name_en: r.name_en.trim() || r.name_es.trim(),
         start_time: r.start_time,
         end_time: r.end_time,
         sort_order: 0, // overwritten by saveShiftTypes
@@ -145,13 +145,12 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
   return (
     <div className="flex flex-col gap-3">
       {/* Column headers */}
-      <div className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1fr_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
+      <div className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
         <span />
         <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide text-center">Código</span>
         <span className="text-[12px] text-muted-foreground text-center">Inicio</span>
         <span className="text-[12px] text-muted-foreground text-center">Fin</span>
-        <span className="text-[12px] text-muted-foreground text-center">Nombre (ES)</span>
-        <span className="text-[12px] text-muted-foreground text-center">Nombre (EN)</span>
+        <span className="text-[12px] text-muted-foreground text-center">Nombre</span>
         <span />
       </div>
 
@@ -166,7 +165,7 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
           return (
             <div key={row.id}>
               <div
-                className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1fr_1.5rem] gap-2 items-center"
+                className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_1.5rem] gap-2 items-center"
                 draggable
                 onDragStart={() => onDragStart(idx)}
                 onDragOver={(e) => onDragOver(e, idx)}
@@ -216,16 +215,6 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
                   className="text-[13px]"
                   maxLength={30}
                   placeholder="Mañana"
-                />
-
-                {/* EN name */}
-                <Input
-                  value={row.name_en}
-                  onChange={(e) => updateRow(row.id, { name_en: e.target.value })}
-                  disabled={isPending}
-                  className="text-[13px]"
-                  maxLength={30}
-                  placeholder="Morning"
                 />
 
                 {/* Delete */}

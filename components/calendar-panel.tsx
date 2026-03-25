@@ -2993,7 +2993,15 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey?: number; chatOpen?: boolean }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }) {
+  return (
+    <StaffHoverProvider>
+      <CalendarPanelInner {...props} />
+    </StaffHoverProvider>
+  )
+}
+
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?: number; chatOpen?: boolean }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -3361,7 +3369,6 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
 
 
   return (
-    <StaffHoverProvider>
     <main className="flex flex-1 flex-col overflow-hidden">
       {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
       <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
@@ -3517,7 +3524,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
               }, {
                 label: highlightHover ? "Resaltar persona ✓" : "Resaltar persona",
-                icon: <Pencil className="size-3.5 text-amber-500" />,
+                icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: highlightHover ? "#FDE047" : "#94A3B8" }} />,
                 onClick: () => setHighlightHover(!highlightHover),
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
@@ -3945,6 +3952,5 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
         onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
       />
     </main>
-    </StaffHoverProvider>
   )
 }
