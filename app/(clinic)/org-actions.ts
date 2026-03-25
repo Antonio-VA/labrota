@@ -1,5 +1,6 @@
 "use server"
 
+import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -21,12 +22,21 @@ export async function switchOrg(orgId: string): Promise<{ error?: string }> {
 
   if (!member) return { error: "Not a member of this organisation" }
 
+  // Update DB (for login default)
   const { error } = await admin
     .from("profiles")
     .update({ organisation_id: orgId } as never)
     .eq("id", user.id)
 
   if (error) return { error: error.message }
+
+  // Set cookie (per-browser session — prevents cross-device org mixing)
+  const cookieStore = await cookies()
+  cookieStore.set("labrota_active_org", orgId, {
+    path: "/",
+    maxAge: 365 * 86400,
+    sameSite: "lax",
+  })
 
   revalidatePath("/")
   return {}
