@@ -298,13 +298,22 @@ export function runRotaEngine({
     const reservedIds = minCoverageReserved[date]
     const reservedStaff = staff.filter((s) => reservedIds.has(s.id) && isBaseEligible(s))
 
-    // Add preferred staff who aren't already reserved
-    const additionalPreferred = staff.filter((s) =>
-      isBaseEligible(s) && !reservedIds.has(s.id) && (s.working_pattern ?? []).includes(dayCode)
-    ).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+    // Add ALL eligible staff who still have budget — preferred pattern first, then others
+    const remaining = staff.filter((s) => isBaseEligible(s) && !reservedIds.has(s.id))
+      .sort((a, b) => {
+        // Pattern match first
+        const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
+        const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
+        if (aInPattern !== bInPattern) return aInPattern - bInPattern
+        // Preferred days second
+        const aPref = a.preferred_days?.includes(dayCode) ? 0 : 1
+        const bPref = b.preferred_days?.includes(dayCode) ? 0 : 1
+        if (aPref !== bPref) return aPref - bPref
+        return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+      })
 
     const assignedSet = new Set(reservedStaff.map((s) => s.id))
-    for (const s of additionalPreferred) {
+    for (const s of remaining) {
       assignedSet.add(s.id)
     }
 
