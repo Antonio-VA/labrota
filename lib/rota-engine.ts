@@ -152,49 +152,7 @@ export function runRotaEngine({
   // If Sat/Sun coverage requires more staff than have those days in their
   // working pattern, we draft extra staff (lowest workload) and reduce their
   // effective weekly budget so weekdays don't exhaust them before the weekend.
-  const weekendReservation: Record<string, number> = {}
-  for (const wkd of ["sat", "sun"] as const) {
-    const wkDate = allWeekDates.find((d) => getDayCode(d) === wkd)
-    if (!wkDate) continue
-    const dayCov = labConfig.coverage_by_day?.[wkd]
-    if (!dayCov) continue
-
-    for (const role of ["lab", "andrology", "admin"] as const) {
-      const required = dayCov[role] ?? 0
-      if (required === 0) continue
-
-      // Staff who naturally work this weekend day and have budget
-      const natural = staff.filter((s) => {
-        if (s.onboarding_status === "inactive") return false
-        if (s.role !== role) return false
-        if (s.start_date > wkDate) return false
-        if (s.end_date && s.end_date < wkDate) return false
-        if (leaveMap[s.id]?.has(wkDate)) return false
-        if (!(s.working_pattern ?? []).includes(wkd)) return false
-        return true
-      })
-
-      const deficit = required - natural.length
-      if (deficit <= 0) continue
-
-      // Draft extra staff for this weekend day (those not in pattern but base-eligible)
-      const extras = staff
-        .filter((s) => {
-          if (s.onboarding_status === "inactive") return false
-          if (s.role !== role) return false
-          if (s.start_date > wkDate) return false
-          if (s.end_date && s.end_date < wkDate) return false
-          if (leaveMap[s.id]?.has(wkDate)) return false
-          if ((s.working_pattern ?? []).includes(wkd)) return false // already natural
-          return true
-        })
-        .sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
-
-      for (let i = 0; i < Math.min(deficit, extras.length); i++) {
-        weekendReservation[extras[i].id] = (weekendReservation[extras[i].id] ?? 0) + 1
-      }
-    }
-  }
+  // Weekend reservation removed — Phase 1 pre-planning handles all 7 days uniformly
 
   // Canonical skills tracked for gap detection — only these five matter for rota coverage.
   // Intentionally excludes legacy/non-procedure skills (witnessing, iui, etc.).
@@ -241,9 +199,8 @@ export function runRotaEngine({
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
     const dayCoverage = labConfig.coverage_by_day?.[dayCode]
-    const staticLabMin = dayCoverage?.lab ?? (wknd ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage) : labConfig.min_lab_coverage)
-    const labReq = Math.max(staticLabMin, dynamicLabMin)
-    const andReq = dayCoverage?.andrology ?? (wknd ? labConfig.min_weekend_andrology : labConfig.min_andrology_coverage)
+    const labReq = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
+    const andReq = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
 
     for (const [role, required] of [["lab", labReq], ["andrology", andReq]] as const) {
       if (required <= 0) continue
@@ -278,9 +235,8 @@ export function runRotaEngine({
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
     const dayCoverage = labConfig.coverage_by_day?.[dayCode]
-    const staticLabMin = dayCoverage?.lab ?? (weekend ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage) : labConfig.min_lab_coverage)
-    const labRequired = Math.max(staticLabMin, dynamicLabMin)
-    const andrologyRequired = dayCoverage?.andrology ?? (weekend ? labConfig.min_weekend_andrology : labConfig.min_andrology_coverage)
+    const labRequired = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
+    const andrologyRequired = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
     const adminRequired = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
 
     // Eligibility: not on leave, active, has budget
