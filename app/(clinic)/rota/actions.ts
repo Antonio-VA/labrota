@@ -420,15 +420,15 @@ export async function generateRota(
   // Best-effort: set generation_type (column may not exist yet)
   await supabase.from("rotas").update({ generation_type: generationType } as never).eq("id", rotaId).then(() => {})
 
-  // Determine which dates have manual overrides (to preserve)
-  const overrideDates = new Set<string>()
+  // Determine which staff+date combos have manual overrides (to preserve individually)
+  const overrideKeys = new Set<string>() // "staffId:date"
   if (preserveOverrides) {
     const { data: overrides } = await supabase
       .from("rota_assignments")
-      .select("date")
+      .select("staff_id, date")
       .eq("rota_id", rotaId)
-      .eq("is_manual_override", true) as { data: { date: string }[] | null }
-    for (const o of overrides ?? []) overrideDates.add(o.date)
+      .eq("is_manual_override", true) as { data: { staff_id: string; date: string }[] | null }
+    for (const o of overrides ?? []) overrideKeys.add(`${o.staff_id}:${o.date}`)
   }
 
   // Delete existing non-override assignments (or all if !preserveOverrides)
@@ -498,19 +498,20 @@ export async function generateRota(
   }
   console.log("[rota-engine] Staff totals:", Object.values(staffCounts).map((s) => `${s.name}: ${s.count}/${s.budget}`).join(", "))
 
-  // Insert new assignments (skip override dates)
-  const toInsert = days
-    .filter((day) => !overrideDates.has(day.date))
-    .flatMap((day) =>
-      day.assignments.map((a) => ({
+  // Insert new assignments (skip individual staff+date that have manual overrides)
+  const toInsert = days.flatMap((day) =>
+    day.assignments
+      .filter((a) => !overrideKeys.has(`${a.staff_id}:${day.date}`))
+      .map((a) => ({
         organisation_id: orgId,
         rota_id: rotaId,
         staff_id: a.staff_id,
         date: day.date,
         shift_type: a.shift_type,
         is_manual_override: false,
+        function_label: "",
       }))
-    )
+  )
 
   if (toInsert.length === 0) {
     const staffCount = (staffRes.data ?? []).length

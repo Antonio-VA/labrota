@@ -286,27 +286,31 @@ export function runRotaEngine({
     let andrologyPool = sortedPreferred.filter((s) => s.role === "andrology")
     let adminPool     = sortedPreferred.filter((s) => s.role === "admin")
 
-    // 4. If preferred pool is below minimum coverage, pull in extra staff
-    if (labPool.length < labRequired) {
-      const extraLab = sortedExtra.filter((s) => s.role === "lab")
-      labPool = [...labPool, ...extraLab.slice(0, labRequired - labPool.length)]
-    }
-    if (andrologyPool.length < andrologyRequired) {
-      const extraAndrology = sortedExtra.filter((s) => s.role === "andrology")
-      andrologyPool = [...andrologyPool, ...extraAndrology.slice(0, andrologyRequired - andrologyPool.length)]
-    }
-    if (adminPool.length < adminRequired) {
-      const extraAdmin = sortedExtra.filter((s) => s.role === "admin")
-      adminPool = [...adminPool, ...extraAdmin.slice(0, adminRequired - adminPool.length)]
-    }
+    // 4. ALWAYS pull from extra pool to fill ALL available shifts
+    //    Hard rule: minimum coverage MUST be met if staff exist
+    //    Hard rule: assign all eligible staff up to their days_per_week cap
+    const extraLab = sortedExtra.filter((s) => s.role === "lab")
+    const extraAndrology = sortedExtra.filter((s) => s.role === "andrology")
+    const extraAdmin = sortedExtra.filter((s) => s.role === "admin")
 
-    // 5. Assign staff:
-    //    - Weekdays: all eligible (budget naturally limits across the week)
-    //    - Weekends: cap to coverage requirement (don't waste budget on overstaffing
-    //      Saturday when Sunday also needs coverage)
-    let assignedLab       = weekend ? labPool.slice(0, labRequired) : labPool
-    let assignedAndrology = weekend ? andrologyPool.slice(0, andrologyRequired) : andrologyPool
-    let assignedAdmin     = adminRequired > 0 ? (weekend ? adminPool.slice(0, adminRequired) : adminPool) : []
+    // Merge preferred + extra for full pools
+    labPool = [...labPool, ...extraLab]
+    andrologyPool = [...andrologyPool, ...extraAndrology]
+    adminPool = [...adminPool, ...extraAdmin]
+
+    // 5. Assign ALL eligible staff (budget is enforced by isBaseEligible)
+    //    Minimum coverage is guaranteed by including the extra pool
+    let assignedLab       = labPool
+    let assignedAndrology = andrologyPool
+    let assignedAdmin     = adminRequired > 0 ? adminPool : []
+
+    // Hard minimum: warn if we can't meet coverage
+    if (assignedLab.length < labRequired) {
+      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${assignedLab.length} embriología (mínimo ${labRequired})`)
+    }
+    if (assignedAndrology.length < andrologyRequired) {
+      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${assignedAndrology.length} andrología (mínimo ${andrologyRequired})`)
+    }
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
