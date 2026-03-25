@@ -384,10 +384,26 @@ export function runRotaEngine({
       }
 
       if (hardRemovals.size > 0) {
-        assignedLab       = assignedLab.filter((s) => !hardRemovals.has(s.id))
-        assignedAndrology = assignedAndrology.filter((s) => !hardRemovals.has(s.id))
-        assignedAdmin     = assignedAdmin.filter((s) => !hardRemovals.has(s.id))
-        assigned          = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
+        // Only remove if the person has ALREADY met their days_per_week.
+        // Otherwise keep them assigned (shift usage is the priority) and warn.
+        const actualRemovals = new Set<string>()
+        for (const id of hardRemovals) {
+          const s = assigned.find((a) => a.id === id)
+          if (!s) continue
+          const used = weeklyShiftCount[id] ?? 0
+          const cap = s.days_per_week ?? 5
+          if (used >= cap) {
+            actualRemovals.add(id) // already at cap, safe to remove
+          } else {
+            warnings.push(`${date}: ${s.first_name} ${s.last_name} — regla de planificación ignorada para cumplir turnos disponibles`)
+          }
+        }
+        if (actualRemovals.size > 0) {
+          assignedLab       = assignedLab.filter((s) => !actualRemovals.has(s.id))
+          assignedAndrology = assignedAndrology.filter((s) => !actualRemovals.has(s.id))
+          assignedAdmin     = assignedAdmin.filter((s) => !actualRemovals.has(s.id))
+          assigned          = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
+        }
       }
     }
 
