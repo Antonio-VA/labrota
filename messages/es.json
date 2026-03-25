@@ -419,7 +419,7 @@
   },
   "lab": {
     "title": "Laboratorio",
-    "configuration": "Configuración del laboratorio",
+    "configuration": "Laboratorio",
     "savedAutomatically": "Los cambios se guardan automáticamente",
     "sections": {
       "coverage": "Cobertura mínima",

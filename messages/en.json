@@ -419,7 +419,7 @@
   },
   "lab": {
     "title": "Lab",
-    "configuration": "Lab configuration",
+    "configuration": "Lab",
     "savedAutomatically": "Changes are saved automatically",
     "sections": {
       "coverage": "Minimum coverage",
