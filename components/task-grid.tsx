@@ -828,19 +828,22 @@ export function TaskGrid({
               style={d.getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
             >
               <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
-              <div className="flex items-center gap-1">
-                <span className={cn(
-                  "shrink-0 font-semibold leading-none",
-                  compact ? "text-[13px]" : "text-[15px]",
-                  isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
-                  : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
-                )}>
-                  {dayNum}
-                </span>
-                {holidayName && (
-                  <span className="text-[8px] text-amber-600 dark:text-amber-400 leading-[1.1] line-clamp-2 text-left">{holidayName}</span>
-                )}
-              </div>
+              <span className={cn(
+                "font-semibold leading-none",
+                compact ? "text-[13px]" : "text-[15px]",
+                isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
+              )}>
+                {dayNum}
+              </span>
+              {holidayName && (
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>
+                  } />
+                  <TooltipContent side="bottom">{holidayName}</TooltipContent>
+                </Tooltip>
+              )}
               <PuncBiopsyEdit
                 date={day.date}
                 value={effectiveP}

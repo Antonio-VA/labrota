@@ -1937,20 +1937,23 @@ function ShiftGrid({
                   className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
                   <span className="text-[11px] uppercase tracking-wider leading-none" style={{ color: "var(--muted-foreground)" }}>{wday}</span>
-                  <div className="flex items-center gap-1">
-                    <span className={cn(
-                      "shrink-0 flex items-center justify-center rounded-full font-medium leading-none",
-                      today
-                        ? "size-7 bg-primary text-primary-foreground text-[15px]"
-                        : "text-[20px]"
-                    )} style={!today ? { color: holidayName ? "#D97706" : day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
-                      {dayN}
-                    </span>
-                    {holidayName && (
-                      <span className="text-[8px] text-amber-600 dark:text-amber-400 leading-[1.1] line-clamp-2 text-left">{holidayName}</span>
-                    )}
+                  <div className={cn(
+                    "flex items-center justify-center rounded-full font-medium leading-none",
+                    today
+                      ? "size-7 bg-primary text-primary-foreground text-[15px]"
+                      : "text-[20px]"
+                  )} style={!today ? { color: holidayName ? "#D97706" : day.isWeekend ? "var(--muted-foreground)" : "var(--primary)" } : undefined}>
+                    {dayN}
                   </div>
                 </button>
+                {holidayName && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>
+                    } />
+                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
+                  </Tooltip>
+                )}
 
                 {/* Punciones + biopsias — single clickable area */}
                 {(() => {

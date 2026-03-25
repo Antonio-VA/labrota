@@ -84,23 +84,69 @@ function easterSunday(year: number): Date {
   return new Date(year, month - 1, day)
 }
 
-function getPublicHolidays(year: number): Record<string, string> {
+function getPublicHolidays(year: number, country = "ES"): Record<string, string> {
   const easter = easterSunday(year)
-  const goodFriday = new Date(easter)
-  goodFriday.setDate(goodFriday.getDate() - 2)
+  const goodFriday = new Date(easter); goodFriday.setDate(goodFriday.getDate() - 2)
+  const easterMonday = new Date(easter); easterMonday.setDate(easter.getDate() + 1)
   const fmt = (d: Date) => d.toISOString().split("T")[0]
-  return {
-    [`${year}-01-01`]: "Año Nuevo",
-    [`${year}-01-06`]: "Reyes Magos",
-    [fmt(goodFriday)]:  "Viernes Santo",
-    [`${year}-05-01`]: "Día del Trabajo",
-    [`${year}-08-15`]: "Asunción de la Virgen",
-    [`${year}-10-12`]: "Día de la Hispanidad",
-    [`${year}-11-01`]: "Todos los Santos",
-    [`${year}-12-06`]: "Día de la Constitución",
-    [`${year}-12-08`]: "Inmaculada Concepción",
-    [`${year}-12-25`]: "Navidad",
+
+  const HOLIDAYS: Record<string, Record<string, string>> = {
+    ES: {
+      [`${year}-01-01`]: "Año Nuevo",
+      [`${year}-01-06`]: "Reyes Magos",
+      [fmt(goodFriday)]: "Viernes Santo",
+      [`${year}-05-01`]: "Día del Trabajo",
+      [`${year}-08-15`]: "Asunción de la Virgen",
+      [`${year}-10-12`]: "Día de la Hispanidad",
+      [`${year}-11-01`]: "Todos los Santos",
+      [`${year}-12-06`]: "Día de la Constitución",
+      [`${year}-12-08`]: "Inmaculada Concepción",
+      [`${year}-12-25`]: "Navidad",
+    },
+    AE: {
+      [`${year}-01-01`]: "New Year's Day",
+      [`${year}-12-01`]: "Commemoration Day",
+      [`${year}-12-02`]: "National Day",
+      [`${year}-12-03`]: "National Day Holiday",
+    },
+    GB: {
+      [`${year}-01-01`]: "New Year's Day",
+      [fmt(goodFriday)]: "Good Friday",
+      [fmt(easterMonday)]: "Easter Monday",
+      [`${year}-05-05`]: "Early May Bank Holiday",
+      [`${year}-05-26`]: "Spring Bank Holiday",
+      [`${year}-08-25`]: "Summer Bank Holiday",
+      [`${year}-12-25`]: "Christmas Day",
+      [`${year}-12-26`]: "Boxing Day",
+    },
+    US: {
+      [`${year}-01-01`]: "New Year's Day",
+      [`${year}-07-04`]: "Independence Day",
+      [`${year}-11-11`]: "Veterans Day",
+      [`${year}-12-25`]: "Christmas Day",
+    },
+    IN: {
+      [`${year}-01-26`]: "Republic Day",
+      [`${year}-08-15`]: "Independence Day",
+      [`${year}-10-02`]: "Gandhi Jayanti",
+      [`${year}-12-25`]: "Christmas",
+    },
+    PT: {
+      [`${year}-01-01`]: "Ano Novo",
+      [fmt(goodFriday)]: "Sexta-feira Santa",
+      [`${year}-04-25`]: "Dia da Liberdade",
+      [`${year}-05-01`]: "Dia do Trabalhador",
+      [`${year}-06-10`]: "Dia de Portugal",
+      [`${year}-08-15`]: "Assunção de Nossa Senhora",
+      [`${year}-10-05`]: "Implantação da República",
+      [`${year}-11-01`]: "Todos os Santos",
+      [`${year}-12-01`]: "Restauração da Independência",
+      [`${year}-12-08`]: "Imaculada Conceição",
+      [`${year}-12-25`]: "Natal",
+    },
   }
+
+  return HOLIDAYS[country] ?? HOLIDAYS["ES"] ?? {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -209,7 +255,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   // Compute public holidays for every year spanned by this week
   const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
-  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
+  const orgCountry = (labConfig as { country?: string } | null)?.country || "ES"
+  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry)))
 
   if (!rota) {
     return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3 }
@@ -1017,7 +1064,8 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
   // Public holidays
   const years = [...new Set(gridDates.map((d) => parseInt(d.slice(0, 4))))]
-  const holidays: Record<string, string> = Object.assign({}, ...years.map(getPublicHolidays))
+  const monthCountry = (labConfigRes.data as { country?: string } | null)?.country || "ES"
+  const holidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, monthCountry)))
 
   // Week statuses
   const rotaMap = Object.fromEntries((rotasRes.data ?? []).map((r) => [r.week_start, r.status]))
