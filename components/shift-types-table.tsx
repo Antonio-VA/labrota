@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useTransition } from "react"
+import { useState, useRef, useTransition, useEffect } from "react"
 import { GripVertical, Plus, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,7 +49,12 @@ function newRow(): ShiftRow {
   }
 }
 
-export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefinition[] }) {
+export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, registerSave }: {
+  initialTypes: ShiftTypeDefinition[]
+  hideSaveButton?: boolean
+  onSaveComplete?: (ok: boolean) => void
+  registerSave?: (fn: () => void) => void
+}) {
   const [rows, setRows] = useState<ShiftRow[]>(initialTypes.map(rowFromDefinition))
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
@@ -123,6 +128,8 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { registerSave?.(() => handleSave()) }, [registerSave])
   function handleSave() {
     setStatus("idle")
     startTransition(async () => {
@@ -140,11 +147,12 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
       if (result.error) {
         setErrorMsg(result.error)
         setStatus("error")
+        onSaveComplete?.(false)
       } else {
         setStatus("success")
-        // Mark all as saved
         setRows((prev) => prev.map((r) => ({ ...r, isNew: false })))
         setTimeout(() => setStatus("idle"), 3000)
+        onSaveComplete?.(true)
       }
     })
   }
@@ -246,7 +254,6 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
 
               {/* Day toggles */}
               <div className="flex items-center gap-1 pl-8 mt-1">
-                <span className="text-[10px] text-muted-foreground/60 mr-1">Días</span>
                 {ALL_DAYS.map((day) => {
                   const active = row.active_days.includes(day)
                   return (
@@ -314,7 +321,7 @@ export function ShiftTypesTable({ initialTypes }: { initialTypes: ShiftTypeDefin
       </button>
 
       {/* Save footer */}
-      <div className="flex items-center gap-3 pt-1">
+      <div className={cn("flex items-center gap-3 pt-1", hideSaveButton && "hidden")}>
         <Button onClick={handleSave} disabled={isPending || hasErrors} size="sm">
           {isPending ? "Guardando…" : "Guardar turnos"}
         </Button>

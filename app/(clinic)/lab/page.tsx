@@ -4,8 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
-import { ShiftTypesTable } from "@/components/shift-types-table"
-import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
+import { TurnosTab } from "@/components/turnos-tab"
 import { TécnicasTab } from "@/components/tecnicas-tab"
 import { PlantillasTab } from "@/components/plantillas-tab"
 import { DepartmentsTab } from "@/components/departments-tab"
@@ -93,15 +92,10 @@ export default async function LabConfigPage() {
               </div>
             }
             turnos={
-              <div className="flex flex-col gap-4">
-                <div className="rounded-lg border border-border bg-background px-5 py-4">
-                  <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                    {t("sections.shifts")}
-                  </p>
-                  <ShiftTypesTable initialTypes={shiftTypes} />
-                </div>
-                <ShiftRotationSetting initialValue={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"} />
-              </div>
+              <TurnosTab
+                initialTypes={shiftTypes}
+                initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"}
+              />
             }
             notas={
               <div className="rounded-lg border border-border bg-background px-5 py-4">

@@ -1,30 +1,37 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import { ArrowRightLeft, RefreshCw, Lock } from "lucide-react"
+import { ArrowRightLeft, RefreshCw, Anchor } from "lucide-react"
 
-type RotationMode = "stable" | "weekly" | "daily"
+export type RotationMode = "stable" | "weekly" | "daily"
 
-const OPTIONS: { key: RotationMode; label: string; desc: string; icon: typeof Lock }[] = [
-  { key: "stable", label: "Estable", desc: "Misma persona, mismo turno cada semana", icon: Lock },
+const OPTIONS: { key: RotationMode; label: string; desc: string; icon: typeof Anchor }[] = [
+  { key: "stable", label: "Estable", desc: "Misma persona, mismo turno cada semana", icon: Anchor },
   { key: "weekly", label: "Rotación semanal", desc: "Mismo turno toda la semana, cambia la siguiente", icon: RefreshCw },
   { key: "daily", label: "Rotación diaria", desc: "Cada día un turno diferente dentro de la semana", icon: ArrowRightLeft },
 ]
 
-export function ShiftRotationSetting({ initialValue }: { initialValue: string }) {
+export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
+  initialValue: string
+  onChange?: (mode: RotationMode) => void
+  registerSave?: (fn: () => Promise<void>) => void
+}) {
   const [value, setValue] = useState<RotationMode>((initialValue as RotationMode) || "stable")
   const [isPending, startTransition] = useTransition()
 
+  useEffect(() => {
+    registerSave?.(async () => {
+      const result = await updateLabConfig({ shift_rotation: value })
+      if (result?.error) toast.error(result.error)
+    })
+  }, [value, registerSave])
+
   function handleChange(mode: RotationMode) {
     setValue(mode)
-    startTransition(async () => {
-      const result = await updateLabConfig({ shift_rotation: mode })
-      if (result?.error) { toast.error(result.error); return }
-      toast.success("Rotación de turnos actualizada")
-    })
+    onChange?.(mode)
   }
 
   return (
