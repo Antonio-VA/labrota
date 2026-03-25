@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
-import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3 } from "lucide-react"
+import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3, Settings } from "lucide-react"
 import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit } from "@/lib/role-context"
@@ -105,6 +105,7 @@ export function AppSidebar() {
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports" },
+    { key: "settings", icon: Settings,     href: "/settings" },
   ] as const : [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },

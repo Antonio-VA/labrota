@@ -8,25 +8,30 @@ import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { toast } from "sonner"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 
-export function TurnosTab({ initialTypes, initialRotation }: {
+export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
   initialTypes: ShiftTypeDefinition[]
   initialRotation: string
+  rotaDisplayMode?: string
 }) {
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
-  const [shiftSaveFn, setShiftSaveFn] = useState<(() => void) | null>(null)
+  const [shiftSaveFn, setShiftSaveFn] = useState<(() => Promise<boolean>) | null>(null)
   const [rotationSaveFn, setRotationSaveFn] = useState<(() => Promise<void>) | null>(null)
 
-  const registerShiftSave = useCallback((fn: () => void) => setShiftSaveFn(() => fn), [])
+  const registerShiftSave = useCallback((fn: () => Promise<boolean>) => setShiftSaveFn(() => fn), [])
   const registerRotationSave = useCallback((fn: () => Promise<void>) => setRotationSaveFn(() => fn), [])
 
   function handleSaveAll() {
     startTransition(async () => {
-      shiftSaveFn?.()
+      const shiftOk = await shiftSaveFn?.() ?? true
       await rotationSaveFn?.()
-      setSaved(true)
-      toast.success("Cambios guardados")
-      setTimeout(() => setSaved(false), 3000)
+      if (shiftOk) {
+        setSaved(true)
+        toast.success("Cambios guardados")
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        toast.error("Error al guardar turnos")
+      }
     })
   }
 
@@ -40,6 +45,7 @@ export function TurnosTab({ initialTypes, initialRotation }: {
           initialTypes={initialTypes}
           hideSaveButton
           registerSave={registerShiftSave}
+          daysReadOnly={rotaDisplayMode === "by_task"}
         />
       </div>
 

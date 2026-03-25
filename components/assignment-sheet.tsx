@@ -702,51 +702,52 @@ export function AssignmentSheet({
               )
             )}
           </div>
-          {/* Punctions */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12px] text-muted-foreground">Punciones:</span>
-            {editingP ? (
-              <input
-                autoFocus
-                type="number"
-                min={0}
-                value={pDraft}
-                onChange={(e) => setPDraft(e.target.value)}
-                onBlur={commitPunctions}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitPunctions()
-                  if (e.key === "Escape") setEditingP(false)
-                }}
-                className="w-10 text-[12px] text-center border border-primary rounded px-0.5 outline-none bg-background"
-              />
-            ) : (
-              <button
-                onClick={() => {
-                  if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
-                }}
-                className={cn(
-                  "flex items-center gap-1 text-[12px] font-medium",
-                  hasOverride ? "text-primary" : "text-foreground",
-                  !isPublished && rota && "hover:text-primary cursor-pointer"
-                )}
-              >
-                <span>{effectiveP}</span>
-                {!isPublished && rota && <Pencil className="size-2.5 text-muted-foreground" />}
-              </button>
+          {/* Punctions + Biopsias — aligned on same row */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] text-muted-foreground">P:</span>
+              {editingP ? (
+                <input
+                  autoFocus
+                  type="number"
+                  min={0}
+                  value={pDraft}
+                  onChange={(e) => setPDraft(e.target.value)}
+                  onBlur={commitPunctions}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitPunctions()
+                    if (e.key === "Escape") setEditingP(false)
+                  }}
+                  className="w-10 text-[12px] text-center border border-primary rounded px-0.5 outline-none bg-background"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
+                  }}
+                  className={cn(
+                    "flex items-center gap-1 text-[12px] font-medium",
+                    hasOverride ? "text-primary" : "text-foreground",
+                    !isPublished && rota && "hover:text-primary cursor-pointer"
+                  )}
+                >
+                  <span>{effectiveP}</span>
+                  {!isPublished && rota && <Pencil className="size-2.5 text-muted-foreground" />}
+                </button>
+              )}
+            </div>
+            {biopsyForecast !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] text-muted-foreground">B:</span>
+                <input
+                  type="number"
+                  min={0}
+                  defaultValue={biopsyForecast}
+                  className="w-10 text-[12px] font-medium text-center border border-input rounded px-1 py-0.5 bg-background outline-none focus:border-primary"
+                />
+              </div>
             )}
           </div>
-          {/* Biopsias previstas — editable */}
-          {biopsyForecast !== undefined && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="text-[12px] text-muted-foreground">Biopsias previstas:</span>
-              <input
-                type="number"
-                min={0}
-                defaultValue={biopsyForecast}
-                className="w-10 text-[12px] font-medium text-center border border-input rounded px-1 py-0.5 bg-background outline-none focus:border-primary"
-              />
-            </div>
-          )}
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}

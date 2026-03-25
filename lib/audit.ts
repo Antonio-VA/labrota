@@ -9,6 +9,7 @@ export type AuditAction =
   | "leave_created" | "leave_updated" | "leave_deleted"
   | "skill_updated"
   | "day_regenerated"
+  | "user_invited" | "user_role_changed" | "user_removed"
 
 interface AuditEvent {
   orgId: string

@@ -321,6 +321,7 @@ export interface OrganisationMember {
   user_id:         string
   display_name:    string | null
   role:            string
+  linked_staff_id: string | null
   created_at:      string
 }
 

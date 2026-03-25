@@ -96,6 +96,7 @@ export default async function LabConfigPage() {
               <TurnosTab
                 initialTypes={shiftTypes}
                 initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"}
+                rotaDisplayMode={rotaDisplayMode}
               />
             }
             notas={

@@ -49,11 +49,12 @@ function newRow(): ShiftRow {
   }
 }
 
-export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, registerSave }: {
+export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, registerSave, daysReadOnly }: {
   initialTypes: ShiftTypeDefinition[]
   hideSaveButton?: boolean
   onSaveComplete?: (ok: boolean) => void
-  registerSave?: (fn: () => void) => void
+  registerSave?: (fn: () => Promise<boolean>) => void
+  daysReadOnly?: boolean
 }) {
   const [rows, setRows] = useState<ShiftRow[]>(initialTypes.map(rowFromDefinition))
   const [isPending, startTransition] = useTransition()
@@ -128,46 +129,50 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  const saveRef = useRef<() => void>(() => {})
+  const saveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true))
   useEffect(() => { registerSave?.(() => saveRef.current()) }, [registerSave])
-  function handleSave() {
+
+  async function doSave(): Promise<boolean> {
     setStatus("idle")
-    startTransition(async () => {
-      const types = rows.map((r) => ({
-        code: r.code.trim().toUpperCase(),
-        name_es: r.name_es.trim(),
-        name_en: r.name_en.trim() || r.name_es.trim(),
-        start_time: r.start_time,
-        end_time: r.end_time,
-        sort_order: 0, // overwritten by saveShiftTypes
-        active: true,
-        active_days: r.active_days,
-      }))
-      const result = await saveShiftTypes(types)
-      if (result.error) {
-        setErrorMsg(result.error)
-        setStatus("error")
-        onSaveComplete?.(false)
-      } else {
-        setStatus("success")
-        setRows((prev) => prev.map((r) => ({ ...r, isNew: false })))
-        setTimeout(() => setStatus("idle"), 3000)
-        onSaveComplete?.(true)
-      }
-    })
+    const types = rows.map((r) => ({
+      code: r.code.trim().toUpperCase(),
+      name_es: r.name_es.trim(),
+      name_en: r.name_en.trim() || r.name_es.trim(),
+      start_time: r.start_time,
+      end_time: r.end_time,
+      sort_order: 0,
+      active: true,
+      active_days: r.active_days,
+    }))
+    const result = await saveShiftTypes(types)
+    if (result.error) {
+      setErrorMsg(result.error)
+      setStatus("error")
+      onSaveComplete?.(false)
+      return false
+    }
+    setStatus("success")
+    setRows((prev) => prev.map((r) => ({ ...r, isNew: false })))
+    setTimeout(() => setStatus("idle"), 3000)
+    onSaveComplete?.(true)
+    return true
   }
-  saveRef.current = handleSave
+
+  function handleSave() {
+    startTransition(() => { doSave() })
+  }
+  saveRef.current = doSave
 
   return (
     <div className="flex flex-col gap-3">
       {/* Column headers */}
       <div className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
         <span />
-        <span className="text-[11px] text-muted-foreground">Código</span>
-        <span className="text-[11px] text-muted-foreground">Inicio</span>
-        <span className="text-[11px] text-muted-foreground">Fin</span>
-        <span className="text-[11px] text-muted-foreground">Nombre</span>
-        <span className="text-[11px] text-muted-foreground">Días activos</span>
+        <span className="text-[11px] text-muted-foreground text-center">Código</span>
+        <span className="text-[11px] text-muted-foreground text-center">Inicio</span>
+        <span className="text-[11px] text-muted-foreground text-center">Fin</span>
+        <span className="text-[11px] text-muted-foreground text-center">Nombre</span>
+        <span className="text-[11px] text-muted-foreground text-center">Días activos</span>
         <span />
       </div>
 
@@ -242,7 +247,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                       <button
                         key={day}
                         type="button"
-                        disabled={isPending}
+                        disabled={isPending || daysReadOnly}
                         onClick={() => {
                           const next = active
                             ? row.active_days.filter((d) => d !== day)

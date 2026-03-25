@@ -259,7 +259,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
     >
       <span className="truncate">{first} {last[0]}.</span>
       {pillLabel && pillColor ? (
-        <span className={cn("font-semibold px-1 py-0.5 rounded ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
+        <span className={cn("font-semibold px-1 py-0.5 rounded border ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}>
           {isTrainingTecnica && <Hourglass className="size-2 text-amber-500" />}
           {pillLabel}
         </span>
@@ -2035,7 +2035,7 @@ function ShiftGrid({
           <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             {/* Shift label — right-aligned, three-line: code / start / end */}
             <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
-              <span className="text-[10px] leading-tight font-medium" style={{ color: "var(--muted-foreground)" }}>{shiftRow}</span>
+              <span className="text-[11px] leading-tight font-semibold text-foreground">{shiftRow}</span>
               <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
                 {shiftTypeMap[shiftRow]?.start_time ? formatTime(shiftTypeMap[shiftRow].start_time, timeFormat) : shiftRow}
               </span>

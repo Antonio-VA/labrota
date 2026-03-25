@@ -17,6 +17,9 @@ const ACTION_LABELS: Record<string, string> = {
   leave_deleted: "Ausencia eliminada",
   day_regenerated: "Día regenerado",
   skill_updated: "Habilidad actualizada",
+  user_invited: "Usuario invitado",
+  user_role_changed: "Rol de usuario cambiado",
+  user_removed: "Usuario eliminado",
 }
 
 const ACTION_COLORS: Record<string, string> = {
@@ -28,6 +31,9 @@ const ACTION_COLORS: Record<string, string> = {
   staff_created: "bg-teal-100 text-teal-700",
   staff_updated: "bg-teal-100 text-teal-700",
   day_regenerated: "bg-blue-100 text-blue-700",
+  user_invited: "bg-teal-100 text-teal-700",
+  user_role_changed: "bg-purple-100 text-purple-700",
+  user_removed: "bg-red-100 text-red-700",
 }
 
 function summarize(entry: AuditLogEntry): string {

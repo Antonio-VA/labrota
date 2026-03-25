@@ -110,6 +110,14 @@ DO $$ BEGIN
     ));
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
+
+-- 9. Linked staff for viewer users
+ALTER TABLE public.organisation_members ADD COLUMN IF NOT EXISTS linked_staff_id uuid REFERENCES public.staff(id) ON DELETE SET NULL;
+```
+
+### 9. Linked staff for viewer users
+```sql
+ALTER TABLE public.organisation_members ADD COLUMN IF NOT EXISTS linked_staff_id uuid REFERENCES public.staff(id) ON DELETE SET NULL;
 ```
 
 All use `IF NOT EXISTS` / `IF EXISTS` so they're safe to re-run.
