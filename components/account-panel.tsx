@@ -26,9 +26,9 @@ const ACCENT_COLORS = [
 ]
 
 const THEME_OPTIONS: { key: UserPreferences["theme"]; label: string; icon: React.ReactNode }[] = [
-  { key: "light", label: "Claro",      icon: <Sun className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
-  { key: "dark",  label: "Oscuro",     icon: <Moon className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
-  { key: "auto",  label: "Automático", icon: <Monitor className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-110" /> },
+  { key: "light", label: "Claro",      icon: <Sun className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
+  { key: "dark",  label: "Oscuro",     icon: <Moon className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
+  { key: "auto",  label: "Automático", icon: <Monitor className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
 ]
 
 export function AccountPanel({ open, onClose, user }: {
@@ -107,7 +107,7 @@ export function AccountPanel({ open, onClose, user }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <p className="text-[15px] font-medium">Mi cuenta</p>
           <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted transition-all duration-200 ease-out">
-            <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110" />
+            <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110 hover:rotate-90" />
           </button>
         </div>
 
@@ -203,7 +203,7 @@ export function AccountPanel({ open, onClose, user }: {
                     "size-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-out",
                     prefs.accentColor === c.hex
                       ? "border-foreground scale-110"
-                      : "border-transparent hover:scale-110 hover:shadow-sm"
+                      : "border-transparent hover:scale-125 hover:shadow-sm"
                   )}
                   style={{ background: c.hex }}
                 >

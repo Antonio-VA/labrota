@@ -342,72 +342,93 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
               : { top: pos.top }),
           }}
         >
-          <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Técnica principal</p>
-          <div className="flex flex-col">
-            {availableTecnicas.map((tec) => {
-              const isActive = currentLabel === tec.codigo
-              const isTraining = staffSkills.find((s) => s.skill === tec.codigo)?.level === "training"
-              const pillColor = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
-              return (
-                <button
-                  key={tec.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onFunctionSave(assignment.id, isActive ? null : tec.codigo)
-                    setOpen(false)
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                    isActive ? "bg-accent" : "hover:bg-muted"
-                  )}
-                >
-                  <span className={cn(
-                    "text-[10px] font-semibold py-0.5 rounded border shrink-0 w-9 text-center inline-flex items-center justify-center",
-                    pillColor,
-                    isActive && "ring-1 ring-offset-1 ring-current"
-                  )}>
-                    {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
-                    {tec.codigo}
-                  </span>
-                  <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
-                </button>
-              )
-            })}
-          </div>
-          {/* Sub-departments */}
+          <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
+          {/* Departamento section — sub-departments grouped under parent */}
           {(() => {
             const subDepts = departments.filter((d) => d.parent_id != null)
             if (subDepts.length === 0) return null
+            const parentMap = new Map(departments.filter((d) => d.parent_id == null).map((d) => [d.id, d]))
+            const grouped = new Map<string, typeof subDepts>()
+            for (const sd of subDepts) {
+              const pid = sd.parent_id!
+              if (!grouped.has(pid)) grouped.set(pid, [])
+              grouped.get(pid)!.push(sd)
+            }
             return (
               <>
-                <div className="h-px bg-border mx-2 my-1" />
-                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Sub-departamento</p>
-                <div className="flex flex-col">
-                  {subDepts.map((dept) => {
-                    const isActive = currentLabel === dept.code
-                    return (
-                      <button
-                        key={dept.id}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onFunctionSave(assignment.id, isActive ? null : dept.code)
-                          setOpen(false)
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                          isActive ? "bg-accent" : "hover:bg-muted"
-                        )}
-                      >
-                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
-                        <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
-                        {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                      </button>
-                    )
-                  })}
-                </div>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
+                {[...grouped.entries()].map(([pid, children]) => {
+                  const parent = parentMap.get(pid)
+                  return (
+                    <div key={pid}>
+                      {parent && <p className="text-[10px] text-muted-foreground/60 px-2.5 pt-1 pb-0.5">{parent.name}</p>}
+                      <div className="flex flex-col">
+                        {children.map((dept) => {
+                          const isActive = currentLabel === dept.code
+                          return (
+                            <button
+                              key={dept.id}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onFunctionSave(assignment.id, isActive ? null : dept.code)
+                                setOpen(false)
+                              }}
+                              className={cn(
+                                "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                                isActive ? "bg-accent" : "hover:bg-muted"
+                              )}
+                            >
+                              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                              <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                              {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </>
             )
           })()}
+          {/* Tareas section — techniques the staff member is qualified for */}
+          {availableTecnicas.length > 0 && (
+            <>
+              <div className="h-px bg-border mx-2 my-1" />
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Tareas</p>
+              <div className="flex flex-col">
+                {availableTecnicas.map((tec) => {
+                  const isActive = currentLabel === tec.codigo
+                  const isTraining = staffSkills.find((s) => s.skill === tec.codigo)?.level === "training"
+                  const pillColor = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
+                  return (
+                    <button
+                      key={tec.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onFunctionSave(assignment.id, isActive ? null : tec.codigo)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                        isActive ? "bg-accent" : "hover:bg-muted"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-[10px] font-semibold py-0.5 rounded border shrink-0 w-9 text-center inline-flex items-center justify-center",
+                        pillColor,
+                        isActive && "ring-1 ring-offset-1 ring-current"
+                      )}>
+                        {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
+                        {tec.codigo}
+                      </span>
+                      <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>,
         document.body
       )}
@@ -3430,7 +3451,7 @@ export function CalendarPanel({ refreshKey = 0, chatOpen = false }: { refreshKey
               </Button>
             </div>
           )}
-          {(showActions || hasAssignments) && !loadingWeek && (
+          {(showActions || hasAssignments) && (
             <OverflowMenu items={[
               // ── Generate (inside overflow when chat open OR narrow screen) ──
               ...(showActions && !isPublished ? [{
