@@ -49,6 +49,7 @@ export interface EngineParams {
   punctionsOverride?: Record<string, number>  // per-date overrides from rota record
   rules?: RotaRule[]             // enabled scheduling rules
   tecnicas?: { codigo: string; typical_shifts: string[] }[]  // for shift preference
+  shiftRotation?: "stable" | "weekly" | "daily"
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export function runRotaEngine({
   punctionsOverride,
   rules = [],
   tecnicas = [],
+  shiftRotation = "stable",
 }: EngineParams): RotaEngineResult {
   const days: DayPlan[] = []
   const warnings: string[] = []
@@ -398,7 +400,8 @@ export function runRotaEngine({
     const defaultShiftCodes = shiftCodes.length > 0 ? shiftCodes : ["T1"]
 
     // Distribute staff across shifts — same logic for all roles:
-    // 1. Technique typical_shift  2. Preferred shift  3. Round-robin
+    // 1. Technique typical_shift  2. Preferred shift  3. Rotation fallback
+    const dayIndex = allDates.indexOf(date)
     let dayRrIdx = 0
     days.push({
       date,
@@ -424,9 +427,34 @@ export function runRotaEngine({
           // 2. Staff preferred shift
           shift = s.preferred_shift as ShiftType
         } else {
-          // 3. Round-robin fallback
-          shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
-          dayRrIdx++
+          // 3. Rotation fallback — lowest priority
+          const rotation = shiftRotation ?? "stable"
+          if (rotation === "stable") {
+            // Check last week's assignment for this person
+            const lastShift = recentAssignments
+              .filter((a) => a.staff_id === s.id)
+              .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
+            if (lastShift && activeShiftSet.has(lastShift)) {
+              shift = lastShift as ShiftType
+            } else {
+              shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+              dayRrIdx++
+            }
+          } else if (rotation === "weekly") {
+            // Same shift all week, rotate from last week
+            const lastShift = recentAssignments
+              .filter((a) => a.staff_id === s.id)
+              .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
+            const lastIdx = lastShift ? defaultShiftCodes.indexOf(lastShift) : -1
+            const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
+            shift = defaultShiftCodes[nextIdx] as ShiftType
+          } else {
+            // Daily rotation: cycle through shifts by day index
+            // Each person gets a stable offset so they start at different shifts
+            const staffIdx = staff.indexOf(s)
+            const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
+            shift = defaultShiftCodes[shiftIdx] as ShiftType
+          }
         }
         return { staff_id: s.id, shift_type: shift }
       }),

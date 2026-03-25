@@ -519,6 +519,7 @@ export async function generateRota(
     punctionsOverride,
     rules: (rulesRes.data ?? []) as RotaRule[],
     tecnicas: (tecnicasForEngine.data ?? []).map((t) => ({ codigo: t.codigo, typical_shifts: t.typical_shifts ?? [] })),
+    shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
   })
 
   // Log engine output for debugging

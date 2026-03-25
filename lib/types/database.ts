@@ -193,6 +193,7 @@ export interface LabConfig {
   biopsy_day5_pct:          number  // 0-1, default 0.5
   biopsy_day6_pct:          number  // 0-1, default 0.5
   task_conflict_threshold:  number  // minimum 2, default 3
+  shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_notes:             boolean
   shift_name_am_es:         string
   shift_name_pm_es:         string
@@ -240,6 +241,7 @@ export type LabConfigUpdate = {
   biopsy_day5_pct?:          number
   biopsy_day6_pct?:          number
   task_conflict_threshold?:  number
+  shift_rotation?:           "stable" | "weekly" | "daily"
   enable_notes?:             boolean
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
