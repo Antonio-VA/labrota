@@ -183,7 +183,7 @@ export function AccountPanel({ open, onClose, user }: {
                     "group/btn flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all duration-200 ease-out text-[12px] hover:shadow-sm",
                     prefs.theme === opt.key
                       ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border text-muted-foreground hover:bg-muted/50 hover:border-border/80"
+                      : "border-border text-muted-foreground hover:bg-muted hover:border-border/80"
                   )}
                 >
                   {opt.icon}

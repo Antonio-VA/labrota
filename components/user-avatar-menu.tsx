@@ -124,14 +124,14 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
           {/* Preferences */}
           <button
             onClick={openAccount}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
           >
             <UserCog className="size-3.5" />
             Preferencias
           </button>
           <button
             onClick={() => { setOpen(false); setSupportOpen(true) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
           >
             <HelpCircle className="size-3.5" />
             Soporte
@@ -144,7 +144,7 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
               <button
                 key={key}
                 onClick={() => handleThemeChange(key)}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-muted transition-[background-color] duration-75"
               >
                 <Icon className="size-3.5 text-muted-foreground" />
                 <span className="flex-1">{label}</span>

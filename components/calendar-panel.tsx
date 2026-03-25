@@ -592,8 +592,8 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
                 disabled={item.disabled}
                 className={cn(
                   "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-[background-color] duration-75 disabled:opacity-50",
-                  item.destructive ? "text-destructive hover:bg-destructive/10" :
-                  item.active ? "bg-accent/15 hover:bg-accent/25" : "hover:bg-accent/15"
+                  item.destructive ? "text-destructive hover:bg-destructive/15" :
+                  item.active ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted"
                 )}
               >
                 {item.icon}
