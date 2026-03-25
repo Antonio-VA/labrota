@@ -1729,6 +1729,13 @@ function ShiftGrid({
     if (result.error) { toast.error(result.error); onRefresh() }
   }
 
+  // Debounced refresh — batches rapid changes into one server fetch
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function debouncedRefresh() {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current)
+    refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveId(null)
@@ -1774,9 +1781,10 @@ function ShiftGrid({
         })
       } catch {
         toast.error("Error al asignar turno")
-      } finally {
         onRefresh()
+        return
       }
+      debouncedRefresh()
       return
     }
 
@@ -1808,6 +1816,7 @@ function ShiftGrid({
             },
           },
         })
+        debouncedRefresh()
       } catch {
         toast.error("Error al eliminar turno")
         onRefresh()
@@ -1840,6 +1849,7 @@ function ShiftGrid({
             },
           },
         })
+        debouncedRefresh()
       } catch {
         toast.error("Error al mover turno")
         onRefresh()
