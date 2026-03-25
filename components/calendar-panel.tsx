@@ -277,10 +277,11 @@ const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "androlog
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, isPublished, children }: {
+function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, children }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
+  departments?: import("@/lib/types/database").Department[]
   onFunctionSave: (id: string, label: string | null) => void
   isPublished: boolean
   children: React.ReactNode
@@ -373,6 +374,40 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, onFunctionSave, 
               )
             })}
           </div>
+          {/* Sub-departments */}
+          {(() => {
+            const subDepts = departments.filter((d) => d.parent_id != null)
+            if (subDepts.length === 0) return null
+            return (
+              <>
+                <div className="h-px bg-border mx-2 my-1" />
+                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Sub-departamento</p>
+                <div className="flex flex-col">
+                  {subDepts.map((dept) => {
+                    const isActive = currentLabel === dept.code
+                    return (
+                      <button
+                        key={dept.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onFunctionSave(assignment.id, isActive ? null : dept.code)
+                          setOpen(false)
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                          isActive ? "bg-accent" : "hover:bg-muted"
+                        )}
+                      >
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                        <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                        {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )
+          })()}
         </div>,
         document.body
       )}
@@ -1496,6 +1531,7 @@ function PersonGrid({
                             assignment={assignment}
                             staffSkills={s.staff_skills ?? []}
                             tecnicas={data?.tecnicas ?? []}
+                            departments={data?.departments ?? []}
                             onFunctionSave={handleFunctionLabelSave}
                             isPublished={isPublished}
                           >

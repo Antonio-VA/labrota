@@ -16,6 +16,7 @@ export interface Department {
   colour:          string
   is_default:      boolean
   sort_order:      number
+  parent_id:       string | null
   created_at:      string
 }
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'

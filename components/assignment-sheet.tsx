@@ -59,12 +59,13 @@ const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "androlog
 // ── Function + Técnica inline popover ─────────────────────────────────────────
 
 function AssignmentPopover({
-  assignment, staffSkills, tecnicas,
+  assignment, staffSkills, tecnicas, departments = [],
   onFunctionSave, onTecnicaSave, isPublished, children,
 }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null; tecnica_id: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
+  departments?: import("@/lib/types/database").Department[]
   onFunctionSave: (id: string, label: string | null) => void
   onTecnicaSave: (id: string, tecnicaId: string | null) => void
   isPublished: boolean
@@ -130,6 +131,40 @@ function AssignmentPopover({
               </div>
             </div>
           )}
+          {/* Sub-departments as assignable labels */}
+          {(() => {
+            const subDepts = departments.filter((d) => d.parent_id != null)
+            if (subDepts.length === 0) return null
+            return (
+              <>
+                <div className="h-px bg-border mx-2 my-1" />
+                <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Sub-departamento</p>
+                <div className="flex flex-col">
+                  {subDepts.map((dept) => {
+                    const isActive = currentLabel === dept.code
+                    return (
+                      <button
+                        key={dept.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onFunctionSave(assignment.id, isActive ? null : dept.code)
+                          setOpen(false)
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
+                          isActive ? "bg-primary/5" : "hover:bg-muted/50"
+                        )}
+                      >
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                        <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
+                        {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
     </div>

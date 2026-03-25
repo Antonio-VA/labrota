@@ -8,6 +8,7 @@ export async function saveDepartments(
   departments: {
     id?: string; code: string; name: string; name_en: string
     abbreviation: string; colour: string; is_default: boolean; sort_order: number
+    parent_id?: string | null
   }[]
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -25,6 +26,7 @@ export async function saveDepartments(
           abbreviation: dept.abbreviation,
           colour: dept.colour,
           sort_order: dept.sort_order,
+          parent_id: dept.parent_id ?? null,
         } as never)
         .eq("id", dept.id)
       if (error) return { error: error.message }
@@ -41,6 +43,7 @@ export async function saveDepartments(
           colour: dept.colour,
           is_default: false,
           sort_order: dept.sort_order,
+          parent_id: dept.parent_id ?? null,
         } as never)
       if (error) return { error: error.message }
     }

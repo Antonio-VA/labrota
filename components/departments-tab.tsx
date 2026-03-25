@@ -83,12 +83,13 @@ type Draft = {
   colour: string
   is_default: boolean
   sort_order: number
+  parent_id: string | null
 }
 
 // ── Sortable row ─────────────────────────────────────────────────────────────
 
-function SortableRow({ dept, onChange, onDelete, disabled }: {
-  dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean
+function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
+  dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean; isChild?: boolean
 }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
@@ -105,7 +106,7 @@ function SortableRow({ dept, onChange, onDelete, disabled }: {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-background"
+      className={cn("flex items-center gap-2 p-2 rounded-lg border border-border bg-background", isChild && "ml-6")}
     >
       {/* Drag handle */}
       <button
@@ -173,6 +174,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
       code: d.code, name: d.name, name_en: d.name_en,
       abbreviation: d.abbreviation, colour: d.colour,
       is_default: d.is_default, sort_order: d.sort_order,
+      parent_id: d.parent_id ?? null,
     }))
   )
   const [isPending, startTransition] = useTransition()
@@ -203,12 +205,14 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
     })
   }
 
-  function addRow() {
+  function addRow(parentId: string | null = null) {
     const sortId = `new-${_counter++}`
+    const parent = parentId ? departments.find((d) => d.id === parentId || d.sortId === parentId) : null
     setDepartments((prev) => [
       ...prev,
       { sortId, code: `dept_${Date.now()}`, name: "", name_en: "", abbreviation: "",
-        colour: COLOR_PALETTE[prev.length % COLOR_PALETTE.length], is_default: false, sort_order: prev.length },
+        colour: parent?.colour ?? COLOR_PALETTE[prev.length % COLOR_PALETTE.length], is_default: false, sort_order: prev.length,
+        parent_id: parentId },
     ])
   }
 
@@ -241,6 +245,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
         id: d.id, code: d.code, name: d.name.trim(), name_en: d.name_en.trim(),
         abbreviation: d.abbreviation.trim().toUpperCase().slice(0, 3),
         colour: d.colour, is_default: d.is_default, sort_order: i,
+        parent_id: d.parent_id ?? null,
       })))
       if (result.error) {
         setErrorMsg(result.error)
@@ -273,20 +278,45 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={departments.map((d) => d.sortId)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2">
-            {departments.map((dept) => (
-              <SortableRow
-                key={dept.sortId}
-                dept={dept}
-                onChange={(draft) => updateRow(dept.sortId, draft)}
-                onDelete={() => deleteRow(dept.sortId)}
-                disabled={isPending}
-              />
-            ))}
+            {/* Render parents first, then their children */}
+            {departments.filter((d) => !d.parent_id).map((dept) => {
+              const children = departments.filter((d) => d.parent_id === dept.id || d.parent_id === dept.sortId)
+              return (
+                <div key={dept.sortId} className="flex flex-col gap-1.5">
+                  <SortableRow
+                    dept={dept}
+                    onChange={(draft) => updateRow(dept.sortId, draft)}
+                    onDelete={() => deleteRow(dept.sortId)}
+                    disabled={isPending}
+                  />
+                  {children.map((child) => (
+                    <SortableRow
+                      key={child.sortId}
+                      dept={child}
+                      onChange={(draft) => updateRow(child.sortId, draft)}
+                      onDelete={() => deleteRow(child.sortId)}
+                      disabled={isPending}
+                      isChild
+                    />
+                  ))}
+                  {!isPending && (
+                    <button
+                      type="button"
+                      onClick={() => addRow(dept.id ?? dept.sortId)}
+                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-6 py-0.5"
+                    >
+                      <Plus className="size-3" />
+                      Añadir sub-departamento
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </SortableContext>
       </DndContext>
 
-      <button type="button" onClick={addRow} disabled={isPending}
+      <button type="button" onClick={() => addRow(null)} disabled={isPending}
         className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1">
         <Plus className="size-3.5" />
         Añadir departamento
