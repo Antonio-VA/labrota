@@ -1937,9 +1937,9 @@ function ShiftGrid({
     >
       <div className="rounded-lg border border-border bg-background overflow-hidden w-full">
 
-        {/* Header row — light blue tint matching PDF export */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border bg-secondary" style={{ minHeight: 52 }}>
-          <div className="border-r border-border" />
+        {/* Header row */}
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
+          <div className="border-r border-border bg-muted" />
           {localDays.map((day) => {
             const d     = new Date(day.date + "T12:00:00")
             const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -1965,14 +1965,19 @@ function ShiftGrid({
                   <DayWarningPopover warnings={day.warnings} />
                 )}
 
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
-                <span className={cn(
-                  "font-semibold leading-none text-[18px]",
-                  today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                  : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
-                )}>
-                  {dayN}
-                </span>
+                <button
+                  onClick={() => onDateClick?.(day.date)}
+                  className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+                >
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+                  <span className={cn(
+                    "font-semibold leading-none text-[18px]",
+                    today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
+                    : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                  )}>
+                    {dayN}
+                  </span>
+                </button>
                 {holidayName && (
                   <Tooltip>
                     <TooltipTrigger render={
