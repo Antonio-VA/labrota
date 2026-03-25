@@ -423,13 +423,11 @@ export function runRotaEngine({
       date,
       assignments: assigned.map((s) => {
         let shift: ShiftType
-        if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
-          // Only honour preference if the shift is active
-          shift = s.preferred_shift as ShiftType
-        } else if (s.role === "admin") {
+
+        if (s.role === "admin") {
           shift = activeShiftSet.has(adminDefaultShift) ? adminDefaultShift : (defaultShiftCodes[0] ?? "T1")
         } else {
-          // Check técnica typical_shifts — prioritise certified skills over training
+          // 1. Technique typical_shift — highest priority
           const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
           const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
           const orderedCodes   = [...certifiedCodes, ...trainingCodes]
@@ -441,9 +439,15 @@ export function runRotaEngine({
               if (match) { preferredFromTecnica = match; break }
             }
           }
+
           if (preferredFromTecnica) {
+            // Technique determines the shift
             shift = preferredFromTecnica as ShiftType
+          } else if (s.preferred_shift && activeShiftSet.has(s.preferred_shift)) {
+            // 2. Staff preferred shift — only if no technique mapping
+            shift = s.preferred_shift as ShiftType
           } else {
+            // 3. Round-robin fallback
             shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
             dayRrIdx++
           }
