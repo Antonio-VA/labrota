@@ -560,7 +560,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
 
 // ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
 
-type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean }
+type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean; active?: boolean }
 
 function OverflowMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)
@@ -588,15 +588,17 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
             <Fragment key={item.label}>
               {item.dividerBefore && <div className="h-px bg-border my-1" />}
               <button
-                onClick={() => { item.onClick(); setOpen(false) }}
+                onClick={() => { item.onClick(); if (!item.active && item.active !== false) setOpen(false) }}
                 disabled={item.disabled}
                 className={cn(
-                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-colors disabled:opacity-50",
-                  item.destructive ? "text-destructive hover:bg-destructive/5" : "hover:bg-muted"
+                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-[background-color] duration-75 disabled:opacity-50",
+                  item.destructive ? "text-destructive hover:bg-destructive/10" :
+                  item.active ? "bg-accent/15 hover:bg-accent/25" : "hover:bg-accent/15"
                 )}
               >
                 {item.icon}
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.active && <CheckCircle2 className="size-3.5 text-primary shrink-0" />}
               </button>
             </Fragment>
           ))}
@@ -3512,20 +3514,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── Group 3: View options (week view only) ──
               ...(view === "week" ? [{
-                label: compact ? "Vista normal" : "Vista compacta",
+                label: "Vista compacta",
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
+                active: compact,
                 dividerBefore: true,
               }, {
-                label: colorChips ? "Colores en gris" : "Colores activos",
-                icon: colorChips
-                  ? <span className="size-3.5 rounded-full bg-slate-300 shrink-0" />
-                  : <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
+                label: "Colores de personal",
+                icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
+                active: colorChips,
               }, {
-                label: highlightHover ? "Resaltar persona ✓" : "Resaltar persona",
-                icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: highlightHover ? "#FDE047" : "#94A3B8" }} />,
+                label: "Resaltar persona",
+                icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
                 onClick: () => setHighlightHover(!highlightHover),
+                active: highlightHover,
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{

@@ -97,10 +97,11 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-8 rounded-full shrink-0 hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
+          className="shrink-0 hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
+          style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover object-center" />
+          <img src={avatarUrl} alt="Avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", aspectRatio: "1/1", display: "block" }} />
         </button>
       ) : (
         <button
@@ -123,14 +124,14 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
           {/* Preferences */}
           <button
             onClick={openAccount}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
           >
             <UserCog className="size-3.5" />
             Preferencias
           </button>
           <button
             onClick={() => { setOpen(false); setSupportOpen(true) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-muted/50 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
           >
             <HelpCircle className="size-3.5" />
             Soporte
@@ -143,7 +144,7 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
               <button
                 key={key}
                 onClick={() => handleThemeChange(key)}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent/20 transition-[background-color] duration-75"
               >
                 <Icon className="size-3.5 text-muted-foreground" />
                 <span className="flex-1">{label}</span>
