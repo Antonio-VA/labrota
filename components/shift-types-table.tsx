@@ -160,13 +160,13 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   return (
     <div className="flex flex-col gap-3">
       {/* Column headers */}
-      <div className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
+      <div className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
         <span />
-        <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide text-center">Código</span>
-        <span className="text-[12px] text-muted-foreground text-center">Inicio</span>
-        <span className="text-[12px] text-muted-foreground text-center">Fin</span>
-        <span className="text-[12px] text-muted-foreground text-center">Nombre</span>
-        <span className="text-[12px] text-muted-foreground text-center">Días activos</span>
+        <span className="text-[11px] text-muted-foreground">Código</span>
+        <span className="text-[11px] text-muted-foreground">Inicio</span>
+        <span className="text-[11px] text-muted-foreground">Fin</span>
+        <span className="text-[11px] text-muted-foreground">Nombre</span>
+        <span className="text-[11px] text-muted-foreground">Días activos</span>
         <span />
       </div>
 
@@ -181,7 +181,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
           return (
             <div key={row.id}>
               <div
-                className="grid grid-cols-[1.5rem_3rem_6rem_6rem_1fr_auto_1.5rem] gap-2 items-center"
+                className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center"
                 draggable
                 onDragStart={() => onDragStart(idx)}
                 onDragOver={(e) => onDragOver(e, idx)}
