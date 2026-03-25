@@ -658,22 +658,29 @@ export async function upsertAssignment(params: {
     revalidatePath("/")
     return { id: params.assignmentId }
   } else {
-    // Upsert — handles duplicate gracefully (same staff+date+function_label)
-    const { data: row, error } = await supabase
+    // Insert new assignment — use upsert if constraint exists, fall back to insert
+    const row_data = {
+      organisation_id: orgId,
+      rota_id: rotaId,
+      staff_id: params.staffId,
+      date: params.date,
+      shift_type: params.shiftType,
+      is_manual_override: true,
+      notes: params.notes ?? null,
+      trainee_staff_id: params.traineeStaffId ?? null,
+      function_label: params.functionLabel ?? "",
+    }
+    let { data: row, error } = await supabase
       .from("rota_assignments")
-      .upsert({
-        organisation_id: orgId,
-        rota_id: rotaId,
-        staff_id: params.staffId,
-        date: params.date,
-        shift_type: params.shiftType,
-        is_manual_override: true,
-        notes: params.notes ?? null,
-        trainee_staff_id: params.traineeStaffId ?? null,
-        function_label: params.functionLabel ?? "",
-      } as never, { onConflict: "rota_id,staff_id,date,function_label" })
+      .upsert(row_data as never, { onConflict: "rota_id,staff_id,date,function_label" })
       .select("id")
       .single()
+    // Fall back to plain insert if constraint doesn't exist
+    if (error?.message?.includes("ON CONFLICT")) {
+      const res = await supabase.from("rota_assignments").insert(row_data as never).select("id").single()
+      row = res.data
+      error = res.error
+    }
     if (error) return { error: error.message }
     revalidatePath("/")
     return { id: (row as { id: string }).id }
