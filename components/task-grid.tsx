@@ -263,7 +263,7 @@ function TaskCell({
                 )}
               </span>
             } />
-            <TooltipContent side="top">
+            <TooltipContent side="right">
               {a.staff.first_name} {a.staff.last_name}
               {onLeave && " · De baja hoy"}
               {hasConflict && ` · Asignado a múltiples tareas`}
@@ -282,7 +282,7 @@ function TaskCell({
               All
             </button>
           } />
-          <TooltipContent side="top">Todo el equipo</TooltipContent>
+          <TooltipContent side="right">Todo el equipo</TooltipContent>
         </Tooltip>
       )}
       {!isPublished && (
@@ -391,7 +391,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
           } />
-          <TooltipContent side="top">{s.first_name} {s.last_name} · De baja</TooltipContent>
+          <TooltipContent side="right">{s.first_name} {s.last_name} · De baja</TooltipContent>
         </Tooltip>
         )
       })}
@@ -409,7 +409,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
           } />
-          <TooltipContent side="top">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
+          <TooltipContent side="right">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
         </Tooltip>
         )
       })}
