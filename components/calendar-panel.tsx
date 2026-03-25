@@ -3655,7 +3655,27 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {(loadingWeek || isPending || !weekData) ? (
                 /* Loading or no data yet — always show shimmer skeleton */
                 <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
-              ) : !weekData.rota || !weekData.days.some((d) => d.assignments.length > 0) ? (
+              ) : weekData.rotaDisplayMode === "by_task" ? (
+                /* By task: always show TaskGrid — it handles its own empty state */
+                <TaskGrid
+                  data={weekData}
+                  staffList={staffList}
+                  loading={false}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={handlePunctionsChange}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
+                  compact={compact}
+                  colorBorders={colorChips}
+                />
+              ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
                   <CalendarDays className="size-10 text-muted-foreground/30" />
                   <div className="text-center">
@@ -3691,25 +3711,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     </div>
                   )}
                 </div>
-              ) : weekData?.rotaDisplayMode === "by_task" ? (
-                <TaskGrid
-                  data={weekData}
-                  staffList={staffList}
-                  loading={false}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
-                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={handlePunctionsChange}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
-                  compact={compact}
-                  colorBorders={colorChips}
-                />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
                   data={weekData}
