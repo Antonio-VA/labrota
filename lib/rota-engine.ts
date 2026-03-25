@@ -228,108 +228,93 @@ export function runRotaEngine({
     return count
   }
 
-  for (const date of getWeekDates(weekStart)) {
+  // ── PHASE 1: Pre-plan minimum coverage for ALL 7 days ────────────────────
+  // Reserve budget so minimum coverage is guaranteed before preferences kick in.
+  const allDates = getWeekDates(weekStart)
+  const minCoverageReserved: Record<string, Set<string>> = {} // date → set of staff_ids
+
+  for (const date of allDates) {
+    minCoverageReserved[date] = new Set()
+    const dayCode = getDayCode(date)
+    const wknd = isWeekend(date)
+
+    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
+    const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
+    const dayCoverage = labConfig.coverage_by_day?.[dayCode]
+    const staticLabMin = dayCoverage?.lab ?? (wknd ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage) : labConfig.min_lab_coverage)
+    const labReq = Math.max(staticLabMin, dynamicLabMin)
+    const andReq = dayCoverage?.andrology ?? (wknd ? labConfig.min_weekend_andrology : labConfig.min_andrology_coverage)
+
+    for (const [role, required] of [["lab", labReq], ["andrology", andReq]] as const) {
+      if (required <= 0) continue
+      // Find eligible staff for this day+role, sorted by fewest total reservations
+      const eligible = staff.filter((s) => {
+        if (s.onboarding_status === "inactive" || s.role !== role) return false
+        if (s.start_date > date || (s.end_date && s.end_date < date)) return false
+        if (leaveMap[s.id]?.has(date)) return false
+        // Count how many days this person is already reserved for
+        const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
+        return reserved < (s.days_per_week ?? 5)
+      }).sort((a, b) => {
+        // Prefer staff whose pattern includes this day
+        const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
+        const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
+        if (aInPattern !== bInPattern) return aInPattern - bInPattern
+        return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+      })
+
+      for (let i = 0; i < Math.min(required, eligible.length); i++) {
+        minCoverageReserved[date].add(eligible[i].id)
+      }
+    }
+  }
+
+  // ── PHASE 2: Day-by-day assignment (minimum guaranteed + fill with preferences)
+  for (const date of allDates) {
     const dayCode = getDayCode(date)
     const weekend = isWeekend(date)
 
-    // 1. Compute coverage requirements for this day
-    const punctionsForDay = punctionsOverride?.[date]
-      ?? labConfig.punctions_by_day?.[dayCode]
-      ?? 0
-    const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0)
-      ? Math.ceil(punctionsForDay / labConfig.staffing_ratio)
-      : 0
-    const dayCoverage       = labConfig.coverage_by_day?.[dayCode]
-    const staticLabMin      = dayCoverage?.lab ?? (weekend
-      ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
-      : labConfig.min_lab_coverage)
-    const labRequired       = Math.max(staticLabMin, dynamicLabMin)
-    const andrologyRequired = dayCoverage?.andrology ?? (weekend
-      ? labConfig.min_weekend_andrology
-      : labConfig.min_andrology_coverage)
-    const adminRequired     = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
+    // Coverage requirements
+    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
+    const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
+    const dayCoverage = labConfig.coverage_by_day?.[dayCode]
+    const staticLabMin = dayCoverage?.lab ?? (weekend ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage) : labConfig.min_lab_coverage)
+    const labRequired = Math.max(staticLabMin, dynamicLabMin)
+    const andrologyRequired = dayCoverage?.andrology ?? (weekend ? labConfig.min_weekend_andrology : labConfig.min_andrology_coverage)
+    const adminRequired = dayCoverage?.admin ?? ((!weekend || labConfig.admin_on_weekends) ? 1 : 0)
 
-    // 2. Build candidate pools — base eligibility (active, in range, not on leave, has budget)
-    //    Working pattern is a PREFERENCE, not a hard filter. Staff whose pattern
-    //    includes this day are "preferred"; others are "extra" and used to fill
-    //    minimum coverage gaps.
+    // Eligibility: not on leave, active, has budget
     function isBaseEligible(s: StaffWithSkills): boolean {
       if (s.onboarding_status === "inactive") return false
       if (s.start_date > date) return false
       if (s.end_date && s.end_date < date) return false
       if (leaveMap[s.id]?.has(date)) return false
       const used = weeklyShiftCount[s.id] ?? 0
-      const baseBudget = Math.max(0, (s.days_per_week ?? 5) - (leaveThisWeek[s.id] ?? 0))
-      // On weekends, drafted extras get bonus budget so they can work
-      // the weekend ON TOP of their normal weekday assignments
-      const bonus = weekend ? (weekendReservation[s.id] ?? 0) : 0
-      const totalBudget = Math.min(baseBudget + bonus, s.days_per_week ?? 5)
-      if (used >= totalBudget) return false
+      if (used >= (s.days_per_week ?? 5)) return false
       return true
     }
 
-    const preferred = staff.filter((s) => isBaseEligible(s) && (s.working_pattern ?? []).includes(dayCode))
-    const extra     = staff.filter((s) => isBaseEligible(s) && !(s.working_pattern ?? []).includes(dayCode))
+    // Start with minimum coverage reservations (guaranteed)
+    const reservedIds = minCoverageReserved[date]
+    const reservedStaff = staff.filter((s) => reservedIds.has(s.id) && isBaseEligible(s))
 
-    // Sort both pools: preferred_days first, then lowest workload
-    function sortByFairness(arr: StaffWithSkills[]): StaffWithSkills[] {
-      return [...arr].sort((a, b) => {
-        const aPref = a.preferred_days?.length ? (a.preferred_days.includes(dayCode) ? 0 : 1) : 0
-        const bPref = b.preferred_days?.length ? (b.preferred_days.includes(dayCode) ? 0 : 1) : 0
-        if (aPref !== bPref) return aPref - bPref
-        return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-      })
+    // Add preferred staff who aren't already reserved
+    const additionalPreferred = staff.filter((s) =>
+      isBaseEligible(s) && !reservedIds.has(s.id) && (s.working_pattern ?? []).includes(dayCode)
+    ).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+
+    const assignedSet = new Set(reservedStaff.map((s) => s.id))
+    for (const s of additionalPreferred) {
+      assignedSet.add(s.id)
     }
 
-    const sortedPreferred = sortByFairness(preferred)
-    const sortedExtra     = sortByFairness(extra)
+    let assignedLab = staff.filter((s) => assignedSet.has(s.id) && s.role === "lab")
+    let assignedAndrology = staff.filter((s) => assignedSet.has(s.id) && s.role === "andrology")
+    let assignedAdmin = adminRequired > 0
+      ? staff.filter((s) => assignedSet.has(s.id) && s.role === "admin")
+      : []
 
-    // 3. Role pools from preferred staff (these normally work this day)
-    let labPool       = sortedPreferred.filter((s) => s.role === "lab")
-    let andrologyPool = sortedPreferred.filter((s) => s.role === "andrology")
-    let adminPool     = sortedPreferred.filter((s) => s.role === "admin")
-
-    // 4. ALWAYS pull from extra pool to fill ALL available shifts
-    //    Hard rule: minimum coverage MUST be met if staff exist
-    //    Hard rule: assign all eligible staff up to their days_per_week cap
-    const extraLab = sortedExtra.filter((s) => s.role === "lab")
-    const extraAndrology = sortedExtra.filter((s) => s.role === "andrology")
-    const extraAdmin = sortedExtra.filter((s) => s.role === "admin")
-
-    // Merge preferred + extra for full pools
-    labPool = [...labPool, ...extraLab]
-    andrologyPool = [...andrologyPool, ...extraAndrology]
-    adminPool = [...adminPool, ...extraAdmin]
-
-    // 5. Assign staff:
-    //    - Weekdays: assign all from preferred pool + enough from extra to meet minimum
-    //    - Weekends: assign all eligible (budget reserves ensure they have capacity)
-    let assignedLab: StaffWithSkills[]
-    let assignedAndrology: StaffWithSkills[]
-    let assignedAdmin: StaffWithSkills[]
-
-    if (weekend) {
-      // Weekends: assign everyone eligible (reservation ensures budget)
-      assignedLab = labPool
-      assignedAndrology = andrologyPool
-      assignedAdmin = adminRequired > 0 ? adminPool : []
-    } else {
-      // Weekdays: preferred pool gets assigned + extras only to meet minimum
-      const prefLab = sortedPreferred.filter((s) => s.role === "lab")
-      const prefAnd = sortedPreferred.filter((s) => s.role === "andrology")
-      const prefAdm = sortedPreferred.filter((s) => s.role === "admin")
-      assignedLab = prefLab.length >= labRequired
-        ? prefLab
-        : [...prefLab, ...extraLab.slice(0, labRequired - prefLab.length)]
-      assignedAndrology = prefAnd.length >= andrologyRequired
-        ? prefAnd
-        : [...prefAnd, ...extraAndrology.slice(0, andrologyRequired - prefAnd.length)]
-      assignedAdmin = adminRequired > 0
-        ? (prefAdm.length >= adminRequired ? prefAdm : [...prefAdm, ...extraAdmin.slice(0, adminRequired - prefAdm.length)])
-        : []
-    }
-
-    // Hard minimum: warn if we can't meet coverage
+    // Warn if minimum still not met
     if (assignedLab.length < labRequired) {
       warnings.push(`${date}: COBERTURA INSUFICIENTE — ${assignedLab.length} embriología (mínimo ${labRequired})`)
     }
@@ -436,17 +421,8 @@ export function runRotaEngine({
     warnings.push(
       `[debug] ${date} (${dayCode}): ${assignedLab.length}L+${assignedAndrology.length}A+${assignedAdmin.length}Ad = ${assigned.length} assigned` +
       ` | need ${labRequired}L+${andrologyRequired}A+${adminRequired}Ad` +
-      ` | eligible preferred=${preferred.length} extra=${extra.length}` +
-      ` | labPool=${labPool.length} weekend=${weekend}`
+      ` | reserved=${reservedIds.size} weekend=${weekend}`
     )
-    if (labPool.length < labRequired) {
-      warnings.push(`${date}: only ${labPool.length} lab staff available (need ${labRequired})`)
-    }
-    if (andrologyPool.length < andrologyRequired) {
-      warnings.push(
-        `${date}: only ${andrologyPool.length} andrology staff available (need ${andrologyRequired})`
-      )
-    }
 
     // 9. Skill gaps
     const coveredSkills = new Set(assigned.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))
