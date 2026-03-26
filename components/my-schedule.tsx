@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { CalendarDays, Clock, Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
@@ -23,6 +24,7 @@ interface MyScheduleProps {
 export function MySchedule({
   staffId, days, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat, initialDate,
 }: MyScheduleProps) {
+  const t = useTranslations("mySchedule")
   const today = new Date().toISOString().split("T")[0]
   const [currentDate, setCurrentDate] = useState(initialDate ?? today)
 
@@ -63,7 +65,7 @@ export function MySchedule({
             onClick={() => setCurrentDate(nextShift.date)}
             className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-left active:bg-primary/10 transition-colors"
           >
-            <p className="text-[10px] text-primary font-medium uppercase tracking-wide mb-1">Proximo turno</p>
+            <p className="text-[10px] text-primary font-medium uppercase tracking-wide mb-1">{t("nextShift")}</p>
             <div className="flex items-center gap-2">
               <CalendarDays className="size-4 text-primary shrink-0" />
               <span className="text-[14px] font-medium">{formatDate(nextShift.date, locale)}</span>
@@ -98,7 +100,7 @@ export function MySchedule({
           {currentDay?.isOnLeave ? (
             <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-amber-200 bg-amber-50">
               <Palmtree className="size-4 text-amber-500" />
-              <span className="text-[14px] font-medium text-amber-700">De ausencia</span>
+              <span className="text-[14px] font-medium text-amber-700">{t("onLeave")}</span>
             </div>
           ) : currentDay && currentDay.myAssignments.length > 0 ? (
             <div className="flex flex-col gap-2">
@@ -129,14 +131,14 @@ export function MySchedule({
             </div>
           ) : (
             <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-border bg-muted/30">
-              <span className="text-[14px] text-muted-foreground">Libre</span>
+              <span className="text-[14px] text-muted-foreground">{t("free")}</span>
             </div>
           )}
         </div>
 
         {/* Full week list */}
         <div className="flex flex-col gap-1">
-          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">Esta semana</p>
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("thisWeek")}</p>
           {myDays.map((day) => {
             const isToday = day.date === today
             const isActive = day.date === currentDate
@@ -161,7 +163,7 @@ export function MySchedule({
                 {day.isOnLeave ? (
                   <div className="flex items-center gap-1.5 flex-1">
                     <Palmtree className="size-3 text-amber-500" />
-                    <span className="text-[12px] text-amber-600">Ausencia</span>
+                    <span className="text-[12px] text-amber-600">{t("absence")}</span>
                   </div>
                 ) : assignment ? (
                   <div className="flex items-center gap-2 flex-1">
@@ -178,7 +180,7 @@ export function MySchedule({
                     )}
                   </div>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground/50">Libre</span>
+                  <span className="text-[12px] text-muted-foreground/50">{t("free")}</span>
                 )}
               </button>
             )

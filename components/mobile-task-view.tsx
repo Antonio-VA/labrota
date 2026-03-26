@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { X, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Tecnica } from "@/lib/types/database"
@@ -23,6 +24,7 @@ interface MobileTaskViewProps {
 export function MobileTaskView({
   day, tecnicas, isEditMode, onRemoveAssignment, onAddToTecnica, loading,
 }: MobileTaskViewProps) {
+  const t = useTranslations("mobileTask")
   if (loading || !day) return null
 
   const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
@@ -83,7 +85,7 @@ export function MobileTaskView({
                 </button>
               )}
               {assignments.length === 0 && !isEditMode && (
-                <span className="text-[11px] text-muted-foreground italic">Sin asignar</span>
+                <span className="text-[11px] text-muted-foreground italic">{t("unassigned")}</span>
               )}
             </div>
           </div>
@@ -95,7 +97,7 @@ export function MobileTaskView({
         <div className="flex flex-col gap-1.5 mt-2">
           <div className="flex items-center gap-2">
             <span className="size-2 rounded-full bg-muted-foreground/30 shrink-0" />
-            <span className="text-[13px] font-medium text-muted-foreground">Sin tarea</span>
+            <span className="text-[13px] font-medium text-muted-foreground">{t("noTask")}</span>
             <span className="text-[11px] text-muted-foreground">{unassigned.length}</span>
           </div>
           <div className="flex flex-wrap gap-1.5 pl-4">

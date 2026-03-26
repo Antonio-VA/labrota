@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Search } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
@@ -29,6 +30,7 @@ export function MobileAddStaffSheet({
   date, weekStart, staffList, assignedStaffIds, onLeaveStaffIds,
   shiftTypes, weeklyAssignmentCounts, onAdded,
 }: MobileAddStaffSheetProps) {
+  const t = useTranslations("mobileAddStaff")
   const [search, setSearch] = useState("")
   const [isPending, startTransition] = useTransition()
 
@@ -69,7 +71,7 @@ export function MobileAddStaffSheet({
           <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
         </div>
         <div className="px-4 pb-2 shrink-0">
-          <p className="text-[14px] font-medium">Añadir personal — {departmentName}</p>
+          <p className="text-[14px] font-medium">{t("addStaff")} — {departmentName}</p>
         </div>
         {/* Search */}
         <div className="px-4 pb-2 shrink-0">
@@ -78,7 +80,7 @@ export function MobileAddStaffSheet({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar..."
+              placeholder={t("searchPlaceholder")}
               className="pl-8 h-8 text-[13px]"
             />
           </div>
@@ -87,7 +89,7 @@ export function MobileAddStaffSheet({
         <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,8px)]">
           {available.length === 0 ? (
             <p className="text-[13px] text-muted-foreground italic text-center py-8">
-              No hay personal disponible
+              {t("noStaffAvailable")}
             </p>
           ) : available.map((s) => {
             const weekCount = weeklyAssignmentCounts[s.id] ?? 0
@@ -105,9 +107,9 @@ export function MobileAddStaffSheet({
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-medium">{s.first_name} {s.last_name}</p>
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    {s.preferred_shift && <span>Turno: {s.preferred_shift}</span>}
-                    <span>{weekCount}/{s.days_per_week} turnos</span>
-                    {atLimit && <span className="text-amber-500 font-medium">Límite</span>}
+                    {s.preferred_shift && <span>{t("shiftLabel")}: {s.preferred_shift}</span>}
+                    <span>{weekCount}/{s.days_per_week} {t("shifts")}</span>
+                    {atLimit && <span className="text-amber-500 font-medium">{t("limit")}</span>}
                   </div>
                 </div>
               </button>

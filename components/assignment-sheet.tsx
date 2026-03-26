@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
@@ -72,6 +73,7 @@ function AssignmentPopover({
   isPublished: boolean
   children: React.ReactNode
 }) {
+  const tSheet = useTranslations("assignmentSheet")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -106,11 +108,11 @@ function AssignmentPopover({
       </div>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1.5 w-52">
-          <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
+          <p className="text-[11px] font-semibold px-2.5 mb-1">{tSheet("assignment")}</p>
           {/* Sub-departments for staff's role */}
           {roleSubDepts.length > 0 && (
             <>
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{tSheet("departmentLabel")}</p>
               <div className="flex flex-col">
                 {roleSubDepts.map((dept) => {
                   const isActive = currentLabel === dept.code
@@ -140,7 +142,7 @@ function AssignmentPopover({
           {availableTecnicas.length > 0 && (
             <>
               <div className="h-px bg-border mx-2 my-1" />
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Tareas</p>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{tSheet("tasksLabel")}</p>
               <div className="flex flex-col">
                 {availableTecnicas.map((tec) => {
                   const isActive = assignment.tecnica_id === tec.id
@@ -264,6 +266,7 @@ function DraggableOffChip({
   onLeave: boolean
   timeFormat?: string
 }) {
+  const tLeave = useTranslations("mySchedule")
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `off-${staff.id}`,
     disabled: disabled || onLeave,
@@ -290,7 +293,7 @@ function DraggableOffChip({
     >
       <span className="truncate flex-1">{staff.first_name} {staff.last_name[0]}.</span>
       {onLeave ? (
-        <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />Baja</span>
+        <span className="text-[10px] shrink-0 flex items-center gap-1"><CalendarX className="size-3" />{tLeave("leave")}</span>
       ) : !disabled && shiftTypes.length > 0 ? (
         <ShiftPickerButton shiftTypes={shiftTypes} onSelect={(shift) => onAddToShift(staff.id, shift)} timeFormat={timeFormat} />
       ) : null}
@@ -387,6 +390,7 @@ function AddPersonButton({
   onAdd: (staffId: string) => void
   disabled: boolean
 }) {
+  const tAdd = useTranslations("common")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -410,7 +414,7 @@ function AddPersonButton({
         className="flex items-center gap-1 text-[12px] text-primary/60 hover:text-primary transition-colors py-0.5 px-1 rounded"
       >
         <Plus className="size-3" />
-        Añadir
+        {tAdd("add")}
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-xl border border-border bg-background shadow-lg py-1 max-h-56 overflow-y-auto">
@@ -465,6 +469,9 @@ export function AssignmentSheet({
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
   timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold = 3,
 }: Props) {
+  const t = useTranslations("assignmentSheet")
+  const tc = useTranslations("common")
+  const ts = useTranslations("schedule")
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Merge department colours into the module-level ROLE_BORDER for sub-components
