@@ -3641,17 +3641,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </button>
             ))}
           </div>
-          {view === "week" && (
+          {(view === "week" || view === "month") && (
             <>
               <span className="h-4 border-l border-border" />
               <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => setCalendarLayout("shift")}
+                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift"); localStorage.setItem("labrota_month_view", "shift") }}
                       className={cn(
                         "rounded-md px-2.5 h-[28px] flex items-center justify-center transition-colors",
-                        calendarLayout === "shift"
+                        (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
                           ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       )}
@@ -3667,10 +3667,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => setCalendarLayout("person")}
+                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person"); localStorage.setItem("labrota_month_view", "person") }}
                       className={cn(
                         "rounded-md px-2.5 h-[28px] flex items-center justify-center transition-colors",
-                        calendarLayout === "person"
+                        (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
                           ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       )}
@@ -4017,21 +4017,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {/* Month view */}
         {view === "month" && (
           <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
-            {/* Shift/Person toggle */}
-            <div className="flex items-center gap-1 mb-3">
-              {(["shift", "person"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setMonthViewMode(m); localStorage.setItem("labrota_month_view", m) }}
-                  className={cn(
-                    "px-3 py-1 text-[12px] font-medium rounded-md transition-colors",
-                    monthViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {m === "shift" ? t("shiftLayout") : t("personLayout")}
-                </button>
-              ))}
-            </div>
             <MonthGrid
               summary={monthSummary}
               loading={loadingMonth}
