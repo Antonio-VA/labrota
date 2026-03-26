@@ -45,14 +45,18 @@ export function NotificationBell() {
 
   useEffect(() => {
     getUnreadCount().then(setCount)
+    // Prefetch notifications in background so opening is instant
+    getNotifications().then(setNotifications)
     scheduleNext()
     return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
   }, [scheduleNext])
 
   function handleOpen() {
     setOpen(true)
-    setLoading(true)
-    getNotifications().then((n) => { setNotifications(n); setLoading(false) })
+    if (notifications.length === 0) {
+      setLoading(true)
+      getNotifications().then((n) => { setNotifications(n); setLoading(false) })
+    }
   }
 
   async function handleMarkRead(id: string) {

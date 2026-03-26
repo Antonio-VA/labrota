@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import { Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -19,20 +20,32 @@ export function WeeklyStrip({
   days,
   currentDate,
   onSelectDay,
+  onSwipeWeek,
   locale = "es",
   personalMode = false,
 }: {
   days: WeekDay[]
   currentDate: string
   onSelectDay: (date: string) => void
+  onSwipeWeek?: (dir: -1 | 1) => void
   locale?: "es" | "en"
   personalMode?: boolean
 }) {
   const labels = locale === "es" ? DAY_LABELS_ES : DAY_LABELS_EN
   const today = new Date().toISOString().split("T")[0]
+  const touchStartX = useRef(0)
 
   return (
-    <div className="flex items-center justify-around px-2 py-2 border-b border-border bg-background md:hidden">
+    <div
+      className="flex items-center justify-around px-2 py-2 border-b border-border bg-background lg:hidden"
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
+      onTouchEnd={(e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX.current
+        if (Math.abs(dx) > 60 && onSwipeWeek) {
+          onSwipeWeek(dx < 0 ? 1 : -1)
+        }
+      }}
+    >
       {days.map((day, i) => {
         const isActive = day.date === currentDate
         const isToday = day.date === today

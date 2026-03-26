@@ -68,10 +68,10 @@ export function MobileBottomNav() {
         key={item.key}
         href={item.href}
         className={cn(
-          "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-2xl transition-all duration-200",
+          "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-2xl transition-colors duration-100",
           isActive
             ? "bg-primary/10 text-primary"
-            : "text-muted-foreground active:bg-muted/40"
+            : "text-muted-foreground active:text-primary active:bg-primary/10"
         )}
       >
         <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />

@@ -2835,10 +2835,10 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       )}
                     >
                       <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                        <span className="text-[14px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
                         {fnLabel && (
-                          <p className="text-[11px] text-muted-foreground">{fnLabel}</p>
+                          <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">{fnLabel}</span>
                         )}
                       </div>
                       {isEditMode && onRemoveAssignment && (
@@ -4144,6 +4144,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }))}
               currentDate={currentDate}
               onSelectDay={(date) => { setCurrentDate(date); setMobileEditMode(false) }}
+              onSwipeWeek={(dir) => navigate(dir)}
               locale={locale as "es" | "en"}
             />
           )}
@@ -4202,7 +4203,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               )}
             </div>
           )}
-          <div className="flex flex-col gap-4 px-4 py-3 flex-1 pb-24">
+          <div className="flex flex-col gap-4 px-4 py-3 flex-1 pb-32">
             {weekData?.rotaDisplayMode === "by_task" && weekData.tecnicas ? (
               <MobileTaskDayView
                 day={currentDayData}
