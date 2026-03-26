@@ -3692,7 +3692,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
-      <div className="hidden md:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
+      <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
 
         {/* LEFT: Today · ‹ › · date range */}
         <div className="flex items-center gap-2 shrink-0">
@@ -3958,7 +3958,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden md:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
+          <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
               {(loadingWeek || isPending || !weekData) ? (
                 /* Loading or no data yet — always show shimmer skeleton */
@@ -4135,7 +4135,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         )}
 
         {/* Mobile: admin/editor day view */}
-        <div className={cn("flex flex-col overflow-auto md:hidden flex-1", !canEdit && "hidden")}>
+        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1", !canEdit && "hidden")}>
           {/* Date carousel — right under org header */}
           {weekData && (
             <WeeklyStrip
@@ -4151,7 +4151,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {/* Sticky toolbar: Hoy ← date → | edit | overflow */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-12 px-3 bg-primary/10 border-b border-primary/20 md:hidden sticky top-0 z-10">
+            <div className="flex items-center justify-between h-12 px-3 bg-primary/10 border-b border-primary/20 lg:hidden sticky top-0 z-10">
               <span className="text-[14px] font-medium text-primary">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
@@ -4160,9 +4160,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background md:hidden sticky top-0 z-10">
-              {/* Left: compact date selector */}
-              <button onClick={() => navigate(-1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+            <div className="flex items-center gap-2 h-[52px] px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10">
+              {/* Left: date selector */}
+              <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-5 text-muted-foreground" />
               </button>
               <div className="relative shrink-0">
@@ -4172,29 +4172,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
-                <span className="text-[15px] font-semibold capitalize pointer-events-none">
+                <span className="text-[16px] font-semibold capitalize pointer-events-none">
                   {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
                 </span>
               </div>
-              <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+              <button onClick={() => navigate(1)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronRight className="size-5 text-muted-foreground" />
               </button>
               <button
                 onClick={goToToday}
                 disabled={currentDate === TODAY}
-                className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
+                className={cn("text-[13px] font-medium px-2.5 py-1.5 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
               >
                 {tc("today")}
               </button>
               <div className="flex-1" />
-              {/* Avisos */}
-              {(currentDayData?.warnings.length ?? 0) > 0 && (
-                <div className="relative size-9 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="size-5 text-amber-500" />
-                  <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[9px] font-bold">
-                    {currentDayData!.warnings.length}
-                  </span>
-                </div>
+              {/* Warnings pill — same as desktop */}
+              {weekData && (
+                <WarningsPill days={currentDayData ? [currentDayData] : []} />
               )}
               {canEdit && (
                 <button onClick={() => setMobileEditMode(true)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
