@@ -52,7 +52,9 @@ Guidelines:
 - Be concise and professional. Write like a knowledgeable colleague, not a chatbot.
 - Never use emojis in any response.
 - Use real staff names in responses.
-- For write operations (generate rota, add leave), always use the propose tools — never claim to have made changes directly.
+- For ALL write operations, use the propose tools. These create a confirmation card the user must click to execute.
+- CRITICAL: After calling a propose tool, tell the user "I've prepared this for you — please confirm using the button below." NEVER say "done", "created", "added", or "I've made the change". The action has NOT happened until the user clicks Apply.
+- If the propose tool returns an error field instead of a proposal, tell the user about the error.
 - When discussing skill gaps, name the missing skills clearly.
 - If asked about a specific week and no week is mentioned, assume the current week.
 - When analysing coverage, compare actual staff per shift against lab minimums.
@@ -466,20 +468,37 @@ Guidelines:
           notes: z.string().optional(),
         }),
         execute: async (params) => {
-          // Resolve staff ID
+          // Resolve staff ID — try first+last name, then last name only
           const nameParts = params.staffName.trim().split(" ")
-          const { data: staff } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .maybeSingle() as { data: { id: string; first_name: string; last_name: string } | null }
+          let staff: { id: string; first_name: string; last_name: string } | null = null
+          if (nameParts.length >= 2) {
+            const { data } = await supabase
+              .from("staff")
+              .select("id, first_name, last_name")
+              .ilike("first_name", `%${nameParts[0]}%`)
+              .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+              .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+            staff = data?.[0] ?? null
+          }
+          if (!staff) {
+            const { data } = await supabase
+              .from("staff")
+              .select("id, first_name, last_name")
+              .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+              .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+            staff = data?.[0] ?? null
+          }
+
+          if (!staff) {
+            return { error: `Staff member "${params.staffName}" not found. Check the name and try again.` }
+          }
 
           return {
             proposal: true,
             action: "addLeave" as const,
             params: {
-              staffId: staff?.id ?? null,
-              staffName: staff ? `${staff.first_name} ${staff.last_name}` : params.staffName,
+              staffId: staff.id,
+              staffName: `${staff.first_name} ${staff.last_name}`,
               leaveType: params.leaveType,
               startDate: params.startDate,
               endDate: params.endDate,
