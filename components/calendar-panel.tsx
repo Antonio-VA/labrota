@@ -2552,9 +2552,13 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
                         ? "bg-amber-500/10 border-amber-500/20"
+                        : day.staffCount > 0
+                        ? day.isWeekend
+                          ? "bg-muted/40 border-border hover:bg-accent/20"
+                          : "bg-muted/20 border-border hover:bg-accent/10"
                         : day.isWeekend
-                        ? "bg-muted/60 border-border hover:bg-accent/20"
-                        : "bg-background border-border hover:bg-accent/10"
+                        ? "bg-background border-dashed border-border/50 hover:bg-accent/10"
+                        : "bg-background border-dashed border-border/50 hover:bg-accent/10"
                     )}
                   >
                     {/* Top row: date + status icon */}
@@ -2581,31 +2585,28 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department badges — compact two-letter labels */}
+                    {/* Department badges */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1.5 mt-auto flex-wrap">
+                      <div className="flex items-center gap-0.5 mt-auto text-[12px] font-semibold text-muted-foreground">
                         {day.labCount > 0 && (
-                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #3B82F6", paddingLeft: 3 }}>
-                            Em×{day.labCount}
-                          </span>
+                          <span style={{ borderLeft: "2px solid #3B82F6", paddingLeft: 3 }}>{day.labCount}E</span>
+                        )}
+                        {day.labCount > 0 && (day.andrologyCount > 0 || day.adminCount > 0) && (
+                          <span className="text-muted-foreground/30 mx-0.5">|</span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #10B981", paddingLeft: 3 }}>
-                            An×{day.andrologyCount}
-                          </span>
+                          <span style={{ borderLeft: "2px solid #10B981", paddingLeft: 3 }}>{day.andrologyCount}A</span>
+                        )}
+                        {day.andrologyCount > 0 && day.adminCount > 0 && (
+                          <span className="text-muted-foreground/30 mx-0.5">|</span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #64748B", paddingLeft: 3 }}>
-                            Ad×{day.adminCount}
-                          </span>
+                          <span style={{ borderLeft: "2px solid #64748B", paddingLeft: 3 }}>{day.adminCount}Ad</span>
                         )}
                       </div>
                     )}
 
-                    {/* Sin horario */}
-                    {day.staffCount === 0 && day.isCurrentMonth && !day.holidayName && (
-                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">{t("noGuardia")}</span>
-                    )}
+                    {/* Empty cells are visually distinct via dashed border + no bg tint */}
 
                     {/* Punctions + ratio + leave */}
                     {day.isCurrentMonth && (() => {
@@ -2629,7 +2630,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       const p6src = getPuncFromSummary(d6str)
                       const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                       return (
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-2 mt-1 text-[12px] tabular-nums">
                           <MonthPunctionsEdit
                             date={day.date}
                             value={effectiveP}
@@ -2637,9 +2638,9 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                             isOverride={isOverride}
                             onChange={onPunctionsChange}
                           />
-                          <span className="text-[12px] font-medium tabular-nums text-muted-foreground">B:{bForecast}</span>
+                          <span className="font-medium text-muted-foreground">B:{bForecast}</span>
                           {day.leaveCount > 0 && (
-                            <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
+                            <span className="flex items-center gap-0.5 text-amber-500">
                               <Briefcase className="size-3" />{day.leaveCount}
                             </span>
                           )}
