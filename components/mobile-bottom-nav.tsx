@@ -24,9 +24,15 @@ export function MobileBottomNav() {
   const pathname = usePathname()
   const canEdit = useCanEdit()
 
+  // Hide on schedule page — toolbar handles everything there
+  if (pathname === "/") return null
+
   const items = canEdit ? NAV_ITEMS_FULL : NAV_ITEMS_VIEWER
 
   return (
+    <>
+    {/* Spacer to prevent content from being hidden behind fixed nav */}
+    <div className="h-14 md:hidden shrink-0" />
     <nav className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-background border-t border-border">
       <div className="flex items-center justify-around h-14">
         {items.map((item) => {
@@ -51,5 +57,6 @@ export function MobileBottomNav() {
       {/* Safe area padding for iPhone home indicator */}
       <div className="h-[env(safe-area-inset-bottom,0px)]" />
     </nav>
+    </>
   )
 }
