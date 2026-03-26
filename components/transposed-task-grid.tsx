@@ -2,15 +2,16 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Briefcase } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { StaffWithSkills } from "@/lib/types/database"
-import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
+import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+const ROLE_BORDER: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
-const TECNICA_DOT: Record<string, string> = {
+const TECNICA_DOT_COLOR: Record<string, string> = {
   amber: "#F59E0B", blue: "#3B82F6", green: "#10B981",
   purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6",
   slate: "#64748B", red: "#EF4444",
@@ -39,7 +40,8 @@ export function TransposedTaskGrid({
 
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
-  const gridCols = `100px repeat(${tecnicas.length}, 1fr)`
+  // Equal width columns, min 80px
+  const gridCols = `100px repeat(${tecnicas.length}, minmax(80px, 1fr))`
 
   return (
     <div className="overflow-auto flex-1">
@@ -47,12 +49,12 @@ export function TransposedTaskGrid({
         {/* Header row: corner + técnica columns */}
         <div className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2" />
         {tecnicas.map((tec) => {
-          const dotColor = TECNICA_DOT[tec.color] ?? TECNICA_DOT.blue
+          const dotColor = TECNICA_DOT_COLOR[tec.color] ?? TECNICA_DOT_COLOR.blue
           return (
             <div key={tec.id} className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
-              <div className="flex items-center justify-center gap-1">
-                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
-                <span className="text-[11px] font-semibold text-foreground">{tec.codigo}</span>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
+                <span className="text-[12px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
               </div>
               <p className="text-[9px] text-muted-foreground truncate mt-0.5">{tec.nombre_es}</p>
             </div>
@@ -66,7 +68,13 @@ export function TransposedTaskGrid({
           const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(day.date + "T12:00:00"))
           const isToday = day.date === today
           const isSat = dow === 6
+          const isWeekend = dow === 0 || dow === 6
           const holiday = publicHolidays[day.date]
+
+          // Coverage status for left border color
+          const hasWarnings = day.warnings.length > 0
+          const hasAssignments = day.assignments.length > 0
+          const coverageColor = !hasAssignments ? "#D4D4D8" : hasWarnings ? "#F59E0B" : "#10B981"
 
           return (
             <>
@@ -74,14 +82,16 @@ export function TransposedTaskGrid({
               <div
                 key={`header-${day.date}`}
                 className={cn(
-                  "border-b border-r border-border px-2 py-2 flex flex-col justify-center bg-muted/50",
+                  "border-b border-r border-border px-2 py-1.5 flex flex-col justify-center",
                   isSat && "border-t border-dashed",
-                  isToday && "bg-primary/5"
+                  isToday && "bg-primary/5",
+                  isWeekend && !isToday && "bg-muted/30"
                 )}
+                style={{ borderLeft: `3px solid ${coverageColor}` }}
               >
                 <div className="flex items-center gap-1">
                   <span className={cn(
-                    "text-[10px] uppercase tracking-wider text-muted-foreground",
+                    "text-[11px] uppercase tracking-wider text-muted-foreground font-medium",
                     isToday && "text-primary font-semibold"
                   )}>
                     {wday}
@@ -92,48 +102,49 @@ export function TransposedTaskGrid({
                   )}>
                     {dayNum}
                   </span>
-                  {day.warnings.length > 0 && (
-                    <AlertTriangle className="size-3 text-amber-500 shrink-0" />
-                  )}
+                  {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
                 </div>
-                {holiday && (
-                  <span className="text-[9px] text-amber-600 truncate leading-tight">{holiday}</span>
-                )}
+                {holiday && <span className="text-[9px] text-amber-600 truncate leading-tight">{holiday}</span>}
               </div>
 
               {/* Técnica cells */}
               {tecnicas.map((tec) => {
-                // Find assignments for this day + técnica
                 const assignments = day.assignments.filter(
                   (a) => (a.function_label === tec.codigo || a.tecnica_id === tec.id) && visibleStaffIds.has(a.staff_id)
                 )
+                const tecDotColor = TECNICA_DOT_COLOR[tec.color] ?? TECNICA_DOT_COLOR.blue
 
                 return (
                   <div
                     key={`${day.date}-${tec.codigo}`}
                     className={cn(
-                      "border-b border-border p-1 flex flex-wrap gap-0.5 content-start",
+                      "border-b border-border px-1 py-1.5 flex flex-wrap gap-1 content-start",
                       isSat && "border-t border-dashed",
-                      assignments.length > 0 ? "bg-background" : "bg-muted/10"
+                      isWeekend && "bg-muted/30",
+                      assignments.length > 0 ? "bg-background" : ""
                     )}
                   >
-                    {assignments.map((a) => (
-                      <Tooltip key={a.id}>
-                        <TooltipTrigger render={
-                          <span
-                            className={cn(
-                              "inline-flex items-center justify-center rounded border border-border bg-background font-semibold",
-                              compact ? "text-[9px] px-1 py-0 min-h-[18px]" : "text-[10px] px-1.5 py-0.5 min-h-[22px]"
-                            )}
-                          >
-                            {a.staff.first_name[0]}{a.staff.last_name[0]}
-                          </span>
-                        } />
-                        <TooltipContent side="top">
-                          {a.staff.first_name} {a.staff.last_name} · {a.shift_type}
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
+                    {assignments.map((a) => {
+                      const roleColor = ROLE_BORDER[a.staff.role] ?? "#64748B"
+                      return (
+                        <Tooltip key={a.id}>
+                          <TooltipTrigger render={
+                            <span
+                              className={cn(
+                                "inline-flex items-center justify-center rounded font-semibold bg-background",
+                                compact ? "text-[9px] px-1 py-0.5 min-h-[20px]" : "text-[10px] px-1.5 py-0.5 min-h-[24px]"
+                              )}
+                              style={{ border: `1px solid ${roleColor}40`, borderLeft: `3px solid ${roleColor}`, borderRadius: 4 }}
+                            >
+                              {a.staff.first_name[0]}{a.staff.last_name[0]}
+                            </span>
+                          } />
+                          <TooltipContent side="top">
+                            {a.staff.first_name} {a.staff.last_name} · {a.shift_type}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    })}
                   </div>
                 )
               })}
