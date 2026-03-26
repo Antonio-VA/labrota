@@ -2613,8 +2613,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                             </span>
                           )
                         })}
-                        {day.staffCount > 6 && (
-                          <span className="text-[9px] text-muted-foreground/50">+{day.staffCount - 6}</span>
+                        {day.staffCount > 10 && (
+                          <span className="text-[9px] text-muted-foreground/50">+{day.staffCount - 10}</span>
                         )}
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
@@ -3663,7 +3663,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <button
                       onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift"); localStorage.setItem("labrota_month_view", "shift") }}
                       className={cn(
-                        "rounded-md px-2.5 h-[28px] flex items-center justify-center transition-colors",
+                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
                           ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"
@@ -3682,7 +3682,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <button
                       onClick={() => { setCalendarLayout("person"); setMonthViewMode("person"); localStorage.setItem("labrota_month_view", "person") }}
                       className={cn(
-                        "rounded-md px-2.5 h-[28px] flex items-center justify-center transition-colors",
+                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
                           ? "bg-background shadow-sm text-foreground"
                           : "text-muted-foreground hover:bg-muted"

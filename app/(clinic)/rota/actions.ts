@@ -1221,7 +1221,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       leaveCount: leaveByDate[date] ?? 0,
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
-      staffInitials: entries.slice(0, 6).map((e) => ({
+      staffInitials: entries.slice(0, 10).map((e) => ({
         id: e.staff_id,
         initials: `${e.first_name?.[0] ?? ""}${e.last_name?.[0] ?? ""}`,
         role: e.role,
