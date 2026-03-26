@@ -50,7 +50,7 @@ export function ClinicTopBar({
   }
 
   return (
-    <header className="hidden md:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4 gap-4">
+    <header className="hidden lg:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4 gap-4">
 
       {/* Left: org selector */}
       {orgName && (

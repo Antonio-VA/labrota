@@ -278,3 +278,26 @@ body {
     inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
 }
+
+/* Pop-out variant for floating nav — more transparent, stronger shadow */
+.glass-nav-pop {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  box-shadow:
+    0 6px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .glass-nav-pop {
+  background: rgba(220, 220, 230, 0.15);
+  box-shadow:
+    0 6px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+}

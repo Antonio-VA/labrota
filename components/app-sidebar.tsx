@@ -112,7 +112,7 @@ export function AppSidebar() {
   ] as const
 
   return (
-    <nav className="hidden md:flex flex-col w-20 h-full border-r border-border bg-background shrink-0">
+    <nav className="hidden lg:flex flex-col w-20 h-full border-r border-border bg-background shrink-0">
       <TooltipProvider delay={300}>
         {/* Nav items */}
         <div className="flex flex-col gap-1 py-3 flex-1">

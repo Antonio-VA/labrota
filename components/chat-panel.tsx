@@ -367,7 +367,7 @@ export function ChatPanel({
   return (
     <aside
       className={`
-        hidden md:flex flex-col border-l bg-background shrink-0
+        hidden lg:flex flex-col border-l bg-background shrink-0
         overflow-hidden h-full
         ${!mounted ? "w-10" : `transition-[width] duration-300 ease-in-out ${collapsed ? "w-10" : "w-80"}`}
       `}

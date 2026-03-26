@@ -42,24 +42,24 @@ export function MobileHeader({
 
   return (
     <>
-      <header id="mobile-header" className="flex md:hidden h-11 shrink-0 items-center border-b border-border bg-background px-3 gap-2">
+      <header id="mobile-header" className="flex lg:hidden h-12 shrink-0 items-center border-b border-border bg-background px-3 gap-2.5">
         {/* Left: org chip */}
         <button
           onClick={() => hasMultipleOrgs && setSheetOpen(true)}
           disabled={!hasMultipleOrgs || isSwitching}
           className={cn(
-            "flex items-center gap-1.5 shrink-0",
+            "flex items-center gap-2 min-w-0",
             hasMultipleOrgs && "active:opacity-70"
           )}
         >
           {orgLogoUrl && !logoError ? (
-            <img src={orgLogoUrl} alt="" className="h-6 w-auto max-w-[48px] object-contain rounded" onError={() => setLogoError(true)} />
+            <img src={orgLogoUrl} alt="" className="h-7 w-auto max-w-[56px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
           ) : (
-            <span className="size-6 rounded-md bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">
+            <span className="size-7 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
               {orgInitials}
             </span>
           )}
-          <span className="text-[13px] font-medium truncate max-w-[80px]">{orgName ?? ""}</span>
+          <span className="text-[15px] font-semibold">{orgName ?? ""}</span>
         </button>
 
         <div className="flex-1" />
