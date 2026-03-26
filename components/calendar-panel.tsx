@@ -4144,7 +4144,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               days={weekData.days.map((d) => ({
                 date: d.date,
                 staffCount: d.assignments.length,
-                hasSkillGaps: d.skillGaps.length > 0,
+                hasSkillGaps: d.skillGaps.length > 0 || d.warnings.length > 0,
               }))}
               currentDate={currentDate}
               onSelectDay={(date) => { setCurrentDate(date); setMobileEditMode(false) }}
@@ -4162,35 +4162,45 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 h-12 px-3 border-b border-border bg-background md:hidden sticky top-0 z-10">
-              <button
-                onClick={goToToday}
-                disabled={currentDate === TODAY}
-                className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0 border border-border", currentDate === TODAY ? "text-muted-foreground/40 border-transparent" : "text-primary active:bg-primary/10")}
-              >
-                {tc("today")}
-              </button>
-              <button onClick={() => navigate(-1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+            <div className="flex items-center gap-1.5 h-11 px-3 border-b border-border bg-background md:hidden sticky top-0 z-10">
+              {/* Left: compact date selector */}
+              <button onClick={() => navigate(-1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </button>
-              {/* Date label + calendar picker */}
-              <div className="relative flex-1 min-w-0 flex items-center justify-center">
+              <div className="relative shrink-0">
                 <input
                   type="date"
                   value={currentDate}
                   onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
-                <span className="text-[14px] font-medium capitalize truncate pointer-events-none">
+                <span className="text-[13px] font-medium capitalize pointer-events-none">
                   {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
                 </span>
               </div>
-              <button onClick={() => navigate(1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+              <button onClick={() => navigate(1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronRight className="size-4 text-muted-foreground" />
               </button>
+              <button
+                onClick={goToToday}
+                disabled={currentDate === TODAY}
+                className={cn("text-[12px] font-medium px-2 py-0.5 rounded transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
+              >
+                {tc("today")}
+              </button>
+              <div className="flex-1" />
+              {/* Avisos */}
+              {(currentDayData?.warnings.length ?? 0) > 0 && (
+                <div className="relative size-7 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="size-4 text-amber-500" />
+                  <span className="absolute -top-0.5 -right-0.5 size-3.5 flex items-center justify-center rounded-full bg-amber-500 text-white text-[8px] font-bold">
+                    {currentDayData!.warnings.length}
+                  </span>
+                </div>
+              )}
               {canEdit && (
-                <button onClick={() => setMobileEditMode(true)} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
-                  <Pencil className="size-4" />
+                <button onClick={() => setMobileEditMode(true)} className="size-7 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                  <Pencil className="size-3.5" />
                 </button>
               )}
               {canEdit && (
