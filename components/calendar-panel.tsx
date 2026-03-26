@@ -2569,17 +2569,26 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department pills with left border */}
+                    {/* Department pills */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
                       <div className="flex items-center gap-1 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #60A5FA" }}>{day.labCount}</span>
+                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(96,165,250,0.12)", color: "#3B82F6" }}>
+                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#3B82F6" }} />
+                            {day.labCount}
+                          </span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #34D399" }}>{day.andrologyCount}</span>
+                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#10B981" }}>
+                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#10B981" }} />
+                            {day.andrologyCount}
+                          </span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="pl-1.5 pr-1 py-px text-[9px] font-semibold text-muted-foreground rounded-sm" style={{ borderLeft: "2px solid #94A3B8" }}>{day.adminCount}</span>
+                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(148,163,184,0.12)", color: "#64748B" }}>
+                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#64748B" }} />
+                            {day.adminCount}
+                          </span>
                         )}
                       </div>
                     )}
