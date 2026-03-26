@@ -2431,7 +2431,7 @@ function rotateArray<T>(arr: T[], offset: number): T[] {
   return [...arr.slice(o), ...arr.slice(0, o)]
 }
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange }: {
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, monthViewMode = "shift" }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
@@ -2441,6 +2441,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   firstDayOfWeek?: number
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
+  monthViewMode?: "shift" | "person"
 }) {
   const t = useTranslations("schedule")
   const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
@@ -2587,8 +2588,23 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department badges */}
-                    {day.staffCount > 0 && day.isCurrentMonth && (
+                    {/* Staff display — shift mode (dept badges) or person mode (initials) */}
+                    {day.staffCount > 0 && day.isCurrentMonth && monthViewMode === "person" ? (
+                      <div className="flex flex-wrap gap-0.5 mt-auto">
+                        {(day.staffInitials ?? []).map((si, i) => (
+                          <span
+                            key={i}
+                            className="text-[9px] font-semibold rounded px-1 py-px border border-border bg-background"
+                            style={{ borderLeft: `2px solid ${si.role === "lab" ? "#3B82F6" : si.role === "andrology" ? "#10B981" : "#64748B"}` }}
+                          >
+                            {si.initials}
+                          </span>
+                        ))}
+                        {day.staffCount > 6 && (
+                          <span className="text-[9px] text-muted-foreground/50">+{day.staffCount - 6}</span>
+                        )}
+                      </div>
+                    ) : day.staffCount > 0 && day.isCurrentMonth ? (
                       <div className="flex items-center gap-0.5 mt-auto text-[12px] font-semibold text-muted-foreground">
                         {day.labCount > 0 && (
                           <span style={{ borderLeft: "2px solid #3B82F6", paddingLeft: 3 }}>{day.labCount}E</span>
@@ -2606,7 +2622,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           <span style={{ borderLeft: "2px solid #64748B", paddingLeft: 3 }}>{day.adminCount}Ad</span>
                         )}
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Empty cells are visually distinct via dashed border + no bg tint */}
 
@@ -3235,6 +3251,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
+  const [monthViewMode, setMonthViewMode] = useState<"shift" | "person">(() => {
+    if (typeof window === "undefined") return "shift"
+    return (localStorage.getItem("labrota_month_view") as "shift" | "person") ?? "shift"
+  })
 
   // Department filter — persisted in localStorage
   // Dynamic department data from weekData (or defaults) — memoised to avoid re-creating every render
@@ -3969,6 +3989,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {/* Month view */}
         {view === "month" && (
           <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
+            {/* Shift/Person toggle */}
+            <div className="flex items-center gap-1 mb-3">
+              {(["shift", "person"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => { setMonthViewMode(m); localStorage.setItem("labrota_month_view", m) }}
+                  className={cn(
+                    "px-3 py-1 text-[12px] font-medium rounded-md transition-colors",
+                    monthViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {m === "shift" ? t("shiftLayout") : t("personLayout")}
+                </button>
+              ))}
+            </div>
             <MonthGrid
               summary={monthSummary}
               loading={loadingMonth}
@@ -3979,6 +4014,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               firstDayOfWeek={weekData?.firstDayOfWeek ?? 0}
               punctionsOverride={punctionsOverride}
               onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+              monthViewMode={monthViewMode}
             />
           </div>
         )}

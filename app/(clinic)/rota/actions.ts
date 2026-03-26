@@ -1055,6 +1055,8 @@ export interface MonthDaySummary {
   holidayName: string | null
   /** Up to 3 staff roles for colour dot preview */
   staffRoles: string[]
+  /** Staff initials for person view (up to 6) */
+  staffInitials: { initials: string; role: string }[]
 }
 
 export interface MonthWeekStatus {
@@ -1140,10 +1142,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   ])
 
   // Assignment data
-  const byDate: Record<string, { staff_id: string; role: string }[]> = {}
+  const byDate: Record<string, { staff_id: string; role: string; first_name: string; last_name: string }[]> = {}
   for (const a of assignmentsRes.data ?? []) {
     if (!byDate[a.date]) byDate[a.date] = []
-    byDate[a.date].push({ staff_id: a.staff_id, role: a.staff?.role ?? "lab" })
+    byDate[a.date].push({ staff_id: a.staff_id, role: a.staff?.role ?? "lab", first_name: a.staff?.first_name ?? "", last_name: a.staff?.last_name ?? "" })
   }
 
   // Staff totals for month taskbar
@@ -1219,6 +1221,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       leaveCount: leaveByDate[date] ?? 0,
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
+      staffInitials: entries.slice(0, 6).map((e) => ({
+        initials: `${e.first_name?.[0] ?? ""}${e.last_name?.[0] ?? ""}`,
+        role: e.role,
+      })),
     }
   })
 
