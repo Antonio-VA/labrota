@@ -2614,13 +2614,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           return (
                             <span
                               key={i}
-                              className={cn(
-                                "text-[9px] font-semibold rounded px-1 py-px border transition-colors cursor-default",
-                                isHov ? "border-transparent" : "border-border bg-background"
-                              )}
+                              className="text-[9px] font-semibold rounded px-1 py-px border border-border transition-colors cursor-default"
                               style={{
                                 borderLeft: `2px solid ${roleColor}`,
-                                ...(isHov ? { backgroundColor: roleColor + "30", color: roleColor } : {}),
+                                ...(isHov ? { backgroundColor: roleColor + "25", color: roleColor, borderColor: roleColor + "40" } : {}),
                               }}
                               onMouseEnter={() => setHovered(si.id)}
                               onMouseLeave={() => setHovered(null)}
@@ -3958,6 +3955,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   compact={compact}
+                  onRemoveAssignment={async (id) => {
+                    const result = await removeAssignment(id)
+                    if (result.error) toast.error(result.error)
+                    else fetchWeekSilent(weekStart)
+                  }}
+                  onCellClick={(date, tecCode) => {
+                    // Open assignment sheet for this day with the tecnica pre-selected
+                    setSheetDate(date)
+                    setSheetOpen(true)
+                  }}
                 />
               ) : weekData.rotaDisplayMode === "by_task" ? (
                 /* By task: always show TaskGrid — it handles its own empty state */

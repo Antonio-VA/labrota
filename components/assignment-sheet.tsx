@@ -709,34 +709,46 @@ export function AssignmentSheet({
           </div>
           {/* Pick ups + Biopsies — single clickable zone */}
           {editingP ? (
-            <div className="flex items-center gap-3 bg-muted/30 rounded-lg px-3 py-2 border border-border">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-muted-foreground">{t("pickups")}</span>
-                <input
-                  autoFocus
-                  type="number"
-                  min={0}
-                  value={pDraft}
-                  onChange={(e) => setPDraft(e.target.value)}
-                  onBlur={commitPunctions}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commitPunctions()
-                    if (e.key === "Escape") setEditingP(false)
-                  }}
-                  className="w-12 text-[12px] text-center border border-primary rounded px-0.5 py-0.5 outline-none bg-background font-medium"
-                />
-              </div>
-              {biopsyForecast !== undefined && (
+            <div className="flex flex-col gap-2 bg-muted/30 rounded-lg px-3 py-2.5 border border-border">
+              <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] text-muted-foreground">{t("biopsies")}</span>
+                  <span className="text-[12px] text-muted-foreground">{t("pickups")}</span>
                   <input
+                    autoFocus
                     type="number"
                     min={0}
-                    defaultValue={biopsyForecast}
-                    className="w-12 text-[12px] font-medium text-center border border-input rounded px-0.5 py-0.5 bg-background outline-none focus:border-primary"
+                    value={pDraft}
+                    onChange={(e) => setPDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") commitPunctions(); if (e.key === "Escape") setEditingP(false) }}
+                    className="w-14 text-[13px] text-center border border-primary rounded px-1 py-1 outline-none bg-background font-medium"
                   />
                 </div>
-              )}
+                {biopsyForecast !== undefined && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] text-muted-foreground">{t("biopsies")}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      defaultValue={biopsyForecast}
+                      className="w-14 text-[13px] font-medium text-center border border-input rounded px-1 py-1 bg-background outline-none focus:border-primary"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={commitPunctions}
+                  className="flex-1 text-[12px] font-medium bg-primary text-primary-foreground rounded-md px-3 py-1.5 hover:opacity-90 transition-opacity"
+                >
+                  {tc("save")}
+                </button>
+                <button
+                  onClick={() => setEditingP(false)}
+                  className="text-[12px] text-muted-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
+                >
+                  {tc("cancel")}
+                </button>
+              </div>
             </div>
           ) : (
             <button

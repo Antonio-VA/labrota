@@ -25,10 +25,13 @@ interface TransposedTaskGridProps {
   publicHolidays: Record<string, string>
   onLeaveByDate: Record<string, string[]>
   compact?: boolean
+  onRemoveAssignment?: (id: string) => void
+  onCellClick?: (date: string, tecnicaCode: string) => void
 }
 
 export function TransposedTaskGrid({
   data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact,
+  onRemoveAssignment, onCellClick,
 }: TransposedTaskGridProps) {
   const t = useTranslations("schedule")
 
@@ -131,12 +134,18 @@ export function TransposedTaskGrid({
                           <TooltipTrigger render={
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center rounded font-semibold bg-background",
+                                "inline-flex items-center gap-0.5 rounded font-semibold bg-background group/chip",
                                 compact ? "text-[9px] px-1 py-0.5 min-h-[20px]" : "text-[10px] px-1.5 py-0.5 min-h-[24px]"
                               )}
                               style={{ border: `1px solid ${roleColor}40`, borderLeft: `3px solid ${roleColor}`, borderRadius: 4 }}
                             >
                               {a.staff.first_name[0]}{a.staff.last_name[0]}
+                              {!isPublished && onRemoveAssignment && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }}
+                                  className="text-[8px] text-muted-foreground/0 group-hover/chip:text-destructive transition-colors ml-0.5"
+                                >×</button>
+                              )}
                             </span>
                           } />
                           <TooltipContent side="top">
@@ -145,6 +154,12 @@ export function TransposedTaskGrid({
                         </Tooltip>
                       )
                     })}
+                    {!isPublished && onCellClick && (
+                      <button
+                        onClick={() => onCellClick(day.date, tec.codigo)}
+                        className="inline-flex items-center justify-center size-5 rounded border border-dashed border-primary/30 text-primary text-[10px] hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                      >+</button>
+                    )}
                   </div>
                 )
               })}
