@@ -54,6 +54,7 @@ import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
 import { MobilePersonView } from "@/components/mobile-person-view"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
+import { TransposedTaskGrid } from "@/components/transposed-task-grid"
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -3836,6 +3837,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {(loadingWeek || isPending || !weekData) ? (
                 /* Loading or no data yet — always show shimmer skeleton */
                 <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+              ) : weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
+                <TransposedTaskGrid
+                  data={weekData}
+                  staffList={filteredStaffList}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  compact={compact}
+                />
               ) : weekData.rotaDisplayMode === "by_task" ? (
                 /* By task: always show TaskGrid — it handles its own empty state */
                 <TaskGrid
@@ -3904,6 +3915,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   compact={compact}
                   colorChips={colorChips}
                   timeFormat={weekData?.timeFormat}
+                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onRefresh={() => fetchWeekSilent(weekStart)}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
