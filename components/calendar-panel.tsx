@@ -3442,12 +3442,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
 
-  // Hide layout's mobile header on schedule page — toolbar replaces it
-  useEffect(() => {
-    const h = document.getElementById("mobile-header")
-    if (h) h.style.display = "none"
-    return () => { if (h) h.style.display = "" }
-  }, [])
 
   // Check if previous week has a rota (for "copy previous week" button)
   // Don't reset to false while loading — keep the last known value
@@ -3901,25 +3895,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         </div>
       </div>
 
-      {/* Mobile toolbar — day-by-day navigation */}
-      <div className="flex md:hidden items-center justify-between border-b px-4 py-2 gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
-            {tc("today")}
-          </Button>
-          <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon-sm" onClick={() => setCurrentDate((d) => addDays(d, -1))} aria-label={t("previousPeriod")}>
-              <ChevronLeft />
-            </Button>
-            <Button variant="ghost" size="icon-sm" onClick={() => setCurrentDate((d) => addDays(d, 1))} aria-label={t("nextPeriod")}>
-              <ChevronRight />
-            </Button>
-          </div>
-          <span className="text-[13px] font-medium capitalize">
-            {formatDate(currentDate, locale as "es" | "en")}
-          </span>
-        </div>
-      </div>
+      {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
 
       {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
