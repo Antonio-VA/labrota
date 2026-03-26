@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
 
 const NAV_ITEMS = [
-  { key: "week", icon: CalendarRange, href: "/mobile-week" },
   { key: "day",  icon: CalendarDays,  href: "/" },
+  { key: "week", icon: CalendarRange, href: "/mobile-week" },
 ] as const
 
 const LABELS: Record<string, Record<string, string>> = {
@@ -85,20 +85,20 @@ export function MobileBottomNav() {
   return (
     <div
       className={cn(
-        "fixed z-40 md:hidden transition-all duration-300 ease-out",
-        docked ? "bottom-0 left-0 right-0" : "left-1/2 -translate-x-1/2",
-        !docked && !visible && "bottom-[-80px] opacity-0",
-        !docked && visible && "bottom-2 opacity-100",
+        "fixed left-1/2 -translate-x-1/2 z-40 md:hidden transition-all duration-300 ease-out",
+        !visible && !docked && "bottom-[-80px] opacity-0",
+        visible && !docked && "bottom-2 opacity-100",
+        docked && "bottom-0 opacity-100",
       )}
-      style={!docked ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className={cn(
-        "flex items-center glass-nav transition-all duration-300",
-        docked ? "justify-around py-1.5 rounded-none" : "gap-1 px-2 py-2 rounded-[20px]"
-      )}>
+      <nav className="flex items-center gap-1 px-2 py-2 rounded-[20px] glass-nav">
         {navContent}
       </nav>
-      {docked && <div className="h-[env(safe-area-inset-bottom,0px)] glass-nav" style={{ borderRadius: 0 }} />}
+      {/* White bar underneath when docked so content is visible */}
+      {docked && (
+        <div className="fixed bottom-0 left-0 right-0 -z-10 bg-background" style={{ height: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }} />
+      )}
     </div>
   )
 }
