@@ -125,4 +125,29 @@ ALTER TABLE public.organisation_members ADD COLUMN IF NOT EXISTS linked_staff_id
 ALTER TABLE public.lab_config ADD COLUMN IF NOT EXISTS enable_leave_requests boolean NOT NULL DEFAULT false;
 ```
 
+### 11. Rota snapshots (version history)
+```sql
+CREATE TABLE IF NOT EXISTS public.rota_snapshots (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid        NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
+  rota_id         uuid        NOT NULL REFERENCES public.rotas(id) ON DELETE CASCADE,
+  date            date        NOT NULL,
+  week_start      date        NOT NULL,
+  assignments     jsonb       NOT NULL DEFAULT '[]',
+  user_id         uuid,
+  user_email      text,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rota_snapshots_week_idx ON public.rota_snapshots (organisation_id, week_start, date, created_at DESC);
+ALTER TABLE public.rota_snapshots ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY "Org members can manage rota snapshots"
+    ON public.rota_snapshots FOR ALL
+    USING (organisation_id IN (
+      SELECT om.organisation_id FROM public.organisation_members om WHERE om.user_id = auth.uid()
+    ));
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+```
+
 All use `IF NOT EXISTS` / `IF EXISTS` so they're safe to re-run.

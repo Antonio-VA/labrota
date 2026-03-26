@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,7 @@ import { MobileTaskView } from "@/components/mobile-task-view"
 import { MobilePersonView } from "@/components/mobile-person-view"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { TransposedTaskGrid } from "@/components/transposed-task-grid"
+import { RotaHistoryPanel } from "@/components/rota-history-panel"
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -3292,6 +3293,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [monthViewMode, setMonthViewMode] = useState<"shift" | "person">(() => {
     if (typeof window === "undefined") return "shift"
     return (localStorage.getItem("labrota_month_view") as "shift" | "person") ?? "shift"
@@ -3784,12 +3786,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
                 onClick: () => setHighlightHover(!highlightHover),
                 active: highlightHover,
-              }, {
+              },
+              ...(view === "week" ? [{
                 label: t("daysAsRows"),
                 icon: <Grid3X3 className="size-3.5" />,
                 onClick: () => { const next = !daysAsRows; setDaysAsRows(next); localStorage.setItem("labrota_days_as_rows", String(next)) },
                 active: daysAsRows,
-              }] : []),
+              }] : [])] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
@@ -3805,6 +3808,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
+              }] : []),
+              // ── Group 4b: History (week view with assignments) ──
+              ...(view === "week" && hasAssignments ? [{
+                label: t("viewHistory"),
+                icon: <Clock className="size-3.5" />,
+                onClick: () => setHistoryOpen(true),
               }] : []),
               // ── Group 5: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{
@@ -4271,6 +4280,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         weekData={weekData}
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
+      />
+
+      {/* Rota history panel */}
+      <RotaHistoryPanel
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        weekStart={weekStart}
+        date={currentDate}
+        onRestored={() => fetchWeek(weekStart)}
       />
 
       {/* Week notes — only in week view */}

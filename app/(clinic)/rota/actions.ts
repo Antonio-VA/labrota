@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
 import { logAuditEvent } from "@/lib/audit"
+import { captureSnapshot } from "@/lib/rota-snapshots"
 import type {
   RotaStatus,
   StaffWithSkills,
@@ -656,6 +657,9 @@ export async function upsertAssignment(params: {
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
+  // Snapshot before mutation
+  captureSnapshot(rotaId, params.date, params.weekStart)
+
   if (params.assignmentId) {
     // Update existing
     const { error } = await supabase
@@ -713,6 +717,10 @@ export async function upsertAssignment(params: {
 
 export async function deleteAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  // Snapshot before deletion
+  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
+  if (asg?.rota) captureSnapshot(asg.rota_id, asg.date, asg.rota.week_start)
+
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
@@ -936,6 +944,10 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
 
 export async function removeAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  // Snapshot before removal
+  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
+  if (asg?.rota) captureSnapshot(asg.rota_id, asg.date, asg.rota.week_start)
+
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
