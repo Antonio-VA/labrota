@@ -94,16 +94,16 @@ function getPublicHolidays(year: number, country = "ES"): Record<string, string>
 
   const HOLIDAYS: Record<string, Record<string, string>> = {
     ES: {
-      [`${year}-01-01`]: "Año Nuevo",
-      [`${year}-01-06`]: "Reyes Magos",
-      [fmt(goodFriday)]: "Viernes Santo",
-      [`${year}-05-01`]: "Día del Trabajo",
-      [`${year}-08-15`]: "Asunción de la Virgen",
-      [`${year}-10-12`]: "Día de la Hispanidad",
-      [`${year}-11-01`]: "Todos los Santos",
-      [`${year}-12-06`]: "Día de la Constitución",
-      [`${year}-12-08`]: "Inmaculada Concepción",
-      [`${year}-12-25`]: "Navidad",
+      [`${year}-01-01`]: "New Year",
+      [`${year}-01-06`]: "Epiphany",
+      [fmt(goodFriday)]: "Good Friday",
+      [`${year}-05-01`]: "Labour Day",
+      [`${year}-08-15`]: "Assumption",
+      [`${year}-10-12`]: "National Day",
+      [`${year}-11-01`]: "All Saints",
+      [`${year}-12-06`]: "Constitution Day",
+      [`${year}-12-08`]: "Immaculate Conception",
+      [`${year}-12-25`]: "Christmas",
     },
     AE: {
       [`${year}-01-01`]: "New Year's Day",

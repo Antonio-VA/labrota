@@ -478,8 +478,8 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     setOpen(false)
   }
 
-  const pLabel = `P:${value}`
-  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
+  const pLabel = `PU:${value}`
+  const bLabel = biopsyForecast > 0 ? `BIO:${biopsyForecast}` : "BIO:0"
 
   if (disabled) {
     return (
@@ -2355,8 +2355,8 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
 
   if (!onChange) {
     return (
-      <span className={cn("text-[11px] tabular-nums", isOverride ? "text-primary font-medium" : "text-muted-foreground")}>
-        P:{value}
+      <span className={cn("text-[12px] tabular-nums", isOverride ? "text-primary font-medium" : "text-muted-foreground")}>
+        PU:{value}
       </span>
     )
   }
@@ -2368,11 +2368,11 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
           <button
             onClick={(e) => { e.stopPropagation(); setDraft(value); setOpen((o) => !o) }}
             className={cn(
-              "text-[11px] tabular-nums rounded px-0.5 transition-colors hover:bg-muted group/pedit",
+              "text-[12px] tabular-nums rounded px-0.5 transition-colors hover:bg-muted group/pedit",
               isOverride ? "text-primary font-medium" : "text-muted-foreground"
             )}
           >
-            P:{value}
+            PU:{value}
             <Pencil className="size-2 ml-0.5 inline opacity-0 group-hover/pedit:opacity-50 transition-opacity" />
           </button>
         } />
@@ -2581,25 +2581,22 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
-                    {/* Department pills */}
+                    {/* Department badges — compact two-letter labels */}
                     {day.staffCount > 0 && day.isCurrentMonth && (
-                      <div className="flex items-center gap-1 mt-auto flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-auto flex-wrap">
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(96,165,250,0.12)", color: "#3B82F6" }}>
-                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#3B82F6" }} />
-                            {day.labCount}
+                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #3B82F6", paddingLeft: 3 }}>
+                            Em×{day.labCount}
                           </span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#10B981" }}>
-                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#10B981" }} />
-                            {day.andrologyCount}
+                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #10B981", paddingLeft: 3 }}>
+                            An×{day.andrologyCount}
                           </span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 pl-1 pr-1.5 py-px text-[9px] font-semibold rounded" style={{ backgroundColor: "rgba(148,163,184,0.12)", color: "#64748B" }}>
-                            <span className="size-1.5 rounded-full" style={{ backgroundColor: "#64748B" }} />
-                            {day.adminCount}
+                          <span className="text-[11px] font-semibold text-muted-foreground" style={{ borderLeft: "2px solid #64748B", paddingLeft: 3 }}>
+                            Ad×{day.adminCount}
                           </span>
                         )}
                       </div>
@@ -2640,7 +2637,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                             isOverride={isOverride}
                             onChange={onPunctionsChange}
                           />
-                          <span className="text-[11px] font-medium tabular-nums text-muted-foreground">B:{bForecast}</span>
+                          <span className="text-[12px] font-medium tabular-nums text-muted-foreground">BIO:{bForecast}</span>
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
                               <Briefcase className="size-3" />{day.leaveCount}
@@ -2721,7 +2718,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
       {/* Punctions + biopsies header */}
       {(punctions !== undefined || biopsyForecast !== undefined) && (
         <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-          {punctions !== undefined && <span>P: <strong className="text-foreground">{punctions}</strong></span>}
+          {punctions !== undefined && <span>PU: <strong className="text-foreground">{punctions}</strong></span>}
           {biopsyForecast !== undefined && <span>B: <strong className="text-foreground">{biopsyForecast}</strong></span>}
           <span className="text-muted-foreground/40">·</span>
           <span>{t("assignmentCount", { count: day.assignments.length })}</span>

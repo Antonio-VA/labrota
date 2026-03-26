@@ -697,7 +697,7 @@ export function AssignmentSheet({
           {/* Punctions + Biopsias — aligned on same row */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-muted-foreground">P:</span>
+              <span className="text-[12px] text-muted-foreground">PU:</span>
               {editingP ? (
                 <input
                   autoFocus
@@ -730,7 +730,7 @@ export function AssignmentSheet({
             </div>
             {biopsyForecast !== undefined && (
               <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-muted-foreground">B:</span>
+                <span className="text-[12px] text-muted-foreground">BIO:</span>
                 <input
                   type="number"
                   min={0}
