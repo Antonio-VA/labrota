@@ -8,36 +8,21 @@ import { Button } from "@/components/ui/button"
 import { SendHorizonal, Bot, CheckCircle2, XCircle, ChevronRight, ChevronLeft } from "lucide-react"
 import { useRef, useEffect, useState, useTransition } from "react"
 import ReactMarkdown from "react-markdown"
-import { generateRota } from "@/app/(clinic)/rota/actions"
+import { generateRota, upsertAssignment, regenerateDay, publishRota, unlockRota, copyPreviousWeek } from "@/app/(clinic)/rota/actions"
 import { createLeave } from "@/app/(clinic)/leaves/actions"
+import { addWeekNote } from "@/app/(clinic)/notes-actions"
 import { useRouter } from "next/navigation"
 
 const transport = new DefaultChatTransport({ api: "/api/chat" })
 
 // ── Proposal types ────────────────────────────────────────────────────────────
 
-type GenerateRotaProposal = {
+type Proposal = {
   proposal: true
-  action: "generateRota"
-  params: { weekStart: string }
+  action: string
+  params: Record<string, unknown>
   description: string
 }
-
-type AddLeaveProposal = {
-  proposal: true
-  action: "addLeave"
-  params: {
-    staffId: string | null
-    staffName: string
-    leaveType: "annual" | "sick" | "personal" | "other"
-    startDate: string
-    endDate: string
-    notes: string | null
-  }
-  description: string
-}
-
-type Proposal = GenerateRotaProposal | AddLeaveProposal
 
 // ── Proposal card ─────────────────────────────────────────────────────────────
 
@@ -55,40 +40,88 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
       setStatus("applying")
       setError(null)
 
-      if (proposal.action === "generateRota") {
-        const result = await generateRota(proposal.params.weekStart, false)
-        if (result.error) {
-          setError(result.error)
-          setStatus("pending")
-        } else if ((result.assignmentCount ?? 0) === 0) {
-          setError("Rota generated but no assignments were created. Check that active staff exist and lab configuration is set up.")
+      try {
+        const p = proposal.params
+        let ok = false
+
+        switch (proposal.action) {
+          case "generateRota": {
+            const result = await generateRota(p.weekStart as string, false)
+            if (result.error) { setError(result.error); break }
+            if ((result.assignmentCount ?? 0) === 0) { setError("No assignments created. Check staff and lab config."); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          case "addLeave": {
+            if (!p.staffId) { setError("Staff member not found."); break }
+            const formData = new FormData()
+            formData.set("staff_id", p.staffId as string)
+            formData.set("type", p.leaveType as string)
+            formData.set("start_date", p.startDate as string)
+            formData.set("end_date", p.endDate as string)
+            if (p.notes) formData.set("notes", p.notes as string)
+            const result = await createLeave(null, formData)
+            if ((result as { error?: string })?.error) { setError((result as { error: string }).error); break }
+            ok = true
+            break
+          }
+          case "addNote": {
+            const result = await addWeekNote(p.weekStart as string, p.text as string)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "assignStaff": {
+            const result = await upsertAssignment({
+              weekStart: p.weekStart as string,
+              staffId: p.staffId as string,
+              date: p.date as string,
+              shiftType: p.shiftType as string,
+              functionLabel: (p.functionLabel as string) ?? undefined,
+            })
+            if (result.error) { setError(result.error); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          case "regenerateDay": {
+            const result = await regenerateDay(p.weekStart as string, p.date as string)
+            if (result.error) { setError(result.error); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          case "publishRota": {
+            const result = await publishRota(p.rotaId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          case "unlockRota": {
+            const result = await unlockRota(p.rotaId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          case "copyPreviousWeek": {
+            const result = await copyPreviousWeek(p.weekStart as string)
+            if (result.error) { setError(result.error); break }
+            ok = true; onRefresh?.()
+            break
+          }
+          default:
+            setError(`Unknown action: ${proposal.action}`)
+        }
+
+        if (ok) {
+          setStatus("done")
+          router.refresh()
+        } else if (!error) {
           setStatus("pending")
         } else {
-          setStatus("done")
-          onRefresh?.()
-          router.refresh()
-        }
-      } else if (proposal.action === "addLeave") {
-        const { params } = proposal
-        if (!params.staffId) {
-          setError("Staff member not found. Please add the leave manually from the Ausencias page.")
           setStatus("pending")
-          return
         }
-        const formData = new FormData()
-        formData.set("staff_id", params.staffId)
-        formData.set("type", params.leaveType)
-        formData.set("start_date", params.startDate)
-        formData.set("end_date", params.endDate)
-        if (params.notes) formData.set("notes", params.notes)
-        const result = await createLeave(null, formData)
-        if ((result as { error?: string })?.error) {
-          setError((result as { error: string }).error)
-          setStatus("pending")
-        } else {
-          setStatus("done")
-          router.refresh()
-        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Unexpected error")
+        setStatus("pending")
       }
     })
   }

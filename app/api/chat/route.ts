@@ -24,6 +24,8 @@ export async function POST(req: Request) {
 You help managers understand the rota, staff availability, coverage, and lab configuration.
 
 Capabilities — you can do all of the following directly:
+
+Read:
 - Look up the rota for any week with shift details (getWeekRota)
 - Get detailed rota with coverage analysis per shift (getWeekCoverage)
 - List all active staff with skills, working patterns, and preferences (getStaffList)
@@ -33,8 +35,17 @@ Capabilities — you can do all of the following directly:
 - View techniques/tasks and who can perform them (getTechniques)
 - View departments and sub-departments (getDepartments)
 - View scheduling rules and constraints (getRules)
-- Add leave for a staff member (proposeAddLeave — requires user confirmation)
-- Generate the rota for a given week (proposeGenerateRota — requires user confirmation)
+
+Write (all require user confirmation before executing):
+- Generate the rota for a week (proposeGenerateRota)
+- Regenerate a single day (proposeRegenerateDay)
+- Copy previous week's rota (proposeCopyPreviousWeek)
+- Assign a specific person to a shift on a day (proposeAssignStaff)
+- Publish a draft rota (proposePublishRota)
+- Unlock a published rota back to draft (proposeUnlockRota)
+- Add leave for a staff member (proposeAddLeave)
+- Add a note/summary to a week (proposeAddNote)
+
 Never tell the user to go elsewhere for anything listed above. Use the tools and handle it.
 
 Guidelines:
@@ -477,6 +488,135 @@ Guidelines:
             description: `Add ${LEAVE_TYPE_LABEL[params.leaveType] ?? params.leaveType} for ${params.staffName}: ${params.startDate} – ${params.endDate}`,
           }
         },
+      }),
+
+      proposeAddNote: tool({
+        description: "Propose adding a note/summary to a specific week. Use for weekly summaries, reminders, or observations. The user must confirm.",
+        inputSchema: z.object({
+          weekStart: z.string().describe("Monday ISO date YYYY-MM-DD"),
+          text: z.string().describe("The note text to add"),
+        }),
+        execute: async ({ weekStart, text }) => ({
+          proposal: true,
+          action: "addNote",
+          params: { weekStart, text },
+          description: `Add note to week of ${weekStart}: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
+        }),
+      }),
+
+      proposeAssignStaff: tool({
+        description: "Propose assigning a staff member to a specific shift on a specific day. The user must confirm.",
+        inputSchema: z.object({
+          staffName: z.string().describe("Full name of the staff member"),
+          date: z.string().describe("ISO date YYYY-MM-DD"),
+          shiftType: z.string().describe("Shift code (e.g. T1, T2, T3)"),
+          functionLabel: z.string().optional().describe("Optional function/department label"),
+        }),
+        execute: async ({ staffName, date, shiftType, functionLabel }) => {
+          const nameParts = staffName.trim().split(" ")
+          const { data: staff } = await supabase
+            .from("staff")
+            .select("id, first_name, last_name")
+            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+            .maybeSingle() as { data: { id: string; first_name: string; last_name: string } | null }
+
+          // Compute weekStart (Monday of that week)
+          const d = new Date(date + "T12:00:00")
+          const day = d.getDay()
+          const diff = day === 0 ? -6 : 1 - day
+          d.setDate(d.getDate() + diff)
+          const weekStart = d.toISOString().split("T")[0]
+
+          const resolvedName = staff ? `${staff.first_name} ${staff.last_name}` : staffName
+          return {
+            proposal: true,
+            action: "assignStaff",
+            params: { weekStart, staffId: staff?.id ?? null, date, shiftType, functionLabel: functionLabel ?? null },
+            description: `Assign ${resolvedName} to ${shiftType} on ${date}${functionLabel ? ` (${functionLabel})` : ""}`,
+          }
+        },
+      }),
+
+      proposeRegenerateDay: tool({
+        description: "Propose regenerating the rota for a single day (re-runs the scheduling engine for that day only). The user must confirm.",
+        inputSchema: z.object({
+          date: z.string().describe("ISO date YYYY-MM-DD to regenerate"),
+        }),
+        execute: async ({ date }) => {
+          const d = new Date(date + "T12:00:00")
+          const day = d.getDay()
+          const diff = day === 0 ? -6 : 1 - day
+          d.setDate(d.getDate() + diff)
+          const weekStart = d.toISOString().split("T")[0]
+
+          return {
+            proposal: true,
+            action: "regenerateDay",
+            params: { weekStart, date },
+            description: `Regenerate rota for ${date}`,
+          }
+        },
+      }),
+
+      proposePublishRota: tool({
+        description: "Propose publishing a draft rota to make it visible to all staff. The user must confirm.",
+        inputSchema: z.object({
+          weekStart: z.string().describe("Monday ISO date YYYY-MM-DD"),
+        }),
+        execute: async ({ weekStart }) => {
+          const { data: rota } = await supabase
+            .from("rotas")
+            .select("id, status")
+            .eq("week_start", weekStart)
+            .maybeSingle() as { data: { id: string; status: string } | null }
+
+          if (!rota) return { error: `No rota found for week of ${weekStart}` }
+          if (rota.status === "published") return { error: `Rota for ${weekStart} is already published` }
+
+          return {
+            proposal: true,
+            action: "publishRota",
+            params: { rotaId: rota.id },
+            description: `Publish rota for week of ${weekStart}`,
+          }
+        },
+      }),
+
+      proposeUnlockRota: tool({
+        description: "Propose unlocking a published rota back to draft so it can be edited. The user must confirm.",
+        inputSchema: z.object({
+          weekStart: z.string().describe("Monday ISO date YYYY-MM-DD"),
+        }),
+        execute: async ({ weekStart }) => {
+          const { data: rota } = await supabase
+            .from("rotas")
+            .select("id, status")
+            .eq("week_start", weekStart)
+            .maybeSingle() as { data: { id: string; status: string } | null }
+
+          if (!rota) return { error: `No rota found for week of ${weekStart}` }
+          if (rota.status !== "published") return { error: `Rota for ${weekStart} is not published` }
+
+          return {
+            proposal: true,
+            action: "unlockRota",
+            params: { rotaId: rota.id },
+            description: `Unlock rota for week of ${weekStart} (back to draft)`,
+          }
+        },
+      }),
+
+      proposeCopyPreviousWeek: tool({
+        description: "Propose copying the previous week's rota to a new week. Respects current leaves. The user must confirm.",
+        inputSchema: z.object({
+          weekStart: z.string().describe("Monday ISO date YYYY-MM-DD of the target week to fill"),
+        }),
+        execute: async ({ weekStart }) => ({
+          proposal: true,
+          action: "copyPreviousWeek",
+          params: { weekStart },
+          description: `Copy previous week's rota to week of ${weekStart}`,
+        }),
       }),
     },
   })
