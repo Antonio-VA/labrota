@@ -489,8 +489,8 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
       <Tooltip>
         <TooltipTrigger render={
           <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground cursor-default">
-            <span className={isOverride ? "text-primary" : ""}>{pLabel}</span>
-            <span className="text-muted-foreground">{bLabel}</span>
+            <span className={isOverride ? "text-primary" : "text-foreground/70"}>{pLabel}</span>
+            <span className="text-foreground/70">{bLabel}</span>
           </span>
         } />
         <TooltipContent side="bottom">
@@ -2535,8 +2535,23 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 const isSun      = dayDow === 0
 
                 const tooltipParts: string[] = []
-                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${t("people")}`)
-                if (day.punctions > 0) tooltipParts.push(`${day.punctions} ${t("punctions")}`)
+                if (day.staffCount > 0) {
+                  const depts: string[] = []
+                  if (day.labCount > 0) depts.push(`Em ${day.labCount}`)
+                  if (day.andrologyCount > 0) depts.push(`An ${day.andrologyCount}`)
+                  if (day.adminCount > 0) depts.push(`Ad ${day.adminCount}`)
+                  tooltipParts.push(depts.join(" · "))
+                }
+                if (day.punctions > 0) tooltipParts.push(`P: ${day.punctions}`)
+                {
+                  const s = summary as RotaMonthSummary
+                  const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+                  const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+                  const p5 = s.days.find((dd) => dd.date === d5ago.toISOString().split("T")[0])?.punctions ?? 0
+                  const p6 = s.days.find((dd) => dd.date === d6ago.toISOString().split("T")[0])?.punctions ?? 0
+                  const bForecast = Math.round(p5 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
+                  if (bForecast > 0) tooltipParts.push(`B: ${bForecast}`)
+                }
                 if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${t("absences")}`)
                 if (day.hasSkillGaps) tooltipParts.push(t("uncoveredTasks"))
                 if (day.holidayName) tooltipParts.push(day.holidayName)
@@ -2601,11 +2616,11 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                               key={i}
                               className={cn(
                                 "text-[9px] font-semibold rounded px-1 py-px border transition-colors cursor-default",
-                                isHov ? "ring-2 ring-primary shadow-sm" : "border-border bg-background"
+                                isHov ? "border-transparent" : "border-border bg-background"
                               )}
                               style={{
                                 borderLeft: `2px solid ${roleColor}`,
-                                ...(isHov ? { backgroundColor: roleColor + "20", color: roleColor } : {}),
+                                ...(isHov ? { backgroundColor: roleColor + "30", color: roleColor } : {}),
                               }}
                               onMouseEnter={() => setHovered(si.id)}
                               onMouseLeave={() => setHovered(null)}

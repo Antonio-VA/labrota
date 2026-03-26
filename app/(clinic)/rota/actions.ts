@@ -1220,24 +1220,41 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const hasSkillGaps = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
+    const isWeekend = dow === 0 || dow === 6
+    const labCount = entries.filter((e) => e.role === "lab").length
+    const andrologyCount = entries.filter((e) => e.role === "andrology").length
+    // Coverage warning: check if below minimums
+    const lc = labConfigRes.data as Record<string, number> | null
+    const hasCoverageWarning = staffIds.length > 0 && lc ? (
+      labCount < (isWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
+      andrologyCount < (isWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
+    ) : false
     return {
       date,
       staffCount: staffIds.length,
-      labCount: entries.filter((e) => e.role === "lab").length,
-      andrologyCount: entries.filter((e) => e.role === "andrology").length,
+      labCount,
+      andrologyCount,
       adminCount: entries.filter((e) => e.role === "admin").length,
-      hasSkillGaps,
-      isWeekend: dow === 0 || dow === 6,
+      hasSkillGaps: hasSkillGaps || hasCoverageWarning,
+      isWeekend,
       isCurrentMonth: weekStartOverride ? true : date.startsWith(currentMonthPrefix),
       punctions: puncByDay[dowKey] ?? 0,
       leaveCount: leaveByDate[date] ?? 0,
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
-      staffInitials: entries.slice(0, 10).map((e) => ({
-        id: e.staff_id,
-        initials: `${e.first_name?.[0] ?? ""}${e.last_name?.[0] ?? ""}`,
-        role: e.role,
-      })),
+      staffInitials: [...entries]
+        .sort((a, b) => {
+          const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+          const rd = (ro[a.role] ?? 9) - (ro[b.role] ?? 9)
+          if (rd !== 0) return rd
+          return (a.first_name + a.last_name).localeCompare(b.first_name + b.last_name)
+        })
+        .slice(0, 10)
+        .map((e) => ({
+          id: e.staff_id,
+          initials: `${e.first_name?.[0] ?? ""}${e.last_name?.[0] ?? ""}`,
+          role: e.role,
+        })),
     }
   })
 
