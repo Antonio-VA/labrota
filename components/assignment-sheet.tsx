@@ -513,7 +513,8 @@ export function AssignmentSheet({
   const hasOverride  = date ? date in punctionsOverride : false
 
   const skillGaps = day?.skillGaps ?? []
-  const allCovered = skillGaps.length === 0
+  const warnings = day?.warnings ?? []
+  const allCovered = skillGaps.length === 0 && warnings.length === 0
 
   const dateLabel = date
     ? new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long" }).format(
@@ -684,11 +685,23 @@ export function AssignmentSheet({
                   <TooltipTrigger render={
                     <AlertTriangle className="size-3.5 text-amber-500 shrink-0 cursor-default" />
                   } />
-                  <TooltipContent side="bottom" className="max-w-[200px]">
-                    <p className="font-medium text-[12px] mb-1">{t("uncoveredTasks")}</p>
-                    {skillGaps.map((sk) => (
-                      <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
-                    ))}
+                  <TooltipContent side="bottom" className="max-w-[240px]">
+                    {skillGaps.length > 0 && (
+                      <>
+                        <p className="font-medium text-[12px] mb-1">{t("uncoveredTasks")}</p>
+                        {skillGaps.map((sk) => (
+                          <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
+                        ))}
+                      </>
+                    )}
+                    {warnings.length > 0 && (
+                      <>
+                        {skillGaps.length > 0 && <div className="h-px bg-border my-1" />}
+                        {warnings.map((w, i) => (
+                          <p key={i} className="text-[11px] text-muted-foreground">· {w.message}</p>
+                        ))}
+                      </>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               )
