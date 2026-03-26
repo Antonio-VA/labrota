@@ -4081,22 +4081,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             canEdit={canEdit}
             onGenerateRota={() => setShowStrategyModal(true)}
             isPending={isPending}
+            viewMode={mobileViewMode}
+            onViewModeChange={setMobileViewMode}
+            warningCount={currentDayData?.warnings.length ?? 0}
           />
-          {/* View mode toggle (shift / person) */}
-          <div className="flex items-center gap-0 px-4 py-2 border-b border-border md:hidden">
-            {(["shift", "person"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMobileViewMode(m)}
-                className={cn(
-                  "flex-1 py-1.5 text-[12px] font-medium rounded-md transition-colors",
-                  mobileViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                )}
-              >
-                {m === "shift" ? (locale === "es" ? "Por turno" : "By shift") : (locale === "es" ? "Por persona" : "By person")}
-              </button>
-            ))}
-          </div>
           <div className="flex flex-col gap-4 px-4 py-3 flex-1">
             {mobileViewMode === "person" && weekData ? (
               <MobilePersonView
