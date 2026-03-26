@@ -2834,14 +2834,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                         a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
                       )}
                     >
-                      {isEditMode && onRemoveAssignment && (
-                        <button
-                          onClick={() => onRemoveAssignment(a.id)}
-                          className="size-5 flex items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0 active:bg-destructive/20"
-                        >
-                          <span className="text-[12px] font-bold leading-none">−</span>
-                        </button>
-                      )}
                       <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
@@ -2849,6 +2841,14 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                           <p className="text-[11px] text-muted-foreground">{fnLabel}</p>
                         )}
                       </div>
+                      {isEditMode && onRemoveAssignment && (
+                        <button
+                          onClick={() => onRemoveAssignment(a.id)}
+                          className="size-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive active:bg-destructive/10 shrink-0"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -4149,11 +4149,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {/* Sticky toolbar: Hoy ← date → | edit | overflow */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-12 px-3 bg-primary/10 border-b border-primary/20 lg:hidden sticky top-0 z-10">
-              <span className="text-[14px] font-medium text-primary">
+            <div className="flex items-center justify-between h-[52px] px-3 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-10">
+              <span className="text-[15px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
-              <Button size="sm" onClick={() => setMobileEditMode(false)} className="h-8 text-[13px]">
+              <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px]">
                 {tc("save")}
               </Button>
             </div>
