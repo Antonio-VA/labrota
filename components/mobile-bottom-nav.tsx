@@ -109,30 +109,29 @@ export function MobileBottomNav() {
     </>
   )
 
-  // Docked mode: full-width fixed bar at bottom
-  if (docked) {
-    return (
-      <div className="fixed bottom-0 inset-x-0 z-40 md:hidden glass-nav" style={{ borderRadius: 0 }}>
-        <nav className="flex items-center justify-around py-1.5">
-          {navContent}
-        </nav>
-        <div className="h-[env(safe-area-inset-bottom,0px)]" />
-      </div>
-    )
-  }
-
-  // Floating mode: centered pill
   return (
     <div
       className={cn(
-        "fixed left-1/2 -translate-x-1/2 z-40 md:hidden transition-all duration-300 ease-out",
-        visible ? "bottom-5 opacity-100" : "bottom-[-80px] opacity-0"
+        "fixed z-40 md:hidden transition-all duration-300 ease-out",
+        docked
+          ? "bottom-0 left-0 right-0"
+          : "left-1/2 -translate-x-1/2",
+        !docked && !visible && "bottom-[-80px] opacity-0",
+        !docked && visible && "bottom-5 opacity-100",
       )}
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      style={!docked ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
     >
-      <nav className="flex items-center gap-0.5 px-2 py-2 rounded-[20px] glass-nav">
+      <nav
+        className={cn(
+          "flex items-center glass-nav transition-all duration-300",
+          docked
+            ? "justify-around py-1.5 rounded-none"
+            : "gap-0.5 px-2 py-2 rounded-[20px]"
+        )}
+      >
         {navContent}
       </nav>
+      {docked && <div className="h-[env(safe-area-inset-bottom,0px)] glass-nav" style={{ borderRadius: 0 }} />}
     </div>
   )
 }
