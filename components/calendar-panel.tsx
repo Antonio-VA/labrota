@@ -1387,9 +1387,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
   if (totalIssues === 0) {
     return (
-      <div className="flex items-center justify-center size-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-        <CheckCircle2 className="size-3.5" />
-      </div>
+      <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
     )
   }
 
