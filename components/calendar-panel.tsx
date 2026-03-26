@@ -3236,6 +3236,33 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
+function MobileOverflow({ onGenerateRota, isPending }: { onGenerateRota: () => void; isPending?: boolean }) {
+  const t = useTranslations("schedule")
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} className="size-7 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+        <MoreHorizontal className="size-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-44 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+          <button onClick={() => { setOpen(false); onGenerateRota() }} disabled={isPending} className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
+            <Sparkles className="size-4" />
+            {t("generateStrategy")}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }) {
   return (
     <StaffHoverProvider>
@@ -4083,8 +4110,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           />
         )}
 
-        {/* Mobile: admin/editor day view with weekly strip */}
+        {/* Mobile: admin/editor day view */}
         <div className={cn("flex flex-col overflow-auto md:hidden flex-1", !canEdit && "hidden")}>
+          {/* Date carousel — right under org header */}
           {weekData && (
             <WeeklyStrip
               days={weekData.days.map((d) => ({
@@ -4097,18 +4125,54 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               locale={locale as "es" | "en"}
             />
           )}
-          <MobileEditToolbar
-            isEditMode={mobileEditMode}
-            onEnterEditMode={() => setMobileEditMode(true)}
-            onExitEditMode={() => setMobileEditMode(false)}
-            dateLabel={currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
-            canEdit={canEdit}
-            onGenerateRota={() => setShowStrategyModal(true)}
-            isPending={isPending}
-            viewMode={mobileViewMode}
-            onViewModeChange={setMobileViewMode}
-            warningCount={currentDayData?.warnings.length ?? 0}
-          />
+          {/* Compact toolbar: Hoy ← → | edit | overflow */}
+          {mobileEditMode ? (
+            <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20 md:hidden">
+              <span className="text-[13px] font-medium text-primary">
+                {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
+              </span>
+              <Button size="sm" onClick={() => setMobileEditMode(false)} className="h-7 text-[12px]">
+                {tc("save")}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 border-b border-border md:hidden">
+              <button
+                onClick={goToToday}
+                disabled={currentDate === TODAY}
+                className={cn("text-[12px] font-medium px-2 py-1 rounded-md transition-colors", currentDate === TODAY ? "text-muted-foreground/40" : "text-primary active:bg-primary/10")}
+              >
+                {tc("today")}
+              </button>
+              <button onClick={() => navigate(-1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent">
+                <ChevronLeft className="size-4 text-muted-foreground" />
+              </button>
+              <button onClick={() => navigate(1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent">
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </button>
+              <div className="flex-1" />
+              {/* Shift/Person toggle */}
+              <div className="flex items-center gap-0 rounded-md border border-border p-0.5 shrink-0">
+                <button onClick={() => setMobileViewMode("shift")} className={cn("size-6 flex items-center justify-center rounded transition-colors", mobileViewMode === "shift" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                  <Rows3 className="size-3" />
+                </button>
+                <button onClick={() => setMobileViewMode("person")} className={cn("size-6 flex items-center justify-center rounded transition-colors", mobileViewMode === "person" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                  <Users className="size-3" />
+                </button>
+              </div>
+              {canEdit && (
+                <button onClick={() => setMobileEditMode(true)} className="size-7 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                  <Pencil className="size-3.5" />
+                </button>
+              )}
+              {canEdit && (
+                <MobileOverflow
+                  onGenerateRota={() => setShowStrategyModal(true)}
+                  isPending={isPending}
+                />
+              )}
+            </div>
+          )}
           <div className="flex flex-col gap-4 px-4 py-3 flex-1">
             {mobileViewMode === "person" && weekData ? (
               <MobilePersonView
