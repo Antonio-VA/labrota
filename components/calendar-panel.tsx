@@ -3646,10 +3646,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "rounded-md px-3 py-1 text-[13px] transition-colors",
+                  "rounded-md px-3 py-1 text-[13px] transition-colors min-w-[72px] text-center",
                   view === v
                     ? "bg-background shadow-sm font-medium"
-                    : "text-muted-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:bg-muted font-medium"
                 )}
               >
                 {t(`${v}View`)}
