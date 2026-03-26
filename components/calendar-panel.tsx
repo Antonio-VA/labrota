@@ -1387,9 +1387,8 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
   if (totalIssues === 0) {
     return (
-      <div className="flex items-center gap-1.5 h-7 px-2 xl:px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
-        <CheckCircle2 className="size-3 shrink-0" />
-        <span className="hidden xl:inline">{t("noWarnings")}</span>
+      <div className="flex items-center justify-center size-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="size-3.5" />
       </div>
     )
   }
@@ -1398,11 +1397,10 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 h-7 px-2 xl:px-3 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-medium hover:bg-amber-500/20 transition-colors shrink-0"
+        className="flex items-center gap-1 h-7 px-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-semibold hover:bg-amber-500/20 transition-colors shrink-0"
       >
-        <AlertTriangle className="size-3 shrink-0" />
-        <span className="hidden xl:inline">{t("warnings")}</span>
-        <span className="font-semibold">{totalIssues}</span>
+        <AlertTriangle className="size-3.5 shrink-0" />
+        {totalIssues}
       </button>
 
       {open && (

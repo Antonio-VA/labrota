@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import { revalidatePath } from "next/cache"
 
@@ -23,17 +23,22 @@ export interface SnapshotAssignment {
   staff: { first_name: string; last_name: string; role: string }
 }
 
-/** Capture a snapshot of current assignments for a given day. Fire-and-forget. */
+/** Capture a snapshot of current assignments for a given day. Fire-and-forget. Uses admin client to avoid RLS/context issues. */
 export async function captureSnapshot(rotaId: string, date: string, weekStart: string): Promise<void> {
   try {
-    const supabase = await createClient()
-    const orgId = await getOrgId()
-    if (!orgId) return
+    const admin = createAdminClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
+    // Get org ID from the rota
+    const { data: rota } = await admin
+      .from("rotas")
+      .select("organisation_id")
+      .eq("id", rotaId)
+      .single() as { data: { organisation_id: string } | null }
+    if (!rota) return
+    const orgId = rota.organisation_id
 
     // Read current assignments for this day
-    const { data: assignments } = await supabase
+    const { data: assignments } = await admin
       .from("rota_assignments")
       .select("id, staff_id, shift_type, function_label, is_manual_override, staff:staff_id(first_name, last_name, role)")
       .eq("rota_id", rotaId)
@@ -49,7 +54,7 @@ export async function captureSnapshot(rotaId: string, date: string, weekStart: s
     }))
 
     // Deduplicate: skip if identical to most recent snapshot
-    const { data: latest } = await supabase
+    const { data: latest } = await admin
       .from("rota_snapshots")
       .select("assignments")
       .eq("organisation_id", orgId)
@@ -61,14 +66,12 @@ export async function captureSnapshot(rotaId: string, date: string, weekStart: s
 
     if (latest && JSON.stringify(latest.assignments) === JSON.stringify(payload)) return
 
-    await supabase.from("rota_snapshots").insert({
+    await admin.from("rota_snapshots").insert({
       organisation_id: orgId,
       rota_id: rotaId,
       date,
       week_start: weekStart,
       assignments: payload,
-      user_id: user?.id ?? null,
-      user_email: user?.email ?? null,
     } as never)
   } catch (e) {
     console.error("[snapshot] Failed to capture:", e)
@@ -138,34 +141,16 @@ export async function restoreSnapshot(snapshotId: string): Promise<{ error?: str
   return {}
 }
 
-/** Purge old snapshots: outside current week or older than 1 month. */
+/** Purge old snapshots: older than 1 month. */
 export async function purgeStaleSnapshots(): Promise<void> {
   try {
     const admin = createAdminClient()
-    const orgId = await getOrgId()
-    if (!orgId) return
-
-    // Current week Monday
-    const now = new Date()
-    const dow = now.getDay()
-    const mondayOffset = dow === 0 ? -6 : 1 - dow
-    const monday = new Date(now)
-    monday.setDate(monday.getDate() + mondayOffset)
-    const currentWeekStart = monday.toISOString().split("T")[0]
-
-    // 1 month ago
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    const cutoff = oneMonthAgo.toISOString()
-
-    // Delete old snapshots
     await admin
       .from("rota_snapshots")
       .delete()
-      .eq("organisation_id", orgId)
-      .lt("created_at", cutoff)
-
-    // Note: we keep all snapshots for the current week regardless of age
+      .lt("created_at", oneMonthAgo.toISOString())
   } catch (e) {
     console.error("[snapshot] Purge failed:", e)
   }
