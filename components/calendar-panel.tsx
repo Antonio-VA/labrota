@@ -2706,7 +2706,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList }: {
   day: RotaDay | null
   loading: boolean
   locale: string
@@ -2717,6 +2717,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   onRemoveAssignment?: (id: string) => void
   onAddStaff?: (role: string) => void
   data?: RotaWeekData | null
+  staffList?: StaffWithSkills[]
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -2866,6 +2867,40 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             </div>
           )
         })
+      })()}
+
+      {/* OFF section — staff not assigned today */}
+      {day && staffList && staffList.length > 0 && (() => {
+        const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+        const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
+        const onLeave = staffList.filter((s) => leaveIds.has(s.id))
+        const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
+        if (onLeave.length === 0 && offDuty.length === 0) return null
+        return (
+          <div className="flex flex-col gap-1.5 mt-2 pt-3 border-t border-dashed border-border">
+            <div className="flex items-center gap-2 pl-2">
+              <span className="text-[13px] font-medium text-muted-foreground">{t("offSection")}</span>
+              <span className="text-[12px] text-muted-foreground/60">{onLeave.length + offDuty.length}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              {onLeave.map((s) => (
+                <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
+                  <Plane className="size-3 text-amber-500 shrink-0" />
+                  <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
+                </div>
+              ))}
+              {offDuty.map((s) => {
+                const roleColor = deptColorMap[s.role] ?? "#64748B"
+                return (
+                  <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground">
+                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
+                    <span className="text-[13px]">{s.first_name} {s.last_name}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
       })()}
     </div>
   )
@@ -4190,6 +4225,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   else fetchWeek(weekStart)
                 }}
                 onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
+                staffList={staffList}
               />
             )}
           </div>
