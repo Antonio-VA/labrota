@@ -478,8 +478,8 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     setOpen(false)
   }
 
-  const pLabel = `PU:${value}`
-  const bLabel = biopsyForecast > 0 ? `BIO:${biopsyForecast}` : "BIO:0"
+  const pLabel = `P:${value}`
+  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
 
   if (disabled) {
     return (
@@ -2356,7 +2356,7 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
   if (!onChange) {
     return (
       <span className={cn("text-[12px] tabular-nums", isOverride ? "text-primary font-medium" : "text-muted-foreground")}>
-        PU:{value}
+        P:{value}
       </span>
     )
   }
@@ -2372,7 +2372,7 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
               isOverride ? "text-primary font-medium" : "text-muted-foreground"
             )}
           >
-            PU:{value}
+            P:{value}
             <Pencil className="size-2 ml-0.5 inline opacity-0 group-hover/pedit:opacity-50 transition-opacity" />
           </button>
         } />
@@ -2637,7 +2637,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                             isOverride={isOverride}
                             onChange={onPunctionsChange}
                           />
-                          <span className="text-[12px] font-medium tabular-nums text-muted-foreground">BIO:{bForecast}</span>
+                          <span className="text-[12px] font-medium tabular-nums text-muted-foreground">B:{bForecast}</span>
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
                               <Briefcase className="size-3" />{day.leaveCount}
@@ -2718,7 +2718,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
       {/* Punctions + biopsies header */}
       {(punctions !== undefined || biopsyForecast !== undefined) && (
         <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-          {punctions !== undefined && <span>PU: <strong className="text-foreground">{punctions}</strong></span>}
+          {punctions !== undefined && <span>P: <strong className="text-foreground">{punctions}</strong></span>}
           {biopsyForecast !== undefined && <span>B: <strong className="text-foreground">{biopsyForecast}</strong></span>}
           <span className="text-muted-foreground/40">·</span>
           <span>{t("assignmentCount", { count: day.assignments.length })}</span>

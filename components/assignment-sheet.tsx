@@ -694,11 +694,11 @@ export function AssignmentSheet({
               )
             )}
           </div>
-          {/* Punctions + Biopsias — aligned on same row */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-muted-foreground">PU:</span>
-              {editingP ? (
+          {/* Pick ups + Biopsies — single clickable zone */}
+          {editingP ? (
+            <div className="flex items-center gap-3 bg-muted/30 rounded-lg px-3 py-2 border border-border">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] text-muted-foreground">{t("pickups")}</span>
                 <input
                   autoFocus
                   type="number"
@@ -710,36 +710,43 @@ export function AssignmentSheet({
                     if (e.key === "Enter") commitPunctions()
                     if (e.key === "Escape") setEditingP(false)
                   }}
-                  className="w-10 text-[12px] text-center border border-primary rounded px-0.5 outline-none bg-background"
-                />
-              ) : (
-                <button
-                  onClick={() => {
-                    if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
-                  }}
-                  className={cn(
-                    "flex items-center gap-1 text-[12px] font-medium",
-                    hasOverride ? "text-primary" : "text-foreground",
-                    !isPublished && rota && "hover:text-primary cursor-pointer"
-                  )}
-                >
-                  <span>{effectiveP}</span>
-                  {!isPublished && rota && <Pencil className="size-2.5 text-muted-foreground" />}
-                </button>
-              )}
-            </div>
-            {biopsyForecast !== undefined && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-muted-foreground">BIO:</span>
-                <input
-                  type="number"
-                  min={0}
-                  defaultValue={biopsyForecast}
-                  className="w-10 text-[12px] font-medium text-center border border-input rounded px-1 py-0.5 bg-background outline-none focus:border-primary"
+                  className="w-12 text-[12px] text-center border border-primary rounded px-0.5 py-0.5 outline-none bg-background font-medium"
                 />
               </div>
-            )}
-          </div>
+              {biopsyForecast !== undefined && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] text-muted-foreground">{t("biopsies")}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={biopsyForecast}
+                    className="w-12 text-[12px] font-medium text-center border border-input rounded px-0.5 py-0.5 bg-background outline-none focus:border-primary"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
+              }}
+              className={cn(
+                "flex items-center gap-3 text-[12px] rounded-lg px-3 py-2 transition-colors text-left",
+                !isPublished && rota && "hover:bg-muted/50 cursor-pointer active:bg-muted"
+              )}
+            >
+              <span className="text-muted-foreground">{t("pickups")}: </span>
+              <span className={cn("font-medium", hasOverride ? "text-primary" : "text-foreground")}>{effectiveP}</span>
+              {biopsyForecast !== undefined && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-muted-foreground">{t("biopsies")}: </span>
+                  <span className="font-medium text-foreground">{biopsyForecast}</span>
+                </>
+              )}
+              {!isPublished && rota && <Pencil className="size-3 text-muted-foreground ml-auto" />}
+            </button>
+          )}
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}

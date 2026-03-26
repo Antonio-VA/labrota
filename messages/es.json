@@ -906,7 +906,9 @@
     "regenerating": "Regenerando…",
     "regenerate": "Regenerar",
     "dayRegenerated": "Día regenerado: {count} asignaciones",
-    "wholeTeam": "Todo el equipo"
+    "wholeTeam": "Todo el equipo",
+    "pickups": "Punciones",
+    "biopsies": "Biopsias"
   },
   "errors": {
     "notFound": "Página no encontrada",
