@@ -120,9 +120,6 @@ export function MobileTaskDayView({
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
                       </div>
-                      <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                        {a.shift_type}
-                      </span>
                       {isEditMode && onRemoveAssignment && (
                         <button
                           onClick={() => onRemoveAssignment(a.id)}
@@ -156,9 +153,6 @@ export function MobileTaskDayView({
                 <div key={a.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-muted/20">
                   <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
                   <p className="text-[14px] text-muted-foreground">{a.staff.first_name} {a.staff.last_name}</p>
-                  <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 ml-auto">
-                    {a.shift_type}
-                  </span>
                 </div>
               )
             })}
