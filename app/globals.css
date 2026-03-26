@@ -260,9 +260,9 @@ body {
 
 /* Liquid glass floating nav */
 .glass-nav {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.06),
     0 0 0 0.5px rgba(0, 0, 0, 0.04),
@@ -271,7 +271,7 @@ body {
 }
 
 [data-theme="dark"] .glass-nav {
-  background: rgba(30, 30, 30, 0.55);
+  background: rgba(30, 30, 30, 0.4);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.25),
     0 0 0 0.5px rgba(255, 255, 255, 0.06),

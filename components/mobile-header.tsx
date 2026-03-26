@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
-import { ChevronLeft, ChevronRight, Check, Star, Bell } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, Star, Bell, User } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -64,8 +64,14 @@ export function MobileHeader({
 
         <div className="flex-1" />
 
-        {/* Right: notifications */}
+        {/* Right: notifications + account */}
         <NotificationBell />
+        <a
+          href="/mobile-account"
+          className="size-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <User className="size-4" />
+        </a>
       </header>
 
       {/* Lab switcher bottom sheet */}
