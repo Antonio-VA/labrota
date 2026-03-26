@@ -2680,7 +2680,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data }: {
   day: RotaDay | null
   loading: boolean
   locale: string
@@ -2690,8 +2690,10 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   isEditMode?: boolean
   onRemoveAssignment?: (id: string) => void
   onAddStaff?: (role: string) => void
+  data?: RotaWeekData | null
 }) {
   const t  = useTranslations("schedule")
+  const tc = useTranslations("common")
   const ts = useTranslations("skills")
 
   // Build dept color map: role code → colour
@@ -2760,59 +2762,85 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
         </div>
       )}
 
-      {(["lab", "andrology", "admin"] as const).map((role) => {
-        const staff = byRole[role]
-        if (!staff || staff.length === 0) return null
-        const deptColor = deptColorMap[role] ?? (role === "lab" ? "#3B82F6" : role === "andrology" ? "#10B981" : "#64748B")
-        const deptName = deptLabelMap[role] ?? role
-        return (
-          <div key={role} className="flex flex-col gap-1.5">
-            {/* Department header with colored left border */}
-            <div className="flex items-center gap-2 pl-2" style={{ borderLeft: `3px solid ${deptColor}` }}>
-              <span className="text-[13px] font-medium">{deptName}</span>
-              <span className="text-[12px] text-muted-foreground">{staff.length}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              {staff.map((a) => (
-                <div
-                  key={a.id}
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded-lg border",
-                    a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
-                  )}
-                >
-                  {isEditMode && onRemoveAssignment && (
-                    <button
-                      onClick={() => onRemoveAssignment(a.id)}
-                      className="size-5 flex items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0 active:bg-destructive/20"
+      {(() => {
+        // Group by shift type instead of department
+        const shiftTypes = data?.shiftTypes ?? []
+        const byShift: Record<string, typeof day.assignments> = {}
+        for (const a of day.assignments) {
+          if (!byShift[a.shift_type]) byShift[a.shift_type] = []
+          byShift[a.shift_type].push(a)
+        }
+        const shiftOrder = shiftTypes.filter((s) => s.active !== false).map((s) => s.code)
+        const allShifts = [...new Set([...shiftOrder, ...Object.keys(byShift)])]
+
+        // Dept and tecnica lookup for resolving function_label
+        const deptByCode = Object.fromEntries((departments ?? []).map((d) => [d.code, d]))
+        const tecByCode = Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
+
+        function resolveFunctionLabel(label: string): string {
+          const dept = deptByCode[label]
+          if (dept) return dept.abbreviation || dept.name
+          const tec = tecByCode[label]
+          if (tec) return tec.nombre_es
+          return label
+        }
+
+        return allShifts.map((shiftCode) => {
+          const assignments = byShift[shiftCode]
+          if (!assignments || assignments.length === 0) return null
+          const st = shiftTypes.find((s) => s.code === shiftCode)
+          const timeLabel = st ? `${st.start_time}–${st.end_time}` : ""
+          return (
+            <div key={shiftCode} className="flex flex-col gap-1.5">
+              {/* Shift header */}
+              <div className="flex items-center gap-2 pl-2 border-l-[3px] border-primary/40">
+                <span className="text-[13px] font-semibold">{shiftCode}</span>
+                {timeLabel && <span className="text-[11px] text-muted-foreground">{timeLabel}</span>}
+                <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {assignments.map((a) => {
+                  const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
+                  const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
+                  return (
+                    <div
+                      key={a.id}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg border",
+                        a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
+                      )}
                     >
-                      <span className="text-[12px] font-bold leading-none">−</span>
-                    </button>
-                  )}
-                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: deptColor }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                    {a.function_label && (
-                      <p className="text-[11px] text-muted-foreground">{a.function_label}</p>
-                    )}
-                  </div>
-                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                    {a.shift_type}
-                  </span>
-                </div>
-              ))}
-              {isEditMode && onAddStaff && (
-                <button
-                  onClick={() => onAddStaff(role)}
-                  className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-[12px] text-primary font-medium active:bg-primary/5"
-                >
-                  {t("addStaff")}
-                </button>
-              )}
+                      {isEditMode && onRemoveAssignment && (
+                        <button
+                          onClick={() => onRemoveAssignment(a.id)}
+                          className="size-5 flex items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0 active:bg-destructive/20"
+                        >
+                          <span className="text-[12px] font-bold leading-none">−</span>
+                        </button>
+                      )}
+                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                        {fnLabel && (
+                          <p className="text-[11px] text-muted-foreground">{fnLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+                {isEditMode && onAddStaff && (
+                  <button
+                    onClick={() => onAddStaff(assignments[0]?.staff.role ?? "lab")}
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-[12px] text-primary font-medium active:bg-primary/5"
+                  >
+                    + {tc("add")}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })
+      })()}
     </div>
   )
 }
@@ -4088,6 +4116,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 loading={loadingWeek}
                 locale={locale}
                 departments={weekData?.departments ?? []}
+                data={weekData}
                 isEditMode={mobileEditMode}
                 onRemoveAssignment={async (id) => {
                   const result = await removeAssignment(id)
