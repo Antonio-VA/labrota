@@ -1,32 +1,30 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { CalendarDays, Calendar, Briefcase, UserCircle } from "lucide-react"
+import { CalendarDays, CalendarRange, Palmtree, User } from "lucide-react"
 import { useCanEdit } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS_FULL = [
-  { key: "day",     icon: CalendarDays, href: "/" },
-  { key: "week",    icon: Calendar,     href: "/?view=week" },
-  { key: "leaves",  icon: Briefcase,    href: "/leaves" },
-  { key: "account", icon: UserCircle,   href: "/settings" },
+  { key: "day",     icon: CalendarDays,  href: "/" },
+  { key: "week",    icon: CalendarRange,  href: "/mobile-week" },
+  { key: "leaves",  icon: Palmtree,      href: "/leaves" },
+  { key: "account", icon: User,          href: "/mobile-account" },
 ] as const
 
 const NAV_ITEMS_VIEWER = [
-  { key: "day",     icon: CalendarDays, href: "/" },
-  { key: "leaves",  icon: Briefcase,    href: "/leaves" },
-  { key: "account", icon: UserCircle,   href: "/settings" },
+  { key: "day",     icon: CalendarDays,  href: "/" },
+  { key: "leaves",  icon: Palmtree,      href: "/leaves" },
+  { key: "account", icon: User,          href: "/mobile-account" },
 ] as const
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", leaves: "Ausencias", account: "Mi cuenta" },
+  es: { day: "Día", week: "Semana", leaves: "Ausencias", account: "Cuenta" },
   en: { day: "Day", week: "Week", leaves: "Leave", account: "Account" },
 }
 
 export function MobileBottomNav() {
-  const t = useTranslations("nav")
   const locale = useLocale() as "es" | "en"
   const pathname = usePathname()
   const canEdit = useCanEdit()
@@ -39,14 +37,10 @@ export function MobileBottomNav() {
       <div className="h-20 md:hidden shrink-0" />
 
       {/* Floating glass pill */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden">
-        <nav
-          className="flex items-center gap-1 px-2 py-1.5 rounded-2xl glass-nav"
-        >
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden pb-[env(safe-area-inset-bottom,0px)]">
+        <nav className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-2xl glass-nav">
           {items.map((item) => {
             const isActive = item.href === "/"
-              ? pathname === "/" || pathname === ""
-              : item.href.startsWith("/?")
               ? pathname === "/"
               : pathname.startsWith(item.href)
 
@@ -55,13 +49,13 @@ export function MobileBottomNav() {
                 key={item.key}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl transition-all duration-200",
+                  "flex flex-col items-center gap-[3px] py-1.5 px-3.5 rounded-xl transition-all duration-200",
                   isActive
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground active:bg-muted/50"
                 )}
               >
-                <item.icon className={cn("size-[18px]", isActive && "stroke-[2.5px]")} />
+                <item.icon className="size-5" strokeWidth={isActive ? 2.2 : 1.8} />
                 <span className={cn(
                   "text-[10px] leading-none",
                   isActive ? "font-semibold" : "font-medium"
@@ -72,9 +66,6 @@ export function MobileBottomNav() {
             )
           })}
         </nav>
-
-        {/* Safe area spacer */}
-        <div className="h-[env(safe-area-inset-bottom,0px)]" />
       </div>
     </>
   )
