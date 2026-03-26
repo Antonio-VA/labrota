@@ -68,7 +68,7 @@ export function MobileBottomNav() {
         key={item.key}
         href={item.href}
         className={cn(
-          "flex flex-col items-center justify-center gap-[3px] w-16 py-2 rounded-2xl transition-all duration-200",
+          "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-2xl transition-all duration-200",
           isActive
             ? "bg-primary/10 text-primary"
             : "text-muted-foreground active:bg-muted/40"
@@ -88,7 +88,7 @@ export function MobileBottomNav() {
         "fixed z-40 md:hidden transition-all duration-300 ease-out",
         docked ? "bottom-0 left-0 right-0" : "left-1/2 -translate-x-1/2",
         !docked && !visible && "bottom-[-80px] opacity-0",
-        !docked && visible && "bottom-3 opacity-100",
+        !docked && visible && "bottom-2 opacity-100",
       )}
       style={!docked ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
     >
