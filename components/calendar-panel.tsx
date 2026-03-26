@@ -49,6 +49,9 @@ import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
 import { WeeklyStrip } from "@/components/weekly-strip"
+import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
+import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
+import { MobileTaskView } from "@/components/mobile-task-view"
 import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
@@ -2638,13 +2641,16 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff }: {
   day: RotaDay | null
   loading: boolean
   locale: string
   departments?: import("@/lib/types/database").Department[]
   punctions?: number
   biopsyForecast?: number
+  isEditMode?: boolean
+  onRemoveAssignment?: (id: string) => void
+  onAddStaff?: (role: string) => void
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -2736,6 +2742,14 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                     a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
                   )}
                 >
+                  {isEditMode && onRemoveAssignment && (
+                    <button
+                      onClick={() => onRemoveAssignment(a.id)}
+                      className="size-5 flex items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0 active:bg-destructive/20"
+                    >
+                      <span className="text-[12px] font-bold leading-none">−</span>
+                    </button>
+                  )}
                   <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: deptColor }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
@@ -2748,6 +2762,14 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   </span>
                 </div>
               ))}
+              {isEditMode && onAddStaff && (
+                <button
+                  onClick={() => onAddStaff(role)}
+                  className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-[12px] text-primary font-medium active:bg-primary/5"
+                >
+                  + Añadir
+                </button>
+              )}
             </div>
           </div>
         )
@@ -3183,6 +3205,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
   const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
+  // Mobile edit mode state
+  const [mobileEditMode, setMobileEditMode] = useState(false)
+  const [mobileViewMode, setMobileViewMode] = useState<"shift" | "task">("shift")
+  const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
+
   // Department filter — persisted in localStorage
   // Dynamic department data from weekData (or defaults) — memoised to avoid re-creating every render
   const departments = weekData?.departments ?? []
@@ -3249,15 +3276,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   }
 
   // Fetch week data
+  const fetchVersionRef = useRef(0)
   const fetchWeek = useCallback((ws: string) => {
+    const version = ++fetchVersionRef.current
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
     getRotaWeek(ws).then((d) => {
+      if (fetchVersionRef.current !== version) return // stale — ignore
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
     }).catch((e: unknown) => {
+      if (fetchVersionRef.current !== version) return
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
@@ -3906,19 +3937,97 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 hasSkillGaps: d.skillGaps.length > 0,
               }))}
               currentDate={currentDate}
-              onSelectDay={(date) => setCurrentDate(date)}
+              onSelectDay={(date) => { setCurrentDate(date); setMobileEditMode(false) }}
               locale={locale as "es" | "en"}
             />
           )}
+          <MobileEditToolbar
+            isEditMode={mobileEditMode}
+            onEnterEditMode={() => setMobileEditMode(true)}
+            onExitEditMode={() => setMobileEditMode(false)}
+            dateLabel={currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
+            canEdit={canEdit}
+            onGenerateRota={() => setShowStrategyModal(true)}
+            isPending={isPending}
+          />
+          {/* View mode toggle (shift / task) */}
+          {weekData?.tecnicas && weekData.tecnicas.length > 0 && (
+            <div className="flex items-center gap-0 px-4 py-2 border-b border-border md:hidden">
+              {(["shift", "task"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMobileViewMode(m)}
+                  className={cn(
+                    "flex-1 py-1.5 text-[12px] font-medium rounded-md transition-colors",
+                    mobileViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {m === "shift" ? "Por turno" : "Por tarea"}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-col gap-4 px-4 py-3 flex-1">
-            <DayView
-              day={currentDayData}
-              loading={loadingWeek}
-              locale={locale}
-              departments={weekData?.departments ?? []}
-            />
+            {mobileViewMode === "task" && weekData?.tecnicas ? (
+              <MobileTaskView
+                day={currentDayData}
+                tecnicas={weekData.tecnicas}
+                isEditMode={mobileEditMode}
+                onRemoveAssignment={async (id) => {
+                  const result = await removeAssignment(id)
+                  if (result.error) toast.error(result.error)
+                  else fetchWeek(weekStart)
+                }}
+                onAddToTecnica={(code) => setMobileAddSheet({ open: true, role: currentDayData?.assignments.find((a) => a.function_label === code)?.staff.role ?? "lab" })}
+                loading={loadingWeek}
+              />
+            ) : (
+              <DayView
+                day={currentDayData}
+                loading={loadingWeek}
+                locale={locale}
+                departments={weekData?.departments ?? []}
+                isEditMode={mobileEditMode}
+                onRemoveAssignment={async (id) => {
+                  const result = await removeAssignment(id)
+                  if (result.error) toast.error(result.error)
+                  else fetchWeek(weekStart)
+                }}
+                onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
+              />
+            )}
           </div>
         </div>
+
+        {/* Mobile add staff sheet */}
+        {(() => {
+          const deptMap = Object.fromEntries((weekData?.departments ?? []).filter((d) => !d.parent_id).map((d) => [d.code, d.name]))
+          const assignedIds = new Set(currentDayData?.assignments.map((a) => a.staff_id) ?? [])
+          const leaveIds = new Set(currentDayData ? (weekData?.onLeaveByDate?.[currentDayData.date] ?? []) : [])
+          // Compute weekly assignment counts
+          const weeklyCounts: Record<string, number> = {}
+          for (const d of weekData?.days ?? []) {
+            for (const a of d.assignments) {
+              weeklyCounts[a.staff_id] = (weeklyCounts[a.staff_id] ?? 0) + 1
+            }
+          }
+          return (
+            <MobileAddStaffSheet
+              open={mobileAddSheet.open}
+              onOpenChange={(open) => setMobileAddSheet((s) => ({ ...s, open }))}
+              departmentCode={mobileAddSheet.role}
+              departmentName={deptMap[mobileAddSheet.role] ?? mobileAddSheet.role}
+              date={currentDate}
+              weekStart={weekStart}
+              staffList={staffList}
+              assignedStaffIds={assignedIds}
+              onLeaveStaffIds={leaveIds}
+              shiftTypes={weekData?.shiftTypes ?? []}
+              weeklyAssignmentCounts={weeklyCounts}
+              onAdded={() => fetchWeek(weekStart)}
+            />
+          )
+        })()}
       </div>
 
       {/* Day edit sheet */}
