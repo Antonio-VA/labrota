@@ -17,14 +17,15 @@ interface InitialUser {
   avatarUrl: string | null
 }
 
-const THEME_OPTIONS = [
-  { key: "light" as const, label: "Claro", icon: Sun },
-  { key: "dark" as const, label: "Oscuro", icon: Moon },
-  { key: "auto" as const, label: "Sistema", icon: Monitor },
+const THEME_OPTION_KEYS = [
+  { key: "light" as const, labelKey: "themeLight", icon: Sun },
+  { key: "dark" as const, labelKey: "themeDark", icon: Moon },
+  { key: "auto" as const, labelKey: "themeSystem", icon: Monitor },
 ]
 
 export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
   const t = useTranslations("nav")
+  const tu = useTranslations("userMenu")
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -127,27 +128,27 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
             className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
           >
             <UserCog className="size-3.5" />
-            Preferencias
+            {tu("preferences")}
           </button>
           <button
             onClick={() => { setOpen(false); setSupportOpen(true) }}
             className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
           >
             <HelpCircle className="size-3.5" />
-            Soporte
+            {tu("support")}
           </button>
 
           {/* Theme section */}
           <div className="border-t border-border">
-            <p className="px-3 pt-2 pb-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Tema</p>
-            {THEME_OPTIONS.map(({ key, label, icon: Icon }) => (
+            <p className="px-3 pt-2 pb-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{tu("theme")}</p>
+            {THEME_OPTION_KEYS.map(({ key, labelKey, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => handleThemeChange(key)}
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors duration-75"
               >
                 <Icon className="size-3.5 text-muted-foreground" />
-                <span className="flex-1">{label}</span>
+                <span className="flex-1">{tu(labelKey)}</span>
                 <span className={cn(
                   "size-1.5 rounded-full shrink-0 transition-colors",
                   currentTheme === key ? "bg-primary" : "bg-transparent"

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ShiftTypesTable } from "@/components/shift-types-table"
@@ -13,6 +14,8 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
   initialRotation: string
   rotaDisplayMode?: string
 }) {
+  const t = useTranslations("turnos")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [shiftSaveFn, setShiftSaveFn] = useState<(() => Promise<boolean>) | null>(null)
@@ -27,10 +30,10 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
       await rotationSaveFn?.()
       if (shiftOk) {
         setSaved(true)
-        toast.success("Cambios guardados")
+        toast.success(t("changesSaved"))
         setTimeout(() => setSaved(false), 3000)
       } else {
-        toast.error("Error al guardar turnos")
+        toast.error(t("saveError"))
       }
     })
   }
@@ -39,7 +42,7 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border bg-background px-5 py-4">
         <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-          Tipos de turno
+          {t("shiftTypes")}
         </p>
         <ShiftTypesTable
           initialTypes={initialTypes}
@@ -56,12 +59,12 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSaveAll} disabled={isPending}>
-          {isPending ? "Guardando…" : "Guardar cambios"}
+          {isPending ? tc("saving") : tc("save")}
         </Button>
         {saved && (
           <span className="flex items-center gap-1.5 text-[13px] text-emerald-600">
             <CheckCircle2 className="size-3.5" />
-            Guardado
+            {tc("saved")}
           </span>
         )}
       </div>

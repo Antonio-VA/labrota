@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Plus, X, UserPlus, Link2, Link2Off } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +30,8 @@ export function OrgUsersTable({
   initialUsers: OrgUser[]
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
 }) {
+  const t = useTranslations("orgUsers")
+  const tc = useTranslations("common")
   const [users, setUsers] = useState(initialUsers)
   const [isPending, startTransition] = useTransition()
   const [showInvite, setShowInvite] = useState(false)
@@ -44,7 +47,7 @@ export function OrgUsersTable({
       if (result.error) {
         toast.error(result.error)
       } else {
-        toast.success("Invitación enviada")
+        toast.success(t("inviteSent"))
         setShowInvite(false)
         setInviteEmail("")
         setInviteName("")
@@ -69,7 +72,7 @@ export function OrgUsersTable({
         toast.error(result.error)
       } else {
         setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, role: newRole } : u))
-        toast.success("Rol actualizado")
+        toast.success(t("roleUpdated"))
       }
     })
   }
@@ -81,7 +84,7 @@ export function OrgUsersTable({
         toast.error(result.error)
       } else {
         setUsers((prev) => prev.filter((u) => u.userId !== userId))
-        toast.success("Usuario eliminado")
+        toast.success(t("userDeleted"))
       }
     })
   }
@@ -94,7 +97,7 @@ export function OrgUsersTable({
       } else {
         setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, linkedStaffId: staffId } : u))
         setLinkingUserId(null)
-        toast.success(staffId ? "Usuario vinculado" : "Vínculo eliminado")
+        toast.success(staffId ? t("userLinked") : t("linkRemoved"))
       }
     })
   }
@@ -106,9 +109,9 @@ export function OrgUsersTable({
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted border-b border-border">
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Usuario</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Rol</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Staff vinculado</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("userColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("roleColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("linkedStaff")}</th>
               <th className="px-3 py-2 w-8" />
             </tr>
           </thead>
@@ -146,7 +149,7 @@ export function OrgUsersTable({
                           disabled={isPending}
                           className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
                         >
-                          <option value="">Sin vincular</option>
+                          <option value="">{t("unlinked")}</option>
                           {staff.map((s) => (
                             <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
                           ))}
@@ -172,7 +175,7 @@ export function OrgUsersTable({
                         className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
                       >
                         <Link2Off className="size-3" />
-                        Vincular
+                        {t("link")}
                       </button>
                     )}
                   </td>
@@ -181,7 +184,7 @@ export function OrgUsersTable({
                       onClick={() => handleRemove(u.userId)}
                       disabled={isPending}
                       className="text-muted-foreground hover:text-destructive transition-colors"
-                      title="Eliminar usuario"
+                      title={t("removeUser")}
                     >
                       <X className="size-3.5" />
                     </button>
@@ -192,7 +195,7 @@ export function OrgUsersTable({
             {users.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground italic">
-                  Sin usuarios
+                  {t("noUsers")}
                 </td>
               </tr>
             )}
@@ -212,7 +215,7 @@ export function OrgUsersTable({
               type="email"
             />
             <Input
-              placeholder="Nombre (opcional)"
+              placeholder={t("nameOptional")}
               value={inviteName}
               onChange={(e) => setInviteName(e.target.value)}
               className="flex-1 h-8 text-[13px]"
@@ -230,10 +233,10 @@ export function OrgUsersTable({
             </select>
             <div className="flex-1" />
             <Button size="sm" variant="ghost" onClick={() => setShowInvite(false)} disabled={isPending}>
-              Cancelar
+              {tc("cancel")}
             </Button>
             <Button size="sm" onClick={handleInvite} disabled={isPending || !inviteEmail.trim()}>
-              {isPending ? "Enviando…" : "Invitar"}
+              {isPending ? tc("sending") : t("invite")}
             </Button>
           </div>
         </div>
@@ -244,7 +247,7 @@ export function OrgUsersTable({
           className="flex items-center gap-1.5 text-[13px] text-primary hover:underline self-start"
         >
           <UserPlus className="size-3.5" />
-          Invitar usuario
+          {t("inviteUser")}
         </button>
       )}
     </div>

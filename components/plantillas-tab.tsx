@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { BookmarkPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateWithYear } from "@/lib/format-date"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   renameTemplate,
   deleteTemplate,
@@ -18,6 +18,8 @@ import type { RotaTemplate } from "@/lib/types/database"
 
 export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemplate[] }) {
   const locale = useLocale() as "es" | "en"
+  const t = useTranslations("plantillas")
+  const tc = useTranslations("common")
   const [templates, setTemplates] = useState(initialTemplates)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
@@ -34,7 +36,7 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
     if (result.error) { toast.error(result.error); return }
     setTemplates((prev) => prev.map((t) => t.id === id ? { ...t, name: editName.trim() } : t))
     setEditingId(null)
-    toast.success("Plantilla renombrada")
+    toast.success(t("renamed"))
   }
 
   async function handleDelete(id: string) {
@@ -42,7 +44,7 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
     if (result.error) { toast.error(result.error); return }
     setTemplates((prev) => prev.filter((t) => t.id !== id))
     setDeletingId(null)
-    toast.success("Plantilla eliminada")
+    toast.success(t("deleted"))
   }
 
   async function refresh() {
@@ -63,8 +65,8 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
     return (
       <EmptyState
         icon={BookmarkPlus}
-        title="Sin plantillas"
-        description="Guarda una guardia como plantilla desde el calendario para reutilizarla."
+        title={t("noTemplates")}
+        description={t("noTemplatesDescription")}
       />
     )
   }
@@ -97,32 +99,32 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
               <p className="text-[14px] font-medium truncate">{tpl.name}</p>
             )}
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              {tpl.assignments.length} asignaciones · {shiftSummary(tpl)}
+              {tpl.assignments.length} {t("assignments")} · {shiftSummary(tpl)}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Creada {formatDateWithYear(tpl.created_at, locale)}
+              {t("created")} {formatDateWithYear(tpl.created_at, locale)}
             </p>
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
             {deletingId === tpl.id ? (
               <>
-                <Button size="sm" variant="destructive" onClick={() => handleDelete(tpl.id)}>Eliminar</Button>
-                <Button size="sm" variant="ghost" onClick={() => setDeletingId(null)}>No</Button>
+                <Button size="sm" variant="destructive" onClick={() => handleDelete(tpl.id)}>{tc("delete")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setDeletingId(null)}>{tc("no")}</Button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => { setEditingId(tpl.id); setEditName(tpl.name) }}
                   className={cn("size-7 flex items-center justify-center rounded hover:bg-muted", editingId === tpl.id && "hidden")}
-                  title="Renombrar"
+                  title={t("rename")}
                 >
                   <Pencil className="size-3.5 text-muted-foreground" />
                 </button>
                 <button
                   onClick={() => setDeletingId(tpl.id)}
                   className="size-7 flex items-center justify-center rounded hover:bg-destructive/10"
-                  title="Eliminar"
+                  title={tc("delete")}
                 >
                   <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
                 </button>

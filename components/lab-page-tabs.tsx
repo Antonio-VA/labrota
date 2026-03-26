@@ -1,19 +1,20 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 const TAB_KEYS = ["cobertura", "notas", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
 type TabKey = typeof TAB_KEYS[number]
 
-const TAB_LABELS: Record<TabKey, string> = {
-  cobertura:     "Cobertura",
-  reglas:        "Reglas",
-  plantillas:    "Plantillas",
-  tecnicas:      "Tareas",
-  departamentos: "Departamentos",
-  turnos:        "Turnos",
-  notas:         "Notas",
+const TAB_LABEL_KEYS: Record<TabKey, string> = {
+  cobertura:     "coverage",
+  reglas:        "rules",
+  plantillas:    "templates",
+  tecnicas:      "tasks",
+  departamentos: "departments",
+  turnos:        "shifts",
+  notas:         "notes",
 }
 
 export function LabPageTabs({
@@ -27,6 +28,7 @@ export function LabPageTabs({
   turnos:        React.ReactNode
   notas:         React.ReactNode
 }) {
+  const t = useTranslations("labTabs")
   const [active, setActive] = useState<TabKey>("cobertura")
   const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, plantillas, tecnicas, departamentos, turnos, notas }
 
@@ -46,7 +48,7 @@ export function LabPageTabs({
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            {TAB_LABELS[key]}
+            {t(TAB_LABEL_KEYS[key])}
           </button>
         ))}
       </div>

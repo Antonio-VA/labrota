@@ -91,6 +91,7 @@ type Draft = {
 function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
   dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean; isChild?: boolean
 }) {
+  const t = useTranslations("departments")
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: dept.sortId })
@@ -124,7 +125,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
         value={dept.name}
         onChange={(e) => onChange({ ...dept, name: e.target.value, name_en: e.target.value })}
         disabled={disabled}
-        placeholder="Nombre"
+        placeholder={t("namePlaceholder")}
         className="h-7 text-[13px] flex-1"
       />
       <Input
@@ -197,7 +198,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
   }
 
   function handleSeed() {
-    if (departments.length > 0 && !confirm("Esto reemplazará los departamentos actuales con los valores predeterminados. ¿Continuar?")) return
+    if (departments.length > 0 && !confirm(t("loadDefaultsConfirm"))) return
     startTransition(async () => {
       const result = await seedDefaultDepartments()
       if (result.error) { setErrorMsg(result.error); setStatus("error"); return }
@@ -261,16 +262,16 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
     <div className="flex flex-col gap-4">
       {departments.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-[14px] text-muted-foreground mb-3">No hay departamentos definidos.</p>
+          <p className="text-[14px] text-muted-foreground mb-3">{t("noDepartments")}</p>
           <Button type="button" variant="outline" size="sm" onClick={handleSeed} disabled={isPending}>
-            Cargar defaults (Embriología, Andrología, Admin)
+            {t("loadDefaults")}
           </Button>
         </div>
       )}
       {departments.length > 0 && (
         <div className="flex justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={handleSeed} disabled={isPending} className="text-[12px] text-muted-foreground">
-            Cargar defaults
+            {t("loadDefaultsShort")}
           </Button>
         </div>
       )}
@@ -306,7 +307,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
                       className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-6 py-0.5"
                     >
                       <Plus className="size-3" />
-                      Añadir sub-departamento
+                      {t("addSubDepartment")}
                     </button>
                   )}
                 </div>
@@ -319,7 +320,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
       <button type="button" onClick={() => addRow(null)} disabled={isPending}
         className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1">
         <Plus className="size-3.5" />
-        Añadir departamento
+        {t("addDepartment")}
       </button>
 
       <div className="flex items-center gap-3 pt-2 border-t border-border">

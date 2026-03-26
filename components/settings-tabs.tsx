@@ -1,15 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 const TAB_KEYS = ["organizacion", "usuarios", "historial"] as const
 type TabKey = typeof TAB_KEYS[number]
 
-const TAB_LABELS: Record<TabKey, string> = {
-  organizacion: "Organización",
-  usuarios:     "Usuarios",
-  historial:    "Historial",
+const TAB_LABEL_KEYS: Record<TabKey, string> = {
+  organizacion: "organisation",
+  usuarios:     "users",
+  historial:    "history",
 }
 
 export function SettingsTabs({
@@ -19,6 +20,7 @@ export function SettingsTabs({
   usuarios:     React.ReactNode
   historial:    React.ReactNode
 }) {
+  const t = useTranslations("settingsTabs")
   const [active, setActive] = useState<TabKey>("organizacion")
   const content: Record<TabKey, React.ReactNode> = { organizacion, usuarios, historial }
 
@@ -37,7 +39,7 @@ export function SettingsTabs({
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            {TAB_LABELS[key]}
+            {t(TAB_LABEL_KEYS[key])}
           </button>
         ))}
       </div>

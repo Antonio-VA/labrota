@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
@@ -8,10 +9,10 @@ import { ArrowRightLeft, RefreshCw, Anchor } from "lucide-react"
 
 export type RotationMode = "stable" | "weekly" | "daily"
 
-const OPTIONS: { key: RotationMode; label: string; desc: string; icon: typeof Anchor }[] = [
-  { key: "stable", label: "Estable", desc: "Misma persona, mismo turno cada semana", icon: Anchor },
-  { key: "weekly", label: "Rotación semanal", desc: "Mismo turno toda la semana, cambia la siguiente", icon: RefreshCw },
-  { key: "daily", label: "Rotación diaria", desc: "Cada día un turno diferente dentro de la semana", icon: ArrowRightLeft },
+const OPTION_KEYS: { key: RotationMode; labelKey: string; descKey: string; icon: typeof Anchor }[] = [
+  { key: "stable", labelKey: "stable", descKey: "stableDesc", icon: Anchor },
+  { key: "weekly", labelKey: "weekly", descKey: "weeklyDesc", icon: RefreshCw },
+  { key: "daily", labelKey: "daily", descKey: "dailyDesc", icon: ArrowRightLeft },
 ]
 
 export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
@@ -19,6 +20,7 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
   onChange?: (mode: RotationMode) => void
   registerSave?: (fn: () => Promise<void>) => void
 }) {
+  const t = useTranslations("shiftRotation")
   const [value, setValue] = useState<RotationMode>((initialValue as RotationMode) || "stable")
   const [isPending, startTransition] = useTransition()
 
@@ -37,13 +39,13 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
   return (
     <div className="rounded-lg border border-border bg-background px-5 py-4">
       <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-        Rotación de turnos
+        {t("title")}
       </p>
       <p className="text-[12px] text-muted-foreground mb-3">
-        Define cómo se asignan los turnos cuando no hay preferencia de técnica o turno personal.
+        {t("description")}
       </p>
       <div className="flex flex-col gap-2">
-        {OPTIONS.map((opt) => {
+        {OPTION_KEYS.map((opt) => {
           const Icon = opt.icon
           const selected = value === opt.key
           return (
@@ -62,8 +64,8 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
             >
               <Icon className={cn("size-4 mt-0.5 shrink-0", selected ? "text-primary" : "text-muted-foreground")} />
               <div>
-                <p className={cn("text-[14px] font-medium", selected && "text-primary")}>{opt.label}</p>
-                <p className="text-[12px] text-muted-foreground">{opt.desc}</p>
+                <p className={cn("text-[14px] font-medium", selected && "text-primary")}>{t(opt.labelKey)}</p>
+                <p className="text-[12px] text-muted-foreground">{t(opt.descKey)}</p>
               </div>
             </button>
           )

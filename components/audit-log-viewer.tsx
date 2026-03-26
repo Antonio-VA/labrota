@@ -1,25 +1,26 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { getAuditLogs, type AuditLogEntry } from "@/app/(clinic)/lab/audit-actions"
 
-const ACTION_LABELS: Record<string, string> = {
-  rota_generated: "Rota generada",
-  rota_published: "Rota publicada",
-  rota_deleted: "Rota eliminada",
-  assignment_changed: "Asignación modificada",
-  config_change: "Configuración actualizada",
-  staff_created: "Personal creado",
-  staff_updated: "Personal actualizado",
-  leave_created: "Ausencia creada",
-  leave_deleted: "Ausencia eliminada",
-  day_regenerated: "Día regenerado",
-  skill_updated: "Habilidad actualizada",
-  user_invited: "Usuario invitado",
-  user_role_changed: "Rol de usuario cambiado",
-  user_removed: "Usuario eliminado",
+const ACTION_LABEL_KEYS: Record<string, string> = {
+  rota_generated: "rotaGenerated",
+  rota_published: "rotaPublished",
+  rota_deleted: "rotaDeleted",
+  assignment_changed: "assignmentChanged",
+  config_change: "configChange",
+  staff_created: "staffCreated",
+  staff_updated: "staffUpdated",
+  leave_created: "leaveCreated",
+  leave_deleted: "leaveDeleted",
+  day_regenerated: "dayRegenerated",
+  skill_updated: "skillUpdated",
+  user_invited: "userInvited",
+  user_role_changed: "userRoleChanged",
+  user_removed: "userRemoved",
 }
 
 const ACTION_COLORS: Record<string, string> = {
@@ -36,29 +37,31 @@ const ACTION_COLORS: Record<string, string> = {
   user_removed: "bg-red-100 text-red-700",
 }
 
-function summarize(entry: AuditLogEntry): string {
+function summarize(entry: AuditLogEntry, t: ReturnType<typeof useTranslations<"audit">>): string {
   const m = entry.metadata as Record<string, unknown> | null
   switch (entry.action) {
     case "rota_generated":
-      return `Semana ${m?.weekStart ?? "?"} · ${m?.assignmentCount ?? 0} asignaciones · ${m?.method ?? ""}`
+      return t("weekSummary", { weekStart: String(m?.weekStart ?? "?"), count: String(m?.assignmentCount ?? 0), method: String(m?.method ?? "") })
     case "rota_published":
-      return "Horario publicado"
+      return t("schedulePublished")
     case "assignment_changed":
-      return `${m?.date ?? ""} · Turno ${m?.shiftType ?? ""} ${m?.functionLabel ? `· ${m.functionLabel}` : ""}`
+      return `${m?.date ?? ""} · ${m?.shiftType ?? ""} ${m?.functionLabel ? `· ${m.functionLabel}` : ""}`
     case "config_change": {
       const keys = Object.keys(entry.changes ?? {})
-      return keys.length > 0 ? keys.join(", ") : "Configuración"
+      return keys.length > 0 ? keys.join(", ") : t("configuration")
     }
     case "staff_created":
       return `${m?.firstName ?? ""} ${m?.lastName ?? ""} · ${m?.role ?? ""}`
     case "day_regenerated":
-      return `${m?.date ?? ""} · ${m?.count ?? 0} asignaciones`
+      return `${m?.date ?? ""} · ${m?.count ?? 0}`
     default:
       return entry.entity_type ?? ""
   }
 }
 
 export function AuditLogViewer() {
+  const t = useTranslations("audit")
+  const tc = useTranslations("common")
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState("")
@@ -83,9 +86,9 @@ export function AuditLogViewer() {
           onChange={(e) => setActionFilter(e.target.value)}
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none"
         >
-          <option value="">Todas las acciones</option>
-          {Object.entries(ACTION_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
+          <option value="">{t("allActions")}</option>
+          {Object.entries(ACTION_LABEL_KEYS).map(([key, labelKey]) => (
+            <option key={key} value={key}>{t(labelKey)}</option>
           ))}
         </select>
         <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8 text-[13px]" placeholder="Desde" />
@@ -97,17 +100,17 @@ export function AuditLogViewer() {
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted border-b border-border">
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Fecha</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Usuario</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Acción</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Detalle</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("dateColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("userColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("actionColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("detailColumn")}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">Cargando...</td></tr>
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">{tc("loading")}</td></tr>
             ) : logs.length === 0 ? (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground italic">Sin registros</td></tr>
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground italic">{t("noRecords")}</td></tr>
             ) : logs.map((log) => (
               <tr key={log.id} className="border-b border-border last:border-0 hover:bg-muted/50">
                 <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">
@@ -116,10 +119,10 @@ export function AuditLogViewer() {
                 <td className="px-3 py-2 truncate max-w-[150px]">{log.user_email ?? "—"}</td>
                 <td className="px-3 py-2">
                   <span className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded", ACTION_COLORS[log.action] ?? "bg-muted text-muted-foreground")}>
-                    {ACTION_LABELS[log.action] ?? log.action}
+                    {ACTION_LABEL_KEYS[log.action] ? t(ACTION_LABEL_KEYS[log.action]) : log.action}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-muted-foreground truncate max-w-[300px]">{summarize(log)}</td>
+                <td className="px-3 py-2 text-muted-foreground truncate max-w-[300px]">{summarize(log, t)}</td>
               </tr>
             ))}
           </tbody>

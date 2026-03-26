@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Upload, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,6 +40,8 @@ export function OrgSettingsForm({
   settings: OrgSettings
   orgId: string
 }) {
+  const t = useTranslations("orgSettings")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
 
   // Name
@@ -63,7 +66,7 @@ export function OrgSettingsForm({
     startTransition(async () => {
       const result = await updateOrgName(draftName.trim())
       if (result.error) toast.error(result.error)
-      else { toast.success("Nombre actualizado"); setEditingName(false) }
+      else { toast.success(t("nameUpdated")); setEditingName(false) }
     })
   }
 
@@ -71,7 +74,7 @@ export function OrgSettingsForm({
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ""
-    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return }
+    if (file.size > 5 * 1024 * 1024) { toast.error(t("maxFileSize")); return }
     setUploading(true)
     try {
       const supabase = createClient()
@@ -85,7 +88,7 @@ export function OrgSettingsForm({
       const result = await updateOrgLogo(publicUrl)
       if (result.error) { toast.error(result.error); return }
       setLogoUrl(publicUrl + `?t=${Date.now()}`)
-      toast.success("Logo actualizado")
+      toast.success(t("logoUpdated"))
     } finally {
       setUploading(false)
     }
@@ -95,7 +98,7 @@ export function OrgSettingsForm({
     startTransition(async () => {
       const result = await updateOrgRegional(country, region)
       if (result.error) toast.error(result.error)
-      else toast.success("Configuración regional guardada")
+      else toast.success(t("regionalSaved"))
     })
   }
 
@@ -148,21 +151,21 @@ export function OrgSettingsForm({
             </div>
           )}
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {uploading ? "Subiendo logo…" : "Haz clic en el icono para cambiar el logo"}
+            {uploading ? t("uploadingLogo") : t("clickToChangeLogo")}
           </p>
         </div>
       </div>
 
       {/* Regional */}
       <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-medium text-muted-foreground">Configuración regional</p>
+        <p className="text-[12px] font-medium text-muted-foreground">{t("regionalSettings")}</p>
         <div className="grid grid-cols-2 gap-2">
           <select
             value={country}
             onChange={(e) => { setCountry(e.target.value); if (e.target.value !== "ES") setRegion("") }}
             className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
           >
-            <option value="">País</option>
+            <option value="">{t("country")}</option>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>{c.label}</option>
             ))}
@@ -173,7 +176,7 @@ export function OrgSettingsForm({
               onChange={(e) => setRegion(e.target.value)}
               className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
             >
-              <option value="">Comunidad autónoma</option>
+              <option value="">{t("autonomousCommunity")}</option>
               {ES_REGIONS.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
@@ -182,7 +185,7 @@ export function OrgSettingsForm({
             <Input
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              placeholder="Región"
+              placeholder={t("region")}
               className="h-8 text-[13px]"
             />
           )}
@@ -194,13 +197,13 @@ export function OrgSettingsForm({
           disabled={isPending || (country === settings.country && region === settings.region)}
           className="self-start text-[12px] h-7"
         >
-          Guardar región
+          {t("saveRegion")}
         </Button>
       </div>
 
       {/* Feature toggles */}
       <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-medium text-muted-foreground">Funcionalidades</p>
+        <p className="text-[12px] font-medium text-muted-foreground">{t("features")}</p>
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -211,14 +214,14 @@ export function OrgSettingsForm({
               startTransition(async () => {
                 const result = await toggleLeaveRequests(val)
                 if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
-                else toast.success(val ? "Solicitudes de ausencia activadas" : "Solicitudes de ausencia desactivadas")
+                else toast.success(val ? t("leaveRequestsEnabled") : t("leaveRequestsDisabled"))
               })
             }}
             className="size-4 rounded border-input accent-primary"
           />
           <div>
-            <p className="text-[13px] font-medium">Solicitudes de ausencia</p>
-            <p className="text-[11px] text-muted-foreground">Permite a los empleados solicitar ausencias desde la app. Requieren aprobacion del administrador.</p>
+            <p className="text-[13px] font-medium">{t("leaveRequests")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("leaveRequestsDesc")}</p>
           </div>
         </label>
       </div>

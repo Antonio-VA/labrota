@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +23,8 @@ export function NotesConfig({
   const [editText, setEditText] = useState("")
   const [newText, setNewText] = useState("")
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations("notes")
+  const tc = useTranslations("common")
 
   function handleToggle() {
     const next = !enabled
@@ -64,7 +67,7 @@ export function NotesConfig({
     <div className="flex flex-col gap-4">
       {/* Toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-[14px] font-medium">Notas semanales</span>
+        <span className="text-[14px] font-medium">{t("weeklyNotes")}</span>
         <button
           type="button"
           onClick={handleToggle}
@@ -85,7 +88,7 @@ export function NotesConfig({
       {enabled && (
         <>
           <p className="text-[12px] text-muted-foreground -mt-2">
-            Notas predeterminadas que aparecen cada semana. Se pueden descartar individualmente por semana.
+            {t("defaultNotesDescription")}
           </p>
 
           {/* Template list */}
@@ -137,13 +140,13 @@ export function NotesConfig({
               value={newText}
               onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAdd() }}
-              placeholder="Nueva nota predeterminada..."
+              placeholder={t("newNotePlaceholder")}
               disabled={isPending}
               className="flex-1 h-8 text-[13px]"
             />
             <Button size="sm" onClick={handleAdd} disabled={isPending || !newText.trim()}>
               <Plus className="size-3.5" />
-              Añadir
+              {tc("add")}
             </Button>
           </div>
         </>

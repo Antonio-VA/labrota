@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Pencil, MoreHorizontal, Sparkles, FileDown, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -21,6 +22,7 @@ export function MobileEditToolbar({
   isEditMode, onEnterEditMode, onExitEditMode, dateLabel, canEdit,
   onGenerateRota, onExportPdf, onShareRota, isPending,
 }: MobileEditToolbarProps) {
+  const t = useTranslations("schedule")
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -37,10 +39,10 @@ export function MobileEditToolbar({
     return (
       <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-primary/20 md:hidden">
         <span className="text-[13px] font-medium text-primary">
-          Modo edicion — {dateLabel}
+          {t("editMode")} — {dateLabel}
         </span>
         <Button size="sm" onClick={onExitEditMode} className="h-7 text-[12px]">
-          Listo
+          {t("done")}
         </Button>
       </div>
     )
@@ -54,7 +56,7 @@ export function MobileEditToolbar({
           <button
             onClick={onEnterEditMode}
             className="size-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted active:bg-accent transition-colors"
-            title="Editar"
+            title={t("editButton")}
           >
             <Pencil className="size-4" />
           </button>
@@ -75,7 +77,7 @@ export function MobileEditToolbar({
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50"
                 >
                   <Sparkles className="size-4" />
-                  Generar horario
+                  {t("generateScheduleMenu")}
                 </button>
               )}
               {onExportPdf && (
@@ -84,7 +86,7 @@ export function MobileEditToolbar({
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left hover:bg-accent transition-colors"
                 >
                   <FileDown className="size-4" />
-                  Exportar PDF
+                  {t("exportPdfMenu")}
                 </button>
               )}
               {onShareRota && typeof navigator !== "undefined" && "share" in navigator && (
@@ -93,7 +95,7 @@ export function MobileEditToolbar({
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left hover:bg-accent transition-colors"
                 >
                   <Share2 className="size-4" />
-                  Compartir horario
+                  {t("shareSchedule")}
                 </button>
               )}
             </div>

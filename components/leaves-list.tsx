@@ -266,6 +266,7 @@ function LeavesTable({
 // ── KPI cards ────────────────────────────────────────────────────────────────
 
 function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
+  const t = useTranslations("leaves")
   // Ausentes hoy — distinct staff off today
   const absentToday = new Set(
     leaves.filter((l) => l.start_date <= TODAY && l.end_date >= TODAY).map((l) => l.staff_id)
@@ -309,10 +310,10 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   }
 
   const cards = [
-    { label: "Ausentes hoy", value: absentToday },
-    { label: "Esta semana", value: thisWeekDays },
-    { label: "Próx. ausencias", value: upcoming },
-    { label: "Próximos 30 días", value: next30Days },
+    { label: t("absentToday"), value: absentToday },
+    { label: t("thisWeek"), value: thisWeekDays },
+    { label: t("upcomingLeaves"), value: upcoming },
+    { label: t("next30Days"), value: next30Days },
   ]
 
   return (
@@ -330,6 +331,7 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
 // ── Pending requests ──────────────────────────────────────────────────────────
 
 function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]; isAdmin: boolean; locale: "es" | "en" }) {
+  const t = useTranslations("leaves")
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const pending = leaves.filter((l) => l.status === "pending")
@@ -338,7 +340,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
   return (
     <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
       <p className="text-[13px] font-medium text-amber-800 mb-3">
-        Solicitudes pendientes ({pending.length})
+        {t("pendingRequests")} ({pending.length})
       </p>
       <div className="flex flex-col gap-2">
         {pending.map((l) => {
@@ -365,7 +367,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
                   })}
                   className="text-[12px] font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 transition-colors disabled:opacity-50"
                 >
-                  Aprobar
+                  {t("approveLeave")}
                 </button>
                 <button
                   disabled={isPending}
@@ -375,7 +377,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
                   })}
                   className="text-[12px] font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
-                  Rechazar
+                  {t("rejectLeave")}
                 </button>
               </div>
             </div>
@@ -464,7 +466,7 @@ export function LeavesList({
           <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
           <Button size="lg" variant="outline" onClick={() => setFileImportOpen(true)}>
             <FileUp className="size-4" />
-            Añadir desde archivo
+            {t("addFromFile")}
           </Button>
         </div>
       </div>
@@ -500,8 +502,8 @@ export function LeavesList({
         >
           <span>{showHistory ? "▾" : "▸"}</span>
           {showHistory
-            ? (locale === "es" ? "Ocultar historial" : "Hide history")
-            : (locale === "es" ? `Mostrar historial (${filteredPast.length})` : `Show history (${filteredPast.length})`)}
+            ? t("hideHistory")
+            : t("showHistory", { count: filteredPast.length })}
         </button>
       )}
 

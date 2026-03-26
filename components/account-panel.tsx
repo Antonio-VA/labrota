@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useRef } from "react"
+import { useTranslations } from "next-intl"
 import { X, Sun, Moon, Monitor, Check, Camera } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -16,19 +17,19 @@ import {
 import type { User } from "@supabase/supabase-js"
 
 const ACCENT_COLORS = [
-  { key: "blue",    hex: "#1b4f8a", label: "Azul clínico" },
-  { key: "indigo",  hex: "#4f46e5", label: "Índigo" },
-  { key: "violet",  hex: "#7c3aed", label: "Violeta" },
-  { key: "emerald", hex: "#059669", label: "Esmeralda" },
-  { key: "rose",    hex: "#e11d48", label: "Rosa" },
-  { key: "amber",   hex: "#d97706", label: "Ámbar" },
-  { key: "slate",   hex: "#475569", label: "Grafito" },
+  { key: "blue",    hex: "#1b4f8a", labelKey: "accentBlue" },
+  { key: "indigo",  hex: "#4f46e5", labelKey: "accentIndigo" },
+  { key: "violet",  hex: "#7c3aed", labelKey: "accentViolet" },
+  { key: "emerald", hex: "#059669", labelKey: "accentEmerald" },
+  { key: "rose",    hex: "#e11d48", labelKey: "accentRose" },
+  { key: "amber",   hex: "#d97706", labelKey: "accentAmber" },
+  { key: "slate",   hex: "#475569", labelKey: "accentSlate" },
 ]
 
-const THEME_OPTIONS: { key: UserPreferences["theme"]; label: string; icon: React.ReactNode }[] = [
-  { key: "light", label: "Claro",      icon: <Sun className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
-  { key: "dark",  label: "Oscuro",     icon: <Moon className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
-  { key: "auto",  label: "Automático", icon: <Monitor className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
+const THEME_OPTION_KEYS: { key: UserPreferences["theme"]; labelKey: string; icon: React.ReactNode }[] = [
+  { key: "light", labelKey: "themeLight",      icon: <Sun className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
+  { key: "dark",  labelKey: "themeDark",     icon: <Moon className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
+  { key: "auto",  labelKey: "themeAuto", icon: <Monitor className="size-4 transition-transform duration-200 ease-out group-hover/btn:scale-125 group-hover/btn:-translate-y-0.5" /> },
 ]
 
 export function AccountPanel({ open, onClose, user }: {
@@ -36,6 +37,8 @@ export function AccountPanel({ open, onClose, user }: {
   onClose: () => void
   user: User | null
 }) {
+  const t = useTranslations("account")
+  const tc = useTranslations("common")
   const [prefs, setPrefs] = useState<UserPreferences>(() => {
     if (typeof window === "undefined") return { locale: "browser", theme: "light", accentColor: "#1b4f8a" }
     try {
@@ -69,7 +72,7 @@ export function AccountPanel({ open, onClose, user }: {
     startTransition(async () => {
       const result = await saveUserPreferences(prefs)
       if (result.error) { toast.error(result.error); return }
-      toast.success("Preferencias guardadas")
+      toast.success(t("saved"))
       onClose()
     })
   }
@@ -91,7 +94,7 @@ export function AccountPanel({ open, onClose, user }: {
     const result = await uploadAvatar(fd)
     setUploading(false)
     if (result.error) { toast.error(result.error); return }
-    if (result.url) { setAvatarUrl(result.url); toast.success("Foto actualizada") }
+    if (result.url) { setAvatarUrl(result.url); toast.success(t("photoUpdated")) }
   }
 
   return (
@@ -105,7 +108,7 @@ export function AccountPanel({ open, onClose, user }: {
       )}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[15px] font-medium">Mi cuenta</p>
+          <p className="text-[15px] font-medium">{t("title")}</p>
           <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted transition-all duration-200 ease-out">
             <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110 hover:rotate-90" />
           </button>
@@ -114,7 +117,7 @@ export function AccountPanel({ open, onClose, user }: {
         <div className="flex-1 overflow-y-auto">
           {/* Profile */}
           <div className="px-5 py-4 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Perfil</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("profile")}</p>
             <div className="flex items-center gap-3 mb-3">
               {/* Avatar with upload */}
               <button
@@ -143,23 +146,23 @@ export function AccountPanel({ open, onClose, user }: {
                 <p className="text-[12px] text-muted-foreground truncate">{user?.email ?? "—"}</p>
                 {department && (
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {department === "admin" ? "Administrador" : department === "lab" ? "Embriología" : department === "andrology" ? "Andrología" : department}
+                    {department === "admin" ? t("administrator") : department === "lab" ? "Embriología" : department === "andrology" ? "Andrología" : department}
                   </p>
                 )}
-                <p className="text-[10px] text-muted-foreground/50 mt-0.5">Pulsa la foto para cambiar</p>
+                <p className="text-[10px] text-muted-foreground/50 mt-0.5">{t("clickToChangePhoto")}</p>
               </div>
             </div>
           </div>
 
           {/* Language */}
           <div className="px-5 py-4 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Idioma</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("language")}</p>
             <select
               value={prefs.locale}
               onChange={(e) => setPrefs((p) => ({ ...p, locale: e.target.value as UserPreferences["locale"] }))}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="browser">Idioma del navegador (predeterminado)</option>
+              <option value="browser">{t("browserDefault")}</option>
               <option value="es">Español</option>
               <option value="en">English</option>
             </select>
@@ -167,11 +170,11 @@ export function AccountPanel({ open, onClose, user }: {
 
           {/* Appearance — Theme */}
           <div className="px-5 py-4 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Apariencia</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("appearance")}</p>
 
-            <p className="text-[12px] text-muted-foreground font-medium mb-2">Modo</p>
+            <p className="text-[12px] text-muted-foreground font-medium mb-2">{t("mode")}</p>
             <div className="flex gap-2 mb-4">
-              {THEME_OPTIONS.map((opt) => (
+              {THEME_OPTION_KEYS.map((opt) => (
                 <button
                   key={opt.key}
                   onClick={() => {
@@ -187,18 +190,18 @@ export function AccountPanel({ open, onClose, user }: {
                   )}
                 >
                   {opt.icon}
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
 
-            <p className="text-[12px] text-muted-foreground font-medium mb-2">Color de acento</p>
+            <p className="text-[12px] text-muted-foreground font-medium mb-2">{t("accentColor")}</p>
             <div className="flex gap-2 flex-wrap mb-4">
               {ACCENT_COLORS.map((c) => (
                 <button
                   key={c.key}
                   onClick={() => setPrefs((p) => ({ ...p, accentColor: c.hex }))}
-                  title={c.label}
+                  title={t(c.labelKey)}
                   className={cn(
                     "size-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-out",
                     prefs.accentColor === c.hex
@@ -217,10 +220,10 @@ export function AccountPanel({ open, onClose, user }: {
 
           {/* Preferences — time format + first day */}
           <div className="px-5 py-4 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">Preferencias</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("preferences")}</p>
 
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[13px] font-medium">Formato de hora</span>
+              <span className="text-[13px] font-medium">{t("timeFormat")}</span>
               <div className="flex rounded-lg border border-input overflow-hidden">
                 {(["24h", "12h"] as const).map((fmt) => (
                   <button
@@ -241,15 +244,15 @@ export function AccountPanel({ open, onClose, user }: {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium">Primer día de la semana</span>
+              <span className="text-[13px] font-medium">{t("firstDayOfWeek")}</span>
               <select
                 value={prefs.firstDayOfWeek ?? 0}
                 onChange={(e) => setPrefs((p) => ({ ...p, firstDayOfWeek: parseInt(e.target.value, 10) }))}
                 className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
               >
-                <option value={0}>Lunes</option>
-                <option value={6}>Domingo</option>
-                <option value={5}>Sábado</option>
+                <option value={0}>{t("monday")}</option>
+                <option value={6}>{t("sunday")}</option>
+                <option value={5}>{t("saturday")}</option>
               </select>
             </div>
           </div>
@@ -257,9 +260,9 @@ export function AccountPanel({ open, onClose, user }: {
 
         {/* Footer */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
           <Button size="sm" onClick={handleSave} disabled={isPending || loading}>
-            {isPending ? "Guardando…" : "Guardar"}
+            {isPending ? tc("saving") : tc("save")}
           </Button>
         </div>
       </div>
@@ -269,21 +272,22 @@ export function AccountPanel({ open, onClose, user }: {
 
 // ── Font scale slider (shared between dropdown + panel) ──────────────────────
 
-const FONT_SCALES = [
-  { key: "s" as const, label: "Pequeño" },
-  { key: "m" as const, label: "Normal" },
-  { key: "l" as const, label: "Grande" },
+const FONT_SCALE_KEYS = [
+  { key: "s" as const, labelKey: "fontSmall" },
+  { key: "m" as const, labelKey: "fontNormal" },
+  { key: "l" as const, labelKey: "fontLarge" },
 ]
 
 export function FontScaleSlider({ value, onChange }: { value: "s" | "m" | "l"; onChange: (v: "s" | "m" | "l") => void }) {
-  const idx = FONT_SCALES.findIndex((s) => s.key === value)
+  const t = useTranslations("account")
+  const idx = FONT_SCALE_KEYS.findIndex((s) => s.key === value)
   return (
     <div>
-      <p className="text-[12px] text-muted-foreground font-medium mb-2">Tamaño de texto</p>
+      <p className="text-[12px] text-muted-foreground font-medium mb-2">{t("fontSize")}</p>
       <div className="flex items-center gap-3">
         <span className="text-[11px] text-muted-foreground font-medium">A</span>
         <div className="flex-1 flex items-center">
-          {FONT_SCALES.map((s, i) => (
+          {FONT_SCALE_KEYS.map((s, i) => (
             <button
               key={s.key}
               type="button"
@@ -299,7 +303,7 @@ export function FontScaleSlider({ value, onChange }: { value: "s" | "m" | "l"; o
                 s.key === "s" ? "text-[11px]" : s.key === "l" ? "text-[15px]" : "text-[13px]",
                 i === idx ? "text-foreground font-medium" : "text-muted-foreground"
               )}>
-                {s.label}
+                {t(s.labelKey)}
               </span>
             </button>
           ))}

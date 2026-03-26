@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useTransition, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { GripVertical, Plus, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,6 +57,8 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   registerSave?: (fn: () => Promise<boolean>) => void
   daysReadOnly?: boolean
 }) {
+  const t = useTranslations("shiftTypes")
+  const tc = useTranslations("common")
   const [rows, setRows] = useState<ShiftRow[]>(initialTypes.map(rowFromDefinition))
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
@@ -168,11 +171,11 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
       {/* Column headers */}
       <div className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
         <span />
-        <span className="text-[11px] text-muted-foreground text-center">Código</span>
-        <span className="text-[11px] text-muted-foreground text-center">Inicio</span>
-        <span className="text-[11px] text-muted-foreground text-center">Fin</span>
-        <span className="text-[11px] text-muted-foreground text-center">Nombre</span>
-        <span className="text-[11px] text-muted-foreground text-center">Días activos</span>
+        <span className="text-[11px] text-muted-foreground text-center">{t("code")}</span>
+        <span className="text-[11px] text-muted-foreground text-center">{t("start")}</span>
+        <span className="text-[11px] text-muted-foreground text-center">{t("end")}</span>
+        <span className="text-[11px] text-muted-foreground text-center">{t("nameEs")}</span>
+        <span className="text-[11px] text-muted-foreground text-center">{t("activeDays")}</span>
         <span />
       </div>
 
@@ -273,7 +276,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                   onClick={() => handleDeleteClick(row)}
                   disabled={isPending}
                   className="text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center"
-                  aria-label="Eliminar turno"
+                  aria-label={t("deleteShiftLabel")}
                 >
                   <X className="size-3.5" />
                 </button>
@@ -281,17 +284,17 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
 
               {/* Inline validation messages */}
               {isDuplicate && (
-                <p className="text-[11px] text-destructive pl-8 -mt-0.5">Código duplicado</p>
+                <p className="text-[11px] text-destructive pl-8 -mt-0.5">{t("duplicateCode")}</p>
               )}
               {timeError && (
-                <p className="text-[11px] text-destructive pl-8 -mt-0.5">La hora de inicio debe ser anterior a la de fin</p>
+                <p className="text-[11px] text-destructive pl-8 -mt-0.5">{t("startBeforeEnd")}</p>
               )}
 
               {/* Delete confirm */}
               {confirmDelete?.id === row.id && (
                 <div className="ml-8 mt-1 p-2.5 rounded-lg border border-amber-300 bg-amber-50 flex flex-col gap-2">
                   <p className="text-[12px] text-amber-800">
-                    Este turno tiene <strong>{confirmDelete.count}</strong> asignaciones activas. Eliminar afectará a las guardias existentes. ¿Continuar?
+                    {t("deleteShiftConfirm", { count: confirmDelete.count })}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -299,14 +302,14 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                       onClick={() => removeRow(row.id)}
                       className="text-[12px] font-medium text-destructive hover:underline"
                     >
-                      Sí, eliminar
+                      {t("confirmDelete")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmDelete(null)}
                       className="text-[12px] text-muted-foreground hover:underline"
                     >
-                      Cancelar
+                      {tc("cancel")}
                     </button>
                   </div>
                 </div>
@@ -324,18 +327,18 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
         className="flex items-center gap-1.5 text-[13px] text-primary hover:underline self-start"
       >
         <Plus className="size-3.5" />
-        Añadir turno
+        {t("addShift")}
       </button>
 
       {/* Save footer */}
       <div className={cn("flex items-center gap-3 pt-1", hideSaveButton && "hidden")}>
         <Button onClick={handleSave} disabled={isPending || hasErrors} size="sm">
-          {isPending ? "Guardando…" : "Guardar turnos"}
+          {isPending ? tc("saving") : t("saveShifts")}
         </Button>
         {status === "success" && (
           <span className="flex items-center gap-1.5 text-[13px] text-emerald-600">
             <CheckCircle2 className="size-3.5" />
-            Guardado
+            {tc("saved")}
           </span>
         )}
         {status === "error" && (

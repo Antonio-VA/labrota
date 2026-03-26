@@ -52,6 +52,7 @@ import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
+import { MobilePersonView } from "@/components/mobile-person-view"
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -302,6 +303,8 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
   isPublished: boolean
   children: React.ReactNode
 }) {
+  const t = useTranslations("schedule")
+  const tStaff = useTranslations("staff")
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -362,11 +365,11 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
               : { top: pos.top }),
           }}
         >
-          <p className="text-[11px] font-semibold px-2.5 mb-1">Asignación</p>
+          <p className="text-[11px] font-semibold px-2.5 mb-1">{t("editAssignment")}</p>
           {/* Sub-departments for staff's role */}
           {roleSubDepts.length > 0 && (
             <>
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Departamento</p>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{tStaff("fields.role")}</p>
               <div className="flex flex-col">
                 {roleSubDepts.map((dept) => {
                   const isActive = currentLabel === dept.code
@@ -396,7 +399,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
           {availableTecnicas.length > 0 && (
             <>
               <div className="h-px bg-border mx-2 my-1" />
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">Tareas</p>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{t("tasks")}</p>
               <div className="flex flex-col">
                 {availableTecnicas.map((tec) => {
                   const isActive = currentLabel === tec.codigo
@@ -444,6 +447,8 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
   onChange: (date: string, value: number | null) => void; disabled: boolean
   biopsyForecast: number; biopsyTooltip: string
 }) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
   const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
@@ -486,7 +491,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
           </span>
         } />
         <TooltipContent side="bottom">
-          {biopsyForecast > 0 ? biopsyTooltip : `${value} punciones`}
+          {biopsyForecast > 0 ? biopsyTooltip : t("punctionsLabel", { count: value })}
         </TooltipContent>
       </Tooltip>
     )
@@ -506,7 +511,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
         } />
         {!open && (
           <TooltipContent side="bottom">
-            Click para editar{isOverride ? ` · Default: ${defaultValue}` : ""}
+            {t("clickToEdit")}{isOverride ? ` · Default: ${defaultValue}` : ""}
           </TooltipContent>
         )}
       </Tooltip>
@@ -517,7 +522,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
           onClick={(e) => e.stopPropagation()}
         >
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
-            <span className="text-[11px] text-muted-foreground text-right">Punciones</span>
+            <span className="text-[11px] text-muted-foreground text-right">{t("punctions")}</span>
             <input
               autoFocus
               type="number"
@@ -527,7 +532,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
               onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
               className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
-            <span className="text-[11px] text-muted-foreground text-right">Biopsias</span>
+            <span className="text-[11px] text-muted-foreground text-right">{t("biopsies")}</span>
             <input
               type="number"
               min={0}
@@ -542,7 +547,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
               onClick={save}
               className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
             >
-              Guardar
+              {tc("save")}
             </button>
             {isOverride && (
               <button
@@ -580,7 +585,7 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
 
   return (
     <div ref={ref} className="relative">
-      <Button variant="outline" size="icon-sm" onClick={() => setOpen((o) => !o)} aria-label="Más opciones">
+      <Button variant="outline" size="icon-sm" onClick={() => setOpen((o) => !o)} aria-label="More options">
         <MoreHorizontal className="size-4" />
       </Button>
       {open && (
@@ -610,12 +615,10 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
 
 // ── Staff profile panel ───────────────────────────────────────────────────────
 
-const LEAVE_TYPE_LABEL: Record<string, string> = {
-  annual: "Vacaciones", sick: "Baja médica", personal: "Personal",
-  training: "Formación", maternity: "Maternidad/Paternidad", other: "Otro",
-}
-
 function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCreated: () => void }) {
+  const t = useTranslations("schedule")
+  const tl = useTranslations("leaves")
+  const tc = useTranslations("common")
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [type, setType] = useState("annual")
@@ -638,7 +641,7 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
       if (result.error) {
         toast.error(result.error)
       } else {
-        toast.success("Ausencia registrada")
+        toast.success(t("leaveRecorded"))
         reset()
         onCreated()
       }
@@ -653,7 +656,7 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
           className="flex items-center gap-1.5 text-[12px] text-primary hover:underline"
         >
           <CalendarPlus className="size-3.5" />
-          Añadir ausencia
+          {tl("addLeave")}
         </button>
       </div>
     )
@@ -661,18 +664,18 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
 
   return (
     <div className="px-5 py-3 border-t border-border flex flex-col gap-2">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Nueva ausencia</p>
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{t("newLeave")}</p>
       <select
         value={type}
         onChange={(e) => setType(e.target.value)}
         className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
       >
-        <option value="annual">Vacaciones</option>
-        <option value="sick">Baja médica</option>
-        <option value="personal">Personal</option>
-        <option value="training">Formación</option>
-        <option value="maternity">Maternidad/Paternidad</option>
-        <option value="other">Otro</option>
+        <option value="annual">{tl("types.annual")}</option>
+        <option value="sick">{tl("types.sick")}</option>
+        <option value="personal">{tl("types.personal")}</option>
+        <option value="training">{tl("types.training")}</option>
+        <option value="maternity">{tl("types.maternity")}</option>
+        <option value="other">{tl("types.other")}</option>
       </select>
       <div className="grid grid-cols-2 gap-2">
         <input
@@ -692,15 +695,15 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
       <input
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notas (opcional)"
+        placeholder={t("notesOptional")}
         className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
       />
       <div className="flex items-center gap-2 mt-1">
         <Button size="sm" onClick={handleSubmit} disabled={isPending || !startDate || !endDate} className="text-[12px] h-7">
-          {isPending ? "Guardando…" : "Guardar"}
+          {isPending ? tc("saving") : tc("save")}
         </Button>
         <button onClick={reset} className="text-[12px] text-muted-foreground hover:underline">
-          Cancelar
+          {tc("cancel")}
         </button>
       </div>
     </div>
@@ -718,6 +721,9 @@ function StaffProfilePanel({
 }) {
   const localeRaw = useLocale()
   const locale    = localeRaw as "es" | "en"
+  const t         = useTranslations("schedule")
+  const tStaff    = useTranslations("staff")
+  const tl        = useTranslations("leaves")
   const ts        = useTranslations("skills")
   const [data, setData]       = useState<StaffProfileData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -803,7 +809,7 @@ function StaffProfilePanel({
 
           {/* Weekly shift strip — this week's assignments */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Semana actual</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("currentWeek")}</p>
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map((day, i) => {
                 const a = day.assignments.find((a) => a.staff_id === staffId)
@@ -823,7 +829,7 @@ function StaffProfilePanel({
                         : onLeave ? "bg-amber-50 text-amber-600 border border-amber-200"
                         : "bg-muted text-muted-foreground/40 border border-border/50"
                     )}>
-                      {a ? a.shift_type : onLeave ? "Aus" : "—"}
+                      {a ? a.shift_type : onLeave ? t("leave") : "—"}
                     </div>
                   </div>
                 )
@@ -833,7 +839,7 @@ function StaffProfilePanel({
 
           {/* Shift debt — last 4 weeks */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Deuda de turnos · 4 semanas</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("debtTitle")}</p>
             {loading ? (
               <div className="shimmer-bar h-6 w-24 rounded" />
             ) : (
@@ -845,7 +851,7 @@ function StaffProfilePanel({
                   )}>
                     {last4w}
                   </span>
-                  <span className="text-[13px] text-muted-foreground">/ {expected4w} turnos</span>
+                  <span className="text-[13px] text-muted-foreground">/ {expected4w} {t("shifts")}</span>
                   {debt !== 0 && (
                     <span className={cn(
                       "text-[12px] font-semibold ml-auto px-1.5 py-0.5 rounded",
@@ -872,9 +878,9 @@ function StaffProfilePanel({
           {/* Capacidades (skills) */}
           {staff && (
             <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Tareas</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("tasks")}</p>
               {staff.staff_skills.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground italic">Sin tareas registradas</p>
+                <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {staff.staff_skills.map((sk) => (
@@ -891,7 +897,7 @@ function StaffProfilePanel({
                         </span>
                       } />
                       <TooltipContent side="top">
-                        {sk.level === "training" ? "En formación" : "Certificada"}
+                        {sk.level === "training" ? t("inTraining") : t("certified")}
                       </TooltipContent>
                     </Tooltip>
                   ))}
@@ -902,7 +908,7 @@ function StaffProfilePanel({
 
           {/* Last shifts */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Últimos turnos</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("recentShifts")}</p>
             {loading ? (
               <div className="flex flex-col gap-1.5">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -910,7 +916,7 @@ function StaffProfilePanel({
                 ))}
               </div>
             ) : !data?.recentAssignments.length ? (
-              <p className="text-[12px] text-muted-foreground italic">Sin turnos recientes</p>
+              <p className="text-[12px] text-muted-foreground italic">{t("noRecentShifts")}</p>
             ) : (
               <div className="flex flex-col gap-0.5">
                 {data.recentAssignments.slice(0, 10).map((a, i) => (
@@ -930,11 +936,11 @@ function StaffProfilePanel({
 
           {/* Upcoming leaves */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Próximas vacaciones</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("upcomingLeaves")}</p>
             {loading ? (
               <div className="shimmer-bar h-4 w-40 rounded" />
             ) : !data?.upcomingLeaves.length ? (
-              <p className="text-[12px] text-muted-foreground italic">Sin vacaciones programadas</p>
+              <p className="text-[12px] text-muted-foreground italic">{t("noLeavesScheduled")}</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {data.upcomingLeaves.map((leave, i) => (
@@ -942,7 +948,7 @@ function StaffProfilePanel({
                     <CalendarX className="size-3.5 text-amber-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
-                      <p className="text-[11px] text-muted-foreground">{LEAVE_TYPE_LABEL[leave.type] ?? leave.type}</p>
+                      <p className="text-[11px] text-muted-foreground">{tl(`types.${leave.type}`)}</p>
                     </div>
                   </div>
                 ))}
@@ -952,11 +958,11 @@ function StaffProfilePanel({
 
           {/* Past leaves */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Últimas vacaciones</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("pastLeaves")}</p>
             {loading ? (
               <div className="shimmer-bar h-4 w-40 rounded" />
             ) : !data?.pastLeaves?.length ? (
-              <p className="text-[12px] text-muted-foreground italic">Sin registros</p>
+              <p className="text-[12px] text-muted-foreground italic">{t("noRecords")}</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {data.pastLeaves.map((leave, i) => (
@@ -964,7 +970,7 @@ function StaffProfilePanel({
                     <CalendarX className="size-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
-                      <p className="text-[11px] text-muted-foreground">{LEAVE_TYPE_LABEL[leave.type] ?? leave.type}</p>
+                      <p className="text-[11px] text-muted-foreground">{tl(`types.${leave.type}`)}</p>
                     </div>
                   </div>
                 ))}
@@ -975,29 +981,29 @@ function StaffProfilePanel({
           {/* Key info */}
           {staff && (
             <div className="px-5 py-3">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Información</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("information")}</p>
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[12px]">
                 <div>
-                  <p className="text-muted-foreground">Incorporación</p>
+                  <p className="text-muted-foreground">{tStaff("fields.startDate")}</p>
                   <p className="text-foreground font-medium">{formatDateWithYear(staff.start_date, locale)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Antigüedad</p>
+                  <p className="text-muted-foreground">{t("seniority")}</p>
                   <p className="text-foreground font-medium">{tenureLabel}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Disponible</p>
+                  <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
                   <p className="text-foreground font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
                 </div>
                 {staff.preferred_days && staff.preferred_days.length > 0 && (
                   <div>
-                    <p className="text-muted-foreground">Preferidos</p>
+                    <p className="text-muted-foreground">{t("preferred")}</p>
                     <p className="text-emerald-700 font-medium">{staff.preferred_days.join(", ").toUpperCase()}</p>
                   </div>
                 )}
                 {staff.preferred_shift && (
                   <div>
-                    <p className="text-muted-foreground">Turno preferido</p>
+                    <p className="text-muted-foreground">{t("preferredShift")}</p>
                     <p className="text-foreground font-medium">{staff.preferred_shift}</p>
                   </div>
                 )}
@@ -1029,7 +1035,7 @@ function StaffProfilePanel({
             render={<a href={`/staff/${staffId}`} />}
           >
             <UserCog className="size-3.5" />
-            Perfil
+            {tStaff("profile")}
           </Button>
           {staff?.email && (
             <Button
@@ -1164,7 +1170,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
           </button>
         } />
         <TooltipContent side="top">
-          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} turnos
+          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}
         </TooltipContent>
       </Tooltip>
     )
@@ -1190,7 +1196,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onClick={() => setOverflowOpen((o) => !o)}
             className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer ml-1"
           >
-            +{overflow.length} más
+            {t("moreStaff", { count: overflow.length })}
           </button>
           {overflowOpen && (
             <div className="absolute bottom-full right-0 mb-2 z-50 w-60 rounded-lg border border-border bg-background shadow-lg py-2 px-1">
@@ -1244,7 +1250,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
                   </button>
                 } />
                 <TooltipContent side="top">
-                  {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{expected} turnos/mes
+                  {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{expected} {t("shiftsPerMonth")}
                 </TooltipContent>
               </Tooltip>
             </Fragment>
@@ -1257,17 +1263,18 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
 // ── Skill gap pill ────────────────────────────────────────────────────────────
 
-const WARNING_CATEGORY_LABEL: Record<string, string> = {
-  coverage: "Cobertura insuficiente",
-  skill_gap: "Tareas sin cubrir",
-  technique_shift_gap: "Tarea sin cobertura en turno",
-  rule: "Reglas de planificación",
-  budget: "Carga de turnos",
+const WARNING_CATEGORY_KEY: Record<string, string> = {
+  coverage: "warningCoverage",
+  skill_gap: "warningSkillGap",
+  technique_shift_gap: "warningTechniqueShiftGap",
+  rule: "warningRule",
+  budget: "warningBudget",
 }
 const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, technique_shift_gap: 2, budget: 3, rule: 4 }
 
 /** Click-to-open popover for per-day warnings in column headers. */
 function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
+  const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -1303,7 +1310,7 @@ function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
           {sortedCategories.map((cat) => (
             <div key={cat} className="mb-2 last:mb-0">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
-                {WARNING_CATEGORY_LABEL[cat] ?? cat}
+                {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
               </p>
               {groups[cat].map((msg, i) => (
                 <p key={i} className="text-[11px] text-muted-foreground">· {msg}</p>
@@ -1364,7 +1371,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     }
     if (budgetWarnings.length > 0) {
       if (!byCategory["budget"]) byCategory["budget"] = []
-      byCategory["budget"].push({ day: "Semana", messages: budgetWarnings })
+      byCategory["budget"].push({ day: t("weekView"), messages: budgetWarnings })
     }
   }
 
@@ -1378,7 +1385,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     return (
       <div className="flex items-center gap-1.5 h-7 px-2 xl:px-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
         <CheckCircle2 className="size-3 shrink-0" />
-        <span className="hidden xl:inline">Sin avisos</span>
+        <span className="hidden xl:inline">{t("noWarnings")}</span>
       </div>
     )
   }
@@ -1399,7 +1406,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
           {sortedCategories.map((cat) => (
             <div key={cat} className="px-3 py-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                {WARNING_CATEGORY_LABEL[cat] ?? cat}
+                {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
               </p>
               {byCategory[cat].map(({ day, messages }) => (
                 <div key={day} className="mb-1 last:mb-0">
@@ -1478,6 +1485,8 @@ function PersonGrid({
   onDateClick?: (date: string) => void
   isGenerating?: boolean
 }) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const [localDays, setLocalDays] = useState(data?.days ?? [])
   useEffect(() => { if (data) setLocalDays(data.days) }, [data])
 
@@ -1530,7 +1539,7 @@ function PersonGrid({
         </div>
         <div className="flex items-center justify-center py-1">
           <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? "Generando horario…" : "Cargando…"}
+            {isGenerating ? tc("generating") : tc("loading")}
           </span>
         </div>
       </div>
@@ -1662,12 +1671,12 @@ function PersonGrid({
                                 </div>
                               } />
                               <TooltipContent side="right">
-                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}{assignment.function_label && (s.staff_skills ?? []).find((sk) => sk.skill === assignment.function_label)?.level === "training" ? " · En formación" : ""}
+                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}{assignment.function_label && (s.staff_skills ?? []).find((sk) => sk.skill === assignment.function_label)?.level === "training" ? ` · ${t("inTraining")}` : ""}
                               </TooltipContent>
                             </Tooltip>
                           </AssignmentPopover>
                         ) : onLeave ? (
-                          <span className="text-[11px] text-muted-foreground italic">Aus.</span>
+                          <span className="text-[11px] text-muted-foreground italic">{t("leaveShort")}</span>
                         ) : (
                           <span className="text-[11px] text-muted-foreground select-none">OFF</span>
                         )}
@@ -1774,6 +1783,7 @@ function ShiftGrid({
   biopsyDay6Pct?: number
 }) {
   const t  = useTranslations("schedule")
+  const tc = useTranslations("common")
   const ts = useTranslations("skills")
 
   // Staff color map with fallbacks
@@ -1863,9 +1873,9 @@ function ShiftGrid({
         const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
         if (result?.error) { toast.error(result.error); onRefresh(); return }
         const newId = result.id
-        toast.success("Turno asignado", {
+        toast.success(t("shiftAssigned"), {
           action: newId ? {
-            label: "Deshacer",
+            label: t("undo"),
             onClick: async () => {
               await removeAssignment(newId)
               onRefresh()
@@ -1873,7 +1883,7 @@ function ShiftGrid({
           } : undefined,
         })
       } catch {
-        toast.error("Error al asignar turno")
+        toast.error(t("assignmentError"))
         onRefresh()
         return
       }
@@ -1900,9 +1910,9 @@ function ShiftGrid({
       try {
         const result = await removeAssignment(assignmentId)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success("Turno eliminado", {
+        toast.success(t("shiftRemoved"), {
           action: {
-            label: "Deshacer",
+            label: t("undo"),
             onClick: async () => {
               await upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift })
               onRefresh()
@@ -1911,7 +1921,7 @@ function ShiftGrid({
         })
         debouncedRefresh()
       } catch {
-        toast.error("Error al eliminar turno")
+        toast.error(t("removeError"))
         onRefresh()
       }
     } else {
@@ -1919,7 +1929,7 @@ function ShiftGrid({
       const destShift = destZone.slice(0, destZone.length - 11)
 
       if (sourceAssignment.date !== destDate) {
-        toast.error("No se puede mover entre días")
+        toast.error(t("shiftMoveError"))
         return
       }
 
@@ -1933,9 +1943,9 @@ function ShiftGrid({
       try {
         const result = await moveAssignmentShift(assignmentId, destShift)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success("Turno actualizado", {
+        toast.success(t("shiftUpdated"), {
           action: {
-            label: "Deshacer",
+            label: t("undo"),
             onClick: async () => {
               await moveAssignmentShift(assignmentId, oldShift)
               onRefresh()
@@ -1944,7 +1954,7 @@ function ShiftGrid({
         })
         debouncedRefresh()
       } catch {
-        toast.error("Error al mover turno")
+        toast.error(t("moveError"))
         onRefresh()
       }
     }
@@ -1983,7 +1993,7 @@ function ShiftGrid({
         </div>
         <div className="flex items-center justify-center py-1">
           <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? "Generando horario…" : "Cargando…"}
+            {isGenerating ? tc("generating") : tc("loading")}
           </span>
         </div>
       </div>
@@ -2101,9 +2111,9 @@ function ShiftGrid({
                   const p6 = getPuncForDate(d6str)
                   const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
                   const sources: string[] = []
-                  if (p5 > 0) sources.push(`${p5} punciones D-5`)
-                  if (p6 > 0) sources.push(`${p6} punciones D-6`)
-                  const tooltip = forecast > 0 ? `Biopsias previstas: ${forecast} (${sources.join(", ")})` : `${effectiveP} punciones`
+                  if (p5 > 0) sources.push(t("punctionsD5", { count: p5 }))
+                  if (p6 > 0) sources.push(t("punctionsD6", { count: p6 }))
+                  const tooltip = forecast > 0 ? t("biopsyForecast", { count: forecast, sources: sources.join(", ") }) : t("punctionsLabel", { count: effectiveP })
                   return (
                     <DayStatsInput
                       date={day.date}
@@ -2196,14 +2206,14 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}{a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training" ? " · En formación" : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}{a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training" ? ` · ${t("inTraining")}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
                     )
                   })}
                   {dayShifts.length === 0 && effectivePDay === 0 && (
-                    <span className="text-[10px] text-muted-foreground/40 italic self-center mt-auto mb-auto">Sin servicio</span>
+                    <span className="text-[10px] text-muted-foreground/40 italic self-center mt-auto mb-auto">{t("noService")}</span>
                   )}
                 </DroppableCell>
               )
@@ -2324,6 +2334,7 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
   date: string; value: number; defaultValue: number; isOverride: boolean
   onChange?: (date: string, value: number | null) => void
 }) {
+  const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
@@ -2366,7 +2377,7 @@ function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }:
           </button>
         } />
         <TooltipContent side="top">
-          {isOverride ? `Valor personalizado — default: ${defaultValue}` : "Click para editar punciones"}
+          {isOverride ? t("customValue", { value: defaultValue }) : t("clickToEditPunctions")}
         </TooltipContent>
       </Tooltip>
 
@@ -2429,6 +2440,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
 }) {
+  const t = useTranslations("schedule")
   const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
   const headers = rotateArray(baseHeaders, firstDayOfWeek)
 
@@ -2499,14 +2511,14 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     S{weekNum}
                   </button>
                 } />
-                <TooltipContent side="left">Ir a semana {weekNum}</TooltipContent>
+                <TooltipContent side="left">{t("goToWeek", { week: weekNum })}</TooltipContent>
               </Tooltip>
               {isWeekPublished && (
                 <Tooltip>
                   <TooltipTrigger render={
                     <Lock className="size-3 text-emerald-500 cursor-default" />
                   } />
-                  <TooltipContent side="left">Publicado</TooltipContent>
+                  <TooltipContent side="left">{t("published")}</TooltipContent>
                 </Tooltip>
               )}
             </div>
@@ -2518,10 +2530,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 const isSun      = dayDow === 0
 
                 const tooltipParts: string[] = []
-                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} personas`)
-                if (day.punctions > 0) tooltipParts.push(`${day.punctions} punciones`)
-                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ausencias`)
-                if (day.hasSkillGaps) tooltipParts.push("Tareas sin cubrir")
+                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${t("people")}`)
+                if (day.punctions > 0) tooltipParts.push(`${day.punctions} ${t("punctions")}`)
+                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${t("absences")}`)
+                if (day.hasSkillGaps) tooltipParts.push(t("uncoveredTasks"))
                 if (day.holidayName) tooltipParts.push(day.holidayName)
                 const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
 
@@ -2595,7 +2607,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
                     {/* Sin horario */}
                     {day.staffCount === 0 && day.isCurrentMonth && !day.holidayName && (
-                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">Sin horario</span>
+                      <span className="text-[13px] text-muted-foreground/40 italic m-auto">{t("noGuardia")}</span>
                     )}
 
                     {/* Punctions + ratio + leave */}
@@ -2712,7 +2724,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
           {punctions !== undefined && <span>P: <strong className="text-foreground">{punctions}</strong></span>}
           {biopsyForecast !== undefined && <span>B: <strong className="text-foreground">{biopsyForecast}</strong></span>}
           <span className="text-muted-foreground/40">·</span>
-          <span>{day.assignments.length} asignaciones</span>
+          <span>{t("assignmentCount", { count: day.assignments.length })}</span>
         </div>
       )}
 
@@ -2736,7 +2748,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
         const staff = byRole[role]
         if (!staff || staff.length === 0) return null
         const deptColor = deptColorMap[role] ?? (role === "lab" ? "#3B82F6" : role === "andrology" ? "#10B981" : "#64748B")
-        const deptName = deptLabelMap[role] ?? (role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Admin")
+        const deptName = deptLabelMap[role] ?? role
         return (
           <div key={role} className="flex flex-col gap-1.5">
             {/* Department header with colored left border */}
@@ -2778,7 +2790,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   onClick={() => onAddStaff(role)}
                   className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-[12px] text-primary font-medium active:bg-primary/5"
                 >
-                  + Añadir
+                  {t("addStaff")}
                 </button>
               )}
             </div>
@@ -2793,29 +2805,25 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "manual"
 
-const STRATEGY_CARDS: { key: GenerationStrategy; icon: React.ReactNode; title: string; desc: string; badge: string; badgeColor: string }[] = [
+const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
   {
     key: "strict_template", icon: <BookmarkX className="size-5" />,
-    title: "Plantilla estricta",
-    desc: "Usa una plantilla guardada como base. Las asignaciones se copian exactamente, respetando solo ausencias aprobadas.",
+    titleKey: "strictTemplate", descKey: "strictTemplateDesc",
     badge: "HARD", badgeColor: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   },
   {
     key: "flexible_template", icon: <Bookmark className="size-5" />,
-    title: "Plantilla flexible",
-    desc: "Usa una plantilla como punto de partida. El algoritmo ajusta según disponibilidad, reglas y preferencias de turno.",
+    titleKey: "flexibleTemplate", descKey: "flexibleTemplateDesc",
     badge: "SOFT", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
   },
   {
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
-    title: "Óptimo IA",
-    desc: "El agente genera la horario óptimo desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
+    titleKey: "aiOptimal", descKey: "aiOptimalDesc",
     badge: "IA", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
   },
   {
     key: "manual", icon: <Grid3X3 className="size-5" />,
-    title: "Semana en blanco",
-    desc: "Empieza con una horario vacío y asigna los turnos manualmente.",
+    titleKey: "blankWeek", descKey: "blankWeekDesc",
     badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
   },
 ]
@@ -2825,6 +2833,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   onClose: () => void
   onGenerate: (strategy: GenerationStrategy, templateId?: string) => void
 }) {
+  const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const [selected, setSelected] = useState<GenerationStrategy | null>(null)
   const [templates, setTemplates] = useState<RotaTemplate[]>([])
@@ -2848,13 +2857,13 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[15px] font-medium">Generar horario — <span className="capitalize">{weekLabel}</span></p>
+          <p className="text-[15px] font-medium">{t("generateScheduleFor", { week: weekLabel })}</p>
         </div>
 
         {/* Strategy cards — 2×2 grid */}
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            {STRATEGY_CARDS.map((card) => (
+            {STRATEGY_CARD_META.map((card) => (
               <button
                 key={card.key}
                 type="button"
@@ -2868,8 +2877,8 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 style={{ border: `2px solid ${selected === card.key ? "var(--primary)" : "var(--border)"}` }}
               >
                 <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
-                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{card.title}</p>
-                <p className="text-[12px] text-muted-foreground leading-snug">{card.desc}</p>
+                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{t(card.titleKey)}</p>
+                <p className="text-[12px] text-muted-foreground leading-snug">{t(card.descKey)}</p>
                 <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
                   {card.badge}
                 </span>
@@ -2884,10 +2893,9 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 <div className="shimmer-bar h-10 w-full rounded-lg" />
               ) : templates.length === 0 ? (
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                  <p className="text-[13px] text-amber-600 dark:text-amber-400">No hay plantillas guardadas</p>
+                  <p className="text-[13px] text-amber-600 dark:text-amber-400">{t("noTemplatesSaved")}</p>
                   <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-0.5">
-                    Guarda una desde el calendario o ve a{" "}
-                    <a href="/lab" className="underline font-medium">Configuración → Plantillas</a>
+                    {t("noTemplatesSavedHint")}
                   </p>
                 </div>
               ) : (
@@ -2896,7 +2904,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                   onChange={(e) => setSelectedTplId(e.target.value || null)}
                   className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background"
                 >
-                  <option value="">Seleccionar plantilla...</option>
+                  <option value="">{t("selectTemplate")}</option>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.assignments.length} asignaciones)
@@ -2916,7 +2924,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
             disabled={!canGenerate}
             onClick={() => { if (selected) onGenerate(selected, selectedTplId ?? undefined) }}
           >
-            Generar
+            {tc("generate")}
           </Button>
         </div>
       </div>
@@ -3065,6 +3073,8 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
   onToggle: (d: string) => void; onSetAll: () => void; onSetOnly: (d: string) => void
   deptLabels: Record<string, string>; deptColors: Record<string, string>; deptAbbr: Record<string, string>
 }) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -3079,7 +3089,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
   const allSelected = selected.size === allDepts.length
   const label = allSelected
-    ? "Todos"
+    ? tc("all")
     : allDepts.filter((d) => selected.has(d)).map((d) => deptAbbr[d] ?? d).join(" · ")
 
   return (
@@ -3113,7 +3123,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
             <span className={cn("size-3.5 rounded border flex items-center justify-center", allSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
               {allSelected && <span className="text-[9px]">✓</span>}
             </span>
-            Seleccionar todos
+            {t("selectAll")}
           </button>
           <div className="h-px bg-border my-1" />
           {allDepts.map((dept) => {
@@ -3141,7 +3151,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
                 onClick={() => { onSetOnly(dept); setOpen(false) }}
                 className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:bg-accent hover:text-blue-700 hover:border-blue-200 transition-colors"
               >
-                Solo {deptLabels[dept]}
+                {t("onlyDept", { dept: deptLabels[dept] })}
               </button>
             ))}
           </div>
@@ -3219,7 +3229,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
-  const [mobileViewMode, setMobileViewMode] = useState<"shift" | "task">("shift")
+  const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
 
   // Department filter — persisted in localStorage
@@ -3425,15 +3435,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           setError(errorMsg)
           toast.error(errorMsg)
         } else if (weeksToGenerate.length > 1) {
-          toast.success(`${successCount} semanas generadas`)
+          toast.success(t("weeksGenerated", { count: successCount }))
         } else {
-          toast.success("Horario generado")
+          toast.success(t("scheduleGenerated"))
         }
 
         fetchWeek(weekStart)
         if (view === "month") fetchMonth(monthStart, weekStart)
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error generando el horario."
+        const msg = e instanceof Error ? e.message : t("generatingError")
         setError(msg)
         toast.error(msg)
       }
@@ -3520,9 +3530,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setPunctionsOverrideLocal(newData.rota?.punctions_override ?? {})
       const newGaps = newData.days.find((d) => d.date === date)?.skillGaps ?? []
       if (newGaps.length > prevGaps.length) {
-        toast.warning("Cobertura insuficiente tras el cambio — considera regenerar el horario")
+        toast.warning(t("coverageInsufficient"))
       } else if (newGaps.length === 0 && prevGaps.length > 0) {
-        toast.success("Cobertura correcta")
+        toast.success(t("coverageOk"))
       }
     })
   }
@@ -3600,7 +3610,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                       }
                     </button>
                   } />
-                  <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? "Por tarea" : t("shiftLayout")}</TooltipContent>
+                  <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? t("byTask") : t("shiftLayout")}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger render={
@@ -3679,7 +3689,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   })
                 },
               }, {
-                label: "Exportar Excel",
+                label: t("exportExcel"),
                 icon: <Sheet className="size-3.5" />,
                 onClick: () => {
                   if (!weekData) return
@@ -3694,18 +3704,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── Group 3: View options (week view only) ──
               ...(view === "week" ? [{
-                label: "Vista compacta",
+                label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 active: compact,
                 dividerBefore: true,
               }, {
-                label: "Colores de personal",
+                label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
                 active: colorChips,
               }, {
-                label: "Resaltar persona",
+                label: t("highlightPerson"),
                 icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
                 onClick: () => setHighlightHover(!highlightHover),
                 active: highlightHover,
@@ -3728,12 +3738,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── Group 5: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{
-                label: view === "month" ? "Eliminar 4 semanas" : "Eliminar horario",
+                label: view === "month" ? t("delete4Weeks") : t("deleteRota"),
                 icon: <Trash2 className="size-3.5" />,
                 onClick: () => {
                   const msg = view === "month"
-                    ? "¿Eliminar todas las asignaciones de las 4 semanas visibles?"
-                    : "¿Eliminar todas las asignaciones de esta semana?"
+                    ? t("confirm4WeeksDelete")
+                    : t("deleteWeekConfirm")
                   if (confirm(msg)) {
                     startTransition(async () => {
                       if (view === "month" && monthSummary) {
@@ -3746,14 +3756,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                           const result = await clearWeek(ws)
                           if (result.error) errors++
                         }
-                        if (errors > 0) toast.error(`${errors} semanas con error`)
-                        else toast.success("4 semanas eliminadas")
+                        if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
+                        else toast.success(t("fourWeeksDeleted"))
                         fetchWeek(weekStart)
                         fetchMonth(monthStart, weekStart)
                       } else {
                         const result = await clearWeek(weekStart)
                         if (result.error) toast.error(result.error)
-                        else { toast.success("Horario eliminado"); fetchWeek(weekStart) }
+                        else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
                       }
                     })
                   }
@@ -3848,14 +3858,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   <div className="flex items-center gap-2 min-h-[36px]">
                     <Button size="sm" onClick={handleGenerateClick}>{t("generateRota")}</Button>
                     <Button size="sm" variant="outline" onClick={() => setShowCopyConfirm(true)} className={prevWeekHasRota ? "" : "invisible"}>
-                      Copiar semana anterior
+                      {t("copyPrevWeek")}
                     </Button>
                   </div>
                   {/* Copy confirmation */}
                   {showCopyConfirm && (
                     <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
-                      <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">¿Copiar semana anterior?</p>
-                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">Se creará un horario borrador con las asignaciones de la semana pasada. Personal de baja será omitido.</p>
+                      <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">{t("copyPrevWeekConfirmTitle")}</p>
+                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">{t("copyPrevWeekConfirmBody")}</p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => {
                           setShowCopyConfirm(false)
@@ -3863,13 +3873,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                           startTransition(async () => {
                             const result = await copyPreviousWeek(weekStart)
                             if (result.error) { toast.error(result.error); return }
-                            toast.success(`${result.count} asignaciones copiadas`)
+                            toast.success(t("copyAssignments", { count: result.count ?? 0 }))
                             fetchWeek(weekStart)
                           })
                         }}>
-                          Copiar
+                          {t("copy")}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>Cancelar</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>{tc("cancel")}</Button>
                       </div>
                     </div>
                   )}
@@ -3976,36 +3986,31 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             onGenerateRota={() => setShowStrategyModal(true)}
             isPending={isPending}
           />
-          {/* View mode toggle (shift / task) */}
-          {weekData?.tecnicas && weekData.tecnicas.length > 0 && (
-            <div className="flex items-center gap-0 px-4 py-2 border-b border-border md:hidden">
-              {(["shift", "task"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMobileViewMode(m)}
-                  className={cn(
-                    "flex-1 py-1.5 text-[12px] font-medium rounded-md transition-colors",
-                    mobileViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {m === "shift" ? "Por turno" : "Por tarea"}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* View mode toggle (shift / person) */}
+          <div className="flex items-center gap-0 px-4 py-2 border-b border-border md:hidden">
+            {(["shift", "person"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMobileViewMode(m)}
+                className={cn(
+                  "flex-1 py-1.5 text-[12px] font-medium rounded-md transition-colors",
+                  mobileViewMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                )}
+              >
+                {m === "shift" ? (locale === "es" ? "Por turno" : "By shift") : (locale === "es" ? "Por persona" : "By person")}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-col gap-4 px-4 py-3 flex-1">
-            {mobileViewMode === "task" && weekData?.tecnicas ? (
-              <MobileTaskView
-                day={currentDayData}
-                tecnicas={weekData.tecnicas}
-                isEditMode={mobileEditMode}
-                onRemoveAssignment={async (id) => {
-                  const result = await removeAssignment(id)
-                  if (result.error) toast.error(result.error)
-                  else fetchWeek(weekStart)
-                }}
-                onAddToTecnica={(code) => setMobileAddSheet({ open: true, role: currentDayData?.assignments.find((a) => a.function_label === code)?.staff.role ?? "lab" })}
-                loading={loadingWeek}
+            {mobileViewMode === "person" && weekData ? (
+              <MobilePersonView
+                days={weekData.days}
+                staffList={staffList}
+                onLeaveByDate={weekData.onLeaveByDate ?? {}}
+                shiftTimes={weekData.shiftTimes ?? null}
+                tecnicas={weekData.tecnicas ?? []}
+                locale={locale as "es" | "en"}
+                timeFormat={weekData.timeFormat}
               />
             ) : (
               <DayView
@@ -4112,24 +4117,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
             <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
               <p className="text-[15px] font-medium">
-                {allHaveRota ? "¿Regenerar las 4 semanas?" : "Generar horarios — 4 semanas"}
+                {allHaveRota ? t("regenerate4WeeksTitle") : t("generate4WeeksTitle")}
               </p>
 
               {allHaveRota ? (
                 <>
                   <p className="text-[13px] text-muted-foreground">
-                    Esto sobreescribirá los horarios existentes de las 4 semanas.
+                    {t("overwriteWarning")}
                   </p>
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                      Cancelar
+                      {tc("cancel")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => {
                       setShowMultiWeekDialog(false)
                       setMultiWeekScope(allWeekStarts)
                       setShowStrategyModal(true)
                     }}>
-                      Regenerar 4 semanas
+                      {t("regenerate4Weeks")}
                     </Button>
                   </div>
                 </>
@@ -4145,8 +4150,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
                     >
                       <div className="flex-1">
-                        <p className="text-[14px] font-medium">Generar semanas sin horario</p>
-                        <p className="text-[12px] text-muted-foreground">{withoutRota.length} semana{withoutRota.length !== 1 ? "s" : ""} sin horario</p>
+                        <p className="text-[14px] font-medium">{t("generateWeeksWithout")}</p>
+                        <p className="text-[12px] text-muted-foreground">{t("weeksWithoutSchedule", { count: withoutRota.length })}</p>
                       </div>
                     </button>
                     <button
@@ -4158,13 +4163,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                       className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
                     >
                       <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
-                      <p className="text-[14px] font-medium">Regenerar todas las semanas</p>
-                      <p className="text-[12px] text-muted-foreground">4 semanas — sobreescribirá horarios existentes</p>
+                      <p className="text-[14px] font-medium">{t("regenerateAllWeeks")}</p>
+                      <p className="text-[12px] text-muted-foreground">{t("weeksOverwrite")}</p>
                     </button>
                   </div>
                   <div className="flex justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                      Cancelar
+                      {tc("cancel")}
                     </Button>
                   </div>
                 </>
