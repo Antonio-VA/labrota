@@ -72,6 +72,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
             break
           }
           case "assignStaff": {
+            if (!p.staffId) { setError("Staff member not found."); break }
             const result = await upsertAssignment({
               weekStart: p.weekStart as string,
               staffId: p.staffId as string,
