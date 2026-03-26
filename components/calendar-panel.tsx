@@ -3442,6 +3442,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
 
+  // Hide layout's mobile header on schedule page — toolbar replaces it
+  useEffect(() => {
+    const h = document.getElementById("mobile-header")
+    if (h) h.style.display = "none"
+    return () => { if (h) h.style.display = "" }
+  }, [])
+
   // Check if previous week has a rota (for "copy previous week" button)
   // Don't reset to false while loading — keep the last known value
   useEffect(() => {
@@ -4180,7 +4187,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               )}
             </div>
           )}
-          <div className="flex flex-col gap-4 px-4 py-3 flex-1">
+          <div className="flex flex-col gap-4 px-4 py-3 flex-1 pb-24">
             {mobileViewMode === "person" && weekData ? (
               <MobilePersonView
                 days={weekData.days}

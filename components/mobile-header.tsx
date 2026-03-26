@@ -42,7 +42,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header className="flex md:hidden h-11 shrink-0 items-center border-b border-border bg-background px-3 gap-2">
+      <header id="mobile-header" className="flex md:hidden h-11 shrink-0 items-center border-b border-border bg-background px-3 gap-2">
         {/* Left: org chip */}
         <button
           onClick={() => hasMultipleOrgs && setSheetOpen(true)}
