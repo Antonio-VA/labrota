@@ -2444,6 +2444,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   monthViewMode?: "shift" | "person"
 }) {
   const t = useTranslations("schedule")
+  const { hoveredStaffId, setHovered } = useStaffHover()
   const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
   const headers = rotateArray(baseHeaders, firstDayOfWeek)
 
@@ -2591,15 +2592,27 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     {/* Staff display — shift mode (dept badges) or person mode (initials) */}
                     {day.staffCount > 0 && day.isCurrentMonth && monthViewMode === "person" ? (
                       <div className="flex flex-wrap gap-0.5 mt-auto">
-                        {(day.staffInitials ?? []).map((si, i) => (
-                          <span
-                            key={i}
-                            className="text-[9px] font-semibold rounded px-1 py-px border border-border bg-background"
-                            style={{ borderLeft: `2px solid ${si.role === "lab" ? "#3B82F6" : si.role === "andrology" ? "#10B981" : "#64748B"}` }}
-                          >
-                            {si.initials}
-                          </span>
-                        ))}
+                        {(day.staffInitials ?? []).map((si, i) => {
+                          const roleColor = si.role === "lab" ? "#3B82F6" : si.role === "andrology" ? "#10B981" : "#64748B"
+                          const isHov = hoveredStaffId === si.id
+                          return (
+                            <span
+                              key={i}
+                              className={cn(
+                                "text-[9px] font-semibold rounded px-1 py-px border transition-colors cursor-default",
+                                isHov ? "ring-2 ring-primary shadow-sm" : "border-border bg-background"
+                              )}
+                              style={{
+                                borderLeft: `2px solid ${roleColor}`,
+                                ...(isHov ? { backgroundColor: roleColor + "20", color: roleColor } : {}),
+                              }}
+                              onMouseEnter={() => setHovered(si.id)}
+                              onMouseLeave={() => setHovered(null)}
+                            >
+                              {si.initials}
+                            </span>
+                          )
+                        })}
                         {day.staffCount > 6 && (
                           <span className="text-[9px] text-muted-foreground/50">+{day.staffCount - 6}</span>
                         )}
@@ -3754,8 +3767,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   })
                 },
               }] : []),
-              // ── Group 3: View options (week view only) ──
-              ...(view === "week" ? [{
+              // ── Group 3: View options ──
+              ...((view === "week" || view === "month") ? [{
                 label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),

@@ -1056,7 +1056,7 @@ export interface MonthDaySummary {
   /** Up to 3 staff roles for colour dot preview */
   staffRoles: string[]
   /** Staff initials for person view (up to 6) */
-  staffInitials: { initials: string; role: string }[]
+  staffInitials: { id: string; initials: string; role: string }[]
 }
 
 export interface MonthWeekStatus {
@@ -1222,6 +1222,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
       staffInitials: entries.slice(0, 6).map((e) => ({
+        id: e.staff_id,
         initials: `${e.first_name?.[0] ?? ""}${e.last_name?.[0] ?? ""}`,
         role: e.role,
       })),
