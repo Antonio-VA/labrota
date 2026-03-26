@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 import { AdminHistoryUpload } from "@/components/admin-history-upload"
+import { AdminImplementation } from "@/components/admin-implementation"
 import { updateOrgRegional } from "@/app/admin/actions"
 
 export default async function OrgDetailPage({
@@ -110,6 +111,11 @@ export default async function OrgDetailPage({
         initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
         initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
       />
+
+      {/* Implementation defaults */}
+      <div className="rounded-xl border border-border/60 bg-background px-5 py-4">
+        <AdminImplementation orgId={id} />
+      </div>
 
       {/* Historical rota upload */}
       <AdminHistoryUpload orgId={id} />
