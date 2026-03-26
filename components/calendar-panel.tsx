@@ -260,7 +260,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
       style={{
         borderLeft: `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`,
         borderRadius: 4,
-        ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor } : {}),
+        ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
       onMouseEnter={() => staffId && setHovered(staffId)}
       onMouseLeave={() => staffId && setHovered(null)}
@@ -2248,7 +2248,7 @@ function ShiftGrid({
                     onMouseEnter={() => setHovered(s.id)}
                     onMouseLeave={() => setHovered(null)}
                     className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-default transition-colors duration-150"
-                    style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id] } : {}) }}
+                    style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
                     <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
@@ -2264,7 +2264,7 @@ function ShiftGrid({
                       onMouseEnter={() => setHovered(s.id)}
                       onMouseLeave={() => setHovered(null)}
                       className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border transition-colors duration-150"
-                      style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id] } : {}) }}
+                      style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
                     </div>
