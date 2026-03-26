@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ClinicTopBar } from "@/components/clinic-top-bar"
+import { MobileHeader } from "@/components/mobile-header"
+import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { RoleProvider } from "@/lib/role-context"
 
 export default async function ClinicLayout({
@@ -87,13 +89,21 @@ export default async function ClinicLayout({
         defaultOrgId={defaultOrgId}
         initialUser={user ? { email: user.email ?? null, fullName: (user.user_metadata?.full_name as string) ?? null, avatarUrl: (user.user_metadata?.avatar_url as string) ?? null } : null}
       />
+      <MobileHeader
+        orgName={orgName}
+        orgLogoUrl={orgLogoUrl}
+        allOrgs={allOrgs}
+        activeOrgId={activeOrgId}
+        defaultOrgId={defaultOrgId}
+      />
       <RoleProvider role={userRole}>
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background">
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background pb-14 md:pb-0">
             {children}
           </div>
         </div>
+        <MobileBottomNav />
       </RoleProvider>
     </div>
   )

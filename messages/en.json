@@ -72,7 +72,8 @@
     "reports": "Reports",
     "settings": "Admin",
     "signOut": "Sign out",
-    "appName": "LabRota"
+    "appName": "LabRota",
+    "account": "My account"
   },
   "auth": {
     "signIn": "Sign in",

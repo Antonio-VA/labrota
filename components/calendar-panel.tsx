@@ -48,6 +48,7 @@ import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-da
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
+import { WeeklyStrip } from "@/components/weekly-strip"
 import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
@@ -2637,13 +2638,26 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast }: {
   day: RotaDay | null
   loading: boolean
   locale: string
+  departments?: import("@/lib/types/database").Department[]
+  punctions?: number
+  biopsyForecast?: number
 }) {
   const t  = useTranslations("schedule")
   const ts = useTranslations("skills")
+
+  // Build dept color map: role code → colour
+  const deptColorMap: Record<string, string> = {}
+  const deptLabelMap: Record<string, string> = {}
+  for (const d of departments) {
+    if (!d.parent_id) {
+      deptColorMap[d.code] = d.colour
+      deptLabelMap[d.code] = d.name
+    }
+  }
 
   if (loading) {
     return (
@@ -2674,12 +2688,22 @@ function DayView({ day, loading, locale }: {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-lg mx-auto w-full">
+    <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
+      {/* Punctions + biopsies header */}
+      {(punctions !== undefined || biopsyForecast !== undefined) && (
+        <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
+          {punctions !== undefined && <span>P: <strong className="text-foreground">{punctions}</strong></span>}
+          {biopsyForecast !== undefined && <span>B: <strong className="text-foreground">{biopsyForecast}</strong></span>}
+          <span className="text-muted-foreground/40">·</span>
+          <span>{day.assignments.length} asignaciones</span>
+        </div>
+      )}
+
       {(day.skillGaps.length > 0) && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 flex items-start gap-2">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2">
           <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">{t("insufficientCoverage")}</p>
+            <p className="text-[12px] font-medium text-amber-600 dark:text-amber-400">{t("insufficientCoverage")}</p>
             <div className="flex flex-wrap gap-1 mt-1">
               {day.skillGaps.map((sk) => (
                 <Badge key={sk} variant="skill-gap">
@@ -2694,32 +2718,34 @@ function DayView({ day, loading, locale }: {
       {(["lab", "andrology", "admin"] as const).map((role) => {
         const staff = byRole[role]
         if (!staff || staff.length === 0) return null
+        const deptColor = deptColorMap[role] ?? (role === "lab" ? "#3B82F6" : role === "andrology" ? "#10B981" : "#64748B")
+        const deptName = deptLabelMap[role] ?? (role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Admin")
         return (
-          <div key={role} className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Badge variant={role}>{role}</Badge>
-              <span className="text-[13px] text-muted-foreground">{staff.length}</span>
+          <div key={role} className="flex flex-col gap-1.5">
+            {/* Department header with colored left border */}
+            <div className="flex items-center gap-2 pl-2" style={{ borderLeft: `3px solid ${deptColor}` }}>
+              <span className="text-[13px] font-medium">{deptName}</span>
+              <span className="text-[12px] text-muted-foreground">{staff.length}</span>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               {staff.map((a) => (
                 <div
                   key={a.id}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg border",
+                    "flex items-center gap-2.5 px-3 py-2 rounded-lg border",
                     a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
                   )}
                 >
-                  <span className={cn("size-2 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: deptColor }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                    {a.trainee_staff_id && (
-                      <p className="text-[12px] text-primary">{t("supervision")}</p>
-                    )}
-                    {a.notes && (
-                      <p className="text-[12px] text-muted-foreground">{a.notes}</p>
+                    {a.function_label && (
+                      <p className="text-[11px] text-muted-foreground">{a.function_label}</p>
                     )}
                   </div>
-                  <Badge variant="outline" className="text-[11px] shrink-0">{a.shift_type}</Badge>
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                    {a.shift_type}
+                  </span>
                 </div>
               ))}
             </div>
@@ -3870,13 +3896,28 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           </div>
         )}
 
-        {/* Day view */}
-        <div className="flex flex-col gap-4 overflow-auto px-4 py-3 md:hidden">
-          <DayView
-            day={currentDayData}
-            loading={loadingWeek}
-            locale={locale}
-          />
+        {/* Mobile day view with weekly strip */}
+        <div className="flex flex-col overflow-auto md:hidden flex-1">
+          {weekData && (
+            <WeeklyStrip
+              days={weekData.days.map((d) => ({
+                date: d.date,
+                staffCount: d.assignments.length,
+                hasSkillGaps: d.skillGaps.length > 0,
+              }))}
+              currentDate={currentDate}
+              onSelectDay={(date) => setCurrentDate(date)}
+              locale={locale as "es" | "en"}
+            />
+          )}
+          <div className="flex flex-col gap-4 px-4 py-3 flex-1">
+            <DayView
+              day={currentDayData}
+              loading={loadingWeek}
+              locale={locale}
+              departments={weekData?.departments ?? []}
+            />
+          </div>
         </div>
       </div>
 

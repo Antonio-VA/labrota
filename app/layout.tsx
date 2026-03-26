@@ -17,6 +17,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+import type { Viewport } from "next"
+
 export const metadata: Metadata = {
   title: "LabRota",
   description: "Embryology lab shift scheduling and AI assistant",
@@ -24,6 +26,12 @@ export const metadata: Metadata = {
     icon: "/favicon-v4.png",
     apple: "/brand/logo-icon.svg",
   },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default async function RootLayout({
