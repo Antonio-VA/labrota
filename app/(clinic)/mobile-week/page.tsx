@@ -1,15 +1,9 @@
-import { createClient } from "@/lib/supabase/server"
-import { getRotaWeek } from "@/app/(clinic)/rota/actions"
-import { getMondayOfWeek } from "@/lib/rota-engine"
-import { MobileWeekView } from "@/components/mobile-week-view"
+import { MobileWeekClient } from "@/components/mobile-week-client"
 
-export default async function MobileWeekPage() {
-  const weekStart = getMondayOfWeek(new Date())
-  const data = await getRotaWeek(weekStart)
-
+export default function MobileWeekPage() {
   return (
     <div className="flex-1 overflow-hidden flex flex-col md:hidden">
-      <MobileWeekView data={data} weekStart={weekStart} />
+      <MobileWeekClient />
     </div>
   )
 }
