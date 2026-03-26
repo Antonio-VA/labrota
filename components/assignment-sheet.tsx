@@ -685,7 +685,7 @@ export function AssignmentSheet({
                     <AlertTriangle className="size-3.5 text-amber-500 shrink-0 cursor-default" />
                   } />
                   <TooltipContent side="bottom" className="max-w-[200px]">
-                    <p className="font-medium text-[12px] mb-1">Técnicas sin cobertura</p>
+                    <p className="font-medium text-[12px] mb-1">{t("uncoveredTasks")}</p>
                     {skillGaps.map((sk) => (
                       <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
                     ))}
@@ -785,7 +785,7 @@ export function AssignmentSheet({
                         {isWholeTeam ? (
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-1 text-[12px] font-semibold">
-                              <Users className="size-3" /> Todo el equipo
+                              <Users className="size-3" /> {t("wholeTeam")}
                             </span>
                           </div>
                         ) : (
@@ -814,7 +814,7 @@ export function AssignmentSheet({
                             })}
                             {!isPublished && techAssignments.length < 3 && (
                               <span className="text-[11px] text-muted-foreground italic">
-                                {techAssignments.length === 0 ? "Sin asignar" : ""}
+                                {techAssignments.length === 0 ? ts("dragHint") : ""}
                               </span>
                             )}
                           </div>
@@ -851,7 +851,7 @@ export function AssignmentSheet({
                       {shift.toUpperCase()}{timeLabel}
                       {shiftAssignments.length > 0 && (
                         <span className="font-normal normal-case tracking-normal ml-1.5 text-slate-400">
-                          · {shiftAssignments.length} {shiftAssignments.length === 1 ? "persona" : "personas"}
+                          · {shiftAssignments.length} {shiftAssignments.length === 1 ? ts("persona") : ts("personas")}
                         </span>
                       )}
                     </span>
@@ -885,7 +885,7 @@ export function AssignmentSheet({
                     })}
                     {shiftAssignments.length === 0 && (
                       <div className="rounded-lg border border-dashed border-border py-3 flex items-center justify-center text-[11px] text-slate-300 select-none">
-                        Arrastra aquí o + Añadir
+                        {t("dragHint")}
                       </div>
                     )}
                   </div>
@@ -899,7 +899,7 @@ export function AssignmentSheet({
             }} />
             <DroppableOffSection className="transition-colors">
               <div className="px-4 pt-2 pb-1.5">
-                <span className="text-[12px] text-muted-foreground italic">OFF · Libres</span>
+                <span className="text-[12px] text-muted-foreground italic">{t("offFree")}</span>
               </div>
               <div className="px-3 flex flex-col gap-1 pb-3 bg-muted/50 min-h-[40px]">
                 {offStaff.map((s) => (
@@ -925,7 +925,7 @@ export function AssignmentSheet({
                   />
                 ))}
                 {offStaff.length === 0 && onLeaveStaff.length === 0 && (
-                  <p className="text-[11px] text-slate-300 italic py-1 select-none">Todo el personal asignado</p>
+                  <p className="text-[11px] text-slate-300 italic py-1 select-none">{t("allStaffAssigned")}</p>
                 )}
               </div>
             </DroppableOffSection>
@@ -939,7 +939,7 @@ export function AssignmentSheet({
                   className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
                 >
                   <Sparkles className="size-3.5" />
-                  Regenerar día
+                  {t("regenerateDay")}
                 </button>
                 {assignments.length === 0 && date && (
                   <button
@@ -947,13 +947,13 @@ export function AssignmentSheet({
                       startSave(async () => {
                         const r = await copyDayFromLastWeek(weekStart, date)
                         if (r.error) toast.error(r.error)
-                        else { toast.success(`${r.count} asignaciones copiadas`); onSaved() }
+                        else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
                       })
                     }}
                     className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
                   >
                     <Copy className="size-3.5" />
-                    Copiar semana anterior
+                    {t("copyPrevWeek")}
                   </button>
                 )}
                 <div className="flex-1" />
@@ -967,7 +967,7 @@ export function AssignmentSheet({
                         <Trash2 className="size-3.5" />
                       </button>
                     } />
-                    <TooltipContent side="left">Eliminar turno del día</TooltipContent>
+                    <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -980,7 +980,7 @@ export function AssignmentSheet({
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="size-3.5 text-destructive mt-0.5 shrink-0" />
                       <p className="text-[12px] text-destructive leading-snug">
-                        ¿Eliminar todas las asignaciones de este día?
+                        {t("deleteDayConfirm")}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -990,7 +990,7 @@ export function AssignmentSheet({
                         className="h-7 px-3 text-[12px] border-destructive/30 text-destructive hover:bg-destructive/5"
                         onClick={handleDeleteAll}
                       >
-                        Eliminar
+                        {tc("delete")}
                       </Button>
                       <Button
                         size="sm"
@@ -998,7 +998,7 @@ export function AssignmentSheet({
                         className="h-7 px-3 text-[12px]"
                         onClick={() => setShowDeleteAll(false)}
                       >
-                        Cancelar
+                        {tc("cancel")}
                       </Button>
                     </div>
                   </div>
@@ -1007,7 +1007,7 @@ export function AssignmentSheet({
                 {showRegenConfirm && (
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2">
                     <p className="text-[12px] text-foreground leading-snug">
-                      ¿Regenerar las asignaciones de este día? Las asignaciones actuales serán reemplazadas.
+                      {t("regenerateDayConfirm")}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -1018,13 +1018,13 @@ export function AssignmentSheet({
                           startRegen(async () => {
                             const result = await regenerateDay(weekStart, date!)
                             if (result.error) { toast.error(result.error); return }
-                            toast.success(`Día regenerado: ${result.count} asignaciones`)
+                            toast.success(t("dayRegenerated", { count: result.count ?? 0 }))
                             setShowRegenConfirm(false)
                             onSaved()
                           })
                         }}
                       >
-                        {isRegenerating ? "Regenerando…" : "Regenerar"}
+                        {isRegenerating ? t("regenerating") : t("regenerate")}
                       </Button>
                       <Button
                         size="sm"
@@ -1032,7 +1032,7 @@ export function AssignmentSheet({
                         className="h-7 px-3 text-[12px]"
                         onClick={() => setShowRegenConfirm(false)}
                       >
-                        Cancelar
+                        {tc("cancel")}
                       </Button>
                     </div>
                   </div>
