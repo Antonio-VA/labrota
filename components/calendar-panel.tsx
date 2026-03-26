@@ -53,6 +53,7 @@ import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
 import { MobilePersonView } from "@/components/mobile-person-view"
+import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -3184,6 +3185,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
   const [compact, setCompact] = useState(false)
+  const [daysAsRows, setDaysAsRows] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("labrota_days_as_rows") === "true"
+  })
   const [colorChips, setColorChips] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("labrota_color_chips") !== "false"
@@ -3717,6 +3722,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
                 onClick: () => setHighlightHover(!highlightHover),
                 active: highlightHover,
+              }, {
+                label: t("daysAsRows"),
+                icon: <Grid3X3 className="size-3.5" />,
+                onClick: () => { const next = !daysAsRows; setDaysAsRows(next); localStorage.setItem("labrota_days_as_rows", String(next)) },
+                active: daysAsRows,
               }] : []),
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
@@ -3882,6 +3892,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     </div>
                   )}
                 </div>
+              ) : calendarLayout === "shift" && daysAsRows ? (
+                <TransposedShiftGrid
+                  data={weekData}
+                  staffList={filteredStaffList}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  shiftTimes={weekData?.shiftTimes ?? null}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  compact={compact}
+                  colorChips={colorChips}
+                  timeFormat={weekData?.timeFormat}
+                />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
                   data={weekData}
