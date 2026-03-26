@@ -102,3 +102,42 @@ export async function notifyLeaveImpact(params: {
 
   await admin.from("notifications").insert(notifications as never)
 }
+
+/** Notify a staff member when their shift changes on a published rota. */
+export async function notifyShiftChange(params: {
+  orgId: string
+  staffId: string
+  date: string
+  message: string
+}): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    // Find the user_id linked to this staff member via email
+    const { data: staff } = await admin
+      .from("staff")
+      .select("email")
+      .eq("id", params.staffId)
+      .single() as { data: { email: string | null } | null }
+
+    if (!staff?.email) return
+
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", staff.email)
+      .maybeSingle() as { data: { id: string } | null }
+
+    if (!profile) return
+
+    await admin.from("notifications").insert({
+      organisation_id: params.orgId,
+      user_id: profile.id,
+      type: "shift_change",
+      title: "Tu turno ha cambiado",
+      message: params.message,
+      data: { date: params.date, staffId: params.staffId },
+    } as never)
+  } catch (e) {
+    console.error("[notify] Failed to send shift change notification:", e)
+  }
+}

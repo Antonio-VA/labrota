@@ -1,5 +1,6 @@
 "use client"
 
+import { Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const DAY_LABELS_ES = ["L", "M", "X", "J", "V", "S", "D"]
@@ -9,6 +10,9 @@ interface WeekDay {
   date: string
   staffCount: number
   hasSkillGaps: boolean
+  // Personal mode fields
+  isWorking?: boolean
+  isOnLeave?: boolean
 }
 
 export function WeeklyStrip({
@@ -16,11 +20,13 @@ export function WeeklyStrip({
   currentDate,
   onSelectDay,
   locale = "es",
+  personalMode = false,
 }: {
   days: WeekDay[]
   currentDate: string
   onSelectDay: (date: string) => void
   locale?: "es" | "en"
+  personalMode?: boolean
 }) {
   const labels = locale === "es" ? DAY_LABELS_ES : DAY_LABELS_EN
   const today = new Date().toISOString().split("T")[0]
@@ -32,10 +38,22 @@ export function WeeklyStrip({
         const isToday = day.date === today
         const dayNum = new Date(day.date + "T12:00:00").getDate()
 
-        // Coverage dot color
-        let dotColor = "bg-muted-foreground/20" // no rota / grey
-        if (day.staffCount > 0) {
-          dotColor = day.hasSkillGaps ? "bg-amber-400" : "bg-emerald-400"
+        // Coverage dot
+        let dotElement: React.ReactNode
+        if (personalMode) {
+          if (day.isOnLeave) {
+            dotElement = <Palmtree className={cn("size-3", isActive ? "text-primary-foreground/60" : "text-amber-500")} />
+          } else if (day.isWorking) {
+            dotElement = <span className={cn("size-1.5 rounded-full", isActive ? "bg-primary-foreground/60" : "bg-emerald-400")} />
+          } else {
+            dotElement = <span className={cn("size-1.5 rounded-full", isActive ? "bg-primary-foreground/30" : "bg-muted-foreground/20")} />
+          }
+        } else {
+          let dotColor = "bg-muted-foreground/20"
+          if (day.staffCount > 0) {
+            dotColor = day.hasSkillGaps ? "bg-amber-400" : "bg-emerald-400"
+          }
+          dotElement = <span className={cn("size-1.5 rounded-full", isActive ? "bg-primary-foreground/60" : dotColor)} />
         }
 
         return (
@@ -54,7 +72,7 @@ export function WeeklyStrip({
             )}>
               {dayNum}
             </span>
-            <span className={cn("size-1.5 rounded-full", isActive ? "bg-primary-foreground/60" : dotColor)} />
+            {dotElement}
           </button>
         )
       })}

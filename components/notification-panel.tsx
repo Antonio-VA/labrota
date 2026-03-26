@@ -13,8 +13,9 @@ import {
 import type { Notification } from "@/lib/types/database"
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
-  leave_impact: <AlertTriangle className="size-4 text-amber-500 shrink-0" />,
-  info:         <CalendarDays className="size-4 text-primary shrink-0" />,
+  leave_impact:  <AlertTriangle className="size-4 text-amber-500 shrink-0" />,
+  info:          <CalendarDays className="size-4 text-primary shrink-0" />,
+  shift_change:  <CalendarDays className="size-4 text-blue-500 shrink-0" />,
 }
 
 export function NotificationBell() {

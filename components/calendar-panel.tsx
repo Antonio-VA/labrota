@@ -52,6 +52,8 @@ import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
+import { MySchedule } from "@/components/my-schedule"
+import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
@@ -3156,6 +3158,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const ts     = useTranslations("skills")
   const locale = useLocale()
   const canEdit = useCanEdit()
+  const viewerStaffId = useViewerStaffId()
 
   const [view, setViewState]            = useState<ViewMode>(() => {
     if (typeof window === "undefined") return "week"
@@ -3927,8 +3930,22 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           </div>
         )}
 
-        {/* Mobile day view with weekly strip */}
-        <div className="flex flex-col overflow-auto md:hidden flex-1">
+        {/* Mobile: viewer personal schedule */}
+        {!canEdit && viewerStaffId && weekData && (
+          <MySchedule
+            staffId={viewerStaffId}
+            days={weekData.days}
+            onLeaveByDate={weekData.onLeaveByDate ?? {}}
+            shiftTimes={weekData.shiftTimes ?? null}
+            tecnicas={weekData.tecnicas ?? []}
+            locale={locale as "es" | "en"}
+            timeFormat={weekData.timeFormat}
+            initialDate={currentDate}
+          />
+        )}
+
+        {/* Mobile: admin/editor day view with weekly strip */}
+        <div className={cn("flex flex-col overflow-auto md:hidden flex-1", !canEdit && "hidden")}>
           {weekData && (
             <WeeklyStrip
               days={weekData.days.map((d) => ({

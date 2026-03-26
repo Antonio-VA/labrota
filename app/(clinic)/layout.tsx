@@ -20,6 +20,7 @@ export default async function ClinicLayout({
   let defaultOrgId: string | null = null
   let allOrgs: { id: string; name: string; logo_url: string | null }[] = []
   let userRole: "admin" | "manager" | "viewer" = "admin"
+  let viewerStaffId: string | null = null
 
   if (user) {
     const { data: profile } = await supabase
@@ -69,6 +70,18 @@ export default async function ClinicLayout({
       else if (activeMembership?.role === "manager") userRole = "manager"
     }
 
+    // Resolve viewer's staff_id by email match
+    if (userRole === "viewer" && user.email && activeOrgId) {
+      const { data: staffMatch } = await admin
+        .from("staff")
+        .select("id")
+        .eq("organisation_id", activeOrgId)
+        .eq("email", user.email)
+        .neq("onboarding_status", "inactive")
+        .maybeSingle() as { data: { id: string } | null }
+      viewerStaffId = staffMatch?.id ?? null
+    }
+
     if (memberships && memberships.length > 1) {
       const orgIds = memberships.map((m) => m.organisation_id)
       const { data: orgsData } = await admin
@@ -96,7 +109,7 @@ export default async function ClinicLayout({
         activeOrgId={activeOrgId}
         defaultOrgId={defaultOrgId}
       />
-      <RoleProvider role={userRole}>
+      <RoleProvider role={userRole} staffId={viewerStaffId}>
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background pb-14 md:pb-0">
