@@ -229,6 +229,7 @@
     "restoring": "Restoring…",
     "cancelRestore": "Cancel",
     "loading": "Loading…",
+    "noTaskAssigned": "No task assigned",
     "currentWeek": "Current week",
     "tasks": "Tasks",
     "recentShifts": "Recent shifts",

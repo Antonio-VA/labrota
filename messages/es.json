@@ -229,6 +229,7 @@
     "restoring": "Restaurando…",
     "cancelRestore": "Cancelar",
     "loading": "Cargando…",
+    "noTaskAssigned": "Sin tarea asignada",
     "currentWeek": "Semana actual",
     "tasks": "Tareas",
     "recentShifts": "Últimos turnos",

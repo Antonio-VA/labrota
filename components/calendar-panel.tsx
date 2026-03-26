@@ -52,6 +52,7 @@ import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
+import { MobileTaskDayView } from "@/components/mobile-task-day-view"
 import { MobilePersonView } from "@/components/mobile-person-view"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { TransposedTaskGrid } from "@/components/transposed-task-grid"
@@ -4201,15 +4202,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             </div>
           )}
           <div className="flex flex-col gap-4 px-4 py-3 flex-1 pb-24">
-            {mobileViewMode === "person" && weekData ? (
-              <MobilePersonView
-                days={weekData.days}
+            {weekData?.rotaDisplayMode === "by_task" && weekData.tecnicas ? (
+              <MobileTaskDayView
+                day={currentDayData}
+                tecnicas={weekData.tecnicas}
+                departments={weekData.departments ?? []}
+                data={weekData}
                 staffList={staffList}
-                onLeaveByDate={weekData.onLeaveByDate ?? {}}
-                shiftTimes={weekData.shiftTimes ?? null}
-                tecnicas={weekData.tecnicas ?? []}
-                locale={locale as "es" | "en"}
-                timeFormat={weekData.timeFormat}
+                isEditMode={mobileEditMode}
+                onRemoveAssignment={async (id) => {
+                  const result = await removeAssignment(id)
+                  if (result.error) toast.error(result.error)
+                  else fetchWeek(weekStart)
+                }}
+                loading={loadingWeek}
+                locale={locale}
               />
             ) : (
               <DayView
