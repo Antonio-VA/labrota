@@ -102,17 +102,17 @@ export default async function ClinicLayout({
         defaultOrgId={defaultOrgId}
         initialUser={user ? { email: user.email ?? null, fullName: (user.user_metadata?.full_name as string) ?? null, avatarUrl: (user.user_metadata?.avatar_url as string) ?? null } : null}
       />
-      <MobileHeader
-        orgName={orgName}
-        orgLogoUrl={orgLogoUrl}
-        allOrgs={allOrgs}
-        activeOrgId={activeOrgId}
-        defaultOrgId={defaultOrgId}
-      />
       <RoleProvider role={userRole} staffId={viewerStaffId}>
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background md:pb-0">
+            <MobileHeader
+              orgName={orgName}
+              orgLogoUrl={orgLogoUrl}
+              allOrgs={allOrgs}
+              activeOrgId={activeOrgId}
+              defaultOrgId={defaultOrgId}
+            />
             {children}
           </div>
         </div>

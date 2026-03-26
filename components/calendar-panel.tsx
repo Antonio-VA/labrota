@@ -4115,41 +4115,43 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               locale={locale as "es" | "en"}
             />
           )}
-          {/* Toolbar: Hoy ← → | toggle | edit | overflow */}
+          {/* Sticky toolbar: Hoy ← date → | edit | overflow */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-11 px-3 bg-primary/10 border-b border-primary/20 md:hidden">
-              <span className="text-[13px] font-medium text-primary">
+            <div className="flex items-center justify-between h-12 px-3 bg-primary/10 border-b border-primary/20 md:hidden sticky top-0 z-10">
+              <span className="text-[14px] font-medium text-primary">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
-              <Button size="sm" onClick={() => setMobileEditMode(false)} className="h-7 text-[12px]">
+              <Button size="sm" onClick={() => setMobileEditMode(false)} className="h-8 text-[13px]">
                 {tc("save")}
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 h-11 px-3 border-b border-border bg-background md:hidden">
+            <div className="flex items-center gap-2 h-12 px-3 border-b border-border bg-background md:hidden sticky top-0 z-10">
               <button
                 onClick={goToToday}
                 disabled={currentDate === TODAY}
-                className={cn("text-[13px] font-medium px-2 py-1 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/40" : "text-primary active:bg-primary/10")}
+                className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0 border border-border", currentDate === TODAY ? "text-muted-foreground/40 border-transparent" : "text-primary active:bg-primary/10")}
               >
                 {tc("today")}
               </button>
-              <button onClick={() => navigate(-1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent">
+              <button onClick={() => navigate(-1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </button>
-              <button onClick={() => navigate(1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent">
+              {/* Date label + calendar picker */}
+              <div className="relative flex-1 min-w-0 flex items-center justify-center">
+                <input
+                  type="date"
+                  value={currentDate}
+                  onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <span className="text-[14px] font-medium capitalize truncate pointer-events-none">
+                  {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
+                </span>
+              </div>
+              <button onClick={() => navigate(1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronRight className="size-4 text-muted-foreground" />
               </button>
-              <div className="flex-1" />
-              {/* Shift/Person toggle */}
-              <div className="flex items-center gap-0 rounded-md border border-border p-0.5 shrink-0">
-                <button onClick={() => setMobileViewMode("shift")} className={cn("size-7 flex items-center justify-center rounded transition-colors", mobileViewMode === "shift" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
-                  <Rows3 className="size-3.5" />
-                </button>
-                <button onClick={() => setMobileViewMode("person")} className={cn("size-7 flex items-center justify-center rounded transition-colors", mobileViewMode === "person" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
-                  <Users className="size-3.5" />
-                </button>
-              </div>
               {canEdit && (
                 <button onClick={() => setMobileEditMode(true)} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
                   <Pencil className="size-4" />
