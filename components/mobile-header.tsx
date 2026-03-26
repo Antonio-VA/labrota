@@ -62,19 +62,7 @@ export function MobileHeader({
           <span className="text-[13px] font-medium truncate max-w-[80px]">{orgName ?? ""}</span>
         </button>
 
-        {/* Center: date nav */}
-        {dateLabel && (
-          <div className="flex items-center gap-1 flex-1 justify-center">
-            <button onClick={onPrev} className="size-7 flex items-center justify-center rounded-full hover:bg-muted active:bg-accent">
-              <ChevronLeft className="size-4 text-muted-foreground" />
-            </button>
-            <span className="text-[13px] font-medium whitespace-nowrap">{dateLabel}</span>
-            <button onClick={onNext} className="size-7 flex items-center justify-center rounded-full hover:bg-muted active:bg-accent">
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
-          </div>
-        )}
-        {!dateLabel && <div className="flex-1" />}
+        <div className="flex-1" />
 
         {/* Right: notifications */}
         <NotificationBell />

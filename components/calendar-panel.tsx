@@ -4132,9 +4132,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               locale={locale as "es" | "en"}
             />
           )}
-          {/* Compact toolbar: Hoy ← → | edit | overflow */}
+          {/* Toolbar: Hoy ← → | toggle | edit | overflow */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20 md:hidden">
+            <div className="flex items-center justify-between h-11 px-3 bg-primary/10 border-b border-primary/20 md:hidden">
               <span className="text-[13px] font-medium text-primary">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
@@ -4143,33 +4143,33 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 border-b border-border md:hidden">
+            <div className="flex items-center gap-1.5 h-11 px-3 border-b border-border bg-background md:hidden">
               <button
                 onClick={goToToday}
                 disabled={currentDate === TODAY}
-                className={cn("text-[12px] font-medium px-2 py-1 rounded-md transition-colors", currentDate === TODAY ? "text-muted-foreground/40" : "text-primary active:bg-primary/10")}
+                className={cn("text-[13px] font-medium px-2 py-1 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/40" : "text-primary active:bg-primary/10")}
               >
                 {tc("today")}
               </button>
-              <button onClick={() => navigate(-1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent">
+              <button onClick={() => navigate(-1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent">
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </button>
-              <button onClick={() => navigate(1)} className="size-7 flex items-center justify-center rounded-full active:bg-accent">
+              <button onClick={() => navigate(1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent">
                 <ChevronRight className="size-4 text-muted-foreground" />
               </button>
               <div className="flex-1" />
               {/* Shift/Person toggle */}
               <div className="flex items-center gap-0 rounded-md border border-border p-0.5 shrink-0">
-                <button onClick={() => setMobileViewMode("shift")} className={cn("size-6 flex items-center justify-center rounded transition-colors", mobileViewMode === "shift" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
-                  <Rows3 className="size-3" />
+                <button onClick={() => setMobileViewMode("shift")} className={cn("size-7 flex items-center justify-center rounded transition-colors", mobileViewMode === "shift" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                  <Rows3 className="size-3.5" />
                 </button>
-                <button onClick={() => setMobileViewMode("person")} className={cn("size-6 flex items-center justify-center rounded transition-colors", mobileViewMode === "person" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
-                  <Users className="size-3" />
+                <button onClick={() => setMobileViewMode("person")} className={cn("size-7 flex items-center justify-center rounded transition-colors", mobileViewMode === "person" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                  <Users className="size-3.5" />
                 </button>
               </div>
               {canEdit && (
-                <button onClick={() => setMobileEditMode(true)} className="size-7 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
-                  <Pencil className="size-3.5" />
+                <button onClick={() => setMobileEditMode(true)} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                  <Pencil className="size-4" />
                 </button>
               )}
               {canEdit && (
