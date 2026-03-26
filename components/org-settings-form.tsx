@@ -11,6 +11,7 @@ import {
   updateOrgName,
   updateOrgLogo,
   updateOrgRegional,
+  toggleLeaveRequests,
   type OrgSettings,
 } from "@/app/(clinic)/settings/actions"
 
@@ -53,6 +54,9 @@ export function OrgSettingsForm({
   // Regional
   const [country, setCountry] = useState(settings.country)
   const [region, setRegion] = useState(settings.region)
+
+  // Feature toggles
+  const [leaveRequests, setLeaveRequests] = useState(settings.enableLeaveRequests)
 
   function saveName() {
     if (!draftName.trim()) return
@@ -192,6 +196,31 @@ export function OrgSettingsForm({
         >
           Guardar región
         </Button>
+      </div>
+
+      {/* Feature toggles */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-medium text-muted-foreground">Funcionalidades</p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={leaveRequests}
+            onChange={(e) => {
+              const val = e.target.checked
+              setLeaveRequests(val)
+              startTransition(async () => {
+                const result = await toggleLeaveRequests(val)
+                if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
+                else toast.success(val ? "Solicitudes de ausencia activadas" : "Solicitudes de ausencia desactivadas")
+              })
+            }}
+            className="size-4 rounded border-input accent-primary"
+          />
+          <div>
+            <p className="text-[13px] font-medium">Solicitudes de ausencia</p>
+            <p className="text-[11px] text-muted-foreground">Permite a los empleados solicitar ausencias desde la app. Requieren aprobacion del administrador.</p>
+          </div>
+        </label>
       </div>
     </div>
   )

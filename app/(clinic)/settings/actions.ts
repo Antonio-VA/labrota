@@ -237,6 +237,7 @@ export interface OrgSettings {
   logoUrl: string | null
   country: string
   region: string
+  enableLeaveRequests: boolean
 }
 
 export async function getOrgSettings(): Promise<OrgSettings | null> {
@@ -250,9 +251,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
 
   const { data: config } = await admin
     .from("lab_config")
-    .select("country, region")
+    .select("country, region, enable_leave_requests")
     .eq("organisation_id", orgId)
-    .maybeSingle() as { data: { country: string; region: string } | null }
+    .maybeSingle() as { data: { country: string; region: string; enable_leave_requests?: boolean } | null }
 
   if (!org) return null
   return {
@@ -260,6 +261,7 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     logoUrl: org.logo_url,
     country: config?.country ?? "",
     region: config?.region ?? "",
+    enableLeaveRequests: config?.enable_leave_requests ?? false,
   }
 }
 
@@ -292,6 +294,17 @@ export async function updateOrgRegional(country: string, region: string): Promis
   const { error } = await admin
     .from("lab_config")
     .update({ country, region, autonomous_community: region || null } as never)
+    .eq("organisation_id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  return {}
+}
+
+export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("lab_config")
+    .update({ enable_leave_requests: enabled } as never)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")

@@ -140,3 +140,83 @@ export async function deleteLeave(id: string) {
   await supabase.from("leaves").delete().eq("id", id)
   revalidatePath("/leaves")
 }
+
+/** Employee submits a leave request (status = pending). */
+export async function requestLeave(params: {
+  staffId: string
+  type: string
+  startDate: string
+  endDate: string
+  notes?: string
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+  if (params.endDate < params.startDate) return { error: "La fecha de fin debe ser posterior a la de inicio." }
+
+  const { error } = await supabase
+    .from("leaves")
+    .insert({
+      staff_id: params.staffId,
+      type: params.type,
+      start_date: params.startDate,
+      end_date: params.endDate,
+      status: "pending",
+      notes: params.notes?.trim() || null,
+      organisation_id: orgId,
+    } as never)
+
+  if (error) return { error: error.message }
+  revalidatePath("/leaves")
+  return {}
+}
+
+/** Admin approves a pending leave request. */
+export async function approveLeave(leaveId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  const { data: leave, error: fetchError } = await supabase
+    .from("leaves")
+    .select("staff_id, start_date, end_date, type")
+    .eq("id", leaveId)
+    .single() as { data: { staff_id: string; start_date: string; end_date: string; type: string } | null; error: unknown }
+
+  if (fetchError || !leave) return { error: "Leave not found." }
+
+  const { error } = await supabase
+    .from("leaves")
+    .update({ status: "approved" } as never)
+    .eq("id", leaveId)
+
+  if (error) return { error: error.message }
+
+  // Auto-remove conflicting rota assignments
+  await supabase
+    .from("rota_assignments")
+    .delete()
+    .eq("staff_id", leave.staff_id)
+    .eq("organisation_id", orgId)
+    .gte("date", leave.start_date)
+    .lte("date", leave.end_date)
+
+  revalidatePath("/")
+  revalidatePath("/leaves")
+  return {}
+}
+
+/** Admin rejects a pending leave request. */
+export async function rejectLeave(leaveId: string, reason?: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("leaves")
+    .delete()
+    .eq("id", leaveId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/leaves")
+  return {}
+}

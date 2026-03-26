@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { createLeave, updateLeave, deleteLeave } from "@/app/(clinic)/leaves/actions"
+import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave } from "@/app/(clinic)/leaves/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import type { LeaveWithStaff, Staff, LeaveType } from "@/lib/types/database"
@@ -327,6 +327,65 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   )
 }
 
+// ── Pending requests ──────────────────────────────────────────────────────────
+
+function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]; isAdmin: boolean; locale: "es" | "en" }) {
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+  const pending = leaves.filter((l) => l.status === "pending")
+  if (pending.length === 0 || !isAdmin) return null
+
+  return (
+    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+      <p className="text-[13px] font-medium text-amber-800 mb-3">
+        Solicitudes pendientes ({pending.length})
+      </p>
+      <div className="flex flex-col gap-2">
+        {pending.map((l) => {
+          const staffName = l.staff ? `${l.staff.first_name} ${l.staff.last_name}` : "—"
+          const typeConf = LEAVE_TYPE_CONFIG[l.type as LeaveType]
+          const days = daysBetween(l.start_date, l.end_date)
+          return (
+            <div key={l.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-amber-200">
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium">{staffName}</p>
+                <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                  {typeConf && <span className={typeConf.color}>{(LEAVE_TYPE_CONFIG[l.type as LeaveType] as typeof typeConf)?.color ? l.type : l.type}</span>}
+                  <span>{formatDateWithYear(l.start_date, locale)} — {formatDateWithYear(l.end_date, locale)}</span>
+                  <span>({days}d)</span>
+                </div>
+                {l.notes && <p className="text-[11px] text-muted-foreground mt-0.5">{l.notes}</p>}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  disabled={isPending}
+                  onClick={() => startTransition(async () => {
+                    await approveLeave(l.id)
+                    router.refresh()
+                  })}
+                  className="text-[12px] font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                >
+                  Aprobar
+                </button>
+                <button
+                  disabled={isPending}
+                  onClick={() => startTransition(async () => {
+                    await rejectLeave(l.id)
+                    router.refresh()
+                  })}
+                  className="text-[12px] font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Main list ─────────────────────────────────────────────────────────────────
 export function LeavesList({
   leaves,
@@ -383,6 +442,9 @@ export function LeavesList({
           <KpiCards leaves={leaves} />
         </div>
       )}
+
+      {/* Pending leave requests (admins only) */}
+      <PendingRequests leaves={leaves} isAdmin={!isViewer} locale={locale} />
 
       {/* Content section */}
       <div className="flex flex-col gap-4">

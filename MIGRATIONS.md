@@ -120,4 +120,9 @@ ALTER TABLE public.organisation_members ADD COLUMN IF NOT EXISTS linked_staff_id
 ALTER TABLE public.organisation_members ADD COLUMN IF NOT EXISTS linked_staff_id uuid REFERENCES public.staff(id) ON DELETE SET NULL;
 ```
 
+### 10. Leave request feature toggle
+```sql
+ALTER TABLE public.lab_config ADD COLUMN IF NOT EXISTS enable_leave_requests boolean NOT NULL DEFAULT false;
+```
+
 All use `IF NOT EXISTS` / `IF EXISTS` so they're safe to re-run.
