@@ -85,14 +85,14 @@ export function MobileBottomNav() {
   return (
     <div
       className={cn(
-        "fixed right-3 z-40 lg:hidden transition-all duration-300 ease-out",
+        "fixed right-4 z-40 lg:hidden transition-all duration-300 ease-out",
         !visible && !docked && "bottom-[-80px] opacity-0",
         visible && !docked && "bottom-3 opacity-100",
         docked && "bottom-1 opacity-100",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-1 px-2.5 py-2.5 rounded-[22px] glass-nav-pop">
+      <nav className="flex items-center gap-1 px-3 py-3 rounded-[28px] glass-nav-pop">
         {navContent}
       </nav>
       {/* White bar underneath when docked so content is visible */}

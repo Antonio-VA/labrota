@@ -136,23 +136,31 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
         </p>
         <div className="flex items-center gap-1">
           {[
+            { key: "browser", label: locale === "es" ? "Navegador" : "Browser" },
             { key: "es", label: "Español" },
             { key: "en", label: "English" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => {
-                document.cookie = `locale=${key};path=/;max-age=31536000`
-                window.location.reload()
-              }}
-              className={cn(
-                "flex-1 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-center",
-                locale === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
-              )}
-            >
-              {label}
-            </button>
-          ))}
+          ].map(({ key, label }) => {
+            const currentLocale = (() => { try { return document.cookie.split(";").find((c) => c.trim().startsWith("locale="))?.split("=")[1] ?? "browser" } catch { return "browser" } })()
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  if (key === "browser") {
+                    document.cookie = "locale=;path=/;max-age=0"
+                  } else {
+                    document.cookie = `locale=${key};path=/;max-age=31536000`
+                  }
+                  window.location.reload()
+                }}
+                className={cn(
+                  "flex-1 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-center",
+                  currentLocale === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
+                )}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
