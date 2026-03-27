@@ -1,6 +1,8 @@
 "use client"
 
+import { Fragment } from "react"
 import { useTranslations } from "next-intl"
+import { useLocale } from "next-intl"
 import { X, AlertTriangle, Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -100,23 +102,25 @@ export function MobileTaskDayView({
         </div>
       )}
 
-      {/* Task rows */}
-      {activeTecnicas.map((tec) => {
+      {/* Task rows with separators */}
+      {activeTecnicas.map((tec, tecIdx) => {
         const assignments = byTecnica[tec.codigo] ?? []
         const dotColor = TECNICA_DOT[tec.color] ?? TECNICA_DOT.blue
 
         return (
-          <div key={tec.id} className="flex flex-col gap-1.5">
-            {/* Task header */}
-            <div className="flex items-center gap-2 pl-2" style={{ borderLeft: `3px solid ${dotColor}` }}>
-              <span className="text-[13px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
-              <span className="text-[13px] text-muted-foreground">{tec.nombre_es}</span>
-              <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
-            </div>
+          <Fragment key={tec.id}>
+            {tecIdx > 0 && <div className="h-px bg-border/50" />}
+            <div className="flex flex-col gap-1.5 py-1">
+              {/* Task name with color bar + inline staff badges */}
+              <div className="flex items-start gap-2 pl-2.5" style={{ borderLeft: `3px solid ${dotColor}` }}>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[14px] font-medium">{tec.nombre_es}</span>
+                  {assignments.length > 0 && <span className="text-[11px] text-muted-foreground ml-1.5">{assignments.length}</span>}
+                </div>
+              </div>
 
-            {/* Assigned staff */}
-            {assignments.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
+              {/* Staff badges inline */}
+              <div className="flex flex-wrap gap-1 pl-2.5" style={{ borderLeft: `3px solid transparent` }}>
                 {[...assignments].sort((a, b) => {
                   const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
                   const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
@@ -131,30 +135,23 @@ export function MobileTaskDayView({
                     >
                       {a.staff.first_name} {a.staff.last_name[0]}.
                       {isEditMode && onRemoveAssignment && (
-                        <button onClick={() => onRemoveAssignment(a.id)} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
                       )}
                     </span>
                   )
                 })}
+                {assignments.length === 0 && !isEditMode && (
+                  <span className="text-[12px] text-muted-foreground/40 italic">—</span>
+                )}
                 {isEditMode && onAddToTask && (
                   <button
                     onClick={() => onAddToTask(tec.codigo)}
-                    className="inline-flex items-center justify-center size-7 rounded-md border border-dashed border-primary/30 text-primary text-[11px] active:bg-primary/10"
-                  >+</button>
+                    className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md border border-dashed border-primary/30 text-primary text-[12px] font-medium active:bg-primary/10"
+                  >+ {locale === "es" ? "Añadir" : "Add"}</button>
                 )}
               </div>
-            ) : (
-              <div className="pl-4 flex items-center gap-2">
-                <p className="text-[12px] text-muted-foreground/40 italic">—</p>
-                {isEditMode && onAddToTask && (
-                  <button
-                    onClick={() => onAddToTask(tec.codigo)}
-                    className="inline-flex items-center justify-center size-7 rounded-md border border-dashed border-primary/30 text-primary text-[11px] active:bg-primary/10"
-                  >+</button>
-                )}
-              </div>
-            )}
-          </div>
+            </div>
+          </Fragment>
         )
       })}
 

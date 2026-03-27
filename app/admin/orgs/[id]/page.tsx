@@ -11,6 +11,7 @@ import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 import { AdminHistoryUpload } from "@/components/admin-history-upload"
 import { AdminImplementation } from "@/components/admin-implementation"
+import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { updateOrgRegional } from "@/app/admin/actions"
 
 export default async function OrgDetailPage({
@@ -103,22 +104,25 @@ export default async function OrgDetailPage({
         ))}
       </div>
 
-      {/* Client-side interactive sections */}
-      <AdminOrgDetailClient
-        orgId={id}
-        userRows={userRows}
-        initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
-        initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
-        initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
+      <AdminOrgTabs
+        configuration={
+          <AdminOrgDetailClient
+            orgId={id}
+            userRows={userRows}
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+            initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
+          />
+        }
+        implementation={
+          <div className="flex flex-col gap-6">
+            <div className="rounded-xl border border-border/60 bg-background px-5 py-4">
+              <AdminImplementation orgId={id} />
+            </div>
+            <AdminHistoryUpload orgId={id} />
+          </div>
+        }
       />
-
-      {/* Implementation defaults */}
-      <div className="rounded-xl border border-border/60 bg-background px-5 py-4">
-        <AdminImplementation orgId={id} />
-      </div>
-
-      {/* Historical rota upload */}
-      <AdminHistoryUpload orgId={id} />
     </div>
   )
 }
