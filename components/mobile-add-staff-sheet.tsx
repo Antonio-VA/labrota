@@ -52,13 +52,13 @@ export function MobileAddStaffSheet({
     const staff = staffList.find((s) => s.id === staffId)
     const shift = staff?.preferred_shift ?? defaultShift
     startTransition(async () => {
+      // Close immediately for instant feel
+      onOpenChange(false)
       const result = await upsertAssignment({ weekStart, staffId, date, shiftType: shift })
       if (result.error) {
         toast.error(result.error)
       } else {
-        toast.success(`${staff?.first_name} añadido`)
         onAdded()
-        onOpenChange(false)
       }
     })
   }

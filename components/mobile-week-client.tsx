@@ -192,7 +192,7 @@ export function MobileWeekClient() {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
                       const isWeekend = [0, 6].includes(new Date(day.date + "T12:00:00").getDay())
                       return (
-                        <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 flex flex-wrap gap-0.5 content-start", isWeekend && "bg-muted/20")}>
+                        <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start", isWeekend && "bg-muted/20")}>
                           {assignments.map((a) => (
                             <span key={a.id} className="text-[10px] font-semibold rounded-md px-1 py-0.5 border border-border bg-background" style={{ borderLeft: `3px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}`, borderRadius: 6 }}>
                               {a.staff.first_name[0]}{a.staff.last_name[0]}
@@ -222,7 +222,7 @@ export function MobileWeekClient() {
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
                     return (
-                      <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
+                      <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (
@@ -247,7 +247,7 @@ export function MobileWeekClient() {
                 const leaveCount = leaveIds.size
                 const offCount = Math.max(0, (data?.days?.[0]?.assignments ? 0 : 0))
                 return (
-                  <div key={day.date} className="px-1 py-1 border-r border-border last:border-r-0 flex flex-col gap-0.5">
+                  <div key={day.date} className="px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-0.5">
                     {leaveCount > 0 && (
                       <span className="text-[9px] text-amber-600 font-medium">{leaveCount} 🌴</span>
                     )}

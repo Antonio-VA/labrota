@@ -3029,7 +3029,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   const canGenerate = selected && (!needsTemplate || selectedTplId)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
         {/* Header */}
@@ -3135,7 +3135,7 @@ function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[380px] p-5">
         <p className="text-[14px] font-medium mb-3">{t("saveAsTemplate")}</p>
@@ -3191,7 +3191,7 @@ function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[440px] max-h-[70vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0">
