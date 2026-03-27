@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -261,6 +261,33 @@ export function MobileWeekClient() {
                 )
               })}
             </div>
+            {/* Avisos summary */}
+            {(() => {
+              const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
+              if (allWarnings.length === 0) return null
+              return (
+                <div className="px-3 py-3 border-t border-border">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <AlertTriangle className="size-4 text-amber-500" />
+                    <span className="text-[13px] font-medium">{locale === "es" ? "Avisos" : "Warnings"} ({allWarnings.length})</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {allWarnings.slice(0, 8).map((w, i) => {
+                      const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(w.day + "T12:00:00"))
+                      return (
+                        <p key={i} className="text-[12px] text-muted-foreground">
+                          <span className="font-medium capitalize">{dayLabel}</span> · {w.message}
+                        </p>
+                      )
+                    })}
+                    {allWarnings.length > 8 && (
+                      <p className="text-[11px] text-muted-foreground/60">+{allWarnings.length - 8} {locale === "es" ? "más" : "more"}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
           </div>
         )}
       </div>
