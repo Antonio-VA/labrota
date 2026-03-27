@@ -2749,6 +2749,13 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
       deptLabelMap[d.code] = d.name
     }
   }
+  // Staff individual colors
+  const FALLBACK_COLORS_DAY = [
+    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+  ]
+  const staffColorMap: Record<string, string> = {}
+  ;(staffList ?? []).forEach((s, i) => { staffColorMap[s.id] = s.color || FALLBACK_COLORS_DAY[i % FALLBACK_COLORS_DAY.length] })
 
   if (loading) {
     return (
@@ -2961,12 +2968,12 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             {mobileCompact ? (
               <div className="flex flex-wrap gap-1">
                 {onLeave.map((s) => {
-                  const roleColor = deptColorMap[s.role] ?? "#64748B"
                   const isHov = hoveredStaffId === s.id
+                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
                   return (
                     <TapPopover key={s.id} trigger={
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95 transition-colors", isHov ? "text-foreground" : "border-amber-200 bg-amber-50 text-amber-700")}
-                        style={isHov ? { backgroundColor: roleColor + "20", borderColor: roleColor + "50" } : undefined}
+                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95 transition-colors", isHov ? "" : "border-amber-200 bg-amber-50 text-amber-700")}
+                        style={isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : undefined}
                         onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
                         <Plane className="size-2.5 shrink-0" />
                         {s.first_name} {s.last_name[0]}.
@@ -2980,10 +2987,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
                   const isHov = hoveredStaffId === s.id
+                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
                   return (
                     <TapPopover key={s.id} trigger={
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95 transition-colors", isHov ? "text-foreground" : "border-border bg-background text-muted-foreground")}
-                        style={{ ...(isHov ? { backgroundColor: roleColor + "20", borderColor: roleColor + "50" } : (mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {})), borderRadius: 6 }}
+                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95 transition-colors", isHov ? "" : "border-border bg-background text-muted-foreground")}
+                        style={{ ...(isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : (mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {})), borderRadius: 6 }}
                         onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
                         {s.first_name} {s.last_name[0]}.
                       </span>
