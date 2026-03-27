@@ -223,9 +223,8 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end gap-1">
-                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
-                      <span className="text-[10px] font-semibold text-foreground">{tec.codigo}</span>
+                    <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
+                      <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
                     </div>
                     {days.map((day) => {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
@@ -276,26 +275,19 @@ export function MobileWeekClient() {
               ))
             )}
             {/* Libres row */}
-            <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
-              <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
-                <span className="text-[10px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
+            <div className="grid border-b border-border bg-muted/10" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+              <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
+                <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
               {days.map((day) => {
-                const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
                 const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
-                const leaveCount = leaveIds.size
-                const offCount = Math.max(0, (data?.days?.[0]?.assignments ? 0 : 0))
                 return (
-                  <div key={day.date} className="px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-0.5">
-                    {leaveCount > 0 && (
-                      <span className="text-[9px] text-amber-600 font-medium">{leaveCount} 🌴</span>
-                    )}
-                    {[...leaveIds].map((sid) => {
-                      const s = data?.days?.[0]?.assignments.find((a) => a.staff_id === sid)?.staff
-                      return s ? (
-                        <span key={sid} className="text-[9px] text-amber-600 italic truncate">{s.first_name[0]}{s.last_name[0]}</span>
-                      ) : null
-                    })}
+                  <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start">
+                    {[...leaveIds].map((sid) => (
+                      <span key={sid} className="text-[8px] font-medium rounded px-0.5 py-0.5 border border-amber-200 bg-amber-50 text-amber-700 truncate" title="On leave">
+                        🌴
+                      </span>
+                    ))}
                   </div>
                 )
               })}

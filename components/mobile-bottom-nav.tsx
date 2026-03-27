@@ -53,7 +53,7 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0.5 px-2 py-2 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-1.5 py-1.5 rounded-full glass-nav-pop">
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           return (
@@ -61,7 +61,7 @@ export function MobileBottomNav() {
               key={item.key}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-full transition-colors duration-100",
+                "flex flex-col items-center justify-center gap-[2px] w-16 py-2 rounded-full transition-colors duration-100",
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground active:text-primary active:bg-primary/10"
               )}
             >
@@ -71,7 +71,7 @@ export function MobileBottomNav() {
                     <rect x="3" y="4" width="18" height="18" rx="2" />
                     <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
-                  <span className={cn("relative top-[2px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                  <span className={cn("relative top-[3px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
                     {new Date().getDate()}
                   </span>
                 </div>
