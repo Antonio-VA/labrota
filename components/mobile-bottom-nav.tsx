@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
 import { CalendarDays, CalendarRange } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -45,6 +45,10 @@ export function MobileBottomNav() {
     return () => { window.removeEventListener("scroll", onScroll); cleanups.forEach((c) => c()) }
   }, [])
 
+  const router = useRouter()
+  const [tapped, setTapped] = useState<string | null>(null)
+  useEffect(() => { setTapped(null) }, [pathname])
+
   return (
     <div
       className={cn(
@@ -55,11 +59,14 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-2.5 py-1 rounded-full glass-nav-pop">
         {NAV_ITEMS.map((item) => {
-          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+          const isActive = (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)) || tapped === item.key
           return (
-            <a
+            <button
               key={item.key}
-              href={item.href}
+              onClick={() => {
+                setTapped(item.key)
+                router.push(item.href)
+              }}
               className={cn(
                 "flex flex-col items-center justify-center gap-[2px] w-[70px] py-2 rounded-full transition-colors duration-100",
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground active:text-primary active:bg-primary/10"
@@ -81,7 +88,7 @@ export function MobileBottomNav() {
               <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
                 {LABELS[locale]?.[item.key] ?? item.key}
               </span>
-            </a>
+            </button>
           )
         })}
       </nav>

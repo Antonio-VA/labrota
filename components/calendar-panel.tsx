@@ -2886,7 +2886,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                           }
                         >
                           <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                          <p className="text-[11px] opacity-70">{deptName} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
+                          <p className="text-[11px] opacity-70">{deptName} · {staffMember?.days_per_week ?? "?"}d/{locale === "es" ? "sem" : "wk"} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
                         </TapPopover>
                       )
                     })}
@@ -2959,17 +2959,30 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             {mobileCompact ? (
               <div className="flex flex-wrap gap-1">
                 {onLeave.map((s) => (
-                  <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-[12px] text-amber-700 italic">
-                    <Plane className="size-2.5 shrink-0" />
-                    {s.first_name} {s.last_name[0]}.
-                  </span>
+                  <TapPopover key={s.id} trigger={
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95", hoveredStaffId === s.id ? "border-primary bg-primary/10 text-primary" : "border-amber-200 bg-amber-50 text-amber-700")}
+                      onMouseEnter={() => setHovered(s.id)} onMouseLeave={() => setHovered(null)}>
+                      <Plane className="size-2.5 shrink-0" />
+                      {s.first_name} {s.last_name[0]}.
+                    </span>
+                  }>
+                    <p className="font-medium">{s.first_name} {s.last_name}</p>
+                    <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
+                  </TapPopover>
                 ))}
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
+                  const isHov = hoveredStaffId === s.id
                   return (
-                    <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] text-muted-foreground" style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}>
-                      {s.first_name} {s.last_name[0]}.
-                    </span>
+                    <TapPopover key={s.id} trigger={
+                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95", isHov ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground")} style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
+                        onMouseEnter={() => setHovered(s.id)} onMouseLeave={() => setHovered(null)}>
+                        {s.first_name} {s.last_name[0]}.
+                      </span>
+                    }>
+                      <p className="font-medium">{s.first_name} {s.last_name}</p>
+                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {(s.working_pattern ?? []).map((d) => ({ mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>)[d] ?? d).join(" ")}</p>
+                    </TapPopover>
                   )
                 })}
               </div>

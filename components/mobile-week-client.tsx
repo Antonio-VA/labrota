@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTri
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { TapPopover } from "@/components/tap-popover"
 import { getRotaWeek, type RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
@@ -240,17 +240,14 @@ export function MobileWeekClient() {
                       return (
                         <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start", isWeekend && "bg-muted/20")}>
                           {assignments.map((a) => (
-                            <Tooltip key={a.id}>
-                              <TooltipTrigger render={
-                                <span className="text-[11px] font-medium rounded px-1.5 py-1 border border-border bg-background cursor-default">
-                                  {a.staff.first_name[0]}{a.staff.last_name[0]}
-                                </span>
-                              } />
-                              <TooltipContent side="top" className="text-[12px]">
-                                <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                                <p className="text-muted-foreground">{a.shift_type}</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <TapPopover key={a.id} trigger={
+                              <span className="text-[11px] font-medium rounded px-1.5 py-1 border border-border bg-background cursor-pointer active:scale-95">
+                                {a.staff.first_name[0]}{a.staff.last_name[0]}
+                              </span>
+                            }>
+                              <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                              <p className="text-[11px] opacity-70">{a.shift_type}</p>
+                            </TapPopover>
                           ))}
                         </div>
                       )
@@ -281,17 +278,14 @@ export function MobileWeekClient() {
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (
-                          <Tooltip key={a.id}>
-                            <TooltipTrigger render={
-                              <div className="text-[12px] font-medium rounded px-1.5 py-1 border border-border bg-background truncate cursor-default">
-                                {a.staff.first_name} {a.staff.last_name[0]}.
-                              </div>
-                            } />
-                            <TooltipContent side="top" className="text-[12px]">
-                              <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                              <p className="text-muted-foreground">{a.shift_type}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <TapPopover key={a.id} trigger={
+                            <div className="text-[12px] font-medium rounded px-1.5 py-1 border border-border bg-background truncate cursor-pointer active:scale-95">
+                              {a.staff.first_name} {a.staff.last_name[0]}.
+                            </div>
+                          }>
+                            <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                            <p className="text-[11px] opacity-70">{a.shift_type}</p>
+                          </TapPopover>
                         ))}
                       </div>
                     )
