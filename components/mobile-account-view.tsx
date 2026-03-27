@@ -46,6 +46,9 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
     saved.theme = t
     localStorage.setItem("labrota_theme", JSON.stringify(saved))
     document.documentElement.dataset.theme = t === "dark" ? "dark" : t === "auto" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "") : ""
+    startTransition(async () => {
+      await saveUserPreferences({ theme: t } as UserPreferences)
+    })
   }
 
   function handleAccent(c: string) {

@@ -281,7 +281,7 @@ body {
 
 /* Pop-out variant for floating nav — more transparent, stronger shadow */
 .glass-nav-pop {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(40px) saturate(220%) brightness(105%);
   -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(105%);
   box-shadow:
@@ -293,7 +293,7 @@ body {
 }
 
 [data-theme="dark"] .glass-nav-pop {
-  background: rgba(200, 200, 220, 0.12);
+  background: rgba(200, 200, 220, 0.08);
   backdrop-filter: blur(40px) saturate(220%) brightness(90%);
   -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(90%);
   box-shadow:

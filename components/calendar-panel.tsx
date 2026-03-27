@@ -1388,7 +1388,14 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 
   if (totalIssues === 0) {
     return (
-      <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
+      <Tooltip>
+        <TooltipTrigger render={
+          <span className="cursor-default">
+            <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
+          </span>
+        } />
+        <TooltipContent side="bottom">{t("noWarnings")}</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -1407,18 +1414,18 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
         for (const arr of Object.values(byCategory)) for (const e of arr) uniqueDays.add(e.day)
         const singleDay = uniqueDays.size === 1
         return (
-          <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg border border-border bg-background shadow-lg py-2">
-            {singleDay && <p className="px-3 pb-1 text-[12px] font-medium capitalize">{[...uniqueDays][0]}</p>}
+          <div className="absolute right-0 top-full mt-1 z-50 w-80 rounded-lg border border-border bg-background shadow-lg py-2.5 max-h-[60vh] overflow-y-auto">
+            {singleDay && <p className="px-3 pb-1.5 text-[13px] font-medium capitalize">{[...uniqueDays][0]}</p>}
             {sortedCategories.map((cat) => (
-              <div key={cat} className="px-3 py-1.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+              <div key={cat} className="px-3 py-2">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
                   {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
                 </p>
                 {byCategory[cat].map(({ day, messages }) => (
-                  <div key={day} className="mb-1.5 last:mb-0">
-                    {!singleDay && <p className="text-[12px] font-medium capitalize">{day}</p>}
+                  <div key={day} className="mb-2 last:mb-0">
+                    {!singleDay && <p className="text-[13px] font-medium capitalize">{day}</p>}
                     {messages.map((msg, mi) => (
-                      <p key={mi} className="text-[11px] text-muted-foreground pl-2">· {msg}</p>
+                      <p key={mi} className="text-[12px] text-muted-foreground pl-2 leading-relaxed">· {msg}</p>
                     ))}
                   </div>
                 ))}
@@ -4246,7 +4253,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               <div className="flex-1" />
               {/* Warnings pill — same as desktop */}
               {weekData && (
-                <WarningsPill days={currentDayData ? [currentDayData] : []} />
+                <WarningsPill days={weekData?.days ?? []} staffList={staffList} />
               )}
               {canEdit && (
                 <button onClick={() => setMobileEditMode(true)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
