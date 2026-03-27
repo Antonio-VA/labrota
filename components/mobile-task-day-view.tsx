@@ -108,27 +108,24 @@ export function MobileTaskDayView({
 
             {/* Assigned staff */}
             {assignments.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {assignments.map((a) => {
+              <div className="flex flex-wrap gap-1">
+                {[...assignments].sort((a, b) => {
+                  const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+                  const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
+                  return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
+                }).map((a) => {
                   const roleColor = ROLE_COLOR[a.staff.role] ?? "#64748B"
                   return (
-                    <div
+                    <span
                       key={a.id}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border bg-background"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] font-medium"
+                      style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}
                     >
-                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                      </div>
+                      {a.staff.first_name} {a.staff.last_name[0]}.
                       {isEditMode && onRemoveAssignment && (
-                        <button
-                          onClick={() => onRemoveAssignment(a.id)}
-                          className="size-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive active:bg-destructive/10 shrink-0"
-                        >
-                          <X className="size-3.5" />
-                        </button>
+                        <button onClick={() => onRemoveAssignment(a.id)} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
                       )}
-                    </div>
+                    </span>
                   )
                 })}
               </div>
@@ -146,14 +143,17 @@ export function MobileTaskDayView({
             <span className="text-[13px] font-medium text-muted-foreground">{t("noTaskAssigned")}</span>
             <span className="text-[11px] text-muted-foreground/60 ml-auto">{unassigned.length}</span>
           </div>
-          <div className="flex flex-col gap-1">
-            {unassigned.map((a) => {
+          <div className="flex flex-wrap gap-1">
+            {[...unassigned].sort((a, b) => {
+              const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+              const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
+              return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
+            }).map((a) => {
               const roleColor = ROLE_COLOR[a.staff.role] ?? "#64748B"
               return (
-                <div key={a.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-muted/20">
-                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
-                  <p className="text-[14px] text-muted-foreground">{a.staff.first_name} {a.staff.last_name}</p>
-                </div>
+                <span key={a.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] text-muted-foreground" style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}>
+                  {a.staff.first_name} {a.staff.last_name[0]}.
+                </span>
               )
             })}
           </div>
@@ -167,18 +167,20 @@ export function MobileTaskDayView({
             <span className="text-[13px] font-medium text-muted-foreground">{t("offSection")}</span>
             <span className="text-[12px] text-muted-foreground/60">{onLeave.length + offDuty.length}</span>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap gap-1">
             {onLeave.map((s) => (
-              <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
-                <Plane className="size-3 text-amber-500 shrink-0" />
-                <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
-              </div>
+              <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-[12px] text-amber-700 italic">
+                <Plane className="size-2.5 shrink-0" />
+                {s.first_name} {s.last_name[0]}.
+              </span>
             ))}
-            {offDuty.map((s) => (
-              <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground">
-                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: ROLE_COLOR[s.role] ?? "#64748B" }} />
-                <span className="text-[13px]">{s.first_name} {s.last_name}</span>
-              </div>
+            {offDuty.sort((a, b) => {
+              const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+              return (ro[a.role] ?? 9) - (ro[b.role] ?? 9) || a.first_name.localeCompare(b.first_name)
+            }).map((s) => (
+              <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] text-muted-foreground" style={{ borderLeft: `3px solid ${ROLE_COLOR[s.role] ?? "#64748B"}`, borderRadius: 6 }}>
+                {s.first_name} {s.last_name[0]}.
+              </span>
             ))}
           </div>
         </div>
