@@ -99,7 +99,12 @@ export function MobileWeekClient() {
           <ChevronLeft className="size-5 text-muted-foreground" />
         </button>
         <span className="text-[15px] font-semibold capitalize flex-1 text-center">
-          {formatDateRange(weekStart, endDate, locale)}
+          {(() => {
+            const s = new Date(weekStart + "T12:00:00")
+            const e = new Date(endDate + "T12:00:00")
+            const fmt = (d: Date) => d.toLocaleDateString(locale === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "short" })
+            return `${fmt(s)} – ${fmt(e)}`
+          })()}
         </span>
         <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
           <ChevronRight className="size-5 text-muted-foreground" />
@@ -134,13 +139,13 @@ export function MobileWeekClient() {
         ) : !data || days.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{t("noRota")}</div>
         ) : (
-          <div className="min-w-[600px]">
+          <div className="min-w-[600px] pb-24">
             {/* Header: days */}
             <div
               className="sticky top-0 z-10 grid border-b border-border bg-muted"
               style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}
             >
-              <div className="px-2 py-2 border-r border-border" />
+              <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
               {days.map((day) => {
                 const date = new Date(day.date + "T12:00:00")
                 const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date)
@@ -168,7 +173,7 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-2 py-2 border-r border-border bg-muted/30 flex items-center justify-end gap-1">
+                    <div className="px-2 py-2 border-r border-border bg-muted/30 sticky left-0 z-[5] flex items-center justify-end gap-1">
                       <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                       <span className="text-[10px] font-semibold text-foreground">{tec.codigo}</span>
                     </div>
@@ -192,7 +197,7 @@ export function MobileWeekClient() {
               // By shift: shift types as rows
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
-                  <div className="px-2 py-2 border-r border-border bg-muted/30 flex flex-col items-end justify-center">
+                  <div className="px-2 py-2 border-r border-border bg-muted/30 sticky left-0 z-[5] flex flex-col items-end justify-center">
                     <span className="text-[11px] font-semibold text-foreground">{st.code}</span>
                     <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(st.start_time, timeFormat)}</span>
                   </div>

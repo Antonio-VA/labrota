@@ -25,6 +25,7 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [isSwitching, startSwitch] = useTransition()
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null)
   const [localDefault, setLocalDefault] = useState(defaultOrgId ?? null)
   const [logoError, setLogoError] = useState(false)
   const hasMultipleOrgs = allOrgs.length > 1
@@ -101,6 +102,7 @@ export function MobileHeader({
                   <button
                     onClick={() => {
                       if (isActive) { setSheetOpen(false); return }
+                      setSwitchingTo(org.name)
                       setSheetOpen(false)
                       startSwitch(async () => {
                         await switchOrgAction(org.id)
@@ -134,6 +136,14 @@ export function MobileHeader({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Full-screen loading overlay when switching org */}
+      {switchingTo && (
+        <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+          <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-[14px] font-medium text-foreground">{switchingTo}</p>
+        </div>
+      )}
     </>
   )
 }
