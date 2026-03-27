@@ -106,7 +106,7 @@ export function MobileTaskDayView({
       {/* Task rows with separators */}
       {activeTecnicas.map((tec, tecIdx) => {
         const assignments = byTecnica[tec.codigo] ?? []
-        const dotColor = TECNICA_DOT[tec.color] ?? TECNICA_DOT.blue
+        const dotColor = tec.color?.startsWith("#") ? tec.color : (TECNICA_DOT[tec.color] ?? "#3B82F6")
 
         return (
           <Fragment key={tec.id}>
