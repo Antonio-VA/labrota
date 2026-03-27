@@ -4391,13 +4391,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
                 onAddToTask={(tecCode) => setMobileAddSheet({ open: true, role: "lab" })}
-                loading={loadingWeek && !weekData}
+                loading={loadingWeek || !currentDayData}
                 locale={locale}
               />
             ) : (
               <DayView
                 day={currentDayData}
-                loading={loadingWeek && !weekData}
+                loading={loadingWeek || !currentDayData}
                 locale={locale}
                 departments={weekData?.departments ?? []}
                 data={weekData}

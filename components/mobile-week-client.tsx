@@ -263,8 +263,9 @@ export function MobileWeekClient() {
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
                   <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center">
-                    <span className="text-[12px] font-semibold text-foreground">{st.code}</span>
+                    <span className="text-[13px] font-bold text-foreground">{st.code}</span>
                     <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(st.start_time, timeFormat)}</span>
+                    <span className="text-[9px] text-muted-foreground/60 tabular-nums">{formatTime(st.end_time, timeFormat)}</span>
                   </div>
                   {days.map((day) => {
                     const assignments = day.assignments.filter((a) => a.shift_type === st.code)
@@ -276,7 +277,7 @@ export function MobileWeekClient() {
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
                     return (
-                      <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
+                      <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isSatCell && "border-l border-dashed border-l-border")}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (
