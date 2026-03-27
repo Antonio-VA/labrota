@@ -92,7 +92,7 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-1 px-3 py-3 rounded-[28px] glass-nav-pop">
+      <nav className="flex items-center gap-0.5 px-2 py-2 rounded-full glass-nav-pop">
         {navContent}
       </nav>
       {/* White bar underneath when docked so content is visible */}
