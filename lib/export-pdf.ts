@@ -49,7 +49,7 @@ function getBiopsyForecast(
 
 // ── By shift export ──────────────────────────────────────────────────────────
 
-export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string) {
+export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
   const timeFormat = data.timeFormat ?? "24h"
@@ -133,6 +133,21 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
 
   // Footer
   const pageHeight = doc.internal.pageSize.getHeight()
+  // Notes section
+  if (notes && notes.length > 0) {
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(100, 116, 139)
+    doc.text(locale === "es" ? "Notas" : "Notes", 14, finalY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8)
+    doc.setTextColor(71, 85, 105)
+    notes.forEach((n, i) => {
+      doc.text(`· ${n}`, 14, finalY + 14 + i * 5)
+    })
+  }
+
   const timestamp = new Intl.DateTimeFormat("es", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date())
   doc.setFontSize(7)
   doc.setTextColor(148, 163, 184)
@@ -145,7 +160,7 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
 
 // ── By task export ───────────────────────────────────────────────────────────
 
-export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string) {
+export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
 
@@ -207,6 +222,21 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
     margin: { left: 14, right: 14 },
     tableWidth: "auto",
   })
+
+  // Notes section
+  if (notes && notes.length > 0) {
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(100, 116, 139)
+    doc.text(locale === "es" ? "Notas" : "Notes", 14, finalY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8)
+    doc.setTextColor(71, 85, 105)
+    notes.forEach((n, i) => {
+      doc.text(`· ${n}`, 14, finalY + 14 + i * 5)
+    })
+  }
 
   // Footer
   const pageHeight = doc.internal.pageSize.getHeight()
