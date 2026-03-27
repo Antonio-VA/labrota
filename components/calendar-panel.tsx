@@ -2860,18 +2860,29 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                     }).map((a) => {
                       const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                       const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
+                      const staffMember = staffList?.find((s) => s.id === a.staff_id)
+                      const deptName = deptLabelMap[a.staff.role] ?? a.staff.role
+                      const workDays = staffMember?.working_pattern ?? []
+                      const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
                       return (
-                        <span
-                          key={a.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium"
-                          style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
-                        >
-                          {a.staff.first_name} {a.staff.last_name[0]}.
-                          {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
-                          {isEditMode && onRemoveAssignment && (
-                            <button onClick={() => onRemoveAssignment(a.id)} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
+                        <Tooltip key={a.id}>
+                          <TooltipTrigger render={
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-default"
+                              style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
+                            >
+                              {a.staff.first_name} {a.staff.last_name[0]}.
+                              {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
+                              {isEditMode && onRemoveAssignment && (
+                                <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
                           )}
-                        </span>
+                            </span>
+                          } />
+                          <TooltipContent side="top" className="text-[12px]">
+                            <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                            <p className="text-muted-foreground">{deptName} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )
                     })}
                   </div>
