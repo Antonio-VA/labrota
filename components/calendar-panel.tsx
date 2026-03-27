@@ -2712,7 +2712,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact }: {
   day: RotaDay | null
   loading: boolean
   locale: string
@@ -2724,6 +2724,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   onAddStaff?: (role: string) => void
   data?: RotaWeekData | null
   staffList?: StaffWithSkills[]
+  mobileCompact?: boolean
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -2837,18 +2838,36 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 {assignments.length === 0 && !isEditMode && (
                   <p className="text-[12px] text-muted-foreground/40 italic px-3 py-1.5">{t("noService")}</p>
                 )}
-                {assignments.map((a) => {
+                {mobileCompact ? (
+                  /* Compact: inline badges with left border */
+                  <div className="flex flex-wrap gap-1">
+                    {assignments.map((a) => {
+                      const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
+                      const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
+                      return (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] font-medium"
+                          style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}
+                        >
+                          {a.staff.first_name} {a.staff.last_name[0]}.
+                          {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
+                          {isEditMode && onRemoveAssignment && (
+                            <button onClick={() => onRemoveAssignment(a.id)} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
+                          )}
+                        </span>
+                      )
+                    })}
+                  </div>
+                ) : assignments.map((a) => {
                   const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                   const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
                   return (
                     <div
                       key={a.id}
-                      className={cn(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg border",
-                        a.is_manual_override ? "border-primary/30 bg-primary/5" : "border-border bg-background"
-                      )}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border bg-background"
+                      style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 8 }}
                     >
-                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
                         <span className="text-[14px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
                         {fnLabel && (
@@ -3279,7 +3298,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onToggleCompact }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -3306,6 +3325,16 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending }: { onGenera
               <CalendarDays className="size-4" />
               {locale === "es" ? "Regenerar día" : "Regenerate day"}
             </button>
+          )}
+          {onToggleCompact && (
+            <>
+              <div className="h-px bg-border mx-2 my-1" />
+              <button onClick={() => { onToggleCompact(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                <Rows3 className="size-4" />
+                {locale === "es" ? "Vista compacta" : "Compact view"}
+                {compact && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
+              </button>
+            </>
           )}
         </div>
       )}
@@ -3383,6 +3412,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
+  const [mobileCompact, setMobileCompact] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("labrota_mobile_compact") === "true"
+  })
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -4229,6 +4262,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeek(weekStart) }
                   } : undefined}
                   isPending={isPending}
+                  compact={mobileCompact}
+                  onToggleCompact={() => { const next = !mobileCompact; setMobileCompact(next); localStorage.setItem("labrota_mobile_compact", String(next)) }}
                 />
               )}
             </div>
@@ -4273,6 +4308,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 }}
                 onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
                 staffList={staffList}
+                mobileCompact={mobileCompact}
               />
             )}
           </div>
