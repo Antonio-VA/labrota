@@ -4267,7 +4267,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {/* Sticky toolbar */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-[68px] px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-20">
+            <div data-mobile-toolbar className="flex items-center justify-between h-[68px] px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-20">
               <span className="text-[16px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
@@ -4276,7 +4276,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-20">
+            <div data-mobile-toolbar className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-20">
               {/* Left: date selector */}
               <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-5 text-muted-foreground" />
@@ -4355,13 +4355,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   const result = await removeAssignment(id)
                   if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
-                loading={loadingWeek}
+                loading={loadingWeek && !weekData}
                 locale={locale}
               />
             ) : (
               <DayView
                 day={currentDayData}
-                loading={loadingWeek}
+                loading={loadingWeek && !weekData}
                 locale={locale}
                 departments={weekData?.departments ?? []}
                 data={weekData}
