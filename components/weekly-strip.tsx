@@ -38,13 +38,6 @@ export function WeeklyStrip({
   return (
     <div
       className="flex items-center justify-around px-2 py-2 border-b border-border bg-background lg:hidden transition-all duration-200"
-      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
-      onTouchEnd={(e) => {
-        const dx = e.changedTouches[0].clientX - touchStartX.current
-        if (Math.abs(dx) > 60 && onSwipeWeek) {
-          onSwipeWeek(dx < 0 ? 1 : -1)
-        }
-      }}
     >
       {days.map((day, i) => {
         const isActive = day.date === currentDate

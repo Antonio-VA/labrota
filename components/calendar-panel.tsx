@@ -2818,8 +2818,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
         }
 
         return allShifts.map((shiftCode) => {
-          const assignments = byShift[shiftCode]
-          if (!assignments || assignments.length === 0) return null
+          const assignments = byShift[shiftCode] ?? []
           const st = shiftTypes.find((s) => s.code === shiftCode)
           const timeLabel = st ? `${st.start_time}–${st.end_time}` : ""
           return (
@@ -2831,6 +2830,9 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
               </div>
               <div className="flex flex-col gap-1">
+                {assignments.length === 0 && !isEditMode && (
+                  <p className="text-[12px] text-muted-foreground/40 italic px-3 py-1.5">{t("noService")}</p>
+                )}
                 {assignments.map((a) => {
                   const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                   const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
@@ -4142,8 +4144,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
         {/* Mobile: admin/editor day view */}
         <div className={cn("flex flex-col overflow-auto lg:hidden flex-1", !canEdit && "hidden")}>
-          {/* Date carousel — right under org header */}
-          {weekData && (
+          {/* Date carousel — hidden in edit mode */}
+          {!mobileEditMode && weekData && (
             <WeeklyStrip
               days={weekData.days.map((d) => ({
                 date: d.date,
@@ -4152,19 +4154,23 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }))}
               currentDate={currentDate}
               onSelectDay={(date) => { setCurrentDate(date); setMobileEditMode(false) }}
-              onSwipeWeek={(dir) => navigate(dir)}
               locale={locale as "es" | "en"}
             />
           )}
-          {/* Sticky toolbar: Hoy ← date → | edit | overflow */}
+          {/* Sticky toolbar */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-[52px] px-3 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-10">
-              <span className="text-[15px] font-semibold">
+            <div className="flex items-center justify-between h-[60px] px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-10">
+              <span className="text-[16px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
-              <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px]">
-                {tc("save")}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px] text-primary-foreground/70 hover:text-primary-foreground">
+                  {tc("cancel")}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px]">
+                  {tc("save")}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 h-[52px] px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10">
