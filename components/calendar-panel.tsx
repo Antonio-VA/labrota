@@ -1409,9 +1409,11 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
                 {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
               </p>
               {byCategory[cat].map(({ day, messages }) => (
-                <div key={day} className="mb-1 last:mb-0">
-                  <span className="text-[12px] font-medium capitalize">{day}: </span>
-                  <span className="text-[11px] text-muted-foreground">{messages.join(", ")}</span>
+                <div key={day} className="mb-1.5 last:mb-0">
+                  <p className="text-[12px] font-medium capitalize">{day}</p>
+                  {messages.map((msg, mi) => (
+                    <p key={mi} className="text-[11px] text-muted-foreground pl-2">· {msg}</p>
+                  ))}
                 </div>
               ))}
             </div>
@@ -4161,7 +4163,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           ) : (
             <div className="flex items-center gap-2 h-[52px] px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10">
               {/* Left: date selector */}
-              <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-5 text-muted-foreground" />
               </button>
               <div className="relative shrink-0">
@@ -4175,7 +4177,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
                 </span>
               </div>
-              <button onClick={() => navigate(1)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronRight className="size-5 text-muted-foreground" />
               </button>
               <button
@@ -4203,7 +4205,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               )}
             </div>
           )}
-          <div className="flex flex-col gap-4 px-4 py-3 flex-1 pb-32">
+          <div
+            className="flex flex-col gap-4 px-4 py-3 flex-1 pb-32"
+            onTouchStart={(e) => { (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX) }}
+            onTouchEnd={(e) => {
+              const startX = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0)
+              const dx = e.changedTouches[0].clientX - startX
+              if (Math.abs(dx) > 80) setCurrentDate((d) => addDays(d, dx < 0 ? 1 : -1))
+            }}
+          >
             {weekData?.rotaDisplayMode === "by_task" && weekData.tecnicas ? (
               <MobileTaskDayView
                 day={currentDayData}

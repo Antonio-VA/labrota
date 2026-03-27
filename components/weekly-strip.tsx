@@ -37,7 +37,7 @@ export function WeeklyStrip({
 
   return (
     <div
-      className="flex items-center justify-around px-2 py-2 border-b border-border bg-background lg:hidden"
+      className="flex items-center justify-around px-2 py-2 border-b border-border bg-background lg:hidden transition-all duration-200"
       onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
       onTouchEnd={(e) => {
         const dx = e.changedTouches[0].clientX - touchStartX.current
@@ -74,7 +74,7 @@ export function WeeklyStrip({
             key={day.date}
             onClick={() => onSelectDay(day.date)}
             className={cn(
-              "flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-colors min-w-[36px]",
+              "flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-all duration-150 min-w-[36px]",
               isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground active:bg-accent"
             )}
           >

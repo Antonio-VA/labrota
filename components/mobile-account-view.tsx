@@ -98,7 +98,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
               key={key}
               onClick={() => handleTheme(key)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-medium transition-colors",
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-medium transition-colors",
                 theme === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
               )}
             >
@@ -129,36 +129,25 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
         </div>
       </div>
 
-      {/* Text size */}
+      {/* Language */}
       <div className="rounded-xl border border-border bg-background px-4 py-3">
         <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-          {locale === "es" ? "Tamaño de texto" : "Text size"}
+          {locale === "es" ? "Idioma" : "Language"}
         </p>
         <div className="flex items-center gap-1">
           {[
-            { key: "s", label: locale === "es" ? "Pequeño" : "Small", size: "text-[12px]" },
-            { key: "m", label: "Normal", size: "text-[14px]" },
-            { key: "l", label: locale === "es" ? "Grande" : "Large", size: "text-[16px]" },
-          ].map(({ key, label, size }) => (
+            { key: "es", label: "Español" },
+            { key: "en", label: "English" },
+          ].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => {
-                const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
-                saved.fontScale = key
-                localStorage.setItem("labrota_theme", JSON.stringify(saved))
-                const scale = key === "s" ? "0.9" : key === "l" ? "1.1" : "1"
-                document.documentElement.style.setProperty("--font-scale", scale)
-                document.documentElement.style.zoom = scale
-                startTransition(async () => {
-                  await saveUserPreferences({ fontScale: key } as UserPreferences)
-                })
+                document.cookie = `locale=${key};path=/;max-age=31536000`
+                window.location.reload()
               }}
               className={cn(
-                "flex-1 py-2 rounded-lg font-medium transition-colors text-center",
-                size,
-                (() => {
-                  try { return JSON.parse(localStorage.getItem("labrota_theme") || "{}").fontScale === key } catch { return key === "m" }
-                })() ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
+                "flex-1 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-center",
+                locale === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
               )}
             >
               {label}
