@@ -62,13 +62,15 @@ export function WeeklyStrip({
           dotElement = <span className={cn("size-1.5 rounded-full", isActive ? "bg-primary-foreground/60" : dotColor)} />
         }
 
+        const isPast = day.date < today
+
         return (
           <button
             key={day.date}
             onClick={() => onSelectDay(day.date)}
             className={cn(
               "flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-all duration-150 min-w-[36px]",
-              isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground active:bg-accent"
+              isActive ? "bg-primary text-primary-foreground" : isPast ? "text-muted-foreground/50 active:bg-accent" : "text-muted-foreground active:bg-accent"
             )}
           >
             <span className="text-[10px] font-medium leading-none">{labels[i] ?? ""}</span>

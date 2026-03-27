@@ -20,85 +20,59 @@ export function MobileBottomNav() {
   const locale = useLocale() as "es" | "en"
   const pathname = usePathname()
   const [visible, setVisible] = useState(true)
-  const [docked, setDocked] = useState(false)
   const lastScrollY = useRef(0)
 
-  const checkScroll = useCallback((scrollEl: Element | Window) => {
-    let y: number, maxY: number
-    if (scrollEl === window) {
-      y = window.scrollY
-      maxY = document.documentElement.scrollHeight - window.innerHeight
-    } else {
-      const el = scrollEl as Element
-      y = el.scrollTop
-      maxY = el.scrollHeight - el.clientHeight
-    }
-    const atBottom = maxY > 0 && y >= maxY - 10
-    setDocked(atBottom)
-    if (atBottom) {
-      setVisible(true)
-    } else if (y > lastScrollY.current + 8 && y > 40) {
-      setVisible(false)
-    } else if (y < lastScrollY.current - 4) {
-      setVisible(true)
-    }
-    lastScrollY.current = y
-  }, [])
-
   useEffect(() => {
-    const onWindowScroll = () => checkScroll(window)
-    window.addEventListener("scroll", onWindowScroll, { passive: true })
+    function onScroll() {
+      const y = window.scrollY
+      if (y > lastScrollY.current + 8 && y > 40) setVisible(false)
+      else if (y < lastScrollY.current - 4) setVisible(true)
+      lastScrollY.current = y
+    }
     const els = document.querySelectorAll("[class*='overflow-auto'], [class*='overflow-y-auto']")
     const cleanups: Array<() => void> = []
     els.forEach((el) => {
-      const h = () => checkScroll(el)
+      const h = () => {
+        const y = el.scrollTop
+        if (y > lastScrollY.current + 8 && y > 40) setVisible(false)
+        else if (y < lastScrollY.current - 4) setVisible(true)
+        lastScrollY.current = y
+      }
       el.addEventListener("scroll", h, { passive: true })
       cleanups.push(() => el.removeEventListener("scroll", h))
     })
-    return () => {
-      window.removeEventListener("scroll", onWindowScroll)
-      cleanups.forEach((c) => c())
-    }
-  }, [checkScroll])
-
-  const navContent = NAV_ITEMS.map((item) => {
-    const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-    return (
-      <a
-        key={item.key}
-        href={item.href}
-        className={cn(
-          "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-full transition-colors duration-100",
-          isActive
-            ? "bg-primary/10 text-primary"
-            : "text-muted-foreground active:text-primary active:bg-primary/10"
-        )}
-      >
-        <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
-        <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
-          {LABELS[locale]?.[item.key] ?? item.key}
-        </span>
-      </a>
-    )
-  })
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => { window.removeEventListener("scroll", onScroll); cleanups.forEach((c) => c()) }
+  }, [])
 
   return (
     <div
       className={cn(
         "fixed right-4 z-40 lg:hidden transition-all duration-300 ease-out",
-        !visible && !docked && "bottom-[-80px] opacity-0",
-        visible && !docked && "bottom-3 opacity-100",
-        docked && "bottom-1 opacity-100",
+        visible ? "bottom-3 opacity-100" : "bottom-[-80px] opacity-0",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <nav className="flex items-center gap-0.5 px-2 py-2 rounded-full glass-nav-pop">
-        {navContent}
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+          return (
+            <a
+              key={item.key}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center gap-[3px] w-20 py-2.5 rounded-full transition-colors duration-100",
+                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground active:text-primary active:bg-primary/10"
+              )}
+            >
+              <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
+              <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
+                {LABELS[locale]?.[item.key] ?? item.key}
+              </span>
+            </a>
+          )
+        })}
       </nav>
-      {/* White bar underneath when docked so content is visible */}
-      {docked && (
-        <div className="fixed bottom-0 left-0 right-0 -z-10 bg-background" style={{ height: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }} />
-      )}
     </div>
   )
 }

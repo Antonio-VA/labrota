@@ -194,7 +194,7 @@
     "copyPrevWeekConfirmBody": "Se creará un horario borrador con las asignaciones de la semana pasada. Personal de baja será omitido.",
     "deleteDayShifts": "Eliminar turno del día",
     "dragHint": "Arrastra aquí o + Añadir",
-    "offSection": "OFF · No programados",
+    "offSection": "Libres",
     "onLeaveSection": "De baja",
     "punctions": "Punciones",
     "ratioLabel": "Ratio",

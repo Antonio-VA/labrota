@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -11,6 +11,49 @@ import { getRotaWeek, type RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
+
+function WeekOverflow({ weekStart }: { weekStart: string }) {
+  const locale = useLocale()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+        <MoreHorizontal className="size-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+          <button
+            onClick={() => {
+              setOpen(false)
+              window.open(`/rota/${weekStart}/print`, "_blank")
+            }}
+            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+          >
+            <FileDown className="size-4" />
+            {locale === "es" ? "Exportar PDF" : "Export PDF"}
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false)
+              window.location.href = `/?generate=${weekStart}`
+            }}
+            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+          >
+            <Sparkles className="size-4" />
+            {locale === "es" ? "Generar horario" : "Generate rota"}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function MobileWeekClient() {
   const t = useTranslations("schedule")
@@ -68,12 +111,26 @@ export function MobileWeekClient() {
         >
           {tc("today")}
         </button>
+        <WeekOverflow weekStart={weekStart} />
       </div>
 
       {/* Scrollable grid */}
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{tc("loading")}</div>
+          <div className="p-4 flex flex-col gap-2">
+            <div className="grid grid-cols-8 gap-1">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-8 rounded bg-muted" style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }} />
+              ))}
+            </div>
+            {Array.from({ length: 4 }).map((_, r) => (
+              <div key={r} className="grid grid-cols-8 gap-1">
+                {Array.from({ length: 8 }).map((_, c) => (
+                  <div key={c} className="h-12 rounded bg-muted" style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite", animationDelay: `${(r * 8 + c) * 50}ms` }} />
+                ))}
+              </div>
+            ))}
+          </div>
         ) : !data || days.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{t("noRota")}</div>
         ) : (
@@ -121,7 +178,7 @@ export function MobileWeekClient() {
                       return (
                         <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 flex flex-wrap gap-0.5 content-start", isWeekend && "bg-muted/20")}>
                           {assignments.map((a) => (
-                            <span key={a.id} className="text-[8px] font-semibold rounded px-1 py-0.5 border border-border bg-background" style={{ borderLeft: `2px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}` }}>
+                            <span key={a.id} className="text-[10px] font-semibold rounded-md px-1 py-0.5 border border-border bg-background" style={{ borderLeft: `3px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}`, borderRadius: 6 }}>
                               {a.staff.first_name[0]}{a.staff.last_name[0]}
                             </span>
                           ))}
@@ -153,7 +210,7 @@ export function MobileWeekClient() {
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (
-                          <div key={a.id} className="text-[9px] font-medium rounded px-1 py-0.5 border border-border bg-background truncate" style={{ borderLeft: `2px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}` }}>
+                          <div key={a.id} className="text-[11px] font-medium rounded-md px-1.5 py-0.5 border border-border bg-background truncate" style={{ borderLeft: `3px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}`, borderRadius: 6 }}>
                             {a.staff.first_name} {a.staff.last_name[0]}.
                           </div>
                         ))}
