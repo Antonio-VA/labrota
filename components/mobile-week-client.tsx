@@ -223,11 +223,14 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
-                      <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
+                    <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
+                      <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
+                      <div className="px-1 py-2 flex flex-col items-end justify-center flex-1">
+                        <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
                       {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
                         <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
                       )}
+                      </div>
                     </div>
                     {days.map((day) => {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
