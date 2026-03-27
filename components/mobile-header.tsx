@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
-import { ChevronLeft, ChevronRight, Check, Star, Bell, User } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Star, Bell, User } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -42,7 +42,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header id="mobile-header" className="flex lg:hidden h-12 shrink-0 items-center border-b border-border bg-background px-3 gap-2.5">
+      <header id="mobile-header" className="flex lg:hidden h-14 shrink-0 items-center border-b border-border bg-background px-3 gap-2.5">
         {/* Left: org chip */}
         <button
           onClick={() => hasMultipleOrgs && setSheetOpen(true)}
@@ -59,7 +59,8 @@ export function MobileHeader({
               {orgInitials}
             </span>
           )}
-          <span className="text-[15px] font-semibold">{orgName ?? ""}</span>
+          <span className="text-[15px] font-medium">{orgName ?? ""}</span>
+          {hasMultipleOrgs && <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />}
         </button>
 
         <div className="flex-1" />
@@ -121,8 +122,8 @@ export function MobileHeader({
                     className="shrink-0 p-1"
                   >
                     <Star className={cn(
-                      "size-3.5 transition-colors",
-                      isDefault ? "text-amber-400 fill-amber-400" : "text-muted-foreground/20"
+                      "size-4 transition-colors",
+                      isDefault ? "text-amber-400 fill-amber-400" : "text-muted-foreground/40"
                     )} />
                   </button>
                 </div>
