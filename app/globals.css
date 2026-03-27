@@ -292,10 +292,9 @@ body {
   border: 0.5px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Hide header and floating nav in landscape on small devices */
-@media (orientation: landscape) and (max-height: 500px) {
+/* In landscape on phones, hide header to maximize rota space */
+@media (orientation: landscape) and (max-height: 440px) {
   #mobile-header { display: none !important; }
-  .glass-nav-pop { display: none !important; }
 }
 
 [data-theme="dark"] .glass-nav-pop {
