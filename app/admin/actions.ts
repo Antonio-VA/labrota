@@ -280,12 +280,27 @@ export async function updateOrgRegional(orgId: string, country: string, region: 
   await assertSuperAdmin()
 
   const admin = createAdminClient()
-  const { error } = await admin
-    .from("lab_config")
-    .update({ country, region, autonomous_community: region || null } as never)
-    .eq("organisation_id", orgId)
 
-  if (error) return { error: error.message }
+  // Ensure lab_config exists
+  const { data: existing } = await admin
+    .from("lab_config")
+    .select("organisation_id")
+    .eq("organisation_id", orgId)
+    .maybeSingle()
+
+  if (!existing) {
+    const { error } = await admin
+      .from("lab_config")
+      .insert({ organisation_id: orgId, country, region, autonomous_community: region || null } as never)
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await admin
+      .from("lab_config")
+      .update({ country, region, autonomous_community: region || null } as never)
+      .eq("organisation_id", orgId)
+    if (error) return { error: error.message }
+  }
+
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }

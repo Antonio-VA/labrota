@@ -291,12 +291,29 @@ export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }
 
 export async function updateOrgRegional(country: string, region: string): Promise<{ error?: string }> {
   const { orgId, admin } = await requireOrgAdmin()
-  const { error } = await admin
+
+  // Check if lab_config exists — create if missing
+  const { data: existing } = await admin
     .from("lab_config")
-    .update({ country, region, autonomous_community: region || null } as never)
+    .select("organisation_id")
     .eq("organisation_id", orgId)
-  if (error) return { error: error.message }
+    .maybeSingle()
+
+  if (!existing) {
+    const { error: insertError } = await admin
+      .from("lab_config")
+      .insert({ organisation_id: orgId, country, region, autonomous_community: region || null } as never)
+    if (insertError) return { error: insertError.message }
+  } else {
+    const { error } = await admin
+      .from("lab_config")
+      .update({ country, region, autonomous_community: region || null } as never)
+      .eq("organisation_id", orgId)
+    if (error) return { error: error.message }
+  }
+
   revalidatePath("/settings")
+  revalidatePath("/")
   return {}
 }
 
