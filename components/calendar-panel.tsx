@@ -2842,8 +2842,8 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             <div key={shiftCode} className="flex flex-col gap-1.5">
               {/* Shift header */}
               <div className="flex items-center gap-2 pl-2 border-l-[3px] border-primary/40">
-                <span className="text-[13px] font-semibold">{shiftCode}</span>
-                {timeLabel && <span className="text-[11px] text-muted-foreground">{timeLabel}</span>}
+                <span className="text-[14px] font-semibold">{shiftCode}</span>
+                {timeLabel && <span className="text-[12px] text-muted-foreground">{timeLabel}</span>}
                 <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
               </div>
               <div className="flex flex-col gap-1">
@@ -2863,7 +2863,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       return (
                         <span
                           key={a.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] font-medium"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium"
                           style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
                         >
                           {a.staff.first_name} {a.staff.last_name[0]}.
@@ -2885,11 +2885,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   return (
                     <div
                       key={a.id}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border bg-background"
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-background"
                       style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
                     >
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                        <span className="text-[14px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
+                        <span className="text-[15px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
                         {fnLabel && (
                           <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">{fnLabel}</span>
                         )}
@@ -4260,14 +4260,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               <span className="text-[16px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px] text-primary-foreground/70 hover:text-primary-foreground">
-                  {tc("cancel")}
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-9 text-[13px]">
-                  {tc("save")}
-                </Button>
-              </div>
+              <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-10 px-5 text-[14px]">
+                {locale === "es" ? "Listo" : "Done"}
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-20">
@@ -4341,9 +4336,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 staffList={staffList}
                 isEditMode={mobileEditMode}
                 onRemoveAssignment={async (id) => {
+                  // Optimistic remove
+                  setWeekData((prev) => {
+                    if (!prev) return prev
+                    return { ...prev, days: prev.days.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== id) })) }
+                  })
                   const result = await removeAssignment(id)
-                  if (result.error) toast.error(result.error)
-                  else fetchWeekSilent(weekStart)
+                  if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
                 loading={loadingWeek}
                 locale={locale}
@@ -4357,9 +4356,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 data={weekData}
                 isEditMode={mobileEditMode}
                 onRemoveAssignment={async (id) => {
+                  // Optimistic: remove from local state immediately
+                  setWeekData((prev) => {
+                    if (!prev) return prev
+                    return { ...prev, days: prev.days.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== id) })) }
+                  })
                   const result = await removeAssignment(id)
-                  if (result.error) toast.error(result.error)
-                  else fetchWeekSilent(weekStart)
+                  if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
                 onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
                 staffList={staffList}

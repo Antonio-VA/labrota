@@ -125,7 +125,7 @@ export function MobileTaskDayView({
                   return (
                     <span
                       key={a.id}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] font-medium"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium"
                       style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}
                     >
                       {a.staff.first_name} {a.staff.last_name[0]}.
