@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -24,15 +24,13 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
   }, [open])
 
   const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
-  if (allWarnings.length === 0) return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+  if (allWarnings.length === 0) return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-medium shrink-0"><CheckCircle2 className="size-3" /></span>
 
   return (
     <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} className="relative size-9 flex items-center justify-center rounded-full active:bg-accent">
-        <AlertTriangle className="size-5 text-amber-500" />
-        <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[8px] font-bold">
-          {allWarnings.length > 9 ? "9+" : allWarnings.length}
-        </span>
+      <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-medium active:bg-amber-100">
+        <AlertTriangle className="size-3" />
+        {allWarnings.length}
       </button>
       {open && (
         <div className="absolute right-0 top-10 z-[200] w-72 max-h-[50vh] overflow-y-auto rounded-lg border border-border bg-background shadow-lg py-2">
@@ -165,25 +163,25 @@ export function MobileWeekClient() {
           <div className="p-3 flex flex-col gap-1.5 animate-pulse">
             {/* Header row */}
             <div className="grid grid-cols-8 gap-1">
-              <div className="h-10 rounded-md bg-muted" />
+              <div className="h-10 rounded-md bg-muted-foreground/15" />
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-10 rounded-md bg-muted" />
+                <div key={i} className="h-10 rounded-md bg-muted-foreground/15" />
               ))}
             </div>
             {/* Shift rows */}
             {Array.from({ length: 5 }).map((_, r) => (
               <div key={r} className="grid grid-cols-8 gap-1">
-                <div className="h-14 rounded-md bg-muted/80" />
+                <div className="h-14 rounded-md bg-muted-foreground/12" />
                 {Array.from({ length: 7 }).map((_, c) => (
-                  <div key={c} className="h-14 rounded-md bg-muted/60" />
+                  <div key={c} className="h-14 rounded-md bg-muted-foreground/10" />
                 ))}
               </div>
             ))}
             {/* Libres row */}
             <div className="grid grid-cols-8 gap-1">
-              <div className="h-8 rounded-md bg-muted/40" />
+              <div className="h-8 rounded-md bg-muted-foreground/8" />
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-8 rounded-md bg-muted/30" />
+                <div key={i} className="h-8 rounded-md bg-muted-foreground/6" />
               ))}
             </div>
           </div>
@@ -228,7 +226,7 @@ export function MobileWeekClient() {
                     <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
                       <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
                       <div className="px-1 py-2 flex flex-col items-end justify-center flex-1">
-                        <span className="text-[10px] font-semibold text-foreground">{tec.codigo}</span>
+                        <span className="text-[11px] font-semibold text-foreground">{tec.codigo}</span>
                       {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
                         <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
                       )}
@@ -295,26 +293,45 @@ export function MobileWeekClient() {
             )}
             {/* Libres row */}
             {(() => {
-              // Build staff name map from all assignments
+              // Build staff name map from all assignments + staffList
               const staffMap: Record<string, { fn: string; ln: string; role: string }> = {}
               for (const d of days) for (const a of d.assignments) {
                 if (!staffMap[a.staff_id]) staffMap[a.staff_id] = { fn: a.staff.first_name, ln: a.staff.last_name, role: a.staff.role }
               }
+              const LEAVE_ICONS: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
+              const LEAVE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+                annual:    { border: "#7DD3FC", bg: "#F0F9FF", text: "#0369A1" },
+                sick:      { border: "#FCA5A5", bg: "#FEF2F2", text: "#DC2626" },
+                personal:  { border: "#C4B5FD", bg: "#F5F3FF", text: "#7C3AED" },
+                training:  { border: "#FCD34D", bg: "#FFFBEB", text: "#D97706" },
+                maternity: { border: "#F9A8D4", bg: "#FDF2F8", text: "#DB2777" },
+                other:     { border: "#CBD5E1", bg: "#F8FAFC", text: "#475569" },
+              }
               return (
-            <div className="grid border-b border-border bg-muted/10" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+            <div className="grid border-b border-border bg-muted/30" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
               {days.map((day) => {
                 const leaveIds = [...(data?.onLeaveByDate?.[day.date] ?? [])]
+                const leaveTypes = data?.onLeaveTypeByDate?.[day.date] ?? {}
                 return (
-                  <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start">
+                  <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start bg-muted/20">
                     {leaveIds.map((sid) => {
                       const s = staffMap[sid]
+                      const lType = (leaveTypes[sid] ?? "other") as keyof typeof LEAVE_ICONS
+                      const LeaveIcon = LEAVE_ICONS[lType] ?? CalendarX
+                      const colors = LEAVE_COLORS[lType] ?? LEAVE_COLORS.other
                       return (
-                      <span key={sid} className="text-[8px] font-medium rounded px-0.5 py-0.5 border border-amber-200 bg-amber-50 text-amber-700 truncate" title={s ? `${s.fn} ${s.ln}` : "On leave"}>
-                        {s ? `${s.fn[0]}${s.ln[0]}` : "🌴"}
-                      </span>
+                        <TapPopover key={sid} trigger={
+                          <span className="inline-flex items-center gap-0.5 text-[8px] font-medium rounded px-0.5 py-0.5 border cursor-pointer active:scale-95" style={{ borderColor: colors.border, backgroundColor: colors.bg, color: colors.text }} title={s ? `${s.fn} ${s.ln}` : "On leave"}>
+                            <LeaveIcon className="size-2 shrink-0" />
+                            {s ? `${s.fn[0]}${s.ln[0]}` : "?"}
+                          </span>
+                        }>
+                          <p className="font-medium">{s ? `${s.fn} ${s.ln}` : "Staff"}</p>
+                          <p className="text-[11px] opacity-70">{lType}</p>
+                        </TapPopover>
                       )
                     })}
                   </div>

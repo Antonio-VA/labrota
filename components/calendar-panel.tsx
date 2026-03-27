@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -2749,6 +2749,8 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
       deptLabelMap[d.code] = d.name
     }
   }
+  // Leave type icons
+  const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
   // Staff individual colors
   const FALLBACK_COLORS_DAY = [
     "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
@@ -2970,12 +2972,14 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 {onLeave.map((s) => {
                   const isHov = hoveredStaffId === s.id
                   const sColor = staffColorMap[s.id] ?? "#BFDBFE"
+                  const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
+                  const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
                   return (
                     <TapPopover key={s.id} trigger={
                       <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95 transition-colors", isHov ? "" : "border-amber-200 bg-amber-50 text-amber-700")}
                         style={isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : undefined}
                         onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
-                        <Plane className="size-2.5 shrink-0" />
+                        <LeaveIcon className="size-2.5 shrink-0" />
                         {s.first_name} {s.last_name[0]}.
                       </span>
                     }>
@@ -3004,12 +3008,16 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                {onLeave.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
-                    <Plane className="size-3 text-amber-500 shrink-0" />
-                    <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
-                  </div>
-                ))}
+                {onLeave.map((s) => {
+                  const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
+                  const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
+                  return (
+                    <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
+                      <LeaveIcon className="size-3 text-amber-500 shrink-0" />
+                      <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
+                    </div>
+                  )
+                })}
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
                   return (

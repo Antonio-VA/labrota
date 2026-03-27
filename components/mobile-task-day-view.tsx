@@ -3,7 +3,7 @@
 import { Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { X, AlertTriangle, Plane } from "lucide-react"
+import { X, AlertTriangle, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TapPopover } from "@/components/tap-popover"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -20,6 +20,7 @@ const TECNICA_DOT: Record<string, string> = {
 }
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
+const LEAVE_ICON: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
 
 interface MobileTaskDayViewProps {
   day: RotaDay | null
@@ -214,7 +215,7 @@ export function MobileTaskDayView({
 
       {/* OFF section */}
       {(onLeave.length > 0 || offDuty.length > 0) && (
-        <div className="flex flex-col gap-1.5 mt-2 pt-3 border-t border-dashed border-border">
+        <div className="flex flex-col gap-1.5 mt-2 pt-3 pb-2 px-2 -mx-2 border-t border-dashed border-border bg-muted/30 rounded-lg">
           <div className="flex items-center gap-2 pl-2">
             <span className="text-[13px] font-medium text-muted-foreground">{t("offSection")}</span>
             <span className="text-[12px] text-muted-foreground/60">{onLeave.length + offDuty.length}</span>
@@ -223,6 +224,8 @@ export function MobileTaskDayView({
             {onLeave.map((s) => {
               const isHov = hoveredStaffId === s.id
               const sColor = staffColorMap[s.id] ?? "#BFDBFE"
+              const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
+              const LeaveIcon = LEAVE_ICON[leaveType] ?? CalendarX
               return (
                 <span
                   key={s.id}
@@ -230,7 +233,7 @@ export function MobileTaskDayView({
                   style={isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : undefined}
                   onClick={() => setHovered(hoveredStaffId === s.id ? null : s.id)}
                 >
-                  <Plane className="size-2.5 shrink-0" />
+                  <LeaveIcon className="size-2.5 shrink-0" />
                   {s.first_name} {s.last_name[0]}.
                 </span>
               )
