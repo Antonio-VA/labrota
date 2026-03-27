@@ -57,7 +57,7 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-2.5 py-1 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-2.5 py-1.5 rounded-full glass-nav-pop">
         {NAV_ITEMS.map((item) => {
           const isActive = (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)) || tapped === item.key
           return (

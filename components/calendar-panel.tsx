@@ -2866,13 +2866,10 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       const deptName = deptLabelMap[a.staff.role] ?? a.staff.role
                       const workDays = staffMember?.working_pattern ?? []
                       const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
-                      const isHov = hoveredStaffId === a.staff_id
                       const pillContent = (
                         <span
-                          className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-pointer transition-colors active:scale-95", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
-                          style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
-                          onMouseEnter={() => setHovered(a.staff_id)}
-                          onMouseLeave={() => setHovered(null)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-pointer transition-colors active:scale-95"
+                          style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
                         >
                           {a.staff.first_name} {a.staff.last_name[0]}.
                           {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
@@ -2907,15 +2904,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 }).map((a) => {
                   const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                   const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
-                  const isHov = hoveredStaffId === a.staff_id
                   return (
                     <div
                       key={a.id}
-                      className={cn("flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
-                      style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
-                      onMouseEnter={() => setHovered(a.staff_id)}
-                      onMouseLeave={() => setHovered(null)}
-                      onClick={() => setHovered(hoveredStaffId === a.staff_id ? null : a.staff_id)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-background"
+                      style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
                     >
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
                         <span className="text-[15px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
@@ -2967,25 +2960,31 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             </div>
             {mobileCompact ? (
               <div className="flex flex-wrap gap-1">
-                {onLeave.map((s) => (
-                  <TapPopover key={s.id} trigger={
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95", hoveredStaffId === s.id ? "border-primary bg-primary/10 text-primary" : "border-amber-200 bg-amber-50 text-amber-700")}
-                      onMouseEnter={() => setHovered(s.id)} onMouseLeave={() => setHovered(null)}>
-                      <Plane className="size-2.5 shrink-0" />
-                      {s.first_name} {s.last_name[0]}.
-                    </span>
-                  }>
-                    <p className="font-medium">{s.first_name} {s.last_name}</p>
-                    <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
-                  </TapPopover>
-                ))}
+                {onLeave.map((s) => {
+                  const roleColor = deptColorMap[s.role] ?? "#64748B"
+                  const isHov = hoveredStaffId === s.id
+                  return (
+                    <TapPopover key={s.id} trigger={
+                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95 transition-colors", isHov ? "text-foreground" : "border-amber-200 bg-amber-50 text-amber-700")}
+                        style={isHov ? { backgroundColor: roleColor + "20", borderColor: roleColor + "50" } : undefined}
+                        onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
+                        <Plane className="size-2.5 shrink-0" />
+                        {s.first_name} {s.last_name[0]}.
+                      </span>
+                    }>
+                      <p className="font-medium">{s.first_name} {s.last_name}</p>
+                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
+                    </TapPopover>
+                  )
+                })}
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
                   const isHov = hoveredStaffId === s.id
                   return (
                     <TapPopover key={s.id} trigger={
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95", isHov ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground")} style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
-                        onMouseEnter={() => setHovered(s.id)} onMouseLeave={() => setHovered(null)}>
+                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95 transition-colors", isHov ? "text-foreground" : "border-border bg-background text-muted-foreground")}
+                        style={{ ...(isHov ? { backgroundColor: roleColor + "20", borderColor: roleColor + "50" } : (mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {})), borderRadius: 6 }}
+                        onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
                         {s.first_name} {s.last_name[0]}.
                       </span>
                     }>
