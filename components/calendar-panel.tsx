@@ -1414,7 +1414,7 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
         for (const arr of Object.values(byCategory)) for (const e of arr) uniqueDays.add(e.day)
         const singleDay = uniqueDays.size === 1
         return (
-          <div className="absolute right-0 top-full mt-1 z-50 w-80 rounded-lg border border-border bg-background shadow-lg py-2.5 max-h-[60vh] overflow-y-auto">
+          <div className="absolute right-0 top-full mt-1 z-[200] w-[min(320px,90vw)] rounded-lg border border-border bg-background shadow-lg py-2.5 max-h-[50vh] overflow-y-auto">
             {singleDay && <p className="px-3 pb-1.5 text-[13px] font-medium capitalize">{[...uniqueDays][0]}</p>}
             {sortedCategories.map((cat) => (
               <div key={cat} className="px-3 py-2">
