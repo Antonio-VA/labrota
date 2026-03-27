@@ -90,10 +90,15 @@ export function MobileWeekClient() {
                 const num = date.getDate()
                 const isToday = day.date === today
                 const isWeekend = [0, 6].includes(date.getDay())
+                const isSat = date.getDay() === 6
                 return (
-                  <div key={day.date} className={cn("px-1 py-2 text-center border-r border-border last:border-r-0", isWeekend && "bg-muted/60")}>
+                  <div key={day.date} className={cn("px-1 py-2 text-center border-r border-border last:border-r-0", isWeekend && "bg-muted/50", isSat && "border-l border-dashed border-l-border")}>
                     <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
-                    <p className={cn("text-[14px] font-semibold", isToday && "text-primary")}>{num}</p>
+                    {isToday ? (
+                      <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-[14px] font-bold">{num}</span>
+                    ) : (
+                      <p className={cn("text-[14px] font-semibold", isWeekend && "text-muted-foreground")}>{num}</p>
+                    )}
                   </div>
                 )
               })}
@@ -136,12 +141,15 @@ export function MobileWeekClient() {
                   </div>
                   {days.map((day) => {
                     const assignments = day.assignments.filter((a) => a.shift_type === st.code)
-                    const isWeekend = [0, 6].includes(new Date(day.date + "T12:00:00").getDay())
+                    const dow = new Date(day.date + "T12:00:00").getDay()
+                    const isWeekend = [0, 6].includes(dow)
+                    const isSatCell = dow === 6
+                    const isTodayCell = day.date === today
                     const activeDays = (shiftTypeMap[st.code] as { active_days?: string[] })?.active_days
-                    const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(day.date + "T12:00:00").getDay()]
+                    const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
                     return (
-                      <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40")}>
+                      <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (

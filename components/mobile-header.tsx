@@ -66,13 +66,15 @@ export function MobileHeader({
         <div className="flex-1" />
 
         {/* Right: notifications + account */}
-        <NotificationBell />
-        <a
-          href="/mobile-account"
-          className="size-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <User className="size-4" />
-        </a>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <a
+            href="/mobile-account"
+            className="size-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors"
+          >
+            <User className="size-5" />
+          </a>
+        </div>
       </header>
 
       {/* Lab switcher bottom sheet */}
