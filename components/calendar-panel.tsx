@@ -4312,7 +4312,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onGenerateDay={currentDayData ? async () => {
                     const result = await regenerateDay(weekStart, currentDate)
                     if (result.error) toast.error(result.error)
-                    else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeek(weekStart) }
+                    else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeekSilent(weekStart) }
                   } : undefined}
                   isPending={isPending}
                   compact={mobileCompact}
@@ -4343,7 +4343,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onRemoveAssignment={async (id) => {
                   const result = await removeAssignment(id)
                   if (result.error) toast.error(result.error)
-                  else fetchWeek(weekStart)
+                  else fetchWeekSilent(weekStart)
                 }}
                 loading={loadingWeek}
                 locale={locale}
@@ -4359,7 +4359,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onRemoveAssignment={async (id) => {
                   const result = await removeAssignment(id)
                   if (result.error) toast.error(result.error)
-                  else fetchWeek(weekStart)
+                  else fetchWeekSilent(weekStart)
                 }}
                 onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
                 staffList={staffList}
@@ -4395,7 +4395,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               onLeaveStaffIds={leaveIds}
               shiftTypes={weekData?.shiftTypes ?? []}
               weeklyAssignmentCounts={weeklyCounts}
-              onAdded={() => fetchWeek(weekStart)}
+              onAdded={() => fetchWeekSilent(weekStart)}
             />
           )
         })()}
