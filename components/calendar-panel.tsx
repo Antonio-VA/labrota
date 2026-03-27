@@ -2739,6 +2739,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   const ts = useTranslations("skills")
 
   // Build dept color map: role code → colour
+  const { hoveredStaffId, setHovered } = useStaffHover()
   const deptColorMap: Record<string, string> = {}
   const deptLabelMap: Record<string, string> = {}
   for (const d of departments) {
@@ -2864,12 +2865,16 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       const deptName = deptLabelMap[a.staff.role] ?? a.staff.role
                       const workDays = staffMember?.working_pattern ?? []
                       const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
+                      const isHov = hoveredStaffId === a.staff_id
                       return (
                         <Tooltip key={a.id}>
                           <TooltipTrigger render={
                             <span
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-default"
-                              style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
+                              className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-default transition-colors", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
+                              style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
+                              onMouseEnter={() => setHovered(a.staff_id)}
+                              onMouseLeave={() => setHovered(null)}
+                              onClick={() => setHovered(hoveredStaffId === a.staff_id ? null : a.staff_id)}
                             >
                               {a.staff.first_name} {a.staff.last_name[0]}.
                               {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
@@ -2893,11 +2898,15 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 }).map((a) => {
                   const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                   const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
+                  const isHov = hoveredStaffId === a.staff_id
                   return (
                     <div
                       key={a.id}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-background"
-                      style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
+                      className={cn("flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
+                      style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
+                      onMouseEnter={() => setHovered(a.staff_id)}
+                      onMouseLeave={() => setHovered(null)}
+                      onClick={() => setHovered(hoveredStaffId === a.staff_id ? null : a.staff_id)}
                     >
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
                         <span className="text-[15px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
@@ -3351,7 +3360,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -3392,6 +3401,13 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onT
                   <span className="size-4 rounded-sm shrink-0" style={{ borderLeft: "3px solid #3B82F6", borderTop: "3px solid #10B981", borderRight: "3px solid #64748B", borderBottom: "3px solid #F59E0B" }} />
                   {locale === "es" ? "Colores departamento" : "Department colors"}
                   {deptColor && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
+                </button>
+              )}
+              {onToggleHighlight && (
+                <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
+                  {locale === "es" ? "Resaltar persona" : "Highlight person"}
+                  {highlight && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
                 </button>
               )}
             </>
@@ -4342,6 +4358,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onToggleCompact={() => { const next = !mobileCompact; setMobileCompact(next); localStorage.setItem("labrota_mobile_compact", String(next)) }}
                   deptColor={mobileDeptColor}
                   onToggleDeptColor={() => { const next = !mobileDeptColor; setMobileDeptColor(next); localStorage.setItem("labrota_mobile_dept_color", String(next)) }}
+                  highlight={highlightHover}
+                  onToggleHighlight={() => setHighlightHover(!highlightHover)}
                 />
               )}
             </div>
