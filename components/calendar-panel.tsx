@@ -2867,26 +2867,35 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       const workDays = staffMember?.working_pattern ?? []
                       const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
                       const isHov = hoveredStaffId === a.staff_id
-                      return (
-                        <TapPopover
-                          key={a.id}
-                          trigger={
-                            <span
-                              className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-pointer transition-colors active:scale-95", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
-                              style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
-                              onMouseEnter={() => setHovered(a.staff_id)}
-                              onMouseLeave={() => setHovered(null)}
-                            >
-                              {a.staff.first_name} {a.staff.last_name[0]}.
-                              {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
-                              {isEditMode && onRemoveAssignment && (
-                                <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
-                              )}
-                            </span>
-                          }
+                      const pillContent = (
+                        <span
+                          className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-pointer transition-colors active:scale-95", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
+                          style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
+                          onMouseEnter={() => setHovered(a.staff_id)}
+                          onMouseLeave={() => setHovered(null)}
                         >
+                          {a.staff.first_name} {a.staff.last_name[0]}.
+                          {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
+                          {isEditMode && onRemoveAssignment && (
+                            <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
+                          )}
+                        </span>
+                      )
+                      return isEditMode ? (
+                        <Fragment key={a.id}>{pillContent}</Fragment>
+                      ) : (
+                        <TapPopover key={a.id} trigger={pillContent}>
                           <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                          <p className="text-[11px] opacity-70">{deptName} · {staffMember?.days_per_week ?? "?"}d/{locale === "es" ? "sem" : "wk"} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
+                          {(() => {
+                            // Show actual days working this week
+                            const weekDays = data?.days ?? []
+                            const workedDays = weekDays.filter((d) => d.assignments.some((as) => as.staff_id === a.staff_id))
+                            const dayAbbrs = workedDays.map((d) => {
+                              const dow = new Date(d.date + "T12:00:00").getDay()
+                              return (["D", "L", "M", "X", "J", "V", "S"])[dow]
+                            })
+                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d · {dayAbbrs.join(" ")}</p>
+                          })()}
                         </TapPopover>
                       )
                     })}
