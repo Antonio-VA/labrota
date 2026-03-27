@@ -223,7 +223,7 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-1 py-1.5 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
+                    <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
                       <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
                       {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
                         <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
@@ -233,9 +233,9 @@ export function MobileWeekClient() {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
                       const isWeekend = [0, 6].includes(new Date(day.date + "T12:00:00").getDay())
                       return (
-                        <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start", isWeekend && "bg-muted/20")}>
+                        <div key={day.date} className={cn("px-1 py-1.5 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start", isWeekend && "bg-muted/20")}>
                           {assignments.map((a) => (
-                            <span key={a.id} className="text-[10px] font-semibold rounded-md px-1 py-0.5 border border-border bg-background" style={{ borderLeft: `3px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}`, borderRadius: 6 }}>
+                            <span key={a.id} className="text-[10px] font-medium rounded px-1.5 py-1 border border-border bg-background">
                               {a.staff.first_name[0]}{a.staff.last_name[0]}
                             </span>
                           ))}
@@ -263,11 +263,11 @@ export function MobileWeekClient() {
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
                     return (
-                      <div key={day.date} className={cn("px-1 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
+                      <div key={day.date} className={cn("px-1 py-1.5 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-0.5", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isTodayCell && "bg-primary/5", isSatCell && "border-l border-dashed border-l-border")}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => (
-                          <div key={a.id} className="text-[11px] font-medium rounded-md px-1.5 py-0.5 border border-border bg-background truncate" style={{ borderLeft: `3px solid ${ROLE_COLOR[a.staff.role] ?? "#64748B"}`, borderRadius: 6 }}>
+                          <div key={a.id} className="text-[11px] font-medium rounded px-1.5 py-1 border border-border bg-background truncate">
                             {a.staff.first_name} {a.staff.last_name[0]}.
                           </div>
                         ))}
