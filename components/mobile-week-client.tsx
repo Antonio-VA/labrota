@@ -12,6 +12,43 @@ import { getMondayOfWeek } from "@/lib/rota-engine"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
+function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
+  if (allWarnings.length === 0) return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} className="relative size-9 flex items-center justify-center rounded-full active:bg-accent">
+        <AlertTriangle className="size-5 text-amber-500" />
+        <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[8px] font-bold">
+          {allWarnings.length > 9 ? "9+" : allWarnings.length}
+        </span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-10 z-[200] w-72 max-h-[50vh] overflow-y-auto rounded-lg border border-border bg-background shadow-lg py-2">
+          {allWarnings.map((w, i) => {
+            const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(w.day + "T12:00:00"))
+            return (
+              <p key={i} className="px-3 py-1 text-[12px] text-muted-foreground">
+                <span className="font-medium text-foreground capitalize">{dayLabel}</span> · {w.message}
+              </p>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WeekOverflow({ weekStart }: { weekStart: string }) {
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -116,17 +153,8 @@ export function MobileWeekClient() {
         >
           {tc("today")}
         </button>
-        {/* Avisos icon */}
-        {(() => {
-          const warnCount = days.reduce((n, d) => n + d.warnings.length, 0)
-          if (!data || warnCount === 0) return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-          return (
-            <div className="relative size-9 flex items-center justify-center shrink-0">
-              <AlertTriangle className="size-5 text-amber-500" />
-              <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[8px] font-bold">{warnCount > 9 ? "9+" : warnCount}</span>
-            </div>
-          )
-        })()}
+        {/* Avisos — tappable with overlay */}
+        <WeekAvisos days={days} locale={locale} />
         <WeekOverflow weekStart={weekStart} />
       </div>
 
@@ -272,32 +300,6 @@ export function MobileWeekClient() {
                 )
               })}
             </div>
-            {/* Avisos summary */}
-            {(() => {
-              const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
-              if (allWarnings.length === 0) return null
-              return (
-                <div className="px-3 py-3 border-t border-border">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <AlertTriangle className="size-4 text-amber-500" />
-                    <span className="text-[13px] font-medium">{locale === "es" ? "Avisos" : "Warnings"} ({allWarnings.length})</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {allWarnings.slice(0, 8).map((w, i) => {
-                      const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(w.day + "T12:00:00"))
-                      return (
-                        <p key={i} className="text-[12px] text-muted-foreground">
-                          <span className="font-medium capitalize">{dayLabel}</span> · {w.message}
-                        </p>
-                      )
-                    })}
-                    {allWarnings.length > 8 && (
-                      <p className="text-[11px] text-muted-foreground/60">+{allWarnings.length - 8} {locale === "es" ? "más" : "more"}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })()}
 
           </div>
         )}
