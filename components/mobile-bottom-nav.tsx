@@ -66,9 +66,13 @@ export function MobileBottomNav() {
               )}
             >
               {item.key === "day" ? (
-                <div className="relative size-[22px]">
-                  <CalendarDays className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
-                  <span className={cn("absolute bottom-[1px] left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                <div className="relative size-[24px] flex items-center justify-center">
+                  {/* Empty calendar frame */}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                  </svg>
+                  <span className={cn("absolute top-[11px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
                     {new Date().getDate()}
                   </span>
                 </div>

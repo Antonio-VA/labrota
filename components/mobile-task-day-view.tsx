@@ -36,10 +36,17 @@ export function MobileTaskDayView({
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
-        <Skeleton className="h-5 w-48" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+      <div className="flex flex-col gap-4 max-w-lg mx-auto w-full animate-pulse">
+        <Skeleton className="h-5 w-40 rounded-md" />
+        {Array.from({ length: 5 }).map((_, g) => (
+          <div key={g} className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-28 rounded" />
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 3 + g % 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 rounded-md" style={{ width: `${55 + Math.random() * 35}px` }} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     )

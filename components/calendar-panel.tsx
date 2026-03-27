@@ -2750,14 +2750,16 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-3 w-full">
-        <Skeleton className="h-6 w-32 rounded-md" />
-        {Array.from({ length: 3 }).map((_, g) => (
-          <div key={g} className="flex flex-col gap-1.5">
-            <Skeleton className="h-4 w-24 rounded" />
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
+      <div className="flex flex-col gap-4 w-full animate-pulse">
+        <Skeleton className="h-5 w-40 rounded-md" />
+        {Array.from({ length: 4 }).map((_, g) => (
+          <div key={g} className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-28 rounded" />
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 4 + g }).map((_, i) => (
+                <Skeleton key={i} className="h-8 rounded-md" style={{ width: `${60 + Math.random() * 40}px` }} />
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -4254,7 +4256,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {/* Sticky toolbar */}
           {mobileEditMode ? (
-            <div className="flex items-center justify-between h-16 px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-10">
+            <div className="flex items-center justify-between h-[68px] px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-20">
               <span className="text-[16px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>

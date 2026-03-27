@@ -122,19 +122,30 @@ export function MobileWeekClient() {
       {/* Scrollable grid */}
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="p-4 flex flex-col gap-2">
+          <div className="p-3 flex flex-col gap-1.5 animate-pulse">
+            {/* Header row */}
             <div className="grid grid-cols-8 gap-1">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-8 rounded bg-muted" style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }} />
+              <div className="h-10 rounded-md bg-muted" />
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-10 rounded-md bg-muted" />
               ))}
             </div>
-            {Array.from({ length: 4 }).map((_, r) => (
+            {/* Shift rows */}
+            {Array.from({ length: 5 }).map((_, r) => (
               <div key={r} className="grid grid-cols-8 gap-1">
-                {Array.from({ length: 8 }).map((_, c) => (
-                  <div key={c} className="h-12 rounded bg-muted" style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite", animationDelay: `${(r * 8 + c) * 50}ms` }} />
+                <div className="h-14 rounded-md bg-muted/80" />
+                {Array.from({ length: 7 }).map((_, c) => (
+                  <div key={c} className="h-14 rounded-md bg-muted/60" />
                 ))}
               </div>
             ))}
+            {/* Libres row */}
+            <div className="grid grid-cols-8 gap-1">
+              <div className="h-8 rounded-md bg-muted/40" />
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-8 rounded-md bg-muted/30" />
+              ))}
+            </div>
           </div>
         ) : !data || days.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{t("noRota")}</div>
