@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -116,6 +116,17 @@ export function MobileWeekClient() {
         >
           {tc("today")}
         </button>
+        {/* Avisos icon */}
+        {(() => {
+          const warnCount = days.reduce((n, d) => n + d.warnings.length, 0)
+          if (!data || warnCount === 0) return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+          return (
+            <div className="relative size-9 flex items-center justify-center shrink-0">
+              <AlertTriangle className="size-5 text-amber-500" />
+              <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[8px] font-bold">{warnCount > 9 ? "9+" : warnCount}</span>
+            </div>
+          )
+        })()}
         <WeekOverflow weekStart={weekStart} />
       </div>
 
