@@ -66,7 +66,7 @@ function WeekOverflow({ weekStart }: { weekStart: string }) {
         <MoreHorizontal className="size-5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+        <div className="absolute right-0 top-10 z-[200] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
           <button
             onClick={() => {
               setOpen(false)
@@ -228,7 +228,7 @@ export function MobileWeekClient() {
                     <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
                       <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
                       <div className="px-1 py-2 flex flex-col items-end justify-center flex-1">
-                        <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
+                        <span className="text-[10px] font-semibold text-foreground">{tec.codigo}</span>
                       {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
                         <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
                       )}
