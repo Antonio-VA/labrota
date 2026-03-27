@@ -3472,6 +3472,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
+  const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
   const [mobileCompact, setMobileCompact] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("labrota_mobile_compact") !== "false"
@@ -4271,9 +4272,25 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               <span className="text-[16px] font-semibold">
                 {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
               </span>
-              <Button size="sm" variant="secondary" onClick={() => setMobileEditMode(false)} className="h-10 px-5 text-[14px]">
-                {locale === "es" ? "Listo" : "Done"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    // Undo: restore snapshot and re-fetch server state
+                    if (preEditSnapshot) {
+                      setWeekData(preEditSnapshot)
+                    }
+                    setMobileEditMode(false)
+                    setPreEditSnapshot(null)
+                    fetchWeekSilent(weekStart)
+                  }}
+                  className="h-10 px-4 text-[13px] font-medium text-primary-foreground/70 active:text-primary-foreground rounded-lg"
+                >
+                  {tc("cancel")}
+                </button>
+                <Button size="sm" variant="secondary" onClick={() => { setMobileEditMode(false); setPreEditSnapshot(null) }} className="h-10 px-5 text-[14px]">
+                  {locale === "es" ? "Listo" : "Done"}
+                </Button>
+              </div>
             </div>
           ) : (
             <div data-mobile-toolbar className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-20">
@@ -4308,7 +4325,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <WarningsPill days={weekData?.days ?? []} staffList={staffList} />
               )}
               {canEdit && (
-                <button onClick={() => setMobileEditMode(true)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
                   <Pencil className="size-4" />
                 </button>
               )}
