@@ -223,8 +223,11 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
+                    <div className="px-1 py-1.5 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center" style={{ borderLeft: `3px solid ${dotColor}` }}>
                       <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
+                      {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
+                        <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
+                      )}
                     </div>
                     {days.map((day) => {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
@@ -275,23 +278,35 @@ export function MobileWeekClient() {
               ))
             )}
             {/* Libres row */}
+            {(() => {
+              // Build staff name map from all assignments
+              const staffMap: Record<string, { fn: string; ln: string; role: string }> = {}
+              for (const d of days) for (const a of d.assignments) {
+                if (!staffMap[a.staff_id]) staffMap[a.staff_id] = { fn: a.staff.first_name, ln: a.staff.last_name, role: a.staff.role }
+              }
+              return (
             <div className="grid border-b border-border bg-muted/10" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
               {days.map((day) => {
-                const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
+                const leaveIds = [...(data?.onLeaveByDate?.[day.date] ?? [])]
                 return (
                   <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start">
-                    {[...leaveIds].map((sid) => (
-                      <span key={sid} className="text-[8px] font-medium rounded px-0.5 py-0.5 border border-amber-200 bg-amber-50 text-amber-700 truncate" title="On leave">
-                        🌴
+                    {leaveIds.map((sid) => {
+                      const s = staffMap[sid]
+                      return (
+                      <span key={sid} className="text-[8px] font-medium rounded px-0.5 py-0.5 border border-amber-200 bg-amber-50 text-amber-700 truncate" title={s ? `${s.fn} ${s.ln}` : "On leave"}>
+                        {s ? `${s.fn[0]}${s.ln[0]}` : "🌴"}
                       </span>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })}
             </div>
+              )
+            })()}
 
           </div>
         )}

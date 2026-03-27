@@ -25,12 +25,13 @@ interface MobileTaskDayViewProps {
   staffList: StaffWithSkills[]
   isEditMode?: boolean
   onRemoveAssignment?: (id: string) => void
+  onAddToTask?: (tecnicaCode: string) => void
   loading: boolean
   locale: string
 }
 
 export function MobileTaskDayView({
-  day, tecnicas, departments, data, staffList, isEditMode, onRemoveAssignment, loading, locale,
+  day, tecnicas, departments, data, staffList, isEditMode, onRemoveAssignment, onAddToTask, loading, locale,
 }: MobileTaskDayViewProps) {
   const t = useTranslations("schedule")
 
@@ -135,9 +136,23 @@ export function MobileTaskDayView({
                     </span>
                   )
                 })}
+                {isEditMode && onAddToTask && (
+                  <button
+                    onClick={() => onAddToTask(tec.codigo)}
+                    className="inline-flex items-center justify-center size-7 rounded-md border border-dashed border-primary/30 text-primary text-[11px] active:bg-primary/10"
+                  >+</button>
+                )}
               </div>
             ) : (
-              <p className="text-[12px] text-muted-foreground/40 italic pl-4">—</p>
+              <div className="pl-4 flex items-center gap-2">
+                <p className="text-[12px] text-muted-foreground/40 italic">—</p>
+                {isEditMode && onAddToTask && (
+                  <button
+                    onClick={() => onAddToTask(tec.codigo)}
+                    className="inline-flex items-center justify-center size-7 rounded-md border border-dashed border-primary/30 text-primary text-[11px] active:bg-primary/10"
+                  >+</button>
+                )}
+              </div>
             )}
           </div>
         )

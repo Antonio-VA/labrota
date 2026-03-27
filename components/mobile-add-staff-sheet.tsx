@@ -58,6 +58,8 @@ export function MobileAddStaffSheet({
       if (result.error) {
         toast.error(result.error)
       } else {
+        // Small delay to let pending server ops settle
+        await new Promise((r) => setTimeout(r, 300))
         onAdded()
       }
     })

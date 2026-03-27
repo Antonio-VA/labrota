@@ -292,11 +292,12 @@ body {
   border: 0.5px solid rgba(255, 255, 255, 0.4);
 }
 
-/* In landscape on phones, hide chrome to maximize rota space */
+/* In landscape on phones, hide all chrome to maximize rota space */
 @media (orientation: landscape) and (max-height: 440px) {
   #mobile-header { display: none !important; }
   .glass-nav-pop { display: none !important; }
   [data-mobile-toolbar] { display: none !important; }
+  [data-weekly-strip] { display: none !important; }
 }
 
 [data-theme="dark"] .glass-nav-pop {

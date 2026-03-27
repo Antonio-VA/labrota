@@ -4372,6 +4372,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   const result = await removeAssignment(id)
                   if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
+                onAddToTask={(tecCode) => setMobileAddSheet({ open: true, role: "lab" })}
                 loading={loadingWeek && !weekData}
                 locale={locale}
               />
