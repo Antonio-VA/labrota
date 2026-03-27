@@ -130,7 +130,7 @@ export function MobileTaskDayView({
                 })}
               </div>
             ) : (
-              <p className="text-[12px] text-muted-foreground/50 italic pl-4">{t("noService")}</p>
+              <p className="text-[12px] text-muted-foreground/40 italic pl-4">—</p>
             )}
           </div>
         )

@@ -65,7 +65,16 @@ export function MobileBottomNav() {
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground active:text-primary active:bg-primary/10"
               )}
             >
-              <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
+              {item.key === "day" ? (
+                <div className="relative size-[22px]">
+                  <CalendarDays className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
+                  <span className={cn("absolute bottom-[1px] left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                    {new Date().getDate()}
+                  </span>
+                </div>
+              ) : (
+                <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
+              )}
               <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
                 {LABELS[locale]?.[item.key] ?? item.key}
               </span>

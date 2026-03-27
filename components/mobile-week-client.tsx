@@ -225,6 +225,31 @@ export function MobileWeekClient() {
                 </div>
               ))
             )}
+            {/* Libres row */}
+            <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
+              <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
+                <span className="text-[10px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
+              </div>
+              {days.map((day) => {
+                const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+                const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
+                const leaveCount = leaveIds.size
+                const offCount = Math.max(0, (data?.days?.[0]?.assignments ? 0 : 0))
+                return (
+                  <div key={day.date} className="px-1 py-1 border-r border-border last:border-r-0 flex flex-col gap-0.5">
+                    {leaveCount > 0 && (
+                      <span className="text-[9px] text-amber-600 font-medium">{leaveCount} 🌴</span>
+                    )}
+                    {[...leaveIds].map((sid) => {
+                      const s = data?.days?.[0]?.assignments.find((a) => a.staff_id === sid)?.staff
+                      return s ? (
+                        <span key={sid} className="text-[9px] text-amber-600 italic truncate">{s.first_name[0]}{s.last_name[0]}</span>
+                      ) : null
+                    })}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
