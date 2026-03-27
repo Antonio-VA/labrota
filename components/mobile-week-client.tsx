@@ -173,7 +173,7 @@ export function MobileWeekClient() {
                 const dotColor = ({ amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B" } as Record<string, string>)[tec.color] ?? "#3B82F6"
                 return (
                   <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
-                    <div className="px-2 py-2 border-r border-border bg-muted/30 sticky left-0 z-[5] flex items-center justify-end gap-1">
+                    <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end gap-1">
                       <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                       <span className="text-[10px] font-semibold text-foreground">{tec.codigo}</span>
                     </div>
@@ -197,7 +197,7 @@ export function MobileWeekClient() {
               // By shift: shift types as rows
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
-                  <div className="px-2 py-2 border-r border-border bg-muted/30 sticky left-0 z-[5] flex flex-col items-end justify-center">
+                  <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center">
                     <span className="text-[11px] font-semibold text-foreground">{st.code}</span>
                     <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(st.start_time, timeFormat)}</span>
                   </div>

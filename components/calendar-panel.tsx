@@ -2829,11 +2829,13 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
           return label
         }
 
-        return allShifts.map((shiftCode) => {
+        return allShifts.map((shiftCode, shiftIdx) => {
           const assignments = byShift[shiftCode] ?? []
           const st = shiftTypes.find((s) => s.code === shiftCode)
           const timeLabel = st ? `${st.start_time}–${st.end_time}` : ""
           return (
+            <Fragment key={shiftCode}>
+            {shiftIdx > 0 && <div className="h-px bg-border/50 my-1" />}
             <div key={shiftCode} className="flex flex-col gap-1.5">
               {/* Shift header */}
               <div className="flex items-center gap-2 pl-2 border-l-[3px] border-primary/40">
@@ -2846,9 +2848,13 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   <p className="text-[12px] text-muted-foreground/40 italic px-3 py-1.5">{t("noService")}</p>
                 )}
                 {mobileCompact ? (
-                  /* Compact: inline badges with left border */
+                  /* Compact: inline badges with left border, sorted by dept then name */
                   <div className="flex flex-wrap gap-1">
-                    {assignments.map((a) => {
+                    {[...assignments].sort((a, b) => {
+                      const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+                      const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
+                      return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
+                    }).map((a) => {
                       const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                       const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
                       return (
@@ -2866,7 +2872,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       )
                     })}
                   </div>
-                ) : assignments.map((a) => {
+                ) : [...assignments].sort((a, b) => {
+                  const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+                  const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
+                  return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
+                }).map((a) => {
                   const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
                   const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
                   return (
@@ -2902,16 +2912,20 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 )}
               </div>
             </div>
+          </Fragment>
           )
         })
       })()}
 
       {/* OFF section — staff not assigned today */}
       {day && staffList && staffList.length > 0 && (() => {
+        const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
         const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
         const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
         const onLeave = staffList.filter((s) => leaveIds.has(s.id))
+          .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.first_name.localeCompare(b.first_name))
         const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
+          .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.first_name.localeCompare(b.first_name))
         if (onLeave.length === 0 && offDuty.length === 0) return null
         return (
           <div className="flex flex-col gap-1.5 mt-2 pt-3 border-t border-dashed border-border">
@@ -2919,23 +2933,41 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
               <span className="text-[13px] font-medium text-muted-foreground">{t("offSection")}</span>
               <span className="text-[12px] text-muted-foreground/60">{onLeave.length + offDuty.length}</span>
             </div>
-            <div className="flex flex-col gap-1">
-              {onLeave.map((s) => (
-                <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
-                  <Plane className="size-3 text-amber-500 shrink-0" />
-                  <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
-                </div>
-              ))}
-              {offDuty.map((s) => {
-                const roleColor = deptColorMap[s.role] ?? "#64748B"
-                return (
-                  <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground">
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: roleColor }} />
-                    <span className="text-[13px]">{s.first_name} {s.last_name}</span>
+            {mobileCompact ? (
+              <div className="flex flex-wrap gap-1">
+                {onLeave.map((s) => (
+                  <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-[12px] text-amber-700 italic">
+                    <Plane className="size-2.5 shrink-0" />
+                    {s.first_name} {s.last_name[0]}.
+                  </span>
+                ))}
+                {offDuty.map((s) => {
+                  const roleColor = deptColorMap[s.role] ?? "#64748B"
+                  return (
+                    <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-[12px] text-muted-foreground" style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}>
+                      {s.first_name} {s.last_name[0]}.
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {onLeave.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
+                    <Plane className="size-3 text-amber-500 shrink-0" />
+                    <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
                   </div>
-                )
-              })}
-            </div>
+                ))}
+                {offDuty.map((s) => {
+                  const roleColor = deptColorMap[s.role] ?? "#64748B"
+                  return (
+                    <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 bg-background text-muted-foreground" style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 8 }}>
+                      <span className="text-[13px]">{s.first_name} {s.last_name}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })()}
@@ -3420,8 +3452,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [mobileCompact, setMobileCompact] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("labrota_mobile_compact") === "true"
+    if (typeof window === "undefined") return true
+    return localStorage.getItem("labrota_mobile_compact") !== "false"
   })
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
