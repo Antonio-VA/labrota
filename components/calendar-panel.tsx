@@ -26,6 +26,7 @@ import {
   setPunctionsOverride,
   moveAssignmentShift,
   removeAssignment,
+  regenerateDay,
   setFunctionLabel,
   setTecnica,
   upsertAssignment,
@@ -3278,8 +3279,9 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateRota, isPending }: { onGenerateRota: () => void; isPending?: boolean }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean }) {
   const t = useTranslations("schedule")
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -3290,15 +3292,21 @@ function MobileOverflow({ onGenerateRota, isPending }: { onGenerateRota: () => v
   }, [open])
   return (
     <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} className="size-7 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
-        <MoreHorizontal className="size-4" />
+      <button onClick={() => setOpen((v) => !v)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+        <MoreHorizontal className="size-5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 w-44 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
-          <button onClick={() => { setOpen(false); onGenerateRota() }} disabled={isPending} className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
+        <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+          <button onClick={() => { setOpen(false); onGenerateWeek() }} disabled={isPending} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
             <Sparkles className="size-4" />
-            {t("generateStrategy")}
+            {locale === "es" ? "Generar semana" : "Generate week"}
           </button>
+          {onGenerateDay && (
+            <button onClick={() => { setOpen(false); onGenerateDay() }} disabled={isPending} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
+              <CalendarDays className="size-4" />
+              {locale === "es" ? "Regenerar día" : "Regenerate day"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -4176,7 +4184,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 h-[52px] px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10">
+            <div className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10">
               {/* Left: date selector */}
               <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-5 text-muted-foreground" />
@@ -4214,7 +4222,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               )}
               {canEdit && (
                 <MobileOverflow
-                  onGenerateRota={() => setShowStrategyModal(true)}
+                  onGenerateWeek={() => setShowStrategyModal(true)}
+                  onGenerateDay={currentDayData ? async () => {
+                    const result = await regenerateDay(weekStart, currentDate)
+                    if (result.error) toast.error(result.error)
+                    else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeek(weekStart) }
+                  } : undefined}
                   isPending={isPending}
                 />
               )}
