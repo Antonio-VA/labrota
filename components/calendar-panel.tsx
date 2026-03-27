@@ -2752,12 +2752,12 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
     return (
       <div className="flex flex-col gap-4 w-full animate-pulse">
         <Skeleton className="h-5 w-40 rounded-md" />
-        {Array.from({ length: 4 }).map((_, g) => (
+        {[4, 5, 3, 4].map((count, g) => (
           <div key={g} className="flex flex-col gap-2">
             <Skeleton className="h-5 w-28 rounded" />
             <div className="flex flex-wrap gap-1.5">
-              {Array.from({ length: 4 + g }).map((_, i) => (
-                <Skeleton key={i} className="h-8 rounded-md" style={{ width: `${60 + Math.random() * 40}px` }} />
+              {Array.from({ length: count }).map((_, i) => (
+                <Skeleton key={i} className="h-8 rounded-md" style={{ width: [72, 85, 68, 90, 76][i % 5] }} />
               ))}
             </div>
           </div>

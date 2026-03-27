@@ -43,7 +43,7 @@ export function MobileTaskDayView({
             <Skeleton className="h-5 w-28 rounded" />
             <div className="flex flex-wrap gap-1.5">
               {Array.from({ length: 3 + g % 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 rounded-md" style={{ width: `${55 + Math.random() * 35}px` }} />
+                <Skeleton key={i} className="h-8 rounded-md" style={{ width: [65, 78, 60, 82][i % 4] }} />
               ))}
             </div>
           </div>
