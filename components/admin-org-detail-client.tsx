@@ -18,12 +18,14 @@ export function AdminOrgDetailClient({
   initialCountry,
   initialRegion,
   initialDisplayMode = "by_shift",
+  hideUsers = false,
 }: {
   orgId: string
   userRows: UserRow[]
   initialCountry: string
   initialRegion: string
   initialDisplayMode?: "by_shift" | "by_task"
+  hideUsers?: boolean
 }) {
   const router = useRouter()
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
@@ -163,8 +165,8 @@ export function AdminOrgDetailClient({
         {isPending ? "Guardando…" : "Guardar"}
       </Button>
 
-      {/* Usuarios */}
-      <div className="flex flex-col gap-3">
+      {/* Usuarios — hidden when separate Users tab exists */}
+      {!hideUsers && <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[18px] font-medium">Usuarios</h2>
           <Button size="sm" onClick={() => setAddModalOpen(true)}>
@@ -183,7 +185,7 @@ export function AdminOrgDetailClient({
             <AdminUsersTable users={userRows} orgId={orgId} />
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Add user modal */}
       {addModalOpen && (

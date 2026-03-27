@@ -114,12 +114,12 @@ export default async function OrgDetailPage({
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
           />
         }
-        implementation={
+        defaults={
           <div className="flex flex-col gap-6">
+            <AdminHistoryUpload orgId={id} />
             <div className="rounded-xl border border-border/60 bg-background px-5 py-4">
               <AdminImplementation orgId={id} />
             </div>
-            <AdminHistoryUpload orgId={id} />
           </div>
         }
       />

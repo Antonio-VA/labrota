@@ -3,22 +3,22 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["configuration", "implementation"] as const
+const TAB_KEYS = ["configuration", "defaults"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
-  configuration: "Configuration",
-  implementation: "Implementation",
+  configuration: "Configuration & Users",
+  defaults: "Defaults & History",
 }
 
 export function AdminOrgTabs({
-  configuration, implementation,
+  configuration, defaults,
 }: {
   configuration: React.ReactNode
-  implementation: React.ReactNode
+  defaults: React.ReactNode
 }) {
   const [active, setActive] = useState<TabKey>("configuration")
-  const content: Record<TabKey, React.ReactNode> = { configuration, implementation }
+  const content: Record<TabKey, React.ReactNode> = { configuration, defaults }
 
   return (
     <div className="flex flex-col gap-6 w-full">
