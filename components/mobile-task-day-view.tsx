@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { X, AlertTriangle, Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { TapPopover } from "@/components/tap-popover"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { CalendarDays } from "lucide-react"
@@ -114,12 +114,9 @@ export function MobileTaskDayView({
             <div className="py-1.5">
               {/* Task code + staff badges all on one line */}
               <div className="flex items-center gap-1.5 flex-wrap pl-2.5" style={{ borderLeft: `3px solid ${dotColor}` }}>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <span className="text-[13px] font-semibold shrink-0 cursor-default">{tec.codigo}</span>
-                  } />
-                  <TooltipContent side="top">{tec.nombre_es}</TooltipContent>
-                </Tooltip>
+                <TapPopover trigger={<span className="text-[13px] font-semibold shrink-0 cursor-pointer active:opacity-70">{tec.codigo}</span>}>
+                  {tec.nombre_es}
+                </TapPopover>
                 {[...assignments].sort((a, b) => {
                   const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
                   const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
@@ -128,22 +125,20 @@ export function MobileTaskDayView({
                   const roleColor = ROLE_COLOR[a.staff.role] ?? "#64748B"
                   const deptName = a.staff.role === "lab" ? "Embryology" : a.staff.role === "andrology" ? "Andrology" : "Admin"
                   return (
-                    <Tooltip key={a.id}>
-                      <TooltipTrigger render={
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border bg-background text-[12px] font-medium cursor-default"
+                    <TapPopover
+                      key={a.id}
+                      trigger={
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border bg-background text-[12px] font-medium cursor-pointer active:scale-95">
+                          {a.staff.first_name} {a.staff.last_name[0]}.
+                          {isEditMode && onRemoveAssignment && (
+                            <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
+                          )}
+                        </span>
+                      }
                     >
-                      {a.staff.first_name} {a.staff.last_name[0]}.
-                      {isEditMode && onRemoveAssignment && (
-                        <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
-                      )}
-                    </span>
-                      } />
-                      <TooltipContent side="top" className="text-[12px]">
-                        <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                        <p className="text-muted-foreground">{deptName}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                      <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                      <p className="text-[11px] opacity-70">{deptName}</p>
+                    </TapPopover>
                   )
                 })}
                 {assignments.length === 0 && !isEditMode && (

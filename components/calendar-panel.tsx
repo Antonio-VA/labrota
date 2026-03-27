@@ -54,6 +54,7 @@ import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
 import { MobileTaskView } from "@/components/mobile-task-view"
 import { MobileTaskDayView } from "@/components/mobile-task-day-view"
+import { TapPopover } from "@/components/tap-popover"
 import { MobilePersonView } from "@/components/mobile-person-view"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { TransposedTaskGrid } from "@/components/transposed-task-grid"
@@ -2867,27 +2868,26 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
                       const isHov = hoveredStaffId === a.staff_id
                       return (
-                        <Tooltip key={a.id}>
-                          <TooltipTrigger render={
+                        <TapPopover
+                          key={a.id}
+                          trigger={
                             <span
-                              className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-default transition-colors", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
+                              className={cn("inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] font-medium cursor-pointer transition-colors active:scale-95", isHov ? "border-primary bg-primary/10" : "border-border bg-background")}
                               style={{ ...(mobileDeptColor && !isHov ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}
-                              onClick={() => setHovered(hoveredStaffId === a.staff_id ? null : a.staff_id)}
                             >
                               {a.staff.first_name} {a.staff.last_name[0]}.
                               {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
                               {isEditMode && onRemoveAssignment && (
                                 <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
-                          )}
+                              )}
                             </span>
-                          } />
-                          <TooltipContent side="top" className="text-[12px]">
-                            <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                            <p className="text-muted-foreground">{deptName} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                          }
+                        >
+                          <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                          <p className="text-[11px] opacity-70">{deptName} · {workDays.map((d) => dayLabels[d] ?? d).join(" ")}</p>
+                        </TapPopover>
                       )
                     })}
                   </div>
