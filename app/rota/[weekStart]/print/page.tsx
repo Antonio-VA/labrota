@@ -260,38 +260,7 @@ export default async function PrintRotaPage({
         </table>
         )}
 
-        {/* Shift budget summary */}
-        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>Turnos:</span>
-          {(() => {
-            const counts: Record<string, { name: string; role: string; count: number; budget: number }> = {}
-            for (const day of data.days) {
-              for (const a of day.assignments) {
-                if (!counts[a.staff_id]) {
-                  counts[a.staff_id] = {
-                    name: `${a.staff.first_name} ${a.staff.last_name[0]}.`,
-                    role: a.staff.role, count: 0, budget: (a.staff as { days_per_week?: number }).days_per_week ?? 6,
-                  }
-                }
-                counts[a.staff_id].count++
-              }
-            }
-            return Object.entries(counts)
-              .sort((a, b) => {
-                const order: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-                return (order[a[1].role] ?? 9) - (order[b[1].role] ?? 9)
-              })
-              .map(([id, s]) => (
-                <span key={id} style={{
-                  fontSize: 10, padding: "2px 6px", borderRadius: 10,
-                  border: "1px solid #e2e8f0",
-                  color: s.count > s.budget ? "#dc2626" : "#475569",
-                }}>
-                  {s.name} {s.count}/{s.budget}
-                </span>
-              ))
-          })()}
-        </div>
+        {/* Shift budget summary removed — not needed in print */}
 
         {/* Footer */}
         <div style={{ marginTop: 12, color: "#94a3b8", fontSize: 9, borderTop: "1px solid #ccddee", paddingTop: 6, textAlign: "center" }}>
