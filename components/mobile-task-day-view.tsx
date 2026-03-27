@@ -111,17 +111,15 @@ export function MobileTaskDayView({
         return (
           <Fragment key={tec.id}>
             {tecIdx > 0 && <div className="h-px bg-border/50" />}
-            <div className="flex flex-col gap-1.5 py-1">
-              {/* Task name with color bar + inline staff badges */}
-              <div className="flex items-start gap-2 pl-2.5" style={{ borderLeft: `3px solid ${dotColor}` }}>
-                <div className="flex-1 min-w-0">
-                  <span className="text-[14px] font-medium">{tec.nombre_es}</span>
-                  {assignments.length > 0 && <span className="text-[11px] text-muted-foreground ml-1.5">{assignments.length}</span>}
-                </div>
-              </div>
-
-              {/* Staff badges inline */}
-              <div className="flex flex-wrap gap-1 pl-2.5" style={{ borderLeft: `3px solid transparent` }}>
+            <div className="py-1.5">
+              {/* Task code + staff badges all on one line */}
+              <div className="flex items-center gap-1.5 flex-wrap pl-2.5" style={{ borderLeft: `3px solid ${dotColor}` }}>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <span className="text-[13px] font-semibold shrink-0 cursor-default">{tec.codigo}</span>
+                  } />
+                  <TooltipContent side="top">{tec.nombre_es}</TooltipContent>
+                </Tooltip>
                 {[...assignments].sort((a, b) => {
                   const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
                   const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
@@ -133,8 +131,7 @@ export function MobileTaskDayView({
                     <Tooltip key={a.id}>
                       <TooltipTrigger render={
                     <span
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-default"
-                      style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border bg-background text-[12px] font-medium cursor-default"
                     >
                       {a.staff.first_name} {a.staff.last_name[0]}.
                       {isEditMode && onRemoveAssignment && (
