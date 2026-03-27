@@ -1401,25 +1401,31 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
         {totalIssues}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg border border-border bg-background shadow-lg py-2">
-          {sortedCategories.map((cat) => (
-            <div key={cat} className="px-3 py-1.5">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
-              </p>
-              {byCategory[cat].map(({ day, messages }) => (
-                <div key={day} className="mb-1.5 last:mb-0">
-                  <p className="text-[12px] font-medium capitalize">{day}</p>
-                  {messages.map((msg, mi) => (
-                    <p key={mi} className="text-[11px] text-muted-foreground pl-2">· {msg}</p>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+      {open && (() => {
+        const uniqueDays = new Set<string>()
+        for (const arr of Object.values(byCategory)) for (const e of arr) uniqueDays.add(e.day)
+        const singleDay = uniqueDays.size === 1
+        return (
+          <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg border border-border bg-background shadow-lg py-2">
+            {singleDay && <p className="px-3 pb-1 text-[12px] font-medium capitalize">{[...uniqueDays][0]}</p>}
+            {sortedCategories.map((cat) => (
+              <div key={cat} className="px-3 py-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                  {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
+                </p>
+                {byCategory[cat].map(({ day, messages }) => (
+                  <div key={day} className="mb-1.5 last:mb-0">
+                    {!singleDay && <p className="text-[12px] font-medium capitalize">{day}</p>}
+                    {messages.map((msg, mi) => (
+                      <p key={mi} className="text-[11px] text-muted-foreground pl-2">· {msg}</p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }
