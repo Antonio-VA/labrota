@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { X, AlertTriangle, Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { CalendarDays } from "lucide-react"
@@ -127,10 +128,12 @@ export function MobileTaskDayView({
                   return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
                 }).map((a) => {
                   const roleColor = ROLE_COLOR[a.staff.role] ?? "#64748B"
+                  const deptName = a.staff.role === "lab" ? "Embryology" : a.staff.role === "andrology" ? "Andrology" : "Admin"
                   return (
+                    <Tooltip key={a.id}>
+                      <TooltipTrigger render={
                     <span
-                      key={a.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-default"
                       style={{ borderLeft: `3px solid ${roleColor}`, borderRadius: 6 }}
                     >
                       {a.staff.first_name} {a.staff.last_name[0]}.
@@ -138,6 +141,12 @@ export function MobileTaskDayView({
                         <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
                       )}
                     </span>
+                      } />
+                      <TooltipContent side="top" className="text-[12px]">
+                        <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                        <p className="text-muted-foreground">{deptName}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )
                 })}
                 {assignments.length === 0 && !isEditMode && (
