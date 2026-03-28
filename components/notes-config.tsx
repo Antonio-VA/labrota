@@ -65,7 +65,7 @@ export function NotesConfig({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[14px] font-medium">{t("weeklyNotes")}</p>
+      <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("weeklyNotes")}</p>
 
       {enabled ? (
         <>
