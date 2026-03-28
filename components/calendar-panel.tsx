@@ -1496,10 +1496,9 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
         "w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5 py-1.5 min-h-[36px]",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
       )}
-      style={{ borderLeft: `3px solid ${is_manual_override ? "var(--primary)" : "#94A3B8"}` }}
     >
       <div className="flex flex-col gap-0">
-        <span className="text-[13px] font-bold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+        <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
         {time && (
           <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">
             {time.start}–{time.end}
@@ -1612,7 +1611,7 @@ function PersonGrid({
     .filter((s) => s.onboarding_status !== "inactive")
     .sort((a, b) => {
       const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-      return ro !== 0 ? ro : a.last_name.localeCompare(b.last_name)
+      return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
     })
 
   // Group by role
@@ -1629,31 +1628,44 @@ function PersonGrid({
     <div className="rounded-lg border border-border overflow-hidden w-full">
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
-        {/* Header row */}
-        <div className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10" />
+        {/* Header row — matches by-shift view */}
+        <div className="border-r border-border bg-muted sticky left-0 z-10" style={{ minHeight: 52 }} />
         {days.map((day) => {
           const d       = new Date(day.date + "T12:00:00")
           const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
           const dayN    = String(d.getDate())
           const today   = day.date === TODAY
           const holiday = publicHolidays[day.date]
+          const isSat   = d.getDay() === 6
           return (
             <div key={day.date} className={cn(
-              "flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border",
-              holiday ? "bg-red-50/50" : "bg-background"
-            )}>
+              "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-border",
+              holiday ? "bg-amber-50/60" : "bg-muted"
+            )}
+            style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
+            >
+              {day.warnings.length > 0 && (
+                <DayWarningPopover warnings={day.warnings} />
+              )}
               <button
                 onClick={() => onDateClick?.(day.date)}
-                className={cn("flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+                className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
               >
-                <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{wday}</span>
-                <div className={cn(
-                  "size-7 flex items-center justify-center rounded-full text-[14px] font-medium",
-                  today && "bg-primary text-primary-foreground"
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+                <span className={cn(
+                  "font-semibold leading-none text-[18px]",
+                  today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
+                  : holiday ? "text-amber-600" : "text-primary"
                 )}>
                   {dayN}
-                </div>
+                </span>
               </button>
+              {holiday && (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
+                  <TooltipContent side="bottom">{holiday}</TooltipContent>
+                </Tooltip>
+              )}
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
             </div>
           )
