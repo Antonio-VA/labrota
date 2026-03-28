@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
 import { logAuditEvent } from "@/lib/audit"
-import { captureSnapshot } from "@/lib/rota-snapshots"
+import { captureSnapshot, captureWeekSnapshot } from "@/lib/rota-snapshots"
 import type {
   RotaStatus,
   StaffWithSkills,
@@ -495,6 +495,9 @@ export async function generateRota(
       .eq("is_manual_override", true) as { data: { staff_id: string; date: string }[] | null }
     for (const o of overrides ?? []) overrideKeys.add(`${o.staff_id}:${o.date}`)
   }
+
+  // Capture week snapshot before generation
+  captureWeekSnapshot(rotaId, weekStart)
 
   // Delete existing non-override assignments (or all if !preserveOverrides)
   if (preserveOverrides) {
