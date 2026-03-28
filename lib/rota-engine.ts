@@ -510,35 +510,33 @@ export function runRotaEngine({
 
         const rotation = shiftRotation ?? "stable"
         const staffAvoidShifts = s.avoid_shifts
-        // Resolve preferred shifts: only explicit settings, NOT inferred
-        // Inferred preferences are used only for soft scoring, not shift assignment
         const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
         const matchedPrefShift = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
-        // For avoid logic, also include inferred
         const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
-        if (preferredFromTecnica) {
-          shift = preferredFromTecnica as ShiftType
-        } else if (rotation === "stable" && matchedPrefShift) {
-          // 2. Explicit staff preferred shift — only in stable mode
-          shift = matchedPrefShift as ShiftType
-        } else {
-          // 3. Rotation logic
-          if (rotation === "stable") {
-            // Round-robin across shifts for balanced distribution
+
+        if (rotation === "stable") {
+          // Stable: técnica → explicit pref → round-robin
+          if (preferredFromTecnica) {
+            shift = preferredFromTecnica as ShiftType
+          } else if (matchedPrefShift) {
+            shift = matchedPrefShift as ShiftType
+          } else {
             shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
             dayRrIdx++
-          } else if (rotation === "weekly") {
-            const lastShift = recentAssignments
-              .filter((a) => a.staff_id === s.id)
-              .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
-            const lastIdx = lastShift ? defaultShiftCodes.indexOf(lastShift) : -1
-            const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
-            shift = defaultShiftCodes[nextIdx] as ShiftType
-          } else {
-            const staffIdx = staff.indexOf(s)
-            const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
-            shift = defaultShiftCodes[shiftIdx] as ShiftType
           }
+        } else if (rotation === "weekly") {
+          // Weekly: same shift all week, advance from last week (ignore técnica/pref)
+          const lastShift = recentAssignments
+            .filter((a) => a.staff_id === s.id)
+            .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
+          const lastIdx = lastShift ? defaultShiftCodes.indexOf(lastShift) : -1
+          const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
+          shift = defaultShiftCodes[nextIdx] as ShiftType
+        } else {
+          // Daily: cycle through shifts by day index (ignore técnica/pref)
+          const staffIdx = staff.indexOf(s)
+          const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
+          shift = defaultShiftCodes[shiftIdx] as ShiftType
         }
 
         // If assigned shift is in avoid list, try to find a non-avoided alternative
