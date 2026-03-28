@@ -206,6 +206,7 @@ export interface LabConfig {
   enable_leave_requests:    boolean
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
   enable_notes:             boolean
+  days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day"  // default "prefer_weekend"
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -266,6 +267,7 @@ export type LabConfigUpdate = {
   shift_pm_end?:             string
   shift_full_start?:         string
   shift_full_end?:           string
+  days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
 }
 
 // ── Rota Rules ────────────────────────────────────────────────────────────────

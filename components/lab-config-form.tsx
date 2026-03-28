@@ -116,6 +116,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
+    days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -179,6 +180,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_conflict_threshold: values.task_conflict_threshold,
         task_coverage_enabled:  taskCoverageEnabled,
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
+        days_off_preference:    values.days_off_preference,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -343,6 +345,43 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               className="w-20 text-center"
             />
           </FieldRow>
+        </div>
+      </div>
+
+      {/* ── DÍAS LIBRES ─────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Días libres" />
+        <p className="text-[13px] text-muted-foreground mb-3">Determina cuándo se asignan los días libres del personal.</p>
+        <div className="flex flex-col gap-1 pb-4">
+          {([
+            { value: "always_weekend", label: "Siempre fin de semana", hint: "Los días libres son siempre sábado y domingo. Solo se asigna personal de guardia." },
+            { value: "prefer_weekend", label: "Preferiblemente fin de semana", hint: "Se intenta que los días libres caigan en fin de semana, pero se puede asignar si es necesario." },
+            { value: "any_day", label: "Cualquier día", hint: "Los días libres se distribuyen por igual entre todos los días de la semana." },
+          ] as const).map((opt) => (
+            <label
+              key={opt.value}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors",
+                values.days_off_preference === opt.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-muted/50"
+              )}
+            >
+              <input
+                type="radio"
+                name="days_off_preference"
+                value={opt.value}
+                checked={values.days_off_preference === opt.value}
+                onChange={() => setValues((p) => ({ ...p, days_off_preference: opt.value }))}
+                disabled={isPending}
+                className="mt-0.5 accent-primary"
+              />
+              <div>
+                <span className="text-[13px] font-medium">{opt.label}</span>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
+              </div>
+            </label>
+          ))}
         </div>
       </div>
 

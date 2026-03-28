@@ -247,6 +247,9 @@ export function runRotaEngine({
     return count
   }
 
+  // Days-off preference: controls when staff get their off days
+  const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
+
   // ── PHASE 1: Pre-plan minimum coverage for ALL 7 days ────────────────────
   // Reserve budget so minimum coverage is guaranteed before preferences kick in.
   const allDates = getWeekDates(weekStart)
@@ -281,6 +284,13 @@ export function runRotaEngine({
         const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
         const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
         if (aInPattern !== bInPattern) return aInPattern - bInPattern
+        // For "prefer_weekend" days off: on weekdays, prefer staff who would lose a weekend slot;
+        // on weekends, prefer staff with fewer weekend assignments (save weekends for those who need them)
+        if (daysOffPref === "prefer_weekend" && wknd) {
+          const aWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(a.id)).length
+          const bWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(b.id)).length
+          if (aWkndCount !== bWkndCount) return aWkndCount - bWkndCount // fewer weekend assignments first
+        }
         return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
       })
 
@@ -343,12 +353,27 @@ export function runRotaEngine({
     }
 
     // Additional staff: must have budget after accounting for future reservations
-    const remaining = staff.filter((s) =>
-      isAvailable(s) && !reservedIds.has(s.id) && hasBudget(s)
-    ).sort((a, b) => {
+    const remaining = staff.filter((s) => {
+      if (!isAvailable(s) || reservedIds.has(s.id) || !hasBudget(s)) return false
+      // "always_weekend" mode: on weekends, only reserved staff work (already handled above)
+      if (daysOffPref === "always_weekend" && weekend) return false
+      return true
+    }).sort((a, b) => {
       const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
       const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
       if (aInPattern !== bInPattern) return aInPattern - bInPattern
+      // "prefer_weekend" mode: penalise weekend assignments so staff prefer weekdays off
+      if (daysOffPref === "prefer_weekend" && weekend) {
+        // Staff with more weekday budget remaining should be deprioritised for weekends
+        const aUsed = weeklyShiftCount[a.id] ?? 0
+        const bUsed = weeklyShiftCount[b.id] ?? 0
+        const aCap = a.days_per_week ?? 5
+        const bCap = b.days_per_week ?? 5
+        const aRemaining = aCap - aUsed
+        const bRemaining = bCap - bUsed
+        // More remaining → less likely to need weekend → sort higher (deprioritise)
+        if (aRemaining !== bRemaining) return bRemaining - aRemaining
+      }
       // Day preference scoring: higher is better (sort descending)
       const aDayPref = dayPreferenceScore(a)
       const bDayPref = dayPreferenceScore(b)
