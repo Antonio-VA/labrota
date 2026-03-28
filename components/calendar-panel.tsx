@@ -4481,29 +4481,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   })
                 },
               }, {
-                label: locale === "es" ? "Compartir imagen" : "Share image",
-                icon: <Share className="size-3.5" />,
-                onClick: async () => {
-                  const el = document.querySelector("[data-calendar-content]") as HTMLElement
-                  if (!el) return
-                  const { shareCapture } = await import("@/lib/share-capture")
-                  await shareCapture(el, `rota-${weekStart}.png`)
-                },
-              }, {
                 label: locale === "es" ? "Copiar imagen" : "Copy image",
                 icon: <Copy className="size-3.5" />,
                 onClick: async () => {
                   const el = document.querySelector("[data-calendar-content]") as HTMLElement
                   if (!el) return
                   try {
-                    const html2canvas = (await import("html2canvas")).default
-                    const canvas = await html2canvas(el, { backgroundColor: "#ffffff", scale: 2, useCORS: true, logging: false })
-                    canvas.toBlob(async (blob) => {
-                      if (!blob) return
-                      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
-                      toast.success(locale === "es" ? "Imagen copiada" : "Image copied")
-                    })
-                  } catch { toast.error(locale === "es" ? "Error al copiar" : "Copy failed") }
+                    const { copyToClipboard } = await import("@/lib/share-capture")
+                    await copyToClipboard(el)
+                    toast.success(locale === "es" ? "Imagen copiada al portapapeles" : "Image copied to clipboard")
+                  } catch (err) {
+                    toast.error(locale === "es" ? "No se pudo copiar la imagen" : "Could not copy image")
+                    console.error("Copy failed:", err)
+                  }
                 },
               }] : []),
               // ── Group 2b: Templates (moved up, right after export) ──
@@ -4576,6 +4566,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: t("viewHistory"),
                 icon: <Clock className="size-3.5" />,
                 onClick: () => setHistoryOpen(true),
+                dividerBefore: true,
               }] : []),
               // ── Group 5: Destructive (editors only) ──
               ...(canEdit && hasAssignments && !isPublished ? [{

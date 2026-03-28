@@ -143,3 +143,46 @@ function resolveColor(color: string): string | null {
     return null
   }
 }
+
+/**
+ * Captures a DOM element as PNG and copies to clipboard.
+ */
+export async function copyToClipboard(element: HTMLElement) {
+  const html2canvas = (await import("html2canvas")).default
+
+  const prevOverflow = element.style.overflow
+  const prevHeight = element.style.height
+  const prevMaxHeight = element.style.maxHeight
+  element.style.overflow = "visible"
+  element.style.height = "auto"
+  element.style.maxHeight = "none"
+
+  const canvas = await html2canvas(element, {
+    backgroundColor: "#ffffff",
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    height: element.scrollHeight,
+    width: element.scrollWidth,
+    onclone: (_doc: Document, clonedEl: HTMLElement) => {
+      clonedEl.style.overflow = "visible"
+      clonedEl.style.height = "auto"
+      clonedEl.style.maxHeight = "none"
+      convertOklabColors(clonedEl)
+    },
+  })
+
+  element.style.overflow = prevOverflow
+  element.style.height = prevHeight
+  element.style.maxHeight = prevMaxHeight
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/png")
+  )
+
+  if (!blob) throw new Error("Failed to create image")
+
+  await navigator.clipboard.write([
+    new ClipboardItem({ "image/png": blob }),
+  ])
+}
