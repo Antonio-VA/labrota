@@ -579,7 +579,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
 
 // ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
 
-type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean; active?: boolean }
+type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean; active?: boolean; sectionLabel?: string }
 
 function OverflowMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)
@@ -606,6 +606,7 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
           {items.map((item) => (
             <Fragment key={item.label}>
               {item.dividerBefore && <div className="h-px bg-border my-1" />}
+              {item.sectionLabel && <p className="px-4 pt-1.5 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{item.sectionLabel}</p>}
               <button
                 onClick={() => { item.onClick(); if (!item.active && item.active !== false) setOpen(false) }}
                 disabled={item.disabled}
@@ -4510,6 +4511,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
+                dividerBefore: true,
+                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }, {
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
@@ -4518,6 +4521,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
+                dividerBefore: true,
+                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }] : []),
               // ── Group 3: View options ──
               ...((view === "week" || view === "month") ? [{
