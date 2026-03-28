@@ -181,7 +181,7 @@ function SortableRow({
       ref={setNodeRef}
       style={{ ...style, gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}
       className={cn(
-        "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50",
+        "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50 gap-x-2",
         even ? "bg-muted/20" : "bg-background",
         isDragging && "shadow-md rounded-md"
       )}
@@ -401,7 +401,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
 
       {/* Table header — sticky */}
       {tecnicas.length > 0 && (
-        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border" style={{ gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}>
+        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border gap-x-2" style={{ gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}>
           <span />
           <span />
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("nameEs")}</span>

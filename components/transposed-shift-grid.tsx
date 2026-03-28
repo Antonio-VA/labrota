@@ -108,8 +108,11 @@ export function TransposedShiftGrid({
     if (!e.over || isPublished) return
     const src = findAssignment(String(e.active.id))
     if (!src) return
-    const targetId = String(e.over.id) // format: "shiftCode-date" or "OFF-date"
-    const [targetShift, targetDate] = targetId.includes("-20") ? [targetId.split("-")[0], targetId.slice(targetId.indexOf("-20") + 1)] : [targetId, ""]
+    const targetId = String(e.over.id) // format: "shiftCode-date" e.g. "A-2026-03-29"
+    // Extract date (YYYY-MM-DD) from the end, shift code is everything before it
+    const dateMatch = targetId.match(/(\d{4}-\d{2}-\d{2})$/)
+    const targetDate = dateMatch ? dateMatch[1] : ""
+    const targetShift = targetDate ? targetId.slice(0, targetId.length - targetDate.length - 1) : targetId
     if (!targetDate) return
 
     if (targetDate !== src.date) {
