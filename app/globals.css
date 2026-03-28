@@ -4,7 +4,9 @@
 
 @custom-variant dark (&:is([data-theme="dark"] *));
 
-html {
+html, body {
+  overflow: hidden;
+  height: 100dvh;
   -webkit-text-size-adjust: 100%;
 }
 
