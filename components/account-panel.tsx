@@ -338,9 +338,14 @@ export function applyTheme(prefs: UserPreferences) {
   }
 
   // Font scale — applied via zoom on html element
-  const scale = prefs.fontScale === "s" ? "0.9" : prefs.fontScale === "l" ? "1.1" : "1"
-  root.style.setProperty("--font-scale", scale)
-  root.style.zoom = scale
+  if (prefs.fontScale && prefs.fontScale !== "m") {
+    const scale = prefs.fontScale === "s" ? "0.9" : "1.1"
+    root.style.setProperty("--font-scale", scale)
+    root.style.zoom = scale
+  } else {
+    root.style.removeProperty("--font-scale")
+    root.style.zoom = ""
+  }
 
   // Dark mode via data-theme attribute (matches CSS selectors in globals.css)
   if (prefs.theme === "dark") {

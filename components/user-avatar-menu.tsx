@@ -98,16 +98,17 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="shrink-0 hover:opacity-90 transition-opacity p-0 border-0 bg-transparent"
-          style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}
+          className="shrink-0 hover:opacity-90 transition-opacity p-0 bg-transparent"
+          style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", aspectRatio: "1/1", display: "block" }} />
+          <img src={avatarUrl} alt="Avatar" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
         </button>
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
+          className="size-7 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
+          style={{ border: "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
           {initials}

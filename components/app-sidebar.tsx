@@ -97,7 +97,7 @@ export function AppSidebar() {
             root.style.setProperty("--sidebar-ring", prefs.accentColor)
             root.style.setProperty("--header-bg", prefs.accentColor)
           }
-          if (prefs.fontScale) {
+          if (prefs.fontScale && prefs.fontScale !== "m") {
             const scale = prefs.fontScale === "s" ? "0.9" : prefs.fontScale === "l" ? "1.1" : "1"
             root.style.setProperty("--font-scale", scale)
             root.style.zoom = scale
