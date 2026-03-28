@@ -3,6 +3,21 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 
+export interface FavoriteView {
+  view: string
+  calendarLayout: string
+  daysAsRows: boolean
+  compact: boolean
+  colorChips: boolean
+  highlightEnabled: boolean
+}
+
+export interface MobileFavoriteView {
+  viewMode: string   // "shift" | "person"
+  compact: boolean
+  deptColor: boolean
+}
+
 export interface UserPreferences {
   locale?: "browser" | "es" | "en"
   theme?: "light" | "dark" | "auto"
@@ -10,6 +25,8 @@ export interface UserPreferences {
   timeFormat?: "24h" | "12h"
   firstDayOfWeek?: number // 0=Mon, 5=Sat, 6=Sun
   fontScale?: "s" | "m" | "l" // s=90%, m=100%, l=110%
+  favoriteView?: FavoriteView
+  mobileFavoriteView?: MobileFavoriteView
 }
 
 export async function getUserDepartment(): Promise<string | null> {

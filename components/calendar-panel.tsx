@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
-import { saveUserPreferences } from "@/app/(clinic)/account-actions"
+import { getUserPreferences, saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
   getRotaWeek,
   getRotaMonthSummary,
@@ -3860,7 +3860,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight, isFavorite, onSaveFavorite }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void; isFavorite?: boolean; onSaveFavorite?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -3918,6 +3918,17 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
               )}
             </>
           )}
+          {onSaveFavorite && (
+            <>
+              <div className="h-px bg-border mx-2 my-1" />
+              <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                <Star className={cn("size-4", isFavorite ? "text-amber-400 fill-amber-400" : "")} />
+                {isFavorite
+                  ? (locale === "es" ? "Vista favorita actual" : "Current favorite view")
+                  : (locale === "es" ? "Guardar vista favorita" : "Save favorite view")}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -3957,11 +3968,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   })
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
-  // Favorite view
+  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
   type FavoriteView = { view: string; calendarLayout: string; daysAsRows: boolean; compact: boolean; colorChips: boolean; highlightEnabled: boolean }
+  type MobileFavoriteView = { viewMode: string; compact: boolean; deptColor: boolean }
   const [favoriteView, setFavoriteView] = useState<FavoriteView | null>(() => {
     if (typeof window === "undefined") return null
     try { return JSON.parse(localStorage.getItem("labrota_favorite_view") ?? "null") } catch { return null }
+  })
+  const [mobileFavoriteView, setMobileFavoriteView] = useState<MobileFavoriteView | null>(() => {
+    if (typeof window === "undefined") return null
+    try { return JSON.parse(localStorage.getItem("labrota_mobile_favorite_view") ?? "null") } catch { return null }
   })
   const [currentDate, setCurrentDateState] = useState(() => {
     if (typeof window === "undefined") return TODAY
@@ -4142,6 +4158,32 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     setHighlightHover(favoriteView.highlightEnabled)
   }, [favoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Apply mobile favorite view on first mount
+  const mobileFavAppliedRef = useRef(false)
+  useEffect(() => {
+    if (mobileFavAppliedRef.current || !mobileFavoriteView) return
+    mobileFavAppliedRef.current = true
+    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
+    setMobileCompact(mobileFavoriteView.compact)
+    setMobileDeptColor(mobileFavoriteView.deptColor)
+  }, [mobileFavoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync favorite views from DB when localStorage is empty (new browser)
+  useEffect(() => {
+    const hasDesktop = localStorage.getItem("labrota_favorite_view")
+    const hasMobile = localStorage.getItem("labrota_mobile_favorite_view")
+    if (hasDesktop && hasMobile) return
+    getUserPreferences().then((prefs) => {
+      if (!hasDesktop && prefs.favoriteView) {
+        localStorage.setItem("labrota_favorite_view", JSON.stringify(prefs.favoriteView))
+        setFavoriteView(prefs.favoriteView as FavoriteView)
+      }
+      if (!hasMobile && prefs.mobileFavoriteView) {
+        localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(prefs.mobileFavoriteView))
+        setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if previous week has a rota (for "copy previous week" button)
   // Don't reset to false while loading — keep the last known value
@@ -4587,7 +4629,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
                     setFavoriteView(fav)
                     localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ favoriteView: fav } as any)
+                    saveUserPreferences({ favoriteView: fav })
                     toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
                   },
                   dividerBefore: true,
@@ -4985,6 +5027,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onToggleDeptColor={() => { const next = !mobileDeptColor; setMobileDeptColor(next); localStorage.setItem("labrota_mobile_dept_color", String(next)) }}
                   highlight={highlightHover}
                   onToggleHighlight={() => setHighlightHover(!highlightHover)}
+                  isFavorite={!!(mobileFavoriteView && mobileFavoriteView.viewMode === mobileViewMode && mobileFavoriteView.compact === mobileCompact && mobileFavoriteView.deptColor === mobileDeptColor)}
+                  onSaveFavorite={() => {
+                    const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
+                    setMobileFavoriteView(fav)
+                    localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(fav))
+                    saveUserPreferences({ mobileFavoriteView: fav })
+                    toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
+                  }}
                 />
               )}
             </div>
