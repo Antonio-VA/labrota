@@ -164,17 +164,16 @@ export function AccountPanel({ open, onClose, user }: {
               value={prefs.locale}
               onChange={(e) => {
                 const next = e.target.value as UserPreferences["locale"]
-                setPrefs((p) => ({ ...p, locale: next }))
-                // Set the cookie that the server reads for i18n
+                // Set cookie immediately — this is what the server reads
                 if (next === "browser") {
                   document.cookie = "locale=;path=/;max-age=0"
                 } else {
-                  document.cookie = `locale=${next};path=/;max-age=${365 * 86400};SameSite=Lax`
+                  document.cookie = `locale=${next};path=/;max-age=${365 * 86400}`
                 }
-                // Save to DB then reload to apply server-side
-                saveUserPreferences({ locale: next }).then(() => {
-                  window.location.reload()
-                })
+                // Save to DB in background
+                saveUserPreferences({ locale: next })
+                // Reload to apply — cookie is already set synchronously
+                window.location.reload()
               }}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
