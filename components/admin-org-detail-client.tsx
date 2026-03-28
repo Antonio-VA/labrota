@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useRef, useEffect, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Users, Plus, MoreHorizontal, X } from "lucide-react"
+import { Users, Plus, X, Lock } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests } from "@/app/admin/actions"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
 
@@ -18,6 +18,8 @@ export function AdminOrgDetailClient({
   initialCountry,
   initialRegion,
   initialDisplayMode = "by_shift",
+  initialLeaveRequests = false,
+  initialBilling = { start: null, end: null, fee: null },
   hideUsers = false,
 }: {
   orgId: string
@@ -25,12 +27,16 @@ export function AdminOrgDetailClient({
   initialCountry: string
   initialRegion: string
   initialDisplayMode?: "by_shift" | "by_task"
+  initialLeaveRequests?: boolean
+  initialBilling?: { start: string | null; end: string | null; fee: number | null }
   hideUsers?: boolean
 }) {
   const router = useRouter()
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
+  const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
+  const [billing, setBilling] = useState(initialBilling)
   const [isPending, startTransition] = useTransition()
 
   // Add user modal
@@ -40,15 +46,6 @@ export function AdminOrgDetailClient({
   const [appRole, setAppRole] = useState("admin")
 
   const countryConfig = getCountry(country)
-
-  function handleCountryChange(code: string) {
-    setCountry(code)
-    setRegion("")
-  }
-
-  async function handleSaveRegional(): Promise<{ error?: string }> {
-    return updateOrgRegional(orgId, country, region)
-  }
 
   function handleAddUser() {
     if (!email.trim()) return
@@ -68,15 +65,52 @@ export function AdminOrgDetailClient({
     })
   }
 
+  function handleSaveAll() {
+    if (displayMode !== initialDisplayMode) {
+      if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
+        setDisplayMode(initialDisplayMode)
+        return
+      }
+    }
+    startTransition(async () => {
+      let hasError = false
+      if (displayMode !== initialDisplayMode) {
+        const r = await updateOrgDisplayMode(orgId, displayMode)
+        if (r.error) { toast.error(r.error); hasError = true }
+      }
+      if (leaveRequests !== initialLeaveRequests) {
+        const r = await toggleOrgLeaveRequests(orgId, leaveRequests)
+        if (r.error) { toast.error(r.error); hasError = true }
+      }
+      const r2 = await updateOrgRegional(orgId, country, region)
+      if (r2.error) { toast.error(r2.error); hasError = true }
+      const r3 = await updateOrgBilling(orgId, {
+        billing_start: billing.start || null,
+        billing_end: billing.end || null,
+        billing_fee: billing.fee,
+      })
+      if (r3.error) { toast.error(r3.error); hasError = true }
+      if (!hasError) toast.success("Configuración guardada")
+    })
+  }
+
   return (
     <>
-      {/* Modo de horario */}
+      {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-[18px] font-medium">Modo de horario</h2>
-        <div className="rounded-lg border border-border bg-background px-4 py-3">
-          <div className="flex items-center gap-4">
-            <span className="text-[13px] text-muted-foreground shrink-0">Modo</span>
-            <div className="flex rounded-lg border border-input overflow-hidden">
+        <h2 className="text-[18px] font-medium">Funcionalidades</h2>
+        <div className="rounded-lg border border-border bg-background px-4 py-3 flex flex-col gap-4">
+          {/* Display mode */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Modo de horario</p>
+              <p className="text-[12px] text-muted-foreground">
+                {displayMode === "by_shift"
+                  ? "Por turno — habitual en laboratorios pequeños (<10 personas)"
+                  : "Por tarea — habitual en laboratorios grandes (10+ personas)"}
+              </p>
+            </div>
+            <div className="flex rounded-lg border border-input overflow-hidden shrink-0">
               {([
                 { key: "by_shift" as const, label: "Por turno" },
                 { key: "by_task" as const, label: "Por tarea" },
@@ -97,14 +131,82 @@ export function AdminOrgDetailClient({
                 </button>
               ))}
             </div>
-            <span className="text-[11px] text-muted-foreground">
-              {displayMode === "by_shift" ? "Personal asignado a turnos por día" : "Personal asignado a tareas por día"}
-            </span>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Leave requests */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Solicitud de ausencias</p>
+              <p className="text-[12px] text-muted-foreground">
+                Permite al personal solicitar vacaciones y ausencias desde la app
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => setLeaveRequests(!leaveRequests)}
+              className={cn(
+                "relative w-10 h-6 rounded-full transition-colors shrink-0",
+                leaveRequests ? "bg-primary" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                leaveRequests ? "translate-x-[18px]" : "translate-x-0.5"
+              )} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Configuración regional */}
+      {/* ── FACTURACIÓN ───────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-[18px] font-medium">Facturación</h2>
+        <div className="rounded-lg border border-border bg-background px-4 py-3 flex flex-col gap-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Inicio</label>
+              <Input
+                type="date"
+                value={billing.start ?? ""}
+                onChange={(e) => setBilling((p) => ({ ...p, start: e.target.value || null }))}
+                disabled={isPending}
+                className="w-40 h-8 text-[13px]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Fin</label>
+              <Input
+                type="date"
+                value={billing.end ?? ""}
+                onChange={(e) => setBilling((p) => ({ ...p, end: e.target.value || null }))}
+                disabled={isPending}
+                className="w-40 h-8 text-[13px]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Cuota anual (€)</label>
+              <Input
+                type="number"
+                min={0}
+                step={100}
+                value={billing.fee ?? ""}
+                onChange={(e) => setBilling((p) => ({ ...p, fee: e.target.value ? parseFloat(e.target.value) : null }))}
+                disabled={isPending}
+                className="w-28 h-8 text-[13px]"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Lock className="size-3" />
+            Solo visible y editable por super admin. Los administradores de la clínica no ven esta sección.
+          </p>
+        </div>
+      </div>
+
+      {/* ── CONFIGURACIÓN REGIONAL ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>
         <div className="rounded-lg border border-border bg-background px-4 py-3">
@@ -113,7 +215,7 @@ export function AdminOrgDetailClient({
               <label className="text-[13px] text-muted-foreground shrink-0">País</label>
               <select
                 value={country}
-                onChange={(e) => handleCountryChange(e.target.value)}
+                onChange={(e) => { setCountry(e.target.value); setRegion("") }}
                 disabled={isPending}
                 className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
               >
@@ -143,29 +245,12 @@ export function AdminOrgDetailClient({
         </div>
       </div>
 
-      {/* Single save button for both sections */}
-      <Button onClick={() => {
-        if (displayMode !== initialDisplayMode) {
-          if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
-            setDisplayMode(initialDisplayMode)
-            return
-          }
-        }
-        startTransition(async () => {
-          let hasError = false
-          if (displayMode !== initialDisplayMode) {
-            const r = await updateOrgDisplayMode(orgId, displayMode)
-            if (r.error) { toast.error(r.error); hasError = true }
-          }
-          const r2 = await handleSaveRegional()
-          if (r2.error) { toast.error(r2.error); hasError = true }
-          if (!hasError) toast.success("Configuración guardada")
-        })
-      }} disabled={isPending} className="w-fit">
+      {/* Save all */}
+      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
         {isPending ? "Guardando…" : "Guardar"}
       </Button>
 
-      {/* Usuarios — hidden when separate Users tab exists */}
+      {/* ── USUARIOS ──────────────────────────────────────────────────── */}
       {!hideUsers && <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[18px] font-medium">Usuarios</h2>
@@ -201,31 +286,16 @@ export function AdminOrgDetailClient({
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-medium">Email</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="usuario@clinica.com"
-                  disabled={isPending}
-                />
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@clinica.com" disabled={isPending} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-medium">Nombre completo</label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nombre Apellido"
-                  disabled={isPending}
-                />
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre Apellido" disabled={isPending} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-medium">Rol</label>
-                <select
-                  value={appRole}
-                  onChange={(e) => setAppRole(e.target.value)}
-                  disabled={isPending}
-                  className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring"
-                >
+                <select value={appRole} onChange={(e) => setAppRole(e.target.value)} disabled={isPending}
+                  className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring">
                   <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
                   <option value="viewer">Viewer</option>

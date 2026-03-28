@@ -54,6 +54,9 @@ export interface Organisation {
   is_active:          boolean
   logo_url:           string | null
   rota_display_mode:  RotaDisplayMode
+  billing_start:      string | null
+  billing_end:        string | null
+  billing_fee:        number | null
   created_at:         string
 }
 
@@ -200,6 +203,7 @@ export interface LabConfig {
   task_coverage_enabled:    boolean // whether per-task coverage minimums are active
   task_coverage_by_day:     Record<string, Record<string, number>> | null // tecnica_code → { mon: N, tue: N, ... }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
+  enable_leave_requests:    boolean
   enable_notes:             boolean
   shift_name_am_es:         string
   shift_name_pm_es:         string

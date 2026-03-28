@@ -319,3 +319,27 @@ export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }
+
+export async function updateOrgBilling(orgId: string, data: { billing_start: string | null; billing_end: string | null; billing_fee: number | null }) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update(data as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
+export async function toggleOrgLeaveRequests(orgId: string, enabled: boolean) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("lab_config")
+    .update({ enable_leave_requests: enabled } as never)
+    .eq("organisation_id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}

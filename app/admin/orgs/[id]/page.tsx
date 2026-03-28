@@ -112,6 +112,12 @@ export default async function OrgDetailPage({
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
+            initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
+            initialBilling={{
+              start: (org as any).billing_start ?? null,
+              end: (org as any).billing_end ?? null,
+              fee: (org as any).billing_fee ?? null,
+            }}
           />
         }
         defaults={
