@@ -3164,7 +3164,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact, mobileDeptColor = true }: {
+function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact, mobileDeptColor = true, ratioOptimal, ratioMinimum }: {
   day: RotaDay | null
   loading: boolean
   locale: string
@@ -3178,6 +3178,8 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   staffList?: StaffWithSkills[]
   mobileCompact?: boolean
   mobileDeptColor?: boolean
+  ratioOptimal?: number
+  ratioMinimum?: number
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -3238,15 +3240,40 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
   return (
     <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
-      {/* Punctions + biopsies header */}
-      {(punctions !== undefined || biopsyForecast !== undefined) && (
-        <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-          {punctions !== undefined && <span>P: <strong className="text-foreground">{punctions}</strong></span>}
-          {biopsyForecast !== undefined && <span>B: <strong className="text-foreground">{biopsyForecast}</strong></span>}
-          <span className="text-muted-foreground/40">·</span>
-          <span>{t("assignmentCount", { count: day.assignments.length })}</span>
-        </div>
-      )}
+      {/* Punctions + biopsies + P+B index header */}
+      {(punctions !== undefined || biopsyForecast !== undefined) && (() => {
+        const p = punctions ?? 0
+        const b = biopsyForecast ?? 0
+        const totalProc = p + b
+        const qualifiedCount = day.assignments.length
+        const pbIndex = totalProc > 0 ? (qualifiedCount / totalProc) : 0
+        const pbIndexStr = pbIndex.toFixed(1)
+        const opt = ratioOptimal ?? 1.0
+        const min = ratioMinimum ?? 0.75
+        const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : "text-destructive"
+        const tooltipEs = `${p} punciones + ${b} biopsias = ${totalProc} procedimientos\nÍndice P+B: ${pbIndexStr}`
+        const tooltipEn = `${p} punctions + ${b} biopsies = ${totalProc} procedures\nP+B index: ${pbIndexStr}`
+        return (
+          <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
+            <span>P: <strong className="text-foreground">{p}</strong></span>
+            <span>B: <strong className="text-foreground">{b}</strong></span>
+            {totalProc > 0 && (
+              <Tooltip>
+                <TooltipTrigger render={
+                  <span className={cn("font-semibold tabular-nums cursor-default", indexColor)}>
+                    P+B: {pbIndexStr}
+                  </span>
+                } />
+                <TooltipContent side="bottom" className="whitespace-pre-line text-[11px]">
+                  {locale === "es" ? tooltipEs : tooltipEn}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <span className="text-muted-foreground/40">·</span>
+            <span>{t("assignmentCount", { count: day.assignments.length })}</span>
+          </div>
+        )
+      })()}
 
       {(day.skillGaps.length > 0) && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2">
@@ -5017,6 +5044,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 staffList={staffList}
                 mobileCompact={mobileCompact}
                 mobileDeptColor={mobileDeptColor}
+                punctions={currentDayData ? (punctionsOverride[currentDayData.date] ?? weekData?.punctionsDefault?.[currentDayData.date] ?? 0) : 0}
+                biopsyForecast={(() => {
+                  if (!currentDayData || !weekData) return 0
+                  const pd = weekData.punctionsDefault ?? {}
+                  const cr = weekData.biopsyConversionRate ?? 0.5
+                  function getPunc(dateStr: string): number {
+                    if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
+                    if (pd[dateStr] !== undefined) return pd[dateStr]
+                    const dow = new Date(dateStr + "T12:00:00").getDay()
+                    const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
+                    return sameDow ? sameDow[1] : 0
+                  }
+                  const d5 = new Date(currentDayData.date + "T12:00:00"); d5.setDate(d5.getDate() - 5)
+                  const d6 = new Date(currentDayData.date + "T12:00:00"); d6.setDate(d6.getDate() - 6)
+                  return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
+                })()}
+                ratioOptimal={weekData?.ratioOptimal}
+                ratioMinimum={weekData?.ratioMinimum}
               />
             )}
           </div>
