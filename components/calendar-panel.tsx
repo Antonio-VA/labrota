@@ -782,10 +782,11 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
             <button
               key={st.code}
               onClick={() => { onShiftChange(st.code); setOpen(false) }}
-              className={cn("flex items-center justify-between w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors", st.code === assignment.shift_type && "font-semibold text-primary")}
+              className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors", st.code === assignment.shift_type && "font-semibold text-primary bg-primary/5")}
             >
+              <span className="w-4 shrink-0">{st.code === assignment.shift_type ? "✓" : ""}</span>
               <span>{st.code}</span>
-              <span className="text-[10px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">{st.start_time}–{st.end_time}</span>
             </button>
           ))}
           <div className="h-px bg-border mx-2 my-1" />
