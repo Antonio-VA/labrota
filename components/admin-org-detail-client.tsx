@@ -40,7 +40,7 @@ export function AdminOrgDetailClient({
     hasRota: boolean
     rotaCount: number
   }
-  section?: "all" | "funcionalidades" | "facturacion" | "configuracion" | "implementacion"
+  section?: "all" | "funcionalidades" | "facturacion" | "configuracion" | "usuarios" | "implementacion"
   hideUsers?: boolean
 }) {
   const router = useRouter()
@@ -275,9 +275,11 @@ export function AdminOrgDetailClient({
           </div>
         </div>
       </div>
-      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
-        {isPending ? "Guardando…" : "Guardar"}
-      </Button>
+      <div className="pt-3">
+        <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
+          {isPending ? "Guardando…" : "Guardar cambios"}
+        </Button>
+      </div>
 
       </>}
 
@@ -331,9 +333,11 @@ export function AdminOrgDetailClient({
           </p>
         </div>
       </div>
-      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
-        {isPending ? "Guardando…" : "Guardar"}
-      </Button>
+      <div className="pt-3">
+        <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
+          {isPending ? "Guardando…" : "Guardar cambios"}
+        </Button>
+      </div>
 
       </>}
 
@@ -378,12 +382,14 @@ export function AdminOrgDetailClient({
       </div>
 
       {/* Save all */}
-      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
-        {isPending ? "Guardando…" : "Guardar"}
-      </Button>
+      <div className="pt-3">
+        <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
+          {isPending ? "Guardando…" : "Guardar cambios"}
+        </Button>
+      </div>
 
       {/* ── USUARIOS ──────────────────────────────────────────────────── */}
-      {!hideUsers && <div className="flex flex-col gap-3">
+      {(["all", "usuarios"].includes(section) || !hideUsers) && <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[18px] font-medium">Usuarios</h2>
           <Button size="sm" onClick={() => setAddModalOpen(true)}>

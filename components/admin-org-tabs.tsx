@@ -3,26 +3,28 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["funcionalidades", "facturacion", "configuracion", "implementacion"] as const
+const TAB_KEYS = ["configuracion", "usuarios", "funcionalidades", "facturacion", "implementacion"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
+  configuracion: "Configuración",
+  usuarios: "Usuarios",
   funcionalidades: "Funcionalidades",
   facturacion: "Facturación",
-  configuracion: "Configuración",
   implementacion: "Implementación",
 }
 
 export function AdminOrgTabs({
-  funcionalidades, facturacion, configuracion, implementacion,
+  configuracion, usuarios, funcionalidades, facturacion, implementacion,
 }: {
+  configuracion: React.ReactNode
+  usuarios: React.ReactNode
   funcionalidades: React.ReactNode
   facturacion: React.ReactNode
-  configuracion: React.ReactNode
   implementacion: React.ReactNode
 }) {
-  const [active, setActive] = useState<TabKey>("funcionalidades")
-  const content: Record<TabKey, React.ReactNode> = { funcionalidades, facturacion, configuracion, implementacion }
+  const [active, setActive] = useState<TabKey>("configuracion")
+  const content: Record<TabKey, React.ReactNode> = { configuracion, usuarios, funcionalidades, facturacion, implementacion }
 
   return (
     <div className="flex flex-col gap-6 w-full">

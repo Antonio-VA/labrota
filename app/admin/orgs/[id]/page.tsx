@@ -129,7 +129,14 @@ export default async function OrgDetailPage({
         }
         configuracion={
           <AdminOrgDetailClient
-            orgId={id} userRows={userRows} section="configuracion"
+            orgId={id} userRows={userRows} section="configuracion" hideUsers
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+          />
+        }
+        usuarios={
+          <AdminOrgDetailClient
+            orgId={id} userRows={userRows} section="usuarios"
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
           />
