@@ -457,6 +457,8 @@ export function AdminOrgDetailClient({
         </Button>
       </div>
 
+      </>}
+
       {/* ── USUARIOS ──────────────────────────────────────────────────── */}
       {(["all", "usuarios"].includes(section) || !hideUsers) && <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -478,7 +480,6 @@ export function AdminOrgDetailClient({
           )}
         </div>
       </div>}
-      </>}
 
       {/* Add user modal */}
       {addModalOpen && (
