@@ -1803,7 +1803,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1.5 bg-muted flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-muted border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1838,12 +1838,13 @@ function PersonGrid({
                       : cleanFnLabel
                         ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
                         : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
-                    const isShiftHovered = highlightEnabled && hoveredShift && assignment?.shift_type === hoveredShift
+                    const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
+                    const isShiftHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
                     return (
                       <div
                         key={day.date}
-                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-blue-50" : "bg-background")}
-                        onMouseEnter={() => assignment && setHoveredShift(assignment.shift_type)}
+                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
+                        onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
                         {assignment ? (
