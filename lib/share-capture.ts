@@ -5,11 +5,10 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
   try {
     const html2canvas = (await import("html2canvas")).default
 
-    // Temporarily remove pb-32 padding if present (avoids large whitespace at bottom)
+    // Temporarily remove pb-32 padding if present
     const hadPb = element.classList.contains("pb-32")
     if (hadPb) element.classList.remove("pb-32")
 
-    // Scroll to top to ensure full capture
     const prevScroll = element.scrollTop
     element.scrollTop = 0
 
@@ -18,12 +17,14 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
       scale: 2,
       useCORS: true,
       logging: false,
-      // Capture the full scrollable content
       height: element.scrollHeight,
       windowHeight: element.scrollHeight,
+      // Convert oklab/oklch colors to rgb before html2canvas processes them
+      onclone: (_doc: Document, clonedEl: HTMLElement) => {
+        convertOklabColors(clonedEl)
+      },
     })
 
-    // Restore state
     element.scrollTop = prevScroll
     if (hadPb) element.classList.add("pb-32")
 
@@ -38,7 +39,6 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
 
     const file = new File([blob], fileName, { type: "image/png" })
 
-    // Try native Web Share API (iOS/Android share sheet)
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         const canShare = navigator.canShare?.({ files: [file] })
@@ -47,14 +47,13 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
           return
         }
       } catch (e) {
-        // User cancelled or share failed — fall through to download
         if ((e as Error).name !== "AbortError") {
           console.error("shareCapture: navigator.share failed", e)
         }
       }
     }
 
-    // Fallback: download the image
+    // Fallback: download
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -65,7 +64,65 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
     URL.revokeObjectURL(url)
   } catch (err) {
     console.error("shareCapture error:", err)
-    // Show a simple alert as last resort
     alert(err instanceof Error ? err.message : "Could not capture image")
+  }
+}
+
+/**
+ * Walk the cloned DOM and replace any oklab/oklch color values
+ * with their computed rgb equivalents. html2canvas cannot parse
+ * these modern color functions.
+ */
+function convertOklabColors(root: HTMLElement) {
+  const oklabRe = /oklch?\([^)]+\)/gi
+
+  function processElement(el: HTMLElement) {
+    const style = el.style
+    const computed = window.getComputedStyle(el)
+
+    // Properties that commonly contain colors
+    const colorProps = [
+      "color", "backgroundColor", "borderColor",
+      "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
+      "outlineColor", "textDecorationColor", "boxShadow",
+    ]
+
+    for (const prop of colorProps) {
+      const val = computed.getPropertyValue(prop.replace(/([A-Z])/g, "-$1").toLowerCase())
+      if (val && oklabRe.test(val)) {
+        // The computed style should already be resolved to rgb by the browser
+        // But if it's still oklab, force it through a temp element
+        const resolved = resolveColor(val)
+        if (resolved) {
+          style.setProperty(prop.replace(/([A-Z])/g, "-$1").toLowerCase(), resolved, "important")
+        }
+      }
+    }
+
+    // Also inline any CSS custom properties that resolve to oklab
+    const inlineStyle = el.getAttribute("style") ?? ""
+    if (oklabRe.test(inlineStyle)) {
+      el.setAttribute("style", inlineStyle.replace(oklabRe, (match) => resolveColor(match) ?? match))
+    }
+
+    for (const child of el.children) {
+      if (child instanceof HTMLElement) processElement(child)
+    }
+  }
+
+  processElement(root)
+}
+
+/** Resolve a color string to rgb using a temporary element */
+function resolveColor(color: string): string | null {
+  try {
+    const temp = document.createElement("div")
+    temp.style.color = color
+    document.body.appendChild(temp)
+    const computed = window.getComputedStyle(temp).color
+    document.body.removeChild(temp)
+    return computed // browsers return rgb()/rgba()
+  } catch {
+    return null
   }
 }
