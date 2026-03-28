@@ -1695,7 +1695,10 @@ function PersonGrid({
     }
   }
 
-  // Active staff sorted by role then last name
+  // Shift highlighting — hover a shift to highlight all same-shift cells
+  const [hoveredShift, setHoveredShift] = useState<string | null>(null)
+
+  // Active staff sorted by role then first name
   const activeStaff = staffList
     .filter((s) => s.onboarding_status !== "inactive")
     .sort((a, b) => {
@@ -1814,14 +1817,16 @@ function PersonGrid({
                       : cleanFnLabel
                         ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
                         : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
+                    const isShiftHovered = hoveredShift && assignment?.shift_type === hoveredShift
                     return (
                       <div
                         key={day.date}
-                        className="px-1 py-1 border-b border-r last:border-r-0 border-border bg-background min-h-[48px] flex items-center"
+                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-primary/5" : "bg-background")}
+                        onMouseEnter={() => assignment && setHoveredShift(assignment.shift_type)}
+                        onMouseLeave={() => setHoveredShift(null)}
                       >
                         {assignment ? (
                           taskOff ? (
-                            /* Task assignment OFF — shift pill with shift selector on click */
                             <PersonShiftSelector
                               assignment={assignment}
                               shiftTimes={shiftTimes}
@@ -1830,17 +1835,17 @@ function PersonGrid({
                               compact={compact}
                               onShiftChange={async (newShift) => {
                                 if (!newShift) {
-                                  // OFF — remove assignment
                                   patchLocalAssignment(assignment.id, { _removed: true })
                                   setLocalDays((prev) => prev.map((d) => ({
                                     ...d,
                                     assignments: d.assignments.filter((a) => a.id !== assignment.id),
                                   })))
-                                  await removeAssignment(assignment.id)
+                                  const result = await removeAssignment(assignment.id)
+                                  if (result.error) toast.error(result.error)
                                 } else {
-                                  // Change shift
                                   patchLocalAssignment(assignment.id, { shift_type: newShift })
-                                  await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                                  const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                                  if (result.error) toast.error(result.error)
                                 }
                               }}
                             />
