@@ -26,13 +26,13 @@ const extractionSchema = z.object({
     type: z.string().describe("One of: no_coincidir, supervisor_requerido, max_dias_consecutivos, distribucion_fines_semana, shift_preference, rotation_pattern, always_together"),
     description: z.string().describe("Human-readable description of the rule in Spanish"),
     staff_involved: z.array(z.string()).describe("Names of staff involved"),
-    confidence: z.number().min(0).max(1).describe("How consistently this pattern appears: 0.0 to 1.0"),
+    confidence: z.number().describe("How consistently this pattern appears, from 0.0 (never) to 1.0 (always)"),
     observed_count: z.number().describe("Number of weeks where pattern was observed"),
     total_weeks: z.number().describe("Total weeks analysed"),
   })),
   rota_mode: z.object({
     type: z.enum(["by_task", "by_shift"]).describe("Whether the rota is organised by task/procedure or by shift. by_task = staff assigned to specific tasks each day (typical for large labs). by_shift = staff assigned to shifts with no task granularity (typical for smaller labs)."),
-    confidence: z.number().min(0).max(1).describe("How confident the detection is"),
+    confidence: z.number().describe("How confident the detection is, from 0.0 to 1.0"),
     reasoning: z.string().describe("Brief explanation of why this mode was detected"),
   }),
   task_coverage: z.array(z.object({
