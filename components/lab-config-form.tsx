@@ -256,67 +256,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       </div>
 
-      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.ratioCobertura")} />
-        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
-            <Input
-              type="number"
-              min={0.1}
-              max={5}
-              step={0.05}
-              value={values.ratio_optimal}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v }))
-              }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
-            <Input
-              type="number"
-              min={0.1}
-              max={5}
-              step={0.05}
-              value={values.ratio_minimum}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v }))
-              }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-        </div>
-      </div>
-
-      {/* ── CONFLICTO POR TAREA (solo by_task) ─────────────────────────── */}
-      {rotaDisplayMode === "by_task" && (
-        <div className="rounded-lg border border-border bg-background px-5">
-          <SectionHeader title="Conflicto por tarea" />
-          <div className="flex flex-col gap-0">
-            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X tareas en el mismo día">
-              <Input
-                type="number"
-                min={2}
-                max={10}
-                value={values.task_conflict_threshold}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10)
-                  if (!isNaN(v) && v >= 2) setValues((p) => ({ ...p, task_conflict_threshold: v }))
-                }}
-                disabled={isPending}
-                className="w-16 text-center"
-              />
-            </FieldRow>
-          </div>
-        </div>
-      )}
-
       {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title="Biopsias" />
@@ -371,6 +310,50 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </FieldRow>
         </div>
       </div>
+
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_optimal}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_minimum}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+        </div>
+      </div>
+
+      {/* ── CONFLICTO POR TAREA (solo by_task) ─────────────────────────── */}
+      {rotaDisplayMode === "by_task" && (
+        <div className="rounded-lg border border-border bg-background px-5">
+          <SectionHeader title="Conflicto por tarea" />
+          <div className="flex flex-col gap-0">
+            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X tareas en el mismo día">
+              <Input
+                type="number" min={2} max={10}
+                value={values.task_conflict_threshold}
+                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v >= 2) setValues((p) => ({ ...p, task_conflict_threshold: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+            </FieldRow>
+          </div>
+        </div>
+      )}
 
       </>}
 
