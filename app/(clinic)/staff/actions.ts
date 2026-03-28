@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { logAuditEvent } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getOrgId } from "@/lib/get-org-id"
 import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -17,18 +18,6 @@ function parseSkillsFromForm(formData: FormData): { skill: string; level: SkillL
     }
   }
   return skills
-}
-
-async function getOrgId(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase
-    .from("profiles")
-    .select("organisation_id")
-    .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
-  return data?.organisation_id ?? null
 }
 
 const STAFF_PASTEL_COLORS = [

@@ -540,30 +540,6 @@ export async function generateRota(
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
   })
 
-  // Log engine output for debugging
-  if (engineWarnings.length > 0) {
-    console.log("[rota-engine] Warnings:", engineWarnings)
-  }
-  for (const day of days) {
-    const byRole: Record<string, number> = {}
-    for (const a of day.assignments) {
-      const s = normalizedStaff.find((st) => st.id === a.staff_id)
-      byRole[s?.role ?? "?"] = (byRole[s?.role ?? "?"] ?? 0) + 1
-    }
-    console.log(`[rota-engine] ${day.date}: ${day.assignments.length} total`, byRole)
-  }
-  // Per-staff summary: total assignments this week
-  const staffCounts: Record<string, { name: string; count: number; budget: number }> = {}
-  for (const day of days) {
-    for (const a of day.assignments) {
-      const s = normalizedStaff.find((st) => st.id === a.staff_id)
-      if (!s) continue
-      if (!staffCounts[s.id]) staffCounts[s.id] = { name: `${s.first_name} ${s.last_name}`, count: 0, budget: s.days_per_week ?? 5 }
-      staffCounts[s.id].count++
-    }
-  }
-  console.log("[rota-engine] Staff totals:", Object.values(staffCounts).map((s) => `${s.name}: ${s.count}/${s.budget}`).join(", "))
-
   // Insert new assignments (skip individual staff+date that have manual overrides)
   const toInsert = days.flatMap((day) =>
     day.assignments
