@@ -586,14 +586,6 @@ export async function generateRota(
     if (!labConfig.min_lab_coverage && !labConfig.min_andrology_coverage) {
       return { error: "Lab config has zero minimum coverage — set min_lab_coverage or min_andrology_coverage in Lab settings." }
     }
-    // Check if any staff have a non-empty working pattern
-    const staffWithPattern = (staffRes.data ?? []).filter(
-      (s) => Array.isArray((s as { working_pattern?: unknown }).working_pattern) &&
-             ((s as { working_pattern: unknown[] }).working_pattern).length > 0
-    )
-    if (staffWithPattern.length === 0) {
-      return { error: `All ${staffCount} staff members have no working days set. Go to Team and set the availability for each person.` }
-    }
     return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check that working patterns include weekdays in this week and no one is on leave all week.` }
   }
 

@@ -46,8 +46,15 @@ export function MobileBottomNav() {
   }, [])
 
   const router = useRouter()
-  const [tapped, setTapped] = useState<string | null>(null)
-  useEffect(() => { setTapped(null) }, [pathname])
+  // Tracks which button the user tapped — lights up instantly, clears when route resolves
+  const [activeKey, setActiveKey] = useState<string | null>(null)
+  useEffect(() => { setActiveKey(null) }, [pathname])
+
+  const handleTap = useCallback((key: string, href: string) => {
+    // Instant visual switch: set active key synchronously before navigation
+    setActiveKey(key)
+    router.push(href)
+  }, [router])
 
   return (
     <div
@@ -59,17 +66,23 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-2.5 py-1.5 rounded-full glass-nav-pop">
         {NAV_ITEMS.map((item) => {
-          const isActive = (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)) || tapped === item.key
+          // Active if: user just tapped this one, OR route matches and nothing else was tapped
+          const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+          const isActive = activeKey ? activeKey === item.key : routeActive
           return (
             <button
               key={item.key}
-              onClick={() => {
-                setTapped(item.key)
-                router.push(item.href)
+              // onTouchStart fires the instant the finger contacts — no waiting for lift
+              onTouchStart={() => handleTap(item.key, item.href)}
+              // onClick for non-touch (desktop fallback)
+              onClick={(e) => {
+                // Prevent double-fire on touch devices (touchstart already handled it)
+                if (activeKey === item.key) return
+                handleTap(item.key, item.href)
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-[2px] w-[70px] py-2 rounded-full transition-colors duration-100",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground active:text-primary active:bg-primary/10"
+                "flex flex-col items-center justify-center gap-[2px] w-[70px] py-2 rounded-full transition-none",
+                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
               )}
             >
               {item.key === "day" ? (

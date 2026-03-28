@@ -206,8 +206,8 @@ export function runRotaEngine({
         const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
         if (aRes !== bRes) return aRes - bRes
         // Then prefer pattern match
-        const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
-        const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
+        const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
+        const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
         if (aInPattern !== bInPattern) return aInPattern - bInPattern
         return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
       })
@@ -260,8 +260,8 @@ export function runRotaEngine({
     const remaining = staff.filter((s) =>
       isAvailable(s) && !reservedIds.has(s.id) && hasBudget(s)
     ).sort((a, b) => {
-      const aInPattern = (a.working_pattern ?? []).includes(dayCode) ? 0 : 1
-      const bInPattern = (b.working_pattern ?? []).includes(dayCode) ? 0 : 1
+      const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
+      const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
       if (aInPattern !== bInPattern) return aInPattern - bInPattern
       const aPref = a.preferred_days?.includes(dayCode) ? 0 : 1
       const bPref = b.preferred_days?.includes(dayCode) ? 0 : 1

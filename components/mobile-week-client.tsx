@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useTransition, useRef } from "react"
+import { useState, useEffect, useTransition, useRef, useLayoutEffect } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
@@ -51,20 +52,39 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
 function WeekOverflow({ weekStart }: { weekStart: string }) {
   const locale = useLocale()
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return
+    const rect = btnRef.current.getBoundingClientRect()
+    setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+  }, [open])
+
   useEffect(() => {
     if (!open) return
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    function h(e: MouseEvent) {
+      if (dropRef.current?.contains(e.target as Node)) return
+      if (btnRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
     document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    document.addEventListener("touchstart", h as any)
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h as any) }
   }, [open])
+
   return (
-    <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+    <div className="shrink-0">
+      <button ref={btnRef} onClick={() => setOpen((v) => !v)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
         <MoreHorizontal className="size-5" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-10 z-[200] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+      {open && pos && createPortal(
+        <div
+          ref={dropRef}
+          className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1"
+          style={{ top: pos.top, right: pos.right }}
+        >
           <button
             onClick={() => {
               setOpen(false)
@@ -85,7 +105,8 @@ function WeekOverflow({ weekStart }: { weekStart: string }) {
             <Sparkles className="size-4" />
             {locale === "es" ? "Generar horario" : "Generate rota"}
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
