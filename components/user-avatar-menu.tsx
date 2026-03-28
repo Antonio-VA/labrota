@@ -94,11 +94,11 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
   const avatarUrl = initialUser.avatarUrl
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex items-center">
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="shrink-0 hover:opacity-90 transition-opacity p-0 bg-transparent"
+          className="shrink-0 hover:opacity-90 transition-opacity p-0 bg-transparent leading-[0]"
           style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: variant === "light" ? "1.5px solid var(--border)" : "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
