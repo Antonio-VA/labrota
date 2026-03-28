@@ -254,6 +254,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             </tbody>
           </table>
         </div>
+        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
+          Las biopsias se calculan automáticamente a partir de las punciones según la tasa de conversión configurada más abajo.
+        </p>
       </div>
 
       {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
