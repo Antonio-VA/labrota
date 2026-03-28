@@ -1689,7 +1689,7 @@ function PersonGrid({
                   {days.map((day) => {
                     const assignment = staffAssigns[day.date]
                     const onLeave    = (onLeaveByDate[day.date] ?? []).includes(s.id)
-                    const taskOff = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                    const taskOff = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
                     const cleanFnLabel = assignment?.function_label?.startsWith("dept_") ? null : assignment?.function_label
                     const tecnica    = (taskOff || !assignment) ? null
                       : cleanFnLabel
@@ -2215,7 +2215,7 @@ function ShiftGrid({
                 >
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
-                    const taskDisabled = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                    const taskDisabled = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
                     const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
                     const tecnica = taskDisabled ? null
                       : cleanFn
