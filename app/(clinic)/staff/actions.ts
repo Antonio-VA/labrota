@@ -293,3 +293,23 @@ export async function hardDeleteStaff(
   revalidatePath("/staff")
   return { deleted: staffIds.length }
 }
+
+export async function bulkUpdateStaffField(
+  updates: { id: string; field: string; value: unknown }[],
+): Promise<{ updated: number; error?: string }> {
+  if (updates.length === 0) return { updated: 0 }
+  const supabase = await createClient()
+  let count = 0
+  for (const { id, field, value } of updates) {
+    // Only allow safe fields
+    const allowed = ["preferred_shift", "avoid_shifts", "preferred_days", "avoid_days", "days_per_week", "working_pattern"]
+    if (!allowed.includes(field)) continue
+    const { error } = await supabase
+      .from("staff")
+      .update({ [field]: value } as never)
+      .eq("id", id)
+    if (!error) count++
+  }
+  revalidatePath("/staff")
+  return { updated: count }
+}

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
   bulkUpdateStatus,
   bulkSoftDeleteStaff,
   hardDeleteStaff,
+  bulkUpdateStaffField,
 } from "@/app/(clinic)/staff/actions"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -624,13 +625,28 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-const GRID = "grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(300px,2.5fr)_minmax(120px,0.8fr)_40px]"
+function buildGrid(extras: Set<ExtraCol>) {
+  const base = "32px minmax(0,1.5fr) minmax(0,1fr) minmax(0,3fr) minmax(300px,2.5fr) minmax(120px,0.8fr)"
+  const extra = [
+    extras.has("preferredShift") ? "minmax(80px,0.8fr)" : "",
+    extras.has("preferredDays") ? "minmax(100px,1fr)" : "",
+    extras.has("daysPerWeek") ? "minmax(60px,0.5fr)" : "",
+    extras.has("workingPattern") ? "minmax(100px,1fr)" : "",
+  ].filter(Boolean).join(" ")
+  return `${base} ${extra} 40px`.trim()
+}
+
+type ExtraCol = "preferredShift" | "preferredDays" | "daysPerWeek" | "workingPattern"
+
+const DAY_LABELS: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+const ALL_DAYS_TABLE: string[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 function StaffTable({
   members, t, ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,
+  extraCols = new Set(), editMode = false, getVal, setEditValue, shiftTypes = [],
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -646,6 +662,11 @@ function StaffTable({
   tecnicas: Tecnica[]
   sortCol?: "name" | "role"
   onSortChange?: (col: "name" | "role") => void
+  extraCols?: Set<ExtraCol>
+  editMode?: boolean
+  getVal?: (s: StaffWithSkills, field: string) => unknown
+  setEditValue?: (staffId: string, field: string, value: unknown) => void
+  shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -653,7 +674,7 @@ function StaffTable({
   return (
     <div className={cn("rounded-lg border border-border overflow-hidden bg-background", muted && "opacity-60")}>
       {/* Header */}
-      <div className={cn("hidden md:grid px-4 py-2 bg-background border-b border-border items-center", GRID)}>
+      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center" style={{ gridTemplateColumns: buildGrid(extraCols) }}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -671,6 +692,10 @@ function StaffTable({
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>
         <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+        {extraCols.has("preferredShift") && <span className="text-[13px] font-medium text-muted-foreground">Turno pref.</span>}
+        {extraCols.has("preferredDays") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
+        {extraCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
+        {extraCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
         <span />
       </div>
 
@@ -691,9 +716,9 @@ function StaffTable({
             key={member.id}
             className={cn(
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
-              "grid-cols-[32px_1fr_auto] md:grid-cols-[32px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,3fr)_minmax(300px,2.5fr)_minmax(120px,0.8fr)_40px]",
               isSelected ? "bg-primary/5" : "hover:bg-accent"
             )}
+            style={{ gridTemplateColumns: buildGrid(extraCols) }}
           >
             {/* Checkbox */}
             <input
@@ -781,6 +806,90 @@ function StaffTable({
               </span>
             </div>
 
+            {/* Extra: Preferred Shift */}
+            {extraCols.has("preferredShift") && (
+              <div className="hidden md:flex items-center">
+                {editMode && setEditValue ? (
+                  <select
+                    value={String(getVal?.(member, "preferred_shift") ?? "")}
+                    onChange={(e) => setEditValue(member.id, "preferred_shift", e.target.value || null)}
+                    className="h-7 rounded border border-input bg-transparent px-1.5 text-[12px] outline-none w-full max-w-[80px]"
+                  >
+                    <option value="">—</option>
+                    {shiftTypes.filter((st) => st.active !== false).map((st) => (
+                      <option key={st.code} value={st.code}>{st.code}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-[13px] text-muted-foreground">{member.preferred_shift || "—"}</span>
+                )}
+              </div>
+            )}
+
+            {/* Extra: Preferred Days */}
+            {extraCols.has("preferredDays") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {editMode && setEditValue ? (
+                  ALL_DAYS_TABLE.map((d) => {
+                    const pDays = (getVal?.(member, "preferred_days") as string[] | null) ?? []
+                    const active = pDays.includes(d)
+                    return (
+                      <button key={d} type="button" onClick={() => {
+                        const next = active ? pDays.filter((x) => x !== d) : [...pDays, d]
+                        setEditValue(member.id, "preferred_days", next)
+                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : "border-border text-muted-foreground")}>
+                        {DAY_LABELS[d]}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">
+                    {(member.preferred_days ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Extra: Days per week */}
+            {extraCols.has("daysPerWeek") && (
+              <div className="hidden md:flex items-center">
+                {editMode && setEditValue ? (
+                  <input
+                    type="number" min={1} max={7}
+                    value={Number(getVal?.(member, "days_per_week") ?? member.days_per_week)}
+                    onChange={(e) => setEditValue(member.id, "days_per_week", Math.min(7, Math.max(1, parseInt(e.target.value) || 5)))}
+                    className="h-7 w-12 rounded border border-input bg-transparent px-1.5 text-[12px] text-center outline-none"
+                  />
+                ) : (
+                  <span className="text-[13px] text-muted-foreground">{member.days_per_week}</span>
+                )}
+              </div>
+            )}
+
+            {/* Extra: Working Pattern */}
+            {extraCols.has("workingPattern") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {editMode && setEditValue ? (
+                  ALL_DAYS_TABLE.map((d) => {
+                    const wp = (getVal?.(member, "working_pattern") as string[] | null) ?? []
+                    const active = wp.includes(d)
+                    return (
+                      <button key={d} type="button" onClick={() => {
+                        const next = active ? wp.filter((x) => x !== d) : [...wp, d]
+                        setEditValue(member.id, "working_pattern", next)
+                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground")}>
+                        {DAY_LABELS[d]}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">
+                    {(member.working_pattern ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Edit */}
             <div className="flex items-center justify-end">
               <Link
@@ -800,7 +909,7 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
+export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
   const t  = useTranslations("staff")
   const ts = useTranslations("skills")
   const router = useRouter()
@@ -817,6 +926,58 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
   const [showHistory,  setShowHistory]  = useState(false)
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
+
+  // Extra columns toggle
+  type ExtraCol = "preferredShift" | "preferredDays" | "daysPerWeek" | "workingPattern"
+  const [extraCols, setExtraCols] = useState<Set<ExtraCol>>(new Set())
+  const [showColMenu, setShowColMenu] = useState(false)
+  const colMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!showColMenu) return
+    function h(e: MouseEvent) { if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setShowColMenu(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [showColMenu])
+  function toggleCol(col: ExtraCol) {
+    setExtraCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
+  }
+
+  // Inline edit mode
+  const [editMode, setEditMode] = useState(false)
+  const [editDirty, setEditDirty] = useState<Map<string, Record<string, unknown>>>(new Map())
+  const [isSaving, startSaving] = useTransition()
+
+  function setEditValue(staffId: string, field: string, value: unknown) {
+    setEditDirty((prev) => {
+      const next = new Map(prev)
+      const row = next.get(staffId) ?? {}
+      row[field] = value
+      next.set(staffId, row)
+      return next
+    })
+  }
+
+  async function saveEdits() {
+    const updates: { id: string; field: string; value: unknown }[] = []
+    for (const [staffId, fields] of editDirty) {
+      for (const [field, value] of Object.entries(fields)) {
+        updates.push({ id: staffId, field, value })
+      }
+    }
+    if (updates.length === 0) { setEditMode(false); return }
+    startSaving(async () => {
+      const result = await bulkUpdateStaffField(updates)
+      if (result.error) toast.error(result.error)
+      else toast.success(`${result.updated} campos actualizados`)
+      setEditDirty(new Map())
+      setEditMode(false)
+    })
+  }
+
+  // Get current value for a field, with edit override
+  function getVal(s: StaffWithSkills, field: string): unknown {
+    return editDirty.get(s.id)?.[field] ?? (s as any)[field]
+  }
 
   const filtered = staff.filter((s) => {
     const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
@@ -951,10 +1112,56 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
             <option value="inactive">{t("onboardingStatus.inactive")}</option>
           </select>
         </div>
-        <Button size="lg" render={<Link href="/staff/new" />}>
-          <Plus className="size-4" />
-          {t("addStaff")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Column toggle */}
+          <div className="relative" ref={colMenuRef}>
+            <button
+              onClick={() => setShowColMenu((v) => !v)}
+              className={cn("h-9 px-2.5 rounded-lg border text-[13px] flex items-center gap-1.5 transition-colors", extraCols.size > 0 ? "border-primary/30 text-primary bg-primary/5" : "border-input text-muted-foreground hover:text-foreground")}
+            >
+              <Columns3 className="size-4" />
+            </button>
+            {showColMenu && (
+              <div className="absolute right-0 top-10 z-50 w-48 rounded-lg border border-border bg-background shadow-lg py-1">
+                {([
+                  ["preferredShift", "Turno preferido"],
+                  ["preferredDays", "Días preferidos"],
+                  ["daysPerWeek", "Días/semana"],
+                  ["workingPattern", "Patrón trabajo"],
+                ] as [ExtraCol, string][]).map(([key, label]) => (
+                  <button key={key} onClick={() => toggleCol(key)} className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors">
+                    <span className={cn("size-4 rounded border flex items-center justify-center", extraCols.has(key) ? "bg-primary border-primary text-white" : "border-border")}>
+                      {extraCols.has(key) && <Check className="size-3" />}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Edit mode toggle */}
+          {editMode ? (
+            <button
+              onClick={saveEdits}
+              disabled={isSaving}
+              className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="size-3.5" />
+              {isSaving ? "Guardando..." : "Guardar"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setEditMode(true)}
+              className="h-9 px-2.5 rounded-lg border border-input text-[13px] text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
+          <Button size="lg" render={<Link href="/staff/new" />}>
+            <Plus className="size-4" />
+            {t("addStaff")}
+          </Button>
+        </div>
       </div>
 
       {/* Empty state — no staff at all */}
@@ -993,6 +1200,11 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [] }:
           tecnicas={tecnicas}
           sortCol={sortCol}
           onSortChange={setSortCol}
+          extraCols={extraCols}
+          editMode={editMode}
+          getVal={getVal}
+          setEditValue={setEditValue}
+          shiftTypes={shiftTypes}
         />
       )}
 
