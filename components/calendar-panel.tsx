@@ -4417,6 +4417,23 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
+  // Stable callbacks for child components — avoid re-creating on every render
+  const toggleMobileCompact = useCallback(() => {
+    setMobileCompact((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_compact", String(next)); return next })
+  }, [])
+  const toggleMobileDeptColor = useCallback(() => {
+    setMobileDeptColor((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_dept_color", String(next)); return next })
+  }, [])
+  const toggleHighlightHover = useCallback(() => setHighlightHover((prev) => !prev), [])
+  const togglePersonSimplified = useCallback(() => {
+    setPersonSimplified((prev) => { const next = !prev; localStorage.setItem("labrota_person_simplified", String(next)); return next })
+  }, [])
+  const toggleColorChips = useCallback(() => {
+    setColorChips((prev) => { const next = !prev; localStorage.setItem("labrota_color_chips", String(next)); return next })
+  }, [])
+  const toggleDaysAsRows = useCallback(() => {
+    setDaysAsRows((prev) => { const next = !prev; localStorage.setItem("labrota_days_as_rows", String(next)); return next })
+  }, [])
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -4614,24 +4631,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               ...(calendarLayout === "person" ? [{
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
                 icon: <Filter className="size-3.5" />,
-                onClick: () => { const next = !personSimplified; setPersonSimplified(next); localStorage.setItem("labrota_person_simplified", String(next)) },
+                onClick: togglePersonSimplified,
                 active: personSimplified,
               }] : []),
               {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
-                onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
+                onClick: toggleColorChips,
                 active: colorChips,
               }, {
                 label: t("highlightPerson"),
                 icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
-                onClick: () => setHighlightHover(!highlightHover),
+                onClick: toggleHighlightHover,
                 active: highlightHover,
               },
               ...(view === "week" ? [{
                 label: t("daysAsRows"),
                 icon: <Grid3X3 className="size-3.5" />,
-                onClick: () => { const next = !daysAsRows; setDaysAsRows(next); localStorage.setItem("labrota_days_as_rows", String(next)) },
+                onClick: toggleDaysAsRows,
                 active: daysAsRows,
               }] : [])] : []),
               // ── Favorite view ──
@@ -5048,11 +5065,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   }}
                   isPending={isPending}
                   compact={mobileCompact}
-                  onToggleCompact={() => { const next = !mobileCompact; setMobileCompact(next); localStorage.setItem("labrota_mobile_compact", String(next)) }}
+                  onToggleCompact={toggleMobileCompact}
                   deptColor={mobileDeptColor}
-                  onToggleDeptColor={() => { const next = !mobileDeptColor; setMobileDeptColor(next); localStorage.setItem("labrota_mobile_dept_color", String(next)) }}
+                  onToggleDeptColor={toggleMobileDeptColor}
                   highlight={highlightHover}
-                  onToggleHighlight={() => setHighlightHover(!highlightHover)}
+                  onToggleHighlight={toggleHighlightHover}
                   isFavorite={!!(mobileFavoriteView && mobileFavoriteView.viewMode === mobileViewMode && mobileFavoriteView.compact === mobileCompact && mobileFavoriteView.deptColor === mobileDeptColor)}
                   onSaveFavorite={() => {
                     const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }

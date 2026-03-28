@@ -63,13 +63,6 @@ html, body {
   --color-role-andrology: var(--role-andrology);
   --color-role-admin: var(--role-admin);
 
-  /* Charts */
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
   /* Radius — 12px base */
   --radius-sm: calc(var(--radius) * 0.667);
   --radius-md: calc(var(--radius) * 0.833);
@@ -141,12 +134,6 @@ html, body {
   --role-andrology: #059669;
   --role-admin: #64748b;
 
-  /* Charts */
-  --chart-1: #1b4f8a;
-  --chart-2: #2563eb;
-  --chart-3: #059669;
-  --chart-4: #64748b;
-  --chart-5: #ef4444;
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */
@@ -192,11 +179,6 @@ html, body {
   --role-andrology: #34d399;
   --role-admin: #94a3b8;
 
-  --chart-1: #3b82f6;
-  --chart-2: #60a5fa;
-  --chart-3: #34d399;
-  --chart-4: #94a3b8;
-  --chart-5: #f87171;
 }
 
 /* ── Body base — ensures dark bg before Tailwind loads ───────────────────────── */
