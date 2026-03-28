@@ -722,6 +722,65 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
 
 const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
+function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange }: {
+  assignment: Assignment
+  shiftTimes: ShiftTimes | null
+  shiftTypes: import("@/lib/types/database").ShiftTypeDefinition[]
+  isPublished: boolean
+  onShiftChange: (shift: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  const time = shiftTimes?.[assignment.shift_type]
+  const activeShifts = shiftTypes.filter((st) => st.active !== false)
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <div
+        onClick={isPublished ? undefined : () => setOpen((v) => !v)}
+        className={cn("w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5 py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
+      >
+        <div className="flex flex-col gap-0">
+          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+          {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
+        </div>
+      </div>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-36 rounded-lg border border-border bg-background shadow-lg py-1">
+          {activeShifts.map((st) => (
+            <button
+              key={st.code}
+              onClick={() => { onShiftChange(st.code); setOpen(false) }}
+              className={cn("flex items-center justify-between w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors", st.code === assignment.shift_type && "font-semibold text-primary")}
+            >
+              <span>{st.code}</span>
+              <span className="text-[10px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
+            </button>
+          ))}
+          <div className="h-px bg-border mx-2 my-1" />
+          <button
+            onClick={() => {
+              // Remove assignment — set to OFF
+              onShiftChange("")
+              setOpen(false)
+            }}
+            className="flex items-center w-full px-3 py-1.5 text-[13px] text-left text-muted-foreground hover:bg-accent transition-colors font-medium"
+          >
+            OFF
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StaffProfilePanel({
   staffId, staffList, weekData, open, onClose,
 }: {
@@ -1517,7 +1576,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick,
+  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1529,6 +1588,9 @@ function PersonGrid({
   onLeaveByDate: Record<string, string[]>
   publicHolidays: Record<string, string>
   onChipClick: (assignment: Assignment, date: string) => void
+  colorChips?: boolean
+  punctionsDefault?: Record<string, number>
+  punctionsOverride?: Record<string, number>
   onDateClick?: (date: string) => void
   isGenerating?: boolean
 }) {
@@ -1667,6 +1729,20 @@ function PersonGrid({
                 </Tooltip>
               )}
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
+              {/* Punciones / Biopsias */}
+              {(() => {
+                const pDefault = (punctionsDefault ?? {})[day.date] ?? 0
+                const pEffective = (punctionsOverride ?? {})[day.date] ?? pDefault
+                if (!pEffective) return null
+                const bRate = data?.biopsyConversionRate ?? 0.5
+                const biopsies = Math.round(pEffective * bRate)
+                return (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-muted-foreground tabular-nums">P{pEffective}</span>
+                    {biopsies > 0 && <span className="text-[9px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
@@ -1676,7 +1752,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5"
+              className="px-3 py-1 bg-muted border-b border-t border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1690,8 +1766,12 @@ function PersonGrid({
               const staffAssigns = assignMap[s.id] ?? {}
               return (
                 <Fragment key={s.id}>
-                  {/* Name cell */}
-                  <div className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 min-h-[48px]">
+                  {/* Name cell — click opens profile */}
+                  <div
+                    className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 min-h-[48px] cursor-pointer hover:bg-muted/50"
+                    style={colorChips ? { borderLeft: `3px solid ${s.color || "#D4D4D8"}` } : undefined}
+                    onClick={() => onChipClick({ staff_id: s.id } as Assignment, "")}
+                  >
                     <span className="text-[13px] font-medium truncate leading-tight">
                       {s.first_name} {s.last_name}
                     </span>
@@ -1713,28 +1793,40 @@ function PersonGrid({
                         className="px-1 py-1 border-b border-r last:border-r-0 border-border bg-background min-h-[48px] flex items-center"
                       >
                         {assignment ? (
-                          <AssignmentPopover
-                            assignment={assignment}
-                            staffSkills={s.staff_skills ?? []}
-                            tecnicas={data?.tecnicas ?? []}
-                            departments={data?.departments ?? []}
-                            onFunctionSave={handleFunctionLabelSave}
-                            isPublished={isPublished}
-                            disabled={taskOff}
-                          >
-                            <div onClick={taskOff ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(assignment, day.date) } : undefined} className={taskOff ? "cursor-pointer w-full" : "w-full"}>
-                              <PersonShiftPill
-                                assignment={assignment}
-                                shiftTimes={shiftTimes}
-                                tecnica={tecnica}
-                                taskDisabled={taskOff}
-                              />
-                            </div>
-                          </AssignmentPopover>
+                          taskOff ? (
+                            /* Task assignment OFF — shift pill with shift selector on click */
+                            <PersonShiftSelector
+                              assignment={assignment}
+                              shiftTimes={shiftTimes}
+                              shiftTypes={data?.shiftTypes ?? []}
+                              isPublished={isPublished}
+                              onShiftChange={(newShift) => {
+                                patchLocalAssignment(assignment.id, { shift_type: newShift })
+                                handleFunctionLabelSave(assignment.id, assignment.function_label)
+                              }}
+                            />
+                          ) : (
+                            <AssignmentPopover
+                              assignment={assignment}
+                              staffSkills={s.staff_skills ?? []}
+                              tecnicas={data?.tecnicas ?? []}
+                              departments={data?.departments ?? []}
+                              onFunctionSave={handleFunctionLabelSave}
+                              isPublished={isPublished}
+                            >
+                              <div className="w-full">
+                                <PersonShiftPill
+                                  assignment={assignment}
+                                  shiftTimes={shiftTimes}
+                                  tecnica={tecnica}
+                                />
+                              </div>
+                            </AssignmentPopover>
+                          )
                         ) : onLeave ? (
                           <span className="text-[11px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground select-none w-full text-center">OFF</span>
+                          <span className="text-[11px] text-muted-foreground/60 font-medium select-none w-full text-center">OFF</span>
                         )}
                       </div>
                     )
@@ -4338,6 +4430,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onChipClick={(a) => openProfile(a.staff_id)}
                   onDateClick={handleMonthDayClick}
+                  colorChips={colorChips}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
                 />
               ))}
             </div>
