@@ -84,10 +84,24 @@ export function AppSidebar() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null)
-      // Load and apply saved theme preferences
+      // Apply accent color + font scale only — do NOT touch data-theme here,
+      // SSR + the inline <script> in layout.tsx already set it correctly.
+      // Calling applyTheme here would flash the theme on every navigation.
       if (data.user) {
         getUserPreferences().then((prefs) => {
-          if (prefs.accentColor || prefs.theme) applyTheme(prefs)
+          const root = document.documentElement
+          if (prefs.accentColor) {
+            root.style.setProperty("--primary", prefs.accentColor)
+            root.style.setProperty("--ring", prefs.accentColor)
+            root.style.setProperty("--sidebar-primary", prefs.accentColor)
+            root.style.setProperty("--sidebar-ring", prefs.accentColor)
+            root.style.setProperty("--header-bg", prefs.accentColor)
+          }
+          if (prefs.fontScale) {
+            const scale = prefs.fontScale === "s" ? "0.9" : prefs.fontScale === "l" ? "1.1" : "1"
+            root.style.setProperty("--font-scale", scale)
+            root.style.zoom = scale
+          }
         })
       }
     })

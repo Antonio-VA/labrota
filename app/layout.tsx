@@ -64,6 +64,7 @@ export default async function RootLayout({
     rootStyle["--ring"] = accentColor
     rootStyle["--sidebar-primary"] = accentColor
     rootStyle["--sidebar-ring"] = accentColor
+    rootStyle["--header-bg"] = accentColor
   }
   if (fontScale) {
     rootStyle["--font-scale"] = fontScale

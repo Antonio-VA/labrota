@@ -41,12 +41,23 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
     window.location.href = "/login"
   }
 
+  function syncCookie(data: Record<string, unknown>) {
+    const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
+    Object.assign(saved, data)
+    localStorage.setItem("labrota_theme", JSON.stringify(saved))
+    document.cookie = `labrota_theme=${encodeURIComponent(JSON.stringify(saved))};path=/;max-age=${365 * 86400};SameSite=Lax`
+  }
+
   function handleTheme(t: string) {
     setTheme(t)
-    const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
-    saved.theme = t
-    localStorage.setItem("labrota_theme", JSON.stringify(saved))
-    document.documentElement.dataset.theme = t === "dark" ? "dark" : t === "auto" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "") : ""
+    syncCookie({ theme: t })
+    if (t === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark")
+    } else if (t === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      document.documentElement.setAttribute("data-theme", "dark")
+    } else {
+      document.documentElement.removeAttribute("data-theme")
+    }
     startTransition(async () => {
       await saveUserPreferences({ theme: t } as UserPreferences)
     })
@@ -54,9 +65,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
 
   function handleAccent(c: string) {
     setAccent(c)
-    const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
-    saved.accentColor = c
-    localStorage.setItem("labrota_theme", JSON.stringify(saved))
+    syncCookie({ accentColor: c })
     document.documentElement.style.setProperty("--primary", c)
     document.documentElement.style.setProperty("--ring", c)
     document.documentElement.style.setProperty("--header-bg", c)
@@ -168,6 +177,14 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
           })}
         </div>
       </div>
+
+      {/* Support */}
+      <a
+        href="mailto:support@labrota.app"
+        className="flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-muted-foreground active:bg-muted transition-colors"
+      >
+        <span className="text-[14px] font-medium">{locale === "es" ? "Soporte" : "Support"}</span>
+      </a>
 
       {/* Sign out */}
       <button
