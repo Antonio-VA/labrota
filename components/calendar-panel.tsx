@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
+import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
   getRotaWeek,
   getRotaMonthSummary,
@@ -3926,6 +3927,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     return localStorage.getItem("labrota_color_chips") !== "false"
   })
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
+
+  // Favorite view
+  type FavoriteView = { view: string; calendarLayout: string; daysAsRows: boolean; compact: boolean; colorChips: boolean; highlightEnabled: boolean }
+  const [favoriteView, setFavoriteView] = useState<FavoriteView | null>(() => {
+    if (typeof window === "undefined") return null
+    try { return JSON.parse(localStorage.getItem("labrota_favorite_view") ?? "null") } catch { return null }
+  })
   const [currentDate, setCurrentDateState] = useState(() => {
     if (typeof window === "undefined") return TODAY
     return sessionStorage.getItem("labrota_current_date") || TODAY
@@ -4090,6 +4098,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   }, [])
 
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
+
+  // Apply favorite view on first mount
+  const favAppliedRef = useRef(false)
+  useEffect(() => {
+    if (favAppliedRef.current || !favoriteView) return
+    favAppliedRef.current = true
+    setView(favoriteView.view as ViewMode)
+    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+    setDaysAsRows(favoriteView.daysAsRows)
+    setCompact(favoriteView.compact)
+    setColorChips(favoriteView.colorChips)
+    setHighlightHover(favoriteView.highlightEnabled)
+  }, [favoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Check if previous week has a rota (for "copy previous week" button)
@@ -4484,6 +4505,32 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onClick: () => { const next = !daysAsRows; setDaysAsRows(next); localStorage.setItem("labrota_days_as_rows", String(next)) },
                 active: daysAsRows,
               }] : [])] : []),
+              // ── Favorite view ──
+              ...[{
+                label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
+                icon: <Star className={cn("size-3.5", favoriteView ? "text-amber-400 fill-amber-400" : "")} />,
+                onClick: () => {
+                  const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+                  setFavoriteView(fav)
+                  localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+                  saveUserPreferences({ favoriteView: fav } as any)
+                  toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
+                },
+                dividerBefore: true,
+              },
+              ...(favoriteView ? [{
+                label: locale === "es" ? "Restaurar vista favorita" : "Restore favorite view",
+                icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
+                onClick: () => {
+                  setView(favoriteView.view as ViewMode)
+                  setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+                  setDaysAsRows(favoriteView.daysAsRows); localStorage.setItem("labrota_days_as_rows", String(favoriteView.daysAsRows))
+                  setCompact(favoriteView.compact)
+                  setColorChips(favoriteView.colorChips); localStorage.setItem("labrota_color_chips", String(favoriteView.colorChips))
+                  setHighlightHover(favoriteView.highlightEnabled)
+                  toast.success(locale === "es" ? "Vista favorita restaurada" : "Favorite view restored")
+                },
+              }] : [])],
               // ── Group 4: Templates (week view, editors only) ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
