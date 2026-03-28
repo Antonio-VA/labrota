@@ -11,6 +11,7 @@ import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 // AdminHistoryUpload and AdminImplementation moved to implementation tab via AdminOrgDetailClient
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
+import { AdminBackups } from "@/components/admin-backups"
 import { updateOrgRegional } from "@/app/admin/actions"
 
 export default async function OrgDetailPage({
@@ -162,6 +163,7 @@ export default async function OrgDetailPage({
             }}
           />
         }
+        backups={<AdminBackups orgId={id} />}
       />
     </div>
   )
