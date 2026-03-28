@@ -833,6 +833,7 @@
     "country": "Country",
     "region": "Region",
     "autonomousCommunity": "Autonomous community",
+    "regionalHint": "The region determines which public holidays apply to the calendar.",
     "saveRegion": "Save region",
     "regionalSaved": "Regional settings saved",
     "features": "Features",

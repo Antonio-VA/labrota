@@ -15,23 +15,7 @@ import {
   toggleLeaveRequests,
   type OrgSettings,
 } from "@/app/(clinic)/settings/actions"
-
-const COUNTRIES = [
-  { code: "ES", label: "España" },
-  { code: "AE", label: "Emiratos Árabes" },
-  { code: "GB", label: "Reino Unido" },
-  { code: "US", label: "Estados Unidos" },
-  { code: "PT", label: "Portugal" },
-  { code: "IT", label: "Italia" },
-  { code: "FR", label: "Francia" },
-  { code: "DE", label: "Alemania" },
-]
-
-const ES_REGIONS = [
-  "Andalucía", "Aragón", "Asturias", "Baleares", "Canarias", "Cantabria",
-  "Castilla-La Mancha", "Castilla y León", "Cataluña", "Comunidad Valenciana",
-  "Extremadura", "Galicia", "La Rioja", "Madrid", "Murcia", "Navarra", "País Vasco",
-]
+import { COUNTRIES, getCountry } from "@/lib/regional-config"
 
 export function OrgSettingsForm({
   settings,
@@ -162,34 +146,40 @@ export function OrgSettingsForm({
         <div className="grid grid-cols-2 gap-2">
           <select
             value={country}
-            onChange={(e) => { setCountry(e.target.value); if (e.target.value !== "ES") setRegion("") }}
+            onChange={(e) => { setCountry(e.target.value); setRegion("") }}
             className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
           >
             <option value="">{t("country")}</option>
             {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.label}</option>
+              <option key={c.code} value={c.code}>{c.name_es}</option>
             ))}
           </select>
-          {country === "ES" ? (
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
-            >
-              <option value="">{t("autonomousCommunity")}</option>
-              {ES_REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          ) : (
-            <Input
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder={t("region")}
-              className="h-8 text-[13px]"
-            />
-          )}
+          {(() => {
+            const countryConfig = getCountry(country)
+            return countryConfig && countryConfig.regions.length > 0 ? (
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
+              >
+                <option value="">{t("region")}</option>
+                {countryConfig.regions.map((r) => (
+                  <option key={r.code} value={r.code}>{r.name}</option>
+                ))}
+              </select>
+            ) : country ? (
+              <Input
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                placeholder={t("region")}
+                className="h-8 text-[13px]"
+              />
+            ) : null
+          })()}
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          {t("regionalHint")}
+        </p>
         <Button
           size="sm"
           variant="outline"

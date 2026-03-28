@@ -833,6 +833,7 @@
     "country": "País",
     "region": "Región",
     "autonomousCommunity": "Comunidad autónoma",
+    "regionalHint": "La región determina los festivos que se aplican al calendario.",
     "saveRegion": "Guardar región",
     "regionalSaved": "Configuración regional guardada",
     "features": "Funcionalidades",
