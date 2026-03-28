@@ -218,7 +218,7 @@ export function TransposedShiftGrid({
                                 compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]"
                               )}
                               style={{
-                                borderLeft: `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`,
+                                borderLeft: colorChips ? undefined : `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`,
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
@@ -281,7 +281,7 @@ export function TransposedShiftGrid({
       <DragOverlay>
         {activeAssignment && (
           <div className="opacity-90 shadow-lg rounded border border-border bg-background px-2 py-1 text-[11px] font-medium"
-            style={{ borderLeft: `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+            style={{ borderLeft: colorChips ? undefined : `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
           >
             {activeAssignment.assignment.staff.first_name} {activeAssignment.assignment.staff.last_name[0]}.
           </div>
