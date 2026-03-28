@@ -625,18 +625,30 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-function buildGrid(extras: Set<ExtraCol>) {
-  const base = "32px minmax(0,1.5fr) minmax(0,1fr) minmax(0,3fr) minmax(300px,2.5fr) minmax(120px,0.8fr)"
-  const extra = [
-    extras.has("preferredShift") ? "minmax(80px,0.8fr)" : "",
-    extras.has("preferredDays") ? "minmax(100px,1fr)" : "",
-    extras.has("daysPerWeek") ? "minmax(60px,0.5fr)" : "",
-    extras.has("workingPattern") ? "minmax(100px,1fr)" : "",
-  ].filter(Boolean).join(" ")
-  return `${base} ${extra} 40px`.trim()
+type ColKey = "role" | "capacidades" | "training" | "status" | "preferredShift" | "avoidShifts" | "preferredDays" | "avoidDays" | "daysPerWeek" | "workingPattern"
+
+const COL_WIDTHS: Record<ColKey, string> = {
+  role: "minmax(0,1fr)",
+  capacidades: "minmax(0,3fr)",
+  training: "minmax(200px,2.5fr)",
+  status: "minmax(100px,0.8fr)",
+  preferredShift: "minmax(80px,0.8fr)",
+  avoidShifts: "minmax(80px,0.8fr)",
+  preferredDays: "minmax(100px,1fr)",
+  avoidDays: "minmax(100px,1fr)",
+  daysPerWeek: "minmax(55px,0.5fr)",
+  workingPattern: "minmax(100px,1fr)",
 }
 
-type ExtraCol = "preferredShift" | "preferredDays" | "daysPerWeek" | "workingPattern"
+function buildGrid(cols: Set<ColKey>) {
+  // checkbox + name are always present
+  const parts = ["32px", "minmax(0,1.5fr)"]
+  for (const key of ["role", "capacidades", "training", "status", "preferredShift", "avoidShifts", "preferredDays", "avoidDays", "daysPerWeek", "workingPattern"] as ColKey[]) {
+    if (cols.has(key)) parts.push(COL_WIDTHS[key])
+  }
+  parts.push("40px") // edit button
+  return parts.join(" ")
+}
 
 const DAY_LABELS: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
 const ALL_DAYS_TABLE: string[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -646,7 +658,7 @@ function StaffTable({
   selectedIds, onToggle, onToggleAll, skillLabel,
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,
-  extraCols = new Set(), editMode = false, getVal, setEditValue, shiftTypes = [],
+  visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -662,7 +674,7 @@ function StaffTable({
   tecnicas: Tecnica[]
   sortCol?: "name" | "role"
   onSortChange?: (col: "name" | "role") => void
-  extraCols?: Set<ExtraCol>
+  visibleCols?: Set<ColKey>
   editMode?: boolean
   getVal?: (s: StaffWithSkills, field: string) => unknown
   setEditValue?: (staffId: string, field: string, value: unknown) => void
@@ -674,7 +686,7 @@ function StaffTable({
   return (
     <div className={cn("rounded-lg border border-border overflow-hidden bg-background", muted && "opacity-60")}>
       {/* Header */}
-      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center" style={{ gridTemplateColumns: buildGrid(extraCols) }}>
+      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center" style={{ gridTemplateColumns: buildGrid(visibleCols) }}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -686,16 +698,16 @@ function StaffTable({
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
-        <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          {t("columns.role")} {sortCol === "role" && "↓"}
-        </button>
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>
-        <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
-        {extraCols.has("preferredShift") && <span className="text-[13px] font-medium text-muted-foreground">Turno pref.</span>}
-        {extraCols.has("preferredDays") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
-        {extraCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
-        {extraCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
+        {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
+        {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
+        {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
+        {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
+        {visibleCols.has("preferredShift") && <span className="text-[13px] font-medium text-muted-foreground">Prefiere</span>}
+        {visibleCols.has("avoidShifts") && <span className="text-[13px] font-medium text-muted-foreground">Evita</span>}
+        {visibleCols.has("preferredDays") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
+        {visibleCols.has("avoidDays") && <span className="text-[13px] font-medium text-muted-foreground">Días evitar</span>}
+        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
+        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
         <span />
       </div>
 
@@ -718,7 +730,7 @@ function StaffTable({
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
               isSelected ? "bg-primary/5" : "hover:bg-accent"
             )}
-            style={{ gridTemplateColumns: buildGrid(extraCols) }}
+            style={{ gridTemplateColumns: buildGrid(visibleCols) }}
           >
             {/* Checkbox */}
             <input
@@ -755,79 +767,111 @@ function StaffTable({
             </div>
 
             {/* Department */}
-            <div className="hidden md:flex items-center">
-              <span
-                className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-border"
-                style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
-              >
-                {deptLabel[member.role] ?? member.role}
-              </span>
-            </div>
+            {visibleCols.has("role") && (
+              <div className="hidden md:flex items-center">
+                <span
+                  className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-border"
+                  style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+                >
+                  {deptLabel[member.role] ?? member.role}
+                </span>
+              </div>
+            )}
 
             {/* Técnicas (certified) */}
-            <div className="hidden md:flex items-center gap-1 overflow-hidden">
-              {isAdmin || certifiedSkills.length === 0 ? (
-                <span className="text-[13px] text-muted-foreground/40">—</span>
-              ) : (
-                <SkillOverflow
-                  skills={certifiedSkills}
-                  skillLabel={skillLabel}
-                  maxVisible={4}
-                  variant="certified"
-                  skillOrder={skillOrder}
-                />
-              )}
-            </div>
-
-            {/* En formación (training) */}
-            <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
-              {isAdmin || trainingSkills.length === 0 ? (
-                <span className="text-[13px] text-muted-foreground/40">—</span>
-              ) : (
-                <SkillOverflow
-                  skills={trainingSkills}
-                  skillLabel={skillLabel}
-                  maxVisible={3}
-                  variant="training"
-                  skillOrder={skillOrder}
-                />
-              )}
-            </div>
-
-            {/* Status */}
-            <div className="hidden md:flex items-center">
-              <span className={cn(
-                "text-[13px] font-medium",
-                member.onboarding_status === "active"      && "text-emerald-600",
-                member.onboarding_status === "onboarding"  && "text-amber-600",
-                member.onboarding_status === "inactive"    && "text-muted-foreground",
-              )}>
-                {t(`onboardingStatus.${member.onboarding_status}`)}
-              </span>
-            </div>
-
-            {/* Extra: Preferred Shift */}
-            {extraCols.has("preferredShift") && (
-              <div className="hidden md:flex items-center">
-                {editMode && setEditValue ? (
-                  <select
-                    value={String(getVal?.(member, "preferred_shift") ?? "")}
-                    onChange={(e) => setEditValue(member.id, "preferred_shift", e.target.value || null)}
-                    className="h-7 rounded border border-input bg-transparent px-1.5 text-[12px] outline-none w-full max-w-[80px]"
-                  >
-                    <option value="">—</option>
-                    {shiftTypes.filter((st) => st.active !== false).map((st) => (
-                      <option key={st.code} value={st.code}>{st.code}</option>
-                    ))}
-                  </select>
+            {visibleCols.has("capacidades") && (
+              <div className="hidden md:flex items-center gap-1 overflow-hidden">
+                {isAdmin || certifiedSkills.length === 0 ? (
+                  <span className="text-[13px] text-muted-foreground/40">—</span>
                 ) : (
-                  <span className="text-[13px] text-muted-foreground">{member.preferred_shift || "—"}</span>
+                  <SkillOverflow
+                    skills={certifiedSkills}
+                    skillLabel={skillLabel}
+                    maxVisible={4}
+                    variant="certified"
+                    skillOrder={skillOrder}
+                  />
                 )}
               </div>
             )}
 
-            {/* Extra: Preferred Days */}
-            {extraCols.has("preferredDays") && (
+            {/* En formación (training) */}
+            {visibleCols.has("training") && (
+              <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
+                {isAdmin || trainingSkills.length === 0 ? (
+                  <span className="text-[13px] text-muted-foreground/40">—</span>
+                ) : (
+                  <SkillOverflow
+                    skills={trainingSkills}
+                    skillLabel={skillLabel}
+                    maxVisible={3}
+                    variant="training"
+                    skillOrder={skillOrder}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Status */}
+            {visibleCols.has("status") && (
+              <div className="hidden md:flex items-center">
+                <span className={cn(
+                  "text-[13px] font-medium",
+                  member.onboarding_status === "active"      && "text-emerald-600",
+                  member.onboarding_status === "onboarding"  && "text-amber-600",
+                  member.onboarding_status === "inactive"    && "text-muted-foreground",
+                )}>
+                  {t(`onboardingStatus.${member.onboarding_status}`)}
+                </span>
+              </div>
+            )}
+
+            {/* Preferred Shift */}
+            {visibleCols.has("preferredShift") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {editMode && setEditValue ? (
+                  shiftTypes.filter((st) => st.active !== false).map((st) => {
+                    const prefs = String(getVal?.(member, "preferred_shift") ?? "").split(",").filter(Boolean)
+                    const active = prefs.includes(st.code)
+                    return (
+                      <button key={st.code} type="button" onClick={() => {
+                        const next = active ? prefs.filter((c) => c !== st.code) : [...prefs, st.code]
+                        setEditValue(member.id, "preferred_shift", next.join(",") || null)
+                      }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", active ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : "border-border text-muted-foreground")}>
+                        {st.code}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">{member.preferred_shift?.split(",").filter(Boolean).join(", ") || "—"}</span>
+                )}
+              </div>
+            )}
+
+            {/* Avoid Shifts */}
+            {visibleCols.has("avoidShifts") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {editMode && setEditValue ? (
+                  shiftTypes.filter((st) => st.active !== false).map((st) => {
+                    const avoids = (getVal?.(member, "avoid_shifts") as string[] | null) ?? []
+                    const active = avoids.includes(st.code)
+                    return (
+                      <button key={st.code} type="button" onClick={() => {
+                        const next = active ? avoids.filter((c) => c !== st.code) : [...avoids, st.code]
+                        setEditValue(member.id, "avoid_shifts", next)
+                      }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", active ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                        {st.code}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">{(member.avoid_shifts ?? []).join(", ") || "—"}</span>
+                )}
+              </div>
+            )}
+
+            {/* Preferred Days */}
+            {visibleCols.has("preferredDays") && (
               <div className="hidden md:flex items-center gap-0.5 flex-wrap">
                 {editMode && setEditValue ? (
                   ALL_DAYS_TABLE.map((d) => {
@@ -850,8 +894,32 @@ function StaffTable({
               </div>
             )}
 
-            {/* Extra: Days per week */}
-            {extraCols.has("daysPerWeek") && (
+            {/* Avoid Days */}
+            {visibleCols.has("avoidDays") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {editMode && setEditValue ? (
+                  ALL_DAYS_TABLE.map((d) => {
+                    const aDays = (getVal?.(member, "avoid_days") as string[] | null) ?? []
+                    const active = aDays.includes(d)
+                    return (
+                      <button key={d} type="button" onClick={() => {
+                        const next = active ? aDays.filter((x) => x !== d) : [...aDays, d]
+                        setEditValue(member.id, "avoid_days", next)
+                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                        {DAY_LABELS[d]}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">
+                    {(member.avoid_days ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Days per week */}
+            {visibleCols.has("daysPerWeek") && (
               <div className="hidden md:flex items-center">
                 {editMode && setEditValue ? (
                   <input
@@ -866,8 +934,8 @@ function StaffTable({
               </div>
             )}
 
-            {/* Extra: Working Pattern */}
-            {extraCols.has("workingPattern") && (
+            {/* Working Pattern */}
+            {visibleCols.has("workingPattern") && (
               <div className="hidden md:flex items-center gap-0.5 flex-wrap">
                 {editMode && setEditValue ? (
                   ALL_DAYS_TABLE.map((d) => {
@@ -927,9 +995,10 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
-  // Extra columns toggle
-  type ExtraCol = "preferredShift" | "preferredDays" | "daysPerWeek" | "workingPattern"
-  const [extraCols, setExtraCols] = useState<Set<ExtraCol>>(new Set())
+  // Column visibility
+  type ColKey = "role" | "capacidades" | "training" | "status" | "preferredShift" | "avoidShifts" | "preferredDays" | "avoidDays" | "daysPerWeek" | "workingPattern"
+  const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
+  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => new Set(DEFAULT_COLS))
   const [showColMenu, setShowColMenu] = useState(false)
   const colMenuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -938,9 +1007,21 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
   }, [showColMenu])
-  function toggleCol(col: ExtraCol) {
-    setExtraCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
+  function toggleCol(col: ColKey) {
+    setVisibleCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
   }
+  const ALL_COLUMNS: { key: ColKey; label: string }[] = [
+    { key: "role", label: "Departamento" },
+    { key: "capacidades", label: "Técnicas" },
+    { key: "training", label: "En formación" },
+    { key: "status", label: "Estado" },
+    { key: "preferredShift", label: "Turno preferido" },
+    { key: "avoidShifts", label: "Turno evitar" },
+    { key: "preferredDays", label: "Días preferidos" },
+    { key: "avoidDays", label: "Días evitar" },
+    { key: "daysPerWeek", label: "Días/semana" },
+    { key: "workingPattern", label: "Patrón trabajo" },
+  ]
 
   // Inline edit mode
   const [editMode, setEditMode] = useState(false)
@@ -1117,21 +1198,16 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           <div className="relative" ref={colMenuRef}>
             <button
               onClick={() => setShowColMenu((v) => !v)}
-              className={cn("h-9 px-2.5 rounded-lg border text-[13px] flex items-center gap-1.5 transition-colors", extraCols.size > 0 ? "border-primary/30 text-primary bg-primary/5" : "border-input text-muted-foreground hover:text-foreground")}
+              className={cn("h-9 px-2.5 rounded-lg border text-[13px] flex items-center gap-1.5 transition-colors", visibleCols.size !== DEFAULT_COLS.length || !DEFAULT_COLS.every((c) => visibleCols.has(c)) ? "border-primary/30 text-primary bg-primary/5" : "border-input text-muted-foreground hover:text-foreground")}
             >
               <Columns3 className="size-4" />
             </button>
             {showColMenu && (
-              <div className="absolute right-0 top-10 z-50 w-48 rounded-lg border border-border bg-background shadow-lg py-1">
-                {([
-                  ["preferredShift", "Turno preferido"],
-                  ["preferredDays", "Días preferidos"],
-                  ["daysPerWeek", "Días/semana"],
-                  ["workingPattern", "Patrón trabajo"],
-                ] as [ExtraCol, string][]).map(([key, label]) => (
+              <div className="absolute right-0 top-10 z-50 w-48 rounded-lg border border-border bg-background shadow-lg py-1 max-h-[60vh] overflow-y-auto">
+                {ALL_COLUMNS.map(({ key, label }) => (
                   <button key={key} onClick={() => toggleCol(key)} className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors">
-                    <span className={cn("size-4 rounded border flex items-center justify-center", extraCols.has(key) ? "bg-primary border-primary text-white" : "border-border")}>
-                      {extraCols.has(key) && <Check className="size-3" />}
+                    <span className={cn("size-4 rounded border flex items-center justify-center shrink-0", visibleCols.has(key) ? "bg-primary border-primary text-white" : "border-border")}>
+                      {visibleCols.has(key) && <Check className="size-3" />}
                     </span>
                     {label}
                   </button>
@@ -1200,7 +1276,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           tecnicas={tecnicas}
           sortCol={sortCol}
           onSortChange={setSortCol}
-          extraCols={extraCols}
+          visibleCols={visibleCols}
           editMode={editMode}
           getVal={getVal}
           setEditValue={setEditValue}
