@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -25,12 +26,24 @@ export default async function ClinicLayout({
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("organisation_id, default_organisation_id")
+      .select("organisation_id, default_organisation_id, preferences")
       .eq("id", user.id)
-      .single() as { data: { organisation_id: string | null; default_organisation_id: string | null } | null }
+      .single() as { data: { organisation_id: string | null; default_organisation_id: string | null; preferences?: { locale?: string } } | null }
 
     activeOrgId = profile?.organisation_id ?? null
     defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
+
+    // Sync locale preference from DB to cookie when cookie is missing
+    const cookieStore = await cookies()
+    const hasLocaleCookie = cookieStore.has("locale")
+    const dbLocale = profile?.preferences?.locale
+    if (!hasLocaleCookie && dbLocale && dbLocale !== "browser") {
+      cookieStore.set("locale", dbLocale, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+      })
+    }
 
     // Auto-switch to default org only if no active org is set (first login)
     if (defaultOrgId && !activeOrgId) {

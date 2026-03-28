@@ -4,6 +4,7 @@ import { useLocale } from "next-intl"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { setLocale } from "@/lib/locale-action"
+import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import { Button } from "@/components/ui/button"
 
 export function LanguageToggle() {
@@ -15,6 +16,7 @@ export function LanguageToggle() {
     const next = locale === "es" ? "en" : "es"
     startTransition(async () => {
       await setLocale(next)
+      saveUserPreferences({ locale: next }) // persist to DB (fire & forget)
       router.refresh()
     })
   }
