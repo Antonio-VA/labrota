@@ -194,16 +194,17 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {(section === "all" || section === "cobertura") && <>
-      {/* ── PUNCIONES ────────────────────────────────────────────────────── */}
+      {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
-          <SectionHeader title={t("sections.punctions")} />
-          <p className="text-[13px] text-muted-foreground">{t("fields.punctionsByDay")}</p>
+          <SectionHeader title="Procedimientos" />
+          <p className="text-[13px] text-muted-foreground">Previsión de procedimientos por día de la semana.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-muted border-b border-border">
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[100px]"></th>
                 {DAY_KEYS.map((day) => (
                   <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
                     {t(`days.${day}`).slice(0, 3)}
@@ -212,7 +213,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               </tr>
             </thead>
             <tbody>
-              <tr>
+              {/* Punciones row */}
+              <tr className="border-b border-border/50">
+                <td className="px-3 py-1.5 text-[13px] font-medium">Punciones</td>
                 {DAY_KEYS.map((day) => {
                   const isWeekend = day === "sat" || day === "sun"
                   return (
@@ -226,6 +229,24 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                         disabled={isPending}
                         className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
                       />
+                    </td>
+                  )
+                })}
+              </tr>
+              {/* Biopsias row — auto-calculated */}
+              <tr className="bg-muted/10">
+                <td className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
+                  Biopsias
+                  <span className="text-[10px] text-muted-foreground/60 ml-1">Auto</span>
+                </td>
+                {DAY_KEYS.map((day) => {
+                  const isWeekend = day === "sat" || day === "sun"
+                  const punctions = values.punctions_by_day[day] ?? 0
+                  const rate = values.biopsy_conversion_rate ?? 0.5
+                  const biopsies = Math.round(punctions * rate)
+                  return (
+                    <td key={day} className={cn("px-1 py-1.5 text-center text-muted-foreground", isWeekend && "bg-muted/30")}>
+                      <span className="text-[13px]">{biopsies}</span>
                     </td>
                   )
                 })}
