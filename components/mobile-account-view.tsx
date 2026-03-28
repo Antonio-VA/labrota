@@ -12,8 +12,9 @@ import { getUserPreferences, saveUserPreferences, type UserPreferences } from "@
 export { applyTheme } from "@/components/account-panel"
 
 const ACCENT_COLORS = [
-  "#1b4f8a", "#2563EB", "#7C3AED", "#DB2777", "#059669",
-  "#D97706", "#DC2626", "#0D9488", "#4F46E5", "#64748B",
+  "#1b4f8a", "#2563EB", "#3B82F6", "#0EA5E9",
+  "#0D9488", "#059669", "#16A34A", "#65A30D",
+  "#D97706", "#EA580C", "#DC2626", "#64748B",
 ]
 
 interface MobileAccountViewProps {
@@ -58,6 +59,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
     localStorage.setItem("labrota_theme", JSON.stringify(saved))
     document.documentElement.style.setProperty("--primary", c)
     document.documentElement.style.setProperty("--ring", c)
+    document.documentElement.style.setProperty("--header-bg", c)
     startTransition(async () => {
       await saveUserPreferences({ accentColor: c } as UserPreferences)
     })

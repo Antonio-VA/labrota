@@ -106,8 +106,8 @@
   --accent: #dbeafe;
   --accent-foreground: #1e40af;
 
-  /* Header bar — brighter blue, distinct from sidebar navy (#2C3E6B) */
-  --header-bg: #3B6FB6;
+  /* Header bar — uses accent/primary color, changes with user preference */
+  --header-bg: #1b4f8a;
 
   /* Destructive / Skill gap — red only */
   --destructive: #ef4444;

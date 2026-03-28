@@ -18,12 +18,15 @@ import type { User } from "@supabase/supabase-js"
 
 const ACCENT_COLORS = [
   { key: "blue",    hex: "#1b4f8a", labelKey: "accentBlue" },
-  { key: "indigo",  hex: "#4f46e5", labelKey: "accentIndigo" },
-  { key: "violet",  hex: "#7c3aed", labelKey: "accentViolet" },
+  { key: "royal",   hex: "#2563EB", labelKey: "accentBlue" },
+  { key: "sky",     hex: "#0EA5E9", labelKey: "accentBlue" },
+  { key: "teal",    hex: "#0D9488", labelKey: "accentEmerald" },
   { key: "emerald", hex: "#059669", labelKey: "accentEmerald" },
-  { key: "rose",    hex: "#e11d48", labelKey: "accentRose" },
-  { key: "amber",   hex: "#d97706", labelKey: "accentAmber" },
-  { key: "slate",   hex: "#475569", labelKey: "accentSlate" },
+  { key: "green",   hex: "#16A34A", labelKey: "accentEmerald" },
+  { key: "amber",   hex: "#D97706", labelKey: "accentAmber" },
+  { key: "orange",  hex: "#EA580C", labelKey: "accentAmber" },
+  { key: "red",     hex: "#DC2626", labelKey: "accentRose" },
+  { key: "slate",   hex: "#64748B", labelKey: "accentSlate" },
 ]
 
 const THEME_OPTION_KEYS: { key: UserPreferences["theme"]; labelKey: string; icon: React.ReactNode }[] = [
@@ -325,12 +328,13 @@ export function applyTheme(prefs: UserPreferences) {
     document.cookie = `labrota_theme=${encodeURIComponent(themeData)};path=/;max-age=${365 * 86400};SameSite=Lax`
   } catch {}
 
-  // Accent colour — override --primary in both light and dark
+  // Accent colour — override --primary and header in both light and dark
   if (prefs.accentColor) {
     root.style.setProperty("--primary", prefs.accentColor)
     root.style.setProperty("--ring", prefs.accentColor)
     root.style.setProperty("--sidebar-primary", prefs.accentColor)
     root.style.setProperty("--sidebar-ring", prefs.accentColor)
+    root.style.setProperty("--header-bg", prefs.accentColor)
   }
 
   // Font scale — applied via zoom on html element
