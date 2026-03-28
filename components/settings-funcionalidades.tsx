@@ -39,6 +39,7 @@ export function SettingsFuncionalidades({
   displayMode,
   enableLeaveRequests,
   enableNotes,
+  enableTaskInShift,
 }: {
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean

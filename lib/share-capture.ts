@@ -12,19 +12,36 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
     const prevScroll = element.scrollTop
     element.scrollTop = 0
 
+    // Temporarily expand overflow-hidden/auto containers so full content is captured
+    const prevOverflow = element.style.overflow
+    const prevHeight = element.style.height
+    const prevMaxHeight = element.style.maxHeight
+    element.style.overflow = "visible"
+    element.style.height = "auto"
+    element.style.maxHeight = "none"
+
     const canvas = await html2canvas(element, {
       backgroundColor: "#ffffff",
       scale: 2,
       useCORS: true,
       logging: false,
       height: element.scrollHeight,
+      width: element.scrollWidth,
       windowHeight: element.scrollHeight,
-      // Convert oklab/oklch colors to rgb before html2canvas processes them
+      windowWidth: element.scrollWidth,
       onclone: (_doc: Document, clonedEl: HTMLElement) => {
+        // Ensure cloned element is also fully expanded
+        clonedEl.style.overflow = "visible"
+        clonedEl.style.height = "auto"
+        clonedEl.style.maxHeight = "none"
         convertOklabColors(clonedEl)
       },
     })
 
+    // Restore
+    element.style.overflow = prevOverflow
+    element.style.height = prevHeight
+    element.style.maxHeight = prevMaxHeight
     element.scrollTop = prevScroll
     if (hadPb) element.classList.add("pb-32")
 
