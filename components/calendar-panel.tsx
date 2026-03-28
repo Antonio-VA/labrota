@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -4183,21 +4183,29 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="relative flex-1">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-4">
-                    <CalendarDays className="size-10 text-muted-foreground/30" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-5 w-full max-w-[420px]">
+                    <Sparkles className="size-12" style={{ color: "#2C3E6B" }} />
                     <div className="text-center">
-                      <p className="text-[14px] font-medium">{t("noRota")}</p>
-                      <p className="text-[13px] text-muted-foreground mt-1">{t("noRotaDescription")}</p>
+                      <p className="text-[18px] font-semibold" style={{ color: "#2C3E6B" }}>Semana sin horario</p>
+                      <p className="text-[14px] text-muted-foreground mt-2 max-w-[380px] mx-auto leading-relaxed">
+                        El generador tiene en cuenta turnos, coberturas mínimas, preferencias del equipo y ausencias. Listo en segundos.
+                      </p>
                     </div>
                     {!showCopyConfirm ? (
                       <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={handleGenerateClick}>{t("generateRota")}</Button>
+                        <Button variant="outline" onClick={handleGenerateClick} className="gap-1.5">
+                          <Sparkles className="size-3.5" />
+                          {t("generateRota")}
+                        </Button>
                         {prevWeekHasRota && (
-                          <Button variant="outline" onClick={() => setShowCopyConfirm(true)}>{t("copyPrevWeek")}</Button>
+                          <Button variant="outline" onClick={() => setShowCopyConfirm(true)} className="gap-1.5">
+                            <Copy className="size-3.5" />
+                            {t("copyPrevWeek")}
+                          </Button>
                         )}
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 w-full">
                         <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">{t("copyPrevWeekConfirmTitle")}</p>
                         <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">{t("copyPrevWeekConfirmBody")}</p>
                         <div className="flex gap-2">
@@ -4217,6 +4225,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                         </div>
                       </div>
                     )}
+                    <p className="text-[12px] text-muted-foreground/60 text-center">
+                      También puedes añadir asignaciones manualmente haciendo clic en cualquier celda.
+                    </p>
                   </div>
                 </div>
               ) : calendarLayout === "shift" && daysAsRows ? (
