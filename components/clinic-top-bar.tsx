@@ -50,7 +50,7 @@ export function ClinicTopBar({
   }
 
   return (
-    <header className="hidden lg:flex h-[52px] shrink-0 items-center border-b border-[#243356] px-4 gap-4" style={{ backgroundColor: "#2C3E6B" }}>
+    <header className="hidden lg:flex h-[52px] shrink-0 items-center px-4 gap-4" style={{ backgroundColor: "var(--header-bg)" }}>
 
       {/* Left: org selector */}
       {orgName && (
@@ -62,7 +62,7 @@ export function ClinicTopBar({
               className="flex items-center gap-2 text-[14px] font-medium text-white/90 hover:text-white transition-colors disabled:opacity-60"
             >
               {orgLogoUrl && !logoError && (
-                <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                <img src={orgLogoUrl} alt="" className="size-7 object-cover rounded-md shrink-0" style={{ border: "1.5px solid rgba(255,255,255,0.4)" }} onError={() => setLogoError(true)} />
               )}
               <span data-org-name>{orgName}</span>
               <ChevronDown className="size-3.5 text-white/60" />

@@ -43,7 +43,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header id="mobile-header" className="flex lg:hidden h-14 shrink-0 items-center border-b border-[#243356] px-3 gap-2.5" style={{ backgroundColor: "#2C3E6B" }}>
+      <header id="mobile-header" className="flex lg:hidden h-14 shrink-0 items-center px-3 gap-2.5" style={{ backgroundColor: "var(--header-bg)" }}>
         {/* Left: org chip */}
         <button
           onClick={() => hasMultipleOrgs && setSheetOpen(true)}
@@ -54,7 +54,7 @@ export function MobileHeader({
           )}
         >
           {orgLogoUrl && !logoError ? (
-            <img src={orgLogoUrl} alt="" className="h-7 w-auto max-w-[56px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+            <img src={orgLogoUrl} alt="" className="size-7 object-cover rounded-md shrink-0" style={{ border: "1.5px solid rgba(255,255,255,0.4)" }} onError={() => setLogoError(true)} />
           ) : (
             <span className="size-7 rounded-lg bg-white/15 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
               {orgInitials}
