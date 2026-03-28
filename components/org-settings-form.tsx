@@ -201,41 +201,7 @@ export function OrgSettingsForm({
         </Button>
       </div>
 
-      {/* Feature toggles */}
-      <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-medium text-muted-foreground">{t("features")}</p>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-medium">{t("leaveRequests")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("leaveRequestsDesc")}</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={leaveRequests}
-            onClick={() => {
-              const val = !leaveRequests
-              setLeaveRequests(val)
-              startTransition(async () => {
-                const result = await toggleLeaveRequests(val)
-                if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
-                else toast.success(val ? t("leaveRequestsEnabled") : t("leaveRequestsDisabled"))
-              })
-            }}
-            className={cn(
-              "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-              leaveRequests ? "bg-primary" : "bg-muted-foreground/20"
-            )}
-          >
-            <span
-              className={cn(
-                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                leaveRequests ? "translate-x-5" : "translate-x-0"
-              )}
-            />
-          </button>
-        </div>
-      </div>
+      {/* Feature toggles moved to Funcionalidades tab */}
     </div>
   )
 }
