@@ -2010,8 +2010,7 @@ function TransposedPersonGrid({
               key={s.id}
               className={cn(
                 "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
-                isNewGroup && i > 0 && "border-l-2 border-l-border"
-              )}
+                              )}
               style={colorChips ? { borderTop: `3px solid ${s.color || "#D4D4D8"}` } : undefined}
             >
               <button
@@ -2076,8 +2075,7 @@ function TransposedPersonGrid({
                       "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
                       compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1",
                       isHovered ? "bg-blue-100/50" : "bg-background",
-                      isNewGroup && i > 0 && "border-l-2 border-l-border"
-                    )}
+                                          )}
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                   >
