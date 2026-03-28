@@ -3397,7 +3397,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight }: { onGenerateWeek: () => void; onGenerateDay?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -3423,6 +3423,12 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, isPending, compact, onT
             <button onClick={() => { setOpen(false); onGenerateDay() }} disabled={isPending} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
               <CalendarDays className="size-4" />
               {locale === "es" ? "Regenerar día" : "Regenerate day"}
+            </button>
+          )}
+          {onShare && (
+            <button onClick={() => { setOpen(false); onShare() }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <Share className="size-4" />
+              {locale === "es" ? "Compartir imagen" : "Share image"}
             </button>
           )}
           {onToggleCompact && (
@@ -4349,10 +4355,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </div>
             </div>
           ) : (
-            <div data-mobile-toolbar className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-20">
+            <div data-mobile-toolbar className="flex items-center gap-1 h-12 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
               {/* Left: date selector */}
-              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronLeft className="size-5 text-muted-foreground" />
+              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+                <ChevronLeft className="size-4 text-muted-foreground" />
               </button>
               <div className="relative shrink-0">
                 <input
@@ -4361,39 +4367,28 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
-                <span className="text-[16px] font-semibold capitalize pointer-events-none">
+                <span className="text-[14px] font-semibold capitalize pointer-events-none">
                   {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
                 </span>
               </div>
-              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronRight className="size-5 text-muted-foreground" />
+              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+                <ChevronRight className="size-4 text-muted-foreground" />
               </button>
               <button
                 onClick={goToToday}
                 disabled={currentDate === TODAY}
-                className={cn("text-[13px] font-medium px-2.5 py-1.5 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
+                className={cn("text-[12px] font-medium px-1.5 py-1 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
               >
                 {tc("today")}
               </button>
               <div className="flex-1" />
-              {/* Warnings pill — same as desktop */}
+              {/* Warnings pill */}
               {weekData && (
                 <WarningsPill days={weekData?.days ?? []} staffList={staffList} />
               )}
-              <button
-                onClick={async () => {
-                  if (!mobileContentRef.current) return
-                  const { shareCapture } = await import("@/lib/share-capture")
-                  const dateLabel = currentDate.replace(/-/g, "")
-                  await shareCapture(mobileContentRef.current, `rota-${dateLabel}.png`)
-                }}
-                className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0"
-              >
-                <Share className="size-4" />
-              </button>
               {canEdit && (
-                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
-                  <Pencil className="size-4" />
+                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                  <Pencil className="size-3.5" />
                 </button>
               )}
               {canEdit && (
@@ -4404,6 +4399,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     if (result.error) toast.error(result.error)
                     else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeekSilent(weekStart) }
                   } : undefined}
+                  onShare={async () => {
+                    if (!mobileContentRef.current) return
+                    const { shareCapture } = await import("@/lib/share-capture")
+                    await shareCapture(mobileContentRef.current, `rota-${currentDate.replace(/-/g, "")}.png`)
+                  }}
                   isPending={isPending}
                   compact={mobileCompact}
                   onToggleCompact={() => { const next = !mobileCompact; setMobileCompact(next); localStorage.setItem("labrota_mobile_compact", String(next)) }}

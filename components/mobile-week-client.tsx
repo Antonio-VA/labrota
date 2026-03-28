@@ -49,7 +49,7 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
   )
 }
 
-function WeekOverflow({ weekStart }: { weekStart: string }) {
+function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () => void }) {
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -85,6 +85,15 @@ function WeekOverflow({ weekStart }: { weekStart: string }) {
           className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1"
           style={{ top: pos.top, right: pos.right }}
         >
+          {onShare && (
+            <button
+              onClick={() => { setOpen(false); onShare() }}
+              className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+            >
+              <Share className="size-4" />
+              {locale === "es" ? "Compartir imagen" : "Share image"}
+            </button>
+          )}
           <button
             onClick={() => {
               setOpen(false)
@@ -176,17 +185,11 @@ export function MobileWeekClient() {
         </button>
         {/* Avisos — tappable with overlay */}
         <WeekAvisos days={days} locale={locale} />
-        <button
-          onClick={async () => {
-            if (!weekGridRef.current) return
-            const { shareCapture } = await import("@/lib/share-capture")
-            await shareCapture(weekGridRef.current, `rota-week-${weekStart}.png`)
-          }}
-          className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0"
-        >
-          <Share className="size-4" />
-        </button>
-        <WeekOverflow weekStart={weekStart} />
+        <WeekOverflow weekStart={weekStart} onShare={async () => {
+          if (!weekGridRef.current) return
+          const { shareCapture } = await import("@/lib/share-capture")
+          await shareCapture(weekGridRef.current, `rota-week-${weekStart}.png`)
+        }} />
       </div>
 
       {/* Scrollable grid */}
