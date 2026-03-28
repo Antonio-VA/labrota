@@ -335,10 +335,18 @@ export async function updateOrgBilling(orgId: string, data: { billing_start: str
 export async function resetOrgImplementation(orgId: string) {
   await assertSuperAdmin()
   const admin = createAdminClient()
-  // Delete all rotas and assignments (keeps staff, departments, shifts, tasks)
+  // Full reset: wipe everything except the org record itself
   await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
   await admin.from("rota_snapshots").delete().eq("organisation_id", orgId)
   await admin.from("rotas").delete().eq("organisation_id", orgId)
+  await admin.from("staff_skills").delete().eq("organisation_id", orgId)
+  await admin.from("leaves").delete().eq("organisation_id", orgId)
+  await admin.from("staff").delete().eq("organisation_id", orgId)
+  await admin.from("tecnicas").delete().eq("organisation_id", orgId)
+  await admin.from("shift_types").delete().eq("organisation_id", orgId)
+  await admin.from("departments").delete().eq("organisation_id", orgId)
+  await admin.from("rota_rules").delete().eq("organisation_id", orgId)
+  await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }

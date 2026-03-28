@@ -102,7 +102,7 @@ export function SettingsImplementation({
               <div>
                 <p className="text-[15px] font-medium">¿Re-iniciar implementación?</p>
                 <p className="text-[13px] text-muted-foreground mt-1.5">
-                  Esta acción eliminará todos los horarios generados. Los datos del equipo, departamentos, turnos y tareas se conservarán. Esta acción no se puede deshacer.
+                  Esta acción eliminará todos los datos: horarios, equipo, departamentos, turnos, tareas, reglas y configuración regional. Solo se conservará la organización. Esta acción no se puede deshacer.
                 </p>
               </div>
             </div>

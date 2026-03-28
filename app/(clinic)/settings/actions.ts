@@ -338,11 +338,23 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
 
 export async function resetImplementation(): Promise<{ error?: string }> {
   const { orgId, admin } = await requireOrgAdmin()
-  // Delete rotas, assignments, snapshots — keep staff, departments, shifts, tasks
+  // Full reset: wipe everything except the org record itself
+  // Order matters due to foreign key constraints
   await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
   await admin.from("rota_snapshots").delete().eq("organisation_id", orgId)
   await admin.from("rotas").delete().eq("organisation_id", orgId)
+  await admin.from("staff_skills").delete().eq("organisation_id", orgId)
+  await admin.from("leaves").delete().eq("organisation_id", orgId)
+  await admin.from("staff").delete().eq("organisation_id", orgId)
+  await admin.from("tecnicas").delete().eq("organisation_id", orgId)
+  await admin.from("shift_types").delete().eq("organisation_id", orgId)
+  await admin.from("departments").delete().eq("organisation_id", orgId)
+  await admin.from("rota_rules").delete().eq("organisation_id", orgId)
+  // Clear regional config
+  await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
   revalidatePath("/settings")
+  revalidatePath("/staff")
+  revalidatePath("/lab")
   revalidatePath("/")
   return {}
 }
