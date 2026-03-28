@@ -300,15 +300,19 @@ const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "androlog
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, children }: {
+function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, disabled, children }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
   departments?: import("@/lib/types/database").Department[]
   onFunctionSave: (id: string, label: string | null) => void
   isPublished: boolean
+  disabled?: boolean
   children: React.ReactNode
 }) {
+  // When disabled, just render children without any popover
+  if (disabled) return <>{children}</>
+
   const t = useTranslations("schedule")
   const tStaff = useTranslations("staff")
   const [open, setOpen] = useState(false)
@@ -2200,6 +2204,7 @@ function ShiftGrid({
                         departments={data?.departments ?? []}
                         onFunctionSave={handleFunctionLabelSave}
                         isPublished={isPublished}
+                        disabled={data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift}
                       >
                         <Tooltip>
                           <TooltipTrigger render={
@@ -2210,8 +2215,8 @@ function ShiftGrid({
                                 last={a.staff.last_name}
                                 role={a.staff.role}
                                 isOverride={a.is_manual_override}
-                                functionLabel={a.function_label}
-                                tecnica={tecnica}
+                                functionLabel={(data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift) ? null : a.function_label}
+                                tecnica={(data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift) ? null : tecnica}
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
                                 isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
@@ -3861,6 +3866,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const isDraft        = rota?.status === "draft"
   const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
   const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
+  // Show task assignment UI only in by_task mode, or in by_shift when the feature flag is on
+  const showTaskAssignment = weekData?.rotaDisplayMode === "by_task" || (weekData?.enableTaskInShift ?? false)
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
   const showActions    = canEdit
 
