@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
-import { BiopsiaConfig } from "@/components/biopsia-config"
+// BiopsiaConfig merged into LabConfigForm parametros section
 import { TurnosTab } from "@/components/turnos-tab"
 import { TécnicasTab } from "@/components/tecnicas-tab"
 import { PlantillasTab } from "@/components/plantillas-tab"
@@ -70,10 +70,7 @@ export default async function LabConfigPage() {
             reglas={<RulesSection rules={rules} staff={staff} />}
             parametros={
               config ? (
-                <div className="flex flex-col gap-6">
-                  <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} />
-                  <BiopsiaConfig config={config} />
-                </div>
+                <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">Lab configuration not found.</p>
               )

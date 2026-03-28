@@ -317,6 +317,61 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       )}
 
+      {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Biopsias" />
+        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia">
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number" min={0} max={100} step={1}
+                value={Math.round(values.biopsy_conversion_rate * 100)}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_conversion_rate: v / 100 }))
+                }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <span className="text-[13px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada entre día 5 y día 6 post-punción">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D5</span>
+                <Input
+                  type="number" min={0} max={100} step={5}
+                  value={Math.round(values.biopsy_day5_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day5_pct: v / 100, biopsy_day6_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-muted-foreground">/</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D6</span>
+                <Input
+                  type="number" min={0} max={100} step={5}
+                  value={Math.round(values.biopsy_day6_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day6_pct: v / 100, biopsy_day5_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-[11px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+        </div>
+      </div>
+
       </>}
 
       {(section === "all" || section === "cobertura") && <>
