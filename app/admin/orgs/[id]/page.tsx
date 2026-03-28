@@ -130,6 +130,9 @@ export default async function OrgDetailPage({
         configuracion={
           <AdminOrgDetailClient
             orgId={id} userRows={userRows} section="configuracion" hideUsers
+            initialName={org.name}
+            initialSlug={org.slug}
+            initialLogoUrl={org.logo_url}
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
           />

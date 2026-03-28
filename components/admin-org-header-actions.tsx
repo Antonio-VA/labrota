@@ -228,16 +228,8 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
                 <Badge variant={org.is_active ? "active" : "inactive"}>
                   {org.is_active ? "Active" : "Suspended"}
                 </Badge>
-                <button
-                  onClick={openEdit}
-                  aria-label="Rename organisation"
-                  className="flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <Pencil className="size-3.5" />
-                </button>
               </div>
             )}
-            <p className="text-[14px] text-muted-foreground">{org.slug}</p>
           </div>
         </div>
 

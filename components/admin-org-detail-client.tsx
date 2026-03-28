@@ -6,9 +6,10 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle } from "lucide-react"
+import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, resetOrgImplementation } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
+import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
 
@@ -17,6 +18,9 @@ export function AdminOrgDetailClient({
   userRows,
   initialCountry,
   initialRegion,
+  initialName = "",
+  initialSlug = "",
+  initialLogoUrl = null,
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
   initialBilling = { start: null, end: null, fee: null },
@@ -28,6 +32,9 @@ export function AdminOrgDetailClient({
   userRows: UserRow[]
   initialCountry: string
   initialRegion: string
+  initialName?: string
+  initialSlug?: string
+  initialLogoUrl?: string | null
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
@@ -44,6 +51,8 @@ export function AdminOrgDetailClient({
   hideUsers?: boolean
 }) {
   const router = useRouter()
+  const [orgName, setOrgName] = useState(initialName)
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
   const [country, setCountry] = useState(initialCountry)
@@ -88,6 +97,10 @@ export function AdminOrgDetailClient({
     }
     startTransition(async () => {
       let hasError = false
+      if (orgName.trim() && orgName !== initialName) {
+        const r = await renameOrganisation(orgId, orgName.trim())
+        if (r?.error) { toast.error(r.error); hasError = true }
+      }
       if (displayMode !== initialDisplayMode) {
         const r = await updateOrgDisplayMode(orgId, displayMode)
         if (r.error) { toast.error(r.error); hasError = true }
@@ -342,6 +355,62 @@ export function AdminOrgDetailClient({
       </>}
 
       {(section === "all" || section === "configuracion") && <>
+      {/* ── ORGANIZACIÓN ─────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-[18px] font-medium">Organización</h2>
+        <div className="rounded-lg border border-border bg-background px-4 py-4 flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            {/* Logo */}
+            <div className="relative group shrink-0">
+              <input
+                id="org-logo-input"
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  e.target.value = ""
+                  const supabase = createClient()
+                  const ext = file.name.split(".").pop() ?? "png"
+                  const path = `${orgId}/logo.${ext}`
+                  await supabase.storage.from("org-logos").upload(path, file, { upsert: true, contentType: file.type })
+                  const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path)
+                  await updateOrgLogo(orgId, publicUrl)
+                  setLogoUrl(publicUrl + `?t=${Date.now()}`)
+                  router.refresh()
+                }}
+              />
+              <button
+                onClick={() => document.getElementById("org-logo-input")?.click()}
+                className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-[16px] font-semibold text-muted-foreground hover:border-primary transition-colors overflow-hidden relative"
+              >
+                {logoUrl ? (
+                  <img src={logoUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  orgName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+                )}
+                <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                  <Upload className="size-4 text-white" />
+                </span>
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col gap-1.5">
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[12px] font-medium text-muted-foreground">Nombre</label>
+                <Input
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  disabled={isPending}
+                  className="h-9 text-[14px] font-medium"
+                />
+              </div>
+              <p className="text-[12px] text-muted-foreground">Slug: <span className="font-mono">{initialSlug}</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── CONFIGURACIÓN REGIONAL ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>
