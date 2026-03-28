@@ -2,7 +2,7 @@ import Link from "next/link"
 import { getLocale } from "next-intl/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { Button } from "@/components/ui/button"
-import { formatDateWithYear } from "@/lib/format-date"
+// formatDateWithYear moved into AdminOrgTable client component
 import { Plus, Building2 } from "lucide-react"
 import type { Organisation } from "@/lib/types/database"
 import { AdminOrgTable } from "@/components/admin-org-table"
@@ -55,8 +55,6 @@ export default async function AdminPage() {
     lastLogin: lastLogins[i],
   }))
 
-  const fmt = (d: string) => formatDateWithYear(d, locale)
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -74,7 +72,7 @@ export default async function AdminPage() {
           <p className="text-[14px] text-muted-foreground">Create your first clinic to get started.</p>
         </div>
       ) : (
-        <AdminOrgTable rows={rows} formatDate={fmt} />
+        <AdminOrgTable rows={rows} locale={locale} />
       )}
     </div>
   )

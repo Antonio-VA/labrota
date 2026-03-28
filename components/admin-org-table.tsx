@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { Archive } from "lucide-react"
 import { toast } from "sonner"
 import { createBackup } from "@/app/admin/backup-actions"
+import { formatDateWithYear } from "@/lib/format-date"
 
 interface OrgRow {
   id: string
@@ -22,7 +23,8 @@ interface OrgRow {
   lastLogin: string | null
 }
 
-export function AdminOrgTable({ rows, formatDate }: { rows: OrgRow[]; formatDate: (d: string) => string }) {
+export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string }) {
+  const formatDate = (d: string) => formatDateWithYear(d, locale as "es" | "en")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
 
