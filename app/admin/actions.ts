@@ -332,6 +332,17 @@ export async function updateOrgBilling(orgId: string, data: { billing_start: str
   return { success: true }
 }
 
+export async function resetOrgImplementation(orgId: string) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  // Delete all rotas and assignments (keeps staff, departments, shifts, tasks)
+  await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
+  await admin.from("rota_snapshots").delete().eq("organisation_id", orgId)
+  await admin.from("rotas").delete().eq("organisation_id", orgId)
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 export async function toggleOrgLeaveRequests(orgId: string, enabled: boolean) {
   await assertSuperAdmin()
   const admin = createAdminClient()

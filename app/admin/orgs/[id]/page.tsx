@@ -26,6 +26,7 @@ export default async function OrgDetailPage({
 
   const [
     orgRes, staffRes, rotasRes, recentRotasRes, profilesRes, labConfigRes,
+    deptRes, shiftRes, tecnicaRes, assignmentRes,
   ] = await Promise.all([
     admin.from("organisations").select("*").eq("id", id).single(),
     admin.from("staff").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("onboarding_status", "active"),
@@ -33,6 +34,10 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).gte("created_at", thirtyDaysAgo),
     admin.from("organisation_members").select("user_id, role, display_name").eq("organisation_id", id),
     admin.from("lab_config").select("country, region").eq("organisation_id", id).maybeSingle(),
+    admin.from("departments").select("id", { count: "exact", head: true }).eq("organisation_id", id),
+    admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
+    admin.from("tecnicas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
+    admin.from("rota_assignments").select("id", { count: "exact", head: true }).eq("organisation_id", id).limit(1),
   ])
 
   if (!orgRes.data) notFound()
@@ -117,6 +122,15 @@ export default async function OrgDetailPage({
               start: (org as any).billing_start ?? null,
               end: (org as any).billing_end ?? null,
               fee: (org as any).billing_fee ?? null,
+            }}
+            implementationStatus={{
+              hasRegion: !!(labConfigRes.data as any)?.country,
+              departmentCount: deptRes.count ?? 0,
+              shiftCount: shiftRes.count ?? 0,
+              taskCount: tecnicaRes.count ?? 0,
+              staffCount: staffRes.count ?? 0,
+              hasRota: (assignmentRes.count ?? 0) > 0,
+              rotaCount: rotasRes.count ?? 0,
             }}
           />
         }

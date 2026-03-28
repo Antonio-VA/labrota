@@ -6,9 +6,9 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Users, Plus, X, Lock } from "lucide-react"
+import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, resetOrgImplementation } from "@/app/admin/actions"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
 
@@ -20,6 +20,7 @@ export function AdminOrgDetailClient({
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
   initialBilling = { start: null, end: null, fee: null },
+  implementationStatus,
   hideUsers = false,
 }: {
   orgId: string
@@ -29,6 +30,15 @@ export function AdminOrgDetailClient({
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
+  implementationStatus?: {
+    hasRegion: boolean
+    departmentCount: number
+    shiftCount: number
+    taskCount: number
+    staffCount: number
+    hasRota: boolean
+    rotaCount: number
+  }
   hideUsers?: boolean
 }) {
   const router = useRouter()
@@ -41,6 +51,8 @@ export function AdminOrgDetailClient({
 
   // Add user modal
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [isResetting, startReset] = useTransition()
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [appRole, setAppRole] = useState("admin")
@@ -96,6 +108,103 @@ export function AdminOrgDetailClient({
 
   return (
     <>
+      {/* ── ESTADO DE IMPLEMENTACIÓN ─────────────────────────────────── */}
+      {implementationStatus && (() => {
+        const steps = [
+          { label: "Crear organización", desc: "Organización registrada en el sistema", done: true },
+          { label: "Configurar región", desc: "País y región configurados", done: implementationStatus.hasRegion },
+          { label: "Añadir departamentos", desc: `${implementationStatus.departmentCount} departamento${implementationStatus.departmentCount !== 1 ? "s" : ""}`, done: implementationStatus.departmentCount > 0 },
+          { label: "Añadir turnos", desc: `${implementationStatus.shiftCount} turno${implementationStatus.shiftCount !== 1 ? "s" : ""}`, done: implementationStatus.shiftCount > 0 },
+          { label: "Añadir tareas", desc: `${implementationStatus.taskCount} tarea${implementationStatus.taskCount !== 1 ? "s" : ""}`, done: implementationStatus.taskCount > 0 },
+          { label: "Añadir equipo", desc: `${implementationStatus.staffCount} persona${implementationStatus.staffCount !== 1 ? "s" : ""} activa${implementationStatus.staffCount !== 1 ? "s" : ""}`, done: implementationStatus.staffCount > 0 },
+          { label: "Generar primera rota", desc: implementationStatus.hasRota ? `${implementationStatus.rotaCount} horario${implementationStatus.rotaCount !== 1 ? "s" : ""} generado${implementationStatus.rotaCount !== 1 ? "s" : ""}` : "Aún no se ha generado ningún horario", done: implementationStatus.hasRota },
+        ]
+        const allDone = steps.every((s) => s.done)
+        const completedCount = steps.filter((s) => s.done).length
+
+        return (
+          <div className="flex flex-col gap-3">
+            <h2 className="text-[18px] font-medium">Estado de implementación</h2>
+            <div className="rounded-lg border border-border bg-background overflow-hidden">
+              {allDone ? (
+                <div className="px-4 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-5 text-emerald-500" />
+                    <span className="text-[14px] font-medium text-emerald-600">Implementación completada</span>
+                  </div>
+                  <button
+                    onClick={() => setResetModalOpen(true)}
+                    className="text-[12px] text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Re-iniciar implementación
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                    <span className="text-[12px] text-muted-foreground">{completedCount}/{steps.length} pasos completados</span>
+                  </div>
+                  <div className="divide-y divide-border/50">
+                    {steps.map((step, i) => (
+                      <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                        {step.done ? (
+                          <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" />
+                        ) : (
+                          <Circle className="size-4 text-muted-foreground/30 mt-0.5 shrink-0" />
+                        )}
+                        <div>
+                          <p className={cn("text-[13px] font-medium", step.done ? "text-foreground" : "text-muted-foreground")}>{step.label}</p>
+                          <p className="text-[11px] text-muted-foreground">{step.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Reset implementation modal */}
+      {resetModalOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setResetModalOpen(false)} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[420px] p-5 flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="size-5 text-destructive mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[15px] font-medium">¿Re-iniciar implementación?</p>
+                <p className="text-[13px] text-muted-foreground mt-1.5">
+                  Esta acción eliminará todos los horarios, importaciones y configuración de tareas.
+                  Los datos del equipo y la organización se conservarán. Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setResetModalOpen(false)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={isResetting}
+                onClick={() => {
+                  startReset(async () => {
+                    const result = await resetOrgImplementation(orgId)
+                    if (result.success) {
+                      toast.success("Implementación reiniciada")
+                      setResetModalOpen(false)
+                      router.refresh()
+                    }
+                  })
+                }}
+              >
+                {isResetting ? "Reiniciando…" : "Re-iniciar"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Funcionalidades</h2>
