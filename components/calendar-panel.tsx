@@ -1938,7 +1938,7 @@ function PersonGrid({
 
 function TransposedPersonGrid({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange,
+  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1948,6 +1948,7 @@ function TransposedPersonGrid({
   onLeaveByDate: Record<string, string[]>
   publicHolidays: Record<string, string>
   onChipClick: (assignment: { staff_id: string }, date: string) => void
+  onDateClick?: (date: string) => void
   colorChips?: boolean
   compact?: boolean
   punctionsDefault?: Record<string, number>
@@ -1971,9 +1972,12 @@ function TransposedPersonGrid({
       return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
     })
 
+  const [localDays, setLocalDays] = useState(data.days)
+  useEffect(() => { setLocalDays(data.days) }, [data])
+
   // Build assignment map: staffId → date → assignment
   const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of data.days) {
+  for (const day of localDays) {
     for (const a of day.assignments) {
       if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
       assignMap[a.staff_id][day.date] = a
@@ -1989,7 +1993,7 @@ function TransposedPersonGrid({
   }
 
   const allMembers = roleGroups.flatMap((g) => g.members)
-  const days = data.days
+  const days = localDays
 
   return (
     <div className="rounded-lg border border-border overflow-auto w-full">
@@ -2036,24 +2040,23 @@ function TransposedPersonGrid({
 
           return (
             <Fragment key={day.date}>
-              {/* Day label cell */}
+              {/* Day label cell — click opens day view */}
               <div
                 className={cn(
-                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2",
+                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2 cursor-pointer hover:bg-muted/80",
                   holiday && "bg-amber-50/60"
                 )}
                 style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
+                onClick={() => onDateClick?.(day.date)}
               >
-                <div className="flex flex-col items-end">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
-                    <span className={cn(
-                      "text-[14px] font-semibold leading-none",
-                      today ? "size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[12px]" : "text-primary"
-                    )}>
-                      {dayN}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                  <span className={cn(
+                    "font-semibold leading-none",
+                    today ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
+                  )}>
+                    {dayN}
+                  </span>
                 </div>
               </div>
 
@@ -2079,11 +2082,52 @@ function TransposedPersonGrid({
                     onMouseLeave={() => setHoveredShift(null)}
                   >
                     {assignment ? (
-                      <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "#2C3E6B" }}>
-                        {assignment.shift_type}
-                      </span>
+                      !isPublished ? (
+                        <PersonShiftSelector
+                          assignment={assignment}
+                          shiftTimes={shiftTimes}
+                          shiftTypes={data?.shiftTypes ?? []}
+                          isPublished={false}
+                          compact
+                          onShiftChange={async (newShift) => {
+                            if (!newShift) {
+                              setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.filter((a) => a.id !== assignment.id) })))
+                              const result = await removeAssignment(assignment.id)
+                              if (result.error) toast.error(result.error)
+                            } else {
+                              setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.map((a) => a.id === assignment.id ? { ...a, shift_type: newShift } : a) })))
+                              const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                              if (result.error) toast.error(result.error)
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "#2C3E6B" }}>
+                          {assignment.shift_type}
+                        </span>
+                      )
                     ) : onLeave ? (
                       <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
+                    ) : !isPublished ? (
+                      <PersonShiftSelector
+                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                        shiftTimes={shiftTimes}
+                        shiftTypes={data?.shiftTypes ?? []}
+                        isPublished={false}
+                        compact
+                        isOff
+                        onShiftChange={async (newShift) => {
+                          if (!newShift) return
+                          const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                          if (result.error) toast.error(result.error)
+                          else {
+                            setLocalDays((prev) => prev.map((dd) => dd.date !== day.date ? dd : {
+                              ...dd,
+                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                            }))
+                          }
+                        }}
+                      />
                     ) : (
                       <span className={cn("text-muted-foreground font-semibold", compact ? "text-[9px]" : "text-[11px]")}>OFF</span>
                     )}
@@ -4681,6 +4725,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onChipClick={(a) => openProfile(a.staff_id)}
+                  onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
