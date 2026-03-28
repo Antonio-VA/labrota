@@ -154,7 +154,6 @@ export function AdminOrgDetailClient({
 
         return (
           <div className="flex flex-col gap-3">
-            <h2 className="text-[18px] font-medium">Estado de implementación</h2>
             <div className="rounded-lg border border-border bg-background overflow-hidden">
               {allDone ? (
                 <div className="px-4 py-4 flex items-center justify-between">
@@ -240,7 +239,6 @@ export function AdminOrgDetailClient({
       {(section === "all" || section === "funcionalidades") && <>
       {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-[18px] font-medium">Funcionalidades</h2>
         <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
           {/* Display mode */}
           <div className="flex items-center justify-between gap-4">
@@ -365,7 +363,6 @@ export function AdminOrgDetailClient({
       {(section === "all" || section === "facturacion") && <>
       {/* ── FACTURACIÓN ───────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-[18px] font-medium">Facturación</h2>
         <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex flex-col gap-1">
@@ -423,7 +420,6 @@ export function AdminOrgDetailClient({
       {(section === "all" || section === "configuracion") && <>
       {/* ── ORGANIZACIÓN ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-[18px] font-medium">Organización</h2>
         <div className="rounded-lg border border-border bg-background px-4 py-4 flex flex-col gap-4">
           <div className="flex items-center gap-4">
             {/* Logo */}
@@ -479,7 +475,6 @@ export function AdminOrgDetailClient({
 
       {/* ── CONFIGURACIÓN REGIONAL ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-[18px] font-medium">Configuración regional</h2>
         <div className="rounded-lg border border-border bg-background px-5 py-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
@@ -527,8 +522,7 @@ export function AdminOrgDetailClient({
 
       {/* ── USUARIOS ──────────────────────────────────────────────────── */}
       {["all", "usuarios"].includes(section) && <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[18px] font-medium">Usuarios</h2>
+        <div className="flex items-center justify-end">
           <Button size="sm" onClick={() => setAddModalOpen(true)}>
             <Plus className="size-3.5" />
             Añadir usuario

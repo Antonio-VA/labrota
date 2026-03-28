@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Plus, X, UserPlus, Link2, Link2Off } from "lucide-react"
+import { UserPlus, Link2, Link2Off, MoreHorizontal, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -16,12 +15,6 @@ import {
   type OrgUser,
 } from "@/app/(clinic)/settings/actions"
 import type { Staff } from "@/lib/types/database"
-
-const ROLE_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  admin:   { label: "Admin",   variant: "default" },
-  manager: { label: "Manager", variant: "secondary" },
-  viewer:  { label: "Viewer",  variant: "outline" },
-}
 
 export function OrgUsersTable({
   initialUsers,
@@ -39,72 +32,96 @@ export function OrgUsersTable({
   const [inviteName, setInviteName] = useState("")
   const [inviteRole, setInviteRole] = useState("viewer")
   const [linkingUserId, setLinkingUserId] = useState<string | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpenId) return
+    function h(e: MouseEvent) { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpenId(null) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [menuOpenId])
 
   function handleInvite() {
     if (!inviteEmail.trim()) return
     startTransition(async () => {
       const result = await inviteOrgUser(inviteEmail, inviteRole, inviteName)
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(t("inviteSent"))
-        setShowInvite(false)
-        setInviteEmail("")
-        setInviteName("")
-        setInviteRole("viewer")
-        // Refresh — we'd need to re-fetch but for now just add to local state
-        setUsers((prev) => [...prev, {
-          userId: "pending",
-          email: inviteEmail.trim().toLowerCase(),
-          displayName: inviteName || null,
-          role: inviteRole,
-          linkedStaffId: null,
-          lastLogin: null,
-        }])
-      }
+      if (result.error) { toast.error(result.error); return }
+      toast.success(t("inviteSent"))
+      setShowInvite(false)
+      setInviteEmail(""); setInviteName(""); setInviteRole("viewer")
+      setUsers((prev) => [...prev, { userId: "pending", email: inviteEmail.trim().toLowerCase(), displayName: inviteName || null, role: inviteRole, linkedStaffId: null, lastLogin: null }])
     })
   }
 
   function handleRoleChange(userId: string, newRole: string) {
     startTransition(async () => {
       const result = await updateUserRole(userId, newRole)
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, role: newRole } : u))
-        toast.success(t("roleUpdated"))
-      }
+      if (result.error) { toast.error(result.error); return }
+      setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, role: newRole } : u))
+      toast.success(t("roleUpdated"))
     })
   }
 
   function handleRemove(userId: string) {
+    setMenuOpenId(null)
+    if (!confirm("¿Eliminar este usuario de la organización?")) return
     startTransition(async () => {
       const result = await removeOrgMember(userId)
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        setUsers((prev) => prev.filter((u) => u.userId !== userId))
-        toast.success(t("userDeleted"))
-      }
+      if (result.error) { toast.error(result.error); return }
+      setUsers((prev) => prev.filter((u) => u.userId !== userId))
+      toast.success(t("userDeleted"))
     })
   }
 
   function handleLink(userId: string, staffId: string | null) {
     startTransition(async () => {
       const result = await linkUserToStaff(userId, staffId)
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, linkedStaffId: staffId } : u))
-        setLinkingUserId(null)
-        toast.success(staffId ? t("userLinked") : t("linkRemoved"))
-      }
+      if (result.error) { toast.error(result.error); return }
+      setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, linkedStaffId: staffId } : u))
+      setLinkingUserId(null)
+      toast.success(staffId ? t("userLinked") : t("linkRemoved"))
     })
+  }
+
+  function fmtLogin(d: string | null) {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " · " +
+      new Date(d).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Users list */}
+      {/* Header with invite button */}
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{users.length} usuario{users.length !== 1 ? "s" : ""}</span>
+        <Button size="sm" onClick={() => setShowInvite(true)}>
+          <UserPlus className="size-3.5" />
+          {t("inviteUser")}
+        </Button>
+      </div>
+
+      {/* Invite form */}
+      {showInvite && (
+        <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Input placeholder="Email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1 h-8 text-[13px]" type="email" />
+            <Input placeholder={t("nameOptional")} value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="flex-1 h-8 text-[13px]" />
+          </div>
+          <div className="flex items-center gap-2">
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none">
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <div className="flex-1" />
+            <Button size="sm" variant="ghost" onClick={() => setShowInvite(false)} disabled={isPending}>{tc("cancel")}</Button>
+            <Button size="sm" onClick={handleInvite} disabled={isPending || !inviteEmail.trim()}>{isPending ? tc("sending") : t("invite")}</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full text-[13px]">
           <thead>
@@ -112,14 +129,13 @@ export function OrgUsersTable({
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("userColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("roleColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("linkedStaff")}</th>
-              <th className="px-3 py-2 w-8" />
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Último acceso</th>
+              <th className="px-3 py-2 w-10" />
             </tr>
           </thead>
           <tbody>
             {users.map((u) => {
               const linked = u.linkedStaffId ? staff.find((s) => s.id === u.linkedStaffId) : null
-              const badge = ROLE_BADGE[u.role] ?? ROLE_BADGE.viewer
-
               return (
                 <tr key={u.userId} className="border-b border-border last:border-0 hover:bg-muted/50">
                   <td className="px-3 py-2">
@@ -154,102 +170,53 @@ export function OrgUsersTable({
                             <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
                           ))}
                         </select>
-                        <button
-                          onClick={() => setLinkingUserId(null)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
+                        <button onClick={() => setLinkingUserId(null)} className="text-muted-foreground hover:text-foreground">
                           <X className="size-3" />
                         </button>
                       </div>
                     ) : linked ? (
-                      <button
-                        onClick={() => setLinkingUserId(u.userId)}
-                        className="flex items-center gap-1 text-[12px] text-primary hover:underline"
-                      >
-                        <Link2 className="size-3" />
-                        {linked.first_name} {linked.last_name}
+                      <button onClick={() => setLinkingUserId(u.userId)} className="flex items-center gap-1 text-[12px] text-primary hover:underline">
+                        <Link2 className="size-3" />{linked.first_name} {linked.last_name}
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setLinkingUserId(u.userId)}
-                        className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
-                      >
-                        <Link2Off className="size-3" />
-                        {t("link")}
+                      <button onClick={() => setLinkingUserId(u.userId)} className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground">
+                        <Link2Off className="size-3" />{t("link")}
                       </button>
                     )}
                   </td>
+                  <td className="px-3 py-2 text-muted-foreground text-[12px] tabular-nums">
+                    {fmtLogin(u.lastLogin)}
+                  </td>
                   <td className="px-3 py-2">
-                    <button
-                      onClick={() => handleRemove(u.userId)}
-                      disabled={isPending}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
-                      title={t("removeUser")}
-                    >
-                      <X className="size-3.5" />
-                    </button>
+                    <div className="relative" ref={menuOpenId === u.userId ? menuRef : undefined}>
+                      <button
+                        onClick={() => setMenuOpenId(menuOpenId === u.userId ? null : u.userId)}
+                        className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                      {menuOpenId === u.userId && (
+                        <div className="absolute right-0 top-8 z-50 w-40 rounded-lg border border-border bg-background shadow-lg py-1">
+                          <button
+                            onClick={() => handleRemove(u.userId)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-destructive hover:bg-accent transition-colors"
+                          >
+                            <Trash2 className="size-3.5" />
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
             })}
             {users.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground italic">
-                  {t("noUsers")}
-                </td>
-              </tr>
+              <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground italic">{t("noUsers")}</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
-      {/* Invite form */}
-      {showInvite ? (
-        <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="flex-1 h-8 text-[13px]"
-              type="email"
-            />
-            <Input
-              placeholder={t("nameOptional")}
-              value={inviteName}
-              onChange={(e) => setInviteName(e.target.value)}
-              className="flex-1 h-8 text-[13px]"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none"
-            >
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="viewer">Viewer</option>
-            </select>
-            <div className="flex-1" />
-            <Button size="sm" variant="ghost" onClick={() => setShowInvite(false)} disabled={isPending}>
-              {tc("cancel")}
-            </Button>
-            <Button size="sm" onClick={handleInvite} disabled={isPending || !inviteEmail.trim()}>
-              {isPending ? tc("sending") : t("invite")}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowInvite(true)}
-          className="flex items-center gap-1.5 text-[13px] text-primary hover:underline self-start"
-        >
-          <UserPlus className="size-3.5" />
-          {t("inviteUser")}
-        </button>
-      )}
     </div>
   )
 }
