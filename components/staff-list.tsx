@@ -679,7 +679,6 @@ function buildGrid(cols: Set<ColKey>) {
   for (const key of ["role", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
-  parts.push("40px")
   return parts.join(" ")
 }
 
@@ -739,7 +738,6 @@ function StaffTable({
         {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
         {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
         {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
-        <span />
       </div>
 
       {/* Rows */}
@@ -1017,16 +1015,6 @@ function StaffTable({
               </div>
             )}
 
-            {/* Edit */}
-            <div className="flex items-center justify-end">
-              <Link
-                href={`/staff/${member.id}`}
-                aria-label={t("editStaff")}
-                className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent hover:text-blue-600 transition-colors"
-              >
-                <Pencil className="size-4" />
-              </Link>
-            </div>
           </div>
         )
       })}
