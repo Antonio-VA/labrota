@@ -489,7 +489,7 @@ export function runRotaEngine({
     // Distribute staff across shifts — same logic for all roles:
     // 1. Technique typical_shift  2. Preferred shift  3. Rotation fallback
     const dayIndex = allDates.indexOf(date)
-    let dayRrIdx = 0
+    let dayRrIdx = dayIndex  // offset by day so staff rotate across days
     days.push({
       date,
       assignments: assigned.map((s) => {
