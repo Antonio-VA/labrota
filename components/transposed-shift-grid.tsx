@@ -81,12 +81,14 @@ export function TransposedShiftGrid({
 
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
 
-  // Staff color map
+  // Staff → department colour map
   const staffColorMap = useMemo(() => {
+    const deptColors: Record<string, string> = {}
+    for (const dept of (data?.departments ?? [])) deptColors[dept.code] = dept.colour
     const map: Record<string, string> = {}
-    for (const s of staffList) if (s.color) map[s.id] = s.color
+    for (const s of staffList) map[s.id] = deptColors[s.role] ?? ROLE_BORDER[s.role] ?? "#94A3B8"
     return map
-  }, [staffList])
+  }, [staffList, data?.departments])
 
   const today = new Date().toISOString().split("T")[0]
 
@@ -233,8 +235,8 @@ export function TransposedShiftGrid({
                               )}
                               style={{
                                 borderLeft: colorChips
-                                  ? `3px solid ${sColor || "#D4D4D8"}`
-                                  : `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`,
+                                  ? `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`
+                                  : "3px solid #D4D4D8",
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
@@ -299,8 +301,8 @@ export function TransposedShiftGrid({
           <div className="opacity-90 shadow-lg rounded border border-border bg-background px-2 py-1 text-[11px] font-medium"
             style={{
               borderLeft: colorChips
-                ? `3px solid ${staffColorMap[activeAssignment.assignment.staff_id] || "#D4D4D8"}`
-                : `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`,
+                ? `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`
+                : "3px solid #D4D4D8",
               borderRadius: 4,
             }}
           >

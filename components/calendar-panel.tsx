@@ -272,8 +272,8 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
       )}
       style={{
         borderLeft: colorChips
-          ? `3px solid ${staffColor || "#D4D4D8"}`
-          : `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`,
+          ? `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
+          : "3px solid #D4D4D8",
         borderRadius: 4,
         ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
@@ -1256,12 +1256,10 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   }, [overflowOpen])
 
   const { hoveredStaffId, setHovered } = useStaffHover()
-  const FALLBACK_COLORS = [
-    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
-    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
-    "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
-  ]
-  const staffColorLookup = Object.fromEntries(staffList.map((s, i) => [s.id, s.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length]]))
+  // Staff → department colour for pills
+  const deptColors: Record<string, string> = {}
+  for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
+  const staffColorLookup = Object.fromEntries(staffList.map((s) => [s.id, deptColors[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
 
   if (entries.length === 0) return null
 
@@ -1830,7 +1828,7 @@ function PersonGrid({
                   {/* Name cell — click opens profile */}
                   <div
                     className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 min-h-[48px] cursor-pointer hover:bg-muted/50"
-                    style={colorChips ? { borderLeft: `3px solid ${s.color || "#D4D4D8"}` } : undefined}
+                    style={colorChips ? { borderLeft: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
                     onClick={() => onChipClick({ staff_id: s.id } as Assignment, "")}
                   >
                     <span className="text-[13px] font-medium truncate leading-tight">
@@ -2015,7 +2013,7 @@ function TransposedPersonGrid({
               className={cn(
                 "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
                               )}
-              style={colorChips ? { borderTop: `3px solid ${s.color || "#D4D4D8"}` } : undefined}
+              style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
             >
               <button
                 onClick={() => onChipClick({ staff_id: s.id }, "")}
@@ -2244,12 +2242,10 @@ function ShiftGrid({
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
 
-  // Staff color map with fallbacks
-  const FALLBACK_COLORS_SHIFT = [
-    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
-    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
-  ]
-  const staffColorMap = Object.fromEntries(staffList.map((s, i) => [s.id, s.color || FALLBACK_COLORS_SHIFT[i % FALLBACK_COLORS_SHIFT.length]]))
+  // Staff color map — maps each staff member to their department colour
+  const deptColorMap: Record<string, string> = {}
+  for (const dept of (data?.departments ?? [])) deptColorMap[dept.code] = dept.colour
+  const staffColorMap = Object.fromEntries(staffList.map((s) => [s.id, deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   // Require 5px movement before drag activates — allows click events to pass through
@@ -3197,13 +3193,9 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
   }
   // Leave type icons
   const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
-  // Staff individual colors
-  const FALLBACK_COLORS_DAY = [
-    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
-    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
-  ]
+  // Staff → department colour map
   const staffColorMap: Record<string, string> = {}
-  ;(staffList ?? []).forEach((s, i) => { staffColorMap[s.id] = s.color || FALLBACK_COLORS_DAY[i % FALLBACK_COLORS_DAY.length] })
+  ;(staffList ?? []).forEach((s) => { staffColorMap[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8" })
 
   if (loading) {
     return (

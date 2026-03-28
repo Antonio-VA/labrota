@@ -12,6 +12,7 @@ import type { StaffWithSkills, Tecnica, ShiftType } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
+import { DEFAULT_DEPT_BORDER } from "@/lib/department-colors"
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
@@ -236,7 +237,7 @@ function TaskCell({
         const hasConflict = conflictStaffIds.has(a.staff_id)
         const isHovered = hoveredStaffId === a.staff_id
         const staffColor = staffColorMap[a.staff_id]
-        const borderLeft = colorBorders && staffColor ? staffColor : "#CBD5E1"
+        const borderLeft = colorBorders ? (staffColor || "#94A3B8") : "#CBD5E1"
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
@@ -687,14 +688,14 @@ export function TaskGrid({
   }
 
   // Build stable color map — auto-assign for staff without a color
-  const FALLBACK_COLORS = [
-    "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
-    "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
-    "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
-  ]
+  // Map staff to department colours (from DB departments or fallback)
+  const deptColorMap: Record<string, string> = {}
+  for (const dept of (data?.departments ?? [])) {
+    deptColorMap[dept.code] = dept.colour
+  }
   const staffColorMap: Record<string, string> = {}
-  staffList.forEach((s, i) => {
-    staffColorMap[s.id] = s.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length]
+  staffList.forEach((s) => {
+    staffColorMap[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_BORDER[s.role] ?? "#94A3B8"
   })
 
   // Build leave map: date → set of staff_ids
