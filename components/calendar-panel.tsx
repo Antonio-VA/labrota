@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -800,7 +800,20 @@ function StaffProfilePanel({
           <div className="flex-1 min-w-0">
             {staff ? (
               <>
-                <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
+                  {(() => {
+                    const deptTecs = (weekData?.tecnicas ?? []).filter((tc) => tc.activa && tc.department === staff.role)
+                    const certCodes = new Set(staff.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))
+                    const allCertified = staff.role !== "admin" && deptTecs.length > 0 && deptTecs.every((tc) => certCodes.has(tc.codigo))
+                    return allCertified ? (
+                      <Tooltip>
+                        <TooltipTrigger render={<Star className="size-3.5 text-amber-400 fill-amber-400 shrink-0" />} />
+                        <TooltipContent side="right">Todas las técnicas validadas</TooltipContent>
+                      </Tooltip>
+                    ) : null
+                  })()}
+                </div>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
                   <span className="text-muted-foreground/40">·</span>

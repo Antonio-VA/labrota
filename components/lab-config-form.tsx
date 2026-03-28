@@ -409,7 +409,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </table>
         </div>
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          Pon 0 para no requerir un departamento en un día concreto.
+          Estos mínimos son restricciones duras: el generador no producirá una rota que no los cumpla. Pon 0 para no requerir un departamento en un día concreto.
         </p>
       </div>
 
@@ -564,6 +564,16 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {taskCoverageEnabled && (
+          <div className="px-5 py-2 border-t border-border/50 flex flex-col gap-1">
+            <p className="text-[11px] text-muted-foreground">
+              Estos mínimos son restricciones duras: el generador no producirá una rota que no los cumpla.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              ⚠ Si los mínimos definidos no pueden cumplirse con el equipo disponible{rotaDisplayMode === "by_task" ? " y cualificado para cada tarea" : ""}, el generador lo indicará con un aviso antes de generar el horario.
+            </p>
           </div>
         )}
       </div>

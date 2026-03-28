@@ -82,7 +82,7 @@ type Draft = {
 
 // ── Table grid ───────────────────────────────────────────────────────────────
 // Columns: drag(24px) | color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | delete(36px)
-const GRID = "24px 28px minmax(100px,1fr) 80px 120px minmax(80px,1fr) 36px"
+const GRID = "24px 28px minmax(100px,1fr) 80px 90px minmax(80px,1fr) 36px"
 
 // ── Multi-select department dropdown ──────────────────────────────────────────
 
