@@ -48,6 +48,8 @@ export function SettingsFuncionalidades({
         </div>
         <button
           type="button"
+          role="switch"
+          aria-checked={leaveRequests}
           disabled={isPending}
           onClick={() => {
             const val = !leaveRequests
@@ -58,13 +60,13 @@ export function SettingsFuncionalidades({
             })
           }}
           className={cn(
-            "relative w-10 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50",
-            leaveRequests ? "bg-primary" : "bg-muted-foreground/20"
+            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
+            leaveRequests ? "bg-emerald-500" : "bg-muted-foreground/20"
           )}
         >
           <span className={cn(
-            "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
-            leaveRequests ? "translate-x-[18px]" : "translate-x-0.5"
+            "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform",
+            leaveRequests ? "translate-x-5" : "translate-x-0"
           )} />
         </button>
       </div>
