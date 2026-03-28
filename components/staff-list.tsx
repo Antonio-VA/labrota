@@ -1208,7 +1208,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 onClick={() => { setEditDirty(new Map()); setEditMode(false) }}
                 className="h-9 px-3 rounded-lg border border-input text-[13px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5"
               >
-                {t("cancel") ?? "Cancelar"}
+                Cancelar
               </button>
               <button
                 onClick={saveEdits}
