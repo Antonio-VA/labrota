@@ -81,8 +81,8 @@ type Draft = {
 }
 
 // ── Table grid ───────────────────────────────────────────────────────────────
-const GRID_SHIFT = "24px 28px minmax(100px,1fr) 80px 160px 220px 36px"
-const GRID_TASK = "24px 28px minmax(120px,1fr) 80px 160px 36px"
+const GRID_SHIFT = "24px 28px minmax(100px,1fr) 80px 120px minmax(120px,1fr) 36px"
+const GRID_TASK = "24px 28px minmax(120px,1fr) 80px 120px 36px"
 
 // ── Multi-select department dropdown ──────────────────────────────────────────
 

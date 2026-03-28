@@ -15,7 +15,7 @@ const PASTEL_COLORS = [
 
 const VALID_RULE_TYPES: RotaRuleType[] = [
   "no_coincidir", "supervisor_requerido", "max_dias_consecutivos",
-  "distribucion_fines_semana",
+  "distribucion_fines_semana", "descanso_fin_de_semana",
 ]
 
 export async function importHistoricalGuardia(data: ExtractedData): Promise<ImportResult> {

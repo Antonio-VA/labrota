@@ -67,6 +67,12 @@ function isWeekend(isoDate: string): boolean {
   return code === "sat" || code === "sun"
 }
 
+function addDaysStr(isoDate: string, days: number): string {
+  const d = new Date(isoDate + "T12:00:00")
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split("T")[0]
+}
+
 /** Return ISO date strings for all 7 days of the week starting on weekStart. */
 export function getWeekDates(weekStart: string): string[] {
   const dates: string[] = []
@@ -437,6 +443,62 @@ export function runRotaEngine({
             else warnings.push(`${date}: trainees present for ${skill} without a certified supervisor`)
           }
         }
+        if (rule.type === "descanso_fin_de_semana" && weekend) {
+          const recovery = (rule.params.recovery as string) ?? "following"
+          const restDays = (rule.params.restDays as number) ?? 2
+
+          for (const s of assigned) {
+            if (!affects(s.id)) continue
+
+            if (recovery === "following") {
+              // If staff worked LAST weekend → must be off THIS weekend
+              const prevSat = addDaysStr(date, -( getDayCode(date) === "sat" ? 7 : 8))
+              const prevSun = addDaysStr(date, -(getDayCode(date) === "sun" ? 7 : 6))
+              const workedLastWeekend = recentAssignments.some(
+                (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
+              )
+              if (workedLastWeekend) {
+                if (rule.is_hard) hardRemovals.add(s.id)
+                else warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — needs rest (descanso_fin_de_semana)`)
+              }
+            } else {
+              // "previous": If staff is working THIS weekend → must have been off LAST weekend
+              // Since we're assigning now, check if they worked last weekend — if so, block
+              const prevSat = addDaysStr(date, -(getDayCode(date) === "sat" ? 7 : 8))
+              const prevSun = addDaysStr(date, -(getDayCode(date) === "sun" ? 7 : 6))
+              const workedLastWeekend = recentAssignments.some(
+                (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
+              )
+              if (workedLastWeekend) {
+                if (rule.is_hard) hardRemovals.add(s.id)
+                else warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — alternating weekends required`)
+              }
+            }
+          }
+
+          // Rest days enforcement: if staff worked last weekend, ensure they get contiguous rest days
+          // This is handled by also marking avoid_days in the scoring phase above
+          // For hard rules, we add to hardRemovals if within the rest window after a worked weekend
+          if (restDays > 0 && !weekend) {
+            // Check weekday rest: if this date falls within restDays after last worked weekend
+            for (const s of assigned) {
+              if (!affects(s.id)) continue
+              // Find the most recent weekend day this person worked
+              const lastWorkedWeekend = [...recentAssignments]
+                .filter((a) => a.staff_id === s.id && isWeekend(a.date))
+                .sort((a, b) => b.date.localeCompare(a.date))[0]
+              if (!lastWorkedWeekend) continue
+              // Calculate days since last worked weekend
+              const diffMs = new Date(date + "T12:00:00").getTime() - new Date(lastWorkedWeekend.date + "T12:00:00").getTime()
+              const diffDays = Math.round(diffMs / 86400000)
+              if (diffDays > 0 && diffDays <= restDays) {
+                if (rule.is_hard) hardRemovals.add(s.id)
+                else warnings.push(`${date}: ${s.first_name} ${s.last_name} needs ${restDays} rest days after weekend`)
+              }
+            }
+          }
+        }
+
         // no_turno_doble: each person is assigned at most once per day already
       }
 

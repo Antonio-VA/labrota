@@ -277,7 +277,7 @@ function DraggableOffChip({
       ref={setNodeRef}
       style={{
         opacity: isDragging ? 0 : 1,
-        borderLeft: `3px solid ${onLeave ? "#FBBF24" : ROLE_BORDER[staff.role] ?? "#94A3B8"}`,
+        borderLeft: onLeave ? "3px solid #FBBF24" : undefined,
         borderRadius: 4,
       }}
       {...(onLeave ? {} : listeners)}
@@ -505,7 +505,7 @@ export function AssignmentSheet({
   const leaveIds     = new Set(onLeaveStaffIds)
   const unassigned   = staffList
     .filter((s) => !assignedIds.has(s.id))
-    .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
+    .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.first_name.localeCompare(b.first_name))
   const offStaff     = unassigned.filter((s) => !leaveIds.has(s.id))
   const onLeaveStaff = unassigned.filter((s) => leaveIds.has(s.id))
 
@@ -707,6 +707,78 @@ export function AssignmentSheet({
               )
             )}
           </div>
+          {/* Actions — regenerate / copy / delete */}
+          {!isPublished && rota && (
+            <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
+              <button
+                onClick={() => setShowRegenConfirm(true)}
+                disabled={assignments.length === 0}
+                className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+              >
+                <Sparkles className="size-3.5" />
+                {t("regenerateDay")}
+              </button>
+              {assignments.length === 0 && date && (
+                <button
+                  onClick={() => {
+                    startSave(async () => {
+                      const r = await copyDayFromLastWeek(weekStart, date)
+                      if (r.error) toast.error(r.error)
+                      else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
+                    })
+                  }}
+                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Copy className="size-3.5" />
+                  {t("copyPrevWeek")}
+                </button>
+              )}
+              <div className="flex-1" />
+              {assignments.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <button
+                      onClick={() => setShowDeleteAll(true)}
+                      className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  } />
+                  <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          )}
+
+          {/* P+B index + Pick ups + Biopsies */}
+          {(() => {
+            const p = effectiveP
+            const b = biopsyForecast ?? 0
+            const totalProc = p + b
+            const qualifiedCount = assignments.length
+            const pbIndex = totalProc > 0 ? (qualifiedCount / totalProc) : 0
+            const pbIndexStr = pbIndex.toFixed(1)
+            const opt = 1.0
+            const min = 0.75
+            const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : totalProc > 0 ? "text-destructive" : "text-muted-foreground"
+            return totalProc > 0 ? (
+              <div className="px-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground border-b border-border/50">
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <span className={cn("font-semibold tabular-nums cursor-default", indexColor)}>
+                      P+B: {pbIndexStr}
+                    </span>
+                  } />
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-[11px]">
+                    {`${p} punciones + ${b} biopsias = ${totalProc} procedimientos\nÍndice P+B: ${pbIndexStr}`}
+                  </TooltipContent>
+                </Tooltip>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{p} punciones + {b} biopsias</span>
+              </div>
+            ) : null
+          })()}
+
           {/* Pick ups + Biopsies — single clickable zone */}
           {editingP ? (
             <div className="flex flex-col gap-2 bg-muted/30 rounded-lg px-3 py-2.5 border border-border">
@@ -925,15 +997,12 @@ export function AssignmentSheet({
               )
             })}
 
-            {/* OFF section separator */}
-            <div className="mx-4 my-1" style={{
-              borderBottom: "1px dashed var(--border)",
-            }} />
-            <DroppableOffSection className="transition-colors">
-              <div className="px-4 pt-2 pb-1.5">
-                <span className="text-[12px] text-muted-foreground italic">{t("offFree")}</span>
+            {/* Libres section */}
+            <DroppableOffSection className="transition-colors bg-muted/40">
+              <div className="px-4 pt-2.5 pb-1.5 border-t border-dashed border-border">
+                <span className="text-[12px] font-medium text-muted-foreground">{t("libres")}</span>
               </div>
-              <div className="px-3 flex flex-col gap-1 pb-3 bg-muted/50 min-h-[40px]">
+              <div className="px-3 flex flex-col gap-1 pb-3 min-h-[40px]">
                 {offStaff.map((s) => (
                   <DraggableOffChip
                     key={s.id}
@@ -962,48 +1031,7 @@ export function AssignmentSheet({
               </div>
             </DroppableOffSection>
 
-            {/* Actions — top bar */}
-            {!isPublished && rota && (
-              <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
-                <button
-                  onClick={() => setShowRegenConfirm(true)}
-                  disabled={assignments.length === 0}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-                >
-                  <Sparkles className="size-3.5" />
-                  {t("regenerateDay")}
-                </button>
-                {assignments.length === 0 && date && (
-                  <button
-                    onClick={() => {
-                      startSave(async () => {
-                        const r = await copyDayFromLastWeek(weekStart, date)
-                        if (r.error) toast.error(r.error)
-                        else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
-                      })
-                    }}
-                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    <Copy className="size-3.5" />
-                    {t("copyPrevWeek")}
-                  </button>
-                )}
-                <div className="flex-1" />
-                {assignments.length > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <button
-                        onClick={() => setShowDeleteAll(true)}
-                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    } />
-                    <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
+            {/* Actions bar moved to top (below header) */}
             {/* Confirmations */}
             {!isPublished && rota && (
               <div className="px-4 py-3 flex flex-col gap-3">

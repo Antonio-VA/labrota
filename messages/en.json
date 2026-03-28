@@ -623,6 +623,7 @@
         "supervisor_requerido": "Supervisor required",
         "max_dias_consecutivos": "Max consecutive days",
         "distribucion_fines_semana": "Weekend distribution",
+        "descanso_fin_de_semana": "Alternating weekend rest",
         "no_turno_doble": "No double shift"
       },
       "descriptions": {
@@ -630,12 +631,20 @@
         "supervisor_requerido": "Requires a certified supervisor when trainees are present",
         "max_dias_consecutivos": "Limits the maximum number of consecutive days worked",
         "distribucion_fines_semana": "Limits how many weekends per month a person can work",
+        "descanso_fin_de_semana": "If a person works one weekend, the next (or previous) is off, plus contiguous rest days",
         "no_turno_doble": "Prevents assigning two shifts on the same day"
       },
       "params": {
         "maxDays": "Max consecutive days",
         "maxPerMonth": "Max weekends/month",
-        "skill": "Skill requiring supervisor"
+        "skill": "Skill requiring supervisor",
+        "recovery": "Rest weekend",
+        "recoveryFollowing": "Following weekend off",
+        "recoveryPrevious": "Previous weekend off",
+        "recoveryFollowingHint": "Works weekend N, off weekend N+1",
+        "recoveryPreviousHint": "Works weekend N, must have been off weekend N-1",
+        "restDays": "Contiguous rest days",
+        "restDaysHint": "Additional days off after the worked weekend"
       }
     }
   },
@@ -915,6 +924,7 @@
   },
   "assignmentSheet": {
     "offFree": "OFF · Not scheduled",
+    "libres": "Available",
     "regenerateDay": "Regenerate day",
     "biopsyForecast": "Biopsy forecast",
     "dragHint": "Drag here or + Add",

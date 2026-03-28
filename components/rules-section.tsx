@@ -54,6 +54,7 @@ const RULE_TYPES: RotaRuleType[] = [
   "supervisor_requerido",
   "max_dias_consecutivos",
   "distribucion_fines_semana",
+  "descanso_fin_de_semana",
 ]
 
 const SKILL_OPTIONS: SkillName[] = [
@@ -70,6 +71,8 @@ interface RuleFormState {
   maxDays: string
   maxPerMonth: string
   skill: string
+  recovery: "following" | "previous"
+  restDays: string
   notes: string
 }
 
@@ -82,6 +85,8 @@ function defaultForm(): RuleFormState {
     maxDays: "5",
     maxPerMonth: "2",
     skill: "egg_collection",
+    recovery: "following",
+    restDays: "2",
     notes: "",
   }
 }
@@ -95,6 +100,8 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     maxDays: String((rule.params.maxDays as number | undefined) ?? 5),
     maxPerMonth: String((rule.params.maxPerMonth as number | undefined) ?? 2),
     skill: String((rule.params.skill as string | undefined) ?? "egg_collection"),
+    recovery: ((rule.params.recovery as string | undefined) ?? "following") as "following" | "previous",
+    restDays: String((rule.params.restDays as number | undefined) ?? 2),
     notes: rule.notes ?? "",
   }
 }
@@ -104,6 +111,10 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
   if (form.type === "max_dias_consecutivos") params.maxDays = parseInt(form.maxDays, 10) || 5
   if (form.type === "distribucion_fines_semana") params.maxPerMonth = parseInt(form.maxPerMonth, 10) || 2
   if (form.type === "supervisor_requerido") params.skill = form.skill
+  if (form.type === "descanso_fin_de_semana") {
+    params.recovery = form.recovery
+    params.restDays = parseInt(form.restDays, 10) || 2
+  }
   return {
     type: form.type,
     is_hard: form.is_hard,
@@ -274,6 +285,33 @@ function RuleSheet({
                 ))}
               </select>
             </div>
+          )}
+          {form.type === "descanso_fin_de_semana" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.recovery")}</label>
+                <select
+                  className={inputClass}
+                  value={form.recovery}
+                  onChange={(e) => set("recovery", e.target.value as "following" | "previous")}
+                >
+                  <option value="following">{t("params.recoveryFollowing")}</option>
+                  <option value="previous">{t("params.recoveryPrevious")}</option>
+                </select>
+                <p className="text-[12px] text-muted-foreground mt-1">{t(`params.recovery${form.recovery === "following" ? "Following" : "Previous"}Hint`)}</p>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.restDays")}</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={5}
+                  value={form.restDays}
+                  onChange={(e) => set("restDays", e.target.value)}
+                />
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.restDaysHint")}</p>
+              </div>
+            </>
           )}
 
           {/* Affected staff */}
