@@ -722,12 +722,13 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
 
 const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
-function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange }: {
+function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, compact }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   shiftTypes: import("@/lib/types/database").ShiftTypeDefinition[]
   isPublished: boolean
   onShiftChange: (shift: string) => void
+  compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -745,12 +746,19 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
     <div ref={ref} className="relative w-full">
       <div
         onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5 py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
+        className={cn("w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
       >
-        <div className="flex flex-col gap-0">
-          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
-          {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
-        </div>
+        {compact ? (
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+            {time && <span className="text-[9px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-0">
+            <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+            {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
+          </div>
+        )}
       </div>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 w-36 rounded-lg border border-border bg-background shadow-lg py-1">
@@ -1527,17 +1535,17 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 
-function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled }: {
+function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled, compact }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   tecnica: Tecnica | null
   onClick?: (e: React.MouseEvent) => void
   taskDisabled?: boolean
+  compact?: boolean
 }) {
   const { shift_type, is_manual_override, function_label } = assignment
   const time = shiftTimes?.[shift_type]
 
-  // Filter out internal dept_xxx IDs from display
   const cleanLabel = function_label?.startsWith("dept_") ? null : function_label
   const showTask = !taskDisabled && (tecnica || cleanLabel)
   const pillLabel = tecnica ? tecnica.codigo : cleanLabel
@@ -1552,18 +1560,22 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
     <div
       onClick={onClick}
       className={cn(
-        "w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5 py-1.5 min-h-[36px]",
+        "w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5",
+        compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
       )}
     >
-      <div className="flex flex-col gap-0">
-        <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
-        {time && (
-          <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">
-            {time.start}–{time.end}
-          </span>
-        )}
-      </div>
+      {compact ? (
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+          {time && <span className="text-[9px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-0">
+          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+          {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
+        </div>
+      )}
       {showTask && pillLabel && pillColor && (
         <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto", pillColor)}>
           {pillLabel}
@@ -1576,7 +1588,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride,
+  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, compact,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1591,6 +1603,7 @@ function PersonGrid({
   colorChips?: boolean
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
+  compact?: boolean
   onDateClick?: (date: string) => void
   isGenerating?: boolean
 }) {
@@ -1752,7 +1765,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-muted border-b border-t border-border flex items-center gap-1.5"
+              className="px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1800,6 +1813,7 @@ function PersonGrid({
                               shiftTimes={shiftTimes}
                               shiftTypes={data?.shiftTypes ?? []}
                               isPublished={isPublished}
+                              compact={compact}
                               onShiftChange={(newShift) => {
                                 patchLocalAssignment(assignment.id, { shift_type: newShift })
                                 handleFunctionLabelSave(assignment.id, assignment.function_label)
@@ -4433,6 +4447,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   colorChips={colorChips}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
+                  compact={compact}
                 />
               ))}
             </div>
