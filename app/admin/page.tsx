@@ -25,10 +25,12 @@ async function fetchOrgStats(admin: ReturnType<typeof createAdminClient>, orgId:
 
 async function fetchLastLogin(admin: ReturnType<typeof createAdminClient>, profileIds: string[]): Promise<string | null> {
   if (profileIds.length === 0) return null
-  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  if (!data) return null
-  const orgUsers = data.users.filter((u) => profileIds.includes(u.id))
-  const dates = orgUsers.map((u) => u.last_sign_in_at).filter(Boolean) as string[]
+  const results = await Promise.all(
+    profileIds.map((uid) => admin.auth.admin.getUserById(uid))
+  )
+  const dates = results
+    .map((r) => r.data?.user?.last_sign_in_at)
+    .filter(Boolean) as string[]
   return dates.sort().at(-1) ?? null
 }
 

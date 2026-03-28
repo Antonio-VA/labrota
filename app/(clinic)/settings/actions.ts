@@ -67,11 +67,13 @@ export async function getOrgUsers(): Promise<OrgUser[]> {
 
   const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]))
 
-  // Get last login from auth
-  const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  const authMap = Object.fromEntries(
-    (authData?.users ?? []).map((u) => [u.id, u.last_sign_in_at ?? null])
-  )
+  // Get last login from auth — fetch only the org's users
+  const authMap: Record<string, string | null> = {}
+  const authFetches = userIds.map(async (uid) => {
+    const { data } = await admin.auth.admin.getUserById(uid)
+    if (data?.user) authMap[uid] = data.user.last_sign_in_at ?? null
+  })
+  await Promise.all(authFetches)
 
   return members.map((m) => ({
     userId: m.user_id,
@@ -91,9 +93,13 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
     return { error: "Email inválido" }
   }
 
-  // Check if auth user already exists
-  const { data: existingUsers } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  const existingUser = existingUsers?.users.find((u) => u.email === cleanEmail)
+  // Check if auth user already exists via profiles table
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", cleanEmail)
+    .maybeSingle() as { data: { id: string } | null }
+  const existingUser = existingProfile ? { id: existingProfile.id } : null
 
   let userId: string
   if (existingUser) {

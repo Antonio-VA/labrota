@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { ArrowLeft, AlertCircle } from "lucide-react"
-import { AdminImportWizard } from "@/components/admin-import-wizard"
+import dynamic from "next/dynamic"
+const AdminImportWizard = dynamic(() => import("@/components/admin-import-wizard").then((m) => m.AdminImportWizard), { ssr: false })
 
 export default function NewOrgPage() {
   const router = useRouter()

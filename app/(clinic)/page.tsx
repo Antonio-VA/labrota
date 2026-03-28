@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
+import dynamic from "next/dynamic"
 import { CalendarPanel } from "@/components/calendar-panel"
-import { ChatPanel } from "@/components/chat-panel"
+
+const ChatPanel = dynamic(() => import("@/components/chat-panel").then((m) => m.ChatPanel), { ssr: false })
 
 export default function SchedulePage() {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)

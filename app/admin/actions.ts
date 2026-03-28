@@ -215,9 +215,13 @@ export async function createOrgUser(formData: FormData) {
 
   const admin = createAdminClient()
 
-  // Check if auth user already exists with this email
-  const { data: existingUsers } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  const existingUser = existingUsers?.users.find((u) => u.email === email)
+  // Check if auth user already exists via profiles table
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle() as { data: { id: string } | null }
+  const existingUser = existingProfile ? { id: existingProfile.id } : null
 
   let userId: string
 

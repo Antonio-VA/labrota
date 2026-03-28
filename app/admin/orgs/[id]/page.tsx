@@ -55,11 +55,13 @@ export default async function OrgDetailPage({
   const lastLoginByUser: Record<string, string | null> = {}
   let lastLoginOverall: string | null = null
   if (memberUserIds.length > 0) {
-    const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const memberSet = new Set(memberUserIds)
-    const orgAuthUsers = (authData?.users ?? []).filter((u) => memberSet.has(u.id))
-    for (const u of orgAuthUsers) lastLoginByUser[u.id] = u.last_sign_in_at ?? null
-    const dates = orgAuthUsers.map((u) => u.last_sign_in_at).filter(Boolean) as string[]
+    const authResults = await Promise.all(
+      memberUserIds.map((uid) => admin.auth.admin.getUserById(uid))
+    )
+    for (const r of authResults) {
+      if (r.data?.user) lastLoginByUser[r.data.user.id] = r.data.user.last_sign_in_at ?? null
+    }
+    const dates = Object.values(lastLoginByUser).filter(Boolean) as string[]
     lastLoginOverall = dates.sort().at(-1) ?? null
   }
 

@@ -1,6 +1,7 @@
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
-import { ImportWizard } from "@/components/import-wizard"
+import dynamic from "next/dynamic"
+const ImportWizard = dynamic(() => import("@/components/import-wizard").then((m) => m.ImportWizard))
 
 export default async function ImportPage() {
   await requireEditor()

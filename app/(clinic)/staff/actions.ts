@@ -103,9 +103,13 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
     const admin = createAdminClient()
     const fullName = `${staff.first_name} ${staff.last_name}`.trim()
 
-    // Check if auth user already exists
-    const { data: existingUsers } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const existing = existingUsers?.users.find((u) => u.email === staff.email)
+    // Check if auth user already exists via profiles table
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", staff.email)
+      .maybeSingle() as { data: { id: string } | null }
+    const existing = existingProfile ? { id: existingProfile.id } : null
 
     let userId: string
     if (existing) {
