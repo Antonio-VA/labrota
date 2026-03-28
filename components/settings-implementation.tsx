@@ -9,9 +9,13 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { resetImplementation } from "@/app/(clinic)/settings/actions"
 
+import type { StepCompletion } from "@/app/(clinic)/settings/implementation-actions"
+
 export function SettingsImplementation({
   status,
+  stepCompletions = {},
 }: {
+  stepCompletions?: Record<string, StepCompletion>
   status: {
     hasRegion: boolean
     departmentCount: number
@@ -26,14 +30,23 @@ export function SettingsImplementation({
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [isResetting, startReset] = useTransition()
 
+  function fmtTimestamp(iso: string): string {
+    const d = new Date(iso)
+    const now = new Date()
+    const sameYear = d.getFullYear() === now.getFullYear()
+    const date = d.toLocaleDateString("es-ES", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
+    const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    return `${date} · ${time}`
+  }
+
   const steps = [
-    { label: "Crear organización", desc: "Organización registrada", done: true },
-    { label: "Configurar región", desc: "País y región configurados", done: status.hasRegion },
-    { label: "Añadir departamentos", desc: `${status.departmentCount} departamento${status.departmentCount !== 1 ? "s" : ""}`, done: status.departmentCount > 0 },
-    { label: "Añadir turnos", desc: `${status.shiftCount} turno${status.shiftCount !== 1 ? "s" : ""}`, done: status.shiftCount > 0 },
-    { label: "Añadir tareas", desc: `${status.taskCount} tarea${status.taskCount !== 1 ? "s" : ""}`, done: status.taskCount > 0 },
-    { label: "Añadir equipo", desc: `${status.staffCount} persona${status.staffCount !== 1 ? "s" : ""} activa${status.staffCount !== 1 ? "s" : ""}`, done: status.staffCount > 0 },
-    { label: "Generar primera rota", desc: status.hasRota ? `${status.rotaCount} horario${status.rotaCount !== 1 ? "s" : ""}` : "Aún sin horarios", done: status.hasRota },
+    { key: "create_org", label: "Crear organización", desc: "Organización registrada", done: true },
+    { key: "configure_region", label: "Configurar región", desc: "País y región configurados", done: status.hasRegion },
+    { key: "add_departments", label: "Añadir departamentos", desc: `${status.departmentCount} departamento${status.departmentCount !== 1 ? "s" : ""}`, done: status.departmentCount > 0 },
+    { key: "add_shifts", label: "Añadir turnos", desc: `${status.shiftCount} turno${status.shiftCount !== 1 ? "s" : ""}`, done: status.shiftCount > 0 },
+    { key: "add_tasks", label: "Añadir tareas", desc: `${status.taskCount} tarea${status.taskCount !== 1 ? "s" : ""}`, done: status.taskCount > 0 },
+    { key: "add_staff", label: "Añadir equipo", desc: `${status.staffCount} persona${status.staffCount !== 1 ? "s" : ""} activa${status.staffCount !== 1 ? "s" : ""}`, done: status.staffCount > 0 },
+    { key: "generate_rota", label: "Generar primera rota", desc: status.hasRota ? `${status.rotaCount} horario${status.rotaCount !== 1 ? "s" : ""}` : "Aún sin horarios", done: status.hasRota },
   ]
   const allDone = steps.every((s) => s.done)
   const completedCount = steps.filter((s) => s.done).length
@@ -60,19 +73,28 @@ export function SettingsImplementation({
               <span className="text-[12px] text-muted-foreground">{completedCount}/{steps.length} pasos completados</span>
             </div>
             <div className="divide-y divide-border/50">
-              {steps.map((step, i) => (
-                <div key={i} className="flex items-start gap-3 px-4 py-2.5">
-                  {step.done ? (
-                    <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" />
-                  ) : (
-                    <Circle className="size-4 text-muted-foreground/30 mt-0.5 shrink-0" />
-                  )}
-                  <div>
-                    <p className={cn("text-[13px] font-medium", step.done ? "text-foreground" : "text-muted-foreground")}>{step.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{step.desc}</p>
+              {steps.map((step, i) => {
+                const completion = stepCompletions[step.key]
+                return (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                    {step.done ? (
+                      <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" />
+                    ) : (
+                      <Circle className="size-4 text-muted-foreground/30 mt-0.5 shrink-0" />
+                    )}
+                    <div>
+                      <p className={cn("text-[13px] font-medium", step.done ? "text-foreground" : "text-muted-foreground")}>{step.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{step.desc}</p>
+                      {step.done && completion && (
+                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                          Completado el {fmtTimestamp(completion.completed_at)}
+                          {completion.completed_by_name && ` por ${completion.completed_by_name}`}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Import link — only when not complete */}

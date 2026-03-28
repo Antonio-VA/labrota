@@ -8,6 +8,7 @@ import { SettingsFuncionalidades } from "@/components/settings-funcionalidades"
 import { SettingsFacturacion } from "@/components/settings-facturacion"
 import { SettingsImplementation } from "@/components/settings-implementation"
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
+import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
 import { createClient } from "@/lib/supabase/server"
 import type { Staff } from "@/lib/types/database"
 
@@ -19,8 +20,9 @@ export default async function SettingsPage() {
   let staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[] = []
   let orgSettings: Awaited<ReturnType<typeof getOrgSettings>> = null
 
-  // Implementation counts
+  // Implementation counts + step completions
   let implStatus = { departmentCount: 0, shiftCount: 0, taskCount: 0, staffCount: 0, hasRota: false, rotaCount: 0, hasRegion: false }
+  let stepCompletions: Record<string, StepCompletion> = {}
 
   if (orgId) {
     const supabase = await createClient()
@@ -45,6 +47,10 @@ export default async function SettingsPage() {
       rotaCount: rotaRes.count ?? 0,
       hasRegion: !!orgSettings?.country,
     }
+
+    // Sync step completions (records newly completed steps) then fetch all
+    await syncStepCompletions()
+    stepCompletions = await getStepCompletions()
   }
 
   return (
@@ -90,7 +96,7 @@ export default async function SettingsPage() {
               </div>
             }
             implementacion={
-              <SettingsImplementation status={implStatus} />
+              <SettingsImplementation status={implStatus} stepCompletions={stepCompletions} />
             }
             historial={
               <div className="rounded-lg border border-border bg-background px-5 py-4">

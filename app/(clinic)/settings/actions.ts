@@ -354,8 +354,9 @@ export async function resetImplementation(): Promise<{ error?: string }> {
   await admin.from("shift_types").delete().eq("organisation_id", orgId)
   await admin.from("departments").delete().eq("organisation_id", orgId)
   await admin.from("rota_rules").delete().eq("organisation_id", orgId)
-  // Clear regional config
+  // Clear regional config + step completions
   await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
+  await admin.from("implementation_steps").delete().eq("organisation_id", orgId)
   revalidatePath("/settings")
   revalidatePath("/staff")
   revalidatePath("/lab")

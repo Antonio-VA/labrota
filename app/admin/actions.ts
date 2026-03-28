@@ -347,6 +347,7 @@ export async function resetOrgImplementation(orgId: string) {
   await admin.from("departments").delete().eq("organisation_id", orgId)
   await admin.from("rota_rules").delete().eq("organisation_id", orgId)
   await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
+  await admin.from("implementation_steps").delete().eq("organisation_id", orgId)
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }
