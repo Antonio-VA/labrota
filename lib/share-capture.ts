@@ -182,7 +182,27 @@ export async function copyToClipboard(element: HTMLElement) {
 
   if (!blob) throw new Error("Failed to create image")
 
-  await navigator.clipboard.write([
-    new ClipboardItem({ "image/png": blob }),
-  ])
+  // Safari requires ClipboardItem with a Promise-returning callback
+  try {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      // Safari workaround: pass blob as a promise
+      const item = new ClipboardItem({
+        "image/png": Promise.resolve(blob),
+      })
+      await navigator.clipboard.write([item])
+      return
+    }
+  } catch {
+    // Fall through to download fallback
+  }
+
+  // Fallback: download the image
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "labrota-capture.png"
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }

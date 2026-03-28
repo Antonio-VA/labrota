@@ -4539,7 +4539,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }, {
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
@@ -4549,7 +4548,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }] : []),
               // ── Group 3: View options ──
               ...((view === "week" || view === "month") ? [{
