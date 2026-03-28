@@ -72,9 +72,18 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated." }
 
+  // Merge with existing preferences to avoid wiping unrelated fields
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("preferences")
+    .eq("id", user.id)
+    .single() as unknown as { data: { preferences: UserPreferences } | null }
+
+  const merged = { ...(existing?.preferences ?? {}), ...prefs }
+
   const { error } = await supabase
     .from("profiles")
-    .update({ preferences: prefs } as never)
+    .update({ preferences: merged } as never)
     .eq("id", user.id)
 
   if (error) return { error: error.message }
