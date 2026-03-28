@@ -197,6 +197,8 @@ export interface LabConfig {
   biopsy_day5_pct:          number  // 0-1, default 0.5
   biopsy_day6_pct:          number  // 0-1, default 0.5
   task_conflict_threshold:  number  // minimum 2, default 3
+  task_coverage_enabled:    boolean // whether per-task coverage minimums are active
+  task_coverage_by_day:     Record<string, Record<string, number>> | null // tecnica_code → { mon: N, tue: N, ... }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_notes:             boolean
   shift_name_am_es:         string

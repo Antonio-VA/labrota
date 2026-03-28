@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useCallback } from "react"
+import { useState, useTransition, useCallback, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,7 +47,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift" }: { config: LabConfig; section?: "all" | "cobertura"; rotaDisplayMode?: string }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [] }: { config: LabConfig; section?: "all" | "cobertura"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -61,6 +61,51 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   const [coverageByDay, setCoverageByDay] = useState<CoverageByDay>(
     config.coverage_by_day ?? DEFAULT_COVERAGE
   )
+
+  // Task-level coverage
+  const [taskCoverageEnabled, setTaskCoverageEnabled] = useState(config.task_coverage_enabled ?? false)
+  const [taskCoverage, setTaskCoverage] = useState<Record<string, Record<string, number>>>(
+    (config.task_coverage_by_day as Record<string, Record<string, number>>) ?? {}
+  )
+  const [taskCoverageWarnings, setTaskCoverageWarnings] = useState<Set<string>>(new Set())
+
+  function setTaskCov(code: string, day: string, raw: string) {
+    const v = parseInt(raw, 10)
+    if (raw === "" || raw === undefined) {
+      // Clear the explicit value (inherit from department)
+      setTaskCoverage((p) => {
+        const next = { ...p }
+        if (next[code]) {
+          const { [day]: _, ...rest } = next[code]
+          next[code] = rest
+          if (Object.keys(next[code]).length === 0) delete next[code]
+        }
+        return next
+      })
+      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      return
+    }
+    if (isNaN(v) || v < 0) return
+    // Get department min for this task's department on this day
+    const tec = tecnicas.find((tc) => tc.codigo === code)
+    const deptCode = tec?.department?.split(",")[0] ?? "lab"
+    const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+    const clamped = Math.min(v, deptMin)
+    setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
+    // Warning if user tried to exceed
+    if (v > deptMin) {
+      setTaskCoverageWarnings((p) => new Set(p).add(`${code}-${day}`))
+    } else {
+      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+    }
+  }
+
+  function handleToggleTaskCoverage() {
+    if (taskCoverageEnabled && Object.keys(taskCoverage).length > 0) {
+      if (!confirm("¿Desactivar cobertura por tarea? Los valores guardados se conservarán pero no se aplicarán.")) return
+    }
+    setTaskCoverageEnabled(!taskCoverageEnabled)
+  }
 
   const [values, setValues] = useState({
     punctions_by_day:     config.punctions_by_day ?? DEFAULT_PUNCTIONS,
@@ -105,6 +150,23 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     e.preventDefault()
     setStatus("idle")
     startTransition(async () => {
+      // Validate task coverage before save
+      if (taskCoverageEnabled) {
+        const violations: string[] = []
+        for (const [code, days] of Object.entries(taskCoverage)) {
+          const tec = tecnicas.find((tc) => tc.codigo === code)
+          const deptCode = tec?.department?.split(",")[0] ?? "lab"
+          for (const [day, val] of Object.entries(days)) {
+            const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+            if (val > deptMin) violations.push(`${code} ${day}`)
+          }
+        }
+        if (violations.length > 0) {
+          setErrorMsg("Algunas tareas superan el mínimo del departamento. Ajusta los valores marcados antes de guardar.")
+          setStatus("error")
+          return
+        }
+      }
       const result = await updateLabConfig({
         coverage_by_day:      coverageByDay,
         punctions_by_day:     values.punctions_by_day,
@@ -115,7 +177,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         biopsy_day5_pct:       values.biopsy_day5_pct,
         biopsy_day6_pct:       values.biopsy_day6_pct,
         task_conflict_threshold: values.task_conflict_threshold,
-      })
+        task_coverage_enabled:  taskCoverageEnabled,
+        task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
+      } as any)
       if (result.error) {
         setErrorMsg(result.error)
         setStatus("error")
@@ -282,56 +346,161 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       </div>
 
-      {/* ── COBERTURA MÍNIMA ─────────────────────────────────────────────── */}
+      {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO ──────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">
-            {t("sections.coverage")}
+            {t("sections.coverage")} — Por departamento
           </p>
         </div>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="bg-muted border-b border-border">
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-[30%]">{t("coverageTable.day")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.labMin")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">{t("coverageTable.andrologyMin")}</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
-                {t("coverageTable.adminMin")}
-                <p className="text-[10px] font-normal text-muted-foreground/70 mt-0.5">{t("fields.adminHint")}</p>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {DAY_KEYS.map((day) => {
-              const isWeekend = day === "sat" || day === "sun"
-              return (
-                <tr
-                  key={day}
-                  className={cn(
-                    "border-b border-border last:border-0",
-                    isWeekend ? "bg-muted" : "bg-background"
-                  )}
-                >
-                  <td className="px-4 py-2.5 font-medium text-muted-foreground">{t(`days.${day}`)}</td>
-                  {(["lab", "andrology", "admin"] as const).map((role) => (
-                    <td key={role} className="px-4 py-2.5 text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={10}
-                        value={coverageByDay[day][role]}
-                        onChange={(e) => setCoverage(day, role, e.target.value)}
-                        disabled={isPending}
-                        className="w-16 h-8 rounded-[8px] border border-input bg-transparent text-center text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 mx-auto block"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Departamento</th>
+                {DAY_KEYS.map((day) => (
+                  <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
+                    {t(`days.${day}`).slice(0, 3)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(["lab", "andrology", "admin"] as const).map((role, rIdx) => {
+                const label = role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Administración"
+                return (
+                  <tr key={role} className={cn("border-b border-border/50", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                    <td className="px-3 py-1.5 font-medium text-[13px]">{label}</td>
+                    {DAY_KEYS.map((day) => {
+                      const isWeekend = day === "sat" || day === "sun"
+                      return (
+                        <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={coverageByDay[day][role]}
+                            onChange={(e) => setCoverage(day, role, e.target.value)}
+                            disabled={isPending}
+                            className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
+                          />
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
+          Pon 0 para no requerir un departamento en un día concreto.
+        </p>
       </div>
+
+      {/* ── POR TAREA (optional) ───────────────────────────────────────── */}
+      {tecnicas.length > 0 && (
+        <div className="rounded-lg border border-border bg-background overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={taskCoverageEnabled}
+                onChange={handleToggleTaskCoverage}
+                className="size-4 rounded accent-primary"
+              />
+              <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
+            </label>
+          </div>
+          {!taskCoverageEnabled ? (
+            <div className="px-5 py-4">
+              <p className="text-[13px] text-muted-foreground">
+                El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="bg-muted border-b border-border">
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
+                    {DAY_KEYS.map((day) => (
+                      <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const rootDepts = departments.length > 0
+                      ? departments.filter((d) => !d.parent_id)
+                      : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
+                    const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+                    return rootDepts.map((dept) => {
+                      const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
+                      if (deptTecnicas.length === 0) return null
+                      return (
+                        <Fragment key={dept.id ?? dept.code}>
+                          {/* Department group header */}
+                          <tr className="bg-muted/60">
+                            <td colSpan={8} className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
+                            </td>
+                          </tr>
+                          {deptTecnicas.map((tec, idx) => (
+                            <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                              <td className="px-3 py-1.5">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
+                                  <span className="text-[13px] font-medium">{tec.codigo}</span>
+                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
+                                </span>
+                              </td>
+                              {DAY_KEYS.map((day) => {
+                                const deptRole = dept.code as "lab" | "andrology" | "admin"
+                                const deptMin = coverageByDay[day]?.[deptRole] ?? 0
+                                const explicitVal = taskCoverage[tec.codigo]?.[day]
+                                const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
+                                const isWeekend = day === "sat" || day === "sun"
+                                return (
+                                  <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={deptMin}
+                                        value={explicitVal ?? ""}
+                                        placeholder={String(deptMin)}
+                                        onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)}
+                                        disabled={isPending}
+                                        className={cn(
+                                          "w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
+                                          hasWarning
+                                            ? "border-amber-400 bg-amber-50 text-amber-700"
+                                            : explicitVal !== undefined
+                                            ? "border-input bg-background text-foreground"
+                                            : "border-transparent bg-transparent text-muted-foreground/40",
+                                          "focus:border-ring focus:ring-1 focus:ring-ring/50 placeholder:text-muted-foreground/30"
+                                        )}
+                                      />
+                                      {hasWarning && (
+                                        <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>
+                                      )}
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </Fragment>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       </>}
 

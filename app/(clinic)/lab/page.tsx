@@ -59,7 +59,7 @@ export default async function LabConfigPage() {
           <LabPageTabs
             cobertura={
               config ? (
-                <LabConfigForm config={config} section="cobertura" rotaDisplayMode={rotaDisplayMode} />
+                <LabConfigForm config={config} section="cobertura" rotaDisplayMode={rotaDisplayMode} tecnicas={tecnicas} departments={departments} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">
                   Lab configuration not found. Please contact your administrator.

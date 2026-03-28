@@ -48,8 +48,10 @@ export interface EngineParams {
   shiftTypes?: ShiftTypeDefinition[]   // org shift catalogue — used to fill all shifts
   punctionsOverride?: Record<string, number>  // per-date overrides from rota record
   rules?: RotaRule[]             // enabled scheduling rules
-  tecnicas?: { codigo: string; typical_shifts: string[] }[]  // for shift preference
+  tecnicas?: { codigo: string; typical_shifts: string[]; avoid_shifts?: string[] }[]  // for shift preference
   shiftRotation?: "stable" | "weekly" | "daily"
+  taskCoverageEnabled?: boolean
+  taskCoverageByDay?: Record<string, Record<string, number>> | null  // tecnica_code → { mon: N, ... }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
