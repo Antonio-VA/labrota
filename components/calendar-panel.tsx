@@ -760,7 +760,7 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
     <div ref={trigRef} className="w-full">
       <div
         onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded bg-background select-none flex items-center px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", isOff && "justify-center")}
+        className={cn("w-full rounded select-none flex items-center px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", isOff && "justify-center")}
       >
         {isOff ? (
           <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
@@ -1577,7 +1577,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
     <div
       onClick={onClick}
       className={cn(
-        "w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5",
+        "w-full rounded select-none flex items-center gap-1.5 px-1.5",
         compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
       )}
