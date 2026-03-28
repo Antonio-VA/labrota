@@ -77,12 +77,12 @@ type Draft = {
   id?: string
   sortId: string
   nombre_es: string; nombre_en: string; codigo: string
-  color: string; department: "lab" | "andrology"; typical_shifts: string[]; activa: boolean; orden: number
+  color: string; department: "lab" | "andrology"; typical_shifts: string[]; avoid_shifts: string[]; activa: boolean; orden: number
 }
 
 // ── Table grid ───────────────────────────────────────────────────────────────
-// Columns: color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | actions(72px)
-const GRID = "28px minmax(100px,1fr) 80px 120px minmax(80px,1fr) 72px"
+// Columns: drag(24px) | color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | delete(36px)
+const GRID = "24px 28px minmax(100px,1fr) 80px 120px minmax(80px,1fr) 36px"
 
 // ── Sortable table row ───────────────────────────────────────────────────────
 
@@ -105,6 +105,18 @@ function SortableRow({
     opacity: isDragging ? 0.6 : undefined,
   }
 
+  function cycleShift(shift: string) {
+    const isPref = tecnica.typical_shifts.includes(shift)
+    const isAvoid = tecnica.avoid_shifts.includes(shift)
+    if (!isPref && !isAvoid) {
+      onChange({ ...tecnica, typical_shifts: [...tecnica.typical_shifts, shift] })
+    } else if (isPref) {
+      onChange({ ...tecnica, typical_shifts: tecnica.typical_shifts.filter((s) => s !== shift), avoid_shifts: [...tecnica.avoid_shifts, shift] })
+    } else {
+      onChange({ ...tecnica, avoid_shifts: tecnica.avoid_shifts.filter((s) => s !== shift) })
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -115,6 +127,16 @@ function SortableRow({
         isDragging && "shadow-md rounded-md"
       )}
     >
+      {/* Drag handle (left) */}
+      <button
+        type="button"
+        className="p-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+
       {/* Color dot */}
       <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
 
@@ -151,7 +173,7 @@ function SortableRow({
                 let next: string[]
                 if (active) {
                   next = deptCodes.filter((c) => c !== d.code)
-                  if (next.length === 0) return // must have at least one
+                  if (next.length === 0) return
                 } else {
                   next = [...deptCodes, d.code]
                 }
@@ -170,25 +192,23 @@ function SortableRow({
         })}
       </div>
 
-      {/* Typical shifts */}
+      {/* Shifts: 3-state (neutral → prefer → avoid → neutral) */}
       <div className="flex gap-0.5 items-center">
         {shiftCodes.map((shift) => {
-          const active = tecnica.typical_shifts.includes(shift)
+          const isPref = tecnica.typical_shifts.includes(shift)
+          const isAvoid = tecnica.avoid_shifts.includes(shift)
           return (
             <button
               key={shift}
               type="button"
               disabled={disabled}
-              onClick={() => {
-                const next = active
-                  ? tecnica.typical_shifts.filter((s) => s !== shift)
-                  : [...tecnica.typical_shifts, shift]
-                onChange({ ...tecnica, typical_shifts: next })
-              }}
+              onClick={() => cycleShift(shift)}
               className={cn(
                 "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
+                isPref
+                  ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                  : isAvoid
+                  ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
                   : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
               )}
             >
@@ -198,23 +218,13 @@ function SortableRow({
         })}
       </div>
 
-      {/* Actions: delete + drag handle */}
-      <div className="flex items-center justify-end gap-1">
-        <button
-          type="button" disabled={disabled} onClick={onDelete}
-          className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
-      </div>
+      {/* Delete */}
+      <button
+        type="button" disabled={disabled} onClick={onDelete}
+        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
     </div>
   )
 }
@@ -236,6 +246,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
       color:          t.color,
       department:     t.department ?? "lab" as const,
       typical_shifts: t.typical_shifts ?? [],
+      avoid_shifts:   t.avoid_shifts ?? [],
       activa:         t.activa,
       orden:          t.orden,
     }))
@@ -276,7 +287,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         sortId,
         nombre_es: "", nombre_en: "", codigo: "",
         color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
-        department: dept as any, typical_shifts: [], activa: true,
+        department: dept as any, typical_shifts: [], avoid_shifts: [], activa: true,
         orden: prev.length,
       },
     ])
@@ -354,14 +365,15 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         </div>
       )}
 
-      {/* Table header */}
+      {/* Table header — sticky */}
       {tecnicas.length > 0 && (
-        <div className="grid items-center px-2 py-1.5" style={{ gridTemplateColumns: GRID }}>
+        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border" style={{ gridTemplateColumns: GRID }}>
+          <span />
           <span />
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("nameEs")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("shortName")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("department")}</span>
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("typicalShift")}</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Turnos</span>
           <span />
         </div>
       )}
@@ -370,7 +382,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         {deptGroups.map((group) => (
           <div key={group.code}>
             {/* Department group header */}
-            <div className="sticky top-0 z-[5] bg-muted/60 px-2 py-1.5 border-b border-border">
+            <div className="bg-muted/60 px-2 py-1.5 border-b border-border">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{group.name}</span>
               <span className="text-[11px] text-muted-foreground/60 ml-2">{group.items.length}</span>
             </div>

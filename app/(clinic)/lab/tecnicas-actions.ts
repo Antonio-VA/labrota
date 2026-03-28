@@ -33,6 +33,7 @@ export async function saveTecnica(
         required_skill: tecnica.required_skill ?? null,
         department:     tecnica.department ?? "lab",
         typical_shifts: tecnica.typical_shifts ?? [],
+        avoid_shifts:   tecnica.avoid_shifts ?? [],
         activa:         tecnica.activa ?? true,
         orden:          tecnica.orden ?? 0,
       } as never)
@@ -53,6 +54,7 @@ export async function saveTecnica(
       required_skill:  tecnica.required_skill ?? null,
       department:      tecnica.department ?? "lab",
       typical_shifts:  tecnica.typical_shifts ?? [],
+      avoid_shifts:    tecnica.avoid_shifts ?? [],
       activa:          tecnica.activa ?? true,
       orden:           tecnica.orden ?? 0,
     } as never)
@@ -118,6 +120,7 @@ export async function bulkSaveTecnicas(
       required_skill: t.required_skill ?? null,
       department:     t.department ?? "lab",
       typical_shifts: t.typical_shifts ?? [],
+      avoid_shifts:   t.avoid_shifts ?? [],
       activa:         t.activa ?? true,
       orden:          i,
     }
