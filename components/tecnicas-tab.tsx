@@ -137,22 +137,38 @@ function SortableRow({
         className="bg-transparent text-[13px] font-mono uppercase outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full text-center"
       />
 
-      {/* Department */}
-      <select
-        value={tecnica.department}
-        onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
-        disabled={disabled}
-        className="bg-transparent text-[12px] outline-none h-7 px-1 rounded border border-transparent focus:border-input"
-      >
-        {departments.length > 0 ? (
-          departments.map((d) => <option key={d.id} value={d.code}>{d.name}</option>)
-        ) : (
-          <>
-            <option value="lab">Embriología</option>
-            <option value="andrology">Andrología</option>
-          </>
-        )}
-      </select>
+      {/* Department (multi-select pills, root departments only) */}
+      <div className="flex gap-0.5 items-center flex-wrap">
+        {(departments.length > 0 ? departments.filter((d) => !d.parent_id) : [{ id: "lab", code: "lab", name: "Embr." } as any, { id: "andrology", code: "andrology", name: "Andr." } as any]).map((d: Department) => {
+          const deptCodes = tecnica.department.split(",").filter(Boolean)
+          const active = deptCodes.includes(d.code)
+          return (
+            <button
+              key={d.id}
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                let next: string[]
+                if (active) {
+                  next = deptCodes.filter((c) => c !== d.code)
+                  if (next.length === 0) return // must have at least one
+                } else {
+                  next = [...deptCodes, d.code]
+                }
+                onChange({ ...tecnica, department: next.join(",") as any })
+              }}
+              className={cn(
+                "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+              )}
+            >
+              {d.abbreviation || d.name?.slice(0, 4)}
+            </button>
+          )
+        })}
+      </div>
 
       {/* Typical shifts */}
       <div className="flex gap-0.5 items-center">
@@ -240,7 +256,11 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     // Find which department group the active item belongs to
     const activeItem = tecnicas.find((t) => t.sortId === active.id)
     const overItem = tecnicas.find((t) => t.sortId === over.id)
-    if (!activeItem || !overItem || activeItem.department !== overItem.department) return // prevent cross-dept drag
+    if (!activeItem || !overItem) return
+    // Prevent cross-dept drag: check if they share at least one department
+    const activeDepts = activeItem.department.split(",")
+    const overDepts = overItem.department.split(",")
+    if (!activeDepts.some((d) => overDepts.includes(d))) return
     setTecnicas((prev) => {
       const oldIndex = prev.findIndex((t) => t.sortId === active.id)
       const newIndex = prev.findIndex((t) => t.sortId === over.id)
@@ -248,7 +268,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     })
   }
 
-  function addRow(dept: "lab" | "andrology" = "lab") {
+  function addRow(dept: string = "lab") {
     const sortId = `new-${_counter++}`
     setTecnicas((prev) => [
       ...prev,
@@ -256,7 +276,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         sortId,
         nombre_es: "", nombre_en: "", codigo: "",
         color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
-        department: dept, typical_shifts: [], activa: true,
+        department: dept as any, typical_shifts: [], activa: true,
         orden: prev.length,
       },
     ])
@@ -308,13 +328,20 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     })
   }
 
-  // Group by department
-  const deptGroups = departments.length > 0
-    ? departments.map((d) => ({ code: d.code as "lab" | "andrology", name: d.name, items: tecnicas.filter((t) => t.department === d.code) }))
-    : [
-        { code: "lab" as const, name: t("embriologia"), items: tecnicas.filter((t) => t.department === "lab") },
-        { code: "andrology" as const, name: t("andrologia"), items: tecnicas.filter((t) => t.department === "andrology") },
-      ]
+  // Group by department (root departments only, multi-dept técnicas appear in first matching group)
+  const rootDepts = departments.length > 0
+    ? departments.filter((d) => !d.parent_id)
+    : [{ id: "lab", code: "lab", name: t("embriologia") } as Department, { id: "andrology", code: "andrology", name: t("andrologia") } as Department]
+  const assigned = new Set<string>()
+  const deptGroups = rootDepts.map((d) => {
+    const items = tecnicas.filter((tc) => {
+      if (assigned.has(tc.sortId)) return false
+      const codes = tc.department.split(",").filter(Boolean)
+      if (codes.includes(d.code)) { assigned.add(tc.sortId); return true }
+      return false
+    })
+    return { code: d.code, name: d.name, items }
+  })
 
   return (
     <div className="flex flex-col gap-2">
