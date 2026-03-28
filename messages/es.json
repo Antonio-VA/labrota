@@ -128,7 +128,7 @@
     "rotaPublishedBy": "Publicado el {date} por {author}",
     "rotaLocked": "Este horario está bloqueado. Desbloquéalo para editar.",
     "noRota": "Sin horario esta semana",
-    "noRotaDescription": "Genera un horario con el agente IA o el botón Generar.",
+    "noRotaDescription": "Genera un horario automáticamente o copia el anterior.",
     "preserveOverrides": "¿Conservar modificaciones manuales?",
     "preserveOverridesDescription": "Si conservas las modificaciones, sólo se regenerarán los turnos no editados.",
     "keepOverrides": "Conservar modificaciones",

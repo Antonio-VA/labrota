@@ -128,7 +128,7 @@
     "rotaPublishedBy": "Published on {date} by {author}",
     "rotaLocked": "This rota is locked. Unlock it to make changes.",
     "noRota": "No rota for this week",
-    "noRotaDescription": "Generate a rota using the AI agent or the Generate Rota button.",
+    "noRotaDescription": "Generate a rota automatically or copy the previous one.",
     "preserveOverrides": "Preserve manual overrides?",
     "preserveOverridesDescription": "If you keep overrides, only unedited shifts will be regenerated.",
     "keepOverrides": "Keep overrides",

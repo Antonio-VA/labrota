@@ -4182,40 +4182,42 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   colorBorders={colorChips}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
-                <div className="flex flex-col items-center justify-center flex-1 gap-4 py-12">
-                  <CalendarDays className="size-10 text-muted-foreground/30" />
-                  <div className="text-center">
-                    <p className="text-[14px] font-medium">{t("noRota")}</p>
-                    <p className="text-[13px] text-muted-foreground mt-1">{t("noRotaDescription")}</p>
-                  </div>
-                  <div className="flex items-center gap-2 min-h-[36px]">
-                    <Button size="sm" onClick={handleGenerateClick}>{t("generateRota")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowCopyConfirm(true)} className={prevWeekHasRota ? "" : "invisible"}>
-                      {t("copyPrevWeek")}
-                    </Button>
-                  </div>
-                  {/* Copy confirmation */}
-                  {showCopyConfirm && (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
-                      <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">{t("copyPrevWeekConfirmTitle")}</p>
-                      <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">{t("copyPrevWeekConfirmBody")}</p>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => {
-                          setShowCopyConfirm(false)
-                          setLoadingWeek(true)
-                          startTransition(async () => {
-                            const result = await copyPreviousWeek(weekStart)
-                            if (result.error) { toast.error(result.error); return }
-                            toast.success(t("copyAssignments", { count: result.count ?? 0 }))
-                            fetchWeek(weekStart)
-                          })
-                        }}>
-                          {t("copy")}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>{tc("cancel")}</Button>
-                      </div>
+                <div className="relative flex-1">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-4">
+                    <CalendarDays className="size-10 text-muted-foreground/30" />
+                    <div className="text-center">
+                      <p className="text-[14px] font-medium">{t("noRota")}</p>
+                      <p className="text-[13px] text-muted-foreground mt-1">{t("noRotaDescription")}</p>
                     </div>
-                  )}
+                    {!showCopyConfirm ? (
+                      <div className="flex items-center gap-3">
+                        <Button variant="outline" onClick={handleGenerateClick}>{t("generateRota")}</Button>
+                        {prevWeekHasRota && (
+                          <Button variant="outline" onClick={() => setShowCopyConfirm(true)}>{t("copyPrevWeek")}</Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 max-w-sm">
+                        <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">{t("copyPrevWeekConfirmTitle")}</p>
+                        <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">{t("copyPrevWeekConfirmBody")}</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => {
+                            setShowCopyConfirm(false)
+                            setLoadingWeek(true)
+                            startTransition(async () => {
+                              const result = await copyPreviousWeek(weekStart)
+                              if (result.error) { toast.error(result.error); return }
+                              toast.success(t("copyAssignments", { count: result.count ?? 0 }))
+                              fetchWeek(weekStart)
+                            })
+                          }}>
+                            {t("copy")}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>{tc("cancel")}</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : calendarLayout === "shift" && daysAsRows ? (
                 <TransposedShiftGrid
