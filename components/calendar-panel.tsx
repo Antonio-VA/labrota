@@ -5294,7 +5294,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         weekStart={weekStart}
-        date={currentDate}
         onRestored={() => fetchWeek(weekStart)}
       />
 
