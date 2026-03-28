@@ -722,13 +722,14 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
 
 const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
-function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, compact }: {
+function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, compact, isOff }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   shiftTypes: import("@/lib/types/database").ShiftTypeDefinition[]
   isPublished: boolean
   onShiftChange: (shift: string) => void
   compact?: boolean
+  isOff?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const trigRef = useRef<HTMLDivElement>(null)
@@ -759,9 +760,11 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
     <div ref={trigRef} className="w-full">
       <div
         onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
+        className={cn("w-full rounded bg-background select-none flex items-center px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", isOff && "justify-center")}
       >
-        {compact ? (
+        {isOff ? (
+          <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
+        ) : compact ? (
           <div className="flex items-baseline gap-1">
             <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
             {time && <span className="text-[10px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
@@ -1696,6 +1699,7 @@ function PersonGrid({
   }
 
   // Shift highlighting — hover a shift to highlight all same-shift cells
+  const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
   // Active staff sorted by role then first name
@@ -1731,7 +1735,7 @@ function PersonGrid({
           const isSat   = d.getDay() === 6
           return (
             <div key={day.date} className={cn(
-              "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-border",
+              "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-r last:border-r-0 border-border",
               holiday ? "bg-amber-50/60" : "bg-muted"
             )}
             style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
@@ -1782,7 +1786,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-muted flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-muted flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
@@ -1817,11 +1821,11 @@ function PersonGrid({
                       : cleanFnLabel
                         ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
                         : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
-                    const isShiftHovered = hoveredShift && assignment?.shift_type === hoveredShift
+                    const isShiftHovered = highlightEnabled && hoveredShift && assignment?.shift_type === hoveredShift
                     return (
                       <div
                         key={day.date}
-                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-primary/5" : "bg-background")}
+                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-blue-50" : "bg-background")}
                         onMouseEnter={() => assignment && setHoveredShift(assignment.shift_type)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -1868,9 +1872,30 @@ function PersonGrid({
                             </AssignmentPopover>
                           )
                         ) : onLeave ? (
-                          <span className="text-[11px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
+                          <span className="text-[12px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
+                        ) : !isPublished ? (
+                          <PersonShiftSelector
+                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                            shiftTimes={shiftTimes}
+                            shiftTypes={data?.shiftTypes ?? []}
+                            isPublished={false}
+                            compact={compact}
+                            isOff
+                            onShiftChange={async (newShift) => {
+                              if (!newShift) return
+                              const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                              if (result.error) toast.error(result.error)
+                              else {
+                                // Refresh local state
+                                setLocalDays((prev) => prev.map((d) => d.date !== day.date ? d : {
+                                  ...d,
+                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                                }))
+                              }
+                            }}
+                          />
                         ) : (
-                          <span className="text-[11px] text-muted-foreground/60 font-medium select-none w-full text-center">OFF</span>
+                          <span className="text-[12px] text-muted-foreground font-semibold select-none w-full text-center">OFF</span>
                         )}
                       </div>
                     )
@@ -3627,7 +3652,7 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
               {onToggleHighlight && (
                 <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
                   <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
-                  {locale === "es" ? "Resaltar persona" : "Highlight person"}
+                  {locale === "es" ? "Resaltar" : "Highlights"}
                   {highlight && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
                 </button>
               )}
