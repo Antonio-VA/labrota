@@ -187,9 +187,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes] = await Promise.all([
     supabase
       .from("rotas")
-      .select("*")
+      .select("id, status, published_at, published_by, punctions_override")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; punctions_override?: Record<string, number> | null } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
@@ -197,7 +197,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string; type: string }[] | null }>,
-    supabase.from("shift_types").select("*").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
   ])
@@ -206,16 +206,13 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
   const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
 
-  // Fetch org display mode
-  const { data: { user: authUser } } = await supabase.auth.getUser()
-  let orgDisplayMode = "by_shift"
-  if (authUser) {
-    const { data: prof } = await supabase.from("profiles").select("organisation_id").eq("id", authUser.id).single() as { data: { organisation_id: string | null } | null }
-    if (prof?.organisation_id) {
-      const { data: orgData } = await supabase.from("organisations").select("rota_display_mode").eq("id", prof.organisation_id).single() as { data: { rota_display_mode?: string } | null }
-      orgDisplayMode = orgData?.rota_display_mode ?? "by_shift"
-    }
-  }
+  // Fetch org display mode — single query via RLS (profiles linked to org)
+  const { data: orgRow } = await supabase
+    .from("organisations")
+    .select("rota_display_mode")
+    .limit(1)
+    .maybeSingle() as { data: { rota_display_mode?: string } | null }
+  const orgDisplayMode = orgRow?.rota_display_mode ?? "by_shift"
 
   const rota = rotaData
     ? {
@@ -448,7 +445,7 @@ export async function generateRota(
       .neq("onboarding_status", "inactive"),
     supabase
       .from("leaves")
-      .select("*")
+      .select("staff_id, start_date, end_date, type")
       .lte("start_date", weekDates[6])
       .gte("end_date", weekDates[0])
       .eq("status", "approved"),
@@ -458,8 +455,8 @@ export async function generateRota(
       .gte("date", fourWeeksAgoStr)
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
-    supabase.from("rota_rules").select("*").eq("enabled", true),
-    supabase.from("shift_types").select("*").order("sort_order"),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes").eq("enabled", true),
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
     supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true) as unknown as Promise<{ data: { codigo: string; typical_shifts: string[] }[] | null }>,
   ])
 
@@ -783,11 +780,11 @@ export async function regenerateDay(
   // Fetch data (same as full generate)
   const [staffRes, leavesRes, recentRes, configRes, rulesRes, shiftRes, tecRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
-    supabase.from("leaves").select("*").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
+    supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
     supabase.from("rota_assignments").select("staff_id, date").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
     supabase.from("lab_config").select("*").single(),
-    supabase.from("rota_rules").select("*").eq("enabled", true),
-    supabase.from("shift_types").select("*").order("sort_order"),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes").eq("enabled", true),
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
     supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true),
   ])
 
@@ -1526,7 +1523,7 @@ export async function getTemplates(): Promise<RotaTemplate[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from("rota_templates")
-    .select("*")
+    .select("id, name, assignments, created_at")
     .order("created_at", { ascending: false }) as unknown as { data: RotaTemplate[] | null }
   return data ?? []
 }
@@ -1539,7 +1536,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   // Fetch template
   const { data: template } = await supabase
     .from("rota_templates")
-    .select("*")
+    .select("id, name, assignments")
     .eq("id", templateId)
     .single() as unknown as { data: RotaTemplate | null }
   if (!template) return { error: "Template not found." }

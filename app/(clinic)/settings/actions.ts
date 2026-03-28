@@ -343,20 +343,25 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
 export async function resetImplementation(): Promise<{ error?: string }> {
   const { orgId, admin } = await requireOrgAdmin()
   // Full reset: wipe everything except the org record itself
-  // Order matters due to foreign key constraints
+  // Phase 1: delete leaf tables that depend on others
   await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
-  await admin.from("rota_snapshots").delete().eq("organisation_id", orgId)
-  await admin.from("rotas").delete().eq("organisation_id", orgId)
-  await admin.from("staff_skills").delete().eq("organisation_id", orgId)
-  await admin.from("leaves").delete().eq("organisation_id", orgId)
-  await admin.from("staff").delete().eq("organisation_id", orgId)
-  await admin.from("tecnicas").delete().eq("organisation_id", orgId)
-  await admin.from("shift_types").delete().eq("organisation_id", orgId)
-  await admin.from("departments").delete().eq("organisation_id", orgId)
-  await admin.from("rota_rules").delete().eq("organisation_id", orgId)
-  // Clear regional config + step completions
-  await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
-  await admin.from("implementation_steps").delete().eq("organisation_id", orgId)
+  // Phase 2: delete tables whose children are gone
+  await Promise.all([
+    admin.from("rota_snapshots").delete().eq("organisation_id", orgId),
+    admin.from("rotas").delete().eq("organisation_id", orgId),
+    admin.from("staff_skills").delete().eq("organisation_id", orgId),
+    admin.from("leaves").delete().eq("organisation_id", orgId),
+  ])
+  // Phase 3: delete remaining tables (staff depends on skills/leaves being gone)
+  await Promise.all([
+    admin.from("staff").delete().eq("organisation_id", orgId),
+    admin.from("tecnicas").delete().eq("organisation_id", orgId),
+    admin.from("shift_types").delete().eq("organisation_id", orgId),
+    admin.from("departments").delete().eq("organisation_id", orgId),
+    admin.from("rota_rules").delete().eq("organisation_id", orgId),
+    admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId),
+    admin.from("implementation_steps").delete().eq("organisation_id", orgId),
+  ])
   revalidatePath("/settings")
   revalidatePath("/staff")
   revalidatePath("/lab")

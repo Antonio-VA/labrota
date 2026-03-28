@@ -85,22 +85,19 @@ export async function deleteOrganisation(orgId: string) {
 
   const admin = createAdminClient()
 
-  // Delete in FK-safe order (no assumed CASCADE)
+  // Delete child tables first (FK-safe: assignments depend on rotas, skills on staff)
   await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
-  await admin.from("rotas").delete().eq("organisation_id", orgId)
-  await admin.from("staff_skills").delete().eq("organisation_id", orgId)
-  await admin.from("leaves").delete().eq("organisation_id", orgId)
-  await admin.from("staff").delete().eq("organisation_id", orgId)
-  await admin.from("lab_config").delete().eq("organisation_id", orgId)
-
-  // Remove from organisation_members
-  await admin.from("organisation_members").delete().eq("organisation_id", orgId)
-
-  // Detach profiles (keep auth users — they may be re-invited elsewhere)
-  await admin
-    .from("profiles")
-    .update({ organisation_id: null } as never)
-    .eq("organisation_id", orgId)
+  await Promise.all([
+    admin.from("rotas").delete().eq("organisation_id", orgId),
+    admin.from("staff_skills").delete().eq("organisation_id", orgId),
+    admin.from("leaves").delete().eq("organisation_id", orgId),
+  ])
+  await Promise.all([
+    admin.from("staff").delete().eq("organisation_id", orgId),
+    admin.from("lab_config").delete().eq("organisation_id", orgId),
+    admin.from("organisation_members").delete().eq("organisation_id", orgId),
+    admin.from("profiles").update({ organisation_id: null } as never).eq("organisation_id", orgId),
+  ])
 
   const { error } = await admin
     .from("organisations")
@@ -419,52 +416,67 @@ export async function copyOrganisation(
     await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
   }
 
+  // Copy config tables in parallel (no FK dependencies between them)
+  const copyTasks: Promise<void>[] = []
+
   if (options.departments) {
-    const { data } = await admin.from("departments").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
-    for (const d of (data ?? []) as any[]) {
-      const { id: _, organisation_id: __, created_at: ___, ...rest } = d
-      await admin.from("departments").insert({ ...rest, organisation_id: newOrgId } as never)
-    }
+    copyTasks.push((async () => {
+      const { data } = await admin.from("departments").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
+      if (data?.length) {
+        const rows = (data as any[]).map((d) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = d; return { ...rest, organisation_id: newOrgId } })
+        await admin.from("departments").insert(rows as never)
+      }
+    })())
   }
   if (options.shifts) {
-    const { data } = await admin.from("shift_types").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
-    for (const s of (data ?? []) as any[]) {
-      const { id: _, organisation_id: __, created_at: ___, ...rest } = s
-      await admin.from("shift_types").insert({ ...rest, organisation_id: newOrgId } as never)
-    }
+    copyTasks.push((async () => {
+      const { data } = await admin.from("shift_types").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
+      if (data?.length) {
+        const rows = (data as any[]).map((s) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = s; return { ...rest, organisation_id: newOrgId } })
+        await admin.from("shift_types").insert(rows as never)
+      }
+    })())
   }
   if (options.tasks) {
-    const { data } = await admin.from("tecnicas").select("*").eq("organisation_id", sourceOrgId).order("orden")
-    for (const t of (data ?? []) as any[]) {
-      const { id: _, organisation_id: __, created_at: ___, ...rest } = t
-      await admin.from("tecnicas").insert({ ...rest, organisation_id: newOrgId } as never)
-    }
+    copyTasks.push((async () => {
+      const { data } = await admin.from("tecnicas").select("*").eq("organisation_id", sourceOrgId).order("orden")
+      if (data?.length) {
+        const rows = (data as any[]).map((t) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = t; return { ...rest, organisation_id: newOrgId } })
+        await admin.from("tecnicas").insert(rows as never)
+      }
+    })())
   }
   if (options.rules) {
-    const { data } = await admin.from("rota_rules").select("*").eq("organisation_id", sourceOrgId)
-    for (const r of (data ?? []) as any[]) {
-      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r
-      await admin.from("rota_rules").insert({ ...rest, organisation_id: newOrgId, staff_ids: [] } as never)
-    }
+    copyTasks.push((async () => {
+      const { data } = await admin.from("rota_rules").select("*").eq("organisation_id", sourceOrgId)
+      if (data?.length) {
+        const rows = (data as any[]).map((r) => { const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r; return { ...rest, organisation_id: newOrgId, staff_ids: [] } })
+        await admin.from("rota_rules").insert(rows as never)
+      }
+    })())
   }
+  if (options.users) {
+    copyTasks.push((async () => {
+      const { data } = await admin.from("organisation_members").select("*").eq("organisation_id", sourceOrgId)
+      if (data?.length) {
+        const rows = (data as any[]).map((m) => { const { organisation_id: _, ...rest } = m; return { ...rest, organisation_id: newOrgId } })
+        await admin.from("organisation_members").upsert(rows as never, { onConflict: "organisation_id,user_id" })
+      }
+    })())
+  }
+
+  await Promise.all(copyTasks)
+
+  // Staff must be sequential: skills depend on inserted staff IDs
   if (options.staff) {
     const { data } = await admin.from("staff").select("*, staff_skills(*)").eq("organisation_id", sourceOrgId)
     for (const s of (data ?? []) as any[]) {
       const { id: oldId, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: skills, ...rest } = s
       const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: newOrgId } as never).select("id").single()
       if (ns && skills?.length) {
-        for (const sk of skills) {
-          const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk
-          await admin.from("staff_skills").insert({ ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } as never)
-        }
+        const skillRows = skills.map((sk: any) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } })
+        await admin.from("staff_skills").insert(skillRows as never)
       }
-    }
-  }
-  if (options.users) {
-    const { data } = await admin.from("organisation_members").select("*").eq("organisation_id", sourceOrgId)
-    for (const m of (data ?? []) as any[]) {
-      const { organisation_id: _, ...rest } = m
-      await admin.from("organisation_members").upsert({ ...rest, organisation_id: newOrgId } as never, { onConflict: "organisation_id,user_id" })
     }
   }
 

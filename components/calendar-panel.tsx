@@ -1254,9 +1254,11 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   const { hoveredStaffId, setHovered } = useStaffHover()
   // Staff → department colour for pills
-  const deptColors: Record<string, string> = {}
-  for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
-  const staffColorLookup = Object.fromEntries(staffList.map((s) => [s.id, deptColors[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+  const staffColorLookup = useMemo(() => {
+    const deptColors: Record<string, string> = {}
+    for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
+    return Object.fromEntries(staffList.map((s) => [s.id, deptColors[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+  }, [data.departments, staffList])
 
   if (entries.length === 0) return null
 
@@ -2249,9 +2251,14 @@ function ShiftGrid({
   const ts = useTranslations("skills")
 
   // Staff color map — maps each staff member to their department colour
-  const deptColorMap: Record<string, string> = {}
-  for (const dept of (data?.departments ?? [])) deptColorMap[dept.code] = dept.colour
-  const staffColorMap = Object.fromEntries(staffList.map((s) => [s.id, deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+  const deptColorMap = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const dept of (data?.departments ?? [])) m[dept.code] = dept.colour
+    return m
+  }, [data?.departments])
+  const staffColorMap = useMemo(() =>
+    Object.fromEntries(staffList.map((s) => [s.id, deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+  , [staffList, deptColorMap])
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   // Require 5px movement before drag activates — allows click events to pass through
@@ -3189,19 +3196,24 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
   // Build dept color map: role code → colour
   const { hoveredStaffId, setHovered } = useStaffHover()
-  const deptColorMap: Record<string, string> = {}
-  const deptLabelMap: Record<string, string> = {}
-  for (const d of departments) {
-    if (!d.parent_id) {
-      deptColorMap[d.code] = d.colour
-      deptLabelMap[d.code] = d.name
+  const { deptColorMap, deptLabelMap } = useMemo(() => {
+    const colors: Record<string, string> = {}
+    const labels: Record<string, string> = {}
+    for (const d of departments) {
+      if (!d.parent_id) { colors[d.code] = d.colour; labels[d.code] = d.name }
     }
-  }
+    return { deptColorMap: colors, deptLabelMap: labels }
+  }, [departments])
   // Leave type icons
   const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
   // Staff → department colour map
-  const staffColorMap: Record<string, string> = {}
-  ;(staffList ?? []).forEach((s) => { staffColorMap[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8" })
+  const staffColorMap = useMemo(() => {
+    const m: Record<string, string> = {}
+    ;(staffList ?? []).forEach((s) => { m[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8" })
+    return m
+  }, [staffList, deptColorMap])
+  const deptByCode = useMemo(() => Object.fromEntries((departments ?? []).map((d) => [d.code, d])), [departments])
+  const tecByCode = useMemo(() => Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t])), [data?.tecnicas])
 
   if (loading) {
     return (
@@ -3299,10 +3311,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
         }
         const shiftOrder = shiftTypes.filter((s) => s.active !== false).map((s) => s.code)
         const allShifts = [...new Set([...shiftOrder, ...Object.keys(byShift)])]
-
-        // Dept and tecnica lookup for resolving function_label
-        const deptByCode = Object.fromEntries((departments ?? []).map((d) => [d.code, d]))
-        const tecByCode = Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
 
         function resolveFunctionLabel(label: string): string {
           const dept = deptByCode[label]
