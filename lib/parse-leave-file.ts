@@ -21,7 +21,8 @@ const TYPE_PATTERNS: { keywords: string[]; type: string }[] = [
   { keywords: ["personal", "asuntos propios"], type: "personal" },
 ]
 
-function detectLeaveType(text: string): string {
+/** @internal Exported for testing */
+export function detectLeaveType(text: string): string {
   const lower = text.toLowerCase()
   for (const { keywords, type } of TYPE_PATTERNS) {
     if (keywords.some((kw) => lower.includes(kw))) return type
@@ -40,7 +41,8 @@ const MONTH_MAP: Record<string, number> = {
   ene: 0, abr: 3, ago: 7, dic: 11,
 }
 
-function parseDate(s: string): string {
+/** @internal Exported for testing */
+export function parseDate(s: string): string {
   if (!s) return ""
   const trimmed = s.trim()
 
@@ -92,7 +94,8 @@ function parseDate(s: string): string {
   return ""
 }
 
-function parseDateRange(text: string): { from: string; to: string } {
+/** @internal Exported for testing */
+export function parseDateRange(text: string): { from: string; to: string } {
   // Try common range separators: " - ", " al ", " to ", " hasta ", " – "
   const separators = [/\s*[-–]\s*/, /\s+al\s+/i, /\s+to\s+/i, /\s+hasta\s+/i, /\s+a\s+/i]
 
@@ -121,7 +124,8 @@ export interface StaffRecord {
   initials: string
 }
 
-function matchStaff(rawName: string, staffList: StaffRecord[]): StaffRecord | null {
+/** @internal Exported for testing */
+export function matchStaff(rawName: string, staffList: StaffRecord[]): StaffRecord | null {
   const upper = rawName.trim().toUpperCase()
   const lower = rawName.trim().toLowerCase()
 
