@@ -127,7 +127,7 @@ export function ClinicTopBar({
       <div className="flex-1" />
 
       {/* Right: bell + avatar */}
-      <div className="flex items-center gap-3 header-icons">
+      <div className="flex items-center gap-2 header-icons">
         <NotificationBell />
         {initialUser && <UserAvatarMenu initialUser={initialUser} />}
       </div>

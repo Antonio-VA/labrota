@@ -413,16 +413,21 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       {/* ── POR TAREA (optional) ───────────────────────────────────────── */}
       {tecnicas.length > 0 && (
         <div className="rounded-lg border border-border bg-background overflow-hidden">
-          <div className="px-5 py-3 border-b border-border flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={taskCoverageEnabled}
-                onChange={handleToggleTaskCoverage}
-                className="size-4 rounded accent-primary"
-              />
-              <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
-            </label>
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+            <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
+            <button
+              type="button"
+              onClick={handleToggleTaskCoverage}
+              className={cn(
+                "relative w-10 h-6 rounded-full transition-colors shrink-0",
+                taskCoverageEnabled ? "bg-primary" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                taskCoverageEnabled ? "translate-x-[18px]" : "translate-x-0.5"
+              )} />
+            </button>
           </div>
           {!taskCoverageEnabled ? (
             <div className="px-5 py-4">
@@ -489,7 +494,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                             ? "border-amber-400 bg-amber-50 text-amber-700"
                                             : explicitVal !== undefined
                                             ? "border-input bg-background text-foreground"
-                                            : "border-transparent bg-transparent text-muted-foreground/40",
+                                            : "border-input bg-background text-muted-foreground/40",
                                           "focus:border-ring focus:ring-1 focus:ring-ring/50 placeholder:text-muted-foreground/30"
                                         )}
                                       />
