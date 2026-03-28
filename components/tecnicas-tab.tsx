@@ -84,6 +84,65 @@ type Draft = {
 // Columns: drag(24px) | color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | delete(36px)
 const GRID = "24px 28px minmax(100px,1fr) 80px 120px minmax(80px,1fr) 36px"
 
+// ── Multi-select department dropdown ──────────────────────────────────────────
+
+function DeptMultiSelect({ departments, selected, onChange, disabled }: {
+  departments: Department[]; selected: string[]; onChange: (codes: string[]) => void; disabled: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  const label = selected.length === 0 ? "—"
+    : selected.map((c) => departments.find((d) => d.code === c)?.name?.slice(0, 5) ?? c).join(", ")
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        className="h-7 w-full px-1.5 rounded border border-input bg-transparent text-[11px] text-left outline-none hover:border-primary/40 truncate disabled:opacity-50"
+      >
+        {label}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-40 rounded-lg border border-border bg-background shadow-lg py-1">
+          {departments.map((d) => {
+            const active = selected.includes(d.code)
+            return (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => {
+                  if (active) {
+                    const next = selected.filter((c) => c !== d.code)
+                    if (next.length === 0) return // must keep at least one
+                    onChange(next)
+                  } else {
+                    onChange([...selected, d.code])
+                  }
+                }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left hover:bg-accent transition-colors"
+              >
+                <span className={cn("size-3.5 rounded border flex items-center justify-center shrink-0", active ? "bg-primary border-primary text-white" : "border-border")}>
+                  {active && <span className="text-[8px]">✓</span>}
+                </span>
+                {d.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Sortable table row ───────────────────────────────────────────────────────
 
 function SortableRow({
@@ -159,38 +218,13 @@ function SortableRow({
         className="bg-transparent text-[13px] font-mono uppercase outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full text-center"
       />
 
-      {/* Department (multi-select pills, root departments only) */}
-      <div className="flex gap-0.5 items-center flex-wrap">
-        {(departments.length > 0 ? departments.filter((d) => !d.parent_id) : [{ id: "lab", code: "lab", name: "Embr." } as any, { id: "andrology", code: "andrology", name: "Andr." } as any]).map((d: Department) => {
-          const deptCodes = tecnica.department.split(",").filter(Boolean)
-          const active = deptCodes.includes(d.code)
-          return (
-            <button
-              key={d.id}
-              type="button"
-              disabled={disabled}
-              onClick={() => {
-                let next: string[]
-                if (active) {
-                  next = deptCodes.filter((c) => c !== d.code)
-                  if (next.length === 0) return
-                } else {
-                  next = [...deptCodes, d.code]
-                }
-                onChange({ ...tecnica, department: next.join(",") as any })
-              }}
-              className={cn(
-                "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
-              )}
-            >
-              {d.abbreviation || d.name?.slice(0, 4)}
-            </button>
-          )
-        })}
-      </div>
+      {/* Department (multi-select dropdown) */}
+      <DeptMultiSelect
+        departments={departments.length > 0 ? departments.filter((d) => !d.parent_id) : [{ id: "lab", code: "lab", name: "Embriología" } as Department, { id: "andrology", code: "andrology", name: "Andrología" } as Department]}
+        selected={tecnica.department.split(",").filter(Boolean)}
+        onChange={(codes) => onChange({ ...tecnica, department: codes.join(",") as any })}
+        disabled={disabled}
+      />
 
       {/* Shifts: 3-state (neutral → prefer → avoid → neutral) */}
       <div className="flex gap-0.5 items-center">
