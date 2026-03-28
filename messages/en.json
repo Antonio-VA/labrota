@@ -239,6 +239,7 @@
     "information": "Information",
     "seniority": "Seniority",
     "preferred": "Preferred",
+    "dayPreferences": "Day preferences",
     "preferredShift": "Preferred shift",
     "editMode": "Edit mode",
     "done": "Done",

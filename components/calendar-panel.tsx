@@ -720,6 +720,8 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
   )
 }
 
+const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
+
 function StaffProfilePanel({
   staffId, staffList, weekData, open, onClose,
 }: {
@@ -888,7 +890,7 @@ function StaffProfilePanel({
           {/* Capacidades (skills) */}
           {staff && (
             <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("tasks")}</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Habilidades</p>
               {staff.staff_skills.length === 0 ? (
                 <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
               ) : (
@@ -1003,12 +1005,19 @@ function StaffProfilePanel({
                 </div>
                 <div>
                   <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
-                  <p className="text-foreground font-medium">{(staff.working_pattern ?? []).join(", ").toUpperCase()}</p>
+                  <p className="text-foreground font-medium">{(staff.working_pattern ?? []).map((d) => DAY_ES_2[d] ?? d).join(", ")}</p>
                 </div>
-                {staff.preferred_days && staff.preferred_days.length > 0 && (
-                  <div>
-                    <p className="text-muted-foreground">{t("preferred")}</p>
-                    <p className="text-emerald-700 font-medium">{staff.preferred_days.join(", ").toUpperCase()}</p>
+                {((staff.preferred_days?.length ?? 0) > 0 || (staff.avoid_days?.length ?? 0) > 0) && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">{t("dayPreferences")}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {(staff.preferred_days ?? []).map((d) => (
+                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#2C3E6B] text-white">{DAY_ES_2[d] ?? d}</span>
+                      ))}
+                      {(staff.avoid_days ?? []).map((d) => (
+                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FEE2E2] text-[#B91C1C]">{DAY_ES_2[d] ?? d}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {staff.preferred_shift && (
