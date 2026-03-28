@@ -2180,7 +2180,8 @@ function ShiftGrid({
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   style={isSatCell ? { borderLeft: "1px dashed var(--border)" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 bg-background",
+                    "p-1.5 flex flex-col gap-1",
+                    dayShifts.length === 0 && effectivePDay === 0 ? "bg-muted/40" : "bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
@@ -2229,9 +2230,7 @@ function ShiftGrid({
                       </AssignmentPopover>
                     )
                   })}
-                  {dayShifts.length === 0 && effectivePDay === 0 && (
-                    <span className="text-[10px] text-muted-foreground/40 italic self-center mt-auto mb-auto">{t("noService")}</span>
-                  )}
+                  {/* Empty cell — grey bg applied via parent */}
                 </DroppableCell>
               )
             })}
@@ -2859,7 +2858,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
               </div>
               <div className="flex flex-col gap-1">
                 {assignments.length === 0 && !isEditMode && (
-                  <p className="text-[12px] text-muted-foreground/40 italic px-3 py-1.5">{t("noService")}</p>
+                  <div className="h-6 rounded bg-muted/40" />
                 )}
                 {mobileCompact ? (
                   /* Compact: inline badges with left border, sorted by dept then name */

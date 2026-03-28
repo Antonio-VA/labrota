@@ -202,9 +202,7 @@ export function TransposedShiftGrid({
                         isActive && !isPublished && "cursor-pointer hover:bg-accent/10"
                       )}
                     >
-                      {!isActive ? (
-                        <span className="text-[9px] text-muted-foreground/40 italic self-center mt-auto mb-auto">{t("noService")}</span>
-                      ) : dayShifts.map((a) => {
+                      {!isActive ? null : dayShifts.map((a) => {
                         const isHov = hoveredStaffId === a.staff_id
                         const sColor = staffColorMap[a.staff_id]
                         const tec = a.function_label ? tecnicas.find((tc) => tc.codigo === a.function_label) : null
