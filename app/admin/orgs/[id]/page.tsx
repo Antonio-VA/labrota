@@ -32,7 +32,7 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).gte("created_at", thirtyDaysAgo),
     admin.from("organisation_members").select("user_id, role, display_name").eq("organisation_id", id),
-    admin.from("lab_config").select("country, region").eq("organisation_id", id).maybeSingle(),
+    admin.from("lab_config").select("country, region, enable_leave_requests, enable_notes").eq("organisation_id", id).maybeSingle(),
     admin.from("departments").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("tecnicas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
@@ -116,6 +116,7 @@ export default async function OrgDetailPage({
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
+            initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
             initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
           />
         }

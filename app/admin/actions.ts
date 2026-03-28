@@ -363,6 +363,18 @@ export async function toggleOrgLeaveRequests(orgId: string, enabled: boolean) {
   return { success: true }
 }
 
+export async function toggleOrgNotes(orgId: string, enabled: boolean) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("lab_config")
+    .update({ enable_notes: enabled } as never)
+    .eq("organisation_id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 export async function copyOrganisation(
   sourceOrgId: string,
   newName: string,

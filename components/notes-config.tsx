@@ -65,27 +65,9 @@ export function NotesConfig({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-[14px] font-medium">{t("weeklyNotes")}</span>
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={isPending}
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-            enabled ? "bg-primary" : "bg-muted-foreground/30",
-            isPending && "cursor-not-allowed opacity-50"
-          )}
-        >
-          <span className={cn(
-            "inline-block size-4 rounded-full bg-white shadow transition-transform",
-            enabled ? "translate-x-4" : "translate-x-0"
-          )} />
-        </button>
-      </div>
+      <p className="text-[14px] font-medium">{t("weeklyNotes")}</p>
 
-      {enabled && (
+      {enabled ? (
         <>
           <p className="text-[12px] text-muted-foreground -mt-2">
             {t("defaultNotesDescription")}
@@ -150,6 +132,10 @@ export function NotesConfig({
             </Button>
           </div>
         </>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">
+          Las notas están desactivadas. Actívalas en Administración → Funcionalidades.
+        </p>
       )}
     </div>
   )

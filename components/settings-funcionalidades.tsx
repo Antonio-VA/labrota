@@ -4,20 +4,53 @@ import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { toggleLeaveRequests } from "@/app/(clinic)/settings/actions"
+import { updateLabConfig } from "@/app/(clinic)/lab/actions"
+
+function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
+  label: string; description: string; enabled: boolean; onToggle: () => void; disabled: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-[14px] font-medium">{label}</p>
+        <p className="text-[12px] text-muted-foreground">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={disabled}
+        onClick={onToggle}
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
+          enabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+        )}
+      >
+        <span className={cn(
+          "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+          enabled ? "translate-x-5" : "translate-x-0"
+        )} />
+      </button>
+    </div>
+  )
+}
 
 export function SettingsFuncionalidades({
   displayMode,
   enableLeaveRequests,
+  enableNotes,
 }: {
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean
+  enableNotes: boolean
 }) {
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
+  const [notes, setNotes] = useState(enableNotes)
   const [isPending, startTransition] = useTransition()
 
   return (
     <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-      {/* Display mode — read only for clinic admins */}
+      {/* Display mode — read only */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[14px] font-medium">Modo de horario</p>
@@ -38,38 +71,37 @@ export function SettingsFuncionalidades({
 
       <div className="h-px bg-border" />
 
-      {/* Leave requests */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[14px] font-medium">Solicitud de ausencias</p>
-          <p className="text-[12px] text-muted-foreground">
-            Permite al personal solicitar vacaciones y ausencias desde la app
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={leaveRequests}
-          disabled={isPending}
-          onClick={() => {
-            const val = !leaveRequests
-            setLeaveRequests(val)
-            startTransition(async () => {
-              const result = await toggleLeaveRequests(val)
-              if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
-            })
-          }}
-          className={cn(
-            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
-            leaveRequests ? "bg-emerald-500" : "bg-muted-foreground/20"
-          )}
-        >
-          <span className={cn(
-            "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform",
-            leaveRequests ? "translate-x-5" : "translate-x-0"
-          )} />
-        </button>
-      </div>
+      <FeatureToggle
+        label="Solicitud de ausencias"
+        description="Permite al personal solicitar vacaciones y ausencias desde la app"
+        enabled={leaveRequests}
+        disabled={isPending}
+        onToggle={() => {
+          const val = !leaveRequests
+          setLeaveRequests(val)
+          startTransition(async () => {
+            const result = await toggleLeaveRequests(val)
+            if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
+          })
+        }}
+      />
+
+      <div className="h-px bg-border" />
+
+      <FeatureToggle
+        label="Notas en el horario"
+        description="Añade notas diarias al pie del horario (instrucciones, recordatorios)"
+        enabled={notes}
+        disabled={isPending}
+        onToggle={() => {
+          const val = !notes
+          setNotes(val)
+          startTransition(async () => {
+            const result = await updateLabConfig({ enable_notes: val })
+            if (result.error) { toast.error(result.error); setNotes(!val) }
+          })
+        }}
+      />
     </div>
   )
 }

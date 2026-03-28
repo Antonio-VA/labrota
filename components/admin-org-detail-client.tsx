@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -23,6 +23,7 @@ export function AdminOrgDetailClient({
   initialLogoUrl = null,
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
+  initialEnableNotes = true,
   initialBilling = { start: null, end: null, fee: null },
   implementationStatus,
   section = "all",
@@ -37,6 +38,7 @@ export function AdminOrgDetailClient({
   initialLogoUrl?: string | null
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
+  initialEnableNotes?: boolean
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
   implementationStatus?: {
     hasRegion: boolean
@@ -55,6 +57,7 @@ export function AdminOrgDetailClient({
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
+  const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -105,8 +108,12 @@ export function AdminOrgDetailClient({
         const r = await updateOrgDisplayMode(orgId, displayMode)
         if (r.error) { toast.error(r.error); hasError = true }
       }
-      if (leaveRequests !== initialLeaveRequests) {
+      if (leaveRequests !== initialLeaveRequests || enableNotes !== initialEnableNotes) {
         const r = await toggleOrgLeaveRequests(orgId, leaveRequests)
+        if (r.error) { toast.error(r.error); hasError = true }
+      }
+      if (enableNotes !== initialEnableNotes) {
+        const r = await toggleOrgNotes(orgId, enableNotes)
         if (r.error) { toast.error(r.error); hasError = true }
       }
       const r2 = await updateOrgRegional(orgId, country, region)
@@ -286,6 +293,32 @@ export function AdminOrgDetailClient({
               )} />
             </button>
           </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Notes */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Notas en el horario</p>
+              <p className="text-[12px] text-muted-foreground">
+                Añade notas diarias al pie del horario
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => setEnableNotes(!enableNotes)}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                enableNotes ? "bg-emerald-500" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                enableNotes ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+          </div>
         </div>
       </div>
       <div className="pt-3">
@@ -460,7 +493,7 @@ export function AdminOrgDetailClient({
       </>}
 
       {/* ── USUARIOS ──────────────────────────────────────────────────── */}
-      {(["all", "usuarios"].includes(section) || !hideUsers) && <div className="flex flex-col gap-3">
+      {["all", "usuarios"].includes(section) && <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[18px] font-medium">Usuarios</h2>
           <Button size="sm" onClick={() => setAddModalOpen(true)}>

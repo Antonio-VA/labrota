@@ -70,6 +70,7 @@ export default async function SettingsPage() {
                 <SettingsFuncionalidades
                   displayMode={orgSettings.displayMode}
                   enableLeaveRequests={orgSettings.enableLeaveRequests}
+                  enableNotes={orgSettings.enableNotes}
                 />
               ) : null
             }
