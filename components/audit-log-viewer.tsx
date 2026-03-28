@@ -4,7 +4,11 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { getAuditLogs, type AuditLogEntry } from "@/app/(clinic)/lab/audit-actions"
+
+const PAGE_SIZE = 25
 
 const ACTION_LABEL_KEYS: Record<string, string> = {
   rota_generated: "rotaGenerated",
@@ -65,34 +69,60 @@ export function AuditLogViewer() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState("")
+  const [userFilter, setUserFilter] = useState("")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+  const [page, setPage] = useState(0)
+  const [detail, setDetail] = useState<AuditLogEntry | null>(null)
 
   useEffect(() => {
     setLoading(true)
+    setPage(0)
     getAuditLogs({
       action: actionFilter || undefined,
       from: dateFrom || undefined,
       to: dateTo || undefined,
+      limit: 500, // fetch more, paginate client-side
     }).then((data) => { setLogs(data); setLoading(false) })
   }, [actionFilter, dateFrom, dateTo])
+
+  // Client-side user filter
+  const filtered = userFilter
+    ? logs.filter((l) => l.user_email?.toLowerCase().includes(userFilter.toLowerCase()))
+    : logs
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  // Unique users for filter
+  const uniqueUsers = [...new Set(logs.map((l) => l.user_email).filter(Boolean))] as string[]
 
   return (
     <div className="flex flex-col gap-4">
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap">
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
-          className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none"
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none"
         >
           <option value="">{t("allActions")}</option>
           {Object.entries(ACTION_LABEL_KEYS).map(([key, labelKey]) => (
             <option key={key} value={key}>{t(labelKey)}</option>
           ))}
         </select>
-        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8 text-[13px]" placeholder="Desde" />
-        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 h-8 text-[13px]" placeholder="Hasta" />
+        <select
+          value={userFilter}
+          onChange={(e) => setUserFilter(e.target.value)}
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none max-w-[180px]"
+        >
+          <option value="">Todos los usuarios</option>
+          {uniqueUsers.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-32 h-8 text-[12px]" />
+        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-32 h-8 text-[12px]" />
       </div>
 
       {/* Table */}
@@ -109,10 +139,14 @@ export function AuditLogViewer() {
           <tbody>
             {loading ? (
               <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">{tc("loading")}</td></tr>
-            ) : logs.length === 0 ? (
+            ) : paged.length === 0 ? (
               <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground italic">{t("noRecords")}</td></tr>
-            ) : logs.map((log) => (
-              <tr key={log.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+            ) : paged.map((log) => (
+              <tr
+                key={log.id}
+                className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer"
+                onClick={() => setDetail(log)}
+              >
                 <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">
                   {new Date(log.created_at).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </td>
@@ -128,6 +162,86 @@ export function AuditLogViewer() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] text-muted-foreground">
+            {filtered.length} registros · Página {page + 1} de {totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="size-8 flex items-center justify-center rounded-md border border-input text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="size-8 flex items-center justify-center rounded-md border border-input text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Detail popup */}
+      {detail && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setDetail(null)} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[480px] max-h-[80vh] overflow-y-auto p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded", ACTION_COLORS[detail.action] ?? "bg-muted text-muted-foreground")}>
+                  {ACTION_LABEL_KEYS[detail.action] ? t(ACTION_LABEL_KEYS[detail.action]) : detail.action}
+                </span>
+                <span className="text-[12px] text-muted-foreground tabular-nums">
+                  {new Date(detail.created_at).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
+              </div>
+              <button onClick={() => setDetail(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Usuario</span>
+                <span className="text-[13px] font-medium">{detail.user_email ?? "—"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Tipo</span>
+                <span className="text-[13px]">{detail.entity_type ?? "—"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Resumen</span>
+                <span className="text-[13px]">{summarize(detail, t)}</span>
+              </div>
+            </div>
+
+            {detail.metadata && Object.keys(detail.metadata).length > 0 && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[12px] font-medium text-muted-foreground">Metadatos</p>
+                <pre className="text-[11px] bg-muted rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(detail.metadata, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {detail.changes && Object.keys(detail.changes).length > 0 && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[12px] font-medium text-muted-foreground">Cambios</p>
+                <pre className="text-[11px] bg-muted rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(detail.changes, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
