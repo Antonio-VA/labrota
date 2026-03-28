@@ -749,9 +749,9 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
         className={cn("w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
       >
         {compact ? (
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
-            {time && <span className="text-[9px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
+          <div className="flex items-baseline gap-1">
+            <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+            {time && <span className="text-[10px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
           </div>
         ) : (
           <div className="flex flex-col gap-0">
@@ -1566,9 +1566,9 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
       )}
     >
       {compact ? (
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
-          {time && <span className="text-[9px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
+        <div className="flex items-baseline gap-1">
+          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+          {time && <span className="text-[10px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
         </div>
       ) : (
         <div className="flex flex-col gap-0">
