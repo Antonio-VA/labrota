@@ -4424,7 +4424,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const toggleMobileDeptColor = useCallback(() => {
     setMobileDeptColor((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_dept_color", String(next)); return next })
   }, [])
-  const toggleHighlightHover = useCallback(() => setHighlightHover((prev) => !prev), [])
+  const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
   const togglePersonSimplified = useCallback(() => {
     setPersonSimplified((prev) => { const next = !prev; localStorage.setItem("labrota_person_simplified", String(next)); return next })
   }, [])
