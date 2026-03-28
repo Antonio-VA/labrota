@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx"
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedLeaveEntry {
@@ -157,6 +155,7 @@ function matchStaff(rawName: string, staffList: StaffRecord[]): StaffRecord | nu
 // ── Text extraction ───────────────────────────────────────────────────────────
 
 async function extractFromExcel(buffer: ArrayBuffer): Promise<string> {
+  const XLSX = await import("xlsx")
   const wb = XLSX.read(buffer, { type: "array", cellDates: true })
   const lines: string[] = []
   for (const name of wb.SheetNames) {
