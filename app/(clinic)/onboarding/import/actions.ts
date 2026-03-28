@@ -49,6 +49,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
           onboarding_status: "active",
           color: PASTEL_COLORS[i % PASTEL_COLORS.length],
           contracted_hours: 40,
+          start_date: new Date().toISOString().split("T")[0],
         }
       })
 
