@@ -82,11 +82,17 @@ export default async function RootLayout({
         {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
-            const c = document.cookie.match(/labrota_theme=([^;]+)/);
+            var c = document.cookie.match(/labrota_theme=([^;]+)/);
             if (c) {
-              const p = JSON.parse(decodeURIComponent(c[1]));
-              if (p.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.setAttribute('data-theme', 'dark');
+              var p = JSON.parse(decodeURIComponent(c[1]));
+              var dark = p.theme === 'dark' || (p.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+              else document.documentElement.removeAttribute('data-theme');
+              if (p.accentColor) {
+                var r = document.documentElement.style;
+                r.setProperty('--primary', p.accentColor);
+                r.setProperty('--ring', p.accentColor);
+                r.setProperty('--header-bg', p.accentColor);
               }
             }
           } catch(e) {}

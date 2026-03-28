@@ -6,7 +6,7 @@ export default async function MobileAccountPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   return (
-    <div className="flex-1 overflow-auto lg:hidden">
+    <div className="flex-1 overflow-auto lg:hidden bg-background text-foreground">
       <MobileAccountView
         initialUser={user ? {
           email: user.email ?? null,
