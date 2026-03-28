@@ -1765,34 +1765,40 @@ function PersonGrid({
                 </Tooltip>
               )}
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
-              {/* Punciones / Biopsias — editable */}
+              {/* Punciones / Biopsias — same component as ShiftGrid */}
               {(() => {
+                const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+                function getPunc(dateStr: string): number {
+                  if ((punctionsOverride ?? {})[dateStr] !== undefined) return (punctionsOverride ?? {})[dateStr]
+                  if ((punctionsDefault ?? {})[dateStr] !== undefined) return (punctionsDefault ?? {})[dateStr]
+                  const dow = new Date(dateStr + "T12:00:00").getDay()
+                  const sameDow = Object.entries(punctionsDefault ?? {}).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
+                  return sameDow ? sameDow[1] : 0
+                }
                 const pDefault = (punctionsDefault ?? {})[day.date] ?? 0
                 const pEffective = (punctionsOverride ?? {})[day.date] ?? pDefault
+                const hasOverride = (punctionsOverride ?? {})[day.date] !== undefined
                 const bRate = data?.biopsyConversionRate ?? 0.5
-                const biopsies = Math.round(pEffective * bRate)
-                return onPunctionsChange ? (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground font-medium">P</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={30}
-                      value={pEffective}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10)
-                        onPunctionsChange(day.date, isNaN(v) ? null : v)
-                      }}
-                      className="w-6 h-4 text-[10px] text-center bg-transparent outline-none border-b border-transparent focus:border-primary tabular-nums font-medium text-muted-foreground"
-                    />
-                    {biopsies > 0 && <span className="text-[10px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
-                  </div>
-                ) : pEffective ? (
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground font-medium tabular-nums">P{pEffective}</span>
-                    {biopsies > 0 && <span className="text-[10px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
-                  </div>
-                ) : null
+                const bD5 = data?.biopsyDay5Pct ?? 0.5
+                const bD6 = data?.biopsyDay6Pct ?? 0.5
+                const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+                const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+                const p5 = getPunc(d5ago.toISOString().split("T")[0])
+                const p6 = getPunc(d6ago.toISOString().split("T")[0])
+                const forecast = Math.round(p5 * bRate * bD5 + p6 * bRate * bD6)
+                const tooltip = forecast > 0 ? `${forecast} biopsias previstas` : `${pEffective} punciones`
+                return (
+                  <DayStatsInput
+                    date={day.date}
+                    value={pEffective}
+                    defaultValue={pDefault}
+                    isOverride={hasOverride}
+                    onChange={onPunctionsChange ?? (() => {})}
+                    disabled={!onPunctionsChange}
+                    biopsyForecast={forecast}
+                    biopsyTooltip={tooltip}
+                  />
+                )
               })()}
             </div>
           )
