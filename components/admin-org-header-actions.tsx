@@ -156,38 +156,8 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
 
-        {/* Left: logo + name + badge + slug */}
+        {/* Left: name + badge */}
         <div className="flex items-center gap-3">
-          {/* Logo upload */}
-          <div className="relative group shrink-0">
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/svg+xml"
-              className="hidden"
-              onChange={handleLogoChange}
-            />
-            <button
-              onClick={() => logoInputRef.current?.click()}
-              disabled={isUploading}
-              aria-label="Upload organisation logo"
-              className="flex size-12 items-center justify-center rounded-lg border border-border bg-muted text-[14px] font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors overflow-hidden relative disabled:opacity-50"
-            >
-              {logoUrl ? (
-                <img src={logoUrl} alt={org.name} className="size-full object-contain p-1" />
-              ) : (
-                orgInitials()
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                <Upload className="size-4 text-white" />
-              </span>
-            </button>
-            {logoError && (
-              <p className="absolute top-full mt-1 left-0 text-[11px] text-destructive whitespace-nowrap">{logoError}</p>
-            )}
-          </div>
-
-          {/* Name / inline rename */}
           <div className="flex flex-col gap-0.5">
             {isEditing ? (
               <div className="flex items-center gap-1.5">

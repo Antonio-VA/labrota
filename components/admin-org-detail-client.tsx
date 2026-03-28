@@ -227,7 +227,7 @@ export function AdminOrgDetailClient({
       {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Funcionalidades</h2>
-        <div className="rounded-lg border border-border bg-background px-4 py-3 flex flex-col gap-4">
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
           {/* Display mode */}
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -300,7 +300,7 @@ export function AdminOrgDetailClient({
       {/* ── FACTURACIÓN ───────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Facturación</h2>
-        <div className="rounded-lg border border-border bg-background px-4 py-3 flex flex-col gap-3">
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex flex-col gap-1">
               <label className="text-[12px] font-medium text-muted-foreground">Inicio</label>
@@ -414,7 +414,7 @@ export function AdminOrgDetailClient({
       {/* ── CONFIGURACIÓN REGIONAL ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>
-        <div className="rounded-lg border border-border bg-background px-4 py-3">
+        <div className="rounded-lg border border-border bg-background px-5 py-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <label className="text-[13px] text-muted-foreground shrink-0">País</label>
