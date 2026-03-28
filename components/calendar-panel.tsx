@@ -1934,6 +1934,170 @@ function PersonGrid({
   )
 }
 
+// ── Transposed Person Grid (días como filas) ─────────────────────────────────
+
+function TransposedPersonGrid({
+  data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
+  onChipClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange,
+}: {
+  data: RotaWeekData | null
+  staffList: StaffWithSkills[]
+  locale: string
+  isPublished: boolean
+  shiftTimes: ShiftTimes | null
+  onLeaveByDate: Record<string, string[]>
+  publicHolidays: Record<string, string>
+  onChipClick: (assignment: { staff_id: string }, date: string) => void
+  colorChips?: boolean
+  compact?: boolean
+  punctionsDefault?: Record<string, number>
+  punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
+}) {
+  const t = useTranslations("schedule")
+  const { enabled: highlightEnabled } = useStaffHover()
+  const [hoveredShift, setHoveredShift] = useState<string | null>(null)
+
+  if (!data) return null
+
+  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+  const ROLE_LABEL_MAP: Record<string, string> = {}
+  for (const d of data.departments ?? []) { if (!d.parent_id) ROLE_LABEL_MAP[d.code] = d.name }
+
+  const activeStaff = staffList
+    .filter((s) => s.onboarding_status !== "inactive")
+    .sort((a, b) => {
+      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+      return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+    })
+
+  // Build assignment map: staffId → date → assignment
+  const assignMap: Record<string, Record<string, Assignment>> = {}
+  for (const day of data.days) {
+    for (const a of day.assignments) {
+      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
+      assignMap[a.staff_id][day.date] = a
+    }
+  }
+
+  // Group staff by role for sub-headers
+  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
+  for (const s of activeStaff) {
+    const last = roleGroups[roleGroups.length - 1]
+    if (last && last.role === s.role) last.members.push(s)
+    else roleGroups.push({ role: s.role, members: [s] })
+  }
+
+  const allMembers = roleGroups.flatMap((g) => g.members)
+  const days = data.days
+
+  return (
+    <div className="rounded-lg border border-border overflow-auto w-full">
+      <div style={{ display: "grid", gridTemplateColumns: `80px repeat(${allMembers.length}, minmax(${compact ? "60px" : "80px"}, 1fr))`, minWidth: allMembers.length * (compact ? 65 : 85) + 80 }}>
+
+        {/* Header: empty corner + staff names */}
+        <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
+        {allMembers.map((s, i) => {
+          // Check if this is the first in a new role group
+          const prevRole = i > 0 ? allMembers[i - 1].role : null
+          const isNewGroup = s.role !== prevRole
+          return (
+            <div
+              key={s.id}
+              className={cn(
+                "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
+                isNewGroup && i > 0 && "border-l-2 border-l-border"
+              )}
+              style={colorChips ? { borderTop: `3px solid ${s.color || "#D4D4D8"}` } : undefined}
+            >
+              <button
+                onClick={() => onChipClick({ staff_id: s.id }, "")}
+                className="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity"
+              >
+                <span className={cn("font-medium text-center leading-tight truncate w-full", compact ? "text-[10px]" : "text-[11px]")}>
+                  {s.first_name}
+                </span>
+                <span className={cn("text-muted-foreground text-center truncate w-full", compact ? "text-[9px]" : "text-[10px]")}>
+                  {s.last_name[0]}.
+                </span>
+              </button>
+            </div>
+          )
+        })}
+
+        {/* Day rows */}
+        {days.map((day) => {
+          const d = new Date(day.date + "T12:00:00")
+          const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).slice(0, 2).toUpperCase()
+          const dayN = String(d.getDate())
+          const today = day.date === TODAY
+          const holiday = publicHolidays[day.date]
+          const isSat = d.getDay() === 6
+
+          return (
+            <Fragment key={day.date}>
+              {/* Day label cell */}
+              <div
+                className={cn(
+                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2",
+                  holiday && "bg-amber-50/60"
+                )}
+                style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
+              >
+                <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                    <span className={cn(
+                      "text-[14px] font-semibold leading-none",
+                      today ? "size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[12px]" : "text-primary"
+                    )}>
+                      {dayN}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Staff cells for this day */}
+              {allMembers.map((s, i) => {
+                const assignment = assignMap[s.id]?.[day.date]
+                const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
+                const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
+                const isHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
+                const prevRole = i > 0 ? allMembers[i - 1].role : null
+                const isNewGroup = s.role !== prevRole
+
+                return (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
+                      compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1",
+                      isHovered ? "bg-blue-100/50" : "bg-background",
+                      isNewGroup && i > 0 && "border-l-2 border-l-border"
+                    )}
+                    onMouseEnter={() => setHoveredShift(cellShift)}
+                    onMouseLeave={() => setHoveredShift(null)}
+                  >
+                    {assignment ? (
+                      <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "#2C3E6B" }}>
+                        {assignment.shift_type}
+                      </span>
+                    ) : onLeave ? (
+                      <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
+                    ) : (
+                      <span className={cn("text-muted-foreground font-semibold", compact ? "text-[9px]" : "text-[11px]")}>OFF</span>
+                    )}
+                  </div>
+                )
+              })}
+            </Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Shift grid (Vista por turno) ──────────────────────────────────────────────
 
 function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps) {
@@ -4506,6 +4670,22 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   biopsyConversionRate={weekData?.biopsyConversionRate}
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                />
+              ) : calendarLayout === "person" && daysAsRows ? (
+                <TransposedPersonGrid
+                  data={weekData}
+                  staffList={filteredStaffList}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  shiftTimes={weekData?.shiftTimes ?? null}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onChipClick={(a) => openProfile(a.staff_id)}
+                  colorChips={colorChips}
+                  compact={compact}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                 />
               ) : (
                 <PersonGrid
