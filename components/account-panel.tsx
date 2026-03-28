@@ -162,7 +162,20 @@ export function AccountPanel({ open, onClose, user }: {
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("language")}</p>
             <select
               value={prefs.locale}
-              onChange={(e) => setPrefs((p) => ({ ...p, locale: e.target.value as UserPreferences["locale"] }))}
+              onChange={(e) => {
+                const next = e.target.value as UserPreferences["locale"]
+                setPrefs((p) => ({ ...p, locale: next }))
+                // Set the cookie that the server reads for i18n
+                if (next === "browser") {
+                  document.cookie = "locale=;path=/;max-age=0"
+                } else {
+                  document.cookie = `locale=${next};path=/;max-age=${365 * 86400};SameSite=Lax`
+                }
+                // Save to DB then reload to apply server-side
+                saveUserPreferences({ locale: next }).then(() => {
+                  window.location.reload()
+                })
+              }}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="browser">{t("browserDefault")}</option>
