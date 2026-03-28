@@ -4149,11 +4149,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {/* Week view */}
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div className={cn("flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-opacity duration-150", loadingWeek && weekData && "opacity-50 pointer-events-none")} style={{ minHeight: 400 }}>
-              {(!weekData) ? (
-                /* Initial load — full shimmer skeleton */
-                <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
-              ) : weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
+              {/* Shimmer overlay — covers content during loading */}
+              {loadingWeek && (
+                <div className={cn("absolute inset-0 z-10", weekData ? "bg-background/50" : "bg-background")}>
+                  <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+                </div>
+              )}
+              {weekData && (weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
                 <TransposedTaskGrid
                   data={weekData}
                   staffList={filteredStaffList}
@@ -4300,7 +4303,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onChipClick={(a) => openProfile(a.staff_id)}
                   onDateClick={handleMonthDayClick}
                 />
-              )}
+              ))}
             </div>
           </div>
         )}
