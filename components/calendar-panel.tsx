@@ -726,13 +726,13 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
 
 const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
-function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, compact, isOff }: {
+function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, simplified, isOff }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   shiftTypes: import("@/lib/types/database").ShiftTypeDefinition[]
   isPublished: boolean
   onShiftChange: (shift: string) => void
-  compact?: boolean
+  simplified?: boolean
   isOff?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -764,15 +764,12 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
     <div ref={trigRef} className="w-full">
       <div
         onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded select-none flex items-center px-1.5", compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", isOff && "justify-center")}
+        className={cn("w-full rounded select-none flex items-center px-1.5", simplified ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", (isOff || simplified) && "justify-center")}
       >
         {isOff ? (
           <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
-        ) : compact ? (
-          <div className="flex items-baseline gap-1">
-            <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
-            {time && <span className="text-[10px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
-          </div>
+        ) : simplified ? (
+          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
         ) : (
           <div className="flex flex-col gap-0">
             <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
@@ -1555,13 +1552,13 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 
-function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled, compact }: {
+function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled, simplified }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   tecnica: Tecnica | null
   onClick?: (e: React.MouseEvent) => void
   taskDisabled?: boolean
-  compact?: boolean
+  simplified?: boolean
 }) {
   const { shift_type, is_manual_override, function_label } = assignment
   const time = shiftTimes?.[shift_type]
@@ -1581,15 +1578,12 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
       onClick={onClick}
       className={cn(
         "w-full rounded select-none flex items-center gap-1.5 px-1.5",
-        compact ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]",
+        simplified ? "py-0.5 min-h-[24px] justify-center" : "py-1.5 min-h-[36px]",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
       )}
     >
-      {compact ? (
-        <div className="flex items-baseline gap-1">
-          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
-          {time && <span className="text-[10px] text-muted-foreground tabular-nums">{time.start}–{time.end}</span>}
-        </div>
+      {simplified ? (
+        <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
       ) : (
         <div className="flex flex-col gap-0">
           <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
@@ -1608,7 +1602,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, onPunctionsChange, compact,
+  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1624,7 +1618,7 @@ function PersonGrid({
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
-  compact?: boolean
+  simplified?: boolean
   onDateClick?: (date: string) => void
   isGenerating?: boolean
 }) {
@@ -1862,7 +1856,7 @@ function PersonGrid({
                               shiftTimes={shiftTimes}
                               shiftTypes={data?.shiftTypes ?? []}
                               isPublished={isPublished}
-                              compact={compact}
+                              simplified={simplified}
                               onShiftChange={async (newShift) => {
                                 if (!newShift) {
                                   patchLocalAssignment(assignment.id, { _removed: true })
@@ -1893,6 +1887,7 @@ function PersonGrid({
                                   assignment={assignment}
                                   shiftTimes={shiftTimes}
                                   tecnica={tecnica}
+                                  simplified={simplified}
                                 />
                               </div>
                             </AssignmentPopover>
@@ -1905,7 +1900,7 @@ function PersonGrid({
                             shiftTimes={shiftTimes}
                             shiftTypes={data?.shiftTypes ?? []}
                             isPublished={false}
-                            compact={compact}
+                            simplified={simplified}
                             isOff
                             onShiftChange={async (newShift) => {
                               if (!newShift) return
@@ -1932,6 +1927,17 @@ function PersonGrid({
           </Fragment>
         ))}
       </div>
+      {/* Shift legend — shown in simplified mode */}
+      {simplified && shiftTimes && Object.keys(shiftTimes).length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-border bg-muted/50">
+          {Object.entries(shiftTimes).map(([code, time]) => (
+            <span key={code} className="text-[11px] text-muted-foreground">
+              <span className="font-semibold" style={{ color: "#2C3E6B" }}>{code}</span>
+              {" "}{time.start}–{time.end}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -2095,7 +2101,7 @@ function TransposedPersonGrid({
                           shiftTimes={shiftTimes}
                           shiftTypes={data?.shiftTypes ?? []}
                           isPublished={false}
-                          compact
+                          simplified
                           onShiftChange={async (newShift) => {
                             if (!newShift) {
                               setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.filter((a) => a.id !== assignment.id) })))
@@ -2121,7 +2127,7 @@ function TransposedPersonGrid({
                         shiftTimes={shiftTimes}
                         shiftTypes={data?.shiftTypes ?? []}
                         isPublished={false}
-                        compact
+                        simplified
                         isOff
                         onShiftChange={async (newShift) => {
                           if (!newShift) return
@@ -3958,6 +3964,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
   const [compact, setCompact] = useState(false)
+  const [personSimplified, setPersonSimplified] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("labrota_person_simplified") === "true"
+  })
   const [daysAsRows, setDaysAsRows] = useState(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("labrota_days_as_rows") === "true"
@@ -4591,7 +4601,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onClick: () => setCompact((c) => !c),
                 active: compact,
                 dividerBefore: true,
-              }, {
+              },
+              ...(calendarLayout === "person" ? [{
+                label: locale === "es" ? "Vista simplificada" : "Simplified view",
+                icon: <Filter className="size-3.5" />,
+                onClick: () => { const next = !personSimplified; setPersonSimplified(next); localStorage.setItem("labrota_person_simplified", String(next)) },
+                active: personSimplified,
+              }] : []),
+              {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: () => { const next = !colorChips; setColorChips(next); localStorage.setItem("labrota_color_chips", String(next)) },
@@ -4720,7 +4737,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   {weekData?.rotaDisplayMode === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} />
                   ) : calendarLayout === "person" ? (
-                    <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} compact={compact} />
+                    <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
                   ) : (
                     <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
                   )}
@@ -4890,7 +4907,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  compact={compact}
+                  simplified={personSimplified}
                 />
               ))}
             </div>
