@@ -164,21 +164,32 @@ export function TransposedShiftGrid({
 
             return (
               <>
-                {/* Row header */}
+                {/* Row header — matches transposed PersonGrid style */}
                 <div
                   key={`h-${day.date}`}
                   className={cn(
-                    "border-b border-r border-border px-2 py-2 flex flex-col justify-center bg-muted/50",
-                    isSat && "border-t border-dashed",
-                    isToday && "bg-primary/5"
+                    "border-b border-r border-border px-2 py-2 flex items-center justify-end gap-1.5 bg-muted sticky left-0 z-10 cursor-pointer hover:bg-muted/80",
+                    holiday && "bg-amber-50/60"
                   )}
+                  style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
+                  onClick={() => onChipClick?.({ staff_id: "" } as any, day.date)}
                 >
                   <div className="flex items-center gap-1">
-                    <span className={cn("text-[10px] uppercase tracking-wider text-muted-foreground", isToday && "text-primary font-semibold")}>{wday}</span>
-                    <span className={cn("text-[15px] font-semibold", isToday ? "text-primary" : "text-foreground")}>{dayNum}</span>
-                    {day.warnings.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
+                    <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                    <span className={cn(
+                      "font-semibold leading-none",
+                      isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
+                    )}>
+                      {dayNum}
+                    </span>
                   </div>
-                  {holiday && <span className="text-[9px] text-amber-600 truncate leading-tight">{holiday}</span>}
+                  {day.warnings.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
+                  {holiday && (
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
+                      <TooltipContent side="right">{holiday}</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
 
                 {/* Shift cells */}
