@@ -53,19 +53,21 @@ export function SettingsImplementation({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Import link — above the steps, only when not complete */}
-      {!allDone && (
-        <Link
-          href="/onboarding/import"
-          className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent/50 transition-colors"
-        >
-          <Upload className="size-4 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium">Importar guardias históricas</p>
-            <p className="text-[11px] text-muted-foreground">Configura tu laboratorio automáticamente a partir de archivos de guardias anteriores.</p>
-          </div>
-        </Link>
-      )}
+      {/* Import link — always visible */}
+      <Link
+        href="/onboarding/import"
+        className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent/50 transition-colors"
+      >
+        <Upload className="size-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium">Importar guardias históricas</p>
+          <p className="text-[11px] text-muted-foreground">
+            {allDone
+              ? "Importa archivos de guardias para actualizar equipo, turnos o reglas. Se creará una copia de seguridad automática antes de aplicar cambios."
+              : "Configura tu laboratorio automáticamente a partir de archivos de guardias anteriores."}
+          </p>
+        </div>
+      </Link>
 
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         {allDone ? (

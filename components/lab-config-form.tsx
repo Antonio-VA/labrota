@@ -233,17 +233,23 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                   )
                 })}
               </tr>
-              {/* Biopsias row — auto-calculated */}
+              {/* Biopsias row — auto-calculated with D5/D6 offset */}
               <tr className="bg-muted/10">
                 <td className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
                   Biopsias
-                  <span className="text-[10px] text-muted-foreground/60 ml-1">Auto</span>
+                  <span className="text-[10px] text-muted-foreground/60 ml-1">D5/D6</span>
                 </td>
-                {DAY_KEYS.map((day) => {
+                {DAY_KEYS.map((day, dayIdx) => {
                   const isWeekend = day === "sat" || day === "sun"
-                  const punctions = values.punctions_by_day[day] ?? 0
                   const rate = values.biopsy_conversion_rate ?? 0.5
-                  const biopsies = Math.round(punctions * rate)
+                  const d5Pct = values.biopsy_day5_pct ?? 0.5
+                  const d6Pct = values.biopsy_day6_pct ?? 0.5
+                  // D5: 5 days before this weekday, D6: 6 days before
+                  const d5DayIdx = ((dayIdx - 5) % 7 + 7) % 7
+                  const d6DayIdx = ((dayIdx - 6) % 7 + 7) % 7
+                  const p5 = values.punctions_by_day[DAY_KEYS[d5DayIdx]] ?? 0
+                  const p6 = values.punctions_by_day[DAY_KEYS[d6DayIdx]] ?? 0
+                  const biopsies = Math.round(p5 * rate * d5Pct + p6 * rate * d6Pct)
                   return (
                     <td key={day} className={cn("px-1 py-1.5 text-center text-muted-foreground", isWeekend && "bg-muted/30")}>
                       <span className="text-[13px]">{biopsies}</span>
@@ -255,7 +261,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </table>
         </div>
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          Las biopsias se calculan automáticamente a partir de las punciones según la tasa de conversión configurada más abajo.
+          Las biopsias se calculan automáticamente a partir de las punciones de 5 y 6 días antes (D5/D6), según la tasa de conversión y distribución configuradas más abajo.
         </p>
       </div>
 

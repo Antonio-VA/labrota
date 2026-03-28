@@ -137,9 +137,9 @@ export function TransposedShiftGrid({
             const st = shiftTypeMap[code]
             return (
               <div key={code} className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
-                <p className="text-[11px] font-semibold text-foreground">{code}</p>
+                <p className="text-[13px] font-semibold text-foreground">{code}</p>
                 {st && (
-                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                  <p className="text-[11px] text-muted-foreground tabular-nums">
                     {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}
                   </p>
                 )}
@@ -174,6 +174,7 @@ export function TransposedShiftGrid({
                   style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
                   onClick={() => onChipClick?.({ staff_id: "" } as any, day.date)}
                 >
+                  {day.warnings.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
                     <span className={cn(
@@ -183,7 +184,6 @@ export function TransposedShiftGrid({
                       {dayNum}
                     </span>
                   </div>
-                  {day.warnings.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
                   {holiday && (
                     <Tooltip>
                       <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
@@ -229,7 +229,9 @@ export function TransposedShiftGrid({
                                 compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]"
                               )}
                               style={{
-                                borderLeft: colorChips ? undefined : `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`,
+                                borderLeft: colorChips
+                                  ? `3px solid ${sColor || "#D4D4D8"}`
+                                  : `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`,
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
@@ -292,7 +294,12 @@ export function TransposedShiftGrid({
       <DragOverlay>
         {activeAssignment && (
           <div className="opacity-90 shadow-lg rounded border border-border bg-background px-2 py-1 text-[11px] font-medium"
-            style={{ borderLeft: colorChips ? undefined : `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+            style={{
+              borderLeft: colorChips
+                ? `3px solid ${staffColorMap[activeAssignment.assignment.staff_id] || "#D4D4D8"}`
+                : `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`,
+              borderRadius: 4,
+            }}
           >
             {activeAssignment.assignment.staff.first_name} {activeAssignment.assignment.staff.last_name[0]}.
           </div>

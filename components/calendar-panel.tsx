@@ -2049,6 +2049,7 @@ function TransposedPersonGrid({
                 style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
                 onClick={() => onDateClick?.(day.date)}
               >
+                {day.warnings?.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
                   <span className={cn(
@@ -2058,6 +2059,12 @@ function TransposedPersonGrid({
                     {dayN}
                   </span>
                 </div>
+                {holiday && (
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
+                    <TooltipContent side="right">{holiday}</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
 
               {/* Staff cells for this day */}
@@ -4535,31 +4542,32 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 active: daysAsRows,
               }] : [])] : []),
               // ── Favorite view ──
-              ...[{
-                label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
-                icon: <Star className={cn("size-3.5", favoriteView ? "text-amber-400 fill-amber-400" : "")} />,
-                onClick: () => {
-                  const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-                  setFavoriteView(fav)
-                  localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                  saveUserPreferences({ favoriteView: fav } as any)
-                  toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
-                },
-                dividerBefore: true,
-              },
-              ...(favoriteView ? [{
-                label: locale === "es" ? "Restaurar vista favorita" : "Restore favorite view",
-                icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
-                onClick: () => {
-                  setView(favoriteView.view as ViewMode)
-                  setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-                  setDaysAsRows(favoriteView.daysAsRows); localStorage.setItem("labrota_days_as_rows", String(favoriteView.daysAsRows))
-                  setCompact(favoriteView.compact)
-                  setColorChips(favoriteView.colorChips); localStorage.setItem("labrota_color_chips", String(favoriteView.colorChips))
-                  setHighlightHover(favoriteView.highlightEnabled)
-                  toast.success(locale === "es" ? "Vista favorita restaurada" : "Favorite view restored")
-                },
-              }] : [])],
+              ...(() => {
+                const isFav = favoriteView
+                  && favoriteView.view === view
+                  && favoriteView.calendarLayout === calendarLayout
+                  && favoriteView.daysAsRows === daysAsRows
+                  && favoriteView.compact === compact
+                  && favoriteView.colorChips === colorChips
+                  && favoriteView.highlightEnabled === highlightHover
+                return isFav ? [{
+                  label: locale === "es" ? "Vista favorita" : "Favorite view",
+                  icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
+                  onClick: () => {},
+                  dividerBefore: true,
+                }] : [{
+                  label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
+                  icon: <Star className="size-3.5" />,
+                  onClick: () => {
+                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+                    setFavoriteView(fav)
+                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+                    saveUserPreferences({ favoriteView: fav } as any)
+                    toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
+                  },
+                  dividerBefore: true,
+                }]
+              })(),
               // Templates moved to Group 2b (after exports)
               // ── Group 4b: History (week view with assignments) ──
               ...(view === "week" && hasAssignments ? [{

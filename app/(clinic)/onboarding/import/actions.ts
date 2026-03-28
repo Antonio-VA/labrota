@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
+import { createBackup } from "@/app/admin/backup-actions"
 import type { ExtractedData, ImportResult } from "@/lib/types/import"
 import type { RotaRuleType } from "@/lib/types/database"
 
@@ -25,6 +26,9 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
   const counts = { staff: 0, shifts: 0, techniques: 0, rules: 0 }
 
   try {
+    // ── 0. Auto backup before import ──────────────────────────────────────
+    await createBackup(orgId, "auto", "Pre-importación automática")
+
     // ── 1. Import Staff ─────────────────────────────────────────────────────
     const staffToInsert = data.staff.filter((s) => s.included)
     const staffIdMap: Record<string, string> = {} // name → id
