@@ -21,6 +21,42 @@ import {
   bulkUpdateStaffField,
 } from "@/app/(clinic)/staff/actions"
 
+// ── Inline color picker for edit mode ─────────────────────────────────────────
+
+const STAFF_COLORS = [
+  "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
+  "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
+  "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+]
+
+function StaffColorDot({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button type="button" onClick={() => setOpen(!open)} className="size-3.5 rounded-full ring-1 ring-border hover:ring-primary cursor-pointer" style={{ backgroundColor: color }} />
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-1.5 w-[140px]">
+          <div className="grid grid-cols-8 gap-0.5">
+            {STAFF_COLORS.map((c) => (
+              <button key={c} type="button" onClick={() => { onChange(c); setOpen(false) }}
+                className={cn("size-3.5 rounded-full hover:scale-125 transition-transform", c === color && "ring-2 ring-primary ring-offset-1")}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 // Legacy skill names → Spanish display names (fallback for old data)
@@ -740,7 +776,11 @@ function StaffTable({
 
             {/* Name */}
             <div className="flex items-center gap-2 min-w-0 pr-2">
-              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: member.color || "#D4D4D8" }} />
+              {editMode && setEditValue ? (
+                <StaffColorDot color={String(getVal?.(member, "color") ?? member.color ?? "#D4D4D8")} onChange={(c) => setEditValue(member.id, "color", c)} />
+              ) : (
+                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: member.color || "#D4D4D8" }} />
+              )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   <Link href={`/staff/${member.id}`} className="text-[14px] font-medium truncate hover:text-primary transition-colors">
@@ -840,7 +880,8 @@ function StaffTable({
             {visibleCols.has("shiftPrefs") && (
               <div className="hidden md:flex items-center gap-0.5 flex-wrap">
                 {(() => {
-                  const prefs = String(getVal?.(member, "preferred_shift") ?? member.preferred_shift ?? "").split(",").filter(Boolean)
+                  const rawPref = getVal?.(member, "preferred_shift") ?? member.preferred_shift
+                  const prefs = (rawPref ? String(rawPref) : "").split(",").filter(Boolean)
                   const avoids = (getVal?.(member, "avoid_shifts") ?? member.avoid_shifts ?? []) as string[]
                   return editMode && setEditValue ? (
                     shiftTypes.filter((st) => st.active !== false).map((st) => {
@@ -850,10 +891,10 @@ function StaffTable({
                         <button key={st.code} type="button" onClick={() => {
                           if (!isPref && !isAvoid) {
                             // neutral → prefer
-                            setEditValue(member.id, "preferred_shift", [...prefs, st.code].join(",") || null)
+                            setEditValue(member.id, "preferred_shift", [...prefs, st.code].join(","))
                           } else if (isPref) {
                             // prefer → avoid
-                            setEditValue(member.id, "preferred_shift", prefs.filter((c) => c !== st.code).join(",") || null)
+                            setEditValue(member.id, "preferred_shift", prefs.filter((c) => c !== st.code).join(","))
                             setEditValue(member.id, "avoid_shifts", [...avoids, st.code])
                           } else {
                             // avoid → neutral
