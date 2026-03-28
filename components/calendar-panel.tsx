@@ -1721,7 +1721,7 @@ function PersonGrid({
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
         {/* Header row — matches by-shift view */}
-        <div className="border-r border-border bg-muted sticky left-0 z-10" style={{ minHeight: 52 }} />
+        <div className="border-r border-b border-border bg-muted sticky left-0 z-10" style={{ minHeight: 52 }} />
         {days.map((day) => {
           const d       = new Date(day.date + "T12:00:00")
           const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -1782,7 +1782,7 @@ function PersonGrid({
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className={cn("px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5", groupIdx > 0 && "border-t")}
+              className="px-3 py-1 bg-muted flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
