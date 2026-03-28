@@ -403,6 +403,9 @@ export function StaffForm({
       </Section>
 
       <Section label={t("fields.preferredShift")}>
+        <p className="text-[12px] text-muted-foreground mb-2">
+          {t("daysPreferredHint3")}
+        </p>
         <div className="flex gap-2 flex-wrap">
           {shiftTypes.filter((st) => st.active !== false).map((st) => {
             const isPref = preferredShifts.includes(st.code)
@@ -415,7 +418,7 @@ export function StaffForm({
                 disabled={isPending}
                 title={`${st.name_es} (${st.start_time}–${st.end_time})`}
                 className={cn(
-                  "h-8 px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
+                  "h-8 min-w-[48px] px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
                   isPref
                     ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
                     : isAvoid

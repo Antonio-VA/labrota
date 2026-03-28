@@ -625,28 +625,25 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-type ColKey = "role" | "capacidades" | "training" | "status" | "preferredShift" | "avoidShifts" | "preferredDays" | "avoidDays" | "daysPerWeek" | "workingPattern"
+type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
   capacidades: "minmax(0,3fr)",
   training: "minmax(200px,2.5fr)",
   status: "minmax(100px,0.8fr)",
-  preferredShift: "minmax(80px,0.8fr)",
-  avoidShifts: "minmax(80px,0.8fr)",
-  preferredDays: "minmax(100px,1fr)",
-  avoidDays: "minmax(100px,1fr)",
+  shiftPrefs: "minmax(120px,1.2fr)",
+  dayPrefs: "minmax(120px,1.2fr)",
   daysPerWeek: "minmax(55px,0.5fr)",
   workingPattern: "minmax(100px,1fr)",
 }
 
 function buildGrid(cols: Set<ColKey>) {
-  // checkbox + name are always present
   const parts = ["32px", "minmax(0,1.5fr)"]
-  for (const key of ["role", "capacidades", "training", "status", "preferredShift", "avoidShifts", "preferredDays", "avoidDays", "daysPerWeek", "workingPattern"] as ColKey[]) {
+  for (const key of ["role", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
-  parts.push("40px") // edit button
+  parts.push("40px")
   return parts.join(" ")
 }
 
@@ -659,7 +656,6 @@ function StaffTable({
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,
   visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
-  roleFilter, onRoleFilter, statusFilter, onStatusFilter, skillFilter, onSkillFilter, allSkillCodes,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -680,14 +676,6 @@ function StaffTable({
   getVal?: (s: StaffWithSkills, field: string) => unknown
   setEditValue?: (staffId: string, field: string, value: unknown) => void
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
-  // Inline header filters
-  roleFilter?: StaffRole | "all"
-  onRoleFilter?: (v: StaffRole | "all") => void
-  statusFilter?: OnboardingStatus | "all"
-  onStatusFilter?: (v: OnboardingStatus | "all") => void
-  skillFilter?: string
-  onSkillFilter?: (v: string) => void
-  allSkillCodes?: string[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -707,48 +695,12 @@ function StaffTable({
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
-        {visibleCols.has("role") && (
-          <div className="flex flex-col gap-0.5">
-            <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
-            {onRoleFilter && (
-              <select value={roleFilter} onChange={(e) => onRoleFilter(e.target.value as StaffRole | "all")} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
-                <option value="all">{t("allRoles")}</option>
-                <option value="lab">{t("roles.lab")}</option>
-                <option value="andrology">{t("roles.andrology")}</option>
-                <option value="admin">{t("roles.admin")}</option>
-              </select>
-            )}
-          </div>
-        )}
-        {visibleCols.has("capacidades") && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
-            {onSkillFilter && allSkillCodes && allSkillCodes.length > 0 && (
-              <select value={skillFilter} onChange={(e) => onSkillFilter(e.target.value)} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
-                <option value="all">{t("allSkills")}</option>
-                {allSkillCodes.map((code) => <option key={code} value={code}>{skillLabel(code)}</option>)}
-              </select>
-            )}
-          </div>
-        )}
+        {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
+        {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
         {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
-        {visibleCols.has("status") && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
-            {onStatusFilter && (
-              <select value={statusFilter} onChange={(e) => onStatusFilter(e.target.value as OnboardingStatus | "all")} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
-                <option value="all">{t("allStatuses")}</option>
-                <option value="active">{t("onboardingStatus.active")}</option>
-                <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-                <option value="inactive">{t("onboardingStatus.inactive")}</option>
-              </select>
-            )}
-          </div>
-        )}
-        {visibleCols.has("preferredShift") && <span className="text-[13px] font-medium text-muted-foreground">Prefiere</span>}
-        {visibleCols.has("avoidShifts") && <span className="text-[13px] font-medium text-muted-foreground">Evita</span>}
-        {visibleCols.has("preferredDays") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
-        {visibleCols.has("avoidDays") && <span className="text-[13px] font-medium text-muted-foreground">Días evitar</span>}
+        {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
+        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Turnos</span>}
+        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
         {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
         {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
         <span />
@@ -858,106 +810,112 @@ function StaffTable({
             {/* Status */}
             {visibleCols.has("status") && (
               <div className="hidden md:flex items-center">
-                <span className={cn(
-                  "text-[13px] font-medium",
-                  member.onboarding_status === "active"      && "text-emerald-600",
-                  member.onboarding_status === "onboarding"  && "text-amber-600",
-                  member.onboarding_status === "inactive"    && "text-muted-foreground",
-                )}>
-                  {t(`onboardingStatus.${member.onboarding_status}`)}
-                </span>
-              </div>
-            )}
-
-            {/* Preferred Shift */}
-            {visibleCols.has("preferredShift") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
                 {editMode && setEditValue ? (
-                  shiftTypes.filter((st) => st.active !== false).map((st) => {
-                    const prefs = String(getVal?.(member, "preferred_shift") ?? "").split(",").filter(Boolean)
-                    const active = prefs.includes(st.code)
-                    return (
-                      <button key={st.code} type="button" onClick={() => {
-                        const next = active ? prefs.filter((c) => c !== st.code) : [...prefs, st.code]
-                        setEditValue(member.id, "preferred_shift", next.join(",") || null)
-                      }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", active ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : "border-border text-muted-foreground")}>
-                        {st.code}
-                      </button>
-                    )
-                  })
+                  <select
+                    value={String(getVal?.(member, "onboarding_status") ?? member.onboarding_status)}
+                    onChange={(e) => setEditValue(member.id, "onboarding_status", e.target.value)}
+                    className={cn("h-7 rounded border border-input bg-transparent px-1.5 text-[12px] outline-none font-medium",
+                      (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "active" ? "text-emerald-600" :
+                      (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "onboarding" ? "text-amber-600" : "text-muted-foreground"
+                    )}
+                  >
+                    <option value="active">{t("onboardingStatus.active")}</option>
+                    <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+                    <option value="inactive">{t("onboardingStatus.inactive")}</option>
+                  </select>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground">{member.preferred_shift?.split(",").filter(Boolean).join(", ") || "—"}</span>
-                )}
-              </div>
-            )}
-
-            {/* Avoid Shifts */}
-            {visibleCols.has("avoidShifts") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {editMode && setEditValue ? (
-                  shiftTypes.filter((st) => st.active !== false).map((st) => {
-                    const avoids = (getVal?.(member, "avoid_shifts") as string[] | null) ?? []
-                    const active = avoids.includes(st.code)
-                    return (
-                      <button key={st.code} type="button" onClick={() => {
-                        const next = active ? avoids.filter((c) => c !== st.code) : [...avoids, st.code]
-                        setEditValue(member.id, "avoid_shifts", next)
-                      }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", active ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
-                        {st.code}
-                      </button>
-                    )
-                  })
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">{(member.avoid_shifts ?? []).join(", ") || "—"}</span>
-                )}
-              </div>
-            )}
-
-            {/* Preferred Days */}
-            {visibleCols.has("preferredDays") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {editMode && setEditValue ? (
-                  ALL_DAYS_TABLE.map((d) => {
-                    const pDays = (getVal?.(member, "preferred_days") as string[] | null) ?? []
-                    const active = pDays.includes(d)
-                    return (
-                      <button key={d} type="button" onClick={() => {
-                        const next = active ? pDays.filter((x) => x !== d) : [...pDays, d]
-                        setEditValue(member.id, "preferred_days", next)
-                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : "border-border text-muted-foreground")}>
-                        {DAY_LABELS[d]}
-                      </button>
-                    )
-                  })
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">
-                    {(member.preferred_days ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
+                  <span className={cn(
+                    "text-[13px] font-medium",
+                    member.onboarding_status === "active"      && "text-emerald-600",
+                    member.onboarding_status === "onboarding"  && "text-amber-600",
+                    member.onboarding_status === "inactive"    && "text-muted-foreground",
+                  )}>
+                    {t(`onboardingStatus.${member.onboarding_status}`)}
                   </span>
                 )}
               </div>
             )}
 
-            {/* Avoid Days */}
-            {visibleCols.has("avoidDays") && (
+            {/* Shift preferences (combined: neutral/prefer/avoid) */}
+            {visibleCols.has("shiftPrefs") && (
               <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {editMode && setEditValue ? (
-                  ALL_DAYS_TABLE.map((d) => {
-                    const aDays = (getVal?.(member, "avoid_days") as string[] | null) ?? []
-                    const active = aDays.includes(d)
-                    return (
-                      <button key={d} type="button" onClick={() => {
-                        const next = active ? aDays.filter((x) => x !== d) : [...aDays, d]
-                        setEditValue(member.id, "avoid_days", next)
-                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
-                        {DAY_LABELS[d]}
-                      </button>
-                    )
-                  })
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">
-                    {(member.avoid_days ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
-                  </span>
-                )}
+                {(() => {
+                  const prefs = String(getVal?.(member, "preferred_shift") ?? member.preferred_shift ?? "").split(",").filter(Boolean)
+                  const avoids = (getVal?.(member, "avoid_shifts") ?? member.avoid_shifts ?? []) as string[]
+                  return editMode && setEditValue ? (
+                    shiftTypes.filter((st) => st.active !== false).map((st) => {
+                      const isPref = prefs.includes(st.code)
+                      const isAvoid = avoids.includes(st.code)
+                      return (
+                        <button key={st.code} type="button" onClick={() => {
+                          if (!isPref && !isAvoid) {
+                            // neutral → prefer
+                            setEditValue(member.id, "preferred_shift", [...prefs, st.code].join(",") || null)
+                          } else if (isPref) {
+                            // prefer → avoid
+                            setEditValue(member.id, "preferred_shift", prefs.filter((c) => c !== st.code).join(",") || null)
+                            setEditValue(member.id, "avoid_shifts", [...avoids, st.code])
+                          } else {
+                            // avoid → neutral
+                            setEditValue(member.id, "avoid_shifts", avoids.filter((c) => c !== st.code))
+                          }
+                        }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", isPref ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : isAvoid ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                          {st.code}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <span className="text-[12px] text-muted-foreground">
+                      {prefs.length > 0 || avoids.length > 0 ? (
+                        <>
+                          {prefs.map((c) => <span key={c} className="text-[#2C3E6B] font-medium">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {prefs.length > 0 && avoids.length > 0 && " · "}
+                          {avoids.map((c) => <span key={c} className="text-[#B91C1C]">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                        </>
+                      ) : "—"}
+                    </span>
+                  )
+                })()}
+              </div>
+            )}
+
+            {/* Day preferences (combined: neutral/prefer/avoid) */}
+            {visibleCols.has("dayPrefs") && (
+              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                {(() => {
+                  const pDays = (getVal?.(member, "preferred_days") ?? member.preferred_days ?? []) as string[]
+                  const aDays = (getVal?.(member, "avoid_days") ?? member.avoid_days ?? []) as string[]
+                  return editMode && setEditValue ? (
+                    ALL_DAYS_TABLE.map((d) => {
+                      const isPref = pDays.includes(d)
+                      const isAvoid = aDays.includes(d)
+                      return (
+                        <button key={d} type="button" onClick={() => {
+                          if (!isPref && !isAvoid) {
+                            setEditValue(member.id, "preferred_days", [...pDays, d])
+                          } else if (isPref) {
+                            setEditValue(member.id, "preferred_days", pDays.filter((x) => x !== d))
+                            setEditValue(member.id, "avoid_days", [...aDays, d])
+                          } else {
+                            setEditValue(member.id, "avoid_days", aDays.filter((x) => x !== d))
+                          }
+                        }} className={cn("size-5 rounded text-[9px] font-medium border", isPref ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : isAvoid ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                          {DAY_LABELS[d]}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <span className="text-[12px] text-muted-foreground">
+                      {pDays.length > 0 || aDays.length > 0 ? (
+                        <>
+                          {pDays.map((d) => <span key={d} className="text-[#2C3E6B] font-medium">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {pDays.length > 0 && aDays.length > 0 && " · "}
+                          {aDays.map((d) => <span key={d} className="text-[#B91C1C]">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                        </>
+                      ) : "—"}
+                    </span>
+                  )
+                })()}
               </div>
             )}
 
@@ -1039,7 +997,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   // Column visibility
-  type ColKey = "role" | "capacidades" | "training" | "status" | "preferredShift" | "avoidShifts" | "preferredDays" | "avoidDays" | "daysPerWeek" | "workingPattern"
+  type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => new Set(DEFAULT_COLS))
   const [showColMenu, setShowColMenu] = useState(false)
@@ -1058,10 +1016,8 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     { key: "capacidades", label: "Técnicas" },
     { key: "training", label: "En formación" },
     { key: "status", label: "Estado" },
-    { key: "preferredShift", label: "Turno preferido" },
-    { key: "avoidShifts", label: "Turno evitar" },
-    { key: "preferredDays", label: "Días preferidos" },
-    { key: "avoidDays", label: "Días evitar" },
+    { key: "shiftPrefs", label: "Preferencia turno" },
+    { key: "dayPrefs", label: "Preferencia días" },
     { key: "daysPerWeek", label: "Días/semana" },
     { key: "workingPattern", label: "Patrón trabajo" },
   ]
@@ -1196,12 +1152,33 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
-        <Input
-          placeholder={t("searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-56 h-9"
-        />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Input
+            placeholder={t("searchPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-48 h-8 text-[13px]"
+          />
+          {/* Compact filter chips */}
+          <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value as StaffRole | "all"); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
+            <option value="all">{t("allRoles")}</option>
+            <option value="lab">{t("roles.lab")}</option>
+            <option value="andrology">{t("roles.andrology")}</option>
+            <option value="admin">{t("roles.admin")}</option>
+          </select>
+          {allSkillCodes.length > 0 && (
+            <select value={skillFilter} onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
+              <option value="all">{t("allSkills")}</option>
+              {allSkillCodes.map((code) => <option key={code} value={code}>{skillLabel(code)}</option>)}
+            </select>
+          )}
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
+            <option value="all">{t("allStatuses")}</option>
+            <option value="active">{t("onboardingStatus.active")}</option>
+            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+            <option value="inactive">{t("onboardingStatus.inactive")}</option>
+          </select>
+        </div>
         <div className="flex items-center gap-2">
           {/* Column toggle */}
           <div className="relative" ref={colMenuRef}>
@@ -1226,14 +1203,22 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           </div>
           {/* Edit mode toggle */}
           {editMode ? (
-            <button
-              onClick={saveEdits}
-              disabled={isSaving}
-              className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Save className="size-3.5" />
-              {isSaving ? "Guardando..." : "Guardar"}
-            </button>
+            <>
+              <button
+                onClick={() => { setEditDirty(new Map()); setEditMode(false) }}
+                className="h-9 px-3 rounded-lg border border-input text-[13px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+              >
+                {t("cancel") ?? "Cancelar"}
+              </button>
+              <button
+                onClick={saveEdits}
+                disabled={isSaving}
+                className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Save className="size-3.5" />
+                {isSaving ? "Guardando..." : "Guardar"}
+              </button>
+            </>
           ) : (
             <button
               onClick={() => setEditMode(true)}
@@ -1290,13 +1275,6 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           getVal={getVal}
           setEditValue={setEditValue}
           shiftTypes={shiftTypes}
-          roleFilter={roleFilter}
-          onRoleFilter={(v) => { setRoleFilter(v); clearSelection() }}
-          statusFilter={statusFilter}
-          onStatusFilter={(v) => { setStatusFilter(v); clearSelection() }}
-          skillFilter={skillFilter}
-          onSkillFilter={(v) => { setSkillFilter(v); clearSelection() }}
-          allSkillCodes={allSkillCodes}
         />
       )}
 
