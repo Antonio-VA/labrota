@@ -3627,13 +3627,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
+    // Don't clear weekData — keep showing previous data as background while loading
+    // This prevents the empty flash between shimmer and content
     getRotaWeek(ws).then((d) => {
-      if (fetchVersionRef.current !== version) return // stale — ignore
+      if (fetchVersionRef.current !== version) return
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
+      setWeekData(null)
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
@@ -4144,9 +4147,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {/* Week view */}
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-              {(loadingWeek || isPending || !weekData) ? (
-                /* Loading or no data yet — always show shimmer skeleton */
+            <div className={cn("flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-opacity duration-150", loadingWeek && weekData && "opacity-50 pointer-events-none")} style={{ minHeight: 400 }}>
+              {(!weekData) ? (
+                /* Initial load — full shimmer skeleton */
                 <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
               ) : weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
                 <TransposedTaskGrid
@@ -4665,7 +4668,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
       {/* Bottom taskbar — desktop only, hidden for viewers */}
       <div className="hidden md:block">
-        {canEdit && view === "week" && loadingWeek && (
+        {canEdit && view === "week" && !weekData && loadingWeek && (
           <div className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-2">
             <div className="h-3 w-20 rounded bg-muted animate-pulse" />
             <div className="h-5 w-14 rounded bg-muted animate-pulse" />
@@ -4675,7 +4678,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             <div className="h-5 w-14 rounded bg-muted animate-pulse" />
           </div>
         )}
-        {canEdit && view === "week" && weekData && !loadingWeek && (
+        {canEdit && view === "week" && weekData && (
           <ShiftBudgetBar
             data={weekData}
             staffList={filteredStaffList}
