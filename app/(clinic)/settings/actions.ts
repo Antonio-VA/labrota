@@ -336,4 +336,15 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
   return {}
 }
 
+export async function resetImplementation(): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  // Delete rotas, assignments, snapshots — keep staff, departments, shifts, tasks
+  await admin.from("rota_assignments").delete().eq("organisation_id", orgId)
+  await admin.from("rota_snapshots").delete().eq("organisation_id", orgId)
+  await admin.from("rotas").delete().eq("organisation_id", orgId)
+  revalidatePath("/settings")
+  revalidatePath("/")
+  return {}
+}
+
 export { getOrgId }
