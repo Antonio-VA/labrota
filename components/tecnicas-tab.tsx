@@ -81,8 +81,8 @@ type Draft = {
 }
 
 // ── Table grid ───────────────────────────────────────────────────────────────
-// Columns: drag(24px) | color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | delete(36px)
-const GRID = "24px 28px minmax(100px,1fr) 80px 90px minmax(80px,1fr) 36px"
+const GRID_SHIFT = "24px 28px minmax(100px,1fr) 80px 80px minmax(80px,1fr) 36px"
+const GRID_TASK = "24px 28px minmax(120px,1fr) 80px 80px 36px" // no shifts column for by_task
 
 // ── Multi-select department dropdown ──────────────────────────────────────────
 
@@ -146,12 +146,12 @@ function DeptMultiSelect({ departments, selected, onChange, disabled }: {
 // ── Sortable table row ───────────────────────────────────────────────────────
 
 function SortableRow({
-  tecnica, onChange, onDelete, disabled, shiftCodes, departments, even,
+  tecnica, onChange, onDelete, disabled, shiftCodes, departments, even, rotaDisplayMode = "by_shift",
 }: {
   tecnica: Draft
   onChange: (t: Draft) => void; onDelete: () => void
   disabled: boolean; shiftCodes: string[]; departments: Department[]
-  even: boolean
+  even: boolean; rotaDisplayMode?: string
 }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
@@ -179,7 +179,7 @@ function SortableRow({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, gridTemplateColumns: GRID }}
+      style={{ ...style, gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}
       className={cn(
         "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50",
         even ? "bg-muted/20" : "bg-background",
@@ -226,8 +226,8 @@ function SortableRow({
         disabled={disabled}
       />
 
-      {/* Shifts: 3-state (neutral → prefer → avoid → neutral) */}
-      <div className="flex gap-0.5 items-center">
+      {/* Shifts: 3-state — only for by_shift mode */}
+      {rotaDisplayMode !== "by_task" && <div className="flex gap-0.5 items-center">
         {shiftCodes.map((shift) => {
           const isPref = tecnica.typical_shifts.includes(shift)
           const isAvoid = tecnica.avoid_shifts.includes(shift)
@@ -250,7 +250,7 @@ function SortableRow({
             </button>
           )
         })}
-      </div>
+      </div>}
 
       {/* Delete */}
       <button
@@ -267,7 +267,7 @@ function SortableRow({
 
 let _counter = 0
 
-export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"], departments = [] }: { initialTecnicas: Tecnica[]; shiftCodes?: string[]; departments?: Department[] }) {
+export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"], departments = [], rotaDisplayMode = "by_shift" }: { initialTecnicas: Tecnica[]; shiftCodes?: string[]; departments?: Department[]; rotaDisplayMode?: string }) {
   const t = useTranslations("tecnicas")
   const tc = useTranslations("common")
   const [tecnicas, setTecnicas] = useState<Draft[]>(
@@ -401,13 +401,13 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
 
       {/* Table header — sticky */}
       {tecnicas.length > 0 && (
-        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border" style={{ gridTemplateColumns: GRID }}>
+        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border" style={{ gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}>
           <span />
           <span />
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("nameEs")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("shortName")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("department")}</span>
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Turnos</span>
+          {rotaDisplayMode !== "by_task" && <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Turnos</span>}
           <span />
         </div>
       )}
@@ -432,6 +432,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
                   shiftCodes={shiftCodes}
                   departments={departments}
                   even={idx % 2 === 0}
+                  rotaDisplayMode={rotaDisplayMode}
                 />
               ))}
             </SortableContext>

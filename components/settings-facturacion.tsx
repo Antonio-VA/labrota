@@ -24,7 +24,7 @@ export function SettingsFacturacion({
           <span className="text-[14px] font-medium">{fmt(billingStart)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[12px] font-medium text-muted-foreground">Fin</span>
+          <span className="text-[12px] font-medium text-muted-foreground">Renovación</span>
           <span className="text-[14px] font-medium">{fmt(billingEnd)}</span>
         </div>
         <div className="flex flex-col gap-0.5">

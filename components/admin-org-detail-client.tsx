@@ -325,9 +325,10 @@ export function AdminOrgDetailClient({
             </button>
           </div>
 
+          {displayMode === "by_shift" && (<>
           <div className="h-px bg-border" />
 
-          {/* Task in shift */}
+          {/* Task in shift — only for by_shift mode */}
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[14px] font-medium">Asignación de tareas en horario por turno</p>
@@ -350,6 +351,7 @@ export function AdminOrgDetailClient({
               )} />
             </button>
           </div>
+          </>)}
         </div>
       </div>
       <div className="pt-3">
@@ -376,7 +378,7 @@ export function AdminOrgDetailClient({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[12px] font-medium text-muted-foreground">Fin</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Renovación</label>
               <Input
                 type="date"
                 value={billing.end ?? ""}

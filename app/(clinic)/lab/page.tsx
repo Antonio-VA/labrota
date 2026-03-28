@@ -96,7 +96,7 @@ export default async function LabConfigPage() {
                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
                   Tareas
                 </p>
-                <TécnicasTab initialTecnicas={tecnicas} shiftCodes={shiftTypes.filter((s) => s.active !== false).map((s) => s.code)} departments={departments} />
+                <TécnicasTab initialTecnicas={tecnicas} shiftCodes={shiftTypes.filter((s) => s.active !== false).map((s) => s.code)} departments={departments} rotaDisplayMode={rotaDisplayMode} />
               </div>
             }
             departamentos={
