@@ -207,8 +207,8 @@ export function StaffForm({
   const [avoidDays, setAvoidDays] = useState<WorkingDay[]>(
     staff?.avoid_days ?? []
   )
-  const [preferredShift, setPreferredShift] = useState<string>(
-    staff?.preferred_shift ?? ""
+  const [preferredShifts, setPreferredShifts] = useState<string[]>(
+    staff?.preferred_shift ? staff.preferred_shift.split(",").filter(Boolean) : []
   )
   const [avoidShifts, setAvoidShifts] = useState<string[]>(
     staff?.avoid_shifts ?? []
@@ -269,14 +269,14 @@ export function StaffForm({
   }
 
   function cycleShiftPreference(code: string) {
-    const isPref = preferredShift === code
+    const isPref = preferredShifts.includes(code)
     const isAvoid = avoidShifts.includes(code)
     if (!isPref && !isAvoid) {
-      // neutral → prefers (exclusive: clear previous preferred)
-      setPreferredShift(code)
+      // neutral → prefers
+      setPreferredShifts((prev) => [...prev, code])
     } else if (isPref) {
       // prefers → avoids
-      setPreferredShift("")
+      setPreferredShifts((prev) => prev.filter((c) => c !== code))
       setAvoidShifts((prev) => [...prev, code])
     } else {
       // avoids → neutral
@@ -405,7 +405,7 @@ export function StaffForm({
       <Section label={t("fields.preferredShift")}>
         <div className="flex gap-2 flex-wrap">
           {shiftTypes.filter((st) => st.active !== false).map((st) => {
-            const isPref = preferredShift === st.code
+            const isPref = preferredShifts.includes(st.code)
             const isAvoid = avoidShifts.includes(st.code)
             return (
               <button
@@ -429,15 +429,15 @@ export function StaffForm({
           })}
         </div>
         <p className="text-[12px] text-muted-foreground mt-1.5">
-          {preferredShift || avoidShifts.length > 0 ? (
+          {preferredShifts.length > 0 || avoidShifts.length > 0 ? (
             <>
-              {preferredShift && <>{t("prefersLabel")} {preferredShift}</>}
-              {preferredShift && avoidShifts.length > 0 && " — "}
+              {preferredShifts.length > 0 && <>{t("prefersLabel")} {preferredShifts.join(", ")}</>}
+              {preferredShifts.length > 0 && avoidShifts.length > 0 && " — "}
               {avoidShifts.length > 0 && <>{t("avoidsLabel")} {avoidShifts.join(", ")}</>}
             </>
           ) : t("fields.preferredShiftNone")}
         </p>
-        <input type="hidden" name="preferred_shift" value={preferredShift} />
+        <input type="hidden" name="preferred_shifts" value={preferredShifts.join(",")} />
         <input type="hidden" name="avoid_shifts" value={avoidShifts.join(",")} />
       </Section>
 

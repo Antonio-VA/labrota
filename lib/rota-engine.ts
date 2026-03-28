@@ -508,13 +508,16 @@ export function runRotaEngine({
 
         const rotation = shiftRotation ?? "stable"
         const staffAvoidShifts = s.avoid_shifts
-        // Resolve effective preferred shift: explicit > inferred
-        const effectivePreferredShift = s.preferred_shift || inferredShiftPref[s.id] || null
+        // Resolve effective preferred shifts: explicit > inferred
+        // preferred_shift may be comma-separated (multi-select) or single value
+        const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+        const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
+        const matchedPrefShift = effectivePrefShifts.find((ps) => dayShiftSet.has(ps))
         if (preferredFromTecnica) {
           shift = preferredFromTecnica as ShiftType
-        } else if (rotation === "stable" && effectivePreferredShift && dayShiftSet.has(effectivePreferredShift)) {
+        } else if (rotation === "stable" && matchedPrefShift) {
           // 2. Staff preferred shift (explicit or inferred from history) — only in stable mode
-          shift = effectivePreferredShift as ShiftType
+          shift = matchedPrefShift as ShiftType
         } else {
           // 3. Rotation logic
           if (rotation === "stable") {
@@ -542,8 +545,11 @@ export function runRotaEngine({
         }
 
         // If assigned shift is in avoid list, try to find a non-avoided alternative
+        // Prefer one of the explicitly preferred shifts if available
         if (staffAvoidShifts?.includes(shift) && defaultShiftCodes.length > 1) {
-          const alternative = defaultShiftCodes.find((sc) =>
+          const alternative = effectivePrefShifts.find((sc) =>
+            !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
+          ) ?? defaultShiftCodes.find((sc) =>
             !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
           )
           if (alternative) {

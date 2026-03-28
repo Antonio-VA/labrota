@@ -53,7 +53,7 @@ function parseFormData(formData: FormData) {
       start_date:        formData.get("start_date") as string,
       end_date:          ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
-      preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
+      preferred_shift:   ((formData.get("preferred_shifts") as string) || (formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
       avoid_shifts:      ((formData.get("avoid_shifts") as string) || "").split(",").filter(Boolean),
       color:             (formData.get("color") as string) || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)],
     },
