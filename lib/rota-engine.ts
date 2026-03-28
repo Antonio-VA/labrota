@@ -427,14 +427,14 @@ export function runRotaEngine({
           }
         }
 
+        const rotation = shiftRotation ?? "stable"
         if (preferredFromTecnica) {
           shift = preferredFromTecnica as ShiftType
-        } else if (s.preferred_shift && dayShiftSet.has(s.preferred_shift)) {
-          // 2. Staff preferred shift
+        } else if (rotation === "stable" && s.preferred_shift && dayShiftSet.has(s.preferred_shift)) {
+          // 2. Staff preferred shift — only in stable mode (daily/weekly rotation overrides this)
           shift = s.preferred_shift as ShiftType
         } else {
-          // 3. Rotation fallback — lowest priority
-          const rotation = shiftRotation ?? "stable"
+          // 3. Rotation logic
           if (rotation === "stable") {
             // Check last week's assignment for this person
             const lastShift = recentAssignments
