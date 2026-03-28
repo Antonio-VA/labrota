@@ -949,7 +949,7 @@ function StaffProfilePanel({
                     <span className="text-muted-foreground capitalize">{formatDate(a.date, locale)}</span>
                     <div className="flex items-center gap-1">
                       <span className="font-medium text-foreground">{a.shift_type}</span>
-                      {a.function_label && (
+                      {a.function_label && !a.function_label.startsWith("dept_") && (
                         <span className="text-[9px] px-1 py-0.5 rounded border bg-blue-50 border-blue-200 text-blue-700 font-semibold">{a.function_label}</span>
                       )}
                     </div>
@@ -1468,15 +1468,20 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 
-function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
+function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled }: {
   assignment: Assignment
   shiftTimes: ShiftTimes | null
   tecnica: Tecnica | null
   onClick?: (e: React.MouseEvent) => void
+  taskDisabled?: boolean
 }) {
   const { shift_type, is_manual_override, function_label } = assignment
   const time = shiftTimes?.[shift_type]
-  const pillLabel = tecnica ? tecnica.codigo : (function_label ?? null)
+
+  // Filter out internal dept_xxx IDs from display
+  const cleanLabel = function_label?.startsWith("dept_") ? null : function_label
+  const showTask = !taskDisabled && (tecnica || cleanLabel)
+  const pillLabel = tecnica ? tecnica.codigo : cleanLabel
   const pillColor = tecnica
     ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
     : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
@@ -1488,22 +1493,22 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick }: {
     <div
       onClick={onClick}
       className={cn(
-        "w-full rounded border px-1.5 py-1 flex flex-col gap-0.5 bg-background select-none",
+        "w-full rounded bg-background select-none flex items-center gap-1.5 px-1.5 py-1.5 min-h-[36px]",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
-        is_manual_override ? "border-primary/40" : "border-border",
       )}
+      style={{ borderLeft: `3px solid ${is_manual_override ? "var(--primary)" : "#94A3B8"}` }}
     >
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-[12px] font-semibold text-foreground">{shift_type}</span>
-        {pillLabel && pillColor && (
-          <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0", pillColor)}>
-            {pillLabel}
+      <div className="flex flex-col gap-0">
+        <span className="text-[13px] font-bold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+        {time && (
+          <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">
+            {time.start}–{time.end}
           </span>
         )}
       </div>
-      {time && (
-        <span className="text-[10px] text-muted-foreground tabular-nums leading-none">
-          {time.start}–{time.end}
+      {showTask && pillLabel && pillColor && (
+        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto", pillColor)}>
+          {pillLabel}
         </span>
       )}
     </div>
@@ -1684,15 +1689,16 @@ function PersonGrid({
                   {days.map((day) => {
                     const assignment = staffAssigns[day.date]
                     const onLeave    = (onLeaveByDate[day.date] ?? []).includes(s.id)
-                    const tecnica    = assignment
-                      ? (assignment.function_label
-                        ? (data.tecnicas ?? []).find((t) => t.codigo === assignment.function_label) ?? null
-                        : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null)
-                      : null
+                    const taskOff = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                    const cleanFnLabel = assignment?.function_label?.startsWith("dept_") ? null : assignment?.function_label
+                    const tecnica    = (taskOff || !assignment) ? null
+                      : cleanFnLabel
+                        ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
+                        : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
                     return (
                       <div
                         key={day.date}
-                        className="px-1.5 py-1.5 border-b border-r last:border-r-0 border-border bg-background min-h-[48px] flex items-center"
+                        className="px-1 py-1 border-b border-r last:border-r-0 border-border bg-background min-h-[48px] flex items-center"
                       >
                         {assignment ? (
                           <AssignmentPopover
@@ -1702,26 +1708,21 @@ function PersonGrid({
                             departments={data?.departments ?? []}
                             onFunctionSave={handleFunctionLabelSave}
                             isPublished={isPublished}
+                            disabled={taskOff}
                           >
-                            <Tooltip>
-                              <TooltipTrigger render={
-                                <div>
-                                  <PersonShiftPill
-                                    assignment={assignment}
-                                    shiftTimes={shiftTimes}
-                                    tecnica={tecnica}
-                                  />
-                                </div>
-                              } />
-                              <TooltipContent side="right">
-                                {assignment.shift_type}{tecnica ? ` · ${tecnica.nombre_es}` : assignment.function_label ? ` · ${assignment.function_label}` : ""}{assignment.function_label && (s.staff_skills ?? []).find((sk) => sk.skill === assignment.function_label)?.level === "training" ? ` · ${t("inTraining")}` : ""}
-                              </TooltipContent>
-                            </Tooltip>
+                            <div onClick={taskOff ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(assignment, day.date) } : undefined} className={taskOff ? "cursor-pointer w-full" : "w-full"}>
+                              <PersonShiftPill
+                                assignment={assignment}
+                                shiftTimes={shiftTimes}
+                                tecnica={tecnica}
+                                taskDisabled={taskOff}
+                              />
+                            </div>
                           </AssignmentPopover>
                         ) : onLeave ? (
-                          <span className="text-[11px] text-muted-foreground italic">{t("leaveShort")}</span>
+                          <span className="text-[11px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground select-none">OFF</span>
+                          <span className="text-[11px] text-muted-foreground select-none w-full text-center">OFF</span>
                         )}
                       </div>
                     )
@@ -2215,9 +2216,10 @@ function ShiftGrid({
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
                     const taskDisabled = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                    const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
                     const tecnica = taskDisabled ? null
-                      : a.function_label
-                      ? (data?.tecnicas ?? []).find((t) => t.codigo === a.function_label) ?? null
+                      : cleanFn
+                      ? (data?.tecnicas ?? []).find((t) => t.codigo === cleanFn) ?? null
                       : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
                     return (
                       <AssignmentPopover
@@ -2239,11 +2241,11 @@ function ShiftGrid({
                                 last={a.staff.last_name}
                                 role={a.staff.role}
                                 isOverride={a.is_manual_override}
-                                functionLabel={taskDisabled ? null : a.function_label}
+                                functionLabel={taskDisabled ? null : cleanFn}
                                 tecnica={tecnica}
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
-                                isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
+                                isTrainingTecnica={!!(cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training")}
                                 colorChips={colorChips}
                                 readOnly={isPublished || taskDisabled}
                                 staffId={a.staff_id}
@@ -2253,7 +2255,7 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : a.function_label ? ` · ${a.function_label}` : ""}{a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training" ? ` · ${t("inTraining")}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
