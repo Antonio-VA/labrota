@@ -4480,6 +4480,45 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     }
                   })
                 },
+              }, {
+                label: locale === "es" ? "Compartir imagen" : "Share image",
+                icon: <Share className="size-3.5" />,
+                onClick: async () => {
+                  const el = document.querySelector("[data-calendar-content]") as HTMLElement
+                  if (!el) return
+                  const { shareCapture } = await import("@/lib/share-capture")
+                  await shareCapture(el, `rota-${weekStart}.png`)
+                },
+              }, {
+                label: locale === "es" ? "Copiar imagen" : "Copy image",
+                icon: <Copy className="size-3.5" />,
+                onClick: async () => {
+                  const el = document.querySelector("[data-calendar-content]") as HTMLElement
+                  if (!el) return
+                  try {
+                    const html2canvas = (await import("html2canvas")).default
+                    const canvas = await html2canvas(el, { backgroundColor: "#ffffff", scale: 2, useCORS: true, logging: false })
+                    canvas.toBlob(async (blob) => {
+                      if (!blob) return
+                      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+                      toast.success(locale === "es" ? "Imagen copiada" : "Image copied")
+                    })
+                  } catch { toast.error(locale === "es" ? "Error al copiar" : "Copy failed") }
+                },
+              }] : []),
+              // ── Group 2b: Templates (moved up, right after export) ──
+              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
+                label: t("saveAsTemplate"),
+                icon: <BookmarkPlus className="size-3.5" />,
+                onClick: () => setSaveTemplateOpen(true),
+              }, {
+                label: t("applyTemplate"),
+                icon: <BookmarkCheck className="size-3.5" />,
+                onClick: () => setApplyTemplateOpen(true),
+              }] : view === "week" && canEdit ? [{
+                label: t("applyTemplate"),
+                icon: <BookmarkCheck className="size-3.5" />,
+                onClick: () => setApplyTemplateOpen(true),
               }] : []),
               // ── Group 3: View options ──
               ...((view === "week" || view === "month") ? [{
@@ -4531,22 +4570,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   toast.success(locale === "es" ? "Vista favorita restaurada" : "Favorite view restored")
                 },
               }] : [])],
-              // ── Group 4: Templates (week view, editors only) ──
-              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
-                label: t("saveAsTemplate"),
-                icon: <BookmarkPlus className="size-3.5" />,
-                onClick: () => setSaveTemplateOpen(true),
-                dividerBefore: true,
-              }, {
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-              }] : view === "week" && canEdit ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-                dividerBefore: true,
-              }] : []),
+              // Templates moved to Group 2b (after exports)
               // ── Group 4b: History (week view with assignments) ──
               ...(view === "week" && hasAssignments ? [{
                 label: t("viewHistory"),
@@ -4623,7 +4647,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {/* Week view */}
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
+            <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
               {/* Shimmer — replaces content during loading */}
               {loadingWeek && (
                 <div className="absolute inset-0 z-10 bg-background">
