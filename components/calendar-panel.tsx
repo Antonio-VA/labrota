@@ -1606,7 +1606,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, compact,
+  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, onPunctionsChange, compact,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1621,6 +1621,7 @@ function PersonGrid({
   colorChips?: boolean
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
   compact?: boolean
   onDateClick?: (date: string) => void
   isGenerating?: boolean
@@ -1764,19 +1765,34 @@ function PersonGrid({
                 </Tooltip>
               )}
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
-              {/* Punciones / Biopsias */}
+              {/* Punciones / Biopsias — editable */}
               {(() => {
                 const pDefault = (punctionsDefault ?? {})[day.date] ?? 0
                 const pEffective = (punctionsOverride ?? {})[day.date] ?? pDefault
-                if (!pEffective) return null
                 const bRate = data?.biopsyConversionRate ?? 0.5
                 const biopsies = Math.round(pEffective * bRate)
-                return (
+                return onPunctionsChange ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground font-medium">P</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={pEffective}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10)
+                        onPunctionsChange(day.date, isNaN(v) ? null : v)
+                      }}
+                      className="w-6 h-4 text-[10px] text-center bg-transparent outline-none border-b border-transparent focus:border-primary tabular-nums font-medium text-muted-foreground"
+                    />
+                    {biopsies > 0 && <span className="text-[10px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
+                  </div>
+                ) : pEffective ? (
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[10px] text-muted-foreground font-medium tabular-nums">P{pEffective}</span>
                     {biopsies > 0 && <span className="text-[10px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
                   </div>
-                )
+                ) : null
               })()}
             </div>
           )
@@ -4500,6 +4516,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   colorChips={colorChips}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
+                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                   compact={compact}
                 />
               ))}
