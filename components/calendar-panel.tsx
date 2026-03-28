@@ -1750,9 +1750,9 @@ function PersonGrid({
                 const bRate = data?.biopsyConversionRate ?? 0.5
                 const biopsies = Math.round(pEffective * bRate)
                 return (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[9px] text-muted-foreground tabular-nums">P{pEffective}</span>
-                    {biopsies > 0 && <span className="text-[9px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground font-medium tabular-nums">P{pEffective}</span>
+                    {biopsies > 0 && <span className="text-[10px] text-muted-foreground/60 tabular-nums">B{biopsies}</span>}
                   </div>
                 )
               })()}
@@ -1761,11 +1761,11 @@ function PersonGrid({
         })}
 
         {/* Role groups */}
-        {roleGroups.map(({ role, members }) => (
+        {roleGroups.map(({ role, members }, groupIdx) => (
           <Fragment key={role}>
             {/* Role header — spans all 8 columns */}
             <div
-              className="px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5"
+              className={cn("px-3 py-1 bg-muted border-b border-border flex items-center gap-1.5", groupIdx > 0 && "border-t")}
               style={{ gridColumn: "1 / -1" }}
             >
               <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />

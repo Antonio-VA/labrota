@@ -162,18 +162,19 @@ export function AccountPanel({ open, onClose, user }: {
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("language")}</p>
             <select
               value={prefs.locale}
-              onChange={(e) => {
+              onChange={async (e) => {
                 const next = e.target.value as UserPreferences["locale"]
-                // Set cookie immediately — this is what the server reads
+                // Set cookie via server action (ensures server sees it)
+                const { setLocale } = await import("@/lib/locale-action")
                 if (next === "browser") {
+                  // Clear — server defaults to "es"
                   document.cookie = "locale=;path=/;max-age=0"
                 } else {
-                  document.cookie = `locale=${next};path=/;max-age=${365 * 86400}`
+                  await setLocale(next as "es" | "en")
                 }
-                // Save to DB in background
+                // Also save to user preferences DB
                 saveUserPreferences({ locale: next })
-                // Reload to apply — cookie is already set synchronously
-                window.location.reload()
+                window.location.href = window.location.pathname
               }}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
