@@ -141,6 +141,8 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
 export async function updateStaff(id: string, _prevState: unknown, formData: FormData) {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const { staff, skills } = parseFormData(formData)
 
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
@@ -150,18 +152,16 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
     .from("staff")
     .update(staff as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
 
   if (updateError) return { error: updateError.message }
 
   // Replace all skills: delete then re-insert
-  await supabase.from("staff_skills").delete().eq("staff_id", id)
+  await supabase.from("staff_skills").delete().eq("staff_id", id).eq("organisation_id", orgId)
   if (skills.length > 0) {
-    const orgId = await getOrgId()
-    if (orgId) {
-      await supabase.from("staff_skills").insert(
-        skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
-      )
-    }
+    await supabase.from("staff_skills").insert(
+      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
+    )
   }
 
   revalidatePath("/staff")
@@ -171,7 +171,9 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
 
 export async function deleteStaff(id: string) {
   const supabase = await createClient()
-  await supabase.from("staff").delete().eq("id", id)
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
+  await supabase.from("staff").delete().eq("id", id).eq("organisation_id", orgId)
   revalidatePath("/staff")
   redirect("/staff")
 }
@@ -239,11 +241,14 @@ export async function bulkUpdateStatus(
 ): Promise<{ updated: number; error?: string }> {
   if (staffIds.length === 0) return { updated: 0 }
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { updated: 0, error: "Not authenticated." }
 
   const { data, error } = await supabase
     .from("staff")
     .update({ onboarding_status: status } as never)
     .in("id", staffIds)
+    .eq("organisation_id", orgId)
     .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
 
   if (error) return { updated: 0, error: error.message }
@@ -257,12 +262,15 @@ export async function bulkSoftDeleteStaff(
 ): Promise<{ deleted: number; error?: string }> {
   if (staffIds.length === 0) return { deleted: 0 }
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { deleted: 0, error: "Not authenticated." }
   const today = new Date().toISOString().split("T")[0]
 
   const { data, error } = await supabase
     .from("staff")
     .update({ onboarding_status: "inactive" as OnboardingStatus, end_date: today } as never)
     .in("id", staffIds)
+    .eq("organisation_id", orgId)
     .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
 
   if (error) return { deleted: 0, error: error.message }
@@ -276,12 +284,15 @@ export async function hardDeleteStaff(
 ): Promise<{ deleted: number; error?: string }> {
   if (staffIds.length === 0) return { deleted: 0 }
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { deleted: 0, error: "Not authenticated." }
 
   // Safety guard: only allow hard-deleting inactive staff
   const { data: check, error: checkError } = await supabase
     .from("staff")
     .select("id")
     .in("id", staffIds)
+    .eq("organisation_id", orgId)
     .neq("onboarding_status", "inactive") as { data: { id: string }[] | null; error: { message: string } | null }
 
   if (checkError) return { deleted: 0, error: checkError.message }
@@ -291,6 +302,7 @@ export async function hardDeleteStaff(
     .from("staff")
     .delete()
     .in("id", staffIds)
+    .eq("organisation_id", orgId)
 
   if (error) return { deleted: 0, error: error.message }
 
@@ -303,6 +315,8 @@ export async function bulkUpdateStaffField(
 ): Promise<{ updated: number; error?: string }> {
   if (updates.length === 0) return { updated: 0 }
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { updated: 0, error: "Not authenticated." }
   let count = 0
   for (const { id, field, value } of updates) {
     // Only allow safe fields
@@ -312,6 +326,7 @@ export async function bulkUpdateStaffField(
       .from("staff")
       .update({ [field]: value } as never)
       .eq("id", id)
+      .eq("organisation_id", orgId)
     if (!error) count++
   }
   revalidatePath("/staff")

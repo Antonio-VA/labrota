@@ -35,6 +35,7 @@ export async function saveDepartments(
           parent_id: dept.parent_id ?? null,
         } as never)
         .eq("id", dept.id)
+        .eq("organisation_id", orgId)
       if (error) return { error: error.message }
     } else {
       // Insert new

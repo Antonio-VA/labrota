@@ -224,6 +224,17 @@ export async function removeOrgMember(targetUserId: string): Promise<{ error?: s
 export async function linkUserToStaff(targetUserId: string, staffId: string | null): Promise<{ error?: string }> {
   const { orgId, admin } = await requireOrgAdmin()
 
+  // Verify staffId belongs to this org (admin client bypasses RLS)
+  if (staffId) {
+    const { data: staff } = await admin
+      .from("staff")
+      .select("id")
+      .eq("id", staffId)
+      .eq("organisation_id", orgId)
+      .maybeSingle()
+    if (!staff) return { error: "Staff member not found in this organisation." }
+  }
+
   const { error } = await admin
     .from("organisation_members")
     .update({ linked_staff_id: staffId } as never)

@@ -715,14 +715,17 @@ export async function upsertAssignment(params: {
 
 export async function deleteAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   // Snapshot before deletion
-  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
+  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).eq("organisation_id", orgId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
   if (asg?.rota) captureSnapshot(asg.rota_id, asg.date, asg.rota.week_start)
 
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -735,10 +738,13 @@ export async function updateAssignmentShift(
   shiftType: ShiftType,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .update({ shift_type: shiftType, is_manual_override: true } as never)
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -753,11 +759,14 @@ export async function deleteAllDayAssignments(
   date: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
     .eq("rota_id", rotaId)
     .eq("date", date)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -852,10 +861,13 @@ export async function moveAssignment(
   newDate: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .update({ date: newDate, is_manual_override: true } as never)
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -869,12 +881,15 @@ export async function setPunctionsOverride(
   value: number | null,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
 
   // Fetch existing override map
   const { data: rotaData } = await supabase
     .from("rotas")
     .select("punctions_override")
     .eq("id", rotaId)
+    .eq("organisation_id", orgId)
     .single() as { data: { punctions_override: Record<string, number> | null } | null }
 
   const current = rotaData?.punctions_override ?? {}
@@ -890,6 +905,7 @@ export async function setPunctionsOverride(
     .from("rotas")
     .update({ punctions_override: updated } as never)
     .eq("id", rotaId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -899,12 +915,15 @@ export async function setPunctionsOverride(
 
 export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { data: { user } } = await supabase.auth.getUser()
   const publisherName = (user?.user_metadata?.full_name as string) ?? user?.email ?? "—"
   const { error } = await supabase
     .from("rotas")
     .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName } as never)
     .eq("id", rotaId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   const orgId = await getOrgId(supabase)
   if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
@@ -916,10 +935,13 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
 
 export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rotas")
     .update({ status: "draft", published_at: null } as never)
     .eq("id", rotaId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -929,10 +951,13 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
 
 export async function moveAssignmentShift(assignmentId: string, newShiftType: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .update({ shift_type: newShiftType, is_manual_override: true } as never)
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -942,14 +967,17 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
 
 export async function removeAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   // Snapshot before removal
-  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
+  const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).eq("organisation_id", orgId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
   if (asg?.rota) captureSnapshot(asg.rota_id, asg.date, asg.rota.week_start)
 
   const { error } = await supabase
     .from("rota_assignments")
     .delete()
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -959,10 +987,13 @@ export async function removeAssignment(assignmentId: string): Promise<{ error?: 
 
 export async function setTecnica(assignmentId: string, tecnicaId: string | null): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .update({ tecnica_id: tecnicaId } as never)
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -972,10 +1003,13 @@ export async function setTecnica(assignmentId: string, tecnicaId: string | null)
 
 export async function setFunctionLabel(assignmentId: string, label: string | null): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
     .update({ function_label: label ?? "" } as never)
     .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
@@ -1618,7 +1652,9 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
 
 export async function renameTemplate(id: string, name: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from("rota_templates").update({ name } as never).eq("id", id)
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
+  const { error } = await supabase.from("rota_templates").update({ name } as never).eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}
@@ -1626,7 +1662,9 @@ export async function renameTemplate(id: string, name: string): Promise<{ error?
 
 export async function deleteTemplate(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from("rota_templates").delete().eq("id", id)
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "Not authenticated." }
+  const { error } = await supabase.from("rota_templates").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}

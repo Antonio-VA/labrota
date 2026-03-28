@@ -38,6 +38,7 @@ export async function saveTecnica(
         orden:          tecnica.orden ?? 0,
       } as never)
       .eq("id", tecnica.id)
+      .eq("organisation_id", orgId)
     if (error) return { error: error.message }
     revalidatePath("/lab")
     return { id: tecnica.id }
@@ -68,9 +69,11 @@ export async function saveTecnica(
 
 export async function deleteTecnica(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   // Get the code before deleting so we can clean up staff_skills
-  const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
-  const { error } = await supabase.from("tecnicas").delete().eq("id", id)
+  const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).eq("organisation_id", orgId).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
+  const { error } = await supabase.from("tecnicas").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   // Clean up orphaned staff_skills referencing the deleted técnica code
   if (tec) {
@@ -83,9 +86,11 @@ export async function deleteTecnica(id: string): Promise<{ error?: string }> {
 
 export async function reorderTecnicas(orderedIds: string[]): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   await Promise.all(
     orderedIds.map((id, i) =>
-      supabase.from("tecnicas").update({ orden: i } as never).eq("id", id)
+      supabase.from("tecnicas").update({ orden: i } as never).eq("id", id).eq("organisation_id", orgId)
     )
   )
   revalidatePath("/lab")
@@ -103,8 +108,8 @@ export async function bulkSaveTecnicas(
 
   // 1. Delete removed técnicas
   for (const id of deleteIds) {
-    const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
-    await supabase.from("tecnicas").delete().eq("id", id)
+    const { data: tec } = await supabase.from("tecnicas").select("codigo, organisation_id").eq("id", id).eq("organisation_id", orgId).single() as unknown as { data: { codigo: string; organisation_id: string } | null }
+    await supabase.from("tecnicas").delete().eq("id", id).eq("organisation_id", orgId)
     if (tec) await supabase.from("staff_skills").delete().eq("skill", tec.codigo).eq("organisation_id", tec.organisation_id)
   }
 
@@ -126,7 +131,7 @@ export async function bulkSaveTecnicas(
     }
 
     if (t.id) {
-      await supabase.from("tecnicas").update(row as never).eq("id", t.id)
+      await supabase.from("tecnicas").update(row as never).eq("id", t.id).eq("organisation_id", orgId)
       resultIds.push(t.id)
     } else {
       const { data, error } = await supabase

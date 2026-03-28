@@ -25,11 +25,14 @@ export async function updateRule(
   id: string,
   data: RotaRuleUpdate
 ): Promise<{ error?: string; rule?: import("@/lib/types/database").RotaRule }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const supabase = await createClient()
   const { data: rule, error } = await supabase
     .from("rota_rules")
     .update(data as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
     .select()
     .single()
   if (error) return { error: error.message }
@@ -38,11 +41,14 @@ export async function updateRule(
 }
 
 export async function deleteRule(id: string): Promise<{ error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const supabase = await createClient()
   const { error } = await supabase
     .from("rota_rules")
     .delete()
     .eq("id", id)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}
@@ -52,11 +58,14 @@ export async function toggleRule(
   id: string,
   enabled: boolean
 ): Promise<{ error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const supabase = await createClient()
   const { error } = await supabase
     .from("rota_rules")
     .update({ enabled } as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}

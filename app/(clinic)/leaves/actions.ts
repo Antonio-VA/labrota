@@ -64,6 +64,8 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
 
 export async function updateLeave(id: string, _prevState: unknown, formData: FormData) {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const leave = parseLeaveForm(formData)
 
   if (leave.end_date < leave.start_date) return { error: "End date must be on or after start date." }
@@ -72,11 +74,11 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
     .from("leaves")
     .update(leave as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
 
   // Auto-remove conflicting rota assignments for updated leave period
-  const orgId = await getOrgId()
   if (orgId) {
     await supabase
       .from("rota_assignments")
@@ -137,7 +139,9 @@ export async function quickCreateLeave(params: {
 
 export async function deleteLeave(id: string) {
   const supabase = await createClient()
-  await supabase.from("leaves").delete().eq("id", id)
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
+  await supabase.from("leaves").delete().eq("id", id).eq("organisation_id", orgId)
   revalidatePath("/leaves")
 }
 
@@ -181,6 +185,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     .from("leaves")
     .select("staff_id, start_date, end_date, type")
     .eq("id", leaveId)
+    .eq("organisation_id", orgId)
     .single() as { data: { staff_id: string; start_date: string; end_date: string; type: string } | null; error: unknown }
 
   if (fetchError || !leave) return { error: "Leave not found." }
@@ -189,6 +194,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     .from("leaves")
     .update({ status: "approved" } as never)
     .eq("id", leaveId)
+    .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
 
@@ -209,11 +215,14 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 /** Admin rejects a pending leave request. */
 export async function rejectLeave(leaveId: string, reason?: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
 
   const { error } = await supabase
     .from("leaves")
     .delete()
     .eq("id", leaveId)
+    .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
 

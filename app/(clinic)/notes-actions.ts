@@ -32,10 +32,13 @@ export async function addNoteTemplate(text: string): Promise<{ error?: string; i
 
 export async function updateNoteTemplate(id: string, text: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("note_templates")
     .update({ text, updated_at: new Date().toISOString() } as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}
@@ -43,7 +46,9 @@ export async function updateNoteTemplate(id: string, text: string): Promise<{ er
 
 export async function deleteNoteTemplate(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from("note_templates").delete().eq("id", id)
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
+  const { error } = await supabase.from("note_templates").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}
@@ -93,17 +98,22 @@ export async function addWeekNote(weekStart: string, text: string): Promise<{ er
 
 export async function updateWeekNote(id: string, text: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("week_notes")
     .update({ text, updated_at: new Date().toISOString() } as never)
     .eq("id", id)
+    .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   return {}
 }
 
 export async function deleteWeekNote(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from("week_notes").delete().eq("id", id)
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
+  const { error } = await supabase.from("week_notes").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   return {}
 }
