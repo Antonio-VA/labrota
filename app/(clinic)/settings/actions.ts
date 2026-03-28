@@ -238,6 +238,10 @@ export interface OrgSettings {
   country: string
   region: string
   enableLeaveRequests: boolean
+  displayMode: "by_shift" | "by_task"
+  billingStart: string | null
+  billingEnd: string | null
+  billingFee: number | null
 }
 
 export async function getOrgSettings(): Promise<OrgSettings | null> {
@@ -245,9 +249,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
 
   const { data: org } = await admin
     .from("organisations")
-    .select("name, logo_url")
+    .select("name, logo_url, rota_display_mode, billing_start, billing_end, billing_fee")
     .eq("id", orgId)
-    .single() as { data: { name: string; logo_url: string | null } | null }
+    .single() as { data: { name: string; logo_url: string | null; rota_display_mode?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }
 
   const { data: config } = await admin
     .from("lab_config")
@@ -262,6 +266,10 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     country: config?.country ?? "",
     region: config?.region ?? "",
     enableLeaveRequests: config?.enable_leave_requests ?? false,
+    displayMode: (org.rota_display_mode ?? "by_shift") as "by_shift" | "by_task",
+    billingStart: org.billing_start ?? null,
+    billingEnd: org.billing_end ?? null,
+    billingFee: org.billing_fee ?? null,
   }
 }
 

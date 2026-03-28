@@ -878,7 +878,10 @@
   },
   "settingsTabs": {
     "organisation": "Organisation",
+    "features": "Features",
+    "billing": "Billing",
     "users": "Users",
+    "implementation": "Implementation",
     "history": "History"
   },
   "mobileEdit": {

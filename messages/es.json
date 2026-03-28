@@ -878,7 +878,10 @@
   },
   "settingsTabs": {
     "organisation": "Organización",
+    "features": "Funcionalidades",
+    "billing": "Facturación",
     "users": "Usuarios",
+    "implementation": "Implementación",
     "history": "Historial"
   },
   "mobileEdit": {

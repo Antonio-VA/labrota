@@ -4,29 +4,35 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["organizacion", "usuarios", "historial"] as const
+const TAB_KEYS = ["organizacion", "funcionalidades", "facturacion", "usuarios", "implementacion", "historial"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
-  organizacion: "organisation",
-  usuarios:     "users",
-  historial:    "history",
+  organizacion:     "organisation",
+  funcionalidades:  "features",
+  facturacion:      "billing",
+  usuarios:         "users",
+  implementacion:   "implementation",
+  historial:        "history",
 }
 
 export function SettingsTabs({
-  organizacion, usuarios, historial,
+  organizacion, funcionalidades, facturacion, usuarios, implementacion, historial,
 }: {
-  organizacion: React.ReactNode
-  usuarios:     React.ReactNode
-  historial:    React.ReactNode
+  organizacion:     React.ReactNode
+  funcionalidades:  React.ReactNode
+  facturacion:      React.ReactNode
+  usuarios:         React.ReactNode
+  implementacion:   React.ReactNode
+  historial:        React.ReactNode
 }) {
   const t = useTranslations("settingsTabs")
   const [active, setActive] = useState<TabKey>("organizacion")
-  const content: Record<TabKey, React.ReactNode> = { organizacion, usuarios, historial }
+  const content: Record<TabKey, React.ReactNode> = { organizacion, funcionalidades, facturacion, usuarios, implementacion, historial }
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border -mb-2">
+      <div className="flex border-b border-border -mb-2 overflow-x-auto">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
