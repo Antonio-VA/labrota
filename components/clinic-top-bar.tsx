@@ -126,8 +126,8 @@ export function ClinicTopBar({
 
       <div className="flex-1" />
 
-      {/* Right: bell + avatar — force white icons on navy bg */}
-      <div className="flex items-center gap-3 [&_button]:text-white/70 [&_button:hover]:text-white [&_a]:text-white/70 [&_a:hover]:text-white">
+      {/* Right: bell + avatar */}
+      <div className="flex items-center gap-3 header-icons">
         <NotificationBell />
         {initialUser && <UserAvatarMenu initialUser={initialUser} />}
       </div>

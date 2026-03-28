@@ -282,6 +282,16 @@ body {
   border: 0.5px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Header icon colors — scoped to avoid leaking into panels/modals */
+.header-icons > * > button,
+.header-icons > * > a {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.header-icons > * > button:hover,
+.header-icons > * > a:hover {
+  color: rgba(255, 255, 255, 1) !important;
+}
+
 /* Hide number input spinners by default, show on hover */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
