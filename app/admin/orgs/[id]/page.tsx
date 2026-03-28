@@ -9,8 +9,7 @@ import { ArrowLeft, Users, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
-import { AdminHistoryUpload } from "@/components/admin-history-upload"
-import { AdminImplementation } from "@/components/admin-implementation"
+// AdminHistoryUpload and AdminImplementation moved to implementation tab via AdminOrgDetailClient
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { updateOrgRegional } from "@/app/admin/actions"
 
@@ -110,19 +109,36 @@ export default async function OrgDetailPage({
       </div>
 
       <AdminOrgTabs
-        configuration={
+        funcionalidades={
           <AdminOrgDetailClient
-            orgId={id}
-            userRows={userRows}
+            orgId={id} userRows={userRows} section="funcionalidades"
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
-            initialBilling={{
-              start: (org as any).billing_start ?? null,
-              end: (org as any).billing_end ?? null,
-              fee: (org as any).billing_fee ?? null,
-            }}
+            initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
+          />
+        }
+        facturacion={
+          <AdminOrgDetailClient
+            orgId={id} userRows={userRows} section="facturacion"
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+            initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
+          />
+        }
+        configuracion={
+          <AdminOrgDetailClient
+            orgId={id} userRows={userRows} section="configuracion"
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+          />
+        }
+        implementacion={
+          <AdminOrgDetailClient
+            orgId={id} userRows={userRows} section="implementacion" hideUsers
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             implementationStatus={{
               hasRegion: !!(labConfigRes.data as any)?.country,
               departmentCount: deptRes.count ?? 0,
@@ -133,14 +149,6 @@ export default async function OrgDetailPage({
               rotaCount: rotasRes.count ?? 0,
             }}
           />
-        }
-        defaults={
-          <div className="flex flex-col gap-6">
-            <AdminHistoryUpload orgId={id} />
-            <div className="rounded-xl border border-border/60 bg-background px-5 py-4">
-              <AdminImplementation orgId={id} />
-            </div>
-          </div>
         }
       />
     </div>

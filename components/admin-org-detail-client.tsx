@@ -21,6 +21,7 @@ export function AdminOrgDetailClient({
   initialLeaveRequests = false,
   initialBilling = { start: null, end: null, fee: null },
   implementationStatus,
+  section = "all",
   hideUsers = false,
 }: {
   orgId: string
@@ -39,6 +40,7 @@ export function AdminOrgDetailClient({
     hasRota: boolean
     rotaCount: number
   }
+  section?: "all" | "funcionalidades" | "facturacion" | "configuracion" | "implementacion"
   hideUsers?: boolean
 }) {
   const router = useRouter()
@@ -108,6 +110,7 @@ export function AdminOrgDetailClient({
 
   return (
     <>
+      {(section === "all" || section === "implementacion") && <>
       {/* ── ESTADO DE IMPLEMENTACIÓN ─────────────────────────────────── */}
       {implementationStatus && (() => {
         const steps = [
@@ -205,6 +208,9 @@ export function AdminOrgDetailClient({
         </>
       )}
 
+      </>}
+
+      {(section === "all" || section === "funcionalidades") && <>
       {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Funcionalidades</h2>
@@ -269,7 +275,13 @@ export function AdminOrgDetailClient({
           </div>
         </div>
       </div>
+      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
+        {isPending ? "Guardando…" : "Guardar"}
+      </Button>
 
+      </>}
+
+      {(section === "all" || section === "facturacion") && <>
       {/* ── FACTURACIÓN ───────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Facturación</h2>
@@ -314,7 +326,13 @@ export function AdminOrgDetailClient({
           </p>
         </div>
       </div>
+      <Button onClick={handleSaveAll} disabled={isPending} className="w-fit">
+        {isPending ? "Guardando…" : "Guardar"}
+      </Button>
 
+      </>}
+
+      {(section === "all" || section === "configuracion") && <>
       {/* ── CONFIGURACIÓN REGIONAL ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[18px] font-medium">Configuración regional</h2>
@@ -380,6 +398,7 @@ export function AdminOrgDetailClient({
           )}
         </div>
       </div>}
+      </>}
 
       {/* Add user modal */}
       {addModalOpen && (

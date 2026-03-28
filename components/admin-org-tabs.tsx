@@ -3,26 +3,30 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["configuration", "defaults"] as const
+const TAB_KEYS = ["funcionalidades", "facturacion", "configuracion", "implementacion"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
-  configuration: "Configuration & Users",
-  defaults: "Defaults & History",
+  funcionalidades: "Funcionalidades",
+  facturacion: "Facturación",
+  configuracion: "Configuración",
+  implementacion: "Implementación",
 }
 
 export function AdminOrgTabs({
-  configuration, defaults,
+  funcionalidades, facturacion, configuracion, implementacion,
 }: {
-  configuration: React.ReactNode
-  defaults: React.ReactNode
+  funcionalidades: React.ReactNode
+  facturacion: React.ReactNode
+  configuracion: React.ReactNode
+  implementacion: React.ReactNode
 }) {
-  const [active, setActive] = useState<TabKey>("configuration")
-  const content: Record<TabKey, React.ReactNode> = { configuration, defaults }
+  const [active, setActive] = useState<TabKey>("funcionalidades")
+  const content: Record<TabKey, React.ReactNode> = { funcionalidades, facturacion, configuracion, implementacion }
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border -mb-2">
+      <div className="flex border-b border-border -mb-2 overflow-x-auto">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
