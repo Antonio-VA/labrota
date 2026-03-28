@@ -4,7 +4,6 @@ import { useState, useTransition, useRef, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { bulkSaveTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
 import type { Tecnica, Department } from "@/lib/types/database"
@@ -36,46 +35,32 @@ function resolveHex(color: string): string {
 
 export type TecnicaColor = string
 
-// ── Color picker (circle + popover) ──────────────────────────────────────────
+// ── Color picker ─────────────────────────────────────────────────────────────
 
 function ColorPicker({ value, onChange, disabled }: {
   value: string; onChange: (c: string) => void; disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
+    function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
-
   const hex = resolveHex(value)
-
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen(!open)}
-        className="size-5 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow disabled:opacity-50"
+      <button type="button" disabled={disabled} onClick={() => setOpen(!open)}
+        className="size-6 rounded-full border-2 border-background ring-1 ring-border hover:ring-primary transition-shadow disabled:opacity-50"
         style={{ backgroundColor: hex }}
       />
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
           <div className="grid grid-cols-8 gap-1">
             {COLOR_PALETTE.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => { onChange(c); setOpen(false) }}
-                className={cn(
-                  "size-5 rounded-full transition-transform hover:scale-125",
-                  c === hex && "ring-2 ring-primary ring-offset-1 ring-offset-background"
-                )}
+              <button key={c} type="button" onClick={() => { onChange(c); setOpen(false) }}
+                className={cn("size-5 rounded-full transition-transform hover:scale-125", c === hex && "ring-2 ring-primary ring-offset-1 ring-offset-background")}
                 style={{ backgroundColor: c }}
               />
             ))}
@@ -90,22 +75,25 @@ function ColorPicker({ value, onChange, disabled }: {
 
 type Draft = {
   id?: string
-  sortId: string // stable key for dnd-kit
+  sortId: string
   nombre_es: string; nombre_en: string; codigo: string
   color: string; department: "lab" | "andrology"; typical_shifts: string[]; activa: boolean; orden: number
 }
 
-// ── Sortable row ─────────────────────────────────────────────────────────────
+// ── Table grid ───────────────────────────────────────────────────────────────
+// Columns: color(28px) | name(flex) | code(80px) | dept(120px) | shifts(flex) | actions(72px)
+const GRID = "28px minmax(100px,1fr) 80px 120px minmax(80px,1fr) 72px"
+
+// ── Sortable table row ───────────────────────────────────────────────────────
 
 function SortableRow({
-  tecnica, onChange, onDelete, disabled, shiftCodes, departments,
+  tecnica, onChange, onDelete, disabled, shiftCodes, departments, even,
 }: {
   tecnica: Draft
   onChange: (t: Draft) => void; onDelete: () => void
   disabled: boolean; shiftCodes: string[]; departments: Department[]
+  even: boolean
 }) {
-  const t = useTranslations("tecnicas")
-  const hex = resolveHex(tecnica.color)
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: tecnica.sortId })
@@ -114,117 +102,103 @@ function SortableRow({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.5 : undefined,
+    opacity: isDragging ? 0.6 : undefined,
   }
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-background"
+      style={{ ...style, gridTemplateColumns: GRID }}
+      className={cn(
+        "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50",
+        even ? "bg-muted/20" : "bg-background",
+        isDragging && "shadow-md rounded-md"
+      )}
     >
-      {/* Drag handle */}
-      <button
-        type="button"
-        className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground touch-none"
-        {...attributes}
-        {...listeners}
+      {/* Color dot */}
+      <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
+
+      {/* Name */}
+      <input
+        value={tecnica.nombre_es}
+        onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value, nombre_en: e.target.value })}
+        disabled={disabled}
+        placeholder="ICSI"
+        className="bg-transparent text-[13px] font-medium outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full"
+      />
+
+      {/* Code */}
+      <input
+        value={tecnica.codigo}
+        onChange={(e) => onChange({ ...tecnica, codigo: e.target.value.toUpperCase().slice(0, 3) })}
+        disabled={disabled}
+        placeholder="OPU"
+        maxLength={3}
+        className="bg-transparent text-[13px] font-mono uppercase outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full text-center"
+      />
+
+      {/* Department */}
+      <select
+        value={tecnica.department}
+        onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
+        disabled={disabled}
+        className="bg-transparent text-[12px] outline-none h-7 px-1 rounded border border-transparent focus:border-input"
       >
-        <GripVertical className="size-4" />
-      </button>
+        {departments.length > 0 ? (
+          departments.map((d) => <option key={d.id} value={d.code}>{d.name}</option>)
+        ) : (
+          <>
+            <option value="lab">Embriología</option>
+            <option value="andrology">Andrología</option>
+          </>
+        )}
+      </select>
 
-      <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-        {/* Line 1: Color · Name · Short name */}
-        <div className="flex items-center gap-2">
-          <ColorPicker value={tecnica.color} onChange={(c) => onChange({ ...tecnica, color: c })} disabled={disabled} />
-          <div className="flex-1 flex flex-col gap-0.5">
-            <span className="text-[10px] text-muted-foreground leading-none">{t("nameEs")}</span>
-            <Input
-              value={tecnica.nombre_es}
-              onChange={(e) => onChange({ ...tecnica, nombre_es: e.target.value, nombre_en: e.target.value })}
+      {/* Typical shifts */}
+      <div className="flex gap-0.5 items-center">
+        {shiftCodes.map((shift) => {
+          const active = tecnica.typical_shifts.includes(shift)
+          return (
+            <button
+              key={shift}
+              type="button"
               disabled={disabled}
-              placeholder="ICSI"
-              className="h-7 text-[13px]"
-            />
-          </div>
-          <div className="w-[72px] shrink-0 flex flex-col gap-0.5">
-            <span className="text-[10px] text-muted-foreground leading-none">{t("shortName")}</span>
-            <Input
-              value={tecnica.codigo}
-              onChange={(e) => onChange({ ...tecnica, codigo: e.target.value.toUpperCase().slice(0, 3) })}
-              disabled={disabled}
-              placeholder="OPU"
-              maxLength={3}
-              className="h-7 text-[13px] font-mono uppercase"
-            />
-          </div>
-        </div>
-
-        {/* Line 2: Department · Turno típico */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-muted-foreground leading-none">{t("department")}</span>
-            <select
-              value={tecnica.department}
-              onChange={(e) => onChange({ ...tecnica, department: e.target.value as "lab" | "andrology" })}
-              disabled={disabled}
-              className="h-6 rounded border border-input bg-transparent px-1.5 text-[11px] outline-none focus-visible:border-ring"
-            >
-              {departments.length > 0 ? (
-                departments.map((d) => (
-                  <option key={d.id} value={d.code}>{d.name}</option>
-                ))
-              ) : (
-                <>
-                  <option value="lab">{t("embriologia")}</option>
-                  <option value="andrology">{t("andrologia")}</option>
-                </>
+              onClick={() => {
+                const next = active
+                  ? tecnica.typical_shifts.filter((s) => s !== shift)
+                  : [...tecnica.typical_shifts, shift]
+                onChange({ ...tecnica, typical_shifts: next })
+              }}
+              className={cn(
+                "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
               )}
-            </select>
-          </div>
-          {shiftCodes.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground">{t("typicalShift")}</span>
-              <div className="flex gap-0.5">
-                {shiftCodes.map((shift) => {
-                  const active = tecnica.typical_shifts.includes(shift)
-                  return (
-                    <button
-                      key={shift}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => {
-                        const next = active
-                          ? tecnica.typical_shifts.filter((s) => s !== shift)
-                          : [...tecnica.typical_shifts, shift]
-                        onChange({ ...tecnica, typical_shifts: next })
-                      }}
-                      className={cn(
-                        "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
-                      )}
-                    >
-                      {shift}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+            >
+              {shift}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Delete */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onDelete}
-        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 shrink-0"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      {/* Actions: delete + drag handle */}
+      <div className="flex items-center justify-end gap-1">
+        <button
+          type="button" disabled={disabled} onClick={onDelete}
+          className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -263,6 +237,10 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
+    // Find which department group the active item belongs to
+    const activeItem = tecnicas.find((t) => t.sortId === active.id)
+    const overItem = tecnicas.find((t) => t.sortId === over.id)
+    if (!activeItem || !overItem || activeItem.department !== overItem.department) return // prevent cross-dept drag
     setTecnicas((prev) => {
       const oldIndex = prev.findIndex((t) => t.sortId === active.id)
       const newIndex = prev.findIndex((t) => t.sortId === over.id)
@@ -270,7 +248,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     })
   }
 
-  function addRow() {
+  function addRow(dept: "lab" | "andrology" = "lab") {
     const sortId = `new-${_counter++}`
     setTecnicas((prev) => [
       ...prev,
@@ -278,7 +256,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         sortId,
         nombre_es: "", nombre_en: "", codigo: "",
         color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
-        department: "lab" as const, typical_shifts: [], activa: true,
+        department: dept, typical_shifts: [], activa: true,
         orden: prev.length,
       },
     ])
@@ -302,7 +280,6 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
       setStatus("error")
       return
     }
-
     startTransition(async () => {
       const result = await bulkSaveTecnicas(tecnicas, deletedIds)
       if (result.error) {
@@ -333,14 +310,14 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
 
   // Group by department
   const deptGroups = departments.length > 0
-    ? departments.map((d) => ({ code: d.code, name: d.name, items: tecnicas.filter((t) => t.department === d.code) })).filter((g) => g.items.length > 0)
+    ? departments.map((d) => ({ code: d.code as "lab" | "andrology", name: d.name, items: tecnicas.filter((t) => t.department === d.code) }))
     : [
-        { code: "lab", name: t("embriologia"), items: tecnicas.filter((t) => t.department === "lab") },
-        { code: "andrology", name: t("andrologia"), items: tecnicas.filter((t) => t.department === "andrology") },
-      ].filter((g) => g.items.length > 0)
+        { code: "lab" as const, name: t("embriologia"), items: tecnicas.filter((t) => t.department === "lab") },
+        { code: "andrology" as const, name: t("andrologia"), items: tecnicas.filter((t) => t.department === "andrology") },
+      ]
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {tecnicas.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-[14px] text-muted-foreground mb-3">{t("noTecnicas")}</p>
@@ -350,42 +327,58 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         </div>
       )}
 
+      {/* Table header */}
+      {tecnicas.length > 0 && (
+        <div className="grid items-center px-2 py-1.5" style={{ gridTemplateColumns: GRID }}>
+          <span />
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("nameEs")}</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("shortName")}</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("department")}</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("typicalShift")}</span>
+          <span />
+        </div>
+      )}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         {deptGroups.map((group) => (
           <div key={group.code}>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{group.name}</p>
+            {/* Department group header */}
+            <div className="sticky top-0 z-[5] bg-muted/60 px-2 py-1.5 border-b border-border">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{group.name}</span>
+              <span className="text-[11px] text-muted-foreground/60 ml-2">{group.items.length}</span>
+            </div>
+
             <SortableContext items={group.items.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col gap-2">
-                {group.items.map((tec) => (
-                  <SortableRow
-                    key={tec.sortId}
-                    tecnica={tec}
-                    onChange={(draft) => updateRow(tec.sortId, draft)}
-                    onDelete={() => deleteRow(tec.sortId)}
-                    disabled={isPending}
-                    shiftCodes={shiftCodes}
-                    departments={departments}
-                  />
-                ))}
-              </div>
+              {group.items.map((tec, idx) => (
+                <SortableRow
+                  key={tec.sortId}
+                  tecnica={tec}
+                  onChange={(draft) => updateRow(tec.sortId, draft)}
+                  onDelete={() => deleteRow(tec.sortId)}
+                  disabled={isPending}
+                  shiftCodes={shiftCodes}
+                  departments={departments}
+                  even={idx % 2 === 0}
+                />
+              ))}
             </SortableContext>
+
+            {/* Add row within this department */}
+            <button
+              type="button"
+              onClick={() => addRow(group.code)}
+              disabled={isPending}
+              className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-2 px-2 w-full border-b border-border/30"
+            >
+              <Plus className="size-3" />
+              {t("addTecnica")}
+            </button>
           </div>
         ))}
       </DndContext>
 
-      {/* Add row */}
-      <button
-        type="button"
-        onClick={addRow}
-        disabled={isPending}
-        className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1"
-      >
-        <Plus className="size-3.5" />
-        {t("addTecnica")}
-      </button>
-
       {/* Footer */}
-      <div className="flex items-center gap-3 pt-2 border-t border-border">
+      <div className="flex items-center gap-3 pt-3 border-t border-border">
         <Button type="button" onClick={handleSave} disabled={isPending || tecnicas.length === 0}>
           {isPending ? tc("saving") : t("saveTecnicas")}
         </Button>
