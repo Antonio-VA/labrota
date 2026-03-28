@@ -2192,7 +2192,9 @@ function ShiftGrid({
                 >
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
-                    const tecnica = a.function_label
+                    const taskDisabled = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                    const tecnica = taskDisabled ? null
+                      : a.function_label
                       ? (data?.tecnicas ?? []).find((t) => t.codigo === a.function_label) ?? null
                       : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
                     return (
@@ -2204,24 +2206,24 @@ function ShiftGrid({
                         departments={data?.departments ?? []}
                         onFunctionSave={handleFunctionLabelSave}
                         isPublished={isPublished}
-                        disabled={data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift}
+                        disabled={taskDisabled}
                       >
                         <Tooltip>
                           <TooltipTrigger render={
-                            <div>
+                            <div onClick={taskDisabled ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(a, day.date) } : undefined} className={taskDisabled ? "cursor-pointer" : undefined}>
                               <DraggableShiftBadge
                                 id={a.id}
                                 first={a.staff.first_name}
                                 last={a.staff.last_name}
                                 role={a.staff.role}
                                 isOverride={a.is_manual_override}
-                                functionLabel={(data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift) ? null : a.function_label}
-                                tecnica={(data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift) ? null : tecnica}
+                                functionLabel={taskDisabled ? null : a.function_label}
+                                tecnica={tecnica}
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
                                 isTrainingTecnica={!!(a.function_label && staffMember?.staff_skills?.find((sk) => sk.skill === a.function_label)?.level === "training")}
                                 colorChips={colorChips}
-                                readOnly={isPublished}
+                                readOnly={isPublished || taskDisabled}
                                 staffId={a.staff_id}
                                 staffColor={staffColorMap[a.staff_id]}
                                 departments={data?.departments ?? []}
