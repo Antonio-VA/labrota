@@ -54,7 +54,6 @@ const RULE_TYPES: RotaRuleType[] = [
   "supervisor_requerido",
   "max_dias_consecutivos",
   "distribucion_fines_semana",
-  "no_turno_doble",
 ]
 
 const SKILL_OPTIONS: SkillName[] = [

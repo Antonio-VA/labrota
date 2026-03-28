@@ -275,7 +275,7 @@ export type RotaRuleType =
   | 'supervisor_requerido'
   | 'max_dias_consecutivos'
   | 'distribucion_fines_semana'
-  | 'no_turno_doble'
+  // no_turno_doble removed — not possible in current system
 
 export interface RotaRule {
   id:              string
