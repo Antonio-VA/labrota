@@ -271,7 +271,9 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
       )}
       style={{
-        borderLeft: colorChips ? undefined : `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`,
+        borderLeft: colorChips
+          ? `3px solid ${staffColor || "#D4D4D8"}`
+          : `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`,
         borderRadius: 4,
         ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
