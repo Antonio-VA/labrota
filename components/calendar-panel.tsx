@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -3523,6 +3523,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
   const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
+  // Share capture ref
+  const mobileContentRef = useRef<HTMLDivElement>(null)
+
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
@@ -4377,6 +4380,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {weekData && (
                 <WarningsPill days={weekData?.days ?? []} staffList={staffList} />
               )}
+              <button
+                onClick={async () => {
+                  if (!mobileContentRef.current) return
+                  const { shareCapture } = await import("@/lib/share-capture")
+                  const dateLabel = currentDate.replace(/-/g, "")
+                  await shareCapture(mobileContentRef.current, `rota-${dateLabel}.png`)
+                }}
+                className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0"
+              >
+                <Share className="size-4" />
+              </button>
               {canEdit && (
                 <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
                   <Pencil className="size-4" />
@@ -4402,6 +4416,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             </div>
           )}
           <div
+            ref={mobileContentRef}
             className="flex flex-col gap-4 px-4 py-3 flex-1 pb-32"
             onTouchStart={(e) => { (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX) }}
             onTouchEnd={(e) => {

@@ -204,6 +204,15 @@ export function StaffForm({
   const [preferredDays, setPreferredDays] = useState<WorkingDay[]>(
     staff?.preferred_days ?? []
   )
+  const [avoidDays, setAvoidDays] = useState<WorkingDay[]>(
+    staff?.avoid_days ?? []
+  )
+  const [preferredShift, setPreferredShift] = useState<string>(
+    staff?.preferred_shift ?? ""
+  )
+  const [avoidShifts, setAvoidShifts] = useState<string[]>(
+    staff?.avoid_shifts ?? []
+  )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
   const [selectedColor, setSelectedColor] = useState<string>(
     staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
@@ -242,11 +251,37 @@ export function StaffForm({
     })
   }
 
-  function togglePreferredDay(day: WorkingDay) {
-    if (!selectedDays.includes(day)) return // can't prefer a day not available
-    setPreferredDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    )
+  function cycleDayPreference(day: WorkingDay) {
+    if (!selectedDays.includes(day)) return
+    const isPref = preferredDays.includes(day)
+    const isAvoid = avoidDays.includes(day)
+    if (!isPref && !isAvoid) {
+      // neutral → prefers
+      setPreferredDays((prev) => [...prev, day])
+    } else if (isPref) {
+      // prefers → avoids
+      setPreferredDays((prev) => prev.filter((d) => d !== day))
+      setAvoidDays((prev) => [...prev, day])
+    } else {
+      // avoids → neutral
+      setAvoidDays((prev) => prev.filter((d) => d !== day))
+    }
+  }
+
+  function cycleShiftPreference(code: string) {
+    const isPref = preferredShift === code
+    const isAvoid = avoidShifts.includes(code)
+    if (!isPref && !isAvoid) {
+      // neutral → prefers (exclusive: clear previous preferred)
+      setPreferredShift(code)
+    } else if (isPref) {
+      // prefers → avoids
+      setPreferredShift("")
+      setAvoidShifts((prev) => [...prev, code])
+    } else {
+      // avoids → neutral
+      setAvoidShifts((prev) => prev.filter((c) => c !== code))
+    }
   }
 
   function cycleSkill(skill: SkillName) {
@@ -368,15 +403,42 @@ export function StaffForm({
       </Section>
 
       <Section label={t("fields.preferredShift")}>
-        <Select name="preferred_shift" defaultValue={staff?.preferred_shift ?? ""} disabled={isPending}>
-          <option value="">{t("fields.preferredShiftNone")}</option>
-          {shiftTypes.filter((st) => st.active !== false).map((st) => (
-            <option key={st.code} value={st.code}>{st.code} — {st.name_es} ({st.start_time}–{st.end_time})</option>
-          ))}
-        </Select>
-        <p className="text-[12px] text-muted-foreground mt-1">
-          {t("fields.preferredShiftHint")}
+        <div className="flex gap-2 flex-wrap">
+          {shiftTypes.filter((st) => st.active !== false).map((st) => {
+            const isPref = preferredShift === st.code
+            const isAvoid = avoidShifts.includes(st.code)
+            return (
+              <button
+                key={st.code}
+                type="button"
+                onClick={() => cycleShiftPreference(st.code)}
+                disabled={isPending}
+                title={`${st.name_es} (${st.start_time}–${st.end_time})`}
+                className={cn(
+                  "h-8 px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
+                  isPref
+                    ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                    : isAvoid
+                    ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {st.code}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[12px] text-muted-foreground mt-1.5">
+          {preferredShift || avoidShifts.length > 0 ? (
+            <>
+              {preferredShift && <>{t("prefersLabel")} {preferredShift}</>}
+              {preferredShift && avoidShifts.length > 0 && " — "}
+              {avoidShifts.length > 0 && <>{t("avoidsLabel")} {avoidShifts.join(", ")}</>}
+            </>
+          ) : t("fields.preferredShiftNone")}
         </p>
+        <input type="hidden" name="preferred_shift" value={preferredShift} />
+        <input type="hidden" name="avoid_shifts" value={avoidShifts.join(",")} />
       </Section>
 
       {/* Días disponibles (hard constraint) */}
@@ -412,28 +474,31 @@ export function StaffForm({
         )}
       </Section>
 
-      {/* Días preferidos (soft constraint) */}
+      {/* Preferencias de día (3-state: neutral / prefers / avoids) */}
       {selectedDays.length > 0 && (
         <Section label={t("daysPreferred")}>
           <p className="text-[12px] text-muted-foreground mb-2">
-            {t("daysPreferredHint")}
+            {t("daysPreferredHint3")}
           </p>
           <div className="flex gap-2 flex-wrap">
             {ALL_DAYS.map((day) => {
               const available = selectedDays.includes(day)
-              const preferred = preferredDays.includes(day)
+              const isPref = preferredDays.includes(day)
+              const isAvoid = avoidDays.includes(day)
               return (
                 <button
                   key={day}
                   type="button"
-                  onClick={() => togglePreferredDay(day)}
+                  onClick={() => cycleDayPreference(day)}
                   disabled={isPending || !available}
                   className={cn(
                     "h-8 px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
                     !available
                       ? "border-border bg-slate-50 text-slate-300 cursor-not-allowed"
-                      : preferred
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-400"
+                      : isPref
+                      ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                      : isAvoid
+                      ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
                       : "border-border bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
@@ -442,12 +507,23 @@ export function StaffForm({
               )
             })}
           </div>
-          {preferredDays.length === 0 && (
-            <p className="text-[11px] text-slate-400 italic mt-1">{t("noPreference")}</p>
-          )}
+          <p className="text-[12px] text-muted-foreground mt-1.5">
+            {preferredDays.length > 0 || avoidDays.length > 0 ? (
+              <>
+                {preferredDays.length > 0 && <>{t("prefersLabel")} {preferredDays.map((d) => t(`workingDays.${d}`)).join(", ")}</>}
+                {preferredDays.length > 0 && avoidDays.length > 0 && " — "}
+                {avoidDays.length > 0 && <>{t("avoidsLabel")} {avoidDays.map((d) => t(`workingDays.${d}`)).join(", ")}</>}
+              </>
+            ) : t("noPreference")}
+          </p>
           {ALL_DAYS.map((day) =>
             preferredDays.includes(day) ? (
-              <input key={day} type="hidden" name={`pref_${day}`} value="on" />
+              <input key={`pref_${day}`} type="hidden" name={`pref_${day}`} value="on" />
+            ) : null
+          )}
+          {ALL_DAYS.map((day) =>
+            avoidDays.includes(day) ? (
+              <input key={`avoid_${day}`} type="hidden" name={`avoid_${day}`} value="on" />
             ) : null
           )}
         </Section>

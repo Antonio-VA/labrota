@@ -110,6 +110,70 @@ export function runRotaEngine({
     workloadScore[a.staff_id] = (workloadScore[a.staff_id] ?? 0) + 1
   }
 
+  // ── Infer preferences from historical patterns ────────────────────────────
+  // For each staff member, count shift and day frequencies from recent assignments.
+  // If a pattern is strong enough (≥70% for a shift, ≥60% for days), use it as
+  // an implicit preference — but only when no explicit preference is set.
+  const inferredShiftPref: Record<string, string> = {}  // staff_id → shift code
+  const inferredDayPref: Record<string, Set<string>> = {}   // staff_id → day codes they prefer
+  const inferredDayAvoid: Record<string, Set<string>> = {}  // staff_id → day codes they avoid
+
+  if (recentAssignments.length > 0) {
+    // Group by staff
+    const byStaff: Record<string, typeof recentAssignments> = {}
+    for (const a of recentAssignments) {
+      if (!byStaff[a.staff_id]) byStaff[a.staff_id] = []
+      byStaff[a.staff_id].push(a)
+    }
+
+    for (const [staffId, assignments] of Object.entries(byStaff)) {
+      const person = staff.find((s) => s.id === staffId)
+      if (!person) continue
+      const totalAssignments = assignments.length
+
+      // Shift inference: count how often each shift appears
+      if (!person.preferred_shift && !(person.avoid_shifts?.length)) {
+        const shiftCounts: Record<string, number> = {}
+        for (const a of assignments) {
+          shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
+        }
+        const topShift = Object.entries(shiftCounts).sort((a, b) => b[1] - a[1])[0]
+        if (topShift && topShift[1] / totalAssignments >= 0.7) {
+          inferredShiftPref[staffId] = topShift[0]
+        }
+      }
+
+      // Day inference: count how often each weekday appears vs total weeks
+      if (!(person.preferred_days?.length) && !(person.avoid_days?.length)) {
+        const totalWeeks = Math.max(1, Math.ceil(totalAssignments / 5))
+        const dayCounts: Record<string, number> = {}
+        for (const a of assignments) {
+          const dow = new Date(a.date + "T12:00:00").getDay()
+          const dayCode = (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const)[dow]
+          dayCounts[dayCode] = (dayCounts[dayCode] ?? 0) + 1
+        }
+        // Days that appear in ≥60% of weeks → inferred preferred
+        // Days that appear in ≤15% of weeks (and total > 2 weeks) → inferred avoid
+        for (const [dayCode, count] of Object.entries(dayCounts)) {
+          const ratio = count / totalWeeks
+          if (ratio >= 0.6) {
+            if (!inferredDayPref[staffId]) inferredDayPref[staffId] = new Set()
+            inferredDayPref[staffId].add(dayCode)
+          }
+        }
+        if (totalWeeks >= 3) {
+          for (const dc of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]) {
+            const ratio = (dayCounts[dc] ?? 0) / totalWeeks
+            if (ratio <= 0.15) {
+              if (!inferredDayAvoid[staffId]) inferredDayAvoid[staffId] = new Set()
+              inferredDayAvoid[staffId].add(dc)
+            }
+          }
+        }
+      }
+    }
+  }
+
   const allWeekDates = getWeekDates(weekStart)
 
   // Weekly shift counter — resets at the start of each generated week
@@ -256,6 +320,20 @@ export function runRotaEngine({
     const reservedIds = minCoverageReserved[date]
     const reservedStaff = staff.filter((s) => reservedIds.has(s.id) && isAvailable(s))
 
+    // Preference scoring for day assignment (explicit > inferred)
+    function dayPreferenceScore(s: typeof staff[0]): number {
+      let score = 0
+      // Explicit preferences (stronger weight)
+      if (s.preferred_days?.includes(dayCode)) score += 2
+      if (s.avoid_days?.includes(dayCode)) score -= 3
+      // Inferred preferences (weaker weight, only if no explicit set)
+      if (!(s.preferred_days?.length) && !(s.avoid_days?.length)) {
+        if (inferredDayPref[s.id]?.has(dayCode)) score += 1
+        if (inferredDayAvoid[s.id]?.has(dayCode)) score -= 1.5
+      }
+      return score
+    }
+
     // Additional staff: must have budget after accounting for future reservations
     const remaining = staff.filter((s) =>
       isAvailable(s) && !reservedIds.has(s.id) && hasBudget(s)
@@ -263,9 +341,10 @@ export function runRotaEngine({
       const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
       const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
       if (aInPattern !== bInPattern) return aInPattern - bInPattern
-      const aPref = a.preferred_days?.includes(dayCode) ? 0 : 1
-      const bPref = b.preferred_days?.includes(dayCode) ? 0 : 1
-      if (aPref !== bPref) return aPref - bPref
+      // Day preference scoring: higher is better (sort descending)
+      const aDayPref = dayPreferenceScore(a)
+      const bDayPref = dayPreferenceScore(b)
+      if (aDayPref !== bDayPref) return bDayPref - aDayPref
       return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
     })
 
@@ -428,15 +507,17 @@ export function runRotaEngine({
         }
 
         const rotation = shiftRotation ?? "stable"
+        const staffAvoidShifts = s.avoid_shifts
+        // Resolve effective preferred shift: explicit > inferred
+        const effectivePreferredShift = s.preferred_shift || inferredShiftPref[s.id] || null
         if (preferredFromTecnica) {
           shift = preferredFromTecnica as ShiftType
-        } else if (rotation === "stable" && s.preferred_shift && dayShiftSet.has(s.preferred_shift)) {
-          // 2. Staff preferred shift — only in stable mode (daily/weekly rotation overrides this)
-          shift = s.preferred_shift as ShiftType
+        } else if (rotation === "stable" && effectivePreferredShift && dayShiftSet.has(effectivePreferredShift)) {
+          // 2. Staff preferred shift (explicit or inferred from history) — only in stable mode
+          shift = effectivePreferredShift as ShiftType
         } else {
           // 3. Rotation logic
           if (rotation === "stable") {
-            // Check last week's assignment for this person
             const lastShift = recentAssignments
               .filter((a) => a.staff_id === s.id)
               .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
@@ -447,7 +528,6 @@ export function runRotaEngine({
               dayRrIdx++
             }
           } else if (rotation === "weekly") {
-            // Same shift all week, rotate from last week
             const lastShift = recentAssignments
               .filter((a) => a.staff_id === s.id)
               .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
@@ -455,13 +535,30 @@ export function runRotaEngine({
             const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
             shift = defaultShiftCodes[nextIdx] as ShiftType
           } else {
-            // Daily rotation: cycle through shifts by day index
-            // Each person gets a stable offset so they start at different shifts
             const staffIdx = staff.indexOf(s)
             const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
             shift = defaultShiftCodes[shiftIdx] as ShiftType
           }
         }
+
+        // If assigned shift is in avoid list, try to find a non-avoided alternative
+        if (staffAvoidShifts?.includes(shift) && defaultShiftCodes.length > 1) {
+          const alternative = defaultShiftCodes.find((sc) =>
+            !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
+          )
+          if (alternative) {
+            shift = alternative as ShiftType
+          } else {
+            // All shifts avoided or unavailable — keep assigned, generate warning
+            warnings.push(`${date}: ${s.first_name} ${s.last_name} — preference overridden, assigned to avoided shift ${shift}`)
+          }
+        }
+
+        // Warn if assigned to an avoided day
+        if (s.avoid_days?.includes(dayCode)) {
+          warnings.push(`${date}: ${s.first_name} ${s.last_name} — assigned on avoided day (${dayCode}) due to coverage needs`)
+        }
+
         return { staff_id: s.id, shift_type: shift }
       }),
       skillGaps,

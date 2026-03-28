@@ -46,6 +46,7 @@ function parseFormData(formData: FormData) {
       role:              formData.get("role") as StaffRole,
       working_pattern:   ALL_DAYS.filter(d => formData.get(`day_${d}`) === "on"),
       preferred_days:    ALL_DAYS.filter(d => formData.get(`pref_${d}`) === "on"),
+      avoid_days:        ALL_DAYS.filter(d => formData.get(`avoid_${d}`) === "on"),
       contracted_hours:  37,   // kept in DB but not shown in UI
       days_per_week:     Math.min(7, Math.max(1, parseInt(formData.get("days_per_week") as string, 10) || 5)),
       onboarding_status: formData.get("onboarding_status") as OnboardingStatus,
@@ -53,6 +54,7 @@ function parseFormData(formData: FormData) {
       end_date:          ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
       preferred_shift:   ((formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
+      avoid_shifts:      ((formData.get("avoid_shifts") as string) || "").split(",").filter(Boolean),
       color:             (formData.get("color") as string) || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)],
     },
     skills: parseSkillsFromForm(formData),

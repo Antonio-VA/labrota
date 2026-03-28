@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useRef, useLayoutEffect } from "rea
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Share } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -120,6 +120,7 @@ export function MobileWeekClient() {
   const [data, setData] = useState<RotaWeekData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const weekGridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -175,11 +176,21 @@ export function MobileWeekClient() {
         </button>
         {/* Avisos — tappable with overlay */}
         <WeekAvisos days={days} locale={locale} />
+        <button
+          onClick={async () => {
+            if (!weekGridRef.current) return
+            const { shareCapture } = await import("@/lib/share-capture")
+            await shareCapture(weekGridRef.current, `rota-week-${weekStart}.png`)
+          }}
+          className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0"
+        >
+          <Share className="size-4" />
+        </button>
         <WeekOverflow weekStart={weekStart} />
       </div>
 
       {/* Scrollable grid */}
-      <div className="flex-1 overflow-auto">
+      <div ref={weekGridRef} className="flex-1 overflow-auto">
         {loading ? (
           <div className="p-3 flex flex-col gap-1.5 animate-pulse">
             {/* Header row */}
