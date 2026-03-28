@@ -362,3 +362,87 @@ export async function toggleOrgLeaveRequests(orgId: string, enabled: boolean) {
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }
+
+export async function copyOrganisation(
+  sourceOrgId: string,
+  newName: string,
+  options: { departments?: boolean; shifts?: boolean; tasks?: boolean; rules?: boolean; staff?: boolean; users?: boolean; config?: boolean }
+): Promise<{ error?: string; orgId?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { data: source } = await admin.from("organisations").select("*").eq("id", sourceOrgId).single()
+  if (!source) return { error: "Source organisation not found" }
+
+  const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + `-${Date.now().toString(36)}`
+  const { data: newOrg, error: createErr } = await admin
+    .from("organisations")
+    .insert({ name: newName, slug, is_active: true, rota_display_mode: (source as any).rota_display_mode ?? "by_shift" } as never)
+    .select("id").single()
+  if (createErr) return { error: createErr.message }
+  const newOrgId = (newOrg as { id: string }).id
+
+  // Lab config
+  if (options.config !== false) {
+    const { data: cfg } = await admin.from("lab_config").select("*").eq("organisation_id", sourceOrgId).maybeSingle()
+    if (cfg) {
+      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = cfg as any
+      await admin.from("lab_config").insert({ ...rest, organisation_id: newOrgId } as never)
+    } else {
+      await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
+    }
+  } else {
+    await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
+  }
+
+  if (options.departments) {
+    const { data } = await admin.from("departments").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
+    for (const d of (data ?? []) as any[]) {
+      const { id: _, organisation_id: __, created_at: ___, ...rest } = d
+      await admin.from("departments").insert({ ...rest, organisation_id: newOrgId } as never)
+    }
+  }
+  if (options.shifts) {
+    const { data } = await admin.from("shift_types").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
+    for (const s of (data ?? []) as any[]) {
+      const { id: _, organisation_id: __, created_at: ___, ...rest } = s
+      await admin.from("shift_types").insert({ ...rest, organisation_id: newOrgId } as never)
+    }
+  }
+  if (options.tasks) {
+    const { data } = await admin.from("tecnicas").select("*").eq("organisation_id", sourceOrgId).order("orden")
+    for (const t of (data ?? []) as any[]) {
+      const { id: _, organisation_id: __, created_at: ___, ...rest } = t
+      await admin.from("tecnicas").insert({ ...rest, organisation_id: newOrgId } as never)
+    }
+  }
+  if (options.rules) {
+    const { data } = await admin.from("rota_rules").select("*").eq("organisation_id", sourceOrgId)
+    for (const r of (data ?? []) as any[]) {
+      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r
+      await admin.from("rota_rules").insert({ ...rest, organisation_id: newOrgId, staff_ids: [] } as never)
+    }
+  }
+  if (options.staff) {
+    const { data } = await admin.from("staff").select("*, staff_skills(*)").eq("organisation_id", sourceOrgId)
+    for (const s of (data ?? []) as any[]) {
+      const { id: oldId, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: skills, ...rest } = s
+      const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: newOrgId } as never).select("id").single()
+      if (ns && skills?.length) {
+        for (const sk of skills) {
+          const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk
+          await admin.from("staff_skills").insert({ ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } as never)
+        }
+      }
+    }
+  }
+  if (options.users) {
+    const { data } = await admin.from("organisation_members").select("*").eq("organisation_id", sourceOrgId)
+    for (const m of (data ?? []) as any[]) {
+      const { organisation_id: _, ...rest } = m
+      await admin.from("organisation_members").upsert({ ...rest, organisation_id: newOrgId } as never, { onConflict: "organisation_id,user_id" })
+    }
+  }
+
+  revalidatePath("/admin")
+  return { orgId: newOrgId }
+}
