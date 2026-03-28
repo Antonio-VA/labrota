@@ -47,7 +47,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [] }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [] }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -410,113 +410,160 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </p>
       </div>
 
-      {/* ── POR TAREA (optional) ───────────────────────────────────────── */}
-      {tecnicas.length > 0 && (
-        <div className="rounded-lg border border-border bg-background overflow-hidden">
-          <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
-            <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
-            <button
-              type="button"
-              onClick={handleToggleTaskCoverage}
-              className={cn(
-                "relative w-10 h-6 rounded-full transition-colors shrink-0",
-                taskCoverageEnabled ? "bg-primary" : "bg-muted-foreground/20"
-              )}
-            >
-              <span className={cn(
-                "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
-                taskCoverageEnabled ? "translate-x-[18px]" : "translate-x-0.5"
-              )} />
-            </button>
-          </div>
-          {!taskCoverageEnabled ? (
-            <div className="px-5 py-4">
-              <p className="text-[13px] text-muted-foreground">
-                El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
-                    {DAY_KEYS.map((day) => (
-                      <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const rootDepts = departments.length > 0
-                      ? departments.filter((d) => !d.parent_id)
-                      : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
-                    const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-                    return rootDepts.map((dept) => {
-                      const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
-                      if (deptTecnicas.length === 0) return null
-                      return (
-                        <Fragment key={dept.id ?? dept.code}>
-                          {/* Department group header */}
-                          <tr className="bg-muted/60">
-                            <td colSpan={8} className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                              {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
-                            </td>
-                          </tr>
-                          {deptTecnicas.map((tec, idx) => (
-                            <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
-                              <td className="px-3 py-1.5">
-                                <span className="inline-flex items-center gap-1.5">
-                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
-                                  <span className="text-[13px] font-medium">{tec.codigo}</span>
-                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
-                                </span>
-                              </td>
-                              {DAY_KEYS.map((day) => {
-                                const deptRole = dept.code as "lab" | "andrology" | "admin"
-                                const deptMin = coverageByDay[day]?.[deptRole] ?? 0
-                                const explicitVal = taskCoverage[tec.codigo]?.[day]
-                                const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
-                                const isWeekend = day === "sat" || day === "sun"
-                                return (
-                                  <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
-                                    <div className="relative">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={deptMin}
-                                        value={explicitVal ?? ""}
-                                        onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)}
-                                        disabled={isPending}
-                                        className={cn(
-                                          "w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
-                                          hasWarning
-                                            ? "border-amber-400 bg-amber-50 text-amber-700"
-                                            : explicitVal !== undefined
-                                            ? "border-input bg-background text-foreground"
-                                            : "border-input bg-background text-muted-foreground/40",
-                                          "focus:border-ring focus:ring-1 focus:ring-ring/50 placeholder:text-muted-foreground/30"
-                                        )}
-                                      />
-                                      {hasWarning && (
-                                        <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>
-                                      )}
-                                    </div>
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          ))}
-                        </Fragment>
-                      )
-                    })
-                  })()}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* ── COBERTURA GRANULAR (por tarea o por turno) ─────────────────── */}
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+          <span className="text-[13px] font-medium">
+            {rotaDisplayMode === "by_task"
+              ? "Definir cobertura mínima por tarea (opcional)"
+              : "Definir cobertura mínima por turno (opcional)"}
+          </span>
+          <button
+            type="button"
+            onClick={handleToggleTaskCoverage}
+            className={cn(
+              "relative w-10 h-6 rounded-full transition-colors shrink-0",
+              taskCoverageEnabled ? "bg-primary" : "bg-muted-foreground/20"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform",
+              taskCoverageEnabled ? "translate-x-[18px]" : "translate-x-0.5"
+            )} />
+          </button>
         </div>
-      )}
+        {!taskCoverageEnabled ? (
+          <div className="px-5 py-4">
+            <p className="text-[13px] text-muted-foreground">
+              {rotaDisplayMode === "by_task"
+                ? "El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea."
+                : "El generador usará los mínimos por departamento para todos los turnos. Activa esta opción solo si necesitas excepciones específicas por turno."}
+            </p>
+          </div>
+        ) : rotaDisplayMode === "by_task" ? (
+          /* ── Per-task table ── */
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-muted border-b border-border">
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
+                  {DAY_KEYS.map((day) => (
+                    <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const rootDepts = departments.length > 0
+                    ? departments.filter((d) => !d.parent_id)
+                    : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
+                  const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+                  return rootDepts.map((dept) => {
+                    const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
+                    if (deptTecnicas.length === 0) return null
+                    return (
+                      <Fragment key={dept.id ?? dept.code}>
+                        <tr className="bg-muted/60">
+                          <td colSpan={8} className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
+                          </td>
+                        </tr>
+                        {deptTecnicas.map((tec, idx) => (
+                          <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                            <td className="px-3 py-1.5">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
+                                <span className="text-[13px] font-medium">{tec.codigo}</span>
+                                <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
+                              </span>
+                            </td>
+                            {DAY_KEYS.map((day) => {
+                              const deptRole = dept.code as "lab" | "andrology" | "admin"
+                              const deptMin = coverageByDay[day]?.[deptRole] ?? 0
+                              const explicitVal = taskCoverage[tec.codigo]?.[day]
+                              const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
+                              const isWeekend = day === "sat" || day === "sun"
+                              return (
+                                <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                                  <div className="relative">
+                                    <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
+                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                      className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
+                                        hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
+                                          : explicitVal !== undefined ? "border-input bg-background text-foreground"
+                                          : "border-input bg-background text-muted-foreground/40",
+                                        "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                      )} />
+                                    {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </Fragment>
+                    )
+                  })
+                })()}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* ── Per-shift table ── */
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-muted border-b border-border">
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Turno</th>
+                  {DAY_KEYS.map((day) => (
+                    <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shiftTypes.filter((st) => st.active !== false).map((st, idx) => {
+                  // For shifts, the max is the total department coverage for that day
+                  const totalDeptMin = (day: string) => {
+                    const d = coverageByDay[day as keyof typeof coverageByDay]
+                    return d ? (d.lab + d.andrology + d.admin) : 0
+                  }
+                  return (
+                    <tr key={st.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                      <td className="px-3 py-1.5">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="text-[13px] font-semibold">{st.code}</span>
+                          <span className="text-[11px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
+                        </span>
+                      </td>
+                      {DAY_KEYS.map((day) => {
+                        const maxVal = totalDeptMin(day)
+                        const explicitVal = taskCoverage[st.code]?.[day]
+                        const hasWarning = taskCoverageWarnings.has(`${st.code}-${day}`)
+                        const isWeekend = day === "sat" || day === "sun"
+                        return (
+                          <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                            <div className="relative">
+                              <input type="number" min={0} max={maxVal} value={explicitVal ?? ""}
+                                onChange={(e) => setTaskCov(st.code, day, e.target.value)} disabled={isPending}
+                                className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
+                                  hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
+                                    : explicitVal !== undefined ? "border-input bg-background text-foreground"
+                                    : "border-input bg-background text-muted-foreground/40",
+                                  "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                )} />
+                              {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {maxVal}</p>}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       </>}
 

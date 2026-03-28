@@ -29,7 +29,7 @@ export function SettingsFacturacion({
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[12px] font-medium text-muted-foreground">Cuota anual</span>
-          <span className="text-[14px] font-medium">{billingFee != null ? `${billingFee.toLocaleString("es-ES")} €` : "—"}</span>
+          <span className="text-[14px] font-medium">{billingFee && billingFee > 0 ? `${billingFee.toLocaleString("es-ES")} €` : <span className="text-emerald-600">Prueba gratuita</span>}</span>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground flex items-center gap-1">

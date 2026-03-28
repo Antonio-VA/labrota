@@ -309,15 +309,20 @@ export function AdminOrgDetailClient({
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[12px] font-medium text-muted-foreground">Cuota anual (€)</label>
-              <Input
-                type="number"
-                min={0}
-                step={100}
-                value={billing.fee ?? ""}
-                onChange={(e) => setBilling((p) => ({ ...p, fee: e.target.value ? parseFloat(e.target.value) : null }))}
-                disabled={isPending}
-                className="w-28 h-8 text-[13px]"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={billing.fee ?? ""}
+                  onChange={(e) => setBilling((p) => ({ ...p, fee: e.target.value ? parseFloat(e.target.value) : null }))}
+                  disabled={isPending}
+                  className="w-28 h-8 text-[13px]"
+                />
+                {(!billing.fee || billing.fee === 0) && (
+                  <span className="text-[11px] text-emerald-600 font-medium">Prueba gratuita</span>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
