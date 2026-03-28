@@ -23,7 +23,7 @@ const THEME_OPTION_KEYS = [
   { key: "auto" as const, labelKey: "themeSystem", icon: Monitor },
 ]
 
-export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
+export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser: InitialUser; variant?: "dark" | "light" }) {
   const t = useTranslations("nav")
   const tu = useTranslations("userMenu")
   const router = useRouter()
@@ -99,7 +99,7 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
         <button
           onClick={() => setOpen((o) => !o)}
           className="shrink-0 hover:opacity-90 transition-opacity p-0 bg-transparent"
-          style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.4)" }}
+          style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: variant === "light" ? "1.5px solid var(--border)" : "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
           <img src={avatarUrl} alt="Avatar" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
@@ -107,8 +107,11 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="size-7 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px] font-semibold shrink-0 hover:opacity-90 transition-opacity"
-          style={{ border: "1.5px solid rgba(255,255,255,0.4)" }}
+          className={cn(
+            "size-7 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 hover:opacity-90 transition-opacity",
+            variant === "light" ? "bg-primary/10 text-primary" : "bg-white/20 text-white"
+          )}
+          style={{ border: variant === "light" ? "1.5px solid var(--border)" : "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
           {initials}
@@ -158,8 +161,14 @@ export function UserAvatarMenu({ initialUser }: { initialUser: InitialUser }) {
             ))}
           </div>
 
-          {/* Sign out */}
+          {/* Support + Sign out */}
           <div className="border-t border-border">
+            <button
+              onClick={() => { setOpen(false); setSupportOpen(true) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {t("support") ?? "Soporte"}
+            </button>
             <button
               onClick={() => { setOpen(false); signOut() }}
               className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/10 transition-colors"

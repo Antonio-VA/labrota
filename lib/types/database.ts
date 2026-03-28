@@ -204,6 +204,7 @@ export interface LabConfig {
   task_coverage_by_day:     Record<string, Record<string, number>> | null // tecnica_code → { mon: N, tue: N, ... }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_leave_requests:    boolean
+  enable_task_in_shift:     boolean  // show task assignment in by_shift mode
   enable_notes:             boolean
   shift_name_am_es:         string
   shift_name_pm_es:         string

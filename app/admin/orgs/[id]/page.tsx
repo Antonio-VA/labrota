@@ -117,6 +117,7 @@ export default async function OrgDetailPage({
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
             initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
+            initialEnableTaskInShift={(labConfigRes.data as { enable_task_in_shift?: boolean } | null)?.enable_task_in_shift ?? false}
             initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
           />
         }

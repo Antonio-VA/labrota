@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -24,6 +24,7 @@ export function AdminOrgDetailClient({
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
   initialEnableNotes = true,
+  initialEnableTaskInShift = false,
   initialBilling = { start: null, end: null, fee: null },
   implementationStatus,
   section = "all",
@@ -39,6 +40,7 @@ export function AdminOrgDetailClient({
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
   initialEnableNotes?: boolean
+  initialEnableTaskInShift?: boolean
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
   implementationStatus?: {
     hasRegion: boolean
@@ -58,6 +60,7 @@ export function AdminOrgDetailClient({
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
+  const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -114,6 +117,10 @@ export function AdminOrgDetailClient({
       }
       if (enableNotes !== initialEnableNotes) {
         const r = await toggleOrgNotes(orgId, enableNotes)
+        if (r.error) { toast.error(r.error); hasError = true }
+      }
+      if (enableTaskInShift !== initialEnableTaskInShift) {
+        const r = await toggleOrgTaskInShift(orgId, enableTaskInShift)
         if (r.error) { toast.error(r.error); hasError = true }
       }
       const r2 = await updateOrgRegional(orgId, country, region)
@@ -316,6 +323,32 @@ export function AdminOrgDetailClient({
               <span className={cn(
                 "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
                 enableNotes ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Task in shift */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Asignación de tareas en horario por turno</p>
+              <p className="text-[12px] text-muted-foreground">
+                Permite asignar tareas o subdepartamentos a cada persona dentro de su turno
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => setEnableTaskInShift(!enableTaskInShift)}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                enableTaskInShift ? "bg-emerald-500" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                enableTaskInShift ? "translate-x-5" : "translate-x-0"
               )} />
             </button>
           </div>

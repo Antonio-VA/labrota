@@ -25,17 +25,17 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-muted" style={{ scrollbarGutter: "stable" }}>
       {/* Top nav — same style as clinic app */}
-      <header className="h-[52px] flex items-center justify-between px-6" style={{ backgroundColor: "var(--header-bg, #1b4f8a)" }}>
+      <header className="h-[52px] bg-background border-b border-border flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <span className="font-sans text-[18px] leading-none tracking-normal text-white">
+          <span className="font-sans text-[18px] leading-none tracking-normal text-primary">
             <span className="font-light">lab</span><span className="font-bold">rota</span>
           </span>
-          <span className="text-[13px] text-white/50 border-l border-white/20 pl-3 font-medium">
+          <span className="text-[13px] text-muted-foreground/60 border-l border-border pl-3 font-medium">
             Admin
           </span>
         </div>
-        <div className="flex items-center gap-2 header-icons">
-          <UserAvatarMenu initialUser={initialUser} />
+        <div className="flex items-center gap-2">
+          <UserAvatarMenu initialUser={initialUser} variant="light" />
         </div>
       </header>
 

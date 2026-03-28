@@ -71,6 +71,7 @@ export default async function SettingsPage() {
                   displayMode={orgSettings.displayMode}
                   enableLeaveRequests={orgSettings.enableLeaveRequests}
                   enableNotes={orgSettings.enableNotes}
+                  enableTaskInShift={orgSettings.enableTaskInShift}
                 />
               ) : null
             }

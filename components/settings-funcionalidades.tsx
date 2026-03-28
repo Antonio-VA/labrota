@@ -43,9 +43,11 @@ export function SettingsFuncionalidades({
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean
   enableNotes: boolean
+  enableTaskInShift: boolean
 }) {
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
   const [notes, setNotes] = useState(enableNotes)
+  const [taskInShift, setTaskInShift] = useState(enableTaskInShift)
   const [isPending, startTransition] = useTransition()
 
   return (
@@ -102,6 +104,25 @@ export function SettingsFuncionalidades({
           })
         }}
       />
+
+      {displayMode === "by_shift" && (<>
+        <div className="h-px bg-border" />
+
+        <FeatureToggle
+          label="Asignación de tareas en horario por turno"
+          description="Permite asignar tareas o subdepartamentos a cada persona dentro de su turno. Actívalo solo si tu laboratorio necesita este nivel de detalle."
+          enabled={taskInShift}
+          disabled={isPending}
+          onToggle={() => {
+            const val = !taskInShift
+            setTaskInShift(val)
+            startTransition(async () => {
+              const result = await updateLabConfig({ enable_task_in_shift: val } as any)
+              if (result.error) { toast.error(result.error); setTaskInShift(!val) }
+            })
+          }}
+        />
+      </>)}
     </div>
   )
 }

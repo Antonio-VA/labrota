@@ -239,6 +239,7 @@ export interface OrgSettings {
   region: string
   enableLeaveRequests: boolean
   enableNotes: boolean
+  enableTaskInShift: boolean
   displayMode: "by_shift" | "by_task"
   billingStart: string | null
   billingEnd: string | null
@@ -256,9 +257,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
 
   const { data: config } = await admin
     .from("lab_config")
-    .select("country, region, enable_leave_requests, enable_notes")
+    .select("country, region, enable_leave_requests, enable_notes, enable_task_in_shift")
     .eq("organisation_id", orgId)
-    .maybeSingle() as { data: { country: string; region: string; enable_leave_requests?: boolean; enable_notes?: boolean } | null }
+    .maybeSingle() as { data: { country: string; region: string; enable_leave_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }
 
   if (!org) return null
   return {
@@ -268,6 +269,7 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     region: config?.region ?? "",
     enableLeaveRequests: config?.enable_leave_requests ?? false,
     enableNotes: config?.enable_notes ?? true,
+    enableTaskInShift: config?.enable_task_in_shift ?? false,
     displayMode: (org.rota_display_mode ?? "by_shift") as "by_shift" | "by_task",
     billingStart: org.billing_start ?? null,
     billingEnd: org.billing_end ?? null,
