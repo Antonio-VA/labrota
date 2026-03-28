@@ -31,11 +31,26 @@ export interface ExtractedRule {
   accepted: boolean
 }
 
+export interface ExtractedRotaMode {
+  type: "by_task" | "by_shift"
+  confidence: number
+  reasoning: string
+}
+
+export interface ExtractedTaskCoverage {
+  task_code: string
+  typical_staff_count: number
+  min_observed: number
+  max_observed: number
+}
+
 export interface ExtractedData {
   staff: ExtractedStaff[]
   shifts: ExtractedShift[]
   techniques: ExtractedTechnique[]
   rules: ExtractedRule[]
+  rota_mode?: ExtractedRotaMode
+  task_coverage?: ExtractedTaskCoverage[]
 }
 
 export interface ProcessedFile {

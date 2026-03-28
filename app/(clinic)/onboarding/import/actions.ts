@@ -161,6 +161,27 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
       }
     }
 
+    // ── 5. Set rota mode and task coverage if detected ─────────────────────
+    if (data.rota_mode) {
+      const updates: Record<string, unknown> = {
+        rota_display_mode: data.rota_mode.type,
+      }
+      // If by_task and task coverage detected, configure task coverage
+      if (data.rota_mode.type === "by_task" && data.task_coverage && data.task_coverage.length > 0) {
+        const taskCov: Record<string, Record<string, number>> = {}
+        for (const tc of data.task_coverage) {
+          taskCov[tc.task_code] = {
+            mon: tc.typical_staff_count, tue: tc.typical_staff_count,
+            wed: tc.typical_staff_count, thu: tc.typical_staff_count,
+            fri: tc.typical_staff_count, sat: tc.min_observed, sun: 0,
+          }
+        }
+        updates.task_coverage_enabled = true
+        updates.task_coverage_by_day = taskCov
+      }
+      await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
+    }
+
     revalidatePath("/staff")
     revalidatePath("/lab")
     revalidatePath("/settings")

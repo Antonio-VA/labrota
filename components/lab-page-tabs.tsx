@@ -4,21 +4,20 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["cobertura", "notas", "reglas", "plantillas", "tecnicas", "departamentos", "turnos"] as const
+const TAB_KEYS = ["cobertura", "reglas", "tecnicas", "departamentos", "turnos", "plantillas"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
   cobertura:     "coverage",
   reglas:        "rules",
-  plantillas:    "templates",
   tecnicas:      "tasks",
   departamentos: "departments",
   turnos:        "shifts",
-  notas:         "notes",
+  plantillas:    "templates",
 }
 
 export function LabPageTabs({
-  cobertura, reglas, plantillas, tecnicas, departamentos, turnos, notas,
+  cobertura, reglas, plantillas, tecnicas, departamentos, turnos,
 }: {
   cobertura:     React.ReactNode
   reglas:        React.ReactNode
@@ -26,16 +25,15 @@ export function LabPageTabs({
   tecnicas:      React.ReactNode
   departamentos: React.ReactNode
   turnos:        React.ReactNode
-  notas:         React.ReactNode
 }) {
   const t = useTranslations("labTabs")
   const [active, setActive] = useState<TabKey>("cobertura")
-  const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, plantillas, tecnicas, departamentos, turnos, notas }
+  const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, plantillas, tecnicas, departamentos, turnos }
 
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Tab bar */}
-      <div className="flex border-b border-border -mb-2">
+      <div className="flex border-b border-border -mb-2 overflow-x-auto">
         {TAB_KEYS.map((key) => (
           <button
             key={key}

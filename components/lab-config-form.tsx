@@ -195,29 +195,43 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
 
       {(section === "all" || section === "cobertura") && <>
       {/* ── PUNCIONES ────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.punctions")} />
-        <div className="py-2 pb-3">
-          <p className="text-[13px] text-muted-foreground mb-3">{t("fields.punctionsByDay")}</p>
-          <div className="flex flex-col gap-0">
-            {DAY_KEYS.map((day) => (
-              <div
-                key={day}
-                className="flex items-center justify-between py-2 border-b border-border last:border-0"
-              >
-                <span className="text-[14px] font-medium">{t(`days.${day}`)}</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={values.punctions_by_day[day]}
-                  onChange={(e) => setPunction(day, e.target.value)}
-                  disabled={isPending}
-                  className="w-20 text-center"
-                />
-              </div>
-            ))}
-          </div>
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <SectionHeader title={t("sections.punctions")} />
+          <p className="text-[13px] text-muted-foreground">{t("fields.punctionsByDay")}</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                {DAY_KEYS.map((day) => (
+                  <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
+                    {t(`days.${day}`).slice(0, 3)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {DAY_KEYS.map((day) => {
+                  const isWeekend = day === "sat" || day === "sun"
+                  return (
+                    <td key={day} className={cn("px-1 py-1.5 text-center", isWeekend && "bg-muted/30")}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={50}
+                        value={values.punctions_by_day[day]}
+                        onChange={(e) => setPunction(day, e.target.value)}
+                        disabled={isPending}
+                        className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
+                      />
+                    </td>
+                  )
+                })}
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -281,70 +295,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </div>
         </div>
       )}
-
-      {/* ── BIOPSIAS ──────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Biopsias" />
-        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia en día 5 o día 6">
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={Math.round(values.biopsy_conversion_rate * 100)}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10)
-                  if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_conversion_rate: v / 100 }))
-                }}
-                disabled={isPending}
-                className="w-16 text-center"
-              />
-              <span className="text-[13px] text-muted-foreground">%</span>
-            </div>
-          </FieldRow>
-          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada de biopsias entre día 5 y día 6 post-punción">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-muted-foreground">D5</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={Math.round(values.biopsy_day5_pct * 100)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10)
-                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day5_pct: v / 100, biopsy_day6_pct: (100 - v) / 100 }))
-                  }}
-                  disabled={isPending}
-                  className="w-14 text-center"
-                />
-              </div>
-              <span className="text-[11px] text-muted-foreground">/</span>
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-muted-foreground">D6</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={Math.round(values.biopsy_day6_pct * 100)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10)
-                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day6_pct: v / 100, biopsy_day5_pct: (100 - v) / 100 }))
-                  }}
-                  disabled={isPending}
-                  className="w-14 text-center"
-                />
-              </div>
-              <span className="text-[11px] text-muted-foreground">%</span>
-            </div>
-          </FieldRow>
-        </div>
-      </div>
 
       {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO ──────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
@@ -469,7 +419,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                         min={0}
                                         max={deptMin}
                                         value={explicitVal ?? ""}
-                                        placeholder={String(deptMin)}
                                         onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)}
                                         disabled={isPending}
                                         className={cn(

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
+import { BiopsiaConfig } from "@/components/biopsia-config"
 import { TurnosTab } from "@/components/turnos-tab"
 import { TécnicasTab } from "@/components/tecnicas-tab"
 import { PlantillasTab } from "@/components/plantillas-tab"
@@ -66,13 +67,26 @@ export default async function LabConfigPage() {
                 </p>
               )
             }
-            reglas={<RulesSection rules={rules} staff={staff} />}
+            reglas={
+              <div className="flex flex-col gap-6">
+                {config && <BiopsiaConfig config={config} />}
+                <RulesSection rules={rules} staff={staff} />
+              </div>
+            }
             plantillas={
-              <div className="rounded-lg border border-border bg-background px-5 py-4">
-                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                  Plantillas
-                </p>
-                <PlantillasTab initialTemplates={templates} />
+              <div className="flex flex-col gap-6">
+                <div className="rounded-lg border border-border bg-background px-5 py-4">
+                  <NotesConfig
+                    initialTemplates={noteTemplates}
+                    initialEnabled={config?.enable_notes ?? true}
+                  />
+                </div>
+                <div className="rounded-lg border border-border bg-background px-5 py-4">
+                  <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                    Plantillas
+                  </p>
+                  <PlantillasTab initialTemplates={templates} />
+                </div>
               </div>
             }
             tecnicas={
@@ -97,14 +111,6 @@ export default async function LabConfigPage() {
                 initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"}
                 rotaDisplayMode={rotaDisplayMode}
               />
-            }
-            notas={
-              <div className="rounded-lg border border-border bg-background px-5 py-4">
-                <NotesConfig
-                  initialTemplates={noteTemplates}
-                  initialEnabled={config?.enable_notes ?? true}
-                />
-              </div>
             }
           />
         </div>

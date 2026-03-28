@@ -315,6 +315,60 @@ export function ImportWizard() {
             <p className="text-[14px] text-muted-foreground mt-1">{t("reviewDescription")}</p>
           </div>
 
+          {/* Rota mode detection */}
+          {extracted.rota_mode && (
+            <div className="rounded-lg border border-border bg-background p-4">
+              <div className="flex items-start gap-3">
+                <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", extracted.rota_mode.type === "by_task" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600")}>
+                  {extracted.rota_mode.type === "by_task" ? "T" : "S"}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-medium">
+                    {extracted.rota_mode.type === "by_task" ? "Organización por tarea" : "Organización por turno"}
+                    <ConfidenceBadge confidence={extracted.rota_mode.confidence} />
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">{extracted.rota_mode.reasoning}</p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-1.5 italic">
+                    {extracted.rota_mode.type === "by_task"
+                      ? "Por tarea es habitual en laboratorios grandes (10+ personas), donde cada profesional se asigna a procedimientos específicos cada día."
+                      : "Por turno es habitual en laboratorios pequeños (<10 personas), donde todo el equipo rota entre turnos sin asignación fija de tareas."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Task coverage (only for by_task mode) */}
+          {extracted.rota_mode?.type === "by_task" && extracted.task_coverage && extracted.task_coverage.length > 0 && (
+            <ReviewSection title="Cobertura por tarea detectada" count={extracted.task_coverage.length}>
+              <p className="text-[12px] text-muted-foreground mb-3">
+                Estos son los niveles de personal observados por tarea. Se usarán como cobertura mínima sugerida si activas la opción en Configuración.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="py-2 px-2 font-medium">Tarea</th>
+                      <th className="py-2 px-2 font-medium text-center">Típico</th>
+                      <th className="py-2 px-2 font-medium text-center">Mín.</th>
+                      <th className="py-2 px-2 font-medium text-center">Máx.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extracted.task_coverage.map((tc, i) => (
+                      <tr key={i} className="border-b border-border/50">
+                        <td className="py-1.5 px-2 font-mono">{tc.task_code}</td>
+                        <td className="py-1.5 px-2 text-center font-medium">{tc.typical_staff_count}</td>
+                        <td className="py-1.5 px-2 text-center text-muted-foreground">{tc.min_observed}</td>
+                        <td className="py-1.5 px-2 text-center text-muted-foreground">{tc.max_observed}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </ReviewSection>
+          )}
+
           {/* Section A: Staff */}
           <ReviewSection title={t("staffSection")} count={extracted.staff.filter((s) => s.included).length}>
             <div className="overflow-x-auto">

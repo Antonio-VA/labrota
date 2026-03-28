@@ -30,6 +30,17 @@ const extractionSchema = z.object({
     observed_count: z.number().describe("Number of weeks where pattern was observed"),
     total_weeks: z.number().describe("Total weeks analysed"),
   })),
+  rota_mode: z.object({
+    type: z.enum(["by_task", "by_shift"]).describe("Whether the rota is organised by task/procedure or by shift. by_task = staff assigned to specific tasks each day (typical for large labs). by_shift = staff assigned to shifts with no task granularity (typical for smaller labs)."),
+    confidence: z.number().min(0).max(1).describe("How confident the detection is"),
+    reasoning: z.string().describe("Brief explanation of why this mode was detected"),
+  }),
+  task_coverage: z.array(z.object({
+    task_code: z.string().describe("Technique/task code"),
+    typical_staff_count: z.number().describe("Most commonly observed number of staff assigned to this task per day"),
+    min_observed: z.number().describe("Minimum staff count observed across all weeks"),
+    max_observed: z.number().describe("Maximum staff count observed"),
+  })).describe("Per-task staffing levels observed — only populated if rota_mode is by_task"),
 })
 
 const SYSTEM_PROMPT = `You are analysing staff rota/schedule files for an IVF (In Vitro Fertilisation) embryology laboratory.
@@ -64,6 +75,13 @@ Your task is to extract structured data from these historical schedule files. Ex
    - Staff who always work together (always_together)
 
    For each rule, calculate confidence based on consistency across all weeks provided.
+
+5. **Rota mode detection**: Determine whether this lab organises its rota:
+   - "by_task" = staff are assigned to specific tasks/procedures each day. This is typical for LARGE laboratories (10+ staff) where specialisation matters.
+   - "by_shift" = staff are assigned to shifts (morning/afternoon/full) without task-level detail. This is typical for SMALLER laboratories (<10 staff) where everyone does everything.
+   Look for: if the schedule has columns/sections for specific procedures (ICSI, OPU, etc), it's by_task. If it only shows shift assignments (AM/PM/T1/T2), it's by_shift.
+
+6. **Task coverage** (only if by_task): For each technique/task, count how many staff are typically assigned per day. This helps set minimum coverage requirements. Report the typical (mode), minimum, and maximum staff count observed.
 
 Return ONLY the structured JSON. Be thorough — extract every staff member, every shift type, every technique, and every observable pattern.
 If a field cannot be determined, use reasonable defaults (empty string for unknown shifts, "lab" for ambiguous departments).`
