@@ -52,7 +52,7 @@ export function SettingsImplementation({
   const completedCount = steps.filter((s) => s.done).length
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {/* Import link — above the steps, only when not complete */}
       {!allDone && (
         <Link
@@ -149,6 +149,6 @@ export function SettingsImplementation({
           </div>
         </>
       )}
-    </>
+    </div>
   )
 }
