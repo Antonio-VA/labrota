@@ -514,12 +514,9 @@ export function runRotaEngine({
         const matchedPrefShift = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
         const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
 
-        // Priority: técnica typical_shift → explicit preferred_shift → rotation fallback
+        // Priority: explicit preferred_shift → rotation fallback
         // Explicit preferences are ALWAYS respected regardless of rotation mode.
-        // Rotation only kicks in for staff with no técnica match and no explicit preference.
-        if (preferredFromTecnica) {
-          shift = preferredFromTecnica as ShiftType
-        } else if (matchedPrefShift) {
+        if (matchedPrefShift) {
           shift = matchedPrefShift as ShiftType
         } else if (rotation === "stable") {
           // Round-robin across shifts, offset by day for variety
@@ -645,12 +642,15 @@ export function runRotaEngine({
             return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
           }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
 
-          const best = scored[0]
-          // Only swap if the person doesn't have a preferred_shift or manual preference for their current shift
-          const member = assignedById.get(best.a.staff_id)
-          if (member && member.preferred_shift !== best.a.shift_type) {
-            best.a.shift_type = shiftCode as ShiftType
+          // Try candidates in order — skip only if they explicitly prefer their current shift
+          for (const { a: candidate } of scored) {
+            const member = assignedById.get(candidate.staff_id)
+            const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
+            // Block swap only if person explicitly prefers their CURRENT shift
+            if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
+            candidate.shift_type = shiftCode as ShiftType
             resolved = true
+            break
           }
         }
 
