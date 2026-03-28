@@ -3972,8 +3972,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
           {showActions && !isPublished && (
-            <Button size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
-              {isPending ? tc("generating") : t("generateRota")}
+            <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
+              {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
             </Button>
           )}
           {(showActions || hasAssignments) && (

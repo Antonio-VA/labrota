@@ -221,7 +221,11 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
     setDepartments((prev) => prev.map((d) => d.sortId === sortId ? draft : d))
   }, [])
 
+  const [deletedIds, setDeletedIds] = useState<string[]>([])
+
   function deleteRow(sortId: string) {
+    const toDelete = departments.find((d) => d.sortId === sortId)
+    if (toDelete?.id) setDeletedIds((prev) => [...prev, toDelete.id!])
     setDepartments((prev) => prev.filter((d) => d.sortId !== sortId).map((d, i) => ({ ...d, sort_order: i })))
   }
 
@@ -247,11 +251,12 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
         abbreviation: d.abbreviation.trim().toUpperCase().slice(0, 3),
         colour: d.colour, is_default: d.is_default, sort_order: i,
         parent_id: d.parent_id ?? null,
-      })))
+      })), deletedIds)
       if (result.error) {
         setErrorMsg(result.error)
         setStatus("error")
       } else {
+        setDeletedIds([])
         setStatus("success")
         setTimeout(() => setStatus("idle"), 3000)
       }

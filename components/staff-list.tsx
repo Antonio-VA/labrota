@@ -783,9 +783,26 @@ function StaffTable({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <Link href={`/staff/${member.id}`} className="text-[14px] font-medium truncate hover:text-primary transition-colors">
-                    {member.first_name} {member.last_name}
-                  </Link>
+                  {editMode && setEditValue ? (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <input
+                        type="text"
+                        value={String(getVal?.(member, "first_name") ?? member.first_name)}
+                        onChange={(e) => setEditValue(member.id, "first_name", e.target.value)}
+                        className="h-7 w-24 rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={String(getVal?.(member, "last_name") ?? member.last_name)}
+                        onChange={(e) => setEditValue(member.id, "last_name", e.target.value)}
+                        className="h-7 w-24 rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <Link href={`/staff/${member.id}`} className="text-[14px] font-medium truncate hover:text-primary transition-colors">
+                      {member.first_name} {member.last_name}
+                    </Link>
+                  )}
                   {allCertified && (
                     <Tooltip>
                       <TooltipTrigger render={

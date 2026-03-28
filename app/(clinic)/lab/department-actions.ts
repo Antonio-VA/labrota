@@ -9,11 +9,17 @@ export async function saveDepartments(
     id?: string; code: string; name: string; name_en: string
     abbreviation: string; colour: string; is_default: boolean; sort_order: number
     parent_id?: string | null
-  }[]
+  }[],
+  deleteIds: string[] = []
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
+
+  // Delete removed departments
+  for (const id of deleteIds) {
+    await supabase.from("departments").delete().eq("id", id).eq("organisation_id", orgId)
+  }
 
   for (const dept of departments) {
     if (dept.id) {
