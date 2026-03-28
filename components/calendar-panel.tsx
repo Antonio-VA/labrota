@@ -1814,9 +1814,20 @@ function PersonGrid({
                               shiftTypes={data?.shiftTypes ?? []}
                               isPublished={isPublished}
                               compact={compact}
-                              onShiftChange={(newShift) => {
-                                patchLocalAssignment(assignment.id, { shift_type: newShift })
-                                handleFunctionLabelSave(assignment.id, assignment.function_label)
+                              onShiftChange={async (newShift) => {
+                                if (!newShift) {
+                                  // OFF — remove assignment
+                                  patchLocalAssignment(assignment.id, { _removed: true })
+                                  setLocalDays((prev) => prev.map((d) => ({
+                                    ...d,
+                                    assignments: d.assignments.filter((a) => a.id !== assignment.id),
+                                  })))
+                                  await removeAssignment(assignment.id)
+                                } else {
+                                  // Change shift
+                                  patchLocalAssignment(assignment.id, { shift_type: newShift })
+                                  await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
+                                }
                               }}
                             />
                           ) : (
