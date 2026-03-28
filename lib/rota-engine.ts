@@ -514,18 +514,19 @@ export function runRotaEngine({
         const matchedPrefShift = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
         const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
 
-        if (rotation === "stable") {
-          // Stable: técnica → explicit pref → round-robin
-          if (preferredFromTecnica) {
-            shift = preferredFromTecnica as ShiftType
-          } else if (matchedPrefShift) {
-            shift = matchedPrefShift as ShiftType
-          } else {
-            shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
-            dayRrIdx++
-          }
+        // Priority: técnica typical_shift → explicit preferred_shift → rotation fallback
+        // Explicit preferences are ALWAYS respected regardless of rotation mode.
+        // Rotation only kicks in for staff with no técnica match and no explicit preference.
+        if (preferredFromTecnica) {
+          shift = preferredFromTecnica as ShiftType
+        } else if (matchedPrefShift) {
+          shift = matchedPrefShift as ShiftType
+        } else if (rotation === "stable") {
+          // Round-robin across shifts, offset by day for variety
+          shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+          dayRrIdx++
         } else if (rotation === "weekly") {
-          // Weekly: same shift all week, advance from last week (ignore técnica/pref)
+          // Same shift all week, advance from last week
           const lastShift = recentAssignments
             .filter((a) => a.staff_id === s.id)
             .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
@@ -533,7 +534,7 @@ export function runRotaEngine({
           const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
           shift = defaultShiftCodes[nextIdx] as ShiftType
         } else {
-          // Daily: cycle through shifts by day index (ignore técnica/pref)
+          // Daily: cycle through shifts by day index + staff offset
           const staffIdx = staff.indexOf(s)
           const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
           shift = defaultShiftCodes[shiftIdx] as ShiftType
