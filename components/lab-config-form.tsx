@@ -47,7 +47,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [] }: { config: LabConfig; section?: "all" | "cobertura"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [] }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[] }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -193,7 +193,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
-      {(section === "all" || section === "cobertura") && <>
+      {(section === "all" || section === "parametros") && <>
       {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
@@ -317,6 +317,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       )}
 
+      </>}
+
+      {(section === "all" || section === "cobertura") && <>
       {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO ──────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">

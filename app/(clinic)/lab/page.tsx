@@ -67,11 +67,16 @@ export default async function LabConfigPage() {
                 </p>
               )
             }
-            reglas={
-              <div className="flex flex-col gap-6">
-                {config && <BiopsiaConfig config={config} />}
-                <RulesSection rules={rules} staff={staff} />
-              </div>
+            reglas={<RulesSection rules={rules} staff={staff} />}
+            parametros={
+              config ? (
+                <div className="flex flex-col gap-6">
+                  <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} />
+                  <BiopsiaConfig config={config} />
+                </div>
+              ) : (
+                <p className="text-[14px] text-muted-foreground">Lab configuration not found.</p>
+              )
             }
             plantillas={
               <div className="flex flex-col gap-6">

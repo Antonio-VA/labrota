@@ -869,6 +869,7 @@
   "labTabs": {
     "coverage": "Cobertura",
     "rules": "Reglas",
+    "parameters": "Parámetros",
     "templates": "Plantillas",
     "tasks": "Tareas",
     "departments": "Departamentos",

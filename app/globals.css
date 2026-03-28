@@ -4,8 +4,9 @@
 
 @custom-variant dark (&:is([data-theme="dark"] *));
 
-/* Prevent sub-pixel wobble from zoom */
+/* Stable scrollbar to prevent layout shift */
 html {
+  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
 }
 
