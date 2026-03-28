@@ -50,7 +50,7 @@ export function ClinicTopBar({
   }
 
   return (
-    <header className="hidden lg:flex h-[52px] shrink-0 items-center border-b border-border bg-background px-4 gap-4">
+    <header className="hidden lg:flex h-[52px] shrink-0 items-center border-b border-[#243356] px-4 gap-4" style={{ backgroundColor: "#2C3E6B" }}>
 
       {/* Left: org selector */}
       {orgName && (
@@ -59,13 +59,13 @@ export function ClinicTopBar({
             <button
               onClick={() => setOrgMenuOpen((v) => !v)}
               disabled={isSwitching}
-              className="flex items-center gap-2 text-[14px] font-medium text-foreground/70 hover:text-foreground transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 text-[14px] font-medium text-white/90 hover:text-white transition-colors disabled:opacity-60"
             >
               {orgLogoUrl && !logoError && (
                 <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
               )}
               <span data-org-name>{orgName}</span>
-              <ChevronDown className="size-3.5 opacity-50" />
+              <ChevronDown className="size-3.5 text-white/60" />
             </button>
             {orgMenuOpen && (
               <div className="absolute left-0 top-9 z-50 w-60 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
@@ -119,15 +119,15 @@ export function ClinicTopBar({
             {orgLogoUrl && !logoError && (
               <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
             )}
-            <span className="text-[14px] font-medium text-foreground/70" data-org-name>{orgName}</span>
+            <span className="text-[14px] font-medium text-white/90" data-org-name>{orgName}</span>
           </div>
         )
       )}
 
       <div className="flex-1" />
 
-      {/* Right: bell + avatar */}
-      <div className="flex items-center gap-3">
+      {/* Right: bell + avatar — force white icons on navy bg */}
+      <div className="flex items-center gap-3 [&_button]:text-white/70 [&_button:hover]:text-white [&_a]:text-white/70 [&_a:hover]:text-white">
         <NotificationBell />
         {initialUser && <UserAvatarMenu initialUser={initialUser} />}
       </div>

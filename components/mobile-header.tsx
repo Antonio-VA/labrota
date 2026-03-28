@@ -43,7 +43,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header id="mobile-header" className="flex lg:hidden h-14 shrink-0 items-center border-b border-border bg-background px-3 gap-2.5">
+      <header id="mobile-header" className="flex lg:hidden h-14 shrink-0 items-center border-b border-[#243356] px-3 gap-2.5" style={{ backgroundColor: "#2C3E6B" }}>
         {/* Left: org chip */}
         <button
           onClick={() => hasMultipleOrgs && setSheetOpen(true)}
@@ -56,22 +56,22 @@ export function MobileHeader({
           {orgLogoUrl && !logoError ? (
             <img src={orgLogoUrl} alt="" className="h-7 w-auto max-w-[56px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
           ) : (
-            <span className="size-7 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
+            <span className="size-7 rounded-lg bg-white/15 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
               {orgInitials}
             </span>
           )}
-          <span className="text-[15px] font-medium">{orgName ?? ""}</span>
-          {hasMultipleOrgs && <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />}
+          <span className="text-[15px] font-medium text-white">{orgName ?? ""}</span>
+          {hasMultipleOrgs && <ChevronDown className="size-3.5 text-white/60 shrink-0" />}
         </button>
 
         <div className="flex-1" />
 
-        {/* Right: notifications + account */}
-        <div className="flex items-center gap-1">
+        {/* Right: notifications + account — white icons on navy */}
+        <div className="flex items-center gap-1 [&_button]:text-white/70 [&_button:hover]:text-white">
           <NotificationBell />
           <a
             href="/mobile-account"
-            className="size-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors"
+            className="size-10 flex items-center justify-center rounded-full text-white/70 hover:text-white active:bg-white/10 transition-colors"
           >
             <User className="size-5" />
           </a>
