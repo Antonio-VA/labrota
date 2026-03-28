@@ -129,7 +129,7 @@ export function TransposedShiftGrid({
 
   return (
     <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
-      <div className="overflow-auto flex-1">
+      <div className="overflow-auto flex-1 rounded-lg border border-border">
         <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: gridCols }}>
           {/* Header row */}
           <div className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2" />
