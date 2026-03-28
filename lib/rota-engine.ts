@@ -508,28 +508,23 @@ export function runRotaEngine({
 
         const rotation = shiftRotation ?? "stable"
         const staffAvoidShifts = s.avoid_shifts
-        // Resolve effective preferred shifts: explicit > inferred
-        // preferred_shift may be comma-separated (multi-select) or single value
+        // Resolve preferred shifts: only explicit settings, NOT inferred
+        // Inferred preferences are used only for soft scoring, not shift assignment
         const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+        const matchedPrefShift = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
+        // For avoid logic, also include inferred
         const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
-        const matchedPrefShift = effectivePrefShifts.find((ps) => dayShiftSet.has(ps))
         if (preferredFromTecnica) {
           shift = preferredFromTecnica as ShiftType
         } else if (rotation === "stable" && matchedPrefShift) {
-          // 2. Staff preferred shift (explicit or inferred from history) — only in stable mode
+          // 2. Explicit staff preferred shift — only in stable mode
           shift = matchedPrefShift as ShiftType
         } else {
           // 3. Rotation logic
           if (rotation === "stable") {
-            const lastShift = recentAssignments
-              .filter((a) => a.staff_id === s.id)
-              .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
-            if (lastShift && dayShiftSet.has(lastShift)) {
-              shift = lastShift as ShiftType
-            } else {
-              shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
-              dayRrIdx++
-            }
+            // Round-robin across shifts for balanced distribution
+            shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+            dayRrIdx++
           } else if (rotation === "weekly") {
             const lastShift = recentAssignments
               .filter((a) => a.staff_id === s.id)
