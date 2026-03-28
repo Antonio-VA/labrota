@@ -659,6 +659,7 @@ function StaffTable({
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,
   visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
+  roleFilter, onRoleFilter, statusFilter, onStatusFilter, skillFilter, onSkillFilter, allSkillCodes,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -679,6 +680,14 @@ function StaffTable({
   getVal?: (s: StaffWithSkills, field: string) => unknown
   setEditValue?: (staffId: string, field: string, value: unknown) => void
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
+  // Inline header filters
+  roleFilter?: StaffRole | "all"
+  onRoleFilter?: (v: StaffRole | "all") => void
+  statusFilter?: OnboardingStatus | "all"
+  onStatusFilter?: (v: OnboardingStatus | "all") => void
+  skillFilter?: string
+  onSkillFilter?: (v: string) => void
+  allSkillCodes?: string[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -698,10 +707,44 @@ function StaffTable({
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
-        {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
-        {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
+        {visibleCols.has("role") && (
+          <div className="flex flex-col gap-0.5">
+            <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
+            {onRoleFilter && (
+              <select value={roleFilter} onChange={(e) => onRoleFilter(e.target.value as StaffRole | "all")} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
+                <option value="all">{t("allRoles")}</option>
+                <option value="lab">{t("roles.lab")}</option>
+                <option value="andrology">{t("roles.andrology")}</option>
+                <option value="admin">{t("roles.admin")}</option>
+              </select>
+            )}
+          </div>
+        )}
+        {visibleCols.has("capacidades") && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
+            {onSkillFilter && allSkillCodes && allSkillCodes.length > 0 && (
+              <select value={skillFilter} onChange={(e) => onSkillFilter(e.target.value)} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
+                <option value="all">{t("allSkills")}</option>
+                {allSkillCodes.map((code) => <option key={code} value={code}>{skillLabel(code)}</option>)}
+              </select>
+            )}
+          </div>
+        )}
         {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
-        {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
+        {visibleCols.has("status") && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+            {onStatusFilter && (
+              <select value={statusFilter} onChange={(e) => onStatusFilter(e.target.value as OnboardingStatus | "all")} className="h-6 rounded border border-input bg-transparent px-1 text-[11px] outline-none text-muted-foreground w-full">
+                <option value="all">{t("allStatuses")}</option>
+                <option value="active">{t("onboardingStatus.active")}</option>
+                <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+                <option value="inactive">{t("onboardingStatus.inactive")}</option>
+              </select>
+            )}
+          </div>
+        )}
         {visibleCols.has("preferredShift") && <span className="text-[13px] font-medium text-muted-foreground">Prefiere</span>}
         {visibleCols.has("avoidShifts") && <span className="text-[13px] font-medium text-muted-foreground">Evita</span>}
         {visibleCols.has("preferredDays") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
@@ -1153,46 +1196,12 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-56 h-9"
-          />
-          <select
-            value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value as StaffRole | "all"); clearSelection() }}
-            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">{t("allRoles")}</option>
-            <option value="lab">{t("roles.lab")}</option>
-            <option value="andrology">{t("roles.andrology")}</option>
-            <option value="admin">{t("roles.admin")}</option>
-          </select>
-          {allSkillCodes.length > 0 && (
-            <select
-              value={skillFilter}
-              onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }}
-              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <option value="all">{t("allSkills")}</option>
-              {allSkillCodes.map((code) => (
-                <option key={code} value={code}>{skillLabel(code)}</option>
-              ))}
-            </select>
-          )}
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }}
-            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">{t("allStatuses")}</option>
-            <option value="active">{t("onboardingStatus.active")}</option>
-            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-            <option value="inactive">{t("onboardingStatus.inactive")}</option>
-          </select>
-        </div>
+        <Input
+          placeholder={t("searchPlaceholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-56 h-9"
+        />
         <div className="flex items-center gap-2">
           {/* Column toggle */}
           <div className="relative" ref={colMenuRef}>
@@ -1281,6 +1290,13 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           getVal={getVal}
           setEditValue={setEditValue}
           shiftTypes={shiftTypes}
+          roleFilter={roleFilter}
+          onRoleFilter={(v) => { setRoleFilter(v); clearSelection() }}
+          statusFilter={statusFilter}
+          onStatusFilter={(v) => { setStatusFilter(v); clearSelection() }}
+          skillFilter={skillFilter}
+          onSkillFilter={(v) => { setSkillFilter(v); clearSelection() }}
+          allSkillCodes={allSkillCodes}
         />
       )}
 
