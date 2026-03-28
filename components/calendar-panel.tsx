@@ -4437,9 +4437,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                         </div>
                       </div>
                     )}
-                    <p className="text-[12px] text-muted-foreground/60 text-center">
-                      También puedes añadir asignaciones manualmente haciendo clic en cualquier celda.
-                    </p>
                   </div>
                 </div>
               ) : calendarLayout === "shift" && daysAsRows ? (
