@@ -3996,6 +3996,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Staff for assignment sheet
   const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
+  const [staffLoaded, setStaffLoaded] = useState(false)
 
   // Day edit sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -4174,7 +4175,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   }, [refreshKey])
 
   useEffect(() => {
-    getActiveStaff().then(setStaffList)
+    getActiveStaff().then((s) => { setStaffList(s); setStaffLoaded(true) })
   }, [refreshKey])
 
   // Navigation — both views move by 1 week
@@ -4679,8 +4680,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
-              {/* Shimmer — replaces content during loading */}
-              {loadingWeek && (
+              {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
+              {(loadingWeek || !staffLoaded) && (
                 <div className="absolute inset-0 z-10 bg-background">
                   <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
                 </div>
@@ -5018,13 +5019,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
                 }}
                 onAddToTask={(tecCode) => setMobileAddSheet({ open: true, role: "lab" })}
-                loading={loadingWeek || !currentDayData}
+                loading={loadingWeek || !staffLoaded || !currentDayData}
                 locale={locale}
               />
             ) : (
               <DayView
                 day={currentDayData}
-                loading={loadingWeek || !currentDayData}
+                loading={loadingWeek || !staffLoaded || !currentDayData}
                 locale={locale}
                 departments={weekData?.departments ?? []}
                 data={weekData}
