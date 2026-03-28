@@ -4174,9 +4174,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
-              {/* Shimmer overlay — covers content during loading */}
+              {/* Shimmer — replaces content during loading */}
               {loadingWeek && (
-                <div className={cn("absolute inset-0 z-10", weekData ? "bg-background/50" : "bg-background")}>
+                <div className="absolute inset-0 z-10 bg-background">
                   <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
                 </div>
               )}
