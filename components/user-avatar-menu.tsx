@@ -161,14 +161,8 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
             ))}
           </div>
 
-          {/* Support + Sign out */}
+          {/* Sign out */}
           <div className="border-t border-border">
-            <button
-              onClick={() => { setOpen(false); setSupportOpen(true) }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              {t("support") ?? "Soporte"}
-            </button>
             <button
               onClick={() => { setOpen(false); signOut() }}
               className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/10 transition-colors"
