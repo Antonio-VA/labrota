@@ -4592,11 +4592,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: locale === "es" ? "Copiar imagen" : "Copy image",
                 icon: <Copy className="size-3.5" />,
                 onClick: async () => {
-                  const el = document.querySelector("[data-calendar-content]") as HTMLElement
-                  if (!el) return
+                  const gridEl = document.querySelector("[data-calendar-content]") as HTMLElement
+                  if (!gridEl) return
                   try {
-                    const { copyToClipboard } = await import("@/lib/share-capture")
-                    await copyToClipboard(el)
+                    const { copyRotaToClipboard } = await import("@/lib/share-capture")
+                    const notesEl = document.querySelector("[data-week-notes]") as HTMLElement | null
+                    const dateLabel = formatToolbarLabel("week", currentDate, weekStart, locale)
+                    await copyRotaToClipboard({ gridEl, dateLabel, notesEl })
                     toast.success(locale === "es" ? "Imagen copiada al portapapeles" : "Image copied to clipboard")
                   } catch (err) {
                     toast.error(locale === "es" ? "No se pudo copiar la imagen" : "Could not copy image")
@@ -5060,8 +5062,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   } : undefined}
                   onShare={async () => {
                     if (!mobileContentRef.current) return
-                    const { shareCapture } = await import("@/lib/share-capture")
-                    await shareCapture(mobileContentRef.current, `rota-${currentDate.replace(/-/g, "")}.png`)
+                    const { shareRotaCapture } = await import("@/lib/share-capture")
+                    const notesEl = document.querySelector("[data-week-notes]") as HTMLElement | null
+                    const dateLabel = formatToolbarLabel("week", currentDate, weekStart, locale)
+                    await shareRotaCapture({ gridEl: mobileContentRef.current, dateLabel, notesEl, fileName: `rota-${currentDate.replace(/-/g, "")}.png` })
                   }}
                   isPending={isPending}
                   compact={mobileCompact}
@@ -5324,7 +5328,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       />
 
       {/* Week notes — desktop only */}
-      <div className="hidden md:block">
+      <div className="hidden md:block" data-week-notes>
         {view === "week" && <WeekNotes weekStart={weekStart} />}
       </div>
 

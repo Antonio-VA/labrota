@@ -1,6 +1,7 @@
 import { requireEditor } from "@/lib/require-editor"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
+import { cn } from "@/lib/utils"
 import { MobileGate } from "@/components/mobile-gate"
 import { LabConfigForm } from "@/components/lab-config-form"
 import { RulesSection } from "@/components/rules-section"
@@ -53,8 +54,16 @@ export default async function LabConfigPage() {
     <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-8">
       <MobileGate>
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
-          <div>
+          <div className="flex items-center gap-3">
             <h1 className="text-[18px] font-medium">{t("configuration")}</h1>
+            <span className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border",
+              rotaDisplayMode === "by_task"
+                ? "bg-purple-50 border-purple-200 text-purple-700"
+                : "bg-blue-50 border-blue-200 text-blue-700"
+            )}>
+              {rotaDisplayMode === "by_task" ? "Por tarea" : "Por turno"}
+            </span>
           </div>
 
           <LabPageTabs
@@ -68,7 +77,7 @@ export default async function LabConfigPage() {
               )
             }
             reglas={<RulesSection rules={rules} staff={staff} />}
-            parametros={
+            generador={
               config ? (
                 <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} />
               ) : (

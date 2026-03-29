@@ -925,7 +925,7 @@
   "labTabs": {
     "coverage": "Coverage",
     "rules": "Rules",
-    "parameters": "Parameters",
+    "generator": "Generator",
     "templates": "Templates",
     "tasks": "Tasks",
     "departments": "Departments",
