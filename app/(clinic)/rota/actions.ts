@@ -455,7 +455,7 @@ export async function generateRota(
       .gte("date", fourWeeksAgoStr)
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
-    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes").eq("enabled", true),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
     supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true) as unknown as Promise<{ data: { codigo: string; typical_shifts: string[] }[] | null }>,
   ])
@@ -535,7 +535,7 @@ export async function generateRota(
     labConfig,
     shiftTypes: shiftTypesData,
     punctionsOverride,
-    rules: (rulesRes.data ?? []) as RotaRule[],
+    rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date()),
     tecnicas: (tecnicasForEngine.data ?? []).map((t: any) => ({
       codigo: t.codigo,
       department: t.department ?? "lab",
@@ -544,7 +544,7 @@ export async function generateRota(
     })),
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
     taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
-    taskCoverageByDay: labConfig.task_coverage_by_day,
+    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Insert new assignments (skip individual staff+date that have manual overrides)
@@ -812,7 +812,7 @@ export async function regenerateDay(
     supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
     supabase.from("rota_assignments").select("staff_id, date").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
     supabase.from("lab_config").select("*").single(),
-    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes").eq("enabled", true),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
     supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true),
   ])
@@ -828,7 +828,7 @@ export async function regenerateDay(
     recentAssignments: (recentRes.data ?? []) as RotaAssignment[],
     labConfig,
     shiftTypes: (shiftRes.data ?? []) as ShiftTypeDefinition[],
-    rules: (rulesRes.data ?? []) as RotaRule[],
+    rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date()),
     tecnicas: (tecRes.data ?? []).map((t: any) => ({
       codigo: t.codigo,
       department: t.department ?? "lab",
@@ -837,7 +837,7 @@ export async function regenerateDay(
     })),
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
     taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
-    taskCoverageByDay: labConfig.task_coverage_by_day,
+    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Find the specific day's assignments from the engine output

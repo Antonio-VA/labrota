@@ -563,7 +563,8 @@ export function runRotaEngine({
 
         if (rule.type === "no_librar_mismo_dia") {
           // Ensure the selected staff are not ALL off on the same day.
-          // If both/all are unassigned, force the one with lowest workload back in.
+          // This rule requires specific staff_ids — skip if none specified.
+          if (rule.staff_ids.length < 2) continue
           const conflictIds = new Set(rule.staff_ids)
           const assignedConflict = assigned.filter((s) => conflictIds.has(s.id))
           const allConflictStaff = staff.filter((s) => conflictIds.has(s.id))
@@ -584,6 +585,8 @@ export function runRotaEngine({
                 assigned.push(pick)
                 assignedLab = pick.role === "lab" ? [...assignedLab, pick] : assignedLab
                 assignedAndrology = pick.role === "andrology" ? [...assignedAndrology, pick] : assignedAndrology
+                // Track the forced assignment so budget is accounted for
+                weeklyShiftCount[pick.id] = (weeklyShiftCount[pick.id] ?? 0) + 1
               }
               warnings.push(
                 `${date}: ${allConflictStaff.map((s) => `${s.first_name} ${s.last_name}`).join(" + ")} — no_librar_mismo_dia${!rule.is_hard ? " (soft)" : ""}`
@@ -758,10 +761,84 @@ export function runRotaEngine({
       }
     }
 
+    const assignedById = new Map(assigned.map((s) => [s.id, s]))
+
+    // ── Per-shift/task coverage enforcement ──────────────────────────────────
+    if (taskCoverageEnabled && taskCoverageByDay) {
+      const shiftCount: Record<string, number> = {}
+      for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
+
+      for (const [code, dayMap] of Object.entries(taskCoverageByDay)) {
+        const minForDay = dayMap[dayCode]
+        if (minForDay === undefined || minForDay <= 0) continue
+        const currentCount = shiftCount[code] ?? 0
+        if (currentCount >= minForDay) continue
+
+        const deficit = minForDay - currentCount
+        // Try to move staff from overstaffed shifts
+        let moved = 0
+        for (let i = 0; i < deficit; i++) {
+          // Find the most overstaffed shift (excluding this one)
+          const sortedShifts = defaultShiftCodes
+            .filter((sc) => sc !== code)
+            .sort((a, b) => (shiftCount[b] ?? 0) - (shiftCount[a] ?? 0))
+
+          let resolved = false
+          for (const srcShift of sortedShifts) {
+            const srcCount = shiftCount[srcShift] ?? 0
+            // Only move if src has more than its own minimum
+            const srcMin = taskCoverageByDay[srcShift]?.[dayCode] ?? 0
+            if (srcCount <= srcMin || srcCount <= 1) continue
+
+            // Find a movable person (prefer non-preferred shift)
+            const candidates = dayPlan.assignments.filter((a) => a.shift_type === srcShift)
+            const movable = candidates.find((a) => {
+              const s = assignedById.get(a.staff_id)
+              if (!s) return true
+              const prefShifts = s.preferred_shift?.split(",").filter(Boolean) ?? []
+              return !prefShifts.includes(srcShift)
+            }) ?? candidates[candidates.length - 1]
+
+            if (movable) {
+              movable.shift_type = code as ShiftType
+              shiftCount[srcShift]--
+              shiftCount[code] = (shiftCount[code] ?? 0) + 1
+              moved++
+              resolved = true
+              break
+            }
+          }
+
+          if (!resolved) {
+            // Try adding an unassigned staff member
+            const unassigned = staff.filter((s) =>
+              !(assignedByDate[date] ?? new Set()).has(s.id) &&
+              !leaveMap[s.id]?.has(date) &&
+              s.onboarding_status === "active" &&
+              (weeklyShiftCount[s.id] ?? 0) < (s.days_per_week ?? 5)
+            ).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+
+            if (unassigned.length > 0) {
+              const pick = unassigned[0]
+              dayPlan.assignments.push({ staff_id: pick.id, shift_type: code as ShiftType })
+              assigned.push(pick)
+              if (!assignedByDate[date]) assignedByDate[date] = new Set()
+              assignedByDate[date].add(pick.id)
+              shiftCount[code] = (shiftCount[code] ?? 0) + 1
+              moved++
+            }
+          }
+        }
+
+        if (moved < deficit) {
+          warnings.push(`${date}: ${code} — cobertura insuficiente: ${currentCount + moved}/${minForDay}`)
+        }
+      }
+    }
+
     // ── Technique-shift alignment pass (by_shift only) ──────────────────────
     // Check each technique's typical_shift for coverage. If a shift is missing
     // a qualified person for a mapped technique, try to reassign or add one.
-    const assignedById = new Map(assigned.map((s) => [s.id, s]))
 
     // Group techniques by their typical shift
     const techByShift: Record<string, string[]> = {} // shift_code → [tecnica_codigo...]

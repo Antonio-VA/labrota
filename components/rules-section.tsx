@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
+import { useState, useTransition, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { PlusIcon, Pencil, Trash2, ShieldAlert, ShieldCheck } from "lucide-react"
+import { PlusIcon, Pencil, Trash2, ShieldAlert, ShieldCheck, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -72,6 +72,7 @@ interface RuleFormState {
   recovery: "following" | "previous"
   restDays: string
   notes: string
+  expires_at: string
 }
 
 function defaultForm(): RuleFormState {
@@ -87,6 +88,7 @@ function defaultForm(): RuleFormState {
     recovery: "following",
     restDays: "2",
     notes: "",
+    expires_at: "",
   }
 }
 
@@ -103,6 +105,7 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     recovery: ((rule.params.recovery as string | undefined) ?? "following") as "following" | "previous",
     restDays: String((rule.params.restDays as number | undefined) ?? 2),
     notes: rule.notes ?? "",
+    expires_at: rule.expires_at ? rule.expires_at.split("T")[0] : "",
   }
 }
 
@@ -122,6 +125,7 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
     staff_ids: form.staff_ids,
     params,
     notes: form.notes.trim() || null,
+    expires_at: form.expires_at ? new Date(form.expires_at + "T23:59:59Z").toISOString() : null,
   }
 }
 
@@ -174,7 +178,13 @@ function RuleSheet({
     })
   }
 
+  const requiresStaffPair = form.type === "no_librar_mismo_dia" || form.type === "no_coincidir" || form.type === "no_misma_tarea"
+
   function handleSubmit() {
+    if (requiresStaffPair && form.staff_ids.length < 2) {
+      setError(t("errorMinTwoStaff"))
+      return
+    }
     startTransition(async () => {
       const data = formToInsert(form)
       const result = editing
@@ -319,17 +329,22 @@ function RuleSheet({
           {/* Affected staff */}
           <div>
             <label className={labelSelect}>{t("affectedStaff")}</label>
+            {requiresStaffPair && (
+              <p className="text-[11px] text-muted-foreground mb-1">{t("selectAtLeastTwo")}</p>
+            )}
             <div className="flex flex-col gap-1 border border-border rounded-[8px] p-2">
-              {/* All option */}
-              <label className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px] border-b border-border pb-2 mb-1">
-                <input
-                  type="checkbox"
-                  checked={form.staff_ids.length === 0}
-                  onChange={() => set("staff_ids", [])}
-                  className="rounded border-border accent-primary"
-                />
-                <span className="font-medium">Todos el personal</span>
-              </label>
+              {/* All option — hidden for pair-based rules */}
+              {!requiresStaffPair && (
+                <label className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px] border-b border-border pb-2 mb-1">
+                  <input
+                    type="checkbox"
+                    checked={form.staff_ids.length === 0}
+                    onChange={() => set("staff_ids", [])}
+                    className="rounded border-border accent-primary"
+                  />
+                  <span className="font-medium">Todo el personal</span>
+                </label>
+              )}
               <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
                 {staff.map((s) => (
                   <label
@@ -348,6 +363,27 @@ function RuleSheet({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Expiry */}
+          <div>
+            <label className={labelSelect}>{t("expiresAt")}</label>
+            <p className="text-[11px] text-muted-foreground mb-1">{t("expiresAtHint")}</p>
+            <Input
+              type="date"
+              value={form.expires_at}
+              onChange={(e) => set("expires_at", e.target.value)}
+              className="w-48"
+            />
+            {form.expires_at && (
+              <button
+                type="button"
+                onClick={() => set("expires_at", "")}
+                className="text-[11px] text-primary mt-1 hover:underline"
+              >
+                {t("clearExpiry")}
+              </button>
+            )}
           </div>
 
           {/* Notes */}
@@ -444,6 +480,81 @@ export function RulesSection({
     setEditing(null)
   }
 
+  const now = new Date().toISOString()
+  const activeRules = useMemo(() => rules.filter((r) => !r.expires_at || r.expires_at > now), [rules, now])
+  const expiredRules = useMemo(() => rules.filter((r) => r.expires_at && r.expires_at <= now), [rules, now])
+  const [showExpired, setShowExpired] = useState(false)
+
+  function formatExpiry(iso: string) {
+    const d = new Date(iso)
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+  }
+
+  function renderRuleCard(rule: RotaRule, expired = false) {
+    return (
+      <div
+        key={rule.id}
+        className={cn(
+          "flex items-center gap-3 rounded-[8px] border border-border bg-background px-4 py-3",
+          expired && "opacity-60"
+        )}
+      >
+        {/* Type + badges */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-medium">{t(`types.${rule.type}`)}</span>
+            <Badge variant={rule.is_hard ? "skill-gap" : "outline"} className="text-[11px]">
+              {rule.is_hard ? t("hard") : t("soft")}
+            </Badge>
+            {!rule.enabled && (
+              <Badge variant="inactive" className="text-[11px]">{t("disabled")}</Badge>
+            )}
+            {rule.expires_at && !expired && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Clock className="size-2.5" />
+                {formatExpiry(rule.expires_at)}
+              </span>
+            )}
+            {expired && (
+              <Badge variant="inactive" className="text-[10px]">{t("expired")}</Badge>
+            )}
+          </div>
+          {rule.notes && (
+            <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{rule.notes}</p>
+          )}
+        </div>
+
+        {/* Enabled toggle */}
+        {!expired && <Toggle checked={rule.enabled} onChange={() => handleToggle(rule)} />}
+
+        {/* Edit */}
+        <button
+          type="button"
+          onClick={() => openEdit(rule)}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Edit rule"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+
+        {/* Delete with inline confirm */}
+        <button
+          type="button"
+          onClick={() => handleDelete(rule.id)}
+          className={cn(
+            "transition-colors text-[12px] font-medium",
+            deletingId === rule.id
+              ? "text-destructive"
+              : "text-muted-foreground hover:text-destructive"
+          )}
+          aria-label="Delete rule"
+        >
+          {deletingId === rule.id ? t("confirmDelete") : <Trash2 className="size-3.5" />}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -457,7 +568,7 @@ export function RulesSection({
         </Button>
       </div>
 
-      {rules.length === 0 ? (
+      {activeRules.length === 0 && expiredRules.length === 0 ? (
         <EmptyState
           icon={ShieldCheck}
           title={t("noRules")}
@@ -465,56 +576,27 @@ export function RulesSection({
         />
       ) : (
         <div className="flex flex-col gap-2">
-          {rules.map((rule) => (
-            <div
-              key={rule.id}
-              className="flex items-center gap-3 rounded-[8px] border border-border bg-background px-4 py-3"
-            >
-              {/* Type + badges */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[14px] font-medium">{t(`types.${rule.type}`)}</span>
-                  <Badge variant={rule.is_hard ? "skill-gap" : "outline"} className="text-[11px]">
-                    {rule.is_hard ? t("hard") : t("soft")}
-                  </Badge>
-                  {!rule.enabled && (
-                    <Badge variant="inactive" className="text-[11px]">{t("disabled")}</Badge>
-                  )}
-                </div>
-                {rule.notes && (
-                  <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{rule.notes}</p>
-                )}
-              </div>
+          {activeRules.map((rule) => renderRuleCard(rule))}
+        </div>
+      )}
 
-              {/* Enabled toggle */}
-              <Toggle checked={rule.enabled} onChange={() => handleToggle(rule)} />
-
-              {/* Edit */}
-              <button
-                type="button"
-                onClick={() => openEdit(rule)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Edit rule"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-
-              {/* Delete with inline confirm */}
-              <button
-                type="button"
-                onClick={() => handleDelete(rule.id)}
-                className={cn(
-                  "transition-colors text-[12px] font-medium",
-                  deletingId === rule.id
-                    ? "text-destructive"
-                    : "text-muted-foreground hover:text-destructive"
-                )}
-                aria-label="Delete rule"
-              >
-                {deletingId === rule.id ? t("confirmDelete") : <Trash2 className="size-3.5" />}
-              </button>
+      {/* Expired rules section */}
+      {expiredRules.length > 0 && (
+        <div className="flex flex-col gap-2 mt-2">
+          <button
+            type="button"
+            onClick={() => setShowExpired((v) => !v)}
+            className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors self-start"
+          >
+            <Clock className="size-3.5" />
+            {t("expiredRules", { count: expiredRules.length })}
+            <span className="text-[11px]">{showExpired ? "▲" : "▼"}</span>
+          </button>
+          {showExpired && (
+            <div className="flex flex-col gap-2">
+              {expiredRules.map((rule) => renderRuleCard(rule, true))}
             </div>
-          ))}
+          )}
         </div>
       )}
 

@@ -145,6 +145,178 @@ function resolveColor(color: string): string | null {
 }
 
 /**
+ * Build a temporary off-screen container that composes:
+ * 1. A date header
+ * 2. A clone of the grid element (fully expanded)
+ * 3. A clone of the notes element (if any)
+ *
+ * Returns the container (already appended to body) and a cleanup function.
+ */
+function buildCaptureContainer(opts: {
+  gridEl: HTMLElement
+  dateLabel: string
+  notesEl?: HTMLElement | null
+}): { container: HTMLElement; cleanup: () => void } {
+  const container = document.createElement("div")
+  container.style.cssText = "position:fixed;left:-9999px;top:0;background:#fff;padding:24px;font-family:var(--font-geist-sans,ui-sans-serif,system-ui,sans-serif);"
+
+  // Date header
+  const header = document.createElement("div")
+  header.style.cssText = "font-size:16px;font-weight:600;color:#1e293b;margin-bottom:12px;padding-left:4px;"
+  header.textContent = opts.dateLabel
+  container.appendChild(header)
+
+  // Clone grid
+  const gridClone = opts.gridEl.cloneNode(true) as HTMLElement
+  gridClone.style.overflow = "visible"
+  gridClone.style.height = "auto"
+  gridClone.style.maxHeight = "none"
+  gridClone.style.position = "static"
+  container.appendChild(gridClone)
+
+  // Clone notes
+  if (opts.notesEl) {
+    const notesClone = opts.notesEl.cloneNode(true) as HTMLElement
+    notesClone.style.cssText = "margin-top:12px;"
+    // Remove any hidden classes
+    notesClone.classList.remove("hidden")
+    container.appendChild(notesClone)
+  }
+
+  document.body.appendChild(container)
+
+  return {
+    container,
+    cleanup: () => document.body.removeChild(container),
+  }
+}
+
+/**
+ * Captures the full rota (date header + grid + notes) as PNG and copies to clipboard.
+ */
+export async function copyRotaToClipboard(opts: {
+  gridEl: HTMLElement
+  dateLabel: string
+  notesEl?: HTMLElement | null
+}) {
+  const { container, cleanup } = buildCaptureContainer(opts)
+
+  const blobPromise = (async () => {
+    const html2canvas = (await import("html2canvas")).default
+
+    const canvas = await html2canvas(container, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      height: container.scrollHeight,
+      width: container.scrollWidth,
+      onclone: (_doc: Document, clonedEl: HTMLElement) => {
+        convertOklabColors(clonedEl)
+      },
+    })
+
+    cleanup()
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png")
+    )
+
+    if (!blob) throw new Error("Failed to create image")
+    return blob
+  })()
+
+  try {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      const item = new ClipboardItem({ "image/png": blobPromise })
+      await navigator.clipboard.write([item])
+      return
+    }
+  } catch {
+    // Fall through to download fallback
+  }
+
+  const blob = await blobPromise
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "labrota-capture.png"
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * Captures the full rota (date header + grid + notes) as PNG and triggers share or download.
+ */
+export async function shareRotaCapture(opts: {
+  gridEl: HTMLElement
+  dateLabel: string
+  notesEl?: HTMLElement | null
+  fileName: string
+}) {
+  const { container, cleanup } = buildCaptureContainer(opts)
+
+  try {
+    const html2canvas = (await import("html2canvas")).default
+
+    const canvas = await html2canvas(container, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      height: container.scrollHeight,
+      width: container.scrollWidth,
+      onclone: (_doc: Document, clonedEl: HTMLElement) => {
+        convertOklabColors(clonedEl)
+      },
+    })
+
+    cleanup()
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png")
+    )
+
+    if (!blob) {
+      console.error("shareRotaCapture: canvas.toBlob returned null")
+      return
+    }
+
+    const file = new File([blob], opts.fileName, { type: "image/png" })
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        const canShare = navigator.canShare?.({ files: [file] })
+        if (canShare) {
+          await navigator.share({ files: [file] })
+          return
+        }
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") {
+          console.error("shareRotaCapture: navigator.share failed", e)
+        }
+      }
+    }
+
+    // Fallback: download
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = opts.fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    cleanup()
+    console.error("shareRotaCapture error:", err)
+    alert(err instanceof Error ? err.message : "Could not capture image")
+  }
+}
+
+/**
  * Captures a DOM element as PNG and copies to clipboard.
  *
  * Key: we create the ClipboardItem synchronously within the user gesture,

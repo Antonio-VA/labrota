@@ -290,6 +290,7 @@ export interface RotaRule {
   staff_ids:       string[]
   params:          Record<string, unknown>
   notes:           string | null
+  expires_at:      string | null
   created_at:      string
   updated_at:      string
 }

@@ -623,6 +623,13 @@
       "save": "Save rule",
       "cancel": "Cancel",
       "confirmDelete": "Delete this rule?",
+      "errorMinTwoStaff": "Select at least 2 people for this rule",
+      "selectAtLeastTwo": "Select at least 2 people",
+      "expiresAt": "Expiry date",
+      "expiresAtHint": "Optional — rule will be ignored after this date",
+      "clearExpiry": "No expiry",
+      "expired": "Expired",
+      "expiredRules": "{count, plural, one {# expired rule} other {# expired rules}}",
       "types": {
         "no_coincidir": "Do not coincide",
         "no_misma_tarea": "Do not share task",
@@ -927,7 +934,7 @@
   "labTabs": {
     "coverage": "Coverage",
     "rules": "Rules",
-    "parameters": "Parameters",
+    "generator": "Generator",
     "templates": "Templates",
     "tasks": "Tasks",
     "departments": "Departments",

@@ -188,8 +188,12 @@ export function MobileWeekClient() {
         <WeekAvisos days={days} locale={locale} />
         <WeekOverflow weekStart={weekStart} onShare={async () => {
           if (!weekGridRef.current) return
-          const { shareCapture } = await import("@/lib/share-capture")
-          await shareCapture(weekGridRef.current, `rota-week-${weekStart}.png`)
+          const { shareRotaCapture } = await import("@/lib/share-capture")
+          const s = new Date(weekStart + "T12:00:00")
+          const e = new Date(weekStart + "T12:00:00"); e.setDate(s.getDate() + 6)
+          const fmt = (d: Date) => d.toLocaleDateString(locale === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "short" })
+          const dateLabel = `${fmt(s)} – ${fmt(e)}`
+          await shareRotaCapture({ gridEl: weekGridRef.current, dateLabel, fileName: `rota-week-${weekStart}.png` })
         }} />
       </div>
 

@@ -623,6 +623,13 @@
       "save": "Guardar regla",
       "cancel": "Cancelar",
       "confirmDelete": "¿Eliminar esta regla?",
+      "errorMinTwoStaff": "Selecciona al menos 2 personas para esta regla",
+      "selectAtLeastTwo": "Selecciona al menos 2 personas",
+      "expiresAt": "Fecha de expiración",
+      "expiresAtHint": "Opcional — la regla se ignorará después de esta fecha",
+      "clearExpiry": "Sin expiración",
+      "expired": "Expirada",
+      "expiredRules": "{count, plural, one {# regla expirada} other {# reglas expiradas}}",
       "types": {
         "no_coincidir": "No coincidir",
         "no_misma_tarea": "No coincidir en tarea",
@@ -927,7 +934,7 @@
   "labTabs": {
     "coverage": "Cobertura",
     "rules": "Reglas",
-    "parameters": "Parámetros",
+    "generator": "Generador",
     "templates": "Plantillas",
     "tasks": "Tareas",
     "departments": "Departamentos",

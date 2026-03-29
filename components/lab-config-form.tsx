@@ -196,132 +196,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {(section === "all" || section === "parametros") && <>
-      {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <SectionHeader title="Procedimientos" />
-          <p className="text-[13px] text-muted-foreground">Previsión de procedimientos por día de la semana.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="bg-muted border-b border-border">
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[100px]"></th>
-                {DAY_KEYS.map((day) => (
-                  <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
-                    {t(`days.${day}`).slice(0, 3)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* Punciones row */}
-              <tr className="border-b border-border/50">
-                <td className="px-3 py-1.5 text-[13px] font-medium">Punciones</td>
-                {DAY_KEYS.map((day) => {
-                  const isWeekend = day === "sat" || day === "sun"
-                  return (
-                    <td key={day} className={cn("px-1 py-1.5 text-center", isWeekend && "bg-muted/30")}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={50}
-                        value={values.punctions_by_day[day]}
-                        onChange={(e) => setPunction(day, e.target.value)}
-                        disabled={isPending}
-                        className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
-                      />
-                    </td>
-                  )
-                })}
-              </tr>
-              {/* Biopsias row — auto-calculated with D5/D6 offset */}
-              <tr className="bg-muted/10">
-                <td className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
-                  Biopsias
-                  <span className="text-[10px] text-muted-foreground/60 ml-1">D5/D6</span>
-                </td>
-                {DAY_KEYS.map((day, dayIdx) => {
-                  const isWeekend = day === "sat" || day === "sun"
-                  const rate = values.biopsy_conversion_rate ?? 0.5
-                  const d5Pct = values.biopsy_day5_pct ?? 0.5
-                  const d6Pct = values.biopsy_day6_pct ?? 0.5
-                  // D5: 5 days before this weekday, D6: 6 days before
-                  const d5DayIdx = ((dayIdx - 5) % 7 + 7) % 7
-                  const d6DayIdx = ((dayIdx - 6) % 7 + 7) % 7
-                  const p5 = values.punctions_by_day[DAY_KEYS[d5DayIdx]] ?? 0
-                  const p6 = values.punctions_by_day[DAY_KEYS[d6DayIdx]] ?? 0
-                  const biopsies = Math.round(p5 * rate * d5Pct + p6 * rate * d6Pct)
-                  return (
-                    <td key={day} className={cn("px-1 py-1.5 text-center text-muted-foreground", isWeekend && "bg-muted/30")}>
-                      <span className="text-[13px]">{biopsies}</span>
-                    </td>
-                  )
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          Las biopsias se calculan automáticamente a partir de las punciones de 5 y 6 días antes (D5/D6), según la tasa de conversión y distribución configuradas más abajo.
-        </p>
-      </div>
-
-      {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Biopsias" />
-        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia">
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="number" min={0} max={100} step={1}
-                value={Math.round(values.biopsy_conversion_rate * 100)}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10)
-                  if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_conversion_rate: v / 100 }))
-                }}
-                disabled={isPending}
-                className="w-16 text-center"
-              />
-              <span className="text-[13px] text-muted-foreground">%</span>
-            </div>
-          </FieldRow>
-          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada entre día 5 y día 6 post-punción">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-muted-foreground">D5</span>
-                <Input
-                  type="number" min={0} max={100} step={5}
-                  value={Math.round(values.biopsy_day5_pct * 100)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10)
-                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day5_pct: v / 100, biopsy_day6_pct: (100 - v) / 100 }))
-                  }}
-                  disabled={isPending}
-                  className="w-14 text-center"
-                />
-              </div>
-              <span className="text-muted-foreground">/</span>
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-muted-foreground">D6</span>
-                <Input
-                  type="number" min={0} max={100} step={5}
-                  value={Math.round(values.biopsy_day6_pct * 100)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10)
-                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day6_pct: v / 100, biopsy_day5_pct: (100 - v) / 100 }))
-                  }}
-                  disabled={isPending}
-                  className="w-14 text-center"
-                />
-              </div>
-              <span className="text-[11px] text-muted-foreground">%</span>
-            </div>
-          </FieldRow>
-        </div>
-      </div>
-
       {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title={t("sections.ratioCobertura")} />
@@ -616,6 +490,132 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             El generador no producirá una rota que no cumpla estos mínimos, y te avisará si el equipo disponible no es suficiente.
           </p>
         )}
+      </div>
+
+      {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <SectionHeader title="Procedimientos" />
+          <p className="text-[13px] text-muted-foreground">Previsión de procedimientos por día de la semana.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[100px]"></th>
+                {DAY_KEYS.map((day) => (
+                  <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
+                    {t(`days.${day}`).slice(0, 3)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Punciones row */}
+              <tr className="border-b border-border/50">
+                <td className="px-3 py-1.5 text-[13px] font-medium">Punciones</td>
+                {DAY_KEYS.map((day) => {
+                  const isWeekend = day === "sat" || day === "sun"
+                  return (
+                    <td key={day} className={cn("px-1 py-1.5 text-center", isWeekend && "bg-muted/30")}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={50}
+                        value={values.punctions_by_day[day]}
+                        onChange={(e) => setPunction(day, e.target.value)}
+                        disabled={isPending}
+                        className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
+                      />
+                    </td>
+                  )
+                })}
+              </tr>
+              {/* Biopsias row — auto-calculated with D5/D6 offset */}
+              <tr className="bg-muted/10">
+                <td className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
+                  Biopsias
+                  <span className="text-[10px] text-muted-foreground/60 ml-1">D5/D6</span>
+                </td>
+                {DAY_KEYS.map((day, dayIdx) => {
+                  const isWeekend = day === "sat" || day === "sun"
+                  const rate = values.biopsy_conversion_rate ?? 0.5
+                  const d5Pct = values.biopsy_day5_pct ?? 0.5
+                  const d6Pct = values.biopsy_day6_pct ?? 0.5
+                  // D5: 5 days before this weekday, D6: 6 days before
+                  const d5DayIdx = ((dayIdx - 5) % 7 + 7) % 7
+                  const d6DayIdx = ((dayIdx - 6) % 7 + 7) % 7
+                  const p5 = values.punctions_by_day[DAY_KEYS[d5DayIdx]] ?? 0
+                  const p6 = values.punctions_by_day[DAY_KEYS[d6DayIdx]] ?? 0
+                  const biopsies = Math.round(p5 * rate * d5Pct + p6 * rate * d6Pct)
+                  return (
+                    <td key={day} className={cn("px-1 py-1.5 text-center text-muted-foreground", isWeekend && "bg-muted/30")}>
+                      <span className="text-[13px]">{biopsies}</span>
+                    </td>
+                  )
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
+          Las biopsias se calculan automáticamente a partir de las punciones de 5 y 6 días antes (D5/D6), según la tasa de conversión y distribución configuradas a continuación.
+        </p>
+      </div>
+
+      {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title="Biopsias" />
+        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia">
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number" min={0} max={100} step={1}
+                value={Math.round(values.biopsy_conversion_rate * 100)}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_conversion_rate: v / 100 }))
+                }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <span className="text-[13px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada entre día 5 y día 6 post-punción">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D5</span>
+                <Input
+                  type="number" min={0} max={100} step={5}
+                  value={Math.round(values.biopsy_day5_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day5_pct: v / 100, biopsy_day6_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-muted-foreground">/</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground">D6</span>
+                <Input
+                  type="number" min={0} max={100} step={5}
+                  value={Math.round(values.biopsy_day6_pct * 100)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!isNaN(v) && v >= 0 && v <= 100) setValues((p) => ({ ...p, biopsy_day6_pct: v / 100, biopsy_day5_pct: (100 - v) / 100 }))
+                  }}
+                  disabled={isPending}
+                  className="w-14 text-center"
+                />
+              </div>
+              <span className="text-[11px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+        </div>
       </div>
 
       </>}

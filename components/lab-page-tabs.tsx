@@ -4,33 +4,33 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["cobertura", "reglas", "parametros", "tecnicas", "departamentos", "turnos", "plantillas"] as const
+const TAB_KEYS = ["departamentos", "turnos", "tecnicas", "cobertura", "generador", "reglas", "plantillas"] as const
 type TabKey = typeof TAB_KEYS[number]
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
-  cobertura:     "coverage",
-  reglas:        "rules",
-  parametros:    "parameters",
-  tecnicas:      "tasks",
   departamentos: "departments",
   turnos:        "shifts",
+  tecnicas:      "tasks",
+  cobertura:     "coverage",
+  generador:     "generator",
+  reglas:        "rules",
   plantillas:    "templates",
 }
 
 export function LabPageTabs({
-  cobertura, reglas, parametros, plantillas, tecnicas, departamentos, turnos,
+  cobertura, reglas, generador, plantillas, tecnicas, departamentos, turnos,
 }: {
   cobertura:     React.ReactNode
   reglas:        React.ReactNode
-  parametros:    React.ReactNode
+  generador:     React.ReactNode
   plantillas:    React.ReactNode
   tecnicas:      React.ReactNode
   departamentos: React.ReactNode
   turnos:        React.ReactNode
 }) {
   const t = useTranslations("labTabs")
-  const [active, setActive] = useState<TabKey>("cobertura")
-  const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, parametros, plantillas, tecnicas, departamentos, turnos }
+  const [active, setActive] = useState<TabKey>("departamentos")
+  const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, generador, plantillas, tecnicas, departamentos, turnos }
 
   return (
     <div className="flex flex-col gap-6 w-full">
