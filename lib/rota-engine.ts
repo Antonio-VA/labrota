@@ -914,6 +914,19 @@ export function runRotaEngine({
       }
     }
 
+    // Build shift counts for minimum-protection during alignment
+    const shiftCountAfterDist: Record<string, number> = {}
+    for (const sc of defaultShiftCodes) shiftCountAfterDist[sc] = 0
+    for (const a of dayPlan.assignments) shiftCountAfterDist[a.shift_type] = (shiftCountAfterDist[a.shift_type] ?? 0) + 1
+
+    // Per-shift minimums for guard checks
+    const shiftMinForGuard: Record<string, number> = {}
+    if (taskCoverageEnabled && taskCoverageByDay) {
+      for (const sc of defaultShiftCodes) {
+        shiftMinForGuard[sc] = taskCoverageByDay[sc]?.[dayCode] ?? 0
+      }
+    }
+
     // For each shift, check technique coverage
     for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
       if (!dayShiftSet.has(shiftCode)) continue
@@ -930,11 +943,16 @@ export function runRotaEngine({
 
         // Gap found — try to resolve
         // 1. Try to swap: find someone in ANOTHER shift who is qualified and swap them
+        //    BUT never move someone out of a shift that would drop below its minimum
         let resolved = false
-        const qualifiedInOtherShifts = dayPlan.assignments.filter((a) =>
-          a.shift_type !== shiftCode &&
-          assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)
-        )
+        const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
+          if (a.shift_type === shiftCode) return false
+          if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)) return false
+          // Guard: don't move if source shift would drop below minimum
+          const sourceMin = shiftMinForGuard[a.shift_type] ?? 0
+          if (sourceMin > 0 && (shiftCountAfterDist[a.shift_type] ?? 0) <= sourceMin) return false
+          return true
+        })
 
         if (qualifiedInOtherShifts.length > 0) {
           // Pick rarest: person whose qualification is shared by fewest others
@@ -951,6 +969,9 @@ export function runRotaEngine({
             const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
             // Block swap only if person explicitly prefers their CURRENT shift
             if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
+            // Update shift counts
+            shiftCountAfterDist[candidate.shift_type]--
+            shiftCountAfterDist[shiftCode] = (shiftCountAfterDist[shiftCode] ?? 0) + 1
             candidate.shift_type = shiftCode as ShiftType
             resolved = true
             break
