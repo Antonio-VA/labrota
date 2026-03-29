@@ -24,64 +24,63 @@ function slugify(s: string): string {
   return s.replace(/[^a-zA-Z0-9]+/g, "").replace(/\s+/g, "")
 }
 
-function getBiopsyForecast(
-  date: string,
-  punctionsDefault: Record<string, number>,
-  punctionsOverride: Record<string, number>,
-  conversionRate: number,
-  day5Pct: number,
-  day6Pct: number,
-): number {
-  function getPunc(dateStr: string): number {
-    if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
-    if (punctionsDefault[dateStr] !== undefined) return punctionsDefault[dateStr]
-    const dow = new Date(dateStr + "T12:00:00").getDay()
-    const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-    return sameDow ? sameDow[1] : 0
-  }
-  const d5 = new Date(date + "T12:00:00"); d5.setDate(d5.getDate() - 5)
-  const d6 = new Date(date + "T12:00:00"); d6.setDate(d6.getDate() - 6)
-  return Math.round(
-    getPunc(d5.toISOString().split("T")[0]) * conversionRate * day5Pct +
-    getPunc(d6.toISOString().split("T")[0]) * conversionRate * day6Pct
-  )
+// ── Design tokens ────────────────────────────────────────────────────────────
+
+const COLORS = {
+  primary:    [27, 79, 138] as [number, number, number],   // #1B4F8A
+  headerBg:   [235, 241, 250] as [number, number, number], // soft blue
+  headerText: [51, 65, 85] as [number, number, number],    // slate-700
+  bodyText:   [30, 41, 59] as [number, number, number],    // slate-800
+  muted:      [100, 116, 139] as [number, number, number], // slate-500
+  border:     [203, 213, 225] as [number, number, number], // slate-300
+  altRow:     [248, 250, 252] as [number, number, number], // slate-50
+  green:      [5, 150, 105] as [number, number, number],   // emerald-600
+  footerText: [148, 163, 184] as [number, number, number], // slate-400
+  white:      [255, 255, 255] as [number, number, number],
 }
+
+const MARGIN = 14
+const FONT = "helvetica"
 
 // ── By shift export ──────────────────────────────────────────────────────────
 
 export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
   const timeFormat = data.timeFormat ?? "24h"
 
-  // Header
-  doc.setFontSize(14)
-  doc.setFont("helvetica", "bold")
-  doc.text(orgName, 14, 14)
+  // ── Header ──────────────────────────────────────────────────────────────
+  // Accent bar at top
+  doc.setFillColor(...COLORS.primary)
+  doc.rect(0, 0, pageWidth, 3, "F")
+
+  doc.setFontSize(16)
+  doc.setFont(FONT, "bold")
+  doc.setTextColor(...COLORS.bodyText)
+  doc.text(orgName, MARGIN, 14)
+
   doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  doc.setTextColor(100, 116, 139)
-  doc.text(fmtWeekRange(data.weekStart, locale), 14, 20)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.muted)
+  doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
   if (data.rota?.status === "published") {
-    doc.setTextColor(5, 150, 105)
-    doc.text("✓ Publicado" + (data.rota.published_by ? ` · ${data.rota.published_by}` : ""), pageWidth - 14, 14, { align: "right" })
+    doc.setTextColor(...COLORS.green)
+    doc.setFont(FONT, "bold")
+    doc.setFontSize(8)
+    doc.text("● " + (locale === "es" ? "Publicado" : "Published"), pageWidth - MARGIN, 14, { align: "right" })
   }
 
-  // Day headers
+  // ── Day headers ─────────────────────────────────────────────────────────
   const dayHeaders = data.days.map((d) => {
     const dt = new Date(d.date + "T12:00:00")
     const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(dt)
     const num = dt.getDate()
-    const effectiveP = data.rota?.punctions_override?.[d.date] ?? data.punctionsDefault[d.date] ?? 0
-    const biopsy = getBiopsyForecast(d.date, data.punctionsDefault, data.rota?.punctions_override ?? {}, data.biopsyConversionRate, data.biopsyDay5Pct, data.biopsyDay6Pct)
-    let label = `${wday} ${num}`
-    if (effectiveP > 0) label += `\nP:${effectiveP}`
-    if (biopsy > 0) label += ` B:${biopsy}`
-    return label
+    return `${wday} ${num}`
   })
 
-  // Build shift rows
+  // ── Build shift rows ────────────────────────────────────────────────────
   const shiftTypes = (data.shiftTypes ?? []).filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order)
   const body: string[][] = []
 
@@ -106,54 +105,71 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
     body.push(row)
   }
 
+  // ── Table ───────────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: 26,
     head: [["", ...dayHeaders]],
     body,
     theme: "grid",
     styles: {
-      fontSize: 7,
-      cellPadding: 2,
-      lineColor: [204, 221, 238],
-      lineWidth: 0.2,
+      fontSize: 7.5,
+      font: FONT,
+      cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
+      lineColor: COLORS.border,
+      lineWidth: 0.15,
+      textColor: COLORS.bodyText,
+      minCellHeight: 10,
     },
     headStyles: {
-      fillColor: [241, 245, 251],
-      textColor: [100, 116, 139],
+      fillColor: COLORS.headerBg,
+      textColor: COLORS.headerText,
       fontStyle: "bold",
-      fontSize: 7,
+      fontSize: 8,
       halign: "center",
+      cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
     },
     columnStyles: {
-      0: { cellWidth: 22, fontStyle: "bold", halign: "right" },
+      0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.headerBg, textColor: COLORS.headerText },
     },
-    margin: { left: 14, right: 14 },
+    alternateRowStyles: {
+      fillColor: COLORS.altRow,
+    },
+    margin: { left: MARGIN, right: MARGIN },
     tableWidth: "auto",
   })
 
-  // Footer
-  const pageHeight = doc.internal.pageSize.getHeight()
-  // Notes section
+  // ── Notes section ───────────────────────────────────────────────────────
   if (notes && notes.length > 0) {
     const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
+    const notesY = finalY + 8
+
     doc.setFontSize(9)
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(100, 116, 139)
-    doc.text(locale === "es" ? "Notas" : "Notes", 14, finalY + 8)
-    doc.setFont("helvetica", "normal")
+    doc.setFont(FONT, "bold")
+    doc.setTextColor(...COLORS.muted)
+    doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
+
+    // Divider line
+    doc.setDrawColor(...COLORS.border)
+    doc.setLineWidth(0.15)
+    doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
+
+    doc.setFont(FONT, "normal")
     doc.setFontSize(8)
-    doc.setTextColor(71, 85, 105)
+    doc.setTextColor(...COLORS.bodyText)
     notes.forEach((n, i) => {
-      doc.text(`· ${n}`, 14, finalY + 14 + i * 5)
+      doc.text(`•  ${n}`, MARGIN + 1, notesY + 6 + i * 5)
     })
   }
 
-  const timestamp = new Intl.DateTimeFormat("es", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date())
+  // ── Footer ──────────────────────────────────────────────────────────────
+  const timestamp = new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
+    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(new Date())
   doc.setFontSize(7)
-  doc.setTextColor(148, 163, 184)
-  doc.text(`Generado en LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
+  doc.setTextColor(...COLORS.footerText)
+  doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
-  // Download
+  // ── Download ────────────────────────────────────────────────────────────
   const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
   doc.save(filename)
 }
@@ -163,23 +179,37 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
 export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
 
-  // Header
-  doc.setFontSize(14)
-  doc.setFont("helvetica", "bold")
-  doc.text(orgName, 14, 14)
+  // ── Header ──────────────────────────────────────────────────────────────
+  doc.setFillColor(...COLORS.primary)
+  doc.rect(0, 0, pageWidth, 3, "F")
+
+  doc.setFontSize(16)
+  doc.setFont(FONT, "bold")
+  doc.setTextColor(...COLORS.bodyText)
+  doc.text(orgName, MARGIN, 14)
+
   doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  doc.setTextColor(100, 116, 139)
-  doc.text(fmtWeekRange(data.weekStart, locale), 14, 20)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.muted)
+  doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
-  // Day headers
+  if (data.rota?.status === "published") {
+    doc.setTextColor(...COLORS.green)
+    doc.setFont(FONT, "bold")
+    doc.setFontSize(8)
+    doc.text("● " + (locale === "es" ? "Publicado" : "Published"), pageWidth - MARGIN, 14, { align: "right" })
+  }
+
+  // ── Day headers ─────────────────────────────────────────────────────────
   const dayHeaders = data.days.map((d) => {
     const dt = new Date(d.date + "T12:00:00")
     const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(dt)
     return `${wday} ${dt.getDate()}`
   })
 
+  // ── Build task rows ─────────────────────────────────────────────────────
   const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
   const body: string[][] = []
 
@@ -189,7 +219,7 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
       const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
       const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
       if (isWholeTeam) {
-        row.push("All")
+        row.push(locale === "es" ? "Todo" : "All")
       } else {
         const names = assignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
         row.push(names.join(" / ") || "—")
@@ -198,52 +228,68 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
     body.push(row)
   }
 
+  // ── Table ───────────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: 26,
-    head: [["Técnica", ...dayHeaders]],
+    head: [[locale === "es" ? "Técnica" : "Technique", ...dayHeaders]],
     body,
     theme: "grid",
     styles: {
-      fontSize: 7,
-      cellPadding: 2,
-      lineColor: [204, 221, 238],
-      lineWidth: 0.2,
+      fontSize: 7.5,
+      font: FONT,
+      cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
+      lineColor: COLORS.border,
+      lineWidth: 0.15,
+      textColor: COLORS.bodyText,
+      minCellHeight: 10,
     },
     headStyles: {
-      fillColor: [241, 245, 251],
-      textColor: [100, 116, 139],
+      fillColor: COLORS.headerBg,
+      textColor: COLORS.headerText,
       fontStyle: "bold",
-      fontSize: 7,
+      fontSize: 8,
       halign: "center",
+      cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
     },
     columnStyles: {
-      0: { cellWidth: 30, fontStyle: "bold" },
+      0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.headerBg, textColor: COLORS.headerText },
     },
-    margin: { left: 14, right: 14 },
+    alternateRowStyles: {
+      fillColor: COLORS.altRow,
+    },
+    margin: { left: MARGIN, right: MARGIN },
     tableWidth: "auto",
   })
 
-  // Notes section
+  // ── Notes section ───────────────────────────────────────────────────────
   if (notes && notes.length > 0) {
     const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
+    const notesY = finalY + 8
+
     doc.setFontSize(9)
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(100, 116, 139)
-    doc.text(locale === "es" ? "Notas" : "Notes", 14, finalY + 8)
-    doc.setFont("helvetica", "normal")
+    doc.setFont(FONT, "bold")
+    doc.setTextColor(...COLORS.muted)
+    doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
+
+    doc.setDrawColor(...COLORS.border)
+    doc.setLineWidth(0.15)
+    doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
+
+    doc.setFont(FONT, "normal")
     doc.setFontSize(8)
-    doc.setTextColor(71, 85, 105)
+    doc.setTextColor(...COLORS.bodyText)
     notes.forEach((n, i) => {
-      doc.text(`· ${n}`, 14, finalY + 14 + i * 5)
+      doc.text(`•  ${n}`, MARGIN + 1, notesY + 6 + i * 5)
     })
   }
 
-  // Footer
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const timestamp = new Intl.DateTimeFormat("es", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date())
+  // ── Footer ──────────────────────────────────────────────────────────────
+  const timestamp = new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
+    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(new Date())
   doc.setFontSize(7)
-  doc.setTextColor(148, 163, 184)
-  doc.text(`Generado en LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
+  doc.setTextColor(...COLORS.footerText)
+  doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
   const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
   doc.save(filename)

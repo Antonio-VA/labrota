@@ -4683,10 +4683,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   if (!weekData) return
                   import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
                     const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+                    // Collect notes from the DOM
+                    const notesEl = document.querySelector("[data-week-notes]")
+                    const noteTexts = notesEl
+                      ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
+                      : []
                     if (weekData.rotaDisplayMode === "by_task") {
-                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale)
+                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, noteTexts.length > 0 ? noteTexts : undefined)
                     } else {
-                      exportPdfByShift(weekData, on, locale)
+                      exportPdfByShift(weekData, on, locale, noteTexts.length > 0 ? noteTexts : undefined)
                     }
                   })
                 },

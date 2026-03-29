@@ -64,7 +64,7 @@ export function WeekNotes({ weekStart }: { weekStart: string }) {
       {data.templates.map((t) => (
         <span key={t.id} className="inline-flex items-center gap-1 rounded-md bg-muted/50 border border-border/50 px-2 py-0.5 text-[11px] text-muted-foreground group">
           <Lock className="size-2.5 shrink-0 opacity-50" />
-          <span>{t.text}</span>
+          <span data-note-text>{t.text}</span>
           <button
             onClick={() => handleDismissTemplate(t.id)}
             disabled={isPending}
@@ -79,7 +79,7 @@ export function WeekNotes({ weekStart }: { weekStart: string }) {
       {data.adHocNotes.map((n) => (
         <span key={n.id} className="inline-flex items-center gap-1 rounded-md bg-background border border-border px-2 py-0.5 text-[11px] text-foreground group">
           <span className="text-muted-foreground/40 shrink-0">•</span>
-          <span>{n.text}</span>
+          <span data-note-text>{n.text}</span>
           <button
             onClick={() => handleDeleteAdHoc(n.id)}
             disabled={isPending}
