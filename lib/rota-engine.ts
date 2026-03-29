@@ -335,78 +335,6 @@ export function runRotaEngine({
     }
   }
 
-  // ── PHASE 1b: Enforce no_librar_mismo_dia in reservations ───────────────────
-  // After Phase 1, check that conflict groups don't all have the same day off.
-  // If they do, force-reserve one member on that day (swap with their least-needed day).
-  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
-    const conflictIds = new Set(rule.staff_ids)
-    for (const date of allDates) {
-      // Check if ALL conflict members are unreserved (off) on this date
-      const allOff = rule.staff_ids.every((id) => !minCoverageReserved[date].has(id))
-      if (!allOff) continue
-
-      // Find the best candidate to force onto this day
-      const candidates = rule.staff_ids
-        .map((id) => staff.find((s) => s.id === id))
-        .filter((s): s is StaffWithSkills => {
-          if (!s) return false
-          if (s.onboarding_status === "inactive") return false
-          if (s.start_date > date || (s.end_date && s.end_date < date)) return false
-          if (leaveMap[s.id]?.has(date)) return false
-          return true
-        })
-        .sort((a, b) => {
-          // Prefer someone who has budget room (fewer reservations)
-          const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
-          const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
-          return aRes - bRes
-        })
-
-      if (candidates.length > 0) {
-        const pick = candidates[0]
-        const pickReserved = Object.values(minCoverageReserved).filter((set) => set.has(pick.id)).length
-        const cap = pick.days_per_week ?? 5
-        if (pickReserved < cap) {
-          // Under budget — just add the reservation
-          minCoverageReserved[date].add(pick.id)
-        } else {
-          // At budget — swap: remove from their least-critical day, add here
-          // Find days where this person is reserved but others could cover
-          const removableDays = allDates.filter((d) => {
-            if (d === date) return false
-            if (!minCoverageReserved[d].has(pick.id)) return false
-            // Check if removing them from that day still meets minimums
-            const dCode = getDayCode(d)
-            const dayCov = labConfig.coverage_by_day?.[dCode]
-            const roleMin = pick.role === "lab"
-              ? (dayCov?.lab ?? labConfig.min_lab_coverage)
-              : pick.role === "andrology"
-              ? (dayCov?.andrology ?? labConfig.min_andrology_coverage)
-              : 0
-            const roleCount = [...minCoverageReserved[d]].filter((id) => {
-              const s = staff.find((st) => st.id === id)
-              return s?.role === pick.role
-            }).length
-            return roleCount > roleMin // removing one still meets minimum
-          })
-          if (removableDays.length > 0) {
-            // Remove from the day with the most surplus
-            const removeDay = removableDays.sort((a, b) => {
-              const aCount = minCoverageReserved[a].size
-              const bCount = minCoverageReserved[b].size
-              return bCount - aCount // more staff = more surplus = better to remove from
-            })[0]
-            minCoverageReserved[removeDay].delete(pick.id)
-            minCoverageReserved[date].add(pick.id)
-          } else {
-            // No good swap available — force reserve anyway (will go over budget)
-            minCoverageReserved[date].add(pick.id)
-          }
-        }
-      }
-    }
-  }
-
   // ── PHASE 2: Day-by-day assignment (minimum guaranteed + fill with preferences)
   for (const date of allDates) {
     const dayCode = getDayCode(date)
@@ -1136,13 +1064,47 @@ export function runRotaEngine({
       // ── Rotation swap pass ──
       // For weekly/daily rotation, try swapping same-role pairs between shifts
       // to improve rotation scores. Same-role swaps preserve per-shift minimums
-      // (net zero change per shift). Only check avoid_shifts hard constraint.
+      // (net zero change per shift). Validates avoid_shifts and technique coverage.
       if (rotation !== "stable" && dayPlanAssignments.length > 1) {
         const staffRole: Record<string, string> = {}
         const staffAvoid: Record<string, string[]> = {}
+        const staffSkillSet: Record<string, Set<string>> = {}
         for (const s of assigned) {
           staffRole[s.id] = s.role
           staffAvoid[s.id] = s.avoid_shifts ?? []
+          staffSkillSet[s.id] = new Set(s.staff_skills.map((sk) => sk.skill))
+        }
+
+        // Check if swapping would break technique coverage in either shift
+        function wouldBreakTechCoverage(personA: string, shiftA: string, personB: string, shiftB: string): boolean {
+          // After swap: A moves to shiftB, B moves to shiftA
+          // Check shiftA: B replaces A. Any technique required in shiftA that only A covers?
+          const requiredA = techRequiredInShift[shiftA]
+          if (requiredA) {
+            for (const techCode of requiredA) {
+              // Current: does anyone in shiftA cover this tech besides personA?
+              const othersCover = dayPlanAssignments.some((x) =>
+                x.shift_type === shiftA && x.staff_id !== personA && staffSkillSet[x.staff_id]?.has(techCode)
+              )
+              if (!othersCover) {
+                // Only personA covers it. Does personB also cover it?
+                if (!staffSkillSet[personB]?.has(techCode)) return true
+              }
+            }
+          }
+          // Check shiftB: A replaces B
+          const requiredB = techRequiredInShift[shiftB]
+          if (requiredB) {
+            for (const techCode of requiredB) {
+              const othersCover = dayPlanAssignments.some((x) =>
+                x.shift_type === shiftB && x.staff_id !== personB && staffSkillSet[x.staff_id]?.has(techCode)
+              )
+              if (!othersCover) {
+                if (!staffSkillSet[personA]?.has(techCode)) return true
+              }
+            }
+          }
+          return false
         }
 
         let improved = true
@@ -1160,6 +1122,9 @@ export function runRotaEngine({
               // Hard: avoid_shifts
               if (staffAvoid[a.staff_id]?.includes(b.shift_type)) continue
               if (staffAvoid[b.staff_id]?.includes(a.shift_type)) continue
+
+              // Hard: don't break technique coverage
+              if (wouldBreakTechCoverage(a.staff_id, a.shift_type, b.staff_id, b.shift_type)) continue
 
               // Swap if it improves total rotation score
               const currentScore = rotationPreference(a.staff_id, a.shift_type) + rotationPreference(b.staff_id, b.shift_type)
@@ -1371,6 +1336,78 @@ export function runRotaEngine({
     for (const a of dayPlanFinal.assignments) {
       if (!weekShiftHistory[a.staff_id]) weekShiftHistory[a.staff_id] = new Set()
       weekShiftHistory[a.staff_id].add(a.shift_type)
+    }
+  }
+
+  // ── PHASE 3: Repair no_librar_mismo_dia violations ──────────────────────────
+  // After all days are planned, find days where ALL conflict group members are off.
+  // Fix by swapping a conflict member's off day with a non-conflict same-role member.
+  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
+    for (const dayPlan of days) {
+      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
+      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id))
+      // Only act if ALL conflict members are off
+      if (conflictOff.length < rule.staff_ids.length) continue
+
+      // Pick the conflict member with the most total assignments (easiest to move)
+      const conflictCandidates = conflictOff
+        .map((id) => staff.find((s) => s.id === id))
+        .filter((s): s is StaffWithSkills => !!s && s.onboarding_status !== "inactive" && !leaveMap[s.id]?.has(dayPlan.date))
+        .sort((a, b) => {
+          const aTotal = days.filter((d) => d.assignments.some((x) => x.staff_id === a.id)).length
+          const bTotal = days.filter((d) => d.assignments.some((x) => x.staff_id === b.id)).length
+          return bTotal - aTotal // more assignments = easier to swap one out
+        })
+
+      let fixed = false
+      for (const conflictPerson of conflictCandidates) {
+        if (fixed) break
+        // Find a non-conflict same-role person working today who could swap off days
+        // The swap: conflictPerson works today, donor takes off today + works on conflictPerson's off day
+        for (const asg of dayPlan.assignments) {
+          if (fixed) break
+          if (rule.staff_ids.includes(asg.staff_id)) continue // skip conflict members
+          const donor = staff.find((s) => s.id === asg.staff_id)
+          if (!donor || donor.role !== conflictPerson.role) continue
+
+          // Find a day where conflictPerson works but donor is off
+          const swapDay = days.find((d) => {
+            if (d.date === dayPlan.date) return false
+            const cpWorking = d.assignments.some((x) => x.staff_id === conflictPerson.id)
+            const donorOff = !d.assignments.some((x) => x.staff_id === donor.id)
+            if (!cpWorking || !donorOff) return false
+            // Check donor is available on that day
+            if (leaveMap[donor.id]?.has(d.date)) return false
+            if (donor.start_date > d.date || (donor.end_date && donor.end_date < d.date)) return false
+            return true
+          })
+
+          if (!swapDay) continue
+
+          // Execute swap:
+          // 1. Remove donor from today, add conflictPerson to today (with donor's shift)
+          const donorShift = asg.shift_type
+          dayPlan.assignments = dayPlan.assignments.filter((a) => a.staff_id !== donor.id)
+          dayPlan.assignments.push({ staff_id: conflictPerson.id, shift_type: donorShift })
+
+          // 2. Remove conflictPerson from swapDay, add donor (with conflictPerson's shift)
+          const cpAsg = swapDay.assignments.find((a) => a.staff_id === conflictPerson.id)
+          const cpShift = cpAsg?.shift_type ?? donorShift
+          swapDay.assignments = swapDay.assignments.filter((a) => a.staff_id !== conflictPerson.id)
+          swapDay.assignments.push({ staff_id: donor.id, shift_type: cpShift })
+
+          warnings.push(
+            `${dayPlan.date}: no_librar_mismo_dia — swapped ${conflictPerson.first_name} ↔ ${donor.first_name}`
+          )
+          fixed = true
+        }
+      }
+
+      if (!fixed) {
+        warnings.push(
+          `${dayPlan.date}: no_librar_mismo_dia — could not resolve: ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} all off`
+        )
+      }
     }
   }
 
