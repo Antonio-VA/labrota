@@ -427,7 +427,7 @@ export async function generateRota(
   weekStart: string,
   preserveOverrides: boolean,
   generationType: import("@/lib/types/database").GenerationType = "ai_optimal"
-): Promise<{ error?: string; assignmentCount?: number }> {
+): Promise<{ error?: string; assignmentCount?: number; _coverageModel?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
@@ -633,7 +633,9 @@ export async function generateRota(
   })
 
   revalidatePath("/")
-  return { assignmentCount: toInsert.length }
+  // Include engine coverage model info for debugging
+  const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
+  return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
 }
 
 // ── getActiveStaff ────────────────────────────────────────────────────────────

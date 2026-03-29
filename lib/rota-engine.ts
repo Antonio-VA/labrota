@@ -127,7 +127,15 @@ export function runRotaEngine({
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
 
-
+  // Log which coverage model is active
+  if (shiftCoverageEnabled && shiftCoverageByDay) {
+    const keys = Object.keys(shiftCoverageByDay)
+    warnings.push(`[engine] SHIFT coverage model active — shifts: ${keys.join(", ")} | data: ${JSON.stringify(shiftCoverageByDay)}`)
+  } else if (taskCoverageEnabled && taskCoverageByDay) {
+    warnings.push(`[engine] TASK coverage model active — keys: ${Object.keys(taskCoverageByDay).join(", ")}`)
+  } else {
+    warnings.push(`[engine] No coverage model active (shiftCoverageEnabled=${shiftCoverageEnabled}, taskCoverageEnabled=${taskCoverageEnabled})`)
+  }
 
   // Historical workload scores (recent shift count per staff for fairness sorting)
   const workloadScore: Record<string, number> = {}

@@ -4365,6 +4365,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           } else {
             const result = await generateRota(ws, false, "ai_optimal")
             if (result.error) { errorMsg = result.error; break }
+            // Show coverage model debug info
+            if ((result as any)._coverageModel) {
+              toast.info((result as any)._coverageModel, { duration: 8000 })
+            }
             successCount++
           }
         }
