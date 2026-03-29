@@ -595,8 +595,7 @@ export function runRotaEngine({
                 assigned.push(pick)
                 assignedLab = pick.role === "lab" ? [...assignedLab, pick] : assignedLab
                 assignedAndrology = pick.role === "andrology" ? [...assignedAndrology, pick] : assignedAndrology
-                // Track the forced assignment so budget is accounted for
-                weeklyShiftCount[pick.id] = (weeklyShiftCount[pick.id] ?? 0) + 1
+                // weeklyShiftCount is updated in the main loop below for all assigned
               }
               warnings.push(
                 `${date}: ${allConflictStaff.map((s) => `${s.first_name} ${s.last_name}`).join(" + ")} — no_librar_mismo_dia${!rule.is_hard ? " (soft)" : ""}`
@@ -814,23 +813,40 @@ export function runRotaEngine({
       }
 
       // ── Step 2: Place remaining embryologists as fair share across shifts ──
+      // Track skills covered per shift so we spread capabilities evenly
+      const shiftSkills: Record<string, Set<string>> = {}
+      for (const sc of defaultShiftCodes) shiftSkills[sc] = new Set()
+      for (const a of dayPlanAssignments) {
+        const member = labStaff.find((s) => s.id === a.staff_id)
+        if (member) {
+          for (const sk of member.staff_skills) shiftSkills[a.shift_type]?.add(sk.skill)
+        }
+      }
+
       const unplacedLab = labStaff.filter((s) => !assignedToShift.has(s.id))
       for (const s of unplacedLab) {
-        // Assign to the shift furthest below its minimum, or least-filled shift
+        const personSkills = new Set(s.staff_skills.map((sk) => sk.skill))
         const bestShift = defaultShiftCodes
           .filter((sc) => !s.avoid_shifts?.includes(sc))
           .sort((a, b) => {
-            // Priority: shifts still below minimum
+            // Priority 1: shifts still below minimum
             const aGap = (shiftMin[a] ?? 0) - (shiftFilled[a] ?? 0)
             const bGap = (shiftMin[b] ?? 0) - (shiftFilled[b] ?? 0)
             if (aGap !== bGap) return bGap - aGap
-            // Then least-filled overall
-            return (shiftFilled[a] ?? 0) - (shiftFilled[b] ?? 0)
+            // Priority 2: least-filled overall
+            const aFill = shiftFilled[a] ?? 0
+            const bFill = shiftFilled[b] ?? 0
+            if (aFill !== bFill) return aFill - bFill
+            // Priority 3: shift where this person adds the most NEW skills
+            const aNewSkills = [...personSkills].filter((sk) => !shiftSkills[a]?.has(sk)).length
+            const bNewSkills = [...personSkills].filter((sk) => !shiftSkills[b]?.has(sk)).length
+            return bNewSkills - aNewSkills // more new skills = better
           })[0]
         const shift = bestShift ?? defaultShiftCodes[0]
         dayPlanAssignments.push({ staff_id: s.id, shift_type: shift as ShiftType })
         assignedToShift.add(s.id)
         shiftFilled[shift] = (shiftFilled[shift] ?? 0) + 1
+        for (const sk of s.staff_skills) shiftSkills[shift]?.add(sk.skill)
       }
 
       // ── Step 3: Place andro/admin via preference or least-filled shift ──
@@ -890,7 +906,12 @@ export function runRotaEngine({
 
     const assignedById = new Map(assigned.map((s) => [s.id, s]))
 
-    // ── Technique-shift alignment pass (by_shift only) ──────────────────────
+    // ── Technique-shift alignment pass ──────────────────────────────────────
+    // Skip when shift coverage is enabled — the distribution already placed
+    // staff using getPreferredShift (which respects technique typical_shifts).
+    // Running alignment after would move people and destroy the balanced distribution.
+    if (!shiftCoverageEnabled) {
+
     // Check each technique's typical_shift for coverage. If a shift is missing
     // a qualified person for a mapped technique, try to reassign or add one.
 
@@ -1005,6 +1026,7 @@ export function runRotaEngine({
         }
       }
     }
+    } // end if (!shiftCoverageEnabled) — skip alignment pass
 
     // Hard guard: remove anyone who would exceed their weekly budget
     // (can happen if rules force-assign or Phase 1 over-reserves)
