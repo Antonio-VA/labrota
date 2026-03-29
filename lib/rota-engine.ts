@@ -650,109 +650,163 @@ export function runRotaEngine({
     const dayShiftSet = new Set(dayShiftCodes)
     const defaultShiftCodes = dayShiftCodes.length > 0 ? dayShiftCodes : (shiftCodes.length > 0 ? shiftCodes : ["T1"])
 
-    // Distribute staff across shifts — same logic for all roles:
-    // 1. Technique typical_shift  2. Preferred shift  3. Rotation fallback
+    // ── Distribute staff across shifts ─────────────────────────────────────
     const dayIndex = allDates.indexOf(date)
-    let dayRrIdx = dayIndex  // offset by day so staff rotate across days
-    days.push({
-      date,
-      assignments: assigned.map((s) => {
-        let shift: ShiftType
+    let dayRrIdx = dayIndex
 
-        // 1. Technique typical_shift — highest priority
-        const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
-        const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
-        const orderedCodes   = [...certifiedCodes, ...trainingCodes]
-        let preferredFromTecnica: string | null = null
-        for (const code of orderedCodes) {
-          const typical = tecnicaTypicalShifts[code]
-          if (typical && typical.size > 0) {
-            const match = defaultShiftCodes.find((sc) => typical.has(sc))
-            if (match) { preferredFromTecnica = match; break }
+    // Helper: determine a staff member's preferred shift
+    function getPreferredShift(s: typeof assigned[0]): ShiftType | null {
+      // 1. Technique typical_shift
+      const certifiedCodes = s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)
+      const trainingCodes  = s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)
+      for (const code of [...certifiedCodes, ...trainingCodes]) {
+        const typical = tecnicaTypicalShifts[code]
+        if (typical && typical.size > 0) {
+          const match = defaultShiftCodes.find((sc) => typical.has(sc))
+          if (match) return match as ShiftType
+        }
+      }
+      // 2. Explicit preferred shift
+      const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+      const matchedPref = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
+      if (matchedPref) return matchedPref as ShiftType
+      // 3. Inferred
+      if (inferredShiftPref[s.id] && dayShiftSet.has(inferredShiftPref[s.id])) {
+        return inferredShiftPref[s.id] as ShiftType
+      }
+      return null
+    }
+
+    function getRotationShift(s: typeof assigned[0]): ShiftType {
+      const rotation = shiftRotation ?? "stable"
+      if (rotation === "stable") {
+        const shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
+        dayRrIdx++
+        return shift
+      } else if (rotation === "weekly") {
+        const lastShift = recentAssignments
+          .filter((a) => a.staff_id === s.id)
+          .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
+        const lastIdx = lastShift ? defaultShiftCodes.indexOf(lastShift) : -1
+        return defaultShiftCodes[(lastIdx + 1) % defaultShiftCodes.length] as ShiftType
+      } else {
+        const staffIdx = staff.indexOf(s)
+        return defaultShiftCodes[(staffIdx + dayIndex) % defaultShiftCodes.length] as ShiftType
+      }
+    }
+
+    function applyAvoidShifts(s: typeof assigned[0], shift: ShiftType): ShiftType {
+      const staffAvoidShifts = s.avoid_shifts
+      if (!staffAvoidShifts?.includes(shift) || defaultShiftCodes.length <= 1) return shift
+      const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+      const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
+      const alternative = effectivePrefShifts.find((sc) =>
+        !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
+      ) ?? defaultShiftCodes.find((sc) =>
+        !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
+      )
+      if (alternative) return alternative as ShiftType
+      warnings.push(`${date}: ${s.first_name} ${s.last_name} — preference overridden, assigned to avoided shift ${shift}`)
+      return shift
+    }
+
+    const dayPlanAssignments: { staff_id: string; shift_type: ShiftType }[] = []
+
+    if (taskCoverageEnabled && taskCoverageByDay && defaultShiftCodes.length > 1) {
+      // ── Coverage-aware distribution ──
+      // Phase 1: Fill each shift's minimum with best-matched staff
+      const shiftMin: Record<string, number> = {}
+      const shiftFilled: Record<string, number> = {}
+      for (const sc of defaultShiftCodes) {
+        shiftMin[sc] = taskCoverageByDay[sc]?.[dayCode] ?? 0
+        shiftFilled[sc] = 0
+      }
+
+      const assignedToShift = new Set<string>()
+
+      // Sort shifts by minimum descending — fill hardest constraints first
+      const shiftsByPriority = [...defaultShiftCodes].sort((a, b) => (shiftMin[b] ?? 0) - (shiftMin[a] ?? 0))
+
+      for (const shiftCode of shiftsByPriority) {
+        const min = shiftMin[shiftCode] ?? 0
+        if (min <= 0) continue
+
+        // Find staff who prefer this shift and aren't yet assigned
+        const preferring = assigned.filter((s) => {
+          if (assignedToShift.has(s.id)) return false
+          const pref = getPreferredShift(s)
+          return pref === shiftCode
+        }).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+
+        for (const s of preferring) {
+          if (shiftFilled[shiftCode] >= min) break
+          dayPlanAssignments.push({ staff_id: s.id, shift_type: applyAvoidShifts(s, shiftCode as ShiftType) })
+          assignedToShift.add(s.id)
+          shiftFilled[shiftCode]++
+        }
+
+        // If still under minimum, take from unassigned pool
+        if (shiftFilled[shiftCode] < min) {
+          const remaining = assigned.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
+            .sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+          for (const s of remaining) {
+            if (shiftFilled[shiftCode] >= min) break
+            dayPlanAssignments.push({ staff_id: s.id, shift_type: shiftCode as ShiftType })
+            assignedToShift.add(s.id)
+            shiftFilled[shiftCode]++
           }
         }
 
-        const rotation = shiftRotation ?? "stable"
-        const staffAvoidShifts = s.avoid_shifts
-        const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
-        const matchedPrefShift = explicitPrefShifts.find((ps) => dayShiftSet.has(ps))
-        const effectivePrefShifts = explicitPrefShifts.length > 0 ? explicitPrefShifts : (inferredShiftPref[s.id] ? [inferredShiftPref[s.id]] : [])
-
-        // Priority: explicit preferred_shift → rotation fallback
-        // Explicit preferences are ALWAYS respected regardless of rotation mode.
-        if (matchedPrefShift) {
-          shift = matchedPrefShift as ShiftType
-        } else if (rotation === "stable") {
-          // Round-robin across shifts, offset by day for variety
-          shift = defaultShiftCodes[dayRrIdx % defaultShiftCodes.length] as ShiftType
-          dayRrIdx++
-        } else if (rotation === "weekly") {
-          // Same shift all week, advance from last week
-          const lastShift = recentAssignments
-            .filter((a) => a.staff_id === s.id)
-            .sort((a, b) => b.date.localeCompare(a.date))[0]?.shift_type
-          const lastIdx = lastShift ? defaultShiftCodes.indexOf(lastShift) : -1
-          const nextIdx = (lastIdx + 1) % defaultShiftCodes.length
-          shift = defaultShiftCodes[nextIdx] as ShiftType
-        } else {
-          // Daily: cycle through shifts by day index + staff offset
-          const staffIdx = staff.indexOf(s)
-          const shiftIdx = (staffIdx + dayIndex) % defaultShiftCodes.length
-          shift = defaultShiftCodes[shiftIdx] as ShiftType
+        if (shiftFilled[shiftCode] < min) {
+          warnings.push(`${date}: ${shiftCode} — cobertura insuficiente: ${shiftFilled[shiftCode]}/${min}`)
         }
+      }
 
-        // If assigned shift is in avoid list, try to find a non-avoided alternative
-        // Prefer one of the explicitly preferred shifts if available
-        if (staffAvoidShifts?.includes(shift) && defaultShiftCodes.length > 1) {
-          const alternative = effectivePrefShifts.find((sc) =>
-            !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
-          ) ?? defaultShiftCodes.find((sc) =>
-            !staffAvoidShifts.includes(sc) && dayShiftSet.has(sc)
-          )
-          if (alternative) {
-            shift = alternative as ShiftType
-          } else {
-            // All shifts avoided or unavailable — keep assigned, generate warning
-            warnings.push(`${date}: ${s.first_name} ${s.last_name} — preference overridden, assigned to avoided shift ${shift}`)
-          }
-        }
+      // Phase 2: Distribute remaining staff via preference/rotation
+      for (const s of assigned) {
+        if (assignedToShift.has(s.id)) continue
+        const pref = getPreferredShift(s)
+        const shift = pref ?? getRotationShift(s)
+        dayPlanAssignments.push({ staff_id: s.id, shift_type: applyAvoidShifts(s, shift) })
+      }
+    } else {
+      // ── Original distribution (no per-shift coverage) ──
+      for (const s of assigned) {
+        const pref = getPreferredShift(s)
+        const shift = pref ?? getRotationShift(s)
+        dayPlanAssignments.push({ staff_id: s.id, shift_type: applyAvoidShifts(s, shift) })
+      }
+    }
 
-        // Warn if assigned to an avoided day
-        if (s.avoid_days?.includes(dayCode)) {
-          warnings.push(`${date}: ${s.first_name} ${s.last_name} — assigned on avoided day (${dayCode}) due to coverage needs`)
-        }
+    // Warn for avoided days
+    for (const s of assigned) {
+      if (s.avoid_days?.includes(dayCode)) {
+        warnings.push(`${date}: ${s.first_name} ${s.last_name} — assigned on avoided day (${dayCode}) due to coverage needs`)
+      }
+    }
 
-        return { staff_id: s.id, shift_type: shift }
-      }),
-      skillGaps,
-    })
+    days.push({ date, assignments: dayPlanAssignments, skillGaps })
 
     // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
     const dayPlan = days[days.length - 1]
-    if (defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
+    if (!taskCoverageEnabled && defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
       const shiftCount: Record<string, number> = {}
       for (const sc of defaultShiftCodes) shiftCount[sc] = 0
       for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
 
       const emptyShifts = defaultShiftCodes.filter((sc) => (shiftCount[sc] ?? 0) === 0)
       for (const emptyShift of emptyShifts) {
-        // Find the most overstaffed shift
         const maxShift = defaultShiftCodes.reduce((best, sc) =>
           (shiftCount[sc] ?? 0) > (shiftCount[best] ?? 0) ? sc : best
         )
-        if ((shiftCount[maxShift] ?? 0) <= 1) break // can't move if only 1 person
-
-        // Move the last person from maxShift to emptyShift
-        // (prefer moving someone without a technique-driven shift preference)
+        if ((shiftCount[maxShift] ?? 0) <= 1) break
         const candidates = dayPlan.assignments.filter((a) => a.shift_type === maxShift)
         const movable = candidates.find((a) => {
           const s = assigned.find((st) => st.id === a.staff_id)
           if (!s) return true
-          // Don't move if their technique specifically maps to this shift
           const skills = s.staff_skills.map((sk) => sk.skill)
           return !skills.some((sk) => tecnicaTypicalShifts[sk]?.has(maxShift))
         }) ?? candidates[candidates.length - 1]
-
         if (movable) {
           movable.shift_type = emptyShift as ShiftType
           shiftCount[maxShift]--
@@ -762,79 +816,6 @@ export function runRotaEngine({
     }
 
     const assignedById = new Map(assigned.map((s) => [s.id, s]))
-
-    // ── Per-shift/task coverage enforcement ──────────────────────────────────
-    if (taskCoverageEnabled && taskCoverageByDay) {
-      const shiftCount: Record<string, number> = {}
-      for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
-
-      for (const [code, dayMap] of Object.entries(taskCoverageByDay)) {
-        const minForDay = dayMap[dayCode]
-        if (minForDay === undefined || minForDay <= 0) continue
-        const currentCount = shiftCount[code] ?? 0
-        if (currentCount >= minForDay) continue
-
-        const deficit = minForDay - currentCount
-        // Try to move staff from overstaffed shifts
-        let moved = 0
-        for (let i = 0; i < deficit; i++) {
-          // Find the most overstaffed shift (excluding this one)
-          const sortedShifts = defaultShiftCodes
-            .filter((sc) => sc !== code)
-            .sort((a, b) => (shiftCount[b] ?? 0) - (shiftCount[a] ?? 0))
-
-          let resolved = false
-          for (const srcShift of sortedShifts) {
-            const srcCount = shiftCount[srcShift] ?? 0
-            // Only move if src has more than its own minimum
-            const srcMin = taskCoverageByDay[srcShift]?.[dayCode] ?? 0
-            if (srcCount <= srcMin || srcCount <= 1) continue
-
-            // Find a movable person (prefer non-preferred shift)
-            const candidates = dayPlan.assignments.filter((a) => a.shift_type === srcShift)
-            const movable = candidates.find((a) => {
-              const s = assignedById.get(a.staff_id)
-              if (!s) return true
-              const prefShifts = s.preferred_shift?.split(",").filter(Boolean) ?? []
-              return !prefShifts.includes(srcShift)
-            }) ?? candidates[candidates.length - 1]
-
-            if (movable) {
-              movable.shift_type = code as ShiftType
-              shiftCount[srcShift]--
-              shiftCount[code] = (shiftCount[code] ?? 0) + 1
-              moved++
-              resolved = true
-              break
-            }
-          }
-
-          if (!resolved) {
-            // Try adding an unassigned staff member
-            const unassigned = staff.filter((s) =>
-              !(assignedByDate[date] ?? new Set()).has(s.id) &&
-              !leaveMap[s.id]?.has(date) &&
-              s.onboarding_status === "active" &&
-              (weeklyShiftCount[s.id] ?? 0) < (s.days_per_week ?? 5)
-            ).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
-
-            if (unassigned.length > 0) {
-              const pick = unassigned[0]
-              dayPlan.assignments.push({ staff_id: pick.id, shift_type: code as ShiftType })
-              assigned.push(pick)
-              if (!assignedByDate[date]) assignedByDate[date] = new Set()
-              assignedByDate[date].add(pick.id)
-              shiftCount[code] = (shiftCount[code] ?? 0) + 1
-              moved++
-            }
-          }
-        }
-
-        if (moved < deficit) {
-          warnings.push(`${date}: ${code} — cobertura insuficiente: ${currentCount + moved}/${minForDay}`)
-        }
-      }
-    }
 
     // ── Technique-shift alignment pass (by_shift only) ──────────────────────
     // Check each technique's typical_shift for coverage. If a shift is missing

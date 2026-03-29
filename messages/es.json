@@ -627,7 +627,8 @@
       "selectAtLeastTwo": "Selecciona al menos 2 personas",
       "expiresAt": "Fecha de expiración",
       "expiresAtHint": "Opcional — la regla se ignorará después de esta fecha",
-      "clearExpiry": "Sin expiración",
+      "clearExpiry": "Quitar expiración",
+      "addExpiry": "Añadir fecha de expiración",
       "expired": "Expirada",
       "expiredRules": "{count, plural, one {# regla expirada} other {# reglas expiradas}}",
       "types": {

@@ -627,7 +627,8 @@
       "selectAtLeastTwo": "Select at least 2 people",
       "expiresAt": "Expiry date",
       "expiresAtHint": "Optional — rule will be ignored after this date",
-      "clearExpiry": "No expiry",
+      "clearExpiry": "Remove expiry",
+      "addExpiry": "Add expiry date",
       "expired": "Expired",
       "expiredRules": "{count, plural, one {# expired rule} other {# expired rules}}",
       "types": {

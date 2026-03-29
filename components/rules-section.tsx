@@ -365,26 +365,40 @@ function RuleSheet({
             </div>
           </div>
 
-          {/* Expiry */}
-          <div>
-            <label className={labelSelect}>{t("expiresAt")}</label>
-            <p className="text-[11px] text-muted-foreground mb-1">{t("expiresAtHint")}</p>
-            <Input
-              type="date"
-              value={form.expires_at}
-              onChange={(e) => set("expires_at", e.target.value)}
-              className="w-48"
-            />
-            {form.expires_at && (
-              <button
-                type="button"
-                onClick={() => set("expires_at", "")}
-                className="text-[11px] text-primary mt-1 hover:underline"
-              >
-                {t("clearExpiry")}
-              </button>
-            )}
-          </div>
+          {/* Expiry — hidden until toggled */}
+          {form.expires_at ? (
+            <div>
+              <label className={labelSelect}>{t("expiresAt")}</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={form.expires_at}
+                  onChange={(e) => set("expires_at", e.target.value)}
+                  className="w-48"
+                />
+                <button
+                  type="button"
+                  onClick={() => set("expires_at", "")}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t("clearExpiry")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date()
+                d.setDate(d.getDate() + 30)
+                set("expires_at", d.toISOString().split("T")[0])
+              }}
+              className="text-[12px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+            >
+              <Clock className="size-3" />
+              {t("addExpiry")}
+            </button>
+          )}
 
           {/* Notes */}
           <div>
