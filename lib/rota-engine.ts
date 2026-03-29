@@ -462,6 +462,7 @@ export function runRotaEngine({
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
     // 6. Apply scheduling rules
+    const ruleForced = new Set<string>() // staff forced in by hard rules — exempt from budget guard
     if (rules.length > 0) {
       const dateMonth = date.slice(0, 7)
       const weekendCountThisMonth: Record<string, number> = {}
@@ -624,16 +625,25 @@ export function runRotaEngine({
               if (s.start_date > date || (s.end_date && s.end_date < date)) return false
               if (leaveMap[s.id]?.has(date)) return false
               return true
-            }).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+            }).sort((a, b) => {
+              // Prefer someone who still has budget
+              const aUsed = weeklyShiftCount[a.id] ?? 0
+              const bUsed = weeklyShiftCount[b.id] ?? 0
+              const aHasBudget = aUsed < (a.days_per_week ?? 5) ? 0 : 1
+              const bHasBudget = bUsed < (b.days_per_week ?? 5) ? 0 : 1
+              if (aHasBudget !== bHasBudget) return aHasBudget - bHasBudget
+              return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+            })
 
             if (eligible.length > 0) {
               if (rule.is_hard) {
-                // Force-assign the lowest-workload eligible member
+                // Force-assign the best eligible member
                 const pick = eligible[0]
                 assigned.push(pick)
                 assignedLab = pick.role === "lab" ? [...assignedLab, pick] : assignedLab
                 assignedAndrology = pick.role === "andrology" ? [...assignedAndrology, pick] : assignedAndrology
-                // weeklyShiftCount is updated in the main loop below for all assigned
+                // Mark as rule-forced so budget guard won't undo it
+                ruleForced.add(pick.id)
               }
               warnings.push(
                 `${date}: ${allConflictStaff.map((s) => `${s.first_name} ${s.last_name}`).join(" + ")} — no_librar_mismo_dia${!rule.is_hard ? " (soft)" : ""}`
@@ -1262,8 +1272,10 @@ export function runRotaEngine({
 
     // Hard guard: remove anyone who would exceed their weekly budget
     // (can happen if rules force-assign or Phase 1 over-reserves)
+    // Exempt staff forced by hard rules (e.g. no_librar_mismo_dia)
     const overBudget = new Set<string>()
     for (const s of assigned) {
+      if (ruleForced.has(s.id)) continue // hard rule override — keep them
       const used = weeklyShiftCount[s.id] ?? 0
       const cap = s.days_per_week ?? 5
       if (used >= cap) overBudget.add(s.id)
