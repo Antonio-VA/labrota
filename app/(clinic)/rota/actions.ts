@@ -465,6 +465,26 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         }
       }
     }
+
+    // Ratio de cobertura warnings
+    if (labConfig) {
+      const ratioOpt = labConfig.ratio_optimal ?? 1.0
+      const ratioMin = labConfig.ratio_minimum ?? 0.75
+      const biopsyRate = labConfig.biopsy_conversion_rate ?? 0.5
+      const pOverride = rota?.punctions_override?.[day.date]
+      const punctions = pOverride ?? punctionsDefault[day.date] ?? 0
+      const biopsyForecast = Math.round(punctions * biopsyRate)
+      const totalProc = punctions + biopsyForecast
+      if (totalProc > 0) {
+        const assignedCount = day.assignments.length
+        const ratio = assignedCount / totalProc
+        if (ratio < ratioMin) {
+          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (mín. ${ratioMin})` })
+        } else if (ratio < ratioOpt) {
+          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (óptimo ${ratioOpt})` })
+        }
+      }
+    }
   }
 
   return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false }
