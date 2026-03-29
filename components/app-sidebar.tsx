@@ -115,9 +115,9 @@ export function AppSidebar() {
 
   const navItems = canEdit ? [
     { key: "schedule", icon: CalendarDays, href: "/" },
+    { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "staff",    icon: Users,        href: "/staff" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
-    { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports" },
     { key: "settings", icon: Settings,     href: "/settings" },
   ] as const : [
