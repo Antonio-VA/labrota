@@ -80,7 +80,7 @@ type Draft = {
   id?: string
   sortId: string
   nombre_es: string; nombre_en: string; codigo: string
-  color: string; department: "lab" | "andrology"; typical_shifts: string[]; avoid_shifts: string[]; activa: boolean; orden: number
+  color: string; department: string; typical_shifts: string[]; avoid_shifts: string[]; activa: boolean; orden: number
 }
 
 // ── Table grid ───────────────────────────────────────────────────────────────

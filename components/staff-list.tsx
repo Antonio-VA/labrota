@@ -792,11 +792,10 @@ function StaffTable({
         const certifiedSkills = skills.filter((sk) => sk.level === "certified")
         const trainingSkills  = skills.filter((sk) => sk.level === "training")
         const isSelected      = selectedIds.has(member.id)
-        const isAdmin         = member.role === "admin"
         const deptCode        = member.role
         const deptTecnicas    = tecnicas.filter((t) => t.activa && t.department === deptCode)
         const certifiedCodes  = new Set(certifiedSkills.map((s) => s.skill))
-        const allCertified    = !isAdmin && deptTecnicas.length > 0 && deptTecnicas.every((t) => certifiedCodes.has(t.codigo))
+        const allCertified    = deptTecnicas.length > 0 && deptTecnicas.every((t) => certifiedCodes.has(t.codigo))
 
         return (
           <div
@@ -877,7 +876,7 @@ function StaffTable({
             {/* Técnicas (certified) */}
             {visibleCols.has("capacidades") && (
               <div className="hidden md:flex items-center gap-1 overflow-hidden">
-                {isAdmin || certifiedSkills.length === 0 ? (
+                {certifiedSkills.length === 0 ? (
                   <span className="text-[13px] text-muted-foreground/40">—</span>
                 ) : (
                   <SkillOverflow
@@ -894,7 +893,7 @@ function StaffTable({
             {/* En formación (training) */}
             {visibleCols.has("training") && (
               <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
-                {isAdmin || trainingSkills.length === 0 ? (
+                {trainingSkills.length === 0 ? (
                   <span className="text-[13px] text-muted-foreground/40">—</span>
                 ) : (
                   <SkillOverflow

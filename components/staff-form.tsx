@@ -7,6 +7,7 @@ import { Hourglass, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
 
 const STAFF_PASTEL_COLORS = [
@@ -17,7 +18,6 @@ const STAFF_PASTEL_COLORS = [
   "#6EE7B7", "#FDBA74", "#A5B4FC", "#FDA4AF", "#7DD3FC", "#BEF264",
   "#D8B4FE", "#FDE047", "#99F6E4", "#E0E7FF",
 ]
-import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, Tecnica } from "@/lib/types/database"
 
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -66,7 +66,7 @@ function StaffColorPicker({ value, onChange, disabled }: { value: string; onChan
   )
 }
 
-const DEPT_MAP: Record<string, string> = { lab: "lab", andrology: "andrology" }
+const DEPT_MAP: Record<string, string> = { lab: "lab", andrology: "andrology", admin: "admin" }
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -324,7 +324,7 @@ export function StaffForm({
       </div>
 
       {/* === TAB: Datos === */}
-      <div className={tab !== "datos" ? "hidden" : ""}>
+      <div className={cn("flex flex-col gap-6", tab !== "datos" && "hidden")}>
 
       {/* Personal info */}
       <Section label={t("sections.personalInfo")}>

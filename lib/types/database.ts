@@ -156,7 +156,7 @@ export interface Tecnica {
   codigo:          string
   color:           string
   required_skill:  SkillName | null
-  department:      'lab' | 'andrology'
+  department:      string
   typical_shifts:  string[]
   avoid_shifts:    string[]
   activa:          boolean
