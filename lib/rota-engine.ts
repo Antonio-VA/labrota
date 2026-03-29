@@ -393,7 +393,21 @@ export function runRotaEngine({
     })
 
     const assignedSet = new Set(reservedStaff.map((s) => s.id))
+
+    // When per-shift coverage is enabled, cap total day assignment to sum of shift minimums
+    // This prevents over-staffing days and keeps shift counts balanced
+    let totalDayCap = Infinity
+    if (taskCoverageEnabled && taskCoverageByDay) {
+      const dayShiftCodesForCap = activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .map((st) => st.code)
+      totalDayCap = dayShiftCodesForCap.reduce((sum, sc) => sum + (taskCoverageByDay[sc]?.[dayCode] ?? 0), 0)
+      // Ensure at least the role minimums are met
+      totalDayCap = Math.max(totalDayCap, labRequired + andrologyRequired + adminRequired)
+    }
+
     for (const s of remaining) {
+      if (assignedSet.size >= totalDayCap) break
       assignedSet.add(s.id)
     }
 
@@ -734,21 +748,32 @@ export function runRotaEngine({
         // Find staff who prefer this shift and aren't yet assigned
         const preferring = assigned.filter((s) => {
           if (assignedToShift.has(s.id)) return false
+          if (s.avoid_shifts?.includes(shiftCode)) return false
           const pref = getPreferredShift(s)
           return pref === shiftCode
         }).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
 
         for (const s of preferring) {
           if (shiftFilled[shiftCode] >= min) break
-          dayPlanAssignments.push({ staff_id: s.id, shift_type: applyAvoidShifts(s, shiftCode as ShiftType) })
+          dayPlanAssignments.push({ staff_id: s.id, shift_type: shiftCode as ShiftType })
           assignedToShift.add(s.id)
           shiftFilled[shiftCode]++
         }
 
-        // If still under minimum, take from unassigned pool
+        // If still under minimum, take from unassigned pool (anyone not yet placed)
         if (shiftFilled[shiftCode] < min) {
-          const remaining = assigned.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
-            .sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
+          const remaining = assigned.filter((s) => !assignedToShift.has(s.id))
+            .sort((a, b) => {
+              // Prefer staff who don't avoid this shift
+              const aAvoids = a.avoid_shifts?.includes(shiftCode) ? 1 : 0
+              const bAvoids = b.avoid_shifts?.includes(shiftCode) ? 1 : 0
+              if (aAvoids !== bAvoids) return aAvoids - bAvoids
+              // Prefer staff with no preference (more flexible)
+              const aPref = getPreferredShift(a) ? 1 : 0
+              const bPref = getPreferredShift(b) ? 1 : 0
+              if (aPref !== bPref) return aPref - bPref
+              return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+            })
           for (const s of remaining) {
             if (shiftFilled[shiftCode] >= min) break
             dayPlanAssignments.push({ staff_id: s.id, shift_type: shiftCode as ShiftType })
