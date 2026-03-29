@@ -2421,7 +2421,7 @@ function ShiftGrid({
         onRefresh()
         return
       }
-      debouncedRefresh()
+      // No refresh — optimistic state is correct
       return
     }
 
@@ -2453,7 +2453,7 @@ function ShiftGrid({
             },
           },
         })
-        debouncedRefresh()
+        // No refresh — optimistic state is correct
       } catch {
         toast.error(t("removeError"))
         onRefresh()
@@ -2486,7 +2486,8 @@ function ShiftGrid({
             },
           },
         })
-        debouncedRefresh()
+        // Don't refresh — optimistic state is already correct and a refresh
+        // would briefly flash the old position while the server responds.
       } catch {
         toast.error(t("moveError"))
         onRefresh()
