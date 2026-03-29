@@ -59,6 +59,7 @@ import { TapPopover } from "@/components/tap-popover"
 import { MobilePersonView } from "@/components/mobile-person-view"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { TransposedTaskGrid } from "@/components/transposed-task-grid"
+import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 import { MySchedule } from "@/components/my-schedule"
@@ -4882,7 +4883,20 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   )}
                 </div>
               )}
-              {weekData && (weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
+              {weekData && (weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" ? (
+                <TaskPersonGrid
+                  data={weekData}
+                  staffList={filteredStaffList}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  compact={compact}
+                  colorChips={colorChips}
+                  onChipClick={openProfile}
+                  onDateClick={handleMonthDayClick}
+                />
+              ) : weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
                 <TransposedTaskGrid
                   data={weekData}
                   staffList={filteredStaffList}
@@ -4891,16 +4905,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   compact={compact}
+                  colorChips={colorChips}
                   onRemoveAssignment={async (id) => {
                     const result = await removeAssignment(id)
                     if (result.error) toast.error(result.error)
                     else fetchWeekSilent(weekStart)
                   }}
                   onCellClick={(date, tecCode) => {
-                    // Open assignment sheet for this day with the tecnica pre-selected
                     setSheetDate(date)
                     setSheetOpen(true)
                   }}
+                  onChipClick={openProfile}
                 />
               ) : weekData.rotaDisplayMode === "by_task" ? (
                 /* By task: always show TaskGrid — it handles its own empty state */
