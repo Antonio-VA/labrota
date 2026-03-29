@@ -4364,7 +4364,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             successCount++
           } else {
             const result = await generateRota(ws, false, "ai_optimal")
-            if ((result as any)?._debug) console.log("[LabRota engine debug]", JSON.stringify((result as any)._debug))
+            if ((result as any)?._debug) toast.info(`[DEBUG] ${JSON.stringify((result as any)._debug)}`, { duration: 15000 })
             if (result.error) { errorMsg = result.error; break }
             successCount++
           }
