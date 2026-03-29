@@ -427,7 +427,7 @@ export async function generateRota(
   weekStart: string,
   preserveOverrides: boolean,
   generationType: import("@/lib/types/database").GenerationType = "ai_optimal"
-): Promise<{ error?: string; assignmentCount?: number; engineWarnings?: string[]; _debug?: any }> {
+): Promise<{ error?: string; assignmentCount?: number }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
@@ -631,15 +631,7 @@ export async function generateRota(
   })
 
   revalidatePath("/")
-  return {
-    assignmentCount: toInsert.length,
-    engineWarnings,
-    _debug: {
-      taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
-      taskCoverageByDayKeys: labConfig.task_coverage_by_day ? Object.keys(labConfig.task_coverage_by_day as object) : null,
-      taskCoverageByDay: labConfig.task_coverage_by_day,
-    },
-  }
+  return { assignmentCount: toInsert.length }
 }
 
 // ── getActiveStaff ────────────────────────────────────────────────────────────

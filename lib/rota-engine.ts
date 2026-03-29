@@ -124,12 +124,7 @@ export function runRotaEngine({
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
 
-  // Diagnostic: log what coverage data the engine received
-  warnings.push(
-    `[engine-init] taskCoverageEnabled=${taskCoverageEnabled}` +
-    ` taskCoverageByDay=${taskCoverageByDay ? JSON.stringify(Object.keys(taskCoverageByDay)) : "null"}` +
-    ` shiftTypes=${shiftTypes.map((s) => s.code).join(",")}`
-  )
+
 
   // Historical workload scores (recent shift count per staff for fairness sorting)
   const workloadScore: Record<string, number> = {}
@@ -413,21 +408,36 @@ export function runRotaEngine({
 
     const assignedSet = new Set(reservedStaff.map((s) => s.id))
 
-    // When per-shift coverage is enabled, cap day assignment.
-    // Shift minimums apply to embryologists only — add andro + admin on top.
     if (taskCoverageEnabled && taskCoverageByDay) {
+      // Per-role caps: shift minimums are for embryologists only
       const dayShiftCodesForCap = activeShiftTypes
         .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
         .map((st) => st.code)
       const shiftMinTotal = dayShiftCodesForCap.reduce((sum, sc) => sum + (taskCoverageByDay[sc]?.[dayCode] ?? 0), 0)
-      // Shift mins are embryologists; andro + admin are additional
       const labCap = Math.max(shiftMinTotal, labRequired)
-      const totalDayCap = labCap + andrologyRequired + adminRequired
 
-      // Only add remaining staff up to the cap
-      for (const s of remaining) {
-        if (assignedSet.size >= totalDayCap) break
+      // Fill each role separately to guarantee enough embryologists
+      const remainingLab = remaining.filter((s) => s.role === "lab")
+      const remainingAndro = remaining.filter((s) => s.role === "andrology")
+      const remainingAdmin = remaining.filter((s) => s.role === "admin")
+
+      let labCount = reservedStaff.filter((s) => s.role === "lab").length
+      for (const s of remainingLab) {
+        if (labCount >= labCap) break
         assignedSet.add(s.id)
+        labCount++
+      }
+      let androCount = reservedStaff.filter((s) => s.role === "andrology").length
+      for (const s of remainingAndro) {
+        if (androCount >= andrologyRequired) break
+        assignedSet.add(s.id)
+        androCount++
+      }
+      let adminCount = reservedStaff.filter((s) => s.role === "admin").length
+      for (const s of remainingAdmin) {
+        if (adminCount >= adminRequired) break
+        assignedSet.add(s.id)
+        adminCount++
       }
     } else {
       for (const s of remaining) {
