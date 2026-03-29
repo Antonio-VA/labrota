@@ -44,9 +44,31 @@ const COLORS = {
 const MARGIN = 14
 const FONT = "helvetica"
 
+/** Share or open PDF — uses Web Share API on mobile, opens in new tab on desktop */
+async function sharePdf(doc: jsPDF, filename: string) {
+  const blob = doc.output("blob")
+  const file = new File([blob], filename, { type: "application/pdf" })
+
+  // Try native share (works on mobile Safari, Chrome Android, etc.)
+  if (typeof navigator !== "undefined" && navigator.share && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: filename })
+      return
+    } catch {
+      // User cancelled or share failed — fall through to open
+    }
+  }
+
+  // Fallback: open in new tab
+  const url = URL.createObjectURL(blob)
+  window.open(url, "_blank")
+  // Revoke after a delay so the tab can load
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 // ── By shift export ──────────────────────────────────────────────────────────
 
-export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[]) {
+export async function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -180,14 +202,14 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
   doc.setTextColor(...COLORS.lightGray)
   doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
-  // ── Download ────────────────────────────────────────────────────────────
+  // ── Share / open ────────────────────────────────────────────────────────
   const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
-  doc.save(filename)
+  await sharePdf(doc, filename)
 }
 
 // ── By task export ───────────────────────────────────────────────────────────
 
-export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[]) {
+export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -302,5 +324,5 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
   doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
   const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
-  doc.save(filename)
+  await sharePdf(doc, filename)
 }
