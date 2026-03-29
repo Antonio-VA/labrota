@@ -220,6 +220,7 @@ export function runRotaEngine({
 
   // Weekly shift counter — resets at the start of each generated week
   const weeklyShiftCount: Record<string, number> = {}
+  const weekShiftHistory: Record<string, Set<string>> = {} // staff_id → shifts used this week (for daily rotation)
 
   // Leave map: staff_id → set of dates on leave
   const leaveMap: Record<string, Set<string>> = {}
@@ -330,6 +331,78 @@ export function runRotaEngine({
 
       for (let i = 0; i < Math.min(required, eligible.length); i++) {
         minCoverageReserved[date].add(eligible[i].id)
+      }
+    }
+  }
+
+  // ── PHASE 1b: Enforce no_librar_mismo_dia in reservations ───────────────────
+  // After Phase 1, check that conflict groups don't all have the same day off.
+  // If they do, force-reserve one member on that day (swap with their least-needed day).
+  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
+    const conflictIds = new Set(rule.staff_ids)
+    for (const date of allDates) {
+      // Check if ALL conflict members are unreserved (off) on this date
+      const allOff = rule.staff_ids.every((id) => !minCoverageReserved[date].has(id))
+      if (!allOff) continue
+
+      // Find the best candidate to force onto this day
+      const candidates = rule.staff_ids
+        .map((id) => staff.find((s) => s.id === id))
+        .filter((s): s is StaffWithSkills => {
+          if (!s) return false
+          if (s.onboarding_status === "inactive") return false
+          if (s.start_date > date || (s.end_date && s.end_date < date)) return false
+          if (leaveMap[s.id]?.has(date)) return false
+          return true
+        })
+        .sort((a, b) => {
+          // Prefer someone who has budget room (fewer reservations)
+          const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
+          const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
+          return aRes - bRes
+        })
+
+      if (candidates.length > 0) {
+        const pick = candidates[0]
+        const pickReserved = Object.values(minCoverageReserved).filter((set) => set.has(pick.id)).length
+        const cap = pick.days_per_week ?? 5
+        if (pickReserved < cap) {
+          // Under budget — just add the reservation
+          minCoverageReserved[date].add(pick.id)
+        } else {
+          // At budget — swap: remove from their least-critical day, add here
+          // Find days where this person is reserved but others could cover
+          const removableDays = allDates.filter((d) => {
+            if (d === date) return false
+            if (!minCoverageReserved[d].has(pick.id)) return false
+            // Check if removing them from that day still meets minimums
+            const dCode = getDayCode(d)
+            const dayCov = labConfig.coverage_by_day?.[dCode]
+            const roleMin = pick.role === "lab"
+              ? (dayCov?.lab ?? labConfig.min_lab_coverage)
+              : pick.role === "andrology"
+              ? (dayCov?.andrology ?? labConfig.min_andrology_coverage)
+              : 0
+            const roleCount = [...minCoverageReserved[d]].filter((id) => {
+              const s = staff.find((st) => st.id === id)
+              return s?.role === pick.role
+            }).length
+            return roleCount > roleMin // removing one still meets minimum
+          })
+          if (removableDays.length > 0) {
+            // Remove from the day with the most surplus
+            const removeDay = removableDays.sort((a, b) => {
+              const aCount = minCoverageReserved[a].size
+              const bCount = minCoverageReserved[b].size
+              return bCount - aCount // more staff = more surplus = better to remove from
+            })[0]
+            minCoverageReserved[removeDay].delete(pick.id)
+            minCoverageReserved[date].add(pick.id)
+          } else {
+            // No good swap available — force reserve anyway (will go over budget)
+            minCoverageReserved[date].add(pick.id)
+          }
+        }
       }
     }
   }
@@ -828,20 +901,19 @@ export function runRotaEngine({
       // Returns a score (lower = preferred) for placing a staff member in a given shift.
       // "stable": prefer the same shift as last week (lower for matching)
       // "weekly": prefer a DIFFERENT shift from last week (lower for non-matching)
-      // "daily": rotate based on day index + staff position
+      // "daily": each person gets a different shift each day of the week
       const rotation = shiftRotation ?? "stable"
+
       function rotationPreference(staffId: string, shiftCode: string): number {
         if (rotation === "stable") {
-          // Prefer the same shift as last week's most recent assignment
           const lastAssignment = recentAssignments
             .filter((a) => a.staff_id === staffId)
             .sort((a, b) => b.date.localeCompare(a.date))[0]
           if (lastAssignment) {
             return lastAssignment.shift_type === shiftCode ? 0 : 1
           }
-          return 0 // no history — no preference
+          return 0
         } else if (rotation === "weekly") {
-          // Prefer a different shift from last week
           const lastAssignment = recentAssignments
             .filter((a) => a.staff_id === staffId)
             .sort((a, b) => b.date.localeCompare(a.date))[0]
@@ -850,7 +922,10 @@ export function runRotaEngine({
           }
           return 0
         } else {
-          // "daily": use day index + staff position to cycle through shifts
+          // "daily": prefer shifts NOT yet used this week by this person
+          const usedShifts = weekShiftHistory[staffId]
+          if (usedShifts && usedShifts.has(shiftCode)) return 2 // already used this shift this week
+          // Tiebreak: cycle based on day + staff position for deterministic variety
           const staffIdx = staff.findIndex((s) => s.id === staffId)
           const shiftIdx = defaultShiftCodes.indexOf(shiftCode)
           const preferred = (staffIdx + dayIndex) % defaultShiftCodes.length
@@ -1287,9 +1362,15 @@ export function runRotaEngine({
     }
 
     // Update scores so later days in the week account for earlier assignments
+    const dayPlanFinal = days[days.length - 1]
     for (const s of assigned) {
       workloadScore[s.id]    = (workloadScore[s.id]    ?? 0) + 1
       weeklyShiftCount[s.id] = (weeklyShiftCount[s.id] ?? 0) + 1
+    }
+    // Track shift usage per person for daily rotation
+    for (const a of dayPlanFinal.assignments) {
+      if (!weekShiftHistory[a.staff_id]) weekShiftHistory[a.staff_id] = new Set()
+      weekShiftHistory[a.staff_id].add(a.shift_type)
     }
   }
 
