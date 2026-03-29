@@ -24,18 +24,20 @@ function slugify(s: string): string {
   return s.replace(/[^a-zA-Z0-9]+/g, "").replace(/\s+/g, "")
 }
 
-// ── Design tokens ────────────────────────────────────────────────────────────
+function fmtTimestamp(locale: string): string {
+  return new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
+    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(new Date())
+}
+
+// ── Design tokens (printer-friendly B&W) ────────────────────────────────────
 
 const COLORS = {
-  primary:    [27, 79, 138] as [number, number, number],   // #1B4F8A
-  headerBg:   [235, 241, 250] as [number, number, number], // soft blue
-  headerText: [51, 65, 85] as [number, number, number],    // slate-700
-  bodyText:   [30, 41, 59] as [number, number, number],    // slate-800
-  muted:      [100, 116, 139] as [number, number, number], // slate-500
-  border:     [203, 213, 225] as [number, number, number], // slate-300
-  altRow:     [248, 250, 252] as [number, number, number], // slate-50
-  green:      [5, 150, 105] as [number, number, number],   // emerald-600
-  footerText: [148, 163, 184] as [number, number, number], // slate-400
+  black:      [0, 0, 0] as [number, number, number],
+  darkGray:   [51, 51, 51] as [number, number, number],
+  gray:       [120, 120, 120] as [number, number, number],
+  lightGray:  [180, 180, 180] as [number, number, number],
+  border:     [160, 160, 160] as [number, number, number],
   white:      [255, 255, 255] as [number, number, number],
 }
 
@@ -49,27 +51,30 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const timeFormat = data.timeFormat ?? "24h"
+  const timestamp = fmtTimestamp(locale)
 
   // ── Header ──────────────────────────────────────────────────────────────
-  // Accent bar at top
-  doc.setFillColor(...COLORS.primary)
-  doc.rect(0, 0, pageWidth, 3, "F")
-
   doc.setFontSize(16)
   doc.setFont(FONT, "bold")
-  doc.setTextColor(...COLORS.bodyText)
+  doc.setTextColor(...COLORS.black)
   doc.text(orgName, MARGIN, 14)
 
   doc.setFontSize(10)
   doc.setFont(FONT, "normal")
-  doc.setTextColor(...COLORS.muted)
+  doc.setTextColor(...COLORS.gray)
   doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
+  // Timestamp top-right
+  doc.setFontSize(8)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.gray)
+  doc.text(timestamp, pageWidth - MARGIN, 14, { align: "right" })
+
   if (data.rota?.status === "published") {
-    doc.setTextColor(...COLORS.green)
+    doc.setTextColor(...COLORS.darkGray)
     doc.setFont(FONT, "bold")
     doc.setFontSize(8)
-    doc.text("● " + (locale === "es" ? "Publicado" : "Published"), pageWidth - MARGIN, 14, { align: "right" })
+    doc.text(locale === "es" ? "Publicado" : "Published", pageWidth - MARGIN, 20, { align: "right" })
   }
 
   // ── Day headers ─────────────────────────────────────────────────────────
@@ -127,23 +132,21 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
       font: FONT,
       cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
       lineColor: COLORS.border,
-      lineWidth: 0.15,
-      textColor: COLORS.bodyText,
+      lineWidth: 0.2,
+      textColor: COLORS.black,
       minCellHeight: 10,
+      fillColor: COLORS.white,
     },
     headStyles: {
-      fillColor: COLORS.headerBg,
-      textColor: COLORS.headerText,
+      fillColor: COLORS.white,
+      textColor: COLORS.black,
       fontStyle: "bold",
       fontSize: 8,
       halign: "center",
       cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
     },
     columnStyles: {
-      0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.headerBg, textColor: COLORS.headerText },
-    },
-    alternateRowStyles: {
-      fillColor: COLORS.altRow,
+      0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black },
     },
     margin: { left: MARGIN, right: MARGIN },
     tableWidth: "auto",
@@ -156,28 +159,25 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
 
     doc.setFontSize(9)
     doc.setFont(FONT, "bold")
-    doc.setTextColor(...COLORS.muted)
+    doc.setTextColor(...COLORS.gray)
     doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
 
     // Divider line
-    doc.setDrawColor(...COLORS.border)
+    doc.setDrawColor(...COLORS.lightGray)
     doc.setLineWidth(0.15)
     doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
 
     doc.setFont(FONT, "normal")
     doc.setFontSize(8)
-    doc.setTextColor(...COLORS.bodyText)
+    doc.setTextColor(...COLORS.black)
     notes.forEach((n, i) => {
       doc.text(`•  ${n}`, MARGIN + 1, notesY + 6 + i * 5)
     })
   }
 
   // ── Footer ──────────────────────────────────────────────────────────────
-  const timestamp = new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(new Date())
   doc.setFontSize(7)
-  doc.setTextColor(...COLORS.footerText)
+  doc.setTextColor(...COLORS.lightGray)
   doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
   // ── Download ────────────────────────────────────────────────────────────
@@ -191,26 +191,30 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
+  const timestamp = fmtTimestamp(locale)
 
   // ── Header ──────────────────────────────────────────────────────────────
-  doc.setFillColor(...COLORS.primary)
-  doc.rect(0, 0, pageWidth, 3, "F")
-
   doc.setFontSize(16)
   doc.setFont(FONT, "bold")
-  doc.setTextColor(...COLORS.bodyText)
+  doc.setTextColor(...COLORS.black)
   doc.text(orgName, MARGIN, 14)
 
   doc.setFontSize(10)
   doc.setFont(FONT, "normal")
-  doc.setTextColor(...COLORS.muted)
+  doc.setTextColor(...COLORS.gray)
   doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
+  // Timestamp top-right
+  doc.setFontSize(8)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.gray)
+  doc.text(timestamp, pageWidth - MARGIN, 14, { align: "right" })
+
   if (data.rota?.status === "published") {
-    doc.setTextColor(...COLORS.green)
+    doc.setTextColor(...COLORS.darkGray)
     doc.setFont(FONT, "bold")
     doc.setFontSize(8)
-    doc.text("● " + (locale === "es" ? "Publicado" : "Published"), pageWidth - MARGIN, 14, { align: "right" })
+    doc.text(locale === "es" ? "Publicado" : "Published", pageWidth - MARGIN, 20, { align: "right" })
   }
 
   // ── Day headers ─────────────────────────────────────────────────────────
@@ -250,23 +254,21 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
       font: FONT,
       cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
       lineColor: COLORS.border,
-      lineWidth: 0.15,
-      textColor: COLORS.bodyText,
+      lineWidth: 0.2,
+      textColor: COLORS.black,
       minCellHeight: 10,
+      fillColor: COLORS.white,
     },
     headStyles: {
-      fillColor: COLORS.headerBg,
-      textColor: COLORS.headerText,
+      fillColor: COLORS.white,
+      textColor: COLORS.black,
       fontStyle: "bold",
       fontSize: 8,
       halign: "center",
       cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
     },
     columnStyles: {
-      0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.headerBg, textColor: COLORS.headerText },
-    },
-    alternateRowStyles: {
-      fillColor: COLORS.altRow,
+      0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black },
     },
     margin: { left: MARGIN, right: MARGIN },
     tableWidth: "auto",
@@ -279,27 +281,24 @@ export function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName
 
     doc.setFontSize(9)
     doc.setFont(FONT, "bold")
-    doc.setTextColor(...COLORS.muted)
+    doc.setTextColor(...COLORS.gray)
     doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
 
-    doc.setDrawColor(...COLORS.border)
+    doc.setDrawColor(...COLORS.lightGray)
     doc.setLineWidth(0.15)
     doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
 
     doc.setFont(FONT, "normal")
     doc.setFontSize(8)
-    doc.setTextColor(...COLORS.bodyText)
+    doc.setTextColor(...COLORS.black)
     notes.forEach((n, i) => {
       doc.text(`•  ${n}`, MARGIN + 1, notesY + 6 + i * 5)
     })
   }
 
   // ── Footer ──────────────────────────────────────────────────────────────
-  const timestamp = new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(new Date())
   doc.setFontSize(7)
-  doc.setTextColor(...COLORS.footerText)
+  doc.setTextColor(...COLORS.lightGray)
   doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
 
   const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
