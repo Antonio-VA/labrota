@@ -408,41 +408,11 @@ export function runRotaEngine({
 
     const assignedSet = new Set(reservedStaff.map((s) => s.id))
 
-    if (taskCoverageEnabled && taskCoverageByDay) {
-      // Per-role caps: shift minimums are for embryologists only
-      const dayShiftCodesForCap = activeShiftTypes
-        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
-        .map((st) => st.code)
-      const shiftMinTotal = dayShiftCodesForCap.reduce((sum, sc) => sum + (taskCoverageByDay[sc]?.[dayCode] ?? 0), 0)
-      const labCap = Math.max(shiftMinTotal, labRequired)
-
-      // Fill each role separately to guarantee enough embryologists
-      const remainingLab = remaining.filter((s) => s.role === "lab")
-      const remainingAndro = remaining.filter((s) => s.role === "andrology")
-      const remainingAdmin = remaining.filter((s) => s.role === "admin")
-
-      let labCount = reservedStaff.filter((s) => s.role === "lab").length
-      for (const s of remainingLab) {
-        if (labCount >= labCap) break
-        assignedSet.add(s.id)
-        labCount++
-      }
-      let androCount = reservedStaff.filter((s) => s.role === "andrology").length
-      for (const s of remainingAndro) {
-        if (androCount >= andrologyRequired) break
-        assignedSet.add(s.id)
-        androCount++
-      }
-      let adminCount = reservedStaff.filter((s) => s.role === "admin").length
-      for (const s of remainingAdmin) {
-        if (adminCount >= adminRequired) break
-        assignedSet.add(s.id)
-        adminCount++
-      }
-    } else {
-      for (const s of remaining) {
-        assignedSet.add(s.id)
-      }
+    // Assign ALL remaining staff who have budget — shift minimums only affect
+    // distribution across shifts, NOT who gets to work that day.
+    // days_per_week is the hard constraint; hasBudget enforces it.
+    for (const s of remaining) {
+      assignedSet.add(s.id)
     }
 
     let assignedLab = staff.filter((s) => assignedSet.has(s.id) && s.role === "lab")
@@ -674,6 +644,33 @@ export function runRotaEngine({
           assigned          = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
         }
       }
+    }
+
+    // 6b. Backfill: if rules removed staff below minimum coverage, add replacements
+    // (from staff who still have budget and weren't already assigned today)
+    if (assignedLab.length < labRequired || assignedAndrology.length < andrologyRequired) {
+      const assignedIds = new Set(assigned.map((s) => s.id))
+      const backfillRole = (role: string, current: number, needed: number) => {
+        const additions: StaffWithSkills[] = []
+        if (current >= needed) return additions
+        const pool = staff.filter((s) => {
+          if (assignedIds.has(s.id) || s.role !== role) return false
+          if (!isAvailable(s)) return false
+          const used = weeklyShiftCount[s.id] ?? 0
+          return used < (s.days_per_week ?? 5)
+        }).sort((a, b) => (weeklyShiftCount[a.id] ?? 0) - (weeklyShiftCount[b.id] ?? 0))
+        for (const s of pool) {
+          if (current + additions.length >= needed) break
+          additions.push(s)
+          assignedIds.add(s.id)
+        }
+        return additions
+      }
+      const labAdded = backfillRole("lab", assignedLab.length, labRequired)
+      assignedLab = [...assignedLab, ...labAdded]
+      const androAdded = backfillRole("andrology", assignedAndrology.length, andrologyRequired)
+      assignedAndrology = [...assignedAndrology, ...androAdded]
+      assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
     }
 
     // 7. Debug: always log assignment counts per day
