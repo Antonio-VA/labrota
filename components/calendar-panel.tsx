@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -770,10 +770,10 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
         {isOff ? (
           <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
         ) : simplified ? (
-          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
         ) : (
           <div className="flex flex-col gap-0">
-            <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{assignment.shift_type}</span>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
             {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
           </div>
         )}
@@ -1112,7 +1112,7 @@ function StaffProfilePanel({
                     <p className="text-muted-foreground">{t("dayPreferences")}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       {(staff.preferred_days ?? []).map((d) => (
-                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#2C3E6B] text-white">{DAY_ES_2[d] ?? d}</span>
+                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[var(--pref-bg)] text-white">{DAY_ES_2[d] ?? d}</span>
                       ))}
                       {(staff.avoid_days ?? []).map((d) => (
                         <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FEE2E2] text-[#B91C1C]">{DAY_ES_2[d] ?? d}</span>
@@ -1586,10 +1586,10 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
       )}
     >
       {simplified ? (
-        <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+        <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
       ) : (
         <div className="flex flex-col gap-0">
-          <span className="text-[13px] font-semibold" style={{ color: "#2C3E6B" }}>{shift_type}</span>
+          <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
           {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
         </div>
       )}
@@ -1605,7 +1605,7 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
 function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
+  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
   isGenerating,
 }: {
   data: RotaWeekData | null
@@ -1618,6 +1618,7 @@ function PersonGrid({
   publicHolidays: Record<string, string>
   onChipClick: (assignment: Assignment, date: string) => void
   colorChips?: boolean
+  compact?: boolean
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
@@ -1824,7 +1825,7 @@ function PersonGrid({
                 <Fragment key={s.id}>
                   {/* Name cell — click opens profile */}
                   <div
-                    className="px-3 py-2 border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 min-h-[48px] cursor-pointer hover:bg-muted/50"
+                    className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 cursor-pointer hover:bg-muted/50", compact ? "px-2 py-1 min-h-[36px]" : "px-3 py-2 min-h-[48px]")}
                     style={colorChips ? { borderLeft: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
                     onClick={() => onChipClick({ staff_id: s.id } as Assignment, "")}
                   >
@@ -1848,7 +1849,7 @@ function PersonGrid({
                     return (
                       <div
                         key={day.date}
-                        className={cn("px-1 py-1 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center transition-colors duration-100", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
+                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0.5 min-h-[36px]" : "px-1 py-1 min-h-[48px]", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
                         onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -1935,7 +1936,7 @@ function PersonGrid({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-border bg-muted/50">
           {Object.entries(shiftTimes).map(([code, time]) => (
             <span key={code} className="text-[11px] text-muted-foreground">
-              <span className="font-semibold" style={{ color: "#2C3E6B" }}>{code}</span>
+              <span className="font-semibold" style={{ color: "var(--pref-bg)" }}>{code}</span>
               {" "}{time.start}–{time.end}
             </span>
           ))}
@@ -1949,7 +1950,7 @@ function PersonGrid({
 
 function TransposedPersonGrid({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange,
+  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1962,6 +1963,7 @@ function TransposedPersonGrid({
   onDateClick?: (date: string) => void
   colorChips?: boolean
   compact?: boolean
+  simplified?: boolean
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
@@ -2104,7 +2106,7 @@ function TransposedPersonGrid({
                           shiftTimes={shiftTimes}
                           shiftTypes={data?.shiftTypes ?? []}
                           isPublished={false}
-                          simplified
+                          simplified={simplified !== false}
                           onShiftChange={async (newShift) => {
                             if (!newShift) {
                               setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.filter((a) => a.id !== assignment.id) })))
@@ -2117,10 +2119,21 @@ function TransposedPersonGrid({
                             }
                           }}
                         />
-                      ) : (
-                        <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "#2C3E6B" }}>
+                      ) : simplified !== false ? (
+                        <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "var(--pref-bg)" }}>
                           {assignment.shift_type}
                         </span>
+                      ) : (
+                        <div className="flex flex-col items-center gap-0">
+                          <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "var(--pref-bg)" }}>
+                            {assignment.shift_type}
+                          </span>
+                          {shiftTimes?.[assignment.shift_type] && (
+                            <span className={cn("text-muted-foreground", compact ? "text-[8px]" : "text-[9px]")}>
+                              {shiftTimes[assignment.shift_type].start}–{shiftTimes[assignment.shift_type].end}
+                            </span>
+                          )}
+                        </div>
                       )
                     ) : onLeave ? (
                       <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
@@ -2130,7 +2143,7 @@ function TransposedPersonGrid({
                         shiftTimes={shiftTimes}
                         shiftTypes={data?.shiftTypes ?? []}
                         isPublished={false}
-                        simplified
+                        simplified={simplified !== false}
                         isOff
                         onShiftChange={async (newShift) => {
                           if (!newShift) return
@@ -2154,6 +2167,17 @@ function TransposedPersonGrid({
           )
         })}
       </div>
+      {/* Shift legend — shown in simplified mode */}
+      {simplified !== false && shiftTimes && Object.keys(shiftTimes).length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-border bg-muted/50">
+          {Object.entries(shiftTimes).map(([code, time]) => (
+            <span key={code} className="text-[11px] text-muted-foreground">
+              <span className="font-semibold" style={{ color: "var(--pref-bg)" }}>{code}</span>
+              {" "}{time.start}–{time.end}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -4650,7 +4674,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               },
               ...(calendarLayout === "person" ? [{
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
-                icon: <Filter className="size-3.5" />,
+                icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
               }] : []),
@@ -4832,9 +4856,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="relative flex-1">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-5 w-full max-w-[420px]">
-                    <Sparkles className="size-12" style={{ color: "#2C3E6B" }} />
+                    <Sparkles className="size-12" style={{ color: "var(--pref-bg)" }} />
                     <div className="text-center">
-                      <p className="text-[18px] font-semibold" style={{ color: "#2C3E6B" }}>Semana sin horario</p>
+                      <p className="text-[18px] font-semibold" style={{ color: "var(--pref-bg)" }}>Semana sin horario</p>
                       <p className="text-[14px] text-muted-foreground mt-2 max-w-[380px] mx-auto leading-relaxed">
                         El generador tiene en cuenta turnos, coberturas mínimas, preferencias del equipo y ausencias. Listo en segundos.
                       </p>
@@ -4932,6 +4956,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
+                  simplified={personSimplified}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
@@ -4950,6 +4975,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onChipClick={(a) => openProfile(a.staff_id)}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
+                  compact={compact}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
