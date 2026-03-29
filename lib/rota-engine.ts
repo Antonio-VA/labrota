@@ -124,6 +124,13 @@ export function runRotaEngine({
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
 
+  // Diagnostic: log what coverage data the engine received
+  warnings.push(
+    `[engine-init] taskCoverageEnabled=${taskCoverageEnabled}` +
+    ` taskCoverageByDay=${taskCoverageByDay ? JSON.stringify(Object.keys(taskCoverageByDay)) : "null"}` +
+    ` shiftTypes=${shiftTypes.map((s) => s.code).join(",")}`
+  )
+
   // Historical workload scores (recent shift count per staff for fairness sorting)
   const workloadScore: Record<string, number> = {}
   for (const a of recentAssignments) {
