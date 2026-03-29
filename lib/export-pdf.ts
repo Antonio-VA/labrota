@@ -105,6 +105,17 @@ export function exportPdfByShift(data: RotaWeekData, orgName: string, locale: st
     body.push(row)
   }
 
+  // ── Off/Libre row ──────────────────────────────────────────────────────
+  if (data.onLeaveByDate && data.staffNames) {
+    const offRow: string[] = [locale === "es" ? "Libre" : "Off"]
+    for (const day of data.days) {
+      const offIds = data.onLeaveByDate[day.date] ?? []
+      const names = offIds.map((id) => data.staffNames[id] ?? id).filter(Boolean)
+      offRow.push(names.join("\n") || "—")
+    }
+    body.push(offRow)
+  }
+
   // ── Table ───────────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: 26,

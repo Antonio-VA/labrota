@@ -362,12 +362,14 @@ export function applyTheme(prefs: UserPreferences) {
   // Dark mode via data-theme attribute (matches CSS selectors in globals.css)
   if (prefs.theme === "dark") {
     root.setAttribute("data-theme", "dark")
+    root.style.colorScheme = "dark"
   } else if (prefs.theme === "light") {
     root.removeAttribute("data-theme")
+    root.style.colorScheme = "light"
   } else {
     // auto — follow system
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    if (prefersDark) root.setAttribute("data-theme", "dark")
-    else root.removeAttribute("data-theme")
+    if (prefersDark) { root.setAttribute("data-theme", "dark"); root.style.colorScheme = "dark" }
+    else { root.removeAttribute("data-theme"); root.style.colorScheme = "light" }
   }
 }

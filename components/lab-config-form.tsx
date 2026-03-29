@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
-import { CheckCircle2, AlertCircle, Info } from "lucide-react"
+import { CheckCircle2, AlertCircle, Info, ChevronUp, ChevronDown } from "lucide-react"
 import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
 
@@ -693,22 +693,38 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
         <div className="flex flex-col gap-0">
           <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_optimal}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
+            <div className="flex items-center gap-1">
+              <button type="button" disabled={isPending || values.ratio_optimal <= 0.1} onClick={() => setValues((p) => ({ ...p, ratio_optimal: Math.round((p.ratio_optimal - 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronDown className="size-3.5" />
+              </button>
+              <Input
+                type="number" min={0.1} max={5} step={0.1}
+                value={values.ratio_optimal}
+                onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <button type="button" disabled={isPending || values.ratio_optimal >= 5} onClick={() => setValues((p) => ({ ...p, ratio_optimal: Math.round((p.ratio_optimal + 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronUp className="size-3.5" />
+              </button>
+            </div>
           </FieldRow>
           <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_minimum}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
+            <div className="flex items-center gap-1">
+              <button type="button" disabled={isPending || values.ratio_minimum <= 0.1} onClick={() => setValues((p) => ({ ...p, ratio_minimum: Math.round((p.ratio_minimum - 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronDown className="size-3.5" />
+              </button>
+              <Input
+                type="number" min={0.1} max={5} step={0.1}
+                value={values.ratio_minimum}
+                onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <button type="button" disabled={isPending || values.ratio_minimum >= 5} onClick={() => setValues((p) => ({ ...p, ratio_minimum: Math.round((p.ratio_minimum + 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronUp className="size-3.5" />
+              </button>
+            </div>
           </FieldRow>
         </div>
       </div>

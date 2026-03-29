@@ -69,6 +69,19 @@ export function SettingsImplementation({
         </div>
       </Link>
 
+      <Link
+        href="/onboarding/import-rota"
+        className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent/50 transition-colors"
+      >
+        <Upload className="size-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium">Importar guardias futuras</p>
+          <p className="text-[11px] text-muted-foreground">
+            Sube un archivo con guardias ya planificadas para cargarlas directamente al calendario.
+          </p>
+        </div>
+      </Link>
+
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         {allDone ? (
           <div className="px-4 py-4 flex items-center justify-between">

@@ -60,6 +60,8 @@ export interface RotaWeekData {
   onLeaveByDate: Record<string, string[]>
   /** date → staff_id → leave type */
   onLeaveTypeByDate: Record<string, Record<string, string>>
+  /** staff_id → display name for PDF off row */
+  staffNames: Record<string, string>
   /** date → holiday name for Spanish national holidays */
   publicHolidays: Record<string, string>
   tecnicas: Tecnica[]
@@ -185,8 +187,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record, lab config, approved leaves, shift types, and técnicas in parallel.
-  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes] = await Promise.all([
+  // Fetch rota record, lab config, approved leaves, shift types, técnicas, and rules in parallel.
+  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
     supabase
       .from("rotas")
       .select("id, status, published_at, published_by, punctions_override")
@@ -202,10 +204,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
+    supabase.from("rota_rules").select("type, enabled, params").eq("enabled", true).eq("type", "restriccion_dia_tecnica") as unknown as Promise<{ data: { type: string; enabled: boolean; params: Record<string, unknown> }[] | null }>,
   ])
 
   const rotaData  = rotaResult.data
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
+  const tecDayRules = (rulesRes.data ?? []) as { type: string; enabled: boolean; params: Record<string, unknown> }[]
   const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
 
   // Fetch org display mode — single query via RLS (profiles linked to org)
@@ -267,7 +271,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry)))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -440,6 +444,16 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         if (!tec.typical_shifts || tec.typical_shifts.length === 0) continue
         // Skip if none of this technique's shifts are active today
         if (!tec.typical_shifts.some((s: string) => activeDayShifts.has(s))) continue
+        // Skip if restriccion_dia_tecnica rule blocks this technique on this day
+        const blockedByRule = tecDayRules.some((rule) => {
+          const tecCode = rule.params.tecnica_code as string | undefined
+          if (tecCode !== tec.codigo) return false
+          const dayMode = rule.params.dayMode as string | undefined
+          const restrictedDays = (rule.params.restrictedDays as string[] | undefined) ?? []
+          if (restrictedDays.length === 0) return false
+          return dayMode === "only" ? !restrictedDays.includes(dayCodeForWarning) : restrictedDays.includes(dayCodeForWarning)
+        })
+        if (blockedByRule) continue
         const tecDept = (tec.department?.split(",")[0] ?? "lab") as "lab" | "andrology" | "admin"
         for (const shiftCode of tec.typical_shifts) {
           if (!activeDayShifts.has(shiftCode)) continue
@@ -480,14 +494,18 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const ratio = assignedCount / totalProc
         if (ratio < ratioMin) {
           day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (mín. ${ratioMin})` })
-        } else if (ratio < ratioOpt) {
-          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (óptimo ${ratioOpt})` })
         }
       }
     }
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false }
+  // Build staffNames map for PDF off row
+  const staffNames: Record<string, string> = {}
+  for (const [id, s] of Object.entries(staffLookup)) {
+    staffNames[id] = `${s.first_name} ${s.last_name[0]}.`
+  }
+
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────
