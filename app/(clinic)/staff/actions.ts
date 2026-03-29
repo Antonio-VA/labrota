@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { logAuditEvent } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -74,14 +75,6 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
   const newStaffId = (newStaff as { id: string }).id
 
-  // Audit
-  const { data: { user: auUser } } = await supabase.auth.getUser()
-  logAuditEvent({
-    orgId, userId: auUser?.id, userEmail: auUser?.email,
-    action: "staff_created", entityType: "staff", entityId: newStaffId,
-    metadata: { firstName: staff.first_name, lastName: staff.last_name, role: staff.role },
-  })
-
   if (skills.length > 0) {
     const { error: skillsError } = await supabase.from("staff_skills").insert(
       skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: newStaffId, skill, level })) as never
@@ -89,46 +82,54 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
     if (skillsError) return { error: skillsError.message }
   }
 
-  // Invite as viewer if checkbox was checked and email provided
+  // Run audit + invite after response so the redirect is instant
   const inviteViewer = formData.get("invite_viewer") === "on"
-  if (inviteViewer && staff.email) {
-    const admin = createAdminClient()
-    const fullName = `${staff.first_name} ${staff.last_name}`.trim()
+  after(async () => {
+    // Audit
+    const { data: { user: auUser } } = await supabase.auth.getUser()
+    logAuditEvent({
+      orgId, userId: auUser?.id, userEmail: auUser?.email,
+      action: "staff_created", entityType: "staff", entityId: newStaffId,
+      metadata: { firstName: staff.first_name, lastName: staff.last_name, role: staff.role },
+    })
 
-    // Check if auth user already exists via profiles table
-    const { data: existingProfile } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("email", staff.email)
-      .maybeSingle() as { data: { id: string } | null }
-    const existing = existingProfile ? { id: existingProfile.id } : null
+    // Invite as viewer if checkbox was checked and email provided
+    if (inviteViewer && staff.email) {
+      const admin = createAdminClient()
+      const fullName = `${staff.first_name} ${staff.last_name}`.trim()
 
-    let userId: string
-    if (existing) {
-      userId = existing.id
-    } else {
-      const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
-        data: { full_name: fullName },
-      })
-      if (inviteError) return { error: `Staff created but invite failed: ${inviteError.message}` }
-      userId = invited.user.id
+      const { data: existingProfile } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("email", staff.email)
+        .maybeSingle() as { data: { id: string } | null }
+      const existing = existingProfile ? { id: existingProfile.id } : null
+
+      let userId: string
+      if (existing) {
+        userId = existing.id
+      } else {
+        const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
+          data: { full_name: fullName },
+        })
+        if (inviteError) { console.error("Invite failed:", inviteError.message); return }
+        userId = invited.user.id
+      }
+
+      await admin.from("organisation_members").upsert(
+        { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName } as never,
+        { onConflict: "organisation_id,user_id" }
+      )
+
+      const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
+      if (!profile?.organisation_id) {
+        await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
+      }
     }
-
-    // Add to organisation_members as viewer
-    await admin.from("organisation_members").upsert(
-      { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName } as never,
-      { onConflict: "organisation_id,user_id" }
-    )
-
-    // Set active org if first org
-    const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
-    if (!profile?.organisation_id) {
-      await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
-    }
-  }
+  })
 
   revalidatePath("/staff")
-  redirect("/staff")
+  redirect("/staff?saved=1")
 }
 
 export async function updateStaff(id: string, _prevState: unknown, formData: FormData) {
@@ -158,7 +159,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
 
   revalidatePath("/staff")
   revalidatePath(`/staff/${id}`)
-  redirect("/staff")
+  redirect("/staff?saved=1")
 }
 
 export async function deleteStaff(id: string) {
@@ -219,6 +220,65 @@ export async function bulkRemoveSkill(
     .eq("organisation_id", orgId)
     .in("staff_id", staffIds)
     .eq("skill", skill)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (error) return { removed: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { removed: (data ?? []).length }
+}
+
+export async function bulkAddSkills(
+  staffIds: string[],
+  skills: { skill: SkillName; level: SkillLevel }[],
+): Promise<{ added: number; skipped: number; error?: string }> {
+  if (staffIds.length === 0 || skills.length === 0) return { added: 0, skipped: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { added: 0, skipped: 0, error: "No organisation found." }
+
+  const skillCodes = skills.map((s) => s.skill)
+  const { data: existing } = await supabase
+    .from("staff_skills")
+    .select("staff_id, skill")
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .in("skill", skillCodes) as { data: { staff_id: string; skill: string }[] | null }
+
+  const existingSet = new Set((existing ?? []).map((r) => `${r.staff_id}:${r.skill}`))
+  const rows: { organisation_id: string; staff_id: string; skill: string; level: string }[] = []
+  for (const staffId of staffIds) {
+    for (const { skill, level } of skills) {
+      if (!existingSet.has(`${staffId}:${skill}`)) {
+        rows.push({ organisation_id: orgId, staff_id: staffId, skill, level })
+      }
+    }
+  }
+  const skipped = staffIds.length * skills.length - rows.length
+  if (rows.length === 0) return { added: 0, skipped }
+
+  const { error } = await supabase.from("staff_skills").insert(rows as never)
+  if (error) return { added: 0, skipped, error: error.message }
+
+  revalidatePath("/staff")
+  return { added: rows.length, skipped }
+}
+
+export async function bulkRemoveSkills(
+  staffIds: string[],
+  skills: SkillName[],
+): Promise<{ removed: number; error?: string }> {
+  if (staffIds.length === 0 || skills.length === 0) return { removed: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { removed: 0, error: "No organisation found." }
+
+  const { data, error } = await supabase
+    .from("staff_skills")
+    .delete()
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .in("skill", skills)
     .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
 
   if (error) return { removed: 0, error: error.message }

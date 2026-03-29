@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check } from "lucide-react"
 import Link from "next/link"
@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, SkillName, SkillLevel, Tecnica } from "@/lib/types/database"
 import {
-  bulkAddSkill,
-  bulkRemoveSkill,
+  bulkAddSkills,
+  bulkRemoveSkills,
   bulkUpdateStatus,
   bulkSoftDeleteStaff,
   hardDeleteStaff,
@@ -133,40 +133,51 @@ function AddSkillDropdown({
 }: {
   open: boolean
   onClose: () => void
-  onConfirm: (skill: SkillName, level: SkillLevel) => void
+  onConfirm: (selections: { skill: SkillName; level: SkillLevel }[]) => void
   isPending: boolean
   skills: string[]
   skillLabel: (code: string) => string
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
-  const [skill, setSkill] = useState<SkillName | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [level, setLevel] = useState<SkillLevel>("certified")
 
   useEffect(() => {
-    if (!open) { setSkill(null); setLevel("certified") }
+    if (!open) { setSelected(new Set()); setLevel("certified") }
   }, [open])
+
+  function toggleSkill(s: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(s)) next.delete(s); else next.add(s)
+      return next
+    })
+  }
 
   return (
     <DropdownPanel open={open} onClose={onClose} className="w-[240px]">
       <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.addSkillTitle")}</p>
-      <div className="flex flex-col gap-1 mb-3">
+      <div className="flex flex-col gap-1 mb-3 max-h-[200px] overflow-y-auto">
         {skills.map((s) => (
           <button
             key={s}
-            onClick={() => setSkill(s)}
+            onClick={() => toggleSkill(s)}
             className={cn(
-              "text-left text-[13px] px-2.5 py-1.5 rounded-lg border transition-colors",
-              skill === s
+              "text-left text-[13px] px-2.5 py-1.5 rounded-lg border transition-colors flex items-center gap-2",
+              selected.has(s)
                 ? "border-primary bg-primary/10 text-primary font-medium"
                 : "border-transparent hover:bg-muted text-foreground"
             )}
           >
+            <span className={cn("size-3.5 rounded border flex items-center justify-center shrink-0", selected.has(s) ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+              {selected.has(s) && <span className="text-[9px]">✓</span>}
+            </span>
             {skillLabel(s)}
           </button>
         ))}
       </div>
-      {skill && (
+      {selected.size > 0 && (
         <div className="flex gap-1 mb-3">
           {(["training", "certified"] as SkillLevel[]).map((l) => (
             <button
@@ -189,10 +200,10 @@ function AddSkillDropdown({
       <Button
         size="sm"
         className="w-full"
-        disabled={!skill || isPending}
-        onClick={() => skill && onConfirm(skill, level)}
+        disabled={selected.size === 0 || isPending}
+        onClick={() => onConfirm([...selected].map((s) => ({ skill: s as SkillName, level })))}
       >
-        {tc("confirm")}
+        {selected.size > 1 ? `${tc("confirm")} (${selected.size})` : tc("confirm")}
       </Button>
     </DropdownPanel>
   )
@@ -205,27 +216,59 @@ function RemoveSkillDropdown({
 }: {
   open: boolean
   onClose: () => void
-  onConfirm: (skill: SkillName) => void
+  onConfirm: (skills: SkillName[]) => void
   isPending: boolean
   skills: string[]
   skillLabel: (code: string) => string
 }) {
   const t  = useTranslations("staff")
+  const tc = useTranslations("common")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!open) setSelected(new Set())
+  }, [open])
+
+  function toggleSkill(s: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(s)) next.delete(s); else next.add(s)
+      return next
+    })
+  }
+
   return (
-    <DropdownPanel open={open} onClose={onClose} className="w-[220px]">
+    <DropdownPanel open={open} onClose={onClose} className="w-[240px]">
       <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("dropdowns.removeSkillTitle")}</p>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 mb-3 max-h-[200px] overflow-y-auto">
         {skills.map((s) => (
           <button
             key={s}
             disabled={isPending}
-            onClick={() => onConfirm(s)}
-            className="text-left text-[13px] px-2.5 py-1.5 rounded-lg border border-transparent hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive transition-colors"
+            onClick={() => toggleSkill(s)}
+            className={cn(
+              "text-left text-[13px] px-2.5 py-1.5 rounded-lg border transition-colors flex items-center gap-2",
+              selected.has(s)
+                ? "border-destructive/40 bg-destructive/5 text-destructive font-medium"
+                : "border-transparent hover:bg-muted text-foreground"
+            )}
           >
+            <span className={cn("size-3.5 rounded border flex items-center justify-center shrink-0", selected.has(s) ? "bg-destructive border-destructive text-white" : "border-border")}>
+              {selected.has(s) && <span className="text-[9px]">✓</span>}
+            </span>
             {skillLabel(s)}
           </button>
         ))}
       </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full text-destructive hover:bg-destructive/5"
+        disabled={selected.size === 0 || isPending}
+        onClick={() => onConfirm([...selected] as SkillName[])}
+      >
+        {selected.size > 1 ? `${tc("remove")} (${selected.size})` : tc("remove")}
+      </Button>
     </DropdownPanel>
   )
 }
@@ -443,10 +486,10 @@ function BulkToolbar({
     setAddOpen(false); setRemoveOpen(false); setStatusOpen(false)
   }
 
-  function handleAddSkill(skill: SkillName, level: SkillLevel) {
+  function handleAddSkills(selections: { skill: SkillName; level: SkillLevel }[]) {
     setAddOpen(false)
     startTransition(async () => {
-      const result = await bulkAddSkill(ids, skill, level)
+      const result = await bulkAddSkills(ids, selections)
       if (result.error) { toast.error(result.error); return }
       const skippedMsg = result.skipped > 0 ? ` ${t("bulk.skippedAlreadyHad", { count: result.skipped })}` : ""
       toast.success(`${t("bulk.skillAdded", { count: result.added })}${skippedMsg}`)
@@ -454,10 +497,10 @@ function BulkToolbar({
     })
   }
 
-  function handleRemoveSkill(skill: SkillName) {
+  function handleRemoveSkills(skills: SkillName[]) {
     setRemoveOpen(false)
     startTransition(async () => {
-      const result = await bulkRemoveSkill(ids, skill)
+      const result = await bulkRemoveSkills(ids, skills)
       if (result.error) { toast.error(result.error); return }
       toast.success(t("bulk.skillRemoved", { count: result.removed }))
       onClear()
@@ -522,7 +565,7 @@ function BulkToolbar({
           <AddSkillDropdown
             open={addOpen}
             onClose={() => setAddOpen(false)}
-            onConfirm={handleAddSkill}
+            onConfirm={handleAddSkills}
             isPending={isPending}
             skills={bulkSkills}
             skillLabel={bulkSkillLabel}
@@ -541,7 +584,7 @@ function BulkToolbar({
           <RemoveSkillDropdown
             open={removeOpen}
             onClose={() => setRemoveOpen(false)}
-            onConfirm={handleRemoveSkill}
+            onConfirm={handleRemoveSkills}
             isPending={isPending}
             skills={bulkSkills}
             skillLabel={bulkSkillLabel}
@@ -1029,8 +1072,18 @@ function StaffTable({
 
 export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
   const t  = useTranslations("staff")
+  const tc = useTranslations("common")
   const ts = useTranslations("skills")
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Show success toast after create/edit redirect
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") {
+      toast.success(tc("savedSuccessfully"))
+      router.replace("/staff", { scroll: false })
+    }
+  }, [searchParams, tc, router])
   const skillLabel = makeSkillLabel(tecnicas)
   const skillOrder = Object.fromEntries(tecnicas.map((t, i) => [t.codigo, i]))
   const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }

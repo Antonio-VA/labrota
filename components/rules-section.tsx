@@ -51,6 +51,8 @@ function Toggle({ checked, onChange, disabled }: {
 // ── Rule type ordering ─────────────────────────────────────────────────────────
 const RULE_TYPES: RotaRuleType[] = [
   "no_coincidir",
+  "no_misma_tarea",
+  "no_librar_mismo_dia",
   "supervisor_requerido",
   "max_dias_consecutivos",
   "distribucion_fines_semana",

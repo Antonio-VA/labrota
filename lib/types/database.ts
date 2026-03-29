@@ -278,7 +278,8 @@ export type RotaRuleType =
   | 'max_dias_consecutivos'
   | 'distribucion_fines_semana'
   | 'descanso_fin_de_semana'
-  // no_turno_doble removed — not possible in current system
+  | 'no_misma_tarea'
+  | 'no_librar_mismo_dia'
 
 export interface RotaRule {
   id:              string
