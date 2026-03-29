@@ -545,6 +545,8 @@ export async function generateRota(
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
     taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
     taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
+    shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
+    shiftCoverageByDay: labConfig.shift_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Insert new assignments (skip individual staff+date that have manual overrides)
@@ -838,6 +840,8 @@ export async function regenerateDay(
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
     taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
     taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
+    shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
+    shiftCoverageByDay: labConfig.shift_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Find the specific day's assignments from the engine output

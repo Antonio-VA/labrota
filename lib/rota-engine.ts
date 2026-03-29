@@ -60,6 +60,8 @@ export interface EngineParams {
   shiftRotation?: "stable" | "weekly" | "daily"
   taskCoverageEnabled?: boolean
   taskCoverageByDay?: Record<string, Record<string, number>> | null  // tecnica_code → { mon: N, ... }
+  shiftCoverageEnabled?: boolean
+  shiftCoverageByDay?: Record<string, Record<string, number>> | null // shift_code → { mon: N, ... }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -116,10 +118,11 @@ export function runRotaEngine({
   rules = [],
   tecnicas = [],
   shiftRotation = "stable",
-  taskCoverageEnabled: _taskCoverageEnabled = false,
+  taskCoverageEnabled = false,
   taskCoverageByDay,
+  shiftCoverageEnabled = false,
+  shiftCoverageByDay,
 }: EngineParams): RotaEngineResult {
-  let taskCoverageEnabled = _taskCoverageEnabled
   const days: DayPlan[] = []
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
@@ -226,17 +229,6 @@ export function runRotaEngine({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
   const activeShiftSet = new Set(shiftCodes)
-
-  // Auto-detect per-shift coverage: if task_coverage_by_day has keys matching
-  // shift codes, enable coverage-aware distribution regardless of toggle state.
-  if (!taskCoverageEnabled && taskCoverageByDay && shiftCodes.length > 1) {
-    const covKeys = Object.keys(taskCoverageByDay)
-    const hasShiftKeys = covKeys.some((k) => activeShiftSet.has(k))
-    if (hasShiftKeys) {
-      taskCoverageEnabled = true
-      warnings.push("[auto] Per-shift coverage detected from task_coverage_by_day — enabling coverage-aware distribution")
-    }
-  }
 
   // Técnica → typical shifts lookup (for soft shift preference)
   const tecnicaTypicalShifts: Record<string, Set<string>> = {}
@@ -757,8 +749,8 @@ export function runRotaEngine({
 
     const dayPlanAssignments: { staff_id: string; shift_type: ShiftType }[] = []
 
-    if (taskCoverageEnabled && taskCoverageByDay && defaultShiftCodes.length > 1) {
-      // ── Coverage-aware distribution ──
+    if (shiftCoverageEnabled && shiftCoverageByDay && defaultShiftCodes.length > 1) {
+      // ── Coverage-aware distribution (by_shift mode) ──
       // Shift minimums apply to embryologists (lab role) only.
       // Andro/admin are placed separately after minimums are filled.
       const labStaff = assigned.filter((s) => s.role === "lab")
@@ -768,7 +760,7 @@ export function runRotaEngine({
       const shiftFilled: Record<string, number> = {}
       let totalMin = 0
       for (const sc of defaultShiftCodes) {
-        const min = taskCoverageByDay[sc]?.[dayCode] ?? 0
+        const min = shiftCoverageByDay[sc]?.[dayCode] ?? 0
         shiftMin[sc] = min
         shiftFilled[sc] = 0
         totalMin += min
@@ -870,7 +862,7 @@ export function runRotaEngine({
 
     // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
     const dayPlan = days[days.length - 1]
-    if (!taskCoverageEnabled && defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
+    if (!shiftCoverageEnabled && defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
       const shiftCount: Record<string, number> = {}
       for (const sc of defaultShiftCodes) shiftCount[sc] = 0
       for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
@@ -918,9 +910,9 @@ export function runRotaEngine({
 
     // Per-shift minimums for guard checks
     const shiftMinForGuard: Record<string, number> = {}
-    if (taskCoverageEnabled && taskCoverageByDay) {
+    if (shiftCoverageEnabled && shiftCoverageByDay) {
       for (const sc of defaultShiftCodes) {
-        shiftMinForGuard[sc] = taskCoverageByDay[sc]?.[dayCode] ?? 0
+        shiftMinForGuard[sc] = shiftCoverageByDay[sc]?.[dayCode] ?? 0
       }
     }
 
@@ -979,7 +971,7 @@ export function runRotaEngine({
           // 2. Try to add: find an unassigned qualified staff member
           //    Skip when coverage-aware distribution is active — minimums are already
           //    enforced and adding extra staff would break the day cap and budgets.
-          if (!taskCoverageEnabled) {
+          if (!shiftCoverageEnabled) {
           const unassigned = staff.filter((s) =>
             !(assignedByDate[date] ?? new Set()).has(s.id) &&
             !leaveMap[s.id]?.has(date) &&
@@ -1003,7 +995,7 @@ export function runRotaEngine({
             assignedByDate[date].add(pick.id)
             resolved = true
           }
-          } // end if (!taskCoverageEnabled)
+          } // end if (!shiftCoverageEnabled)
         }
 
         if (!resolved) {

@@ -58,6 +58,8 @@ async function captureConfig(admin: ReturnType<typeof createAdminClient>, orgId:
     preferences: {
       task_coverage_enabled: (config.data as any)?.task_coverage_enabled,
       task_coverage_by_day: (config.data as any)?.task_coverage_by_day,
+      shift_coverage_enabled: (config.data as any)?.shift_coverage_enabled,
+      shift_coverage_by_day: (config.data as any)?.shift_coverage_by_day,
       shift_rotation: (config.data as any)?.shift_rotation,
     },
     tenantSettings: config.data ?? {},

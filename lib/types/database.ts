@@ -200,8 +200,10 @@ export interface LabConfig {
   biopsy_day5_pct:          number  // 0-1, default 0.5
   biopsy_day6_pct:          number  // 0-1, default 0.5
   task_conflict_threshold:  number  // minimum 2, default 3
-  task_coverage_enabled:    boolean // whether per-task coverage minimums are active
+  task_coverage_enabled:    boolean // whether per-task coverage minimums are active (by_task mode)
   task_coverage_by_day:     Record<string, Record<string, number>> | null // tecnica_code → { mon: N, tue: N, ... }
+  shift_coverage_enabled:   boolean // whether per-shift coverage minimums are active (by_shift mode)
+  shift_coverage_by_day:    Record<string, Record<string, number>> | null // shift_code → { mon: N, tue: N, ... }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_leave_requests:    boolean
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
@@ -270,6 +272,8 @@ export type LabConfigUpdate = {
   days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
   task_coverage_enabled?:    boolean
   task_coverage_by_day?:     Record<string, Record<string, number>> | null
+  shift_coverage_enabled?:   boolean
+  shift_coverage_by_day?:    Record<string, Record<string, number>> | null
 }
 
 // ── Rota Rules ────────────────────────────────────────────────────────────────

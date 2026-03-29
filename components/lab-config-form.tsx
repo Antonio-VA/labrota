@@ -62,18 +62,32 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     config.coverage_by_day ?? DEFAULT_COVERAGE
   )
 
-  // Task-level coverage
+  // Task-level coverage (by_task mode)
   const [taskCoverageEnabled, setTaskCoverageEnabled] = useState(config.task_coverage_enabled ?? false)
   const [taskCoverage, setTaskCoverage] = useState<Record<string, Record<string, number>>>(
     (config.task_coverage_by_day as Record<string, Record<string, number>>) ?? {}
   )
   const [taskCoverageWarnings, setTaskCoverageWarnings] = useState<Set<string>>(new Set())
 
-  function setTaskCov(code: string, day: string, raw: string) {
+  // Shift-level coverage (by_shift mode)
+  const [shiftCoverageEnabled, setShiftCoverageEnabled] = useState(config.shift_coverage_enabled ?? false)
+  const [shiftCoverage, setShiftCoverage] = useState<Record<string, Record<string, number>>>(
+    (config.shift_coverage_by_day as Record<string, Record<string, number>>) ?? {}
+  )
+  const [shiftCoverageWarnings, setShiftCoverageWarnings] = useState<Set<string>>(new Set())
+
+  // Active coverage state depends on rotation mode
+  const isByShift = rotaDisplayMode === "by_shift"
+  const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
+  const coverageData = isByShift ? shiftCoverage : taskCoverage
+  const coverageWarnings = isByShift ? shiftCoverageWarnings : taskCoverageWarnings
+
+  function setCov(code: string, day: string, raw: string) {
+    const setter = isByShift ? setShiftCoverage : setTaskCoverage
+    const warnSetter = isByShift ? setShiftCoverageWarnings : setTaskCoverageWarnings
     const v = parseInt(raw, 10)
     if (raw === "" || raw === undefined) {
-      // Clear the explicit value (inherit from department)
-      setTaskCoverage((p) => {
+      setter((p) => {
         const next = { ...p }
         if (next[code]) {
           const { [day]: _, ...rest } = next[code]
@@ -82,29 +96,49 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         }
         return next
       })
-      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
       return
     }
     if (isNaN(v) || v < 0) return
-    // Get department min for this task's department on this day
-    const tec = tecnicas.find((tc) => tc.codigo === code)
-    const deptCode = tec?.department?.split(",")[0] ?? "lab"
-    const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
-    const clamped = Math.min(v, deptMin)
-    setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
-    // Warning if user tried to exceed
-    if (v > deptMin) {
-      setTaskCoverageWarnings((p) => new Set(p).add(`${code}-${day}`))
+
+    if (isByShift) {
+      // For shifts, max is total department coverage for that day
+      const d = coverageByDay[day as keyof CoverageByDay]
+      const maxVal = d ? (d.lab + d.andrology + d.admin) : 0
+      const clamped = Math.min(v, maxVal)
+      setter((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
+      if (v > maxVal) {
+        warnSetter((p) => new Set(p).add(`${code}-${day}`))
+      } else {
+        warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      }
     } else {
-      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      // For tasks, max is department min for this task's department
+      const tec = tecnicas.find((tc) => tc.codigo === code)
+      const deptCode = tec?.department?.split(",")[0] ?? "lab"
+      const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+      const clamped = Math.min(v, deptMin)
+      setter((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
+      if (v > deptMin) {
+        warnSetter((p) => new Set(p).add(`${code}-${day}`))
+      } else {
+        warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      }
     }
   }
 
-  function handleToggleTaskCoverage() {
-    if (taskCoverageEnabled && Object.keys(taskCoverage).length > 0) {
-      if (!confirm("¿Desactivar cobertura por tarea? Los valores guardados se conservarán pero no se aplicarán.")) return
+  function handleToggleCoverage() {
+    if (isByShift) {
+      if (shiftCoverageEnabled && Object.keys(shiftCoverage).length > 0) {
+        if (!confirm("¿Desactivar cobertura por turno? Los valores guardados se conservarán pero no se aplicarán.")) return
+      }
+      setShiftCoverageEnabled(!shiftCoverageEnabled)
+    } else {
+      if (taskCoverageEnabled && Object.keys(taskCoverage).length > 0) {
+        if (!confirm("¿Desactivar cobertura por tarea? Los valores guardados se conservarán pero no se aplicarán.")) return
+      }
+      setTaskCoverageEnabled(!taskCoverageEnabled)
     }
-    setTaskCoverageEnabled(!taskCoverageEnabled)
   }
 
   const [values, setValues] = useState({
@@ -140,6 +174,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         coverage_by_day: coverageByDay,
         task_coverage_enabled: taskCoverageEnabled,
         task_coverage_by_day: taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
+        shift_coverage_enabled: shiftCoverageEnabled,
+        shift_coverage_by_day: shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
       })
       if (result.error) {
         setCoverageErrorMsg(result.error)
@@ -184,6 +220,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_conflict_threshold: values.task_conflict_threshold,
         task_coverage_enabled:  taskCoverageEnabled,
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
+        shift_coverage_enabled: shiftCoverageEnabled,
+        shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:    values.days_off_preference,
       } as any)
       if (result.error) {
@@ -346,19 +384,19 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </span>
           <button
             type="button"
-            onClick={handleToggleTaskCoverage}
+            onClick={handleToggleCoverage}
             className={cn(
               "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-              taskCoverageEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+              coverageEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
             )}
           >
             <span className={cn(
               "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-              taskCoverageEnabled ? "translate-x-5" : "translate-x-0"
+              coverageEnabled ? "translate-x-5" : "translate-x-0"
             )} />
           </button>
         </div>
-        {!taskCoverageEnabled ? (
+        {!coverageEnabled ? (
           <div className="px-5 py-4">
             <p className="text-[13px] text-muted-foreground">
               {rotaDisplayMode === "by_task"
@@ -406,14 +444,14 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                             {DAY_KEYS.map((day) => {
                               const deptRole = dept.code as "lab" | "andrology" | "admin"
                               const deptMin = coverageByDay[day]?.[deptRole] ?? 0
-                              const explicitVal = taskCoverage[tec.codigo]?.[day]
-                              const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
+                              const explicitVal = coverageData[tec.codigo]?.[day]
+                              const hasWarning = coverageWarnings.has(`${tec.codigo}-${day}`)
                               const isWeekend = day === "sat" || day === "sun"
                               return (
                                 <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
                                   <div className="relative">
                                     <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
-                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                      onChange={(e) => setCov(tec.codigo, day, e.target.value)} disabled={isPending}
                                       className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
                                         hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
                                           : explicitVal !== undefined ? "border-input bg-background text-foreground"
@@ -463,14 +501,14 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                       </td>
                       {DAY_KEYS.map((day) => {
                         const maxVal = totalDeptMin(day)
-                        const explicitVal = taskCoverage[st.code]?.[day]
-                        const hasWarning = taskCoverageWarnings.has(`${st.code}-${day}`)
+                        const explicitVal = coverageData[st.code]?.[day]
+                        const hasWarning = coverageWarnings.has(`${st.code}-${day}`)
                         const isWeekend = day === "sat" || day === "sun"
                         return (
                           <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
                             <div className="relative">
                               <input type="number" min={0} max={maxVal} value={explicitVal ?? ""}
-                                onChange={(e) => setTaskCov(st.code, day, e.target.value)} disabled={isPending}
+                                onChange={(e) => setCov(st.code, day, e.target.value)} disabled={isPending}
                                 className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
                                   hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
                                     : explicitVal !== undefined ? "border-input bg-background text-foreground"
@@ -489,7 +527,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             </table>
           </div>
         )}
-        {taskCoverageEnabled && (
+        {coverageEnabled && (
           <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
             El generador no producirá una rota que no cumpla estos mínimos, y te avisará si el equipo disponible no es suficiente.
           </p>
