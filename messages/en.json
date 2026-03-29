@@ -19,6 +19,7 @@
     "saving": "Saving…",
     "generating": "Generating…",
     "success": "Saved successfully",
+    "savedSuccessfully": "Saved successfully",
     "error": "An error occurred",
     "required": "Required",
     "optional": "Optional",

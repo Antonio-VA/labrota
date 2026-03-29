@@ -19,6 +19,7 @@
     "saving": "Guardando…",
     "generating": "Generando…",
     "success": "Guardado correctamente",
+    "savedSuccessfully": "Guardado correctamente",
     "error": "Se ha producido un error",
     "required": "Campo obligatorio",
     "optional": "Opcional",

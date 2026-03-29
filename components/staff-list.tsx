@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check } from "lucide-react"
 import Link from "next/link"
@@ -1069,8 +1069,18 @@ function StaffTable({
 
 export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
   const t  = useTranslations("staff")
+  const tc = useTranslations("common")
   const ts = useTranslations("skills")
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Show success toast after create/edit redirect
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") {
+      toast.success(tc("savedSuccessfully"))
+      router.replace("/staff", { scroll: false })
+    }
+  }, [searchParams, tc, router])
   const skillLabel = makeSkillLabel(tecnicas)
   const skillOrder = Object.fromEntries(tecnicas.map((t, i) => [t.codigo, i]))
   const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }
