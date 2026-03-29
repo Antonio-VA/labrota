@@ -980,6 +980,9 @@ export function runRotaEngine({
 
         if (!resolved) {
           // 2. Try to add: find an unassigned qualified staff member
+          //    Skip when coverage-aware distribution is active — minimums are already
+          //    enforced and adding extra staff would break the day cap and budgets.
+          if (!taskCoverageEnabled) {
           const unassigned = staff.filter((s) =>
             !(assignedByDate[date] ?? new Set()).has(s.id) &&
             !leaveMap[s.id]?.has(date) &&
@@ -1003,6 +1006,7 @@ export function runRotaEngine({
             assignedByDate[date].add(pick.id)
             resolved = true
           }
+          } // end if (!taskCoverageEnabled)
         }
 
         if (!resolved) {
