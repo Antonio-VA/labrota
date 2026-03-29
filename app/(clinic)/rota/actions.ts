@@ -901,7 +901,6 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  const orgId = await getOrgId(supabase)
   if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
   revalidatePath("/")
   return {}
