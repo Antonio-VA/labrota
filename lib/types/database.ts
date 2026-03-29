@@ -175,6 +175,10 @@ export type CoverageByDay = {
   thu: CoverageByDayEntry; fri: CoverageByDayEntry; sat: CoverageByDayEntry
   sun: CoverageByDayEntry
 }
+// Per-shift per-department coverage: { shift_code: { day_code: { lab: N, andrology: N, admin: N } } }
+// Backward-compat: values can be plain numbers (treated as lab-only, legacy)
+export type ShiftCoverageEntry = { lab: number; andrology: number; admin: number }
+export type ShiftCoverageByDay = Record<string, Record<string, ShiftCoverageEntry | number>>
 
 export interface LabConfig {
   id:                       string
@@ -203,7 +207,7 @@ export interface LabConfig {
   task_coverage_enabled:    boolean // whether per-task coverage minimums are active (by_task mode)
   task_coverage_by_day:     Record<string, Record<string, number>> | null // tecnica_code → { mon: N, tue: N, ... }
   shift_coverage_enabled:   boolean // whether per-shift coverage minimums are active (by_shift mode)
-  shift_coverage_by_day:    Record<string, Record<string, number>> | null // shift_code → { mon: N, tue: N, ... }
+  shift_coverage_by_day:    ShiftCoverageByDay | null // shift_code → { day: { lab: N, andrology: N, admin: N } }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_leave_requests:    boolean
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
@@ -273,7 +277,7 @@ export type LabConfigUpdate = {
   task_coverage_enabled?:    boolean
   task_coverage_by_day?:     Record<string, Record<string, number>> | null
   shift_coverage_enabled?:   boolean
-  shift_coverage_by_day?:    Record<string, Record<string, number>> | null
+  shift_coverage_by_day?:    ShiftCoverageByDay | null
 }
 
 // ── Rota Rules ────────────────────────────────────────────────────────────────

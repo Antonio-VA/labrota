@@ -23,6 +23,8 @@ import type {
   RotaRule,
   ShiftType,
   ShiftTypeDefinition,
+  ShiftCoverageByDay,
+  ShiftCoverageEntry,
   SkillName,
   WorkingDay,
 } from "@/lib/types/database"
@@ -61,10 +63,17 @@ export interface EngineParams {
   taskCoverageEnabled?: boolean
   taskCoverageByDay?: Record<string, Record<string, number>> | null  // tecnica_code → { mon: N, ... }
   shiftCoverageEnabled?: boolean
-  shiftCoverageByDay?: Record<string, Record<string, number>> | null // shift_code → { mon: N, ... }
+  shiftCoverageByDay?: ShiftCoverageByDay | null // shift_code → { day: { lab, andrology, admin } }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Normalize shift coverage value: plain number → lab-only, object → as-is */
+function normalizeShiftCov(val: ShiftCoverageEntry | number | undefined): ShiftCoverageEntry {
+  if (val === undefined || val === null) return { lab: 0, andrology: 0, admin: 0 }
+  if (typeof val === "number") return { lab: val, andrology: 0, admin: 0 }
+  return val
+}
 
 const WEEKDAY_CODES: WorkingDay[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
 
@@ -334,9 +343,30 @@ export function runRotaEngine({
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
     const dayCoverage = labConfig.coverage_by_day?.[dayCode]
-    const labRequired = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
-    const andrologyRequired = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
-    const adminRequired = dayCoverage?.admin ?? 0
+
+    // When shift coverage is enabled, derive department totals by summing across shifts
+    let labRequired: number
+    let andrologyRequired: number
+    let adminRequired: number
+    if (shiftCoverageEnabled && shiftCoverageByDay) {
+      let labSum = 0, androSum = 0, adminSum = 0
+      const dayShiftsForCov = activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .map((st) => st.code)
+      for (const sc of dayShiftsForCov) {
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        labSum += cov.lab
+        androSum += cov.andrology
+        adminSum += cov.admin
+      }
+      labRequired = Math.max(labSum, dynamicLabMin)
+      andrologyRequired = androSum
+      adminRequired = adminSum
+    } else {
+      labRequired = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
+      andrologyRequired = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
+      adminRequired = dayCoverage?.admin ?? 0
+    }
 
     // Basic eligibility (not budget-related)
     function isAvailable(s: StaffWithSkills): boolean {
@@ -758,22 +788,65 @@ export function runRotaEngine({
 
     if (shiftCoverageEnabled && shiftCoverageByDay && defaultShiftCodes.length > 1) {
       // ── Coverage-aware distribution (by_shift mode) ──
-      // Shift minimums apply to embryologists (lab role) only.
-      // Andro/admin are placed separately after minimums are filled.
+      // Per-shift per-department minimums: each shift specifies how many lab/andro/admin it needs.
       const labStaff = assigned.filter((s) => s.role === "lab")
-      const nonLabStaff = assigned.filter((s) => s.role !== "lab")
+      const androStaff = assigned.filter((s) => s.role === "andrology")
+      const adminStaff = assigned.filter((s) => s.role === "admin")
 
-      const shiftMin: Record<string, number> = {}
+      // Parse per-department minimums per shift
+      const shiftMinLab: Record<string, number> = {}
+      const shiftMinAndro: Record<string, number> = {}
+      const shiftMinAdmin: Record<string, number> = {}
       const shiftFilled: Record<string, number> = {}
-      let totalMin = 0
+      const shiftFilledLab: Record<string, number> = {}
+      const shiftFilledAndro: Record<string, number> = {}
+      const shiftFilledAdmin: Record<string, number> = {}
       for (const sc of defaultShiftCodes) {
-        const min = shiftCoverageByDay[sc]?.[dayCode] ?? 0
-        shiftMin[sc] = min
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        shiftMinLab[sc] = cov.lab
+        shiftMinAndro[sc] = cov.andrology
+        shiftMinAdmin[sc] = cov.admin
         shiftFilled[sc] = 0
-        totalMin += min
+        shiftFilledLab[sc] = 0
+        shiftFilledAndro[sc] = 0
+        shiftFilledAdmin[sc] = 0
       }
 
       const assignedToShift = new Set<string>()
+
+      // ── Rotation preference for coverage-aware mode ──
+      // Returns a score (lower = preferred) for placing a staff member in a given shift.
+      // "stable": prefer the same shift as last week (lower for matching)
+      // "weekly": prefer a DIFFERENT shift from last week (lower for non-matching)
+      // "daily": rotate based on day index + staff position
+      const rotation = shiftRotation ?? "stable"
+      function rotationPreference(staffId: string, shiftCode: string): number {
+        if (rotation === "stable") {
+          // Prefer the same shift as last week's most recent assignment
+          const lastAssignment = recentAssignments
+            .filter((a) => a.staff_id === staffId)
+            .sort((a, b) => b.date.localeCompare(a.date))[0]
+          if (lastAssignment) {
+            return lastAssignment.shift_type === shiftCode ? 0 : 1
+          }
+          return 0 // no history — no preference
+        } else if (rotation === "weekly") {
+          // Prefer a different shift from last week
+          const lastAssignment = recentAssignments
+            .filter((a) => a.staff_id === staffId)
+            .sort((a, b) => b.date.localeCompare(a.date))[0]
+          if (lastAssignment) {
+            return lastAssignment.shift_type === shiftCode ? 1 : 0
+          }
+          return 0
+        } else {
+          // "daily": use day index + staff position to cycle through shifts
+          const staffIdx = staff.findIndex((s) => s.id === staffId)
+          const shiftIdx = defaultShiftCodes.indexOf(shiftCode)
+          const preferred = (staffIdx + dayIndex) % defaultShiftCodes.length
+          return shiftIdx === preferred ? 0 : 1
+        }
+      }
 
       // Build technique → required shifts mapping (hard constraint)
       // A technique's typical_shifts = shifts where it MUST be covered
@@ -842,6 +915,7 @@ export function runRotaEngine({
             dayPlanAssignments.push({ staff_id: pick.id, shift_type: shiftCode as ShiftType })
             assignedToShift.add(pick.id)
             shiftFilled[shiftCode]++
+            shiftFilledLab[shiftCode]++
             for (const sk of pick.staff_skills) shiftSkills[shiftCode].add(sk.skill)
           } else {
             warnings.push(`${date}: ${shiftCode} — no hay personal cualificado para ${techCode}`)
@@ -849,16 +923,19 @@ export function runRotaEngine({
         }
       }
 
-      // ── Step 1: Fill remaining shift minimums with embryologists ──
-      const shiftsByPriority = [...defaultShiftCodes].sort((a, b) => (shiftMin[b] ?? 0) - (shiftMin[a] ?? 0))
+      // ── Step 1: Fill remaining lab shift minimums ──
+      const shiftsByLabPriority = [...defaultShiftCodes].sort((a, b) => (shiftMinLab[b] ?? 0) - (shiftMinLab[a] ?? 0))
 
-      for (const shiftCode of shiftsByPriority) {
-        const min = shiftMin[shiftCode] ?? 0
-        if (shiftFilled[shiftCode] >= min) continue
+      for (const shiftCode of shiftsByLabPriority) {
+        const min = shiftMinLab[shiftCode] ?? 0
+        if (shiftFilledLab[shiftCode] >= min) continue
 
         const pool = labStaff.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
           .sort((a, b) => {
-            // Prefer staff whose skills add new coverage to this shift
+            // Prefer staff whose rotation preference matches this shift
+            const aRot = rotationPreference(a.id, shiftCode)
+            const bRot = rotationPreference(b.id, shiftCode)
+            if (aRot !== bRot) return aRot - bRot
             const aNew = a.staff_skills.filter((sk) => !shiftSkills[shiftCode]?.has(sk.skill)).length
             const bNew = b.staff_skills.filter((sk) => !shiftSkills[shiftCode]?.has(sk.skill)).length
             if (aNew !== bNew) return bNew - aNew
@@ -866,15 +943,16 @@ export function runRotaEngine({
           })
 
         for (const s of pool) {
-          if (shiftFilled[shiftCode] >= min) break
+          if (shiftFilledLab[shiftCode] >= min) break
           dayPlanAssignments.push({ staff_id: s.id, shift_type: shiftCode as ShiftType })
           assignedToShift.add(s.id)
           shiftFilled[shiftCode]++
+          shiftFilledLab[shiftCode]++
           for (const sk of s.staff_skills) shiftSkills[shiftCode].add(sk.skill)
         }
 
-        if (shiftFilled[shiftCode] < min) {
-          warnings.push(`${date}: ${shiftCode} — cobertura insuficiente: ${shiftFilled[shiftCode]}/${min}`)
+        if (shiftFilledLab[shiftCode] < min) {
+          warnings.push(`${date}: ${shiftCode} — lab insuficiente: ${shiftFilledLab[shiftCode]}/${min}`)
         }
       }
 
@@ -895,15 +973,19 @@ export function runRotaEngine({
           continue
         }
         const bestShift = allowedShifts.sort((a, b) => {
-          // Priority 1: shifts still below minimum
-          const aGap = (shiftMin[a] ?? 0) - (shiftFilled[a] ?? 0)
-          const bGap = (shiftMin[b] ?? 0) - (shiftFilled[b] ?? 0)
+          // Priority 1: shifts still below lab minimum
+          const aGap = (shiftMinLab[a] ?? 0) - (shiftFilledLab[a] ?? 0)
+          const bGap = (shiftMinLab[b] ?? 0) - (shiftFilledLab[b] ?? 0)
           if (aGap !== bGap) return bGap - aGap
-          // Priority 2: least-filled overall
+          // Priority 2: rotation preference (weekly/daily/stable)
+          const aRot = rotationPreference(s.id, a)
+          const bRot = rotationPreference(s.id, b)
+          if (aRot !== bRot) return aRot - bRot
+          // Priority 3: least-filled overall
           const aFill = shiftFilled[a] ?? 0
           const bFill = shiftFilled[b] ?? 0
           if (aFill !== bFill) return aFill - bFill
-          // Priority 3: shift where this person adds the most NEW skills
+          // Priority 4: shift where this person adds the most NEW skills
           const aNewSkills = [...personSkills].filter((sk) => !shiftSkills[a]?.has(sk)).length
           const bNewSkills = [...personSkills].filter((sk) => !shiftSkills[b]?.has(sk)).length
           return bNewSkills - aNewSkills
@@ -911,18 +993,60 @@ export function runRotaEngine({
         dayPlanAssignments.push({ staff_id: s.id, shift_type: bestShift as ShiftType })
         assignedToShift.add(s.id)
         shiftFilled[bestShift] = (shiftFilled[bestShift] ?? 0) + 1
+        shiftFilledLab[bestShift] = (shiftFilledLab[bestShift] ?? 0) + 1
         for (const sk of s.staff_skills) shiftSkills[bestShift]?.add(sk.skill)
       }
 
-      // ── Step 3: Place andro/admin via preference or least-filled shift ──
-      for (const s of nonLabStaff) {
-        const pref = getPreferredShift(s)
-        const shift = pref ? applyAvoidShifts(s, pref) : defaultShiftCodes
-          .filter((sc) => !s.avoid_shifts?.includes(sc))
-          .sort((a, b) => (shiftFilled[a] ?? 0) - (shiftFilled[b] ?? 0))[0] as ShiftType ?? defaultShiftCodes[0] as ShiftType
-        dayPlanAssignments.push({ staff_id: s.id, shift_type: shift as ShiftType })
-        shiftFilled[shift] = (shiftFilled[shift] ?? 0) + 1
+      // ── Step 3: Place andro per shift minimums, then fair share remainder ──
+      const placeRoleByMin = (
+        roleStaff: StaffWithSkills[],
+        roleMinMap: Record<string, number>,
+        roleFilledMap: Record<string, number>,
+        roleName: string
+      ) => {
+        // First: fill per-shift minimums for this role
+        for (const shiftCode of defaultShiftCodes) {
+          const min = roleMinMap[shiftCode] ?? 0
+          if (roleFilledMap[shiftCode] >= min) continue
+          const pool = roleStaff.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
+            .sort((a, b) => {
+              const aRot = rotationPreference(a.id, shiftCode)
+              const bRot = rotationPreference(b.id, shiftCode)
+              if (aRot !== bRot) return aRot - bRot
+              return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+            })
+          for (const s of pool) {
+            if (roleFilledMap[shiftCode] >= min) break
+            dayPlanAssignments.push({ staff_id: s.id, shift_type: shiftCode as ShiftType })
+            assignedToShift.add(s.id)
+            shiftFilled[shiftCode] = (shiftFilled[shiftCode] ?? 0) + 1
+            roleFilledMap[shiftCode] = (roleFilledMap[shiftCode] ?? 0) + 1
+          }
+          if (roleFilledMap[shiftCode] < min) {
+            warnings.push(`${date}: ${shiftCode} — ${roleName} insuficiente: ${roleFilledMap[shiftCode]}/${min}`)
+          }
+        }
+        // Then: fair share remaining to least-filled shift (rotation as tiebreaker)
+        const remaining = roleStaff.filter((s) => !assignedToShift.has(s.id))
+        for (const s of remaining) {
+          const allowed = defaultShiftCodes.filter((sc) => !s.avoid_shifts?.includes(sc))
+          const shift = (allowed.length > 0
+            ? allowed.sort((a, b) => {
+                const aRot = rotationPreference(s.id, a)
+                const bRot = rotationPreference(s.id, b)
+                if (aRot !== bRot) return aRot - bRot
+                return (shiftFilled[a] ?? 0) - (shiftFilled[b] ?? 0)
+              })[0]
+            : defaultShiftCodes.sort((a, b) => (shiftFilled[a] ?? 0) - (shiftFilled[b] ?? 0))[0]
+          ) as ShiftType
+          dayPlanAssignments.push({ staff_id: s.id, shift_type: shift })
+          assignedToShift.add(s.id)
+          shiftFilled[shift] = (shiftFilled[shift] ?? 0) + 1
+          roleFilledMap[shift] = (roleFilledMap[shift] ?? 0) + 1
+        }
       }
+      placeRoleByMin(androStaff, shiftMinAndro, shiftFilledAndro, "andrología")
+      placeRoleByMin(adminStaff, shiftMinAdmin, shiftFilledAdmin, "admin")
     } else {
       // ── Original distribution (no per-shift coverage) ──
       for (const s of assigned) {
@@ -998,7 +1122,8 @@ export function runRotaEngine({
     const shiftMinForGuard: Record<string, number> = {}
     if (shiftCoverageEnabled && shiftCoverageByDay) {
       for (const sc of defaultShiftCodes) {
-        shiftMinForGuard[sc] = shiftCoverageByDay[sc]?.[dayCode] ?? 0
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        shiftMinForGuard[sc] = cov.lab + cov.andrology + cov.admin
       }
     }
 

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
-import type { LabConfig, PunctionsByDay, CoverageByDay } from "@/lib/types/database"
+import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -69,25 +69,52 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   )
   const [taskCoverageWarnings, setTaskCoverageWarnings] = useState<Set<string>>(new Set())
 
-  // Shift-level coverage (by_shift mode)
+  // Shift-level coverage (by_shift mode) — per-department: { shift: { day: { lab, andrology, admin } } }
   const [shiftCoverageEnabled, setShiftCoverageEnabled] = useState(config.shift_coverage_enabled ?? false)
-  const [shiftCoverage, setShiftCoverage] = useState<Record<string, Record<string, number>>>(
-    (config.shift_coverage_by_day as Record<string, Record<string, number>>) ?? {}
-  )
+  const [shiftCoverage, setShiftCoverage] = useState<ShiftCoverageByDay>(() => {
+    const raw = config.shift_coverage_by_day
+    if (!raw) return {}
+    // Normalize: plain numbers → { lab: N, andrology: 0, admin: 0 }
+    const normalized: ShiftCoverageByDay = {}
+    for (const [shift, days] of Object.entries(raw)) {
+      normalized[shift] = {}
+      for (const [day, val] of Object.entries(days as Record<string, ShiftCoverageEntry | number>)) {
+        normalized[shift][day] = typeof val === "number" ? { lab: val, andrology: 0, admin: 0 } : val
+      }
+    }
+    return normalized
+  })
   const [shiftCoverageWarnings, setShiftCoverageWarnings] = useState<Set<string>>(new Set())
 
   // Active coverage state depends on rotation mode
   const isByShift = rotaDisplayMode === "by_shift"
   const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
-  const coverageData = isByShift ? shiftCoverage : taskCoverage
   const coverageWarnings = isByShift ? shiftCoverageWarnings : taskCoverageWarnings
 
-  function setCov(code: string, day: string, raw: string) {
-    const setter = isByShift ? setShiftCoverage : setTaskCoverage
-    const warnSetter = isByShift ? setShiftCoverageWarnings : setTaskCoverageWarnings
+  /** Set per-department shift coverage value */
+  function setShiftCov(shiftCode: string, day: string, role: "lab" | "andrology" | "admin", raw: string) {
     const v = parseInt(raw, 10)
     if (raw === "" || raw === undefined) {
-      setter((p) => {
+      setShiftCoverage((p) => {
+        const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+        const updated = { ...prev, [role]: 0 }
+        return { ...p, [shiftCode]: { ...(p[shiftCode] ?? {}), [day]: updated } }
+      })
+      return
+    }
+    if (isNaN(v) || v < 0) return
+    setShiftCoverage((p) => {
+      const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+      const updated = { ...prev, [role]: v }
+      return { ...p, [shiftCode]: { ...(p[shiftCode] ?? {}), [day]: updated } }
+    })
+  }
+
+  /** Set task coverage value (single number) */
+  function setTaskCov(code: string, day: string, raw: string) {
+    const v = parseInt(raw, 10)
+    if (raw === "" || raw === undefined) {
+      setTaskCoverage((p) => {
         const next = { ...p }
         if (next[code]) {
           const { [day]: _, ...rest } = next[code]
@@ -96,34 +123,20 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         }
         return next
       })
-      warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
+      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
       return
     }
     if (isNaN(v) || v < 0) return
 
-    if (isByShift) {
-      // For shifts, max is total department coverage for that day
-      const d = coverageByDay[day as keyof CoverageByDay]
-      const maxVal = d ? (d.lab + d.andrology + d.admin) : 0
-      const clamped = Math.min(v, maxVal)
-      setter((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
-      if (v > maxVal) {
-        warnSetter((p) => new Set(p).add(`${code}-${day}`))
-      } else {
-        warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
-      }
+    const tec = tecnicas.find((tc) => tc.codigo === code)
+    const deptCode = tec?.department?.split(",")[0] ?? "lab"
+    const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+    const clamped = Math.min(v, deptMin)
+    setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
+    if (v > deptMin) {
+      setTaskCoverageWarnings((p) => new Set(p).add(`${code}-${day}`))
     } else {
-      // For tasks, max is department min for this task's department
-      const tec = tecnicas.find((tc) => tc.codigo === code)
-      const deptCode = tec?.department?.split(",")[0] ?? "lab"
-      const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
-      const clamped = Math.min(v, deptMin)
-      setter((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
-      if (v > deptMin) {
-        warnSetter((p) => new Set(p).add(`${code}-${day}`))
-      } else {
-        warnSetter((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
-      }
+      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
     }
   }
 
@@ -322,8 +335,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       </>}
 
       {(section === "all" || section === "cobertura") && <>
-      {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO ──────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
+      {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO (hidden when shift coverage replaces it) ──── */}
+      {!(isByShift && shiftCoverageEnabled) && <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">
             {t("sections.coverage")} — Por departamento
@@ -372,7 +385,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
           El generador no producirá una rota que no cumpla estos mínimos, y te avisará si el equipo disponible no es suficiente. Pon 0 para no requerir un departamento en un día concreto.
         </p>
-      </div>
+      </div>}
 
       {/* ── COBERTURA GRANULAR (por tarea o por turno) ─────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
@@ -401,7 +414,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             <p className="text-[13px] text-muted-foreground">
               {rotaDisplayMode === "by_task"
                 ? "El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea."
-                : "El generador usará los mínimos por departamento para todos los turnos. Activa esta opción solo si necesitas excepciones específicas por turno."}
+                : "Activa para definir cuántas personas de cada departamento necesitas por turno y día. Sustituye la tabla de cobertura por departamento."}
             </p>
           </div>
         ) : rotaDisplayMode === "by_task" ? (
@@ -444,14 +457,14 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                             {DAY_KEYS.map((day) => {
                               const deptRole = dept.code as "lab" | "andrology" | "admin"
                               const deptMin = coverageByDay[day]?.[deptRole] ?? 0
-                              const explicitVal = coverageData[tec.codigo]?.[day]
+                              const explicitVal = taskCoverage[tec.codigo]?.[day]
                               const hasWarning = coverageWarnings.has(`${tec.codigo}-${day}`)
                               const isWeekend = day === "sat" || day === "sun"
                               return (
                                 <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
                                   <div className="relative">
                                     <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
-                                      onChange={(e) => setCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
                                       className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
                                         hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
                                           : explicitVal !== undefined ? "border-input bg-background text-foreground"
@@ -473,54 +486,76 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             </table>
           </div>
         ) : (
-          /* ── Per-shift table ── */
+          /* ── Per-shift table with per-department sub-rows ── */
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-muted border-b border-border">
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Turno</th>
                   {DAY_KEYS.map((day) => (
-                    <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                    <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>{t(`days.${day}`).slice(0, 3)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {shiftTypes.filter((st) => st.active !== false).map((st, idx) => {
-                  // For shifts, the max is the total department coverage for that day
-                  const totalDeptMin = (day: string) => {
-                    const d = coverageByDay[day as keyof typeof coverageByDay]
-                    return d ? (d.lab + d.andrology + d.admin) : 0
-                  }
+                {shiftTypes.filter((st) => st.active !== false).map((st) => {
+                  const ROLES = [
+                    { key: "lab" as const, label: "Embr.", color: "var(--role-lab)" },
+                    { key: "andrology" as const, label: "Andr.", color: "var(--role-andrology)" },
+                    { key: "admin" as const, label: "Admin", color: "var(--role-admin)" },
+                  ]
                   return (
-                    <tr key={st.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
-                      <td className="px-3 py-1.5">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="text-[13px] font-semibold">{st.code}</span>
-                          <span className="text-[11px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
-                        </span>
-                      </td>
-                      {DAY_KEYS.map((day) => {
-                        const maxVal = totalDeptMin(day)
-                        const explicitVal = coverageData[st.code]?.[day]
-                        const hasWarning = coverageWarnings.has(`${st.code}-${day}`)
-                        const isWeekend = day === "sat" || day === "sun"
-                        return (
-                          <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
-                            <div className="relative">
-                              <input type="number" min={0} max={maxVal} value={explicitVal ?? ""}
-                                onChange={(e) => setCov(st.code, day, e.target.value)} disabled={isPending}
-                                className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
-                                  hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
-                                    : explicitVal !== undefined ? "border-input bg-background text-foreground"
-                                    : "border-input bg-background text-muted-foreground/40",
-                                  "focus:border-ring focus:ring-1 focus:ring-ring/50"
-                                )} />
-                              {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {maxVal}</p>}
-                            </div>
+                    <Fragment key={st.id}>
+                      {/* Shift header row */}
+                      <tr className="bg-muted/60 border-t border-border">
+                        <td colSpan={8} className="px-3 py-1.5">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[13px] font-semibold">{st.code}</span>
+                            <span className="text-[11px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
+                          </span>
+                        </td>
+                      </tr>
+                      {/* Department sub-rows */}
+                      {ROLES.map((role, rIdx) => (
+                        <tr key={`${st.id}-${role.key}`} className={cn("border-b border-border/30", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                          <td className="px-3 py-0.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
+                              <span className="text-[12px] text-muted-foreground">{role.label}</span>
+                            </span>
                           </td>
-                        )
-                      })}
-                    </tr>
+                          {DAY_KEYS.map((day) => {
+                            const isWknd = day === "sat" || day === "sun"
+                            const entry = shiftCoverage[st.code]?.[day]
+                            const covEntry = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                            const val = covEntry[role.key]
+                            return (
+                              <td key={day} className={cn("px-1 py-0.5 text-center", isWknd && "bg-muted/30")}>
+                                <div className="group relative flex items-center justify-center">
+                                  <button type="button" tabIndex={-1}
+                                    onClick={() => setShiftCov(st.code, day, role.key, String(Math.max(0, val - 1)))}
+                                    className="absolute left-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
+                                  >-</button>
+                                  <input type="number" min={0} max={20} value={val || ""}
+                                    onChange={(e) => setShiftCov(st.code, day, role.key, e.target.value)}
+                                    disabled={isPending}
+                                    className={cn(
+                                      "w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
+                                      val > 0 ? "border-input bg-background text-foreground" : "border-input bg-background text-muted-foreground/30",
+                                      "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                    )}
+                                  />
+                                  <button type="button" tabIndex={-1}
+                                    onClick={() => setShiftCov(st.code, day, role.key, String(val + 1))}
+                                    className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
+                                  >+</button>
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
                   )
                 })}
               </tbody>
