@@ -1047,6 +1047,48 @@ export function runRotaEngine({
       }
       placeRoleByMin(androStaff, shiftMinAndro, shiftFilledAndro, "andrología")
       placeRoleByMin(adminStaff, shiftMinAdmin, shiftFilledAdmin, "admin")
+
+      // ── Rotation swap pass ──
+      // For weekly/daily rotation, try swapping same-role pairs between shifts
+      // to improve rotation scores. Same-role swaps preserve per-shift minimums
+      // (net zero change per shift). Only check avoid_shifts hard constraint.
+      if (rotation !== "stable" && dayPlanAssignments.length > 1) {
+        const staffRole: Record<string, string> = {}
+        const staffAvoid: Record<string, string[]> = {}
+        for (const s of assigned) {
+          staffRole[s.id] = s.role
+          staffAvoid[s.id] = s.avoid_shifts ?? []
+        }
+
+        let improved = true
+        let passes = 0
+        while (improved && passes < 3) {
+          improved = false
+          passes++
+          for (let i = 0; i < dayPlanAssignments.length; i++) {
+            for (let j = i + 1; j < dayPlanAssignments.length; j++) {
+              const a = dayPlanAssignments[i]
+              const b = dayPlanAssignments[j]
+              if (a.shift_type === b.shift_type) continue
+              if (staffRole[a.staff_id] !== staffRole[b.staff_id]) continue
+
+              // Hard: avoid_shifts
+              if (staffAvoid[a.staff_id]?.includes(b.shift_type)) continue
+              if (staffAvoid[b.staff_id]?.includes(a.shift_type)) continue
+
+              // Swap if it improves total rotation score
+              const currentScore = rotationPreference(a.staff_id, a.shift_type) + rotationPreference(b.staff_id, b.shift_type)
+              const swappedScore = rotationPreference(a.staff_id, b.shift_type) + rotationPreference(b.staff_id, a.shift_type)
+              if (swappedScore < currentScore) {
+                const tmp = a.shift_type
+                a.shift_type = b.shift_type
+                b.shift_type = tmp
+                improved = true
+              }
+            }
+          }
+        }
+      }
     } else {
       // ── Original distribution (no per-shift coverage) ──
       for (const s of assigned) {
