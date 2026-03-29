@@ -10,6 +10,14 @@ import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 const ROLE_BORDER: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
+const COLOR_HEX: Record<string, string> = {
+  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
+  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
+}
+function resolveStaffColor(color: string): string {
+  if (color.startsWith("#")) return color
+  return COLOR_HEX[color] ?? "#94A3B8"
+}
 
 const TECNICA_DOT_COLOR: Record<string, string> = {
   amber: "#F59E0B", blue: "#3B82F6", green: "#10B981",
@@ -40,6 +48,9 @@ export function TransposedTaskGrid({
   const today = new Date().toISOString().split("T")[0]
 
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
+  const staffColorMap = useMemo(() =>
+    Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveStaffColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
+  , [staffList])
 
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
@@ -128,7 +139,7 @@ export function TransposedTaskGrid({
                     )}
                   >
                     {assignments.map((a) => {
-                      const roleColor = ROLE_BORDER[a.staff.role] ?? "#64748B"
+                      const roleColor = staffColorMap[a.staff_id] ?? ROLE_BORDER[a.staff.role] ?? "#64748B"
                       return (
                         <Tooltip key={a.id}>
                           <TooltipTrigger render={

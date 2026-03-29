@@ -695,7 +695,9 @@ export function TaskGrid({
   }
   const staffColorMap: Record<string, string> = {}
   staffList.forEach((s) => {
-    staffColorMap[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_BORDER[s.role] ?? "#94A3B8"
+    staffColorMap[s.id] = s.color
+      ? resolveColor(s.color)
+      : (deptColorMap[s.role] ?? DEFAULT_DEPT_BORDER[s.role] ?? "#94A3B8")
   })
 
   // Build leave map: date → set of staff_ids
