@@ -538,6 +538,8 @@ export async function generateRota(
     rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date()),
     tecnicas: (tecnicasForEngine.data ?? []).map((t) => ({ codigo: t.codigo, typical_shifts: t.typical_shifts ?? [] })),
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+    taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
+    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Insert new assignments (skip individual staff+date that have manual overrides)
@@ -787,6 +789,8 @@ export async function regenerateDay(
     rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date()),
     tecnicas: (tecRes.data ?? []).map((t: { codigo: string; typical_shifts: string[] }) => ({ codigo: t.codigo, typical_shifts: t.typical_shifts ?? [] })),
     shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+    taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
+    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
   })
 
   // Find the specific day's assignments from the engine output

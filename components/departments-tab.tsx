@@ -166,7 +166,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
 
 let _counter = 0
 
-export function DepartmentsTab({ initialDepartments }: { initialDepartments: Department[] }) {
+export function DepartmentsTab({ initialDepartments, enableSubDepartments = true }: { initialDepartments: Department[]; enableSubDepartments?: boolean }) {
   const t = useTranslations("departments")
   const tc = useTranslations("common")
   const [departments, setDepartments] = useState<Draft[]>(
@@ -295,7 +295,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
                     onDelete={() => deleteRow(dept.sortId)}
                     disabled={isPending}
                   />
-                  {children.map((child) => (
+                  {enableSubDepartments && children.map((child) => (
                     <SortableRow
                       key={child.sortId}
                       dept={child}
@@ -305,7 +305,7 @@ export function DepartmentsTab({ initialDepartments }: { initialDepartments: Dep
                       isChild
                     />
                   ))}
-                  {!isPending && (
+                  {enableSubDepartments && !isPending && (
                     <button
                       type="button"
                       onClick={() => addRow(dept.id ?? dept.sortId)}
