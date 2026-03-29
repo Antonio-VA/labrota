@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
 import { CheckCircle2, AlertCircle, Info } from "lucide-react"
+import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
 
 // ── Spanish autonomous communities ────────────────────────────────────────────
@@ -47,7 +48,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [] }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -306,35 +307,11 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       )}
 
+      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} />}
+
       </>}
 
       {(section === "all" || section === "cobertura") && <>
-      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.ratioCobertura")} />
-        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_optimal}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_minimum}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-        </div>
-      </div>
-
       {/* ── COBERTURA MÍNIMA ──────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
@@ -706,6 +683,32 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               </div>
               <span className="text-[11px] text-muted-foreground">%</span>
             </div>
+          </FieldRow>
+        </div>
+      </div>
+
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_optimal}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_minimum}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
           </FieldRow>
         </div>
       </div>

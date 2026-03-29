@@ -5,13 +5,11 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ShiftTypesTable } from "@/components/shift-types-table"
-import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { toast } from "sonner"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 
-export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
+export function TurnosTab({ initialTypes, rotaDisplayMode }: {
   initialTypes: ShiftTypeDefinition[]
-  initialRotation: string
   rotaDisplayMode?: string
 }) {
   const t = useTranslations("turnos")
@@ -19,15 +17,12 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [shiftSaveFn, setShiftSaveFn] = useState<(() => Promise<boolean>) | null>(null)
-  const [rotationSaveFn, setRotationSaveFn] = useState<(() => Promise<void>) | null>(null)
 
   const registerShiftSave = useCallback((fn: () => Promise<boolean>) => setShiftSaveFn(() => fn), [])
-  const registerRotationSave = useCallback((fn: () => Promise<void>) => setRotationSaveFn(() => fn), [])
 
   function handleSaveAll() {
     startTransition(async () => {
       const shiftOk = await shiftSaveFn?.() ?? true
-      await rotationSaveFn?.()
       if (shiftOk) {
         setSaved(true)
         toast.success(t("changesSaved"))
@@ -51,11 +46,6 @@ export function TurnosTab({ initialTypes, initialRotation, rotaDisplayMode }: {
           daysReadOnly={rotaDisplayMode === "by_task"}
         />
       </div>
-
-      <ShiftRotationSetting
-        initialValue={initialRotation}
-        registerSave={registerRotationSave}
-      />
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSaveAll} disabled={isPending}>

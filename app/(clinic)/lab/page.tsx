@@ -79,7 +79,7 @@ export default async function LabConfigPage() {
             reglas={<RulesSection rules={rules} staff={staff} tecnicas={tecnicas} />}
             generador={
               config ? (
-                <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} />
+                <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">Lab configuration not found.</p>
               )
@@ -119,7 +119,6 @@ export default async function LabConfigPage() {
             turnos={
               <TurnosTab
                 initialTypes={shiftTypes}
-                initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"}
                 rotaDisplayMode={rotaDisplayMode}
               />
             }

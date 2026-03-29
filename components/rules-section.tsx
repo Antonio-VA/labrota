@@ -406,8 +406,8 @@ function RuleSheet({
             </>
           )}
 
-          {/* Affected staff */}
-          <div>
+          {/* Affected staff — hidden for technique-only rules */}
+          {form.type !== "restriccion_dia_tecnica" && <div>
             <label className={labelSelect}>{t("affectedStaff")}</label>
             {requiresStaffPair && (
               <p className="text-[11px] text-muted-foreground mb-1">{t("selectAtLeastTwo")}</p>
@@ -443,7 +443,7 @@ function RuleSheet({
                 ))}
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Expiry — hidden until toggled */}
           {form.expires_at ? (
@@ -610,7 +610,13 @@ export function RulesSection({
     if (rule.type === "supervisor_requerido") {
       const supId = rule.params.supervisor_id as string | undefined
       const sup = staff.find((s) => s.id === supId)
-      if (sup) return `${t(`descriptions.${rule.type}`)} — ${sup.first_name} ${sup.last_name}`
+      const supervised = rule.staff_ids
+        .filter((id) => id !== supId)
+        .map((id) => { const s = staff.find((st) => st.id === id); return s ? s.first_name : "?" })
+      if (sup) {
+        const supervisedStr = supervised.length > 0 ? ` → ${supervised.join(", ")}` : ""
+        return `${sup.first_name} ${sup.last_name}${supervisedStr}`
+      }
     }
     if (rule.type === "max_dias_consecutivos") {
       const max = rule.params.maxDays as number | undefined

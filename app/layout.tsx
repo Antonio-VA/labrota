@@ -58,7 +58,7 @@ export default async function RootLayout({
     }
   } catch {}
 
-  const rootStyle: Record<string, string> = {}
+  const rootStyle: Record<string, string> = { "color-scheme": dataTheme === "dark" ? "dark" : "light" }
   if (accentColor) {
     rootStyle["--primary"] = accentColor
     rootStyle["--ring"] = accentColor
@@ -86,8 +86,8 @@ export default async function RootLayout({
             if (c) {
               var p = JSON.parse(decodeURIComponent(c[1]));
               var dark = p.theme === 'dark' || (p.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-              if (dark) document.documentElement.setAttribute('data-theme', 'dark');
-              else document.documentElement.removeAttribute('data-theme');
+              if (dark) { document.documentElement.setAttribute('data-theme', 'dark'); document.documentElement.style.colorScheme = 'dark'; }
+              else { document.documentElement.removeAttribute('data-theme'); document.documentElement.style.colorScheme = 'light'; }
               if (p.accentColor) {
                 var r = document.documentElement.style;
                 r.setProperty('--primary', p.accentColor);
