@@ -528,7 +528,8 @@ export function runRotaEngine({
 
         if (rule.type === "no_librar_mismo_dia") {
           // Ensure the selected staff are not ALL off on the same day.
-          // If both/all are unassigned, force the one with lowest workload back in.
+          // This rule requires specific staff_ids — skip if none specified.
+          if (rule.staff_ids.length < 2) continue
           const conflictIds = new Set(rule.staff_ids)
           const assignedConflict = assigned.filter((s) => conflictIds.has(s.id))
           const allConflictStaff = staff.filter((s) => conflictIds.has(s.id))
@@ -549,6 +550,8 @@ export function runRotaEngine({
                 assigned.push(pick)
                 assignedLab = pick.role === "lab" ? [...assignedLab, pick] : assignedLab
                 assignedAndrology = pick.role === "andrology" ? [...assignedAndrology, pick] : assignedAndrology
+                // Track the forced assignment so budget is accounted for
+                weeklyShiftCount[pick.id] = (weeklyShiftCount[pick.id] ?? 0) + 1
               }
               warnings.push(
                 `${date}: ${allConflictStaff.map((s) => `${s.first_name} ${s.last_name}`).join(" + ")} — no_librar_mismo_dia${!rule.is_hard ? " (soft)" : ""}`
