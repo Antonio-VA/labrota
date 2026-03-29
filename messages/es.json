@@ -260,7 +260,7 @@
     "noTemplatesSaved": "No hay plantillas guardadas",
     "noTemplatesSavedHint": "Guarda una desde el calendario o ve a Configuración → Plantillas",
     "staffColors": "Colores de personal",
-    "highlightPerson": "Resaltar",
+    "highlightPerson": "Resaltar celdas",
     "exportExcel": "Exportar Excel",
     "delete4Weeks": "Eliminar 4 semanas",
     "confirm4WeeksDelete": "¿Eliminar todas las asignaciones de las 4 semanas visibles?",

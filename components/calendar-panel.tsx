@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -537,24 +537,52 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
         >
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
             <span className="text-[11px] text-muted-foreground text-right">{t("punctions")}</span>
-            <input
-              autoFocus
-              type="number"
-              min={0}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
-              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
-            />
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setDraft((d) => String(Math.max(0, (parseInt(d, 10) || 0) - 1)))}
+                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <ChevronDown className="size-3" />
+              </button>
+              <input
+                autoFocus
+                type="number"
+                min={0}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
+                className="w-10 text-[12px] text-center border border-input rounded px-0.5 py-0.5 outline-none focus:border-primary bg-background"
+              />
+              <button
+                onClick={() => setDraft((d) => String((parseInt(d, 10) || 0) + 1))}
+                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <ChevronUp className="size-3" />
+              </button>
+            </div>
             <span className="text-[11px] text-muted-foreground text-right">{t("biopsies")}</span>
-            <input
-              type="number"
-              min={0}
-              value={biopsyDraft}
-              onChange={(e) => setBiopsyDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") save() }}
-              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
-            />
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setBiopsyDraft((d) => String(Math.max(0, (parseInt(d, 10) || 0) - 1)))}
+                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <ChevronDown className="size-3" />
+              </button>
+              <input
+                type="number"
+                min={0}
+                value={biopsyDraft}
+                onChange={(e) => setBiopsyDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") save() }}
+                className="w-10 text-[12px] text-center border border-input rounded px-0.5 py-0.5 outline-none focus:border-primary bg-background"
+              />
+              <button
+                onClick={() => setBiopsyDraft((d) => String((parseInt(d, 10) || 0) + 1))}
+                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <ChevronUp className="size-3" />
+              </button>
+            </div>
           </div>
           <div className="flex gap-1">
             <button
@@ -1765,8 +1793,8 @@ function PersonGrid({
                 </Tooltip>
               )}
               {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
-              {/* Punciones / Biopsias — same component as ShiftGrid */}
-              {(() => {
+              {/* Punciones / Biopsias — same component as ShiftGrid (hidden in simplified mode) */}
+              {!simplified && (() => {
                 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
                 function getPunc(dateStr: string): number {
                   if ((punctionsOverride ?? {})[dateStr] !== undefined) return (punctionsOverride ?? {})[dateStr]
@@ -1825,7 +1853,7 @@ function PersonGrid({
                 <Fragment key={s.id}>
                   {/* Name cell — click opens profile */}
                   <div
-                    className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 cursor-pointer hover:bg-muted/50", compact ? "px-2 py-1 min-h-[36px]" : "px-3 py-2 min-h-[48px]")}
+                    className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 cursor-pointer hover:bg-muted/50", compact ? "px-1.5 py-0.5 min-h-[28px]" : "px-2 py-1 min-h-[36px]")}
                     style={colorChips ? { borderLeft: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
                     onClick={() => onChipClick({ staff_id: s.id } as Assignment, "")}
                   >
@@ -1849,7 +1877,7 @@ function PersonGrid({
                     return (
                       <div
                         key={day.date}
-                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0.5 min-h-[36px]" : "px-1 py-1 min-h-[48px]", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
+                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
                         onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -2010,7 +2038,7 @@ function TransposedPersonGrid({
 
   return (
     <div className="rounded-lg border border-border overflow-auto w-full">
-      <div style={{ display: "grid", gridTemplateColumns: `80px repeat(${allMembers.length}, minmax(${compact ? "60px" : "80px"}, 1fr))`, minWidth: allMembers.length * (compact ? 65 : 85) + 80 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `80px repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: allMembers.length * (compact ? 53 : 65) + 80 }}>
 
         {/* Header: empty corner + staff names */}
         <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
@@ -2024,16 +2052,16 @@ function TransposedPersonGrid({
               className={cn(
                 "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
                               )}
-              style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
+              style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : { borderTop: "none" }}
             >
               <button
                 onClick={() => onChipClick({ staff_id: s.id }, "")}
                 className="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity"
               >
-                <span className={cn("font-medium text-center leading-tight truncate w-full", compact ? "text-[10px]" : "text-[11px]")}>
+                <span className={cn("font-medium text-center leading-tight truncate w-full", compact ? "text-[9px]" : "text-[10px]")}>
                   {s.first_name}
                 </span>
-                <span className={cn("text-muted-foreground text-center truncate w-full", compact ? "text-[9px]" : "text-[10px]")}>
+                <span className={cn("text-muted-foreground text-center truncate w-full", compact ? "text-[8px]" : "text-[9px]")}>
                   {s.last_name[0]}.
                 </span>
               </button>
@@ -2093,7 +2121,7 @@ function TransposedPersonGrid({
                     key={s.id}
                     className={cn(
                       "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
-                      compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1",
+                      compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
                       isHovered ? "bg-blue-100/50" : "bg-background",
                                           )}
                     onMouseEnter={() => setHoveredShift(cellShift)}
@@ -2240,7 +2268,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange,
-  onRefresh, weekStart, compact, colorChips, onDateClick, onLocalDaysChange,
+  onRefresh, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
 }: {
@@ -2262,6 +2290,7 @@ function ShiftGrid({
   weekStart: string
   compact?: boolean
   colorChips?: boolean
+  simplified?: boolean
   onDateClick?: (date: string) => void
   onLocalDaysChange?: (days: RotaDay[]) => void
   ratioOptimal?: number
@@ -2595,8 +2624,8 @@ function ShiftGrid({
                   </Tooltip>
                 )}
 
-                {/* Punciones + biopsias — single clickable area */}
-                {(() => {
+                {/* Punciones + biopsias — single clickable area (hidden in simplified mode) */}
+                {!simplified && (() => {
                   // Biopsy forecast: punciones from 5 and 6 days ago
                   const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
                   function getPuncForDate(ds: string): number {
@@ -4672,12 +4701,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 active: compact,
                 dividerBefore: true,
               },
-              ...(calendarLayout === "person" ? [{
+              {
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
-              }] : []),
+              },
               {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
@@ -4691,7 +4720,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               },
               ...(view === "week" ? [{
                 label: t("daysAsRows"),
-                icon: <Grid3X3 className="size-3.5" />,
+                icon: <ArrowRightLeft className="size-3.5" />,
                 onClick: toggleDaysAsRows,
                 active: daysAsRows,
               }] : [])] : []),
@@ -4934,6 +4963,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   weekStart={weekStart}
                   compact={compact}
                   colorChips={colorChips}
+                  simplified={personSimplified}
                   onDateClick={handleMonthDayClick}
                   onLocalDaysChange={setLiveDays}
                   ratioOptimal={weekData?.ratioOptimal}
