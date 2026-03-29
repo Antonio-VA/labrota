@@ -39,12 +39,6 @@ lab_settings: z.object({
 
   admin_on_weekends: z.boolean()
     .describe("Whether admin staff appear on weekends in the rota."),
-
-  shift_names: z.object({
-    am: z.string().describe("Name used for the morning shift in the rota (e.g. 'Mañana', 'Morning', 'Turno 1'). Empty if not identifiable."),
-    pm: z.string().describe("Name used for the afternoon shift (e.g. 'Tarde', 'Afternoon', 'Turno 2'). Empty if not identifiable."),
-    full: z.string().describe("Name used for full-day shifts (e.g. 'Completo', 'Jornada completa'). Empty if not identifiable."),
-  }).describe("Shift naming convention used in the rota. Extract the actual names/labels used, not codes."),
 })
 ```
 
@@ -63,8 +57,6 @@ Add to the existing prompt (section 7):
    - **Days off preference**: Look at when staff have their days off.
      "always_weekend" = everyone off sat+sun. "prefer_weekend" = most off on weekends.
      "any_day" = days off spread evenly across the week.
-   - **Shift names**: Extract the actual names used for morning, afternoon, and full-day shifts
-     as they appear in the rota (e.g. "Mañana", "Tarde", "Completo").
    - **Shift rotation**: "stable" = same person stays on the same shift type week after week.
      "weekly" = shifts rotate each week. "daily" = different shift every day.
    - **Admin on weekends**: Whether any admin-department staff appear on weekend days.
@@ -112,7 +104,6 @@ export interface ExtractedLabSettings {
   days_off_preference: "always_weekend" | "prefer_weekend" | "any_day"
   shift_rotation: "stable" | "weekly" | "daily"
   admin_on_weekends: boolean
-  shift_names: { am: string; pm: string; full: string }
 }
 
 // Update ExtractedData:
@@ -166,9 +157,6 @@ The rota mode card should use radio buttons so the admin can switch between by_t
 │  Rotación de turno   ○ Estable  ● Semanal  ○ Diaria          │
 │                                                                │
 │  Admin en fines      ☐                                        │
-│                                                                │
-│  Nombres de turno                                              │
-│  Mañana: [Mañana]   Tarde: [Tarde]   Completo: [Completo]    │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -224,22 +212,6 @@ if (data.lab_settings) {
   if (ls.days_off_preference) updates.days_off_preference = ls.days_off_preference
   if (ls.shift_rotation) updates.shift_rotation = ls.shift_rotation
   if (ls.admin_on_weekends !== undefined) updates.admin_on_weekends = ls.admin_on_weekends
-
-  // Shift names — set both es and en to the extracted names as starting point
-  if (ls.shift_names) {
-    if (ls.shift_names.am) {
-      updates.shift_name_am_es = ls.shift_names.am
-      updates.shift_name_am_en = ls.shift_names.am
-    }
-    if (ls.shift_names.pm) {
-      updates.shift_name_pm_es = ls.shift_names.pm
-      updates.shift_name_pm_en = ls.shift_names.pm
-    }
-    if (ls.shift_names.full) {
-      updates.shift_name_full_es = ls.shift_names.full
-      updates.shift_name_full_en = ls.shift_names.full
-    }
-  }
 
   if (Object.keys(updates).length > 0) {
     await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
@@ -303,6 +275,12 @@ Add `labSettings: boolean` to `ImportResult.counts` and show conditional text.
 
 ---
 
+## Already Covered by Existing Extraction
+
+- **Shift names** — the existing `shifts` extraction already captures each shift's code and name as free-text fields (editable on the review screen). No separate lab_config shift name extraction needed — the names come from whatever the rota uses ("Mañana", "T1", "Early", etc.)
+
+---
+
 ## What We Deliberately Don't Extract
 
 These settings are too organisation-specific to infer from a rota file:
@@ -324,7 +302,7 @@ These keep their existing defaults and the admin adjusts them in Lab → Paráme
 2. **Rota mode is the first section** on the review screen, with radio toggle (not read-only)
 3. Review screen shows editable coverage/punciones/preferences/shift names section
 4. All numeric fields have min/max validation
-5. On import, `lab_config` row is updated with coverage_by_day, punctions_by_day, days_off_preference, shift_rotation, admin_on_weekends, shift names
+5. On import, `lab_config` row is updated with coverage_by_day, punctions_by_day, days_off_preference, shift_rotation, admin_on_weekends
 6. Legacy flat coverage fields (min_lab_coverage etc.) are also set for backward compat
 7. Rules use the 7 valid `RotaRuleType` values — no more mapping from deprecated types
 8. `supervisor_requerido` rules set `params.supervisor_id` from first staff name
