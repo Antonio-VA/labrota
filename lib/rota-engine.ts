@@ -116,9 +116,10 @@ export function runRotaEngine({
   rules = [],
   tecnicas = [],
   shiftRotation = "stable",
-  taskCoverageEnabled = false,
+  taskCoverageEnabled: _taskCoverageEnabled = false,
   taskCoverageByDay,
 }: EngineParams): RotaEngineResult {
+  let taskCoverageEnabled = _taskCoverageEnabled
   const days: DayPlan[] = []
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
@@ -223,6 +224,17 @@ export function runRotaEngine({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
   const activeShiftSet = new Set(shiftCodes)
+
+  // Auto-detect per-shift coverage: if task_coverage_by_day has keys matching
+  // shift codes, enable coverage-aware distribution regardless of toggle state.
+  if (!taskCoverageEnabled && taskCoverageByDay && shiftCodes.length > 1) {
+    const covKeys = Object.keys(taskCoverageByDay)
+    const hasShiftKeys = covKeys.some((k) => activeShiftSet.has(k))
+    if (hasShiftKeys) {
+      taskCoverageEnabled = true
+      warnings.push("[auto] Per-shift coverage detected from task_coverage_by_day — enabling coverage-aware distribution")
+    }
+  }
 
   // Técnica → typical shifts lookup (for soft shift preference)
   const tecnicaTypicalShifts: Record<string, Set<string>> = {}
