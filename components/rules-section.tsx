@@ -533,6 +533,7 @@ export function RulesSection({
               <Badge variant="inactive" className="text-[10px]">{t("expired")}</Badge>
             )}
           </div>
+          <p className="text-[12px] text-muted-foreground mt-0.5">{t(`descriptions.${rule.type}`)}</p>
           {rule.notes && (
             <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{rule.notes}</p>
           )}
