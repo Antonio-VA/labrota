@@ -44,6 +44,22 @@ export interface ExtractedTaskCoverage {
   max_observed: number
 }
 
+export interface ExtractedLabSettings {
+  coverage_by_day: {
+    weekday: { lab: number; andrology: number; admin: number }
+    saturday: { lab: number; andrology: number; admin: number }
+    sunday: { lab: number; andrology: number; admin: number }
+  }
+  punctions_by_day: {
+    weekday: number
+    saturday: number
+    sunday: number
+  }
+  days_off_preference: "always_weekend" | "prefer_weekend" | "any_day"
+  shift_rotation: "stable" | "weekly" | "daily"
+  admin_on_weekends: boolean
+}
+
 export interface ExtractedData {
   staff: ExtractedStaff[]
   shifts: ExtractedShift[]
@@ -51,6 +67,7 @@ export interface ExtractedData {
   rules: ExtractedRule[]
   rota_mode?: ExtractedRotaMode
   task_coverage?: ExtractedTaskCoverage[]
+  lab_settings?: ExtractedLabSettings
 }
 
 export interface ProcessedFile {
@@ -63,6 +80,6 @@ export interface ProcessedFile {
 
 export interface ImportResult {
   success: boolean
-  counts?: { staff: number; shifts: number; techniques: number; rules: number }
+  counts?: { staff: number; shifts: number; techniques: number; rules: number; labSettings: boolean }
   error?: string
 }

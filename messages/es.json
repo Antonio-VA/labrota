@@ -1030,6 +1030,27 @@
     "viewStaff": "Ver equipo",
     "viewCalendar": "Ver calendario",
     "settingsLink": "Importar guardias históricas",
-    "settingsDescription": "Sube archivos de guardias anteriores para configurar tu laboratorio automáticamente."
+    "settingsDescription": "Sube archivos de guardias anteriores para configurar tu laboratorio automáticamente.",
+    "rotaModeTitle": "Modo de organización",
+    "rotaModeByTask": "Organización por tarea",
+    "rotaModeByShift": "Organización por turno",
+    "rotaModeByTaskHint": "Habitual en laboratorios grandes (10+ personas), donde cada profesional se asigna a procedimientos específicos cada día.",
+    "rotaModeByShiftHint": "Habitual en laboratorios pequeños (<10 personas), donde todo el equipo rota entre turnos sin asignación fija de tareas.",
+    "labSettingsTitle": "Configuración sugerida",
+    "coverageTitle": "Cobertura mínima por departamento",
+    "coverageWeekday": "Lun–Vie",
+    "coverageSaturday": "Sábado",
+    "coverageSunday": "Domingo",
+    "punctionsTitle": "Punciones/día",
+    "daysOffTitle": "Días libres",
+    "daysOffAlwaysWeekend": "Siempre fin de semana",
+    "daysOffPreferWeekend": "Preferir fin de semana",
+    "daysOffAnyDay": "Cualquier día",
+    "shiftRotationTitle": "Rotación de turno",
+    "shiftRotationStable": "Estable",
+    "shiftRotationWeekly": "Semanal",
+    "shiftRotationDaily": "Diaria",
+    "adminOnWeekends": "Admin en fines de semana",
+    "doneDescriptionWithSettings": "Hemos importado {staff} personas, {shifts} turnos, {techniques} técnicas y {rules} reglas. Cobertura y parámetros configurados."
   }
 }

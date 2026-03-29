@@ -23,9 +23,9 @@ const extractionSchema = z.object({
     department: z.string().describe("lab or andrology"),
   })),
   rules: z.array(z.object({
-    type: z.string().describe("One of: no_coincidir, supervisor_requerido, max_dias_consecutivos, distribucion_fines_semana, shift_preference, rotation_pattern, always_together"),
+    type: z.string().describe("One of: no_coincidir, supervisor_requerido, max_dias_consecutivos, distribucion_fines_semana, descanso_fin_de_semana, no_misma_tarea, no_librar_mismo_dia"),
     description: z.string().describe("Human-readable description of the rule in Spanish"),
-    staff_involved: z.array(z.string()).describe("Names of staff involved"),
+    staff_involved: z.array(z.string()).describe("Names of staff involved. For supervisor_requerido, the FIRST name is the supervisor."),
     confidence: z.number().describe("How consistently this pattern appears, from 0.0 (never) to 1.0 (always)"),
     observed_count: z.number().describe("Number of weeks where pattern was observed"),
     total_weeks: z.number().describe("Total weeks analysed"),
@@ -41,6 +41,24 @@ const extractionSchema = z.object({
     min_observed: z.number().describe("Minimum staff count observed across all weeks"),
     max_observed: z.number().describe("Maximum staff count observed"),
   })).describe("Per-task staffing levels observed — only populated if rota_mode is by_task"),
+  lab_settings: z.object({
+    coverage_by_day: z.object({
+      weekday: z.object({ lab: z.number(), andrology: z.number(), admin: z.number() }),
+      saturday: z.object({ lab: z.number(), andrology: z.number(), admin: z.number() }),
+      sunday: z.object({ lab: z.number(), andrology: z.number(), admin: z.number() }),
+    }).describe("Minimum staff per department. Count the lowest observed headcount per department on weekdays, Saturdays, and Sundays separately."),
+    punctions_by_day: z.object({
+      weekday: z.number(),
+      saturday: z.number(),
+      sunday: z.number(),
+    }).describe("Daily OPU/egg collection procedure count. If the rota mentions OPU/punción counts, extract them. Otherwise use 0."),
+    days_off_preference: z.enum(["always_weekend", "prefer_weekend", "any_day"])
+      .describe("Infer from the rota: if days off are always sat+sun → always_weekend. If mostly weekends but some weekday offs → prefer_weekend. If days off spread across all days → any_day."),
+    shift_rotation: z.enum(["stable", "weekly", "daily"])
+      .describe("stable = staff keep same shift across weeks. weekly = shift changes each week. daily = shift can change daily. Infer from patterns observed."),
+    admin_on_weekends: z.boolean()
+      .describe("Whether admin staff appear on weekends in the rota."),
+  }),
 })
 
 const SYSTEM_PROMPT = `You are analysing staff rota/schedule files for an IVF (In Vitro Fertilisation) embryology laboratory.
@@ -65,14 +83,14 @@ Your task is to extract structured data from these historical schedule files. Ex
    - Seminograma, Capacitación, TUB (tube preparation)
    Use 2-3 character uppercase codes.
 
-4. **Rules/Patterns**: Observable scheduling rules. Look for:
-   - Staff who never work the same day (no_coincidir)
-   - Required supervisor presence (supervisor_requerido)
-   - Maximum consecutive days worked (max_dias_consecutivos)
-   - Weekend distribution patterns (distribucion_fines_semana)
-   - Consistent shift preferences (shift_preference)
-   - Technique rotation patterns (rotation_pattern)
-   - Staff who always work together (always_together)
+4. **Rules/Patterns**: Observable scheduling rules. Look for these specific types:
+   - no_coincidir: Two staff who never work the same day
+   - supervisor_requerido: A designated supervisor must always be on the same day and shift as the supervised staff. Put the SUPERVISOR name FIRST in staff_involved.
+   - max_dias_consecutivos: Maximum consecutive days worked
+   - distribucion_fines_semana: Weekend distribution patterns (fair rotation of weekend work)
+   - descanso_fin_de_semana: If someone works one weekend, they rest the next
+   - no_misma_tarea: Two staff should not be assigned to the same task/procedure on the same day
+   - no_librar_mismo_dia: Two staff should not both have the day off on the same day
 
    For each rule, calculate confidence based on consistency across all weeks provided.
 
@@ -82,6 +100,13 @@ Your task is to extract structured data from these historical schedule files. Ex
    Look for: if the schedule has columns/sections for specific procedures (ICSI, OPU, etc), it's by_task. If it only shows shift assignments (AM/PM/T1/T2), it's by_shift.
 
 6. **Task coverage** (only if by_task): For each technique/task, count how many staff are typically assigned per day. This helps set minimum coverage requirements. Report the typical (mode), minimum, and maximum staff count observed.
+
+7. **Lab settings**: Infer configuration defaults from the rota:
+   - **Coverage by day**: Count the MINIMUM staff per department (lab, andrology, admin) observed on weekdays, Saturdays, and Sundays. This becomes the minimum headcount.
+   - **Punciones (OPU)**: If the rota mentions procedure counts for egg collection/OPU/punción, extract the average per-day count. If not mentioned, return 0.
+   - **Days off preference**: Look at when staff have their days off. "always_weekend" = everyone off sat+sun. "prefer_weekend" = most off on weekends. "any_day" = days off spread evenly across the week.
+   - **Shift rotation**: "stable" = same person stays on the same shift type week after week. "weekly" = shifts rotate each week. "daily" = different shift every day.
+   - **Admin on weekends**: Whether any admin-department staff appear on weekend days.
 
 Return ONLY the structured JSON. Be thorough — extract every staff member, every shift type, every technique, and every observable pattern.
 If a field cannot be determined, use reasonable defaults (empty string for unknown shifts, "lab" for ambiguous departments).`

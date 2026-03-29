@@ -29,7 +29,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
   const orgId = await getOrgId()
   if (!orgId) return { success: false, error: "No active organisation" }
 
-  const counts = { staff: 0, shifts: 0, techniques: 0, rules: 0 }
+  const counts = { staff: 0, shifts: 0, techniques: 0, rules: 0, labSettings: false }
 
   try {
     // ── 0. Auto backup before import ──────────────────────────────────────
@@ -131,20 +131,25 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
 
     if (rulesToInsert.length > 0) {
       const rows = rulesToInsert.map((r) => {
-        // Map extracted type to valid RotaRuleType
-        let ruleType: RotaRuleType = "no_coincidir"
-        if (VALID_RULE_TYPES.includes(r.type as RotaRuleType)) {
-          ruleType = r.type as RotaRuleType
-        } else if (r.type === "shift_preference" || r.type === "rotation_pattern") {
-          ruleType = "distribucion_fines_semana"
-        } else if (r.type === "always_together") {
-          ruleType = "no_coincidir" // Mapped as inverse — will note in params
+        // Map extracted type to valid RotaRuleType — skip unknown types
+        if (!VALID_RULE_TYPES.includes(r.type as RotaRuleType)) {
+          return null
         }
+        const ruleType = r.type as RotaRuleType
 
         // Resolve staff names to IDs
         const staffIds = r.staff_involved
           .map((name) => staffIdMap[name])
           .filter(Boolean) as string[]
+
+        // For supervisor_requerido, first staff is the supervisor
+        const params: Record<string, unknown> = {
+          confidence: r.confidence,
+          observed: `${r.observed_count}/${r.total_weeks}`,
+        }
+        if (ruleType === "supervisor_requerido" && staffIds.length > 0) {
+          params.supervisor_id = staffIds[0]
+        }
 
         return {
           organisation_id: orgId,
@@ -152,14 +157,12 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
           is_hard: r.confidence >= 0.9,
           enabled: true,
           staff_ids: staffIds,
-          params: {
-            original_type: r.type,
-            confidence: r.confidence,
-            observed: `${r.observed_count}/${r.total_weeks}`,
-          },
+          params,
           notes: r.description,
         }
-      }).filter((r) => r.staff_ids.length > 0 || r.type === "max_dias_consecutivos" || r.type === "distribucion_fines_semana")
+      }).filter((r): r is NonNullable<typeof r> =>
+        r !== null && (r.staff_ids.length > 0 || r.type === "max_dias_consecutivos" || r.type === "distribucion_fines_semana" || r.type === "descanso_fin_de_semana")
+      )
 
       if (rows.length > 0) {
         const { data: inserted, error } = await supabase
@@ -191,6 +194,52 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
         updates.task_coverage_by_day = taskCov
       }
       await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
+    }
+
+    // ── 6. Apply lab settings if detected ─────────────────────────────────
+    if (data.lab_settings) {
+      const ls = data.lab_settings
+      const updates: Record<string, unknown> = {}
+
+      // Coverage — expand weekday/sat/sun into per-day structure
+      if (ls.coverage_by_day) {
+        updates.coverage_by_day = {
+          mon: ls.coverage_by_day.weekday,
+          tue: ls.coverage_by_day.weekday,
+          wed: ls.coverage_by_day.weekday,
+          thu: ls.coverage_by_day.weekday,
+          fri: ls.coverage_by_day.weekday,
+          sat: ls.coverage_by_day.saturday,
+          sun: ls.coverage_by_day.sunday,
+        }
+        // Also set legacy flat fields for backward compat
+        updates.min_lab_coverage = ls.coverage_by_day.weekday.lab
+        updates.min_andrology_coverage = ls.coverage_by_day.weekday.andrology
+        updates.min_weekend_lab_coverage = ls.coverage_by_day.saturday.lab
+        updates.min_weekend_andrology = ls.coverage_by_day.saturday.andrology
+      }
+
+      // Punciones — expand into per-day
+      if (ls.punctions_by_day) {
+        updates.punctions_by_day = {
+          mon: ls.punctions_by_day.weekday,
+          tue: ls.punctions_by_day.weekday,
+          wed: ls.punctions_by_day.weekday,
+          thu: ls.punctions_by_day.weekday,
+          fri: ls.punctions_by_day.weekday,
+          sat: ls.punctions_by_day.saturday,
+          sun: ls.punctions_by_day.sunday,
+        }
+      }
+
+      if (ls.days_off_preference) updates.days_off_preference = ls.days_off_preference
+      if (ls.shift_rotation) updates.shift_rotation = ls.shift_rotation
+      if (ls.admin_on_weekends !== undefined) updates.admin_on_weekends = ls.admin_on_weekends
+
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
+        counts.labSettings = true
+      }
     }
 
     revalidatePath("/staff")

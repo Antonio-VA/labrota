@@ -1030,6 +1030,27 @@
     "viewStaff": "View team",
     "viewCalendar": "View calendar",
     "settingsLink": "Import historical rotas",
-    "settingsDescription": "Upload previous rota files to configure your laboratory automatically."
+    "settingsDescription": "Upload previous rota files to configure your laboratory automatically.",
+    "rotaModeTitle": "Organisation mode",
+    "rotaModeByTask": "By task",
+    "rotaModeByShift": "By shift",
+    "rotaModeByTaskHint": "Common in large labs (10+ staff), where each professional is assigned to specific procedures each day.",
+    "rotaModeByShiftHint": "Common in small labs (<10 staff), where the whole team rotates between shifts without fixed task assignments.",
+    "labSettingsTitle": "Suggested configuration",
+    "coverageTitle": "Minimum coverage by department",
+    "coverageWeekday": "Mon–Fri",
+    "coverageSaturday": "Saturday",
+    "coverageSunday": "Sunday",
+    "punctionsTitle": "Punctions/day",
+    "daysOffTitle": "Days off",
+    "daysOffAlwaysWeekend": "Always weekend",
+    "daysOffPreferWeekend": "Prefer weekend",
+    "daysOffAnyDay": "Any day",
+    "shiftRotationTitle": "Shift rotation",
+    "shiftRotationStable": "Stable",
+    "shiftRotationWeekly": "Weekly",
+    "shiftRotationDaily": "Daily",
+    "adminOnWeekends": "Admin on weekends",
+    "doneDescriptionWithSettings": "We imported {staff} staff, {shifts} shifts, {techniques} techniques and {rules} rules. Coverage and parameters configured."
   }
 }

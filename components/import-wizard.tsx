@@ -3,10 +3,10 @@
 import { useState, useCallback, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Upload, X, FileText, FileSpreadsheet, Image, Loader2, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, Trash2 } from "lucide-react"
+import { Upload, X, FileText, FileSpreadsheet, Image, Loader2, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { importHistoricalGuardia } from "@/app/(clinic)/onboarding/import/actions"
-import type { ExtractedData, ExtractedStaff, ExtractedShift, ExtractedTechnique, ExtractedRule, ProcessedFile, ImportResult } from "@/lib/types/import"
+import type { ExtractedData, ExtractedStaff, ExtractedShift, ExtractedTechnique, ExtractedRule, ExtractedLabSettings, ProcessedFile, ImportResult } from "@/lib/types/import"
 
 type Step = "upload" | "extracting" | "review" | "importing" | "done"
 
@@ -137,6 +137,9 @@ export function ImportWizard() {
         shifts: (data.shifts ?? []).map((s: any) => ({ ...s, included: true })),
         techniques: (data.techniques ?? []).map((t: any) => ({ ...t, included: true })),
         rules: (data.rules ?? []).map((r: any) => ({ ...r, accepted: r.confidence >= 0.6 })),
+        rota_mode: data.rota_mode ?? undefined,
+        task_coverage: data.task_coverage ?? undefined,
+        lab_settings: data.lab_settings ?? undefined,
       }
       setExtracted(enriched)
       setStep("review")
@@ -181,6 +184,64 @@ export function ImportWizard() {
       const rules = [...prev.rules]
       rules[idx] = { ...rules[idx], ...updates }
       return { ...prev, rules }
+    })
+  }, [])
+
+  const setRotaMode = useCallback((type: "by_task" | "by_shift") => {
+    setExtracted((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        rota_mode: {
+          type,
+          confidence: prev.rota_mode?.confidence ?? 1,
+          reasoning: prev.rota_mode?.reasoning ?? "",
+        },
+      }
+    })
+  }, [])
+
+  const updateLabSettings = useCallback((updates: Partial<ExtractedLabSettings>) => {
+    setExtracted((prev) => {
+      if (!prev) return prev
+      const current = prev.lab_settings ?? {
+        coverage_by_day: {
+          weekday: { lab: 0, andrology: 0, admin: 0 },
+          saturday: { lab: 0, andrology: 0, admin: 0 },
+          sunday: { lab: 0, andrology: 0, admin: 0 },
+        },
+        punctions_by_day: { weekday: 0, saturday: 0, sunday: 0 },
+        days_off_preference: "prefer_weekend" as const,
+        shift_rotation: "weekly" as const,
+        admin_on_weekends: false,
+      }
+      return { ...prev, lab_settings: { ...current, ...updates } }
+    })
+  }, [])
+
+  const updateCoverage = useCallback((
+    period: "weekday" | "saturday" | "sunday",
+    dept: "lab" | "andrology" | "admin",
+    value: number
+  ) => {
+    setExtracted((prev) => {
+      if (!prev?.lab_settings) return prev
+      const cov = { ...prev.lab_settings.coverage_by_day }
+      cov[period] = { ...cov[period], [dept]: value }
+      return { ...prev, lab_settings: { ...prev.lab_settings, coverage_by_day: cov } }
+    })
+  }, [])
+
+  const updatePunctions = useCallback((period: "weekday" | "saturday" | "sunday", value: number) => {
+    setExtracted((prev) => {
+      if (!prev?.lab_settings) return prev
+      return {
+        ...prev,
+        lab_settings: {
+          ...prev.lab_settings,
+          punctions_by_day: { ...prev.lab_settings.punctions_by_day, [period]: value },
+        },
+      }
     })
   }, [])
 
@@ -315,30 +376,58 @@ export function ImportWizard() {
             <p className="text-[14px] text-muted-foreground mt-1">{t("reviewDescription")}</p>
           </div>
 
-          {/* Rota mode detection */}
-          {extracted.rota_mode && (
-            <div className="rounded-lg border border-border bg-background p-4">
-              <div className="flex items-start gap-3">
-                <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", extracted.rota_mode.type === "by_task" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600")}>
-                  {extracted.rota_mode.type === "by_task" ? "T" : "S"}
-                </div>
+          {/* 1. Rota mode — radio toggle (first decision) */}
+          <ReviewSection title={t("rotaModeTitle")} count={0} hideCount>
+            <div className="flex flex-col gap-3">
+              <label className={cn(
+                "flex items-start gap-3 px-3 py-3 rounded-lg border cursor-pointer transition-colors",
+                extracted.rota_mode?.type === "by_task" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+              )}>
+                <input
+                  type="radio"
+                  name="rota_mode"
+                  checked={extracted.rota_mode?.type === "by_task"}
+                  onChange={() => setRotaMode("by_task")}
+                  className="mt-0.5"
+                />
                 <div className="flex-1">
                   <p className="text-[14px] font-medium">
-                    {extracted.rota_mode.type === "by_task" ? "Organización por tarea" : "Organización por turno"}
-                    <ConfidenceBadge confidence={extracted.rota_mode.confidence} />
+                    {t("rotaModeByTask")}
+                    {extracted.rota_mode?.type === "by_task" && extracted.rota_mode.confidence > 0 && (
+                      <> <ConfidenceBadge confidence={extracted.rota_mode.confidence} /></>
+                    )}
                   </p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5">{extracted.rota_mode.reasoning}</p>
-                  <p className="text-[11px] text-muted-foreground/70 mt-1.5 italic">
-                    {extracted.rota_mode.type === "by_task"
-                      ? "Por tarea es habitual en laboratorios grandes (10+ personas), donde cada profesional se asigna a procedimientos específicos cada día."
-                      : "Por turno es habitual en laboratorios pequeños (<10 personas), donde todo el equipo rota entre turnos sin asignación fija de tareas."}
-                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">{t("rotaModeByTaskHint")}</p>
                 </div>
-              </div>
+              </label>
+              <label className={cn(
+                "flex items-start gap-3 px-3 py-3 rounded-lg border cursor-pointer transition-colors",
+                extracted.rota_mode?.type === "by_shift" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+              )}>
+                <input
+                  type="radio"
+                  name="rota_mode"
+                  checked={extracted.rota_mode?.type === "by_shift"}
+                  onChange={() => setRotaMode("by_shift")}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <p className="text-[14px] font-medium">
+                    {t("rotaModeByShift")}
+                    {extracted.rota_mode?.type === "by_shift" && extracted.rota_mode.confidence > 0 && (
+                      <> <ConfidenceBadge confidence={extracted.rota_mode.confidence} /></>
+                    )}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">{t("rotaModeByShiftHint")}</p>
+                </div>
+              </label>
+              {extracted.rota_mode?.reasoning && (
+                <p className="text-[11px] text-muted-foreground/70 italic px-1">{extracted.rota_mode.reasoning}</p>
+              )}
             </div>
-          )}
+          </ReviewSection>
 
-          {/* Task coverage (only for by_task mode) */}
+          {/* 2. Task coverage (only for by_task mode) */}
           {extracted.rota_mode?.type === "by_task" && extracted.task_coverage && extracted.task_coverage.length > 0 && (
             <ReviewSection title="Cobertura por tarea detectada" count={extracted.task_coverage.length}>
               <p className="text-[12px] text-muted-foreground mb-3">
@@ -369,7 +458,125 @@ export function ImportWizard() {
             </ReviewSection>
           )}
 
-          {/* Section A: Staff */}
+          {/* 3. Lab settings — editable configuration */}
+          {extracted.lab_settings && (
+            <ReviewSection title={t("labSettingsTitle")} count={0} hideCount>
+              <div className="flex flex-col gap-5">
+                {/* Coverage grid */}
+                <div>
+                  <p className="text-[13px] font-medium mb-2">{t("coverageTitle")}</p>
+                  <div className="overflow-x-auto">
+                    <table className="text-[13px]">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="py-2 px-2 font-medium w-24"></th>
+                          <th className="py-2 px-2 font-medium text-center w-20">Lab</th>
+                          <th className="py-2 px-2 font-medium text-center w-20">Andr.</th>
+                          <th className="py-2 px-2 font-medium text-center w-20">Admin</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(["weekday", "saturday", "sunday"] as const).map((period) => (
+                          <tr key={period} className="border-b border-border/50">
+                            <td className="py-1.5 px-2 text-muted-foreground">
+                              {t(period === "weekday" ? "coverageWeekday" : period === "saturday" ? "coverageSaturday" : "coverageSunday")}
+                            </td>
+                            {(["lab", "andrology", "admin"] as const).map((dept) => (
+                              <td key={dept} className="py-1.5 px-2 text-center">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={20}
+                                  value={extracted.lab_settings!.coverage_by_day[period][dept]}
+                                  onChange={(e) => updateCoverage(period, dept, Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
+                                  className="w-14 text-center rounded border border-border bg-transparent py-1 text-[13px] outline-none focus:border-primary"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Punctions */}
+                <div>
+                  <p className="text-[13px] font-medium mb-2">{t("punctionsTitle")}</p>
+                  <div className="flex items-center gap-4">
+                    {(["weekday", "saturday", "sunday"] as const).map((period) => (
+                      <div key={period} className="flex items-center gap-1.5">
+                        <span className="text-[12px] text-muted-foreground">
+                          {t(period === "weekday" ? "coverageWeekday" : period === "saturday" ? "coverageSaturday" : "coverageSunday")}:
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={extracted.lab_settings!.punctions_by_day[period]}
+                          onChange={(e) => updatePunctions(period, Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
+                          className="w-14 text-center rounded border border-border bg-transparent py-1 text-[13px] outline-none focus:border-primary"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Days off preference */}
+                <div>
+                  <p className="text-[13px] font-medium mb-2">{t("daysOffTitle")}</p>
+                  <div className="flex items-center gap-4">
+                    {(["always_weekend", "prefer_weekend", "any_day"] as const).map((opt) => (
+                      <label key={opt} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="days_off_pref"
+                          checked={extracted.lab_settings!.days_off_preference === opt}
+                          onChange={() => updateLabSettings({ days_off_preference: opt })}
+                        />
+                        <span className="text-[13px]">
+                          {t(opt === "always_weekend" ? "daysOffAlwaysWeekend" : opt === "prefer_weekend" ? "daysOffPreferWeekend" : "daysOffAnyDay")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shift rotation */}
+                <div>
+                  <p className="text-[13px] font-medium mb-2">{t("shiftRotationTitle")}</p>
+                  <div className="flex items-center gap-4">
+                    {(["stable", "weekly", "daily"] as const).map((opt) => (
+                      <label key={opt} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="shift_rotation"
+                          checked={extracted.lab_settings!.shift_rotation === opt}
+                          onChange={() => updateLabSettings({ shift_rotation: opt })}
+                        />
+                        <span className="text-[13px]">
+                          {t(opt === "stable" ? "shiftRotationStable" : opt === "weekly" ? "shiftRotationWeekly" : "shiftRotationDaily")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Admin on weekends */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={extracted.lab_settings!.admin_on_weekends}
+                    onChange={(e) => updateLabSettings({ admin_on_weekends: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span className="text-[13px]">{t("adminOnWeekends")}</span>
+                </label>
+              </div>
+            </ReviewSection>
+          )}
+
+          {/* 4. Staff */}
           <ReviewSection title={t("staffSection")} count={extracted.staff.filter((s) => s.included).length}>
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
@@ -411,7 +618,7 @@ export function ImportWizard() {
             </div>
           </ReviewSection>
 
-          {/* Section B: Shifts */}
+          {/* 5. Shifts */}
           <ReviewSection title={t("shiftsSection")} count={extracted.shifts.filter((s) => s.included).length}>
             <div className="flex flex-col gap-2">
               {extracted.shifts.map((s, i) => (
@@ -427,7 +634,7 @@ export function ImportWizard() {
             </div>
           </ReviewSection>
 
-          {/* Section C: Techniques */}
+          {/* 6. Techniques */}
           <ReviewSection title={t("techniquesSection")} count={extracted.techniques.filter((t) => t.included).length}>
             <div className="flex flex-wrap gap-2">
               {extracted.techniques.map((tech, i) => (
@@ -447,7 +654,7 @@ export function ImportWizard() {
             </div>
           </ReviewSection>
 
-          {/* Section D: Rules */}
+          {/* 7. Rules */}
           <ReviewSection title={t("rulesSection")} count={extracted.rules.filter((r) => r.accepted).length}>
             <div className="flex flex-col gap-2">
               {extracted.rules.map((r, i) => (
@@ -502,7 +709,7 @@ export function ImportWizard() {
           <div className="text-center">
             <h2 className="text-[18px] font-medium">{t("doneTitle")}</h2>
             <p className="text-[14px] text-muted-foreground mt-2 max-w-md">
-              {t("doneDescription", {
+              {t(result.counts.labSettings ? "doneDescriptionWithSettings" : "doneDescription", {
                 staff: result.counts.staff,
                 shifts: result.counts.shifts,
                 techniques: result.counts.techniques,
@@ -526,12 +733,12 @@ export function ImportWizard() {
 
 // ── Review Section wrapper ──────────────────────────────────────────────────
 
-function ReviewSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function ReviewSection({ title, count, hideCount, children }: { title: string; count: number; hideCount?: boolean; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border bg-background">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="text-[14px] font-medium">{title}</h3>
-        <span className="text-[12px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{count}</span>
+        {!hideCount && <span className="text-[12px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{count}</span>}
       </div>
       <div className="p-4">
         {children}
