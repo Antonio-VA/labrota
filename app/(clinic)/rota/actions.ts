@@ -17,6 +17,8 @@ import type {
   ShiftTypeDefinition,
   Tecnica,
   LabConfig,
+  ShiftCoverageByDay,
+  ShiftCoverageEntry,
 } from "@/lib/types/database"
 
 // ── Shared types exported to client ──────────────────────────────────────────
@@ -365,26 +367,56 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
     // Coverage warnings — compare assigned staff by role against minimums
     if (labConfig && day.assignments.length > 0) {
-      const weekend  = day.isWeekend
-      const labCount = day.assignments.filter((a) => a.staff.role === "lab").length
-      const andCount = day.assignments.filter((a) => a.staff.role === "andrology").length
-
       const dow    = new Date(day.date + "T12:00:00").getDay()
       const dowKey = DOW_TO_KEY[dow]
-      const dayCov = labConfig.coverage_by_day?.[dowKey]
 
-      const labMin = dayCov?.lab ?? (weekend
-        ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
-        : labConfig.min_lab_coverage)
-      const andMin = dayCov?.andrology ?? (weekend
-        ? labConfig.min_weekend_andrology
-        : labConfig.min_andrology_coverage)
+      const shiftCovEnabled = labConfig.shift_coverage_enabled ?? false
+      const shiftCovByDay = labConfig.shift_coverage_by_day as ShiftCoverageByDay | null
 
-      if (labCount < labMin) {
-        day.warnings.push({ category: "coverage", message: `Lab: ${labCount}/${labMin}` })
-      }
-      if (andCount < andMin) {
-        day.warnings.push({ category: "coverage", message: `Andrología: ${andCount}/${andMin}` })
+      if (shiftCovEnabled && shiftCovByDay) {
+        // Per-shift per-department warnings
+        const activeShifts = shiftTypesData.filter((st) =>
+          st.active !== false && (!st.active_days || st.active_days.length === 0 || (st.active_days as string[]).includes(dowKey))
+        )
+        for (const st of activeShifts) {
+          const raw = shiftCovByDay[st.code]?.[dowKey]
+          const cov: ShiftCoverageEntry = raw == null
+            ? { lab: 0, andrology: 0, admin: 0 }
+            : typeof raw === "number" ? { lab: raw, andrology: 0, admin: 0 } : raw as ShiftCoverageEntry
+          const staffInShift = day.assignments.filter((a) => a.shift_type === st.code)
+          const labInShift = staffInShift.filter((a) => a.staff.role === "lab").length
+          const andInShift = staffInShift.filter((a) => a.staff.role === "andrology").length
+          const admInShift = staffInShift.filter((a) => a.staff.role === "admin").length
+          if (cov.lab > 0 && labInShift < cov.lab) {
+            day.warnings.push({ category: "coverage", message: `${st.code} Lab: ${labInShift}/${cov.lab}` })
+          }
+          if (cov.andrology > 0 && andInShift < cov.andrology) {
+            day.warnings.push({ category: "coverage", message: `${st.code} Andr: ${andInShift}/${cov.andrology}` })
+          }
+          if (cov.admin > 0 && admInShift < cov.admin) {
+            day.warnings.push({ category: "coverage", message: `${st.code} Admin: ${admInShift}/${cov.admin}` })
+          }
+        }
+      } else {
+        // Department-level warnings (no shift granularity)
+        const weekend  = day.isWeekend
+        const labCount = day.assignments.filter((a) => a.staff.role === "lab").length
+        const andCount = day.assignments.filter((a) => a.staff.role === "andrology").length
+        const dayCov = labConfig.coverage_by_day?.[dowKey]
+
+        const labMin = dayCov?.lab ?? (weekend
+          ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
+          : labConfig.min_lab_coverage)
+        const andMin = dayCov?.andrology ?? (weekend
+          ? labConfig.min_weekend_andrology
+          : labConfig.min_andrology_coverage)
+
+        if (labCount < labMin) {
+          day.warnings.push({ category: "coverage", message: `Lab: ${labCount}/${labMin}` })
+        }
+        if (andCount < andMin) {
+          day.warnings.push({ category: "coverage", message: `Andrología: ${andCount}/${andMin}` })
+        }
       }
     }
 
@@ -451,7 +483,7 @@ export async function generateRota(
       .eq("status", "approved"),
     supabase
       .from("rota_assignments")
-      .select("staff_id, date")
+      .select("staff_id, date, shift_type")
       .gte("date", fourWeeksAgoStr)
       .lt("date", weekStart),
     supabase.from("lab_config").select("*").single(),
@@ -814,7 +846,7 @@ export async function regenerateDay(
   const [staffRes, leavesRes, recentRes, configRes, rulesRes, shiftRes, tecRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
     supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
-    supabase.from("rota_assignments").select("staff_id, date").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
+    supabase.from("rota_assignments").select("staff_id, date, shift_type").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
