@@ -136,7 +136,11 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   function handleCoverageSave() {
     setCoverageStatus("idle")
     startCoverageTransition(async () => {
-      const result = await updateLabConfig({ coverage_by_day: coverageByDay })
+      const result = await updateLabConfig({
+        coverage_by_day: coverageByDay,
+        task_coverage_enabled: taskCoverageEnabled,
+        task_coverage_by_day: taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
+      })
       if (result.error) {
         setCoverageErrorMsg(result.error)
         setCoverageStatus("error")

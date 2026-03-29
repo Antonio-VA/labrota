@@ -268,6 +268,8 @@ export type LabConfigUpdate = {
   shift_full_start?:         string
   shift_full_end?:           string
   days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
+  task_coverage_enabled?:    boolean
+  task_coverage_by_day?:     Record<string, Record<string, number>> | null
 }
 
 // ── Rota Rules ────────────────────────────────────────────────────────────────
