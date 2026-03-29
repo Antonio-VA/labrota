@@ -251,32 +251,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {(section === "all" || section === "parametros") && <>
-      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("sections.ratioCobertura")} />
-        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
-        <div className="flex flex-col gap-0">
-          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_optimal}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
-            <Input
-              type="number" min={0.1} max={5} step={0.05}
-              value={values.ratio_minimum}
-              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
-              disabled={isPending}
-              className="w-20 text-center"
-            />
-          </FieldRow>
-        </div>
-      </div>
-
       {/* ── DÍAS LIBRES ─────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title="Días libres" />
@@ -335,6 +309,32 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       </>}
 
       {(section === "all" || section === "cobertura") && <>
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_optimal}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
+            <Input
+              type="number" min={0.1} max={5} step={0.05}
+              value={values.ratio_minimum}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
+              disabled={isPending}
+              className="w-20 text-center"
+            />
+          </FieldRow>
+        </div>
+      </div>
+
       {/* ── COBERTURA MÍNIMA ──────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
