@@ -728,16 +728,41 @@ export function runRotaEngine({
 
     if (taskCoverageEnabled && taskCoverageByDay && defaultShiftCodes.length > 1) {
       // ── Coverage-aware distribution ──
-      // Phase 1: Fill each shift's minimum with best-matched staff
+      // Compute each shift's minimum and target (for overflow distribution)
       const shiftMin: Record<string, number> = {}
+      const shiftTarget: Record<string, number> = {}
       const shiftFilled: Record<string, number> = {}
+      let totalMin = 0
       for (const sc of defaultShiftCodes) {
-        shiftMin[sc] = taskCoverageByDay[sc]?.[dayCode] ?? 0
+        const min = taskCoverageByDay[sc]?.[dayCode] ?? 0
+        shiftMin[sc] = min
         shiftFilled[sc] = 0
+        totalMin += min
+      }
+      // If more staff than total minimums, distribute overflow proportionally
+      const overflow = Math.max(0, assigned.length - totalMin)
+      const shiftsWithMin = defaultShiftCodes.filter((sc) => (shiftMin[sc] ?? 0) > 0)
+      for (const sc of defaultShiftCodes) {
+        const min = shiftMin[sc] ?? 0
+        if (totalMin > 0 && overflow > 0 && min > 0) {
+          shiftTarget[sc] = min + Math.round(overflow * min / totalMin)
+        } else {
+          shiftTarget[sc] = min > 0 ? min : (overflow > 0 ? Math.floor(overflow / defaultShiftCodes.length) : 0)
+        }
+      }
+      // Ensure total targets match total assigned
+      let totalTarget = Object.values(shiftTarget).reduce((a, b) => a + b, 0)
+      // Distribute any remaining gap across shifts with minimums
+      let gap = assigned.length - totalTarget
+      for (const sc of shiftsWithMin) {
+        if (gap <= 0) break
+        shiftTarget[sc]++
+        gap--
       }
 
       const assignedToShift = new Set<string>()
 
+      // Phase 1: Fill each shift's minimum with best-matched staff
       // Sort shifts by minimum descending — fill hardest constraints first
       const shiftsByPriority = [...defaultShiftCodes].sort((a, b) => (shiftMin[b] ?? 0) - (shiftMin[a] ?? 0))
 
@@ -764,11 +789,9 @@ export function runRotaEngine({
         if (shiftFilled[shiftCode] < min) {
           const remaining = assigned.filter((s) => !assignedToShift.has(s.id))
             .sort((a, b) => {
-              // Prefer staff who don't avoid this shift
               const aAvoids = a.avoid_shifts?.includes(shiftCode) ? 1 : 0
               const bAvoids = b.avoid_shifts?.includes(shiftCode) ? 1 : 0
               if (aAvoids !== bAvoids) return aAvoids - bAvoids
-              // Prefer staff with no preference (more flexible)
               const aPref = getPreferredShift(a) ? 1 : 0
               const bPref = getPreferredShift(b) ? 1 : 0
               if (aPref !== bPref) return aPref - bPref
@@ -787,12 +810,30 @@ export function runRotaEngine({
         }
       }
 
-      // Phase 2: Distribute remaining staff via preference/rotation
-      for (const s of assigned) {
-        if (assignedToShift.has(s.id)) continue
+      // Phase 2: Distribute remaining staff respecting shift targets (not just preferences)
+      const unplaced = assigned.filter((s) => !assignedToShift.has(s.id))
+      for (const s of unplaced) {
         const pref = getPreferredShift(s)
-        const shift = pref ?? getRotationShift(s)
-        dayPlanAssignments.push({ staff_id: s.id, shift_type: applyAvoidShifts(s, shift) })
+        const prefShift = pref ? applyAvoidShifts(s, pref) : null
+
+        // Try preferred shift if it's under target
+        if (prefShift && shiftFilled[prefShift] < (shiftTarget[prefShift] ?? 0)) {
+          dayPlanAssignments.push({ staff_id: s.id, shift_type: prefShift })
+          shiftFilled[prefShift] = (shiftFilled[prefShift] ?? 0) + 1
+          continue
+        }
+
+        // Otherwise assign to the shift furthest below its target
+        const bestShift = defaultShiftCodes
+          .filter((sc) => !s.avoid_shifts?.includes(sc))
+          .sort((a, b) => {
+            const aGap = (shiftTarget[a] ?? 0) - (shiftFilled[a] ?? 0)
+            const bGap = (shiftTarget[b] ?? 0) - (shiftFilled[b] ?? 0)
+            return bGap - aGap // largest gap first
+          })[0]
+        const finalShift = bestShift ?? defaultShiftCodes[0]
+        dayPlanAssignments.push({ staff_id: s.id, shift_type: finalShift as ShiftType })
+        shiftFilled[finalShift] = (shiftFilled[finalShift] ?? 0) + 1
       }
     } else {
       // ── Original distribution (no per-shift coverage) ──
