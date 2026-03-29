@@ -62,7 +62,9 @@
     "fileSizeLimit": "El archivo no puede superar 5MB.",
     "saved": "Guardado",
     "deleted": "Eliminado",
-    "updated": "Actualizado"
+    "updated": "Actualizado",
+    "desktopRequired": "Se requiere escritorio",
+    "desktopRequiredDescription": "Por favor, utiliza un navegador de escritorio (1280px o más) para acceder a esta sección."
   },
   "nav": {
     "schedule": "Horarios",
@@ -316,7 +318,8 @@
     "people": "personas",
     "published": "Publicado",
     "copyAssignments": "{count} asignaciones copiadas",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "shareImage": "Compartir imagen"
   },
   "staff": {
     "title": "Equipo",
@@ -651,7 +654,43 @@
   "reports": {
     "title": "Informes",
     "comingSoon": "Próximamente",
-    "comingSoonDescription": "Los informes estarán disponibles en una próxima versión."
+    "comingSoonDescription": "Los informes estarán disponibles en una próxima versión.",
+    "staffSummary": "Resumen de personal",
+    "staffSummaryDescription": "Distribución de turnos y ausencias por persona",
+    "taskCoverage": "Cobertura de tareas",
+    "taskCoverageDescription": "Días con y sin cobertura por tarea",
+    "taskCoverageDisabled": "Disponible solo en modo por tarea",
+    "generateReport": "Generar informe",
+    "generatingReport": "Generando informe...",
+    "selectPeriod": "Seleccionar período",
+    "thisWeek": "Esta semana",
+    "last4Weeks": "Últimas 4 semanas",
+    "thisMonth": "Este mes",
+    "lastMonth": "Último mes",
+    "custom": "Personalizado",
+    "selectBothDates": "Selecciona ambas fechas",
+    "startBeforeEnd": "La fecha de inicio debe ser anterior a la de fin",
+    "max12Months": "Máximo 12 meses",
+    "back": "Volver",
+    "assignments": "Asignaciones",
+    "shifts": "Turnos",
+    "totalDays": "Total días",
+    "meanLabel": "Media {column}",
+    "activeStaff": "Personal activo",
+    "staff": "Personal",
+    "department": "Departamento",
+    "daysOff": "Días libres",
+    "absence": "Ausencia",
+    "vsMean": "vs. media",
+    "staffReportFooter": "El informe incluye solo personal activo durante el período seleccionado.",
+    "configuredTasks": "Tareas configuradas",
+    "daysWithGaps": "Días con gaps",
+    "task": "Tarea",
+    "daysCovered": "Días cubiertos",
+    "daysUncovered": "Sin cobertura",
+    "coveragePct": "Cobertura %",
+    "qualifiedStaff": "Cualificados",
+    "techReportFooter": "Un día se considera cubierto si al menos una persona fue asignada a la tarea, independientemente del número."
   },
   "settings": {
     "title": "Configuración",

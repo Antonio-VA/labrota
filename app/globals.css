@@ -134,6 +134,12 @@ html, body {
   --role-andrology: #059669;
   --role-admin: #64748b;
 
+  /* Preference / Avoidance */
+  --pref-bg: #2c3e6b;
+  --pref-border: #2c3e6b;
+  --avoid-bg: #fee2e2;
+  --avoid-text: #b91c1c;
+  --avoid-border: #fecaca;
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */

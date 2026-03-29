@@ -50,6 +50,7 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
 }
 
 function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () => void }) {
+  const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -91,7 +92,7 @@ function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () 
               className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
             >
               <Share className="size-4" />
-              {locale === "es" ? "Compartir imagen" : "Share image"}
+              {t("shareImage")}
             </button>
           )}
           <button
@@ -102,7 +103,7 @@ function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () 
             className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
           >
             <FileDown className="size-4" />
-            {locale === "es" ? "Exportar PDF" : "Export PDF"}
+            {t("exportPdf")}
           </button>
           <button
             onClick={() => {
@@ -112,7 +113,7 @@ function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () 
             className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
           >
             <Sparkles className="size-4" />
-            {locale === "es" ? "Generar horario" : "Generate rota"}
+            {t("generateRota")}
           </button>
         </div>,
         document.body

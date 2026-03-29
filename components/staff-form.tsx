@@ -420,9 +420,9 @@ export function StaffForm({
                 className={cn(
                   "h-8 min-w-[48px] px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
                   isPref
-                    ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                    ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]"
                     : isAvoid
-                    ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
+                    ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]"
                     : "border-border bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
@@ -499,9 +499,9 @@ export function StaffForm({
                     !available
                       ? "border-border bg-slate-50 text-slate-300 cursor-not-allowed"
                       : isPref
-                      ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                      ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]"
                       : isAvoid
-                      ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
+                      ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]"
                       : "border-border bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >

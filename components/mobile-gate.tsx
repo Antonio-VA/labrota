@@ -1,4 +1,7 @@
+"use client"
+
 import { Monitor } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 /**
  * Wraps content that should only be accessible on desktop (≥768px).
@@ -6,14 +9,16 @@ import { Monitor } from "lucide-react"
  * Use this in Team, Leaves, Lab, Reports, and Settings pages.
  */
 export function MobileGate({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("common")
+
   return (
     <>
       <div className="md:hidden flex items-center justify-center min-h-[60vh] px-8">
         <div className="flex flex-col items-center gap-3 text-center">
           <Monitor className="size-8 text-muted-foreground" />
-          <p className="text-[14px] font-medium">Desktop required</p>
+          <p className="text-[14px] font-medium">{t("desktopRequired")}</p>
           <p className="text-[14px] text-muted-foreground max-w-[260px]">
-            Please use a desktop browser (1280px or wider) for full access to this section.
+            {t("desktopRequiredDescription")}
           </p>
         </div>
       </div>

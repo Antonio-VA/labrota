@@ -240,9 +240,9 @@ function SortableRow({
               className={cn(
                 "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
                 isPref
-                  ? "bg-[#2C3E6B] text-white border-[#2C3E6B]"
+                  ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]"
                   : isAvoid
-                  ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]"
+                  ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]"
                   : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
               )}
             >

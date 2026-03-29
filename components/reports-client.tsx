@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -54,16 +55,18 @@ function PeriodSelector({ onGenerate, onCancel }: {
   onGenerate: (from: string, to: string) => void
   onCancel: () => void
 }) {
+  const t = useTranslations("reports")
+  const tc = useTranslations("common")
   const [period, setPeriod] = useState<PeriodKey>("last_4_weeks")
   const [customFrom, setCustomFrom] = useState("")
   const [customTo, setCustomTo] = useState("")
 
   function handleGenerate() {
     if (period === "custom") {
-      if (!customFrom || !customTo) { toast.error("Selecciona ambas fechas"); return }
+      if (!customFrom || !customTo) { toast.error(t("selectBothDates")); return }
       const diffMs = new Date(customTo).getTime() - new Date(customFrom).getTime()
-      if (diffMs < 0) { toast.error("La fecha de inicio debe ser anterior a la de fin"); return }
-      if (diffMs > 365 * 24 * 60 * 60 * 1000) { toast.error("Máximo 12 meses"); return }
+      if (diffMs < 0) { toast.error(t("startBeforeEnd")); return }
+      if (diffMs > 365 * 24 * 60 * 60 * 1000) { toast.error(t("max12Months")); return }
       onGenerate(customFrom, customTo)
     } else {
       const dates = getPresetDates(period)!
@@ -72,16 +75,16 @@ function PeriodSelector({ onGenerate, onCancel }: {
   }
 
   const options: { key: PeriodKey; label: string }[] = [
-    { key: "this_week", label: "Esta semana" },
-    { key: "last_4_weeks", label: "Últimas 4 semanas" },
-    { key: "this_month", label: "Este mes" },
-    { key: "last_month", label: "Último mes" },
-    { key: "custom", label: "Personalizado" },
+    { key: "this_week", label: t("thisWeek") },
+    { key: "last_4_weeks", label: t("last4Weeks") },
+    { key: "this_month", label: t("thisMonth") },
+    { key: "last_month", label: t("lastMonth") },
+    { key: "custom", label: t("custom") },
   ]
 
   return (
     <div className="rounded-lg border border-border bg-background p-5 max-w-md">
-      <p className="text-[14px] font-medium mb-4">Seleccionar período</p>
+      <p className="text-[14px] font-medium mb-4">{t("selectPeriod")}</p>
       <div className="flex flex-col gap-2 mb-4">
         {options.map((o) => (
           <label key={o.key} className="flex items-center gap-3 cursor-pointer">
@@ -103,8 +106,8 @@ function PeriodSelector({ onGenerate, onCancel }: {
         </div>
       )}
       <div className="flex gap-2">
-        <Button onClick={handleGenerate}>Generar</Button>
-        <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
+        <Button onClick={handleGenerate}>{tc("generate")}</Button>
+        <Button variant="ghost" onClick={onCancel}>{tc("cancel")}</Button>
       </div>
     </div>
   )
@@ -113,6 +116,8 @@ function PeriodSelector({ onGenerate, onCancel }: {
 // ── Staff Report View ────────────────────────────────────────────────────────
 
 function StaffReportView({ data, onBack }: { data: StaffReportData; onBack: () => void }) {
+  const t = useTranslations("reports")
+
   async function exportPdf() {
     const { exportStaffReportPdf } = await import("@/lib/export-report-pdf")
     exportStaffReportPdf(data)
@@ -122,13 +127,13 @@ function StaffReportView({ data, onBack }: { data: StaffReportData; onBack: () =
     exportStaffReportExcel(data)
   }
 
-  const colHeader = data.mode === "by_task" ? "Asignaciones" : "Turnos"
+  const colHeader = data.mode === "by_task" ? t("assignments") : t("shifts")
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="size-4" /> Volver
+          <ArrowLeft className="size-4" /> {t("back")}
         </button>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportPdf}><FileDown className="size-3.5 mr-1.5" />PDF</Button>
@@ -137,26 +142,26 @@ function StaffReportView({ data, onBack }: { data: StaffReportData; onBack: () =
       </div>
 
       <div>
-        <h2 className="text-[18px] font-medium">Resumen de personal</h2>
+        <h2 className="text-[18px] font-medium">{t("staffSummary")}</h2>
         <p className="text-[13px] text-muted-foreground">{data.orgName} · {data.periodLabel}</p>
       </div>
 
       <div className="flex gap-4 text-[13px] text-muted-foreground">
-        <span>Total días: <strong className="text-foreground">{data.totalDays}</strong></span>
-        <span>Media {colHeader.toLowerCase()}: <strong className="text-foreground">{data.meanAssignments}</strong></span>
-        <span>Personal activo: <strong className="text-foreground">{data.activeStaff}</strong></span>
+        <span>{t("totalDays")}: <strong className="text-foreground">{data.totalDays}</strong></span>
+        <span>{t("meanLabel", { column: colHeader.toLowerCase() })}: <strong className="text-foreground">{data.meanAssignments}</strong></span>
+        <span>{t("activeStaff")}: <strong className="text-foreground">{data.activeStaff}</strong></span>
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted border-b border-border">
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Personal</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Departamento</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("staff")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("department")}</th>
               <th className="text-right px-3 py-2 font-medium text-muted-foreground">{colHeader}</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Días libres</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Ausencia</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">vs. media</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("daysOff")}</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("absence")}</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("vsMean")}</th>
             </tr>
           </thead>
           <tbody>
@@ -194,7 +199,7 @@ function StaffReportView({ data, onBack }: { data: StaffReportData; onBack: () =
       </div>
 
       <p className="text-[11px] text-muted-foreground italic">
-        El informe incluye solo personal activo durante el período seleccionado.
+        {t("staffReportFooter")}
       </p>
     </div>
   )
@@ -203,6 +208,8 @@ function StaffReportView({ data, onBack }: { data: StaffReportData; onBack: () =
 // ── Tech Coverage Report View ────────────────────────────────────────────────
 
 function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => void }) {
+  const t = useTranslations("reports")
+
   async function exportPdf() {
     const { exportTechReportPdf } = await import("@/lib/export-report-pdf")
     exportTechReportPdf(data)
@@ -216,7 +223,7 @@ function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => 
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="size-4" /> Volver
+          <ArrowLeft className="size-4" /> {t("back")}
         </button>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportPdf}><FileDown className="size-3.5 mr-1.5" />PDF</Button>
@@ -225,25 +232,25 @@ function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => 
       </div>
 
       <div>
-        <h2 className="text-[18px] font-medium">Cobertura de tareas</h2>
+        <h2 className="text-[18px] font-medium">{t("taskCoverage")}</h2>
         <p className="text-[13px] text-muted-foreground">{data.orgName} · {data.periodLabel}</p>
       </div>
 
       <div className="flex gap-4 text-[13px] text-muted-foreground">
-        <span>Total días: <strong className="text-foreground">{data.totalDays}</strong></span>
-        <span>Tareas configuradas: <strong className="text-foreground">{data.techniqueCount}</strong></span>
-        <span>Días con gaps: <strong className="text-foreground">{data.daysWithGaps}</strong></span>
+        <span>{t("totalDays")}: <strong className="text-foreground">{data.totalDays}</strong></span>
+        <span>{t("configuredTasks")}: <strong className="text-foreground">{data.techniqueCount}</strong></span>
+        <span>{t("daysWithGaps")}: <strong className="text-foreground">{data.daysWithGaps}</strong></span>
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted border-b border-border">
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Tarea</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Días cubiertos</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Sin cobertura</th>
-              <th className="px-3 py-2 font-medium text-muted-foreground w-[180px]">Cobertura %</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Cualificados</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("task")}</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("daysCovered")}</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("daysUncovered")}</th>
+              <th className="px-3 py-2 font-medium text-muted-foreground w-[180px]">{t("coveragePct")}</th>
+              <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("qualifiedStaff")}</th>
             </tr>
           </thead>
           <tbody>
@@ -281,7 +288,7 @@ function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => 
       </div>
 
       <p className="text-[11px] text-muted-foreground italic">
-        Un día se considera cubierto si al menos una persona fue asignada a la tarea, independientemente del número.
+        {t("techReportFooter")}
       </p>
     </div>
   )
@@ -292,6 +299,7 @@ function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => 
 type View = "cards" | "period_staff" | "period_tech" | "staff_report" | "tech_report"
 
 export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: string; orgName: string }) {
+  const t = useTranslations("reports")
   const [view, setView] = useState<View>("cards")
   const [isPending, startTransition] = useTransition()
   const [staffData, setStaffData] = useState<StaffReportData | null>(null)
@@ -319,7 +327,7 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <span className="ml-3 text-[14px] text-muted-foreground">Generando informe...</span>
+        <span className="ml-3 text-[14px] text-muted-foreground">{t("generatingReport")}</span>
       </div>
     )
   }
@@ -351,12 +359,12 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
             <Users className="size-5 text-primary" />
           </div>
           <div>
-            <p className="text-[14px] font-medium">Resumen de personal</p>
-            <p className="text-[12px] text-muted-foreground">Distribución de turnos y ausencias por persona</p>
+            <p className="text-[14px] font-medium">{t("staffSummary")}</p>
+            <p className="text-[12px] text-muted-foreground">{t("staffSummaryDescription")}</p>
           </div>
         </div>
         <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_staff")}>
-          Generar informe
+          {t("generateReport")}
         </Button>
       </div>
 
@@ -369,14 +377,14 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
             <BarChart3 className="size-5 text-primary" />
           </div>
           <div>
-            <p className="text-[14px] font-medium">Cobertura de tareas</p>
+            <p className="text-[14px] font-medium">{t("taskCoverage")}</p>
             <p className="text-[12px] text-muted-foreground">
-              {isByTask ? "Días con y sin cobertura por tarea" : "Disponible solo en modo por tarea"}
+              {isByTask ? t("taskCoverageDescription") : t("taskCoverageDisabled")}
             </p>
           </div>
         </div>
         <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_tech")} disabled={!isByTask}>
-          Generar informe
+          {t("generateReport")}
         </Button>
       </div>
     </div>

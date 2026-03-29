@@ -915,7 +915,7 @@ function StaffTable({
                             // avoid → neutral
                             setEditValue(member.id, "avoid_shifts", avoids.filter((c) => c !== st.code))
                           }
-                        }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", isPref ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : isAvoid ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                        }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
                           {st.code}
                         </button>
                       )
@@ -924,9 +924,9 @@ function StaffTable({
                     <span className="text-[12px] text-muted-foreground">
                       {prefs.length > 0 || avoids.length > 0 ? (
                         <>
-                          {prefs.map((c) => <span key={c} className="text-[#2C3E6B] font-medium">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {prefs.map((c) => <span key={c} className="text-[var(--pref-bg)] font-medium">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
                           {prefs.length > 0 && avoids.length > 0 && " · "}
-                          {avoids.map((c) => <span key={c} className="text-[#B91C1C]">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {avoids.map((c) => <span key={c} className="text-[var(--avoid-text)]">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
                         </>
                       ) : "—"}
                     </span>
@@ -955,7 +955,7 @@ function StaffTable({
                           } else {
                             setEditValue(member.id, "avoid_days", aDays.filter((x) => x !== d))
                           }
-                        }} className={cn("size-5 rounded text-[9px] font-medium border", isPref ? "bg-[#2C3E6B] text-white border-[#2C3E6B]" : isAvoid ? "bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]" : "border-border text-muted-foreground")}>
+                        }} className={cn("size-5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
                           {DAY_LABELS[d]}
                         </button>
                       )
@@ -964,9 +964,9 @@ function StaffTable({
                     <span className="text-[12px] text-muted-foreground">
                       {pDays.length > 0 || aDays.length > 0 ? (
                         <>
-                          {pDays.map((d) => <span key={d} className="text-[#2C3E6B] font-medium">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {pDays.map((d) => <span key={d} className="text-[var(--pref-bg)] font-medium">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
                           {pDays.length > 0 && aDays.length > 0 && " · "}
-                          {aDays.map((d) => <span key={d} className="text-[#B91C1C]">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                          {aDays.map((d) => <span key={d} className="text-[var(--avoid-text)]">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
                         </>
                       ) : "—"}
                     </span>

@@ -62,7 +62,9 @@
     "fileSizeLimit": "File must not exceed 5MB.",
     "saved": "Saved",
     "deleted": "Deleted",
-    "updated": "Updated"
+    "updated": "Updated",
+    "desktopRequired": "Desktop required",
+    "desktopRequiredDescription": "Please use a desktop browser (1280px or wider) for full access to this section."
   },
   "nav": {
     "schedule": "Schedule",
@@ -316,7 +318,8 @@
     "people": "people",
     "published": "Published",
     "copyAssignments": "{count} assignments copied",
-    "copy": "Copy"
+    "copy": "Copy",
+    "shareImage": "Share image"
   },
   "staff": {
     "title": "Team",
@@ -651,7 +654,43 @@
   "reports": {
     "title": "Reports",
     "comingSoon": "Coming soon",
-    "comingSoonDescription": "Reports will be available in a future release."
+    "comingSoonDescription": "Reports will be available in a future release.",
+    "staffSummary": "Staff summary",
+    "staffSummaryDescription": "Shift distribution and absences per person",
+    "taskCoverage": "Task coverage",
+    "taskCoverageDescription": "Days with and without coverage per task",
+    "taskCoverageDisabled": "Only available in by-task mode",
+    "generateReport": "Generate report",
+    "generatingReport": "Generating report...",
+    "selectPeriod": "Select period",
+    "thisWeek": "This week",
+    "last4Weeks": "Last 4 weeks",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "custom": "Custom",
+    "selectBothDates": "Please select both dates",
+    "startBeforeEnd": "Start date must be before end date",
+    "max12Months": "Maximum 12 months",
+    "back": "Back",
+    "assignments": "Assignments",
+    "shifts": "Shifts",
+    "totalDays": "Total days",
+    "meanLabel": "Mean {column}",
+    "activeStaff": "Active staff",
+    "staff": "Staff",
+    "department": "Department",
+    "daysOff": "Days off",
+    "absence": "Absence",
+    "vsMean": "vs. mean",
+    "staffReportFooter": "The report includes only staff active during the selected period.",
+    "configuredTasks": "Configured tasks",
+    "daysWithGaps": "Days with gaps",
+    "task": "Task",
+    "daysCovered": "Days covered",
+    "daysUncovered": "Uncovered",
+    "coveragePct": "Coverage %",
+    "qualifiedStaff": "Qualified",
+    "techReportFooter": "A day is considered covered if at least one person was assigned to the task, regardless of number."
   },
   "settings": {
     "title": "Settings",
