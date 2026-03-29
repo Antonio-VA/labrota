@@ -1006,6 +1006,20 @@ export function runRotaEngine({
       }
     }
 
+    // Hard guard: remove anyone who would exceed their weekly budget
+    // (can happen if rules force-assign or Phase 1 over-reserves)
+    const overBudget = new Set<string>()
+    for (const s of assigned) {
+      const used = weeklyShiftCount[s.id] ?? 0
+      const cap = s.days_per_week ?? 5
+      if (used >= cap) overBudget.add(s.id)
+    }
+    if (overBudget.size > 0) {
+      const dayPlan = days[days.length - 1]
+      dayPlan.assignments = dayPlan.assignments.filter((a) => !overBudget.has(a.staff_id))
+      assigned = assigned.filter((s) => !overBudget.has(s.id))
+    }
+
     // Update scores so later days in the week account for earlier assignments
     for (const s of assigned) {
       workloadScore[s.id]    = (workloadScore[s.id]    ?? 0) + 1
