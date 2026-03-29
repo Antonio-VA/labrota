@@ -274,7 +274,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
       style={{
         borderLeft: colorChips
           ? `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
-          : "3px solid #D4D4D8",
+          : undefined,
         borderRadius: 4,
         ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
@@ -2265,6 +2265,18 @@ function ShiftGrid({
   // Require 5px movement before drag activates — allows click events to pass through
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
+  // Compute header dates from weekStart so they update immediately on navigation
+  const headerDates = useMemo(() => {
+    const dates: string[] = []
+    const base = new Date(weekStart + "T12:00:00")
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base)
+      d.setDate(base.getDate() + i)
+      dates.push(d.toISOString().split("T")[0])
+    }
+    return dates
+  }, [weekStart])
+
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
   const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
@@ -2508,36 +2520,37 @@ function ShiftGrid({
     >
       <div className="rounded-lg border border-border bg-background overflow-hidden w-full">
 
-        {/* Header row */}
+        {/* Header row — uses headerDates (from weekStart) so dates update immediately on navigation */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
           <div className="border-r border-border bg-muted" />
-          {localDays.map((day) => {
-            const d     = new Date(day.date + "T12:00:00")
+          {headerDates.map((dateStr) => {
+            const day   = localDays.find((ld) => ld.date === dateStr)
+            const d     = new Date(dateStr + "T12:00:00")
             const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
             const dayN  = String(d.getDate())
-            const today = day.date === TODAY
+            const today = dateStr === TODAY
             const isSat = d.getDay() === 6
-            const holidayName = publicHolidays[day.date]
+            const holidayName = publicHolidays[dateStr]
 
-            const defaultP      = punctionsDefault[day.date] ?? 0
-            const effectiveP    = punctionsOverride[day.date] ?? defaultP
-            const hasOverride   = punctionsOverride[day.date] !== undefined
+            const defaultP      = punctionsDefault[dateStr] ?? 0
+            const effectiveP    = punctionsOverride[dateStr] ?? defaultP
+            const hasOverride   = punctionsOverride[dateStr] !== undefined
 
             return (
               <div
-                key={day.date}
+                key={dateStr}
                 className={cn(
                   "relative flex flex-col items-center justify-center py-1.5 gap-[2px]",
                   holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted"
                 )}
                 style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
               >
-                {day.warnings.length > 0 && (
+                {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
                 )}
 
                 <button
-                  onClick={() => onDateClick?.(day.date)}
+                  onClick={() => onDateClick?.(dateStr)}
                   className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
@@ -2562,17 +2575,17 @@ function ShiftGrid({
                 {(() => {
                   // Biopsy forecast: punciones from 5 and 6 days ago
                   const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-                  function getPuncForDate(dateStr: string): number {
+                  function getPuncForDate(ds: string): number {
                     // Try override, then default map, then lab config by weekday
-                    if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
-                    if (punctionsDefault[dateStr] !== undefined) return punctionsDefault[dateStr]
+                    if (punctionsOverride[ds] !== undefined) return punctionsOverride[ds]
+                    if (punctionsDefault[ds] !== undefined) return punctionsDefault[ds]
                     // Fallback: use weekday default from punctionsDefault of same weekday in current week
-                    const dow = new Date(dateStr + "T12:00:00").getDay()
+                    const dow = new Date(ds + "T12:00:00").getDay()
                     const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
                     return sameDow ? sameDow[1] : 0
                   }
-                  const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                  const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+                  const d5ago = new Date(dateStr + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+                  const d6ago = new Date(dateStr + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
                   const d5str = d5ago.toISOString().split("T")[0]
                   const d6str = d6ago.toISOString().split("T")[0]
                   const p5 = getPuncForDate(d5str)
@@ -2584,7 +2597,7 @@ function ShiftGrid({
                   const tooltip = forecast > 0 ? t("biopsyForecast", { count: forecast, sources: sources.join(", ") }) : t("punctionsLabel", { count: effectiveP })
                   return (
                     <DayStatsInput
-                      date={day.date}
+                      date={dateStr}
                       value={effectiveP}
                       defaultValue={defaultP}
                       isOverride={hasOverride}
@@ -4012,6 +4025,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
+  const [initialLoaded, setInitialLoaded] = useState(false)
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
@@ -4133,11 +4147,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     // This prevents the empty flash between shimmer and content
     getRotaWeek(ws).then((d) => {
       if (fetchVersionRef.current !== version) return
+      setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
+      setInitialLoaded(true)
       setWeekData(null)
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
@@ -4434,6 +4450,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const toggleDaysAsRows = useCallback(() => {
     setDaysAsRows((prev) => { const next = !prev; localStorage.setItem("labrota_days_as_rows", String(next)); return next })
   }, [])
+
+  // On first load, render nothing — let the loading.tsx skeleton persist
+  // until both toolbar and calendar data can appear together.
+  if (!initialLoaded && !staffLoaded) return null
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
