@@ -169,18 +169,18 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   return (
     <div className="flex flex-col gap-3">
       {/* Column headers */}
-      <div className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center pb-1.5 border-b border-border">
+      <div className="grid grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_auto_1.5rem] gap-3 items-center pb-1.5 border-b border-border">
         <span />
-        <span className="text-[11px] text-muted-foreground text-center">{t("code")}</span>
-        <span className="text-[11px] text-muted-foreground text-center">{t("start")}</span>
-        <span className="text-[11px] text-muted-foreground text-center">{t("end")}</span>
-        <span className="text-[11px] text-muted-foreground text-center">{t("nameEs")}</span>
-        <span className="text-[11px] text-muted-foreground text-center">{t("activeDays")}</span>
+        <span className="text-[11px] text-muted-foreground">{t("code")}</span>
+        <span className="text-[11px] text-muted-foreground">{t("start")}</span>
+        <span className="text-[11px] text-muted-foreground">{t("end")}</span>
+        <span className="text-[11px] text-muted-foreground">{t("nameEs")}</span>
+        <span className="text-[11px] text-muted-foreground">{t("activeDays")}</span>
         <span />
       </div>
 
       {/* Shift rows */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3.5">
         {rows.map((row, idx) => {
           const code = row.code.trim().toUpperCase()
           const isDuplicate = code && duplicateCodes.has(code)
@@ -190,7 +190,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
           return (
             <div key={row.id}>
               <div
-                className="grid grid-cols-[1.5rem_3rem_5rem_5rem_1fr_auto_1.5rem] gap-2 items-center"
+                className="grid grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_auto_1.5rem] gap-3 items-center"
                 draggable
                 onDragStart={() => onDragStart(idx)}
                 onDragOver={(e) => onDragOver(e, idx)}

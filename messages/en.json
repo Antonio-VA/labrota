@@ -639,7 +639,8 @@
         "max_dias_consecutivos": "Max consecutive days",
         "distribucion_fines_semana": "Weekend distribution",
         "descanso_fin_de_semana": "Alternating weekend rest",
-        "no_turno_doble": "No double shift"
+        "no_turno_doble": "No double shift",
+        "restriccion_dia_tecnica": "Technique day restriction"
       },
       "descriptions": {
         "no_coincidir": "Selected members cannot be scheduled on the same day",
@@ -649,7 +650,8 @@
         "max_dias_consecutivos": "Limits the maximum number of consecutive days worked",
         "distribucion_fines_semana": "Limits how many weekends per month a person can work",
         "descanso_fin_de_semana": "If a person works one weekend, the next (or previous) is off, plus contiguous rest days",
-        "no_turno_doble": "Prevents assigning two shifts on the same day"
+        "no_turno_doble": "Prevents assigning two shifts on the same day",
+        "restriccion_dia_tecnica": "Restricts a technique to specific days of the week"
       },
       "params": {
         "maxDays": "Max consecutive days",
@@ -663,7 +665,13 @@
         "recoveryFollowingHint": "Works weekend N, off weekend N+1",
         "recoveryPreviousHint": "Works weekend N, must have been off weekend N-1",
         "restDays": "Contiguous rest days",
-        "restDaysHint": "Additional days off after the worked weekend"
+        "restDaysHint": "Additional days off after the worked weekend",
+        "technique": "Technique",
+        "selectTechnique": "Select technique…",
+        "dayMode": "Mode",
+        "dayModeNever": "Never on these days",
+        "dayModeOnly": "Only on these days",
+        "selectDays": "Days of the week"
       }
     }
   },

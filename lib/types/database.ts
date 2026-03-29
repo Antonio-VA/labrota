@@ -290,6 +290,7 @@ export type RotaRuleType =
   | 'descanso_fin_de_semana'
   | 'no_misma_tarea'
   | 'no_librar_mismo_dia'
+  | 'restriccion_dia_tecnica'
 
 export interface RotaRule {
   id:              string

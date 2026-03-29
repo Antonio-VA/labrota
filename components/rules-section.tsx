@@ -21,7 +21,7 @@ import {
   toggleRule,
 } from "@/app/(clinic)/lab/rules-actions"
 import { cn } from "@/lib/utils"
-import type { RotaRule, RotaRuleType, RotaRuleInsert, Staff } from "@/lib/types/database"
+import type { RotaRule, RotaRuleType, RotaRuleInsert, Staff, Tecnica } from "@/lib/types/database"
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
 function Toggle({ checked, onChange, disabled }: {
@@ -57,6 +57,7 @@ const RULE_TYPES: RotaRuleType[] = [
   "max_dias_consecutivos",
   "distribucion_fines_semana",
   "descanso_fin_de_semana",
+  "restriccion_dia_tecnica",
 ]
 
 // ── Rule form state ────────────────────────────────────────────────────────────
@@ -73,6 +74,9 @@ interface RuleFormState {
   restDays: string
   notes: string
   expires_at: string
+  tecnica_code: string
+  dayMode: "never" | "only"
+  restrictedDays: string[]
 }
 
 function defaultForm(): RuleFormState {
@@ -89,6 +93,9 @@ function defaultForm(): RuleFormState {
     restDays: "2",
     notes: "",
     expires_at: "",
+    tecnica_code: "",
+    dayMode: "never",
+    restrictedDays: [],
   }
 }
 
@@ -106,6 +113,9 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     restDays: String((rule.params.restDays as number | undefined) ?? 2),
     notes: rule.notes ?? "",
     expires_at: rule.expires_at ? rule.expires_at.split("T")[0] : "",
+    tecnica_code: String((rule.params.tecnica_code as string | undefined) ?? ""),
+    dayMode: ((rule.params.dayMode as string | undefined) ?? "never") as "never" | "only",
+    restrictedDays: (rule.params.restrictedDays as string[] | undefined) ?? [],
   }
 }
 
@@ -117,6 +127,11 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
   if (form.type === "descanso_fin_de_semana") {
     params.recovery = form.recovery
     params.restDays = parseInt(form.restDays, 10) || 2
+  }
+  if (form.type === "restriccion_dia_tecnica") {
+    params.tecnica_code = form.tecnica_code
+    params.dayMode = form.dayMode
+    params.restrictedDays = form.restrictedDays
   }
   return {
     type: form.type,
@@ -135,12 +150,14 @@ function RuleSheet({
   onOpenChange,
   editing,
   staff,
+  tecnicas = [],
   onSaved,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   editing: RotaRule | null
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
+  tecnicas?: Pick<Tecnica, "codigo" | "nombre_es" | "nombre_en" | "activa">[]
   onSaved: (rule: RotaRule) => void
 }) {
   const t = useTranslations("lab.rules")
@@ -184,6 +201,10 @@ function RuleSheet({
     if (requiresStaffPair && form.staff_ids.length < 2) {
       setError(t("errorMinTwoStaff"))
       return
+    }
+    if (form.type === "restriccion_dia_tecnica") {
+      if (!form.tecnica_code) { setError("Selecciona una técnica"); return }
+      if (form.restrictedDays.length === 0) { setError("Selecciona al menos un día"); return }
     }
     startTransition(async () => {
       const data = formToInsert(form)
@@ -325,6 +346,65 @@ function RuleSheet({
               </div>
             </>
           )}
+          {form.type === "restriccion_dia_tecnica" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.technique")}</label>
+                <select
+                  className={inputClass}
+                  value={form.tecnica_code}
+                  onChange={(e) => set("tecnica_code", e.target.value)}
+                >
+                  <option value="">{t("params.selectTechnique")}</option>
+                  {tecnicas.filter((tc) => tc.activa).map((tc) => (
+                    <option key={tc.codigo} value={tc.codigo}>{tc.nombre_es} ({tc.codigo})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.dayMode")}</label>
+                <select
+                  className={inputClass}
+                  value={form.dayMode}
+                  onChange={(e) => set("dayMode", e.target.value as "never" | "only")}
+                >
+                  <option value="never">{t("params.dayModeNever")}</option>
+                  <option value="only">{t("params.dayModeOnly")}</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.selectDays")}</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                    const selected = form.restrictedDays.includes(day)
+                    const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            restrictedDays: selected
+                              ? p.restrictedDays.filter((d) => d !== day)
+                              : [...p.restrictedDays, day],
+                          }))
+                        }}
+                        className={cn(
+                          "size-9 rounded-full text-[13px] font-medium border transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {dayLabels[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Affected staff */}
           <div>
@@ -437,9 +517,11 @@ function RuleSheet({
 export function RulesSection({
   rules: initialRules,
   staff,
+  tecnicas = [],
 }: {
   rules: RotaRule[]
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
+  tecnicas?: Pick<Tecnica, "codigo" | "nombre_es" | "nombre_en" | "activa">[]
 }) {
   const t = useTranslations("lab.rules")
   const [rules, setRules] = useState<RotaRule[]>(initialRules)
@@ -504,6 +586,43 @@ export function RulesSection({
     return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
   }
 
+  const dayLabelMap: Record<string, string> = { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom" }
+
+  function getRuleDescription(rule: RotaRule): string {
+    if (rule.type === "restriccion_dia_tecnica") {
+      const code = rule.params.tecnica_code as string | undefined
+      const mode = rule.params.dayMode as string | undefined
+      const days = (rule.params.restrictedDays as string[] | undefined) ?? []
+      const tec = tecnicas.find((tc) => tc.codigo === code)
+      const tecName = tec?.nombre_es ?? code ?? "?"
+      const dayNames = days.map((d) => dayLabelMap[d] ?? d).join(", ")
+      if (mode === "only") return `${tecName}: solo ${dayNames}`
+      return `${tecName}: nunca ${dayNames}`
+    }
+    // For staff-based rules, show names
+    if (rule.staff_ids.length > 0 && (rule.type === "no_coincidir" || rule.type === "no_librar_mismo_dia" || rule.type === "no_misma_tarea")) {
+      const names = rule.staff_ids.map((id) => {
+        const s = staff.find((st) => st.id === id)
+        return s ? s.first_name : "?"
+      }).join(", ")
+      return `${t(`descriptions.${rule.type}`)} — ${names}`
+    }
+    if (rule.type === "supervisor_requerido") {
+      const supId = rule.params.supervisor_id as string | undefined
+      const sup = staff.find((s) => s.id === supId)
+      if (sup) return `${t(`descriptions.${rule.type}`)} — ${sup.first_name} ${sup.last_name}`
+    }
+    if (rule.type === "max_dias_consecutivos") {
+      const max = rule.params.maxDays as number | undefined
+      if (max) return `${t(`descriptions.${rule.type}`)} (${max})`
+    }
+    if (rule.type === "distribucion_fines_semana") {
+      const max = rule.params.maxPerMonth as number | undefined
+      if (max) return `${t(`descriptions.${rule.type}`)} (${max}/mes)`
+    }
+    return t(`descriptions.${rule.type}`)
+  }
+
   function renderRuleCard(rule: RotaRule, expired = false) {
     return (
       <div
@@ -533,7 +652,7 @@ export function RulesSection({
               <Badge variant="inactive" className="text-[10px]">{t("expired")}</Badge>
             )}
           </div>
-          <p className="text-[12px] text-muted-foreground mt-0.5">{t(`descriptions.${rule.type}`)}</p>
+          <p className="text-[12px] text-muted-foreground mt-0.5">{getRuleDescription(rule)}</p>
           {rule.notes && (
             <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{rule.notes}</p>
           )}
@@ -620,6 +739,7 @@ export function RulesSection({
         onOpenChange={(v) => { setSheetOpen(v); if (!v) setEditing(null) }}
         editing={editing}
         staff={staff}
+        tecnicas={tecnicas}
         onSaved={handleSaved}
       />
     </div>

@@ -1412,6 +1412,24 @@ export function runRotaEngine({
         })
       }
 
+      // 4.1b: Apply restriccion_dia_tecnica rules — remove demand for blocked techniques
+      for (const rule of rules.filter((r) => r.enabled && r.type === "restriccion_dia_tecnica")) {
+        const tecCode = rule.params.tecnica_code as string | undefined
+        const dayMode = rule.params.dayMode as string | undefined
+        const restrictedDays = (rule.params.restrictedDays as string[] | undefined) ?? []
+        if (!tecCode || restrictedDays.length === 0) continue
+        const blocked = dayMode === "only"
+          ? !restrictedDays.includes(dayCode)  // "only" mode: blocked if day NOT in list
+          : restrictedDays.includes(dayCode)    // "never" mode: blocked if day IS in list
+        if (blocked) {
+          const idx = taskDemand.findIndex((td) => td.code === tecCode)
+          if (idx !== -1) {
+            taskDemand.splice(idx, 1)
+            warnings.push(`[rule] ${tecCode} blocked on ${dayCode} by restriccion_dia_tecnica`)
+          }
+        }
+      }
+
       if (taskDemand.length === 0) continue
 
       // 4.2: Build staff capability matrix
