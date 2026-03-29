@@ -739,6 +739,12 @@ export function runRotaEngine({
         shiftFilled[sc] = 0
         totalMin += min
       }
+      // Debug: log coverage data so we can verify the engine is reading it correctly
+      warnings.push(
+        `[debug-coverage] ${date} (${dayCode}): assigned=${assigned.length} totalMin=${totalMin} dayCap=${totalDayCap}` +
+        ` shifts=${defaultShiftCodes.map((sc) => `${sc}:min=${shiftMin[sc]}`).join(",")}` +
+        ` coverageKeys=${Object.keys(taskCoverageByDay).join(",")}`
+      )
       // If more staff than total minimums, distribute overflow proportionally
       const overflow = Math.max(0, assigned.length - totalMin)
       const shiftsWithMin = defaultShiftCodes.filter((sc) => (shiftMin[sc] ?? 0) > 0)
@@ -835,6 +841,12 @@ export function runRotaEngine({
         dayPlanAssignments.push({ staff_id: s.id, shift_type: finalShift as ShiftType })
         shiftFilled[finalShift] = (shiftFilled[finalShift] ?? 0) + 1
       }
+      // Debug: log final shift distribution
+      warnings.push(
+        `[debug-dist] ${date}: ` + defaultShiftCodes.map((sc) =>
+          `${sc}:${shiftFilled[sc]}/${shiftMin[sc]}(target=${shiftTarget[sc]})`
+        ).join(" ")
+      )
     } else {
       // ── Original distribution (no per-shift coverage) ──
       for (const s of assigned) {
