@@ -422,18 +422,30 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
+    // Skip if the shift has no minimum for the technique's department
     const dayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
     const activeDayShifts = new Set(
       shiftTypesData.filter((st) => st.active !== false && (!st.active_days || st.active_days.length === 0 || (st.active_days as string[]).includes(dayCodeForWarning)))
         .map((st) => st.code)
     )
+    const shiftCovEnabledForWarning = labConfig?.shift_coverage_enabled ?? false
+    const shiftCovByDayForWarning = labConfig?.shift_coverage_by_day as ShiftCoverageByDay | null
     if (orgDisplayMode === "by_shift" && tecnicas.length > 0 && day.assignments.length > 0) {
       for (const tec of tecnicas) {
         if (!tec.typical_shifts || tec.typical_shifts.length === 0) continue
         // Skip if none of this technique's shifts are active today
         if (!tec.typical_shifts.some((s: string) => activeDayShifts.has(s))) continue
+        const tecDept = (tec.department?.split(",")[0] ?? "lab") as "lab" | "andrology" | "admin"
         for (const shiftCode of tec.typical_shifts) {
           if (!activeDayShifts.has(shiftCode)) continue
+          // Skip if shift coverage is enabled and this shift has 0 minimum for the technique's department
+          if (shiftCovEnabledForWarning && shiftCovByDayForWarning) {
+            const raw = shiftCovByDayForWarning[shiftCode]?.[dayCodeForWarning]
+            const cov: ShiftCoverageEntry = raw == null
+              ? { lab: 0, andrology: 0, admin: 0 }
+              : typeof raw === "number" ? { lab: raw, andrology: 0, admin: 0 } : raw as ShiftCoverageEntry
+            if (cov[tecDept] === 0) continue
+          }
           const staffInShift = day.assignments.filter((a) => a.shift_type === shiftCode)
           const hasCoverage = staffInShift.some((a) => {
             const skills = staffSkillMap[a.staff_id] ?? []
@@ -459,7 +471,7 @@ export async function generateRota(
   weekStart: string,
   preserveOverrides: boolean,
   generationType: import("@/lib/types/database").GenerationType = "ai_optimal"
-): Promise<{ error?: string; assignmentCount?: number; _coverageModel?: string }> {
+): Promise<{ error?: string; assignmentCount?: number }> {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
@@ -666,8 +678,7 @@ export async function generateRota(
 
   revalidatePath("/")
   // Include engine coverage model info for debugging
-  const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
-  return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
+  return { assignmentCount: toInsert.length }
 }
 
 // ── getActiveStaff ────────────────────────────────────────────────────────────
