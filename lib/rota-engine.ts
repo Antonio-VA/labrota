@@ -456,16 +456,40 @@ export function runRotaEngine({
         }
 
         if (rule.type === "supervisor_requerido") {
-          const skill = ((rule.params.skill as string | undefined) ?? "egg_collection") as SkillName
-          const trainees = assigned.filter(
-            (s) => affects(s.id) && s.staff_skills.some((sk) => sk.skill === skill && sk.level === "training")
-          )
-          const supervisors = assigned.filter((s) =>
-            s.staff_skills.some((sk) => sk.skill === skill && sk.level === "certified")
-          )
-          if (trainees.length > 0 && supervisors.length === 0) {
-            if (rule.is_hard) for (const t of trainees) hardRemovals.add(t.id)
-            else warnings.push(`${date}: trainees present for ${skill} without a certified supervisor`)
+          const supervisorId = rule.params.supervisor_id as string | undefined
+          if (supervisorId) {
+            // Check if any supervised staff (staff_ids excluding supervisor) are assigned
+            const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
+            const supervisedAssigned = assigned.filter((s) => supervisedIds.includes(s.id))
+            const supervisorAssigned = assigned.some((s) => s.id === supervisorId)
+
+            if (supervisedAssigned.length > 0 && !supervisorAssigned) {
+              // Supervisor not assigned but supervised staff are — force-assign supervisor
+              const supervisor = staff.find((s) => s.id === supervisorId)
+              if (supervisor) {
+                const isEligible =
+                  supervisor.onboarding_status !== "inactive" &&
+                  supervisor.start_date <= date &&
+                  (!supervisor.end_date || supervisor.end_date >= date) &&
+                  !leaveMap[supervisor.id]?.has(date)
+
+                if (isEligible) {
+                  if (rule.is_hard) {
+                    assigned.push(supervisor)
+                    if (supervisor.role === "lab") assignedLab = [...assignedLab, supervisor]
+                    else if (supervisor.role === "andrology") assignedAndrology = [...assignedAndrology, supervisor]
+                    else assignedAdmin = [...assignedAdmin, supervisor]
+                  }
+                  warnings.push(
+                    `${date}: ${supervisor.first_name} ${supervisor.last_name} — supervisor asignado (supervisor_requerido)`
+                  )
+                } else {
+                  warnings.push(
+                    `${date}: supervisor ${supervisor.first_name} ${supervisor.last_name} no disponible — personal supervisado presente`
+                  )
+                }
+              }
+            }
           }
         }
         if (rule.type === "descanso_fin_de_semana" && weekend) {

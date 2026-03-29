@@ -21,7 +21,7 @@ import {
   toggleRule,
 } from "@/app/(clinic)/lab/rules-actions"
 import { cn } from "@/lib/utils"
-import type { RotaRule, RotaRuleType, RotaRuleInsert, Staff, SkillName } from "@/lib/types/database"
+import type { RotaRule, RotaRuleType, RotaRuleInsert, Staff } from "@/lib/types/database"
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
 function Toggle({ checked, onChange, disabled }: {
@@ -59,11 +59,6 @@ const RULE_TYPES: RotaRuleType[] = [
   "descanso_fin_de_semana",
 ]
 
-const SKILL_OPTIONS: SkillName[] = [
-  "icsi", "iui", "vitrification", "thawing",
-  "biopsy", "semen_analysis", "sperm_prep", "witnessing", "egg_collection", "other",
-]
-
 // ── Rule form state ────────────────────────────────────────────────────────────
 interface RuleFormState {
   type: RotaRuleType
@@ -73,6 +68,7 @@ interface RuleFormState {
   maxDays: string
   maxPerMonth: string
   skill: string
+  supervisor_id: string
   recovery: "following" | "previous"
   restDays: string
   notes: string
@@ -87,6 +83,7 @@ function defaultForm(): RuleFormState {
     maxDays: "5",
     maxPerMonth: "2",
     skill: "egg_collection",
+    supervisor_id: "",
     recovery: "following",
     restDays: "2",
     notes: "",
@@ -102,6 +99,7 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     maxDays: String((rule.params.maxDays as number | undefined) ?? 5),
     maxPerMonth: String((rule.params.maxPerMonth as number | undefined) ?? 2),
     skill: String((rule.params.skill as string | undefined) ?? "egg_collection"),
+    supervisor_id: String((rule.params.supervisor_id as string | undefined) ?? ""),
     recovery: ((rule.params.recovery as string | undefined) ?? "following") as "following" | "previous",
     restDays: String((rule.params.restDays as number | undefined) ?? 2),
     notes: rule.notes ?? "",
@@ -112,7 +110,7 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
   const params: Record<string, unknown> = {}
   if (form.type === "max_dias_consecutivos") params.maxDays = parseInt(form.maxDays, 10) || 5
   if (form.type === "distribucion_fines_semana") params.maxPerMonth = parseInt(form.maxPerMonth, 10) || 2
-  if (form.type === "supervisor_requerido") params.skill = form.skill
+  if (form.type === "supervisor_requerido") params.supervisor_id = form.supervisor_id
   if (form.type === "descanso_fin_de_semana") {
     params.recovery = form.recovery
     params.restDays = parseInt(form.restDays, 10) || 2
@@ -276,16 +274,18 @@ function RuleSheet({
           )}
           {form.type === "supervisor_requerido" && (
             <div>
-              <label className={labelSelect}>{t("params.skill")}</label>
+              <label className={labelSelect}>{t("params.supervisor")}</label>
               <select
                 className={inputClass}
-                value={form.skill}
-                onChange={(e) => set("skill", e.target.value)}
+                value={form.supervisor_id}
+                onChange={(e) => set("supervisor_id", e.target.value)}
               >
-                {SKILL_OPTIONS.map((sk) => (
-                  <option key={sk} value={sk}>{sk.replace(/_/g, " ")}</option>
+                <option value="">{t("params.selectSupervisor")}</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
                 ))}
               </select>
+              <p className="text-[12px] text-muted-foreground mt-1">{t("params.supervisorHint")}</p>
             </div>
           )}
           {form.type === "descanso_fin_de_semana" && (
