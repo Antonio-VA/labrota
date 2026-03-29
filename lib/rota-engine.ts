@@ -463,7 +463,6 @@ export function runRotaEngine({
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
 
     // 6. Apply scheduling rules
-    const ruleForced = new Set<string>() // staff forced in by hard rules — exempt from budget guard
     if (rules.length > 0) {
       const dateMonth = date.slice(0, 7)
       const weekendCountThisMonth: Record<string, number> = {}
@@ -612,45 +611,8 @@ export function runRotaEngine({
         // no_turno_doble: each person is assigned at most once per day already
 
         if (rule.type === "no_librar_mismo_dia") {
-          // Ensure the selected staff are not ALL off on the same day.
-          // This rule requires specific staff_ids — skip if none specified.
-          if (rule.staff_ids.length < 2) continue
-          const conflictIds = new Set(rule.staff_ids)
-          const assignedConflict = assigned.filter((s) => conflictIds.has(s.id))
-          const allConflictStaff = staff.filter((s) => conflictIds.has(s.id))
-          // Only act when every member of the group is currently unassigned
-          if (assignedConflict.length === 0 && allConflictStaff.length > 1) {
-            // Find eligible staff from the conflict group to force assign
-            const eligible = allConflictStaff.filter((s) => {
-              if (s.onboarding_status === "inactive") return false
-              if (s.start_date > date || (s.end_date && s.end_date < date)) return false
-              if (leaveMap[s.id]?.has(date)) return false
-              return true
-            }).sort((a, b) => {
-              // Prefer someone who still has budget
-              const aUsed = weeklyShiftCount[a.id] ?? 0
-              const bUsed = weeklyShiftCount[b.id] ?? 0
-              const aHasBudget = aUsed < (a.days_per_week ?? 5) ? 0 : 1
-              const bHasBudget = bUsed < (b.days_per_week ?? 5) ? 0 : 1
-              if (aHasBudget !== bHasBudget) return aHasBudget - bHasBudget
-              return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-            })
-
-            if (eligible.length > 0) {
-              if (rule.is_hard) {
-                // Force-assign the best eligible member
-                const pick = eligible[0]
-                assigned.push(pick)
-                assignedLab = pick.role === "lab" ? [...assignedLab, pick] : assignedLab
-                assignedAndrology = pick.role === "andrology" ? [...assignedAndrology, pick] : assignedAndrology
-                // Mark as rule-forced so budget guard won't undo it
-                ruleForced.add(pick.id)
-              }
-              warnings.push(
-                `${date}: ${allConflictStaff.map((s) => `${s.first_name} ${s.last_name}`).join(" + ")} — no_librar_mismo_dia${!rule.is_hard ? " (soft)" : ""}`
-              )
-            }
-          }
+          // Handled in Phase 3 (post-plan budget-neutral swap) — not here.
+          // Phase 2 can't fix this without breaking budgets since it only sees one day at a time.
         }
 
         // no_misma_tarea: enforced post-assignment at task assignment level — engine emits warning
@@ -1311,11 +1273,9 @@ export function runRotaEngine({
     } // end if (!shiftCoverageEnabled) — skip alignment pass
 
     // Hard guard: remove anyone who would exceed their weekly budget
-    // (can happen if rules force-assign or Phase 1 over-reserves)
-    // Exempt staff forced by hard rules (e.g. no_librar_mismo_dia)
+    // (can happen if Phase 1 over-reserves)
     const overBudget = new Set<string>()
     for (const s of assigned) {
-      if (ruleForced.has(s.id)) continue // hard rule override — keep them
       const used = weeklyShiftCount[s.id] ?? 0
       const cap = s.days_per_week ?? 5
       if (used >= cap) overBudget.add(s.id)
@@ -1379,6 +1339,19 @@ export function runRotaEngine({
             // Check donor is available on that day
             if (leaveMap[donor.id]?.has(d.date)) return false
             if (donor.start_date > d.date || (donor.end_date && donor.end_date < d.date)) return false
+            // Don't create a new violation: after removing conflictPerson from this day,
+            // ensure at least one conflict member still works here
+            const otherConflictWorking = d.assignments.some((x) =>
+              rule.staff_ids.includes(x.staff_id) && x.staff_id !== conflictPerson.id
+            )
+            if (!otherConflictWorking) {
+              // All conflict members would be off on swapDay after removing conflictPerson
+              // Check if any conflict member besides conflictPerson is assigned
+              const anyConflictAssigned = rule.staff_ids.some((id) =>
+                id !== conflictPerson.id && d.assignments.some((x) => x.staff_id === id)
+              )
+              if (!anyConflictAssigned) return false // would create a new violation
+            }
             return true
           })
 
