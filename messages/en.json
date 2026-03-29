@@ -3,6 +3,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "remove": "Remove",
     "edit": "Edit",
     "add": "Add",
     "create": "Create",
@@ -623,6 +624,8 @@
       "confirmDelete": "Delete this rule?",
       "types": {
         "no_coincidir": "Do not coincide",
+        "no_misma_tarea": "Do not share task",
+        "no_librar_mismo_dia": "Do not be off same day",
         "supervisor_requerido": "Supervisor required",
         "max_dias_consecutivos": "Max consecutive days",
         "distribucion_fines_semana": "Weekend distribution",
@@ -631,6 +634,8 @@
       },
       "descriptions": {
         "no_coincidir": "Selected members cannot be scheduled on the same day",
+        "no_misma_tarea": "Selected members cannot be assigned to the same task/technique on the same day",
+        "no_librar_mismo_dia": "Selected members cannot both be off on the same day",
         "supervisor_requerido": "Requires a certified supervisor when trainees are present",
         "max_dias_consecutivos": "Limits the maximum number of consecutive days worked",
         "distribucion_fines_semana": "Limits how many weekends per month a person can work",

@@ -3,6 +3,7 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "remove": "Quitar",
     "edit": "Editar",
     "add": "Añadir",
     "create": "Crear",
@@ -623,6 +624,8 @@
       "confirmDelete": "¿Eliminar esta regla?",
       "types": {
         "no_coincidir": "No coincidir",
+        "no_misma_tarea": "No coincidir en tarea",
+        "no_librar_mismo_dia": "No librar el mismo día",
         "supervisor_requerido": "Supervisor requerido",
         "max_dias_consecutivos": "Máx. días consecutivos",
         "distribucion_fines_semana": "Distribución fines de semana",
@@ -631,6 +634,8 @@
       },
       "descriptions": {
         "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día",
+        "no_misma_tarea": "Los miembros seleccionados no pueden estar asignados a la misma tarea/técnica el mismo día",
+        "no_librar_mismo_dia": "Los miembros seleccionados no pueden librar el mismo día",
         "supervisor_requerido": "Requiere un supervisor certificado si hay personal en formación",
         "max_dias_consecutivos": "Limita el número máximo de días consecutivos trabajados",
         "distribucion_fines_semana": "Limita cuántos fines de semana por mes puede trabajar una persona",

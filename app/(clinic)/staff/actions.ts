@@ -224,6 +224,65 @@ export async function bulkRemoveSkill(
   return { removed: (data ?? []).length }
 }
 
+export async function bulkAddSkills(
+  staffIds: string[],
+  skills: { skill: SkillName; level: SkillLevel }[],
+): Promise<{ added: number; skipped: number; error?: string }> {
+  if (staffIds.length === 0 || skills.length === 0) return { added: 0, skipped: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { added: 0, skipped: 0, error: "No organisation found." }
+
+  const skillCodes = skills.map((s) => s.skill)
+  const { data: existing } = await supabase
+    .from("staff_skills")
+    .select("staff_id, skill")
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .in("skill", skillCodes) as { data: { staff_id: string; skill: string }[] | null }
+
+  const existingSet = new Set((existing ?? []).map((r) => `${r.staff_id}:${r.skill}`))
+  const rows: { organisation_id: string; staff_id: string; skill: string; level: string }[] = []
+  for (const staffId of staffIds) {
+    for (const { skill, level } of skills) {
+      if (!existingSet.has(`${staffId}:${skill}`)) {
+        rows.push({ organisation_id: orgId, staff_id: staffId, skill, level })
+      }
+    }
+  }
+  const skipped = staffIds.length * skills.length - rows.length
+  if (rows.length === 0) return { added: 0, skipped }
+
+  const { error } = await supabase.from("staff_skills").insert(rows as never)
+  if (error) return { added: 0, skipped, error: error.message }
+
+  revalidatePath("/staff")
+  return { added: rows.length, skipped }
+}
+
+export async function bulkRemoveSkills(
+  staffIds: string[],
+  skills: SkillName[],
+): Promise<{ removed: number; error?: string }> {
+  if (staffIds.length === 0 || skills.length === 0) return { removed: 0 }
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { removed: 0, error: "No organisation found." }
+
+  const { data, error } = await supabase
+    .from("staff_skills")
+    .delete()
+    .eq("organisation_id", orgId)
+    .in("staff_id", staffIds)
+    .in("skill", skills)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
+
+  if (error) return { removed: 0, error: error.message }
+
+  revalidatePath("/staff")
+  return { removed: (data ?? []).length }
+}
+
 export async function bulkUpdateStatus(
   staffIds: string[],
   status: OnboardingStatus,
