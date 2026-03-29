@@ -92,8 +92,8 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className={cn("border-b border-border last:border-0 hover:bg-muted/50", selected.has(row.id) && "bg-primary/5")}>
+            {rows.map((row, i) => (
+              <tr key={row.id} className={cn("border-b border-border last:border-0 hover:bg-muted/50", i % 2 === 1 && "bg-muted/30", selected.has(row.id) && "bg-primary/5")}>
                 <td className="px-3 py-3">
                   <input
                     type="checkbox"

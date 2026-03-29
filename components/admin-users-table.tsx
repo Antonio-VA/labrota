@@ -72,7 +72,7 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
   }
 
   return (
-    <tr className="border-b border-border last:border-0">
+    <tr className="border-b border-border last:border-0 even:bg-muted/30">
       {/* Name — inline editable, email shown as tooltip */}
       <td className="px-4 py-3">
         {isEditing ? (

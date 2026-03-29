@@ -134,10 +134,10 @@ export function OrgUsersTable({
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {users.map((u, i) => {
               const linked = u.linkedStaffId ? staff.find((s) => s.id === u.linkedStaffId) : null
               return (
-                <tr key={u.userId} className="border-b border-border last:border-0 hover:bg-muted/50">
+                <tr key={u.userId} className={cn("border-b border-border last:border-0 hover:bg-muted/50", i % 2 === 1 && "bg-muted/30")}>
                   <td className="px-3 py-2">
                     <div className="flex flex-col">
                       <span className="font-medium">{u.displayName ?? u.email}</span>
