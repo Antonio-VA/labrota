@@ -77,6 +77,7 @@ interface RuleFormState {
   tecnica_code: string
   dayMode: "never" | "only"
   restrictedDays: string[]
+  supervisorDays: string[]
 }
 
 function defaultForm(): RuleFormState {
@@ -96,6 +97,7 @@ function defaultForm(): RuleFormState {
     tecnica_code: "",
     dayMode: "never",
     restrictedDays: [],
+    supervisorDays: [],
   }
 }
 
@@ -116,6 +118,7 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     tecnica_code: String((rule.params.tecnica_code as string | undefined) ?? ""),
     dayMode: ((rule.params.dayMode as string | undefined) ?? "never") as "never" | "only",
     restrictedDays: (rule.params.restrictedDays as string[] | undefined) ?? [],
+    supervisorDays: (rule.params.supervisorDays as string[] | undefined) ?? [],
   }
 }
 
@@ -123,7 +126,10 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
   const params: Record<string, unknown> = {}
   if (form.type === "max_dias_consecutivos") params.maxDays = parseInt(form.maxDays, 10) || 5
   if (form.type === "distribucion_fines_semana") params.maxPerMonth = parseInt(form.maxPerMonth, 10) || 2
-  if (form.type === "supervisor_requerido") params.supervisor_id = form.supervisor_id
+  if (form.type === "supervisor_requerido") {
+    params.supervisor_id = form.supervisor_id
+    if (form.supervisorDays.length > 0) params.supervisorDays = form.supervisorDays
+  }
   if (form.type === "descanso_fin_de_semana") {
     params.recovery = form.recovery
     params.restDays = parseInt(form.restDays, 10) || 2
@@ -304,20 +310,53 @@ function RuleSheet({
             </div>
           )}
           {form.type === "supervisor_requerido" && (
-            <div>
-              <label className={labelSelect}>{t("params.supervisor")}</label>
-              <select
-                className={inputClass}
-                value={form.supervisor_id}
-                onChange={(e) => set("supervisor_id", e.target.value)}
-              >
-                <option value="">{t("params.selectSupervisor")}</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                ))}
-              </select>
-              <p className="text-[12px] text-muted-foreground mt-1">{t("params.supervisorHint")}</p>
-            </div>
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.supervisor")}</label>
+                <select
+                  className={inputClass}
+                  value={form.supervisor_id}
+                  onChange={(e) => set("supervisor_id", e.target.value)}
+                >
+                  <option value="">{t("params.selectSupervisor")}</option>
+                  {staff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                  ))}
+                </select>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.supervisorHint")}</p>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.selectDays")} <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                    const selected = form.supervisorDays.includes(day)
+                    const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            supervisorDays: selected
+                              ? p.supervisorDays.filter((d) => d !== day)
+                              : [...p.supervisorDays, day],
+                          }))
+                        }}
+                        className={cn(
+                          "size-9 rounded-full border text-[13px] font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary text-white"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {dayLabels[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
           )}
           {form.type === "descanso_fin_de_semana" && (
             <>
@@ -613,9 +652,11 @@ export function RulesSection({
       const supervised = rule.staff_ids
         .filter((id) => id !== supId)
         .map((id) => { const s = staff.find((st) => st.id === id); return s ? s.first_name : "?" })
+      const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
       if (sup) {
         const supervisedStr = supervised.length > 0 ? ` → ${supervised.join(", ")}` : ""
-        return `${sup.first_name} ${sup.last_name}${supervisedStr}`
+        const daysStr = supDays.length > 0 ? ` (${supDays.map((d) => dayLabelMap[d] ?? d).join(", ")})` : ""
+        return `${sup.first_name} ${sup.last_name}${supervisedStr}${daysStr}`
       }
     }
     if (rule.type === "max_dias_consecutivos") {

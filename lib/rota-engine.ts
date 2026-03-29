@@ -517,7 +517,11 @@ export function runRotaEngine({
 
         if (rule.type === "supervisor_requerido") {
           const supervisorId = rule.params.supervisor_id as string | undefined
-          if (supervisorId) {
+          // Skip if rule is restricted to certain days and today isn't one of them
+          const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+          if (supDays.length > 0 && !supDays.includes(dayCode)) {
+            // Not an active day for this supervisor rule — skip
+          } else if (supervisorId) {
             // Check if any supervised staff (staff_ids excluding supervisor) are assigned
             const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
             const supervisedAssigned = assigned.filter((s) => supervisedIds.includes(s.id))

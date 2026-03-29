@@ -361,9 +361,22 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   // Compute skill gaps and coverage warnings per day
   for (const day of Object.values(dayMap)) {
-    // Skill gaps
+    // Skill gaps — exclude techniques blocked by restriccion_dia_tecnica rules
+    const dayCodeForGap = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
     const covered = new Set(day.assignments.flatMap((a) => staffSkillMap[a.staff_id] ?? []))
-    day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
+    day.skillGaps = allOrgSkills.filter((sk) => {
+      if (covered.has(sk)) return false
+      // Check if this skill's technique is blocked today by a rule
+      const blocked = tecDayRules.some((rule) => {
+        const tecCode = rule.params.tecnica_code as string | undefined
+        if (tecCode !== sk) return false
+        const dayMode = rule.params.dayMode as string | undefined
+        const restrictedDays = (rule.params.restrictedDays as string[] | undefined) ?? []
+        if (restrictedDays.length === 0) return false
+        return dayMode === "only" ? !restrictedDays.includes(dayCodeForGap) : restrictedDays.includes(dayCodeForGap)
+      })
+      return !blocked
+    })
 
     if (day.skillGaps.length > 0) {
       // Map skill codes to technique names for user-friendly display
