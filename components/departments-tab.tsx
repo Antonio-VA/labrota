@@ -23,6 +23,9 @@ const COLOR_PALETTE = [
   "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316", "#EC4899",
   "#06B6D4", "#84CC16", "#6366F1", "#D946EF", "#0EA5E9", "#22C55E", "#A855F7", "#F43F5E",
   "#64748B", "#78716C", "#0D9488", "#2563EB", "#7C3AED", "#DB2777", "#EA580C", "#CA8A04",
+  "#60A5FA", "#34D399", "#FBBF24", "#A78BFA", "#F87171", "#2DD4BF", "#FB923C", "#F472B6",
+  "#22D3EE", "#A3E635", "#818CF8", "#E879F9", "#38BDF8", "#4ADE80", "#C084FC", "#FB7185",
+  "#94A3B8", "#A8A29E", "#5EEAD4", "#1D4ED8", "#6D28D9", "#BE185D", "#C2410C", "#EAB308",
 ]
 
 function ColorCircle({ value, onChange, disabled }: {
@@ -50,8 +53,8 @@ function ColorCircle({ value, onChange, disabled }: {
         style={{ backgroundColor: value }}
       />
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[200px]">
-          <div className="grid grid-cols-8 gap-1">
+        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-[220px]">
+          <div className="grid grid-cols-8 gap-1.5">
             {COLOR_PALETTE.map((c) => (
               <button
                 key={c}

@@ -10,7 +10,10 @@ import type { RotaRuleType } from "@/lib/types/database"
 const PASTEL_COLORS = [
   "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
   "#A7F3D0", "#FED7AA", "#C7D2FE", "#FECDD3", "#BAE6FD", "#D9F99D",
-  "#E0E7FF", "#FEF3C7", "#CFFAFE", "#FCE7F3",
+  "#E9D5FF", "#FEF08A", "#CCFBF1", "#FFE4E6",
+  "#93C5FD", "#86EFAC", "#FCA5A5", "#FCD34D", "#C4B5FD", "#F9A8D4",
+  "#6EE7B7", "#FDBA74", "#A5B4FC", "#FDA4AF", "#7DD3FC", "#BEF264",
+  "#D8B4FE", "#FDE047", "#99F6E4", "#E0E7FF",
 ]
 
 const VALID_RULE_TYPES: RotaRuleType[] = [
