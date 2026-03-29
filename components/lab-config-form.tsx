@@ -335,158 +335,78 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       </>}
 
       {(section === "all" || section === "cobertura") && <>
-      {/* ── COBERTURA MÍNIMA POR DEPARTAMENTO (hidden when shift coverage replaces it) ──── */}
-      {!(isByShift && shiftCoverageEnabled) && <div className="rounded-lg border border-border bg-background overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">
-            {t("sections.coverage")} — Por departamento
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="bg-muted border-b border-border">
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Departamento</th>
-                {DAY_KEYS.map((day) => (
-                  <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
-                    {t(`days.${day}`).slice(0, 3)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(["lab", "andrology", "admin"] as const).map((role, rIdx) => {
-                const label = role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Administración"
-                return (
-                  <tr key={role} className={cn("border-b border-border/50", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
-                    <td className="px-3 py-1.5 font-medium text-[13px]">{label}</td>
-                    {DAY_KEYS.map((day) => {
-                      const isWeekend = day === "sat" || day === "sun"
-                      return (
-                        <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            value={coverageByDay[day][role]}
-                            onChange={(e) => setCoverage(day, role, e.target.value)}
-                            disabled={isPending}
-                            className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
-                          />
-                        </td>
-                      )
-                    })}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          El generador no producirá una rota que no cumpla estos mínimos, y te avisará si el equipo disponible no es suficiente. Pon 0 para no requerir un departamento en un día concreto.
-        </p>
-      </div>}
-
-      {/* ── COBERTURA GRANULAR (por tarea o por turno) ─────────────────── */}
+      {/* ── COBERTURA MÍNIMA ──────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium">
-            {rotaDisplayMode === "by_task"
-              ? "Definir cobertura mínima por tarea (opcional)"
-              : "Definir cobertura mínima por turno (opcional)"}
-          </span>
-          <button
-            type="button"
-            onClick={handleToggleCoverage}
-            className={cn(
-              "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-              coverageEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
-            )}
-          >
-            <span className={cn(
-              "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-              coverageEnabled ? "translate-x-5" : "translate-x-0"
-            )} />
-          </button>
+          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">
+            {t("sections.coverage")}
+          </p>
+          {isByShift && (
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-muted-foreground">Por turno</span>
+              <button
+                type="button"
+                onClick={handleToggleCoverage}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  shiftCoverageEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block size-4 rounded-full bg-white shadow-sm transition-transform",
+                  shiftCoverageEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+          )}
         </div>
-        {!coverageEnabled ? (
-          <div className="px-5 py-4">
-            <p className="text-[13px] text-muted-foreground">
-              {rotaDisplayMode === "by_task"
-                ? "El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea."
-                : "Activa para definir cuántas personas de cada departamento necesitas por turno y día. Sustituye la tabla de cobertura por departamento."}
-            </p>
-          </div>
-        ) : rotaDisplayMode === "by_task" ? (
-          /* ── Per-task table ── */
+
+        {/* by_task mode OR by_shift with toggle OFF → department table */}
+        {(!isByShift || !shiftCoverageEnabled) && (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-muted border-b border-border">
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Departamento</th>
                   {DAY_KEYS.map((day) => (
-                    <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                    <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
+                      {t(`days.${day}`).slice(0, 3)}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const rootDepts = departments.length > 0
-                    ? departments.filter((d) => !d.parent_id)
-                    : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
-                  const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-                  return rootDepts.map((dept) => {
-                    const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
-                    if (deptTecnicas.length === 0) return null
-                    return (
-                      <Fragment key={dept.id ?? dept.code}>
-                        <tr className="bg-muted/60">
-                          <td colSpan={8} className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                            {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
+                {(["lab", "andrology", "admin"] as const).map((role, rIdx) => {
+                  const label = role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Administración"
+                  return (
+                    <tr key={role} className={cn("border-b border-border/50", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                      <td className="px-3 py-1.5 font-medium text-[13px]">{label}</td>
+                      {DAY_KEYS.map((day) => {
+                        const isWeekend = day === "sat" || day === "sun"
+                        return (
+                          <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              value={coverageByDay[day][role]}
+                              onChange={(e) => setCoverage(day, role, e.target.value)}
+                              disabled={isPending}
+                              className="w-12 h-7 rounded border border-input bg-transparent text-center text-[13px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50 mx-auto block"
+                            />
                           </td>
-                        </tr>
-                        {deptTecnicas.map((tec, idx) => (
-                          <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
-                            <td className="px-3 py-1.5">
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
-                                <span className="text-[13px] font-medium">{tec.codigo}</span>
-                                <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
-                              </span>
-                            </td>
-                            {DAY_KEYS.map((day) => {
-                              const deptRole = dept.code as "lab" | "andrology" | "admin"
-                              const deptMin = coverageByDay[day]?.[deptRole] ?? 0
-                              const explicitVal = taskCoverage[tec.codigo]?.[day]
-                              const hasWarning = coverageWarnings.has(`${tec.codigo}-${day}`)
-                              const isWeekend = day === "sat" || day === "sun"
-                              return (
-                                <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
-                                  <div className="relative">
-                                    <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
-                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
-                                      className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
-                                        hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
-                                          : explicitVal !== undefined ? "border-input bg-background text-foreground"
-                                          : "border-input bg-background text-muted-foreground/40",
-                                        "focus:border-ring focus:ring-1 focus:ring-ring/50"
-                                      )} />
-                                    {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>}
-                                  </div>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </Fragment>
-                    )
-                  })
-                })()}
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-        ) : (
-          /* ── Per-shift table with per-department sub-rows ── */
+        )}
+
+        {/* by_shift with toggle ON → per-shift per-department table */}
+        {isByShift && shiftCoverageEnabled && (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -506,7 +426,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                   ]
                   return (
                     <Fragment key={st.id}>
-                      {/* Shift header row */}
                       <tr className="bg-muted/60 border-t border-border">
                         <td colSpan={8} className="px-3 py-1.5">
                           <span className="inline-flex items-center gap-1.5">
@@ -515,7 +434,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                           </span>
                         </td>
                       </tr>
-                      {/* Department sub-rows */}
                       {ROLES.map((role, rIdx) => (
                         <tr key={`${st.id}-${role.key}`} className={cn("border-b border-border/30", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
                           <td className="px-3 py-0.5">
@@ -562,12 +480,109 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             </table>
           </div>
         )}
-        {coverageEnabled && (
-          <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-            El generador no producirá una rota que no cumpla estos mínimos, y te avisará si el equipo disponible no es suficiente.
-          </p>
-        )}
+
+        <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
+          {isByShift && shiftCoverageEnabled
+            ? "Define cuántas personas de cada departamento necesitas por turno y día. El generador te avisará si el equipo no es suficiente."
+            : "El generador no producirá una rota que no cumpla estos mínimos. Pon 0 para no requerir un departamento en un día concreto."}
+        </p>
       </div>
+
+      {/* ── COBERTURA POR TAREA (solo by_task) ────────────────────────── */}
+      {rotaDisplayMode === "by_task" && (
+        <div className="rounded-lg border border-border bg-background overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+            <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
+            <button
+              type="button"
+              onClick={handleToggleCoverage}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                taskCoverageEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                taskCoverageEnabled ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+          {!taskCoverageEnabled ? (
+            <div className="px-5 py-4">
+              <p className="text-[13px] text-muted-foreground">
+                El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="bg-muted border-b border-border">
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
+                    {DAY_KEYS.map((day) => (
+                      <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const rootDepts = departments.length > 0
+                      ? departments.filter((d) => !d.parent_id)
+                      : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
+                    const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+                    return rootDepts.map((dept) => {
+                      const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
+                      if (deptTecnicas.length === 0) return null
+                      return (
+                        <Fragment key={dept.id ?? dept.code}>
+                          <tr className="bg-muted/60">
+                            <td colSpan={8} className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
+                            </td>
+                          </tr>
+                          {deptTecnicas.map((tec, idx) => (
+                            <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                              <td className="px-3 py-1.5">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
+                                  <span className="text-[13px] font-medium">{tec.codigo}</span>
+                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
+                                </span>
+                              </td>
+                              {DAY_KEYS.map((day) => {
+                                const deptRole = dept.code as "lab" | "andrology" | "admin"
+                                const deptMin = coverageByDay[day]?.[deptRole] ?? 0
+                                const explicitVal = taskCoverage[tec.codigo]?.[day]
+                                const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
+                                const isWeekend = day === "sat" || day === "sun"
+                                return (
+                                  <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
+                                    <div className="relative">
+                                      <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
+                                        onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                        className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
+                                          hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
+                                            : explicitVal !== undefined ? "border-input bg-background text-foreground"
+                                            : "border-input bg-background text-muted-foreground/40",
+                                          "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                        )} />
+                                      {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>}
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </Fragment>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
