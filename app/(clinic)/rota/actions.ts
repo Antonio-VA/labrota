@@ -362,7 +362,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     day.skillGaps = allOrgSkills.filter((sk) => !covered.has(sk))
 
     if (day.skillGaps.length > 0) {
-      day.warnings.push({ category: "skill_gap", message: day.skillGaps.join(", ") })
+      // Map skill codes to technique names for user-friendly display
+      const gapNames = day.skillGaps.map((sk) => {
+        const tec = tecnicas.find((t) => t.codigo === sk)
+        return tec?.nombre_es ?? sk
+      })
+      day.warnings.push({ category: "skill_gap", message: gapNames.join(", ") })
     }
 
     // Coverage warnings — compare assigned staff by role against minimums
