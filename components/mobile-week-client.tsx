@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
 import { TapPopover } from "@/components/tap-popover"
-import { getRotaWeek, type RotaWeekData } from "@/app/(clinic)/rota/actions"
+import { getRotaWeek, generateRota, type RotaWeekData } from "@/app/(clinic)/rota/actions"
+import { toast } from "sonner"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
@@ -49,9 +50,10 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
   )
 }
 
-function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () => void }) {
+function WeekOverflow({ weekStart, data, onShare, onRefresh }: { weekStart: string; data: RotaWeekData | null; onShare?: () => void; onRefresh?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
+  const [generating, setGenerating] = useState(false)
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -98,22 +100,47 @@ function WeekOverflow({ weekStart, onShare }: { weekStart: string; onShare?: () 
           <button
             onClick={() => {
               setOpen(false)
-              window.open(`/rota/${weekStart}/print`, "_blank")
+              if (!data) return
+              import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
+                const orgEl = document.querySelector("[data-org-name]")
+                const orgName = orgEl?.textContent ?? "LabRota"
+                const notesEl = document.querySelector("[data-week-notes]")
+                const noteTexts = notesEl
+                  ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
+                  : []
+                if (data.rotaDisplayMode === "by_task") {
+                  exportPdfByTask(data, data.tecnicas ?? [], orgName, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                } else {
+                  exportPdfByShift(data, orgName, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                }
+              })
             }}
-            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+            disabled={!data || data.days.every((d) => d.assignments.length === 0)}
+            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-40"
           >
             <FileDown className="size-4" />
             {t("exportPdf")}
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               setOpen(false)
-              window.location.href = `/?generate=${weekStart}`
+              if (generating) return
+              setGenerating(true)
+              try {
+                await generateRota(weekStart, true, "ai_optimal")
+                toast.success(locale === "es" ? "Rota generada" : "Rota generated")
+                onRefresh?.()
+              } catch {
+                toast.error(locale === "es" ? "Error al generar" : "Generation failed")
+              } finally {
+                setGenerating(false)
+              }
             }}
-            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+            disabled={generating}
+            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-40"
           >
             <Sparkles className="size-4" />
-            {t("generateRota")}
+            {generating ? (locale === "es" ? "Generando…" : "Generating…") : t("generateRota")}
           </button>
         </div>,
         document.body
@@ -186,7 +213,10 @@ export function MobileWeekClient() {
         </button>
         {/* Avisos — tappable with overlay */}
         <WeekAvisos days={days} locale={locale} />
-        <WeekOverflow weekStart={weekStart} onShare={async () => {
+        <WeekOverflow weekStart={weekStart} data={data} onRefresh={() => {
+          setLoading(true)
+          getRotaWeek(weekStart).then((d) => { setData(d); setLoading(false) })
+        }} onShare={async () => {
           if (!weekGridRef.current) return
           const { shareRotaCapture } = await import("@/lib/share-capture")
           const s = new Date(weekStart + "T12:00:00")
