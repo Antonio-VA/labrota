@@ -795,7 +795,7 @@ function StaffTable({
         const trainingSkills  = skills.filter((sk) => sk.level === "training")
         const isSelected      = selectedIds.has(member.id)
         const deptCode        = member.role
-        const deptTecnicas    = tecnicas.filter((t) => t.activa && t.department === deptCode)
+        const deptTecnicas    = tecnicas.filter((t) => t.activa && t.department.split(",").includes(deptCode))
         const certifiedCodes  = new Set(certifiedSkills.map((s) => s.skill))
         const allCertified    = deptTecnicas.length > 0 && deptTecnicas.every((t) => certifiedCodes.has(t.codigo))
 
@@ -1176,7 +1176,11 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortFn)
 
   // Collect all unique skill codes for the filter dropdown
-  const allSkillCodes = [...new Set(staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))].sort()
+  // Show all active técnicas in the filter, not just ones already assigned to staff
+  const allSkillCodes = [...new Set([
+    ...tecnicas.filter((t) => t.activa).map((t) => t.codigo),
+    ...staff.flatMap((s) => s.staff_skills.map((sk) => sk.skill)),
+  ])].sort()
 
   const hasFilters = search || roleFilter !== "all" || statusFilter !== "all" || skillFilter !== "all"
 
@@ -1224,7 +1228,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   ).length
   const kpiFullyValidated = kpiActiveStaff.filter((s) => {
     if (s.role === "admin") return false
-    const deptTecnicas = kpiActiveTecnicas.filter((t) => t.department === s.role)
+    const deptTecnicas = kpiActiveTecnicas.filter((t) => t.department.split(",").includes(s.role))
     if (deptTecnicas.length === 0) return false
     const certifiedCodes = new Set(s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))
     return deptTecnicas.every((t) => certifiedCodes.has(t.codigo))

@@ -354,7 +354,7 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
   const staffDept = DEPT_FOR_ROLE[assignment.staff.role]
 
   const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
+    t.activa && t.department.split(",").includes(staffDept) && staffSkillCodes.has(t.codigo)
   )
 
   // Sub-departments for the staff member's role department
@@ -918,7 +918,7 @@ function StaffProfilePanel({
                 <div className="flex items-center gap-1.5">
                   <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
                   {(() => {
-                    const deptTecs = (weekData?.tecnicas ?? []).filter((tc) => tc.activa && tc.department === staff.role)
+                    const deptTecs = (weekData?.tecnicas ?? []).filter((tc) => tc.activa && tc.department.split(",").includes(staff.role))
                     const certCodes = new Set(staff.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))
                     const allCertified = staff.role !== "admin" && deptTecs.length > 0 && deptTecs.every((tc) => certCodes.has(tc.codigo))
                     return allCertified ? (

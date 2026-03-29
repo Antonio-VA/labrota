@@ -228,7 +228,7 @@ export function StaffForm({
   const capacidades: { skill: string; label: string }[] = (() => {
     if (!dept || !tecnicas) return []
     return tecnicas
-      .filter((t) => t.activa && t.department === dept)
+      .filter((t) => t.activa && t.department.split(",").includes(dept))
       .sort((a, b) => a.orden - b.orden)
       .map((t) => ({ skill: t.codigo, label: t.nombre_es }))
   })()

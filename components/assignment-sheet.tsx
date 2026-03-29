@@ -92,7 +92,7 @@ function AssignmentPopover({
 
   // Show técnicas from staff's department that they are certified/trained in
   const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && t.department === staffDept && staffSkillCodes.has(t.codigo)
+    t.activa && t.department.split(",").includes(staffDept) && staffSkillCodes.has(t.codigo)
   )
 
   // Sub-departments for the staff member's role department
