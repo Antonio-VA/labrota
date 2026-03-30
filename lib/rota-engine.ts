@@ -482,8 +482,12 @@ export function runRotaEngine({
           for (const s of assigned) {
             if (!affects(s.id)) continue
             if (consecutiveDaysBefore(s.id, date) >= maxDays) {
-              if (rule.is_hard) hardRemovals.add(s.id)
-              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxDays} consecutive days`)
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxDays} días consecutivos (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxDays} días consecutivos`)
+              }
             }
           }
         }
@@ -493,8 +497,12 @@ export function runRotaEngine({
           for (const s of assigned) {
             if (!affects(s.id)) continue
             if ((weekendCountThisMonth[s.id] ?? 0) >= maxPerMonth) {
-              if (rule.is_hard) hardRemovals.add(s.id)
-              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxPerMonth} weekends this month`)
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxPerMonth} fines de semana este mes (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxPerMonth} fines de semana este mes`)
+              }
             }
           }
         }
@@ -507,10 +515,13 @@ export function runRotaEngine({
               (a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
             )
             for (let i = 1; i < byWorkload.length; i++) {
-              if (rule.is_hard) hardRemovals.add(byWorkload[i].id)
-              else warnings.push(
-                `${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} cannot coincide with ${byWorkload[0].first_name} ${byWorkload[0].last_name}`
-              )
+              if (rule.is_hard) {
+                hardRemovals.add(byWorkload[i].id)
+                warnings.push(`${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} retirado — no coincidir con ${byWorkload[0].first_name} ${byWorkload[0].last_name} (regla obligatoria)`)
+              } else {
+                warnings.push(
+                  `${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} coincide con ${byWorkload[0].first_name} ${byWorkload[0].last_name}`)
+              }
             }
           }
         }
@@ -571,8 +582,12 @@ export function runRotaEngine({
                 (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
               )
               if (workedLastWeekend) {
-                if (rule.is_hard) hardRemovals.add(s.id)
-                else warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — needs rest (descanso_fin_de_semana)`)
+                if (rule.is_hard) {
+                  hardRemovals.add(s.id)
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — trabajó el fin de semana pasado (regla obligatoria)`)
+                } else {
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — needs rest (descanso_fin_de_semana)`)
+                }
               }
             } else {
               // "previous": If staff is working THIS weekend → must have been off LAST weekend
@@ -583,8 +598,12 @@ export function runRotaEngine({
                 (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
               )
               if (workedLastWeekend) {
-                if (rule.is_hard) hardRemovals.add(s.id)
-                else warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — alternating weekends required`)
+                if (rule.is_hard) {
+                  hardRemovals.add(s.id)
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — fines de semana alternos (regla obligatoria)`)
+                } else {
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — alternating weekends required`)
+                }
               }
             }
           }
@@ -605,8 +624,12 @@ export function runRotaEngine({
               const diffMs = new Date(date + "T12:00:00").getTime() - new Date(lastWorkedWeekend.date + "T12:00:00").getTime()
               const diffDays = Math.round(diffMs / 86400000)
               if (diffDays > 0 && diffDays <= restDays) {
-                if (rule.is_hard) hardRemovals.add(s.id)
-                else warnings.push(`${date}: ${s.first_name} ${s.last_name} needs ${restDays} rest days after weekend`)
+                if (rule.is_hard) {
+                  hardRemovals.add(s.id)
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — necesita ${restDays} días de descanso tras fin de semana (regla obligatoria)`)
+                } else {
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} needs ${restDays} rest days after weekend`)
+                }
               }
             }
           }

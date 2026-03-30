@@ -455,7 +455,7 @@ describe("runRotaEngine — rules", () => {
     // Staff still assigned (soft rule)
     expect(mon.assignments.find((a) => a.staff_id === "s1")).toBeDefined()
     // But a warning emitted
-    expect(result.warnings.some((w) => w.includes("consecutive days"))).toBe(true)
+    expect(result.warnings.some((w) => w.includes("días consecutivos") || w.includes("consecutive days"))).toBe(true)
   })
 
   it("no_coincidir (hard): emits warning when conflicting staff are below cap", () => {

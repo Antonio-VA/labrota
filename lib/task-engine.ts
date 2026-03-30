@@ -357,8 +357,12 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           for (const s of eligibleStaff) {
             if (!affects(s.id)) continue
             if (consecutiveDaysBefore(s.id, date) >= maxDays) {
-              if (rule.is_hard) hardRemovals.add(s.id)
-              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxDays} consecutive days`)
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxDays} días consecutivos (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxDays} días consecutivos`)
+              }
             }
           }
         }
@@ -368,8 +372,12 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           for (const s of eligibleStaff) {
             if (!affects(s.id)) continue
             if ((weekendCountThisMonth[s.id] ?? 0) >= maxPerMonth) {
-              if (rule.is_hard) hardRemovals.add(s.id)
-              else warnings.push(`${date}: ${s.first_name} ${s.last_name} has reached ${maxPerMonth} weekends this month`)
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxPerMonth} fines de semana este mes (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxPerMonth} fines de semana este mes`)
+              }
             }
           }
         }
@@ -385,6 +393,10 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
                 if (!reservedIds.has(present[i].id)) {
                   hardRemovals.add(present[i].id)
                 }
+              }
+              const removedNames = present.slice(1).filter((s) => !reservedIds.has(s.id)).map((s) => s.first_name)
+              if (removedNames.length > 0) {
+                warnings.push(`${date}: ${removedNames.join(", ")} retirado — no coincidir con ${present[0].first_name} (regla obligatoria)`)
               }
             } else if (present.length >= 2) {
               warnings.push(`${date}: ${present.map((s) => s.first_name).join(" + ")} assigned together (no_coincidir, soft)`)

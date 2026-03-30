@@ -192,9 +192,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
     supabase
       .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override")
+      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
@@ -513,6 +513,29 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
+  // Parse engine warnings and add as per-day rule avisos
+  // Engine warnings follow the format "2026-03-16: message"
+  const engineWarningsRaw = (rotaData as any)?.engine_warnings as string[] | null
+  if (engineWarningsRaw && Array.isArray(engineWarningsRaw)) {
+    for (const w of engineWarningsRaw) {
+      const match = w.match(/^(\d{4}-\d{2}-\d{2}):\s*(.+)$/)
+      if (match) {
+        const [, date, message] = match
+        const day = dayMap[date]
+        if (day) {
+          // Determine category: coverage warnings vs rule warnings
+          const isCoverage = message.includes("COBERTURA INSUFICIENTE")
+          const category = isCoverage ? "coverage" as const : "rule" as const
+          // Avoid duplicating warnings already computed post-hoc
+          const isDuplicate = day.warnings.some((dw) => dw.category === category && dw.message === message)
+          if (!isDuplicate) {
+            day.warnings.push({ category, message })
+          }
+        }
+      }
+    }
+  }
+
   // Build staffNames map for PDF off row — active staff only
   const staffNames: Record<string, string> = {}
   for (const [id, s] of Object.entries(staffLookup)) {
@@ -780,6 +803,13 @@ export async function generateRota(
     .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
   if (insertError) return { error: insertError.message }
+
+  // Best-effort: save engine warnings to rota record (column may not exist yet)
+  // Filter out internal [engine] logs — only keep user-facing warnings
+  const userWarnings = engineWarnings.filter((w) => !w.startsWith("[engine]"))
+  if (userWarnings.length > 0) {
+    await supabase.from("rotas").update({ engine_warnings: userWarnings } as never).eq("id", rotaId).then(() => {})
+  }
 
   // Audit log
   const { data: { user: auditUser } } = await supabase.auth.getUser()
