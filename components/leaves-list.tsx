@@ -466,24 +466,11 @@ function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof
     cancelled: { bg: "bg-slate-50 border-slate-200", text: "text-slate-500" },
   }
   const c = cfg[leave.status] ?? cfg.pending
-  const reviewerInfo = leave.reviewed_at && leave.reviewer_name
-    ? ` · ${leave.reviewer_name}`
-    : ""
-  const timeInfo = leave.reviewed_at
-    ? ` · ${new Date(leave.reviewed_at).toLocaleDateString()}`
-    : ""
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium w-fit", c.bg, c.text)}>
-        {t(`status.${leave.status}`)}
-      </span>
-      {(reviewerInfo || timeInfo) && leave.status !== "pending" && (
-        <span className="text-[10px] text-muted-foreground leading-tight">
-          {timeInfo.replace(" · ", "")}{reviewerInfo}
-        </span>
-      )}
-    </div>
+    <span className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium w-fit", c.bg, c.text)}>
+      {t(`status.${leave.status}`)}
+    </span>
   )
 }
 
@@ -590,7 +577,6 @@ function LeavesTable({
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
               {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
-              <th className="w-10" />
             </tr>
           </thead>
           <tbody>
@@ -611,19 +597,19 @@ function LeavesTable({
                 <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
                 {showStatus && (
                   <td className="px-4 py-2.5">
-                    <StatusBadge leave={leave} t={t} />
+                    <div className="flex items-center gap-2">
+                      <StatusBadge leave={leave} t={t} />
+                      {onCancel && canCancel?.(leave) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
+                          className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline decoration-dotted underline-offset-2"
+                        >
+                          {t("cancelLeave")}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 )}
-                <td className="px-4 py-2.5 text-right">
-                  {onCancel && canCancel?.(leave) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
-                      className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      {t("cancelLeave")}
-                    </button>
-                  )}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -967,6 +953,20 @@ export function LeavesList({
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-auto py-4">
+            {/* Status info inside panel */}
+            {editing && enableLeaveRequests && (
+              <div className="px-4 mb-4">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                  <StatusBadge leave={editing} t={t} />
+                  {editing.reviewed_at && (
+                    <span className="text-[12px] text-muted-foreground">
+                      {new Date(editing.reviewed_at).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}
+                      {editing.reviewer_name && ` · ${editing.reviewer_name}`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             <LeaveForm
               key={editing?.id ?? "new"}
               staff={staff}
