@@ -75,7 +75,7 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-2.5 py-1.5 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-3 py-2.5 rounded-full glass-nav-pop">
         {navItems.map((item) => {
           // Active if: user just tapped this one, OR route matches and nothing else was tapped
           const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
