@@ -67,7 +67,7 @@ export default function LoginPage() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm flex flex-col gap-6">
+      <div className="w-full max-w-xs rounded-xl border border-border bg-card p-8 shadow-sm flex flex-col gap-6">
 
         {/* Logo */}
         <div className="flex flex-col items-center">

@@ -11,6 +11,7 @@ export default async function LeavesPage() {
   // Determine role and linked staff
   let userRole: "admin" | "manager" | "viewer" = "admin"
   let viewerStaffId: string | null = null
+  let enableLeaveRequests = false
 
   if (user) {
     const { data: profile } = await supabase
@@ -21,23 +22,36 @@ export default async function LeavesPage() {
 
     if (profile?.organisation_id) {
       const admin = createAdminClient()
-      const { data: membership } = await admin
-        .from("organisation_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("organisation_id", profile.organisation_id)
-        .single() as { data: { role: string } | null }
+      const [memberRes, labConfigRes] = await Promise.all([
+        admin
+          .from("organisation_members")
+          .select("role, linked_staff_id")
+          .eq("user_id", user.id)
+          .eq("organisation_id", profile.organisation_id)
+          .single() as unknown as Promise<{ data: { role: string; linked_staff_id: string | null } | null }>,
+        admin
+          .from("lab_config")
+          .select("enable_leave_requests")
+          .eq("organisation_id", profile.organisation_id)
+          .maybeSingle() as unknown as Promise<{ data: { enable_leave_requests: boolean } | null }>,
+      ])
 
-      if (membership?.role === "viewer") {
+      enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false
+
+      if (memberRes.data?.role === "viewer") {
         userRole = "viewer"
-        // Find staff record matching this user's email
-        const { data: staffMatch } = await supabase
-          .from("staff")
-          .select("id")
-          .eq("email", user.email ?? "")
-          .maybeSingle() as { data: { id: string } | null }
-        viewerStaffId = staffMatch?.id ?? null
-      } else if (membership?.role === "manager") {
+        // Use linked_staff_id from membership, fallback to email match
+        if (memberRes.data.linked_staff_id) {
+          viewerStaffId = memberRes.data.linked_staff_id
+        } else {
+          const { data: staffMatch } = await supabase
+            .from("staff")
+            .select("id")
+            .eq("email", user.email ?? "")
+            .maybeSingle() as { data: { id: string } | null }
+          viewerStaffId = staffMatch?.id ?? null
+        }
+      } else if (memberRes.data?.role === "manager") {
         userRole = "manager"
       }
     }
@@ -67,6 +81,7 @@ export default async function LeavesPage() {
             staff={staff}
             userRole={userRole}
             viewerStaffId={viewerStaffId}
+            enableLeaveRequests={enableLeaveRequests}
           />
         </MobileGate>
       </div>

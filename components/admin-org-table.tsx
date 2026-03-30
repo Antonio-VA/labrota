@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Archive } from "lucide-react"
+import { Archive, Pause, Trash2, Copy, X } from "lucide-react"
 import { toast } from "sonner"
 import { createBackup } from "@/app/admin/backup-actions"
+import { toggleOrgStatus, deleteOrganisation, copyOrganisation } from "@/app/admin/actions"
+import { useRouter } from "next/navigation"
 import { formatDateWithYear } from "@/lib/format-date"
 
 interface OrgRow {
@@ -24,12 +25,14 @@ interface OrgRow {
 }
 
 export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string }) {
+  const router = useRouter()
   const formatDate = (d: string) => formatDateWithYear(d, locale as "es" | "en")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id))
   const someSelected = rows.some((r) => selected.has(r.id))
+  const count = selected.size
 
   function toggleOne(id: string) {
     setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -37,6 +40,9 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
   function toggleAll() {
     if (allSelected) setSelected(new Set())
     else setSelected(new Set(rows.map((r) => r.id)))
+  }
+  function clearSelection() {
+    setSelected(new Set())
   }
 
   function handleBulkBackup() {
@@ -48,27 +54,62 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
         if (!result.error) ok++
       }
       toast.success(`${ok} copia${ok !== 1 ? "s" : ""} creada${ok !== 1 ? "s" : ""}`)
-      setSelected(new Set())
+      clearSelection()
+    })
+  }
+
+  function handleBulkCopy() {
+    const ids = [...selected]
+    const selectedRows = rows.filter((r) => ids.includes(r.id))
+    if (!confirm(`¿Copiar ${ids.length} organización${ids.length !== 1 ? "es" : ""}?`)) return
+    startTransition(async () => {
+      let ok = 0
+      for (const row of selectedRows) {
+        const result = await copyOrganisation(row.id, `Copia de ${row.name}`, {
+          departments: true, shifts: true, tasks: true, rules: true, staff: true, config: true,
+        })
+        if (!result.error) ok++
+      }
+      toast.success(`${ok} organización${ok !== 1 ? "es" : ""} copiada${ok !== 1 ? "s" : ""}`)
+      clearSelection()
+      router.refresh()
+    })
+  }
+
+  function handleBulkSuspend() {
+    const ids = [...selected]
+    const activeIds = ids.filter((id) => rows.find((r) => r.id === id)?.is_active)
+    if (activeIds.length === 0) { toast.info("No hay organizaciones activas seleccionadas"); return }
+    if (!confirm(`¿Suspender ${activeIds.length} organización${activeIds.length !== 1 ? "es" : ""}?`)) return
+    startTransition(async () => {
+      let ok = 0
+      for (const id of activeIds) {
+        await toggleOrgStatus(id, true)
+        ok++
+      }
+      toast.success(`${ok} organización${ok !== 1 ? "es" : ""} suspendida${ok !== 1 ? "s" : ""}`)
+      clearSelection()
+      router.refresh()
+    })
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selected]
+    if (!confirm(`¿Eliminar ${ids.length} organización${ids.length !== 1 ? "es" : ""} permanentemente? Esta acción no se puede deshacer.`)) return
+    startTransition(async () => {
+      let ok = 0
+      for (const id of ids) {
+        await deleteOrganisation(id)
+        ok++
+      }
+      toast.success(`${ok} organización${ok !== 1 ? "es" : ""} eliminada${ok !== 1 ? "s" : ""}`)
+      clearSelection()
+      router.refresh()
     })
   }
 
   return (
     <>
-      {/* Bulk action bar */}
-      {someSelected && (
-        <div className="flex items-center gap-3 px-4 py-2 rounded-lg border border-primary/20 bg-primary/5">
-          <span className="text-[13px] font-medium">{selected.size} seleccionada{selected.size !== 1 ? "s" : ""}</span>
-          <div className="flex-1" />
-          <Button size="sm" variant="outline" onClick={handleBulkBackup} disabled={isPending} className="gap-1.5">
-            <Archive className="size-3.5" />
-            {isPending ? "Creando copias…" : "Backup ahora"}
-          </Button>
-          <button onClick={() => setSelected(new Set())} className="text-[12px] text-muted-foreground hover:text-foreground">
-            Cancelar
-          </button>
-        </div>
-      )}
-
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <table className="w-full text-[14px]">
           <thead>
@@ -138,6 +179,77 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
           </tbody>
         </table>
       </div>
+
+      {/* Floating bulk action bar — matches staff page pattern */}
+      {someSelected && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 h-11 rounded-[10px] border border-border bg-background"
+          style={{ boxShadow: "0 -2px 8px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.10)" }}
+        >
+          {/* Count */}
+          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground shrink-0 whitespace-nowrap">
+            <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
+              {count}
+            </span>
+            {count !== 1 ? "seleccionadas" : "seleccionada"}
+          </span>
+
+          <div className="w-px h-5 bg-border shrink-0" />
+
+          {/* Backup */}
+          <button
+            onClick={handleBulkBackup}
+            disabled={isPending}
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Archive className="size-3 shrink-0" />
+            Backup
+          </button>
+
+          {/* Copy */}
+          <button
+            onClick={handleBulkCopy}
+            disabled={isPending}
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Copy className="size-3 shrink-0" />
+            Copiar
+          </button>
+
+          {/* Suspend */}
+          <button
+            onClick={handleBulkSuspend}
+            disabled={isPending}
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-background text-[12px] font-medium hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Pause className="size-3 shrink-0" />
+            Suspender
+          </button>
+
+          <div className="w-px h-5 bg-border shrink-0" />
+
+          {/* Delete */}
+          <button
+            onClick={handleBulkDelete}
+            disabled={isPending}
+            className="flex items-center gap-1 h-7 px-2 rounded-md border border-destructive/30 bg-destructive/5 text-destructive text-[12px] font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Trash2 className="size-3 shrink-0" />
+            Eliminar
+          </button>
+
+          <div className="w-px h-5 bg-border shrink-0" />
+
+          {/* Clear */}
+          <button
+            onClick={clearSelection}
+            className="flex items-center gap-1 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
+          >
+            <X className="size-3 shrink-0" />
+            Cancelar
+          </button>
+        </div>
+      )}
     </>
   )
 }
