@@ -35,7 +35,7 @@ export function LabPageTabs({
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Tab bar */}
-      <div className="flex border-b border-border -mb-2 overflow-x-auto">
+      <div className="flex border-b border-border -mb-2">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
