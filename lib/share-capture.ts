@@ -34,7 +34,7 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
         clonedEl.style.overflow = "visible"
         clonedEl.style.height = "auto"
         clonedEl.style.maxHeight = "none"
-        convertOklabColors(clonedEl)
+        sanitizeModernColors(_doc, clonedEl)
       },
     })
 
@@ -86,15 +86,20 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
 }
 
 /**
- * Walk the cloned DOM and force all colors to be inlined as rgb values.
- * html2canvas cannot parse modern CSS color functions (lab, oklch, oklab, lch, color).
- * We also strip these from <style> elements since html2canvas reads stylesheets directly.
+ * Sanitize the cloned DOCUMENT so html2canvas never encounters modern CSS
+ * color functions (lab, oklch, oklab, lch, color) it cannot parse.
+ *
+ * Two-pronged approach:
+ * 1. Replace modern colors in ALL <style> tags across the entire document
+ *    (including <head>), since html2canvas reads all stylesheets.
+ * 2. Force-inline computed rgb colors on every element in the captured root
+ *    so html2canvas uses inline styles rather than stylesheet lookups.
  */
-function convertOklabColors(root: HTMLElement) {
+function sanitizeModernColors(doc: Document, root: HTMLElement) {
   const modernColorRe = /(?:oklch?|lab|lch|color)\([^)]+\)/gi
 
-  // 1. Replace modern colors in all <style> tags
-  const styleEls = root.querySelectorAll("style")
+  // 1. Replace modern colors in ALL <style> tags in the entire cloned document
+  const styleEls = doc.querySelectorAll("style")
   for (const styleEl of styleEls) {
     const text = styleEl.textContent ?? ""
     if (modernColorRe.test(text)) {
@@ -103,7 +108,40 @@ function convertOklabColors(root: HTMLElement) {
     }
   }
 
-  // 2. Force-inline computed colors on every element
+  // 2. Also nuke any CSS custom properties in :root that contain modern colors
+  //    by injecting an override stylesheet with resolved values
+  const rootStyles = doc.documentElement.style
+  const computedRoot = window.getComputedStyle(document.documentElement)
+  const cssVarOverrides: string[] = []
+  // Get all CSS custom properties from the original document
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules) {
+        if (rule instanceof CSSStyleRule && rule.selectorText === ":root") {
+          for (let i = 0; i < rule.style.length; i++) {
+            const prop = rule.style[i]
+            if (prop.startsWith("--")) {
+              const val = rule.style.getPropertyValue(prop)
+              if (modernColorRe.test(val)) {
+                modernColorRe.lastIndex = 0
+                const resolved = computedRoot.getPropertyValue(prop).trim()
+                if (resolved) cssVarOverrides.push(`${prop}: ${resolved};`)
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Cross-origin stylesheet — skip
+    }
+  }
+  if (cssVarOverrides.length > 0) {
+    const overrideStyle = doc.createElement("style")
+    overrideStyle.textContent = `:root { ${cssVarOverrides.join(" ")} }`
+    doc.head.appendChild(overrideStyle)
+  }
+
+  // 3. Force-inline computed colors on every element in the captured root
   const colorProps = [
     "color", "background-color", "border-color",
     "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
@@ -116,12 +154,10 @@ function convertOklabColors(root: HTMLElement) {
     for (const prop of colorProps) {
       const val = computed.getPropertyValue(prop)
       if (val && val !== "transparent" && val !== "rgba(0, 0, 0, 0)") {
-        // Always inline — this ensures html2canvas sees rgb, never lab/oklch
         el.style.setProperty(prop, val, "important")
       }
     }
 
-    // Handle box-shadow separately (can contain colors)
     const shadow = computed.getPropertyValue("box-shadow")
     if (shadow && shadow !== "none" && modernColorRe.test(shadow)) {
       modernColorRe.lastIndex = 0
@@ -218,7 +254,7 @@ export async function copyRotaToClipboard(opts: {
       height: container.scrollHeight,
       width: container.scrollWidth,
       onclone: (_doc: Document, clonedEl: HTMLElement) => {
-        convertOklabColors(clonedEl)
+        sanitizeModernColors(_doc, clonedEl)
       },
     })
 
@@ -275,7 +311,7 @@ export async function shareRotaCapture(opts: {
       height: container.scrollHeight,
       width: container.scrollWidth,
       onclone: (_doc: Document, clonedEl: HTMLElement) => {
-        convertOklabColors(clonedEl)
+        sanitizeModernColors(_doc, clonedEl)
       },
     })
 
@@ -352,7 +388,7 @@ export async function copyToClipboard(element: HTMLElement) {
         clonedEl.style.overflow = "visible"
         clonedEl.style.height = "auto"
         clonedEl.style.maxHeight = "none"
-        convertOklabColors(clonedEl)
+        sanitizeModernColors(_doc, clonedEl)
       },
     })
 
