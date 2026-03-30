@@ -866,6 +866,16 @@
     "daily": "Rotación diaria",
     "dailyDesc": "Cada día un turno diferente dentro de la semana"
   },
+  "taskRotation": {
+    "title": "Rotación de tareas",
+    "description": "Define cómo se asignan las tareas cuando no hay preferencia personal.",
+    "stable": "Estable",
+    "stableDesc": "Misma persona, misma tarea cada semana",
+    "weekly": "Rotación semanal",
+    "weeklyDesc": "Misma tarea toda la semana, cambia la siguiente",
+    "daily": "Rotación diaria",
+    "dailyDesc": "Cada día una tarea diferente dentro de la semana"
+  },
   "turnos": {
     "shiftTypes": "Tipos de turno",
     "changesSaved": "Cambios guardados",

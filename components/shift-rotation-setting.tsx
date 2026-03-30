@@ -15,12 +15,15 @@ const OPTION_KEYS: { key: RotationMode; labelKey: string; descKey: string; icon:
   { key: "daily", labelKey: "daily", descKey: "dailyDesc", icon: ArrowRightLeft },
 ]
 
-export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
+export function ShiftRotationSetting({ initialValue, onChange, registerSave, isByTask = false }: {
   initialValue: string
   onChange?: (mode: RotationMode) => void
   registerSave?: (fn: () => Promise<void>) => void
+  isByTask?: boolean
 }) {
-  const t = useTranslations("shiftRotation")
+  const tShift = useTranslations("shiftRotation")
+  const tTask = useTranslations("taskRotation")
+  const t = isByTask ? tTask : tShift
   const [value, setValue] = useState<RotationMode>((initialValue as RotationMode) || "stable")
   const [isPending, startTransition] = useTransition()
 

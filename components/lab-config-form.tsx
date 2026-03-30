@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
-import { CheckCircle2, AlertCircle, Info } from "lucide-react"
+import { CheckCircle2, AlertCircle, Info, ChevronUp, ChevronDown } from "lucide-react"
+import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
 
 // ── Spanish autonomous communities ────────────────────────────────────────────
@@ -47,7 +48,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [] }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
