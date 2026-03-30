@@ -1746,11 +1746,11 @@ function PersonGrid({
             ))}
             {Array.from({ length: 8 }).map((_, i) => (
               <Fragment key={i}>
-                <div className="px-3 py-2.5 border-b border-r border-border">
+                <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
                   <div className="shimmer-bar h-3 w-28" />
                 </div>
                 {Array.from({ length: 7 }).map((_, j) => (
-                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px]">
+                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
                     <div className={`shimmer-bar h-9 w-full rounded ${j >= 5 ? "opacity-50" : ""}`} />
                   </div>
                 ))}
