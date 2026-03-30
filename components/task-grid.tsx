@@ -588,6 +588,7 @@ export function TaskGrid({
   shiftLabel,
   compact = false,
   colorBorders = true,
+  showPuncBiopsy = true,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -605,6 +606,7 @@ export function TaskGrid({
   shiftLabel?: string
   compact?: boolean
   colorBorders?: boolean
+  showPuncBiopsy?: boolean
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -852,15 +854,17 @@ export function TaskGrid({
                   <TooltipContent side="bottom">{holidayName}</TooltipContent>
                 </Tooltip>
               )}
-              <PuncBiopsyEdit
-                date={day.date}
-                value={effectiveP}
-                defaultValue={defaultP}
-                isOverride={hasOverride}
-                biopsyForecast={biopsyForecast}
-                onChange={onPunctionsChange}
-                disabled={isPublished || !data.rota}
-              />
+              {showPuncBiopsy && (
+                <PuncBiopsyEdit
+                  date={day.date}
+                  value={effectiveP}
+                  defaultValue={defaultP}
+                  isOverride={hasOverride}
+                  biopsyForecast={biopsyForecast}
+                  onChange={onPunctionsChange}
+                  disabled={isPublished || !data.rota}
+                />
+              )}
             </div>
           )
         })}

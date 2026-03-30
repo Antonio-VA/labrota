@@ -712,8 +712,8 @@ export function AssignmentSheet({
             )
           })()}
 
-          {/* P+B section — procedures, ratio, staff count */}
-          {(() => {
+          {/* P+B section — procedures, ratio, staff count (hidden in by_task mode) */}
+          {rotaDisplayMode !== "by_task" && (() => {
             const p = effectiveP
             const b = biopsyForecast ?? 0
             const totalProc = p + b
