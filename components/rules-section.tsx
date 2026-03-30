@@ -64,12 +64,12 @@ const RULE_TYPES: RotaRuleType[] = [
 // Which org modes each rule type applies to
 const RULE_MODE: Record<RotaRuleType, "both" | "by_shift" | "by_task"> = {
   no_coincidir: "both",
-  no_misma_tarea: "by_task",
-  no_librar_mismo_dia: "by_shift",
+  no_misma_tarea: "both",
+  no_librar_mismo_dia: "both",
   supervisor_requerido: "both",
   max_dias_consecutivos: "both",
   distribucion_fines_semana: "both",
-  descanso_fin_de_semana: "by_shift",
+  descanso_fin_de_semana: "both",
   restriccion_dia_tecnica: "both",
   asignacion_fija: "both",
 }

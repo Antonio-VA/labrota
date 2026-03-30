@@ -80,6 +80,12 @@ function isWeekend(isoDate: string): boolean {
   return code === "sat" || code === "sun"
 }
 
+function addDaysStr(isoDate: string, n: number): string {
+  const d = new Date(isoDate + "T12:00:00")
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split("T")[0]
+}
+
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
@@ -403,6 +409,58 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
             }
           }
         }
+
+        if (rule.type === "descanso_fin_de_semana" && weekend) {
+          const recovery = (rule.params.recovery as string) ?? "following"
+          const restDays = (rule.params.restDays as number) ?? 2
+
+          for (const s of eligibleStaff) {
+            if (!affects(s.id)) continue
+            const dayCode = getDayCode(date)
+            const prevSat = addDaysStr(date, -(dayCode === "sat" ? 7 : 8))
+            const prevSun = addDaysStr(date, -(dayCode === "sun" ? 7 : 6))
+            const workedLastWeekend = recentAssignments.some(
+              (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
+            )
+
+            if (recovery === "following" && workedLastWeekend) {
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — trabajó el fin de semana pasado (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — needs rest (descanso_fin_de_semana)`)
+              }
+            } else if (recovery === "previous" && workedLastWeekend) {
+              if (rule.is_hard) {
+                hardRemovals.add(s.id)
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — fines de semana alternos (regla obligatoria)`)
+              } else {
+                warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — alternating weekends required`)
+              }
+            }
+          }
+
+          // Rest days after weekend (weekday check)
+          if (restDays > 0 && !weekend) {
+            for (const s of eligibleStaff) {
+              if (!affects(s.id)) continue
+              const lastWorkedWeekend = [...recentAssignments]
+                .filter((a) => a.staff_id === s.id && isWeekend(a.date))
+                .sort((a, b) => b.date.localeCompare(a.date))[0]
+              if (!lastWorkedWeekend) continue
+              const diffMs = new Date(date + "T12:00:00").getTime() - new Date(lastWorkedWeekend.date + "T12:00:00").getTime()
+              const diffDays = Math.round(diffMs / 86400000)
+              if (diffDays > 0 && diffDays <= restDays) {
+                if (rule.is_hard) {
+                  hardRemovals.add(s.id)
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — necesita ${restDays} días de descanso tras fin de semana (regla obligatoria)`)
+                } else {
+                  warnings.push(`${date}: ${s.first_name} ${s.last_name} needs ${restDays} rest days after weekend`)
+                }
+              }
+            }
+          }
+        }
       }
     }
 
@@ -673,6 +731,33 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     if (!assignedByDate[date]) assignedByDate[date] = new Set()
     for (const staffId of assignedStaffIds) {
       assignedByDate[date].add(staffId)
+    }
+  }
+
+  // ── Post-plan: Repair no_librar_mismo_dia violations ──────────────────────
+  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
+    for (const dayPlan of days) {
+      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
+      const offIds = new Set(dayPlan.offStaff)
+      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id) && offIds.has(id))
+      // Only act if ALL conflict members are off
+      if (conflictOff.length < rule.staff_ids.length) continue
+
+      warnings.push(
+        `${dayPlan.date}: no_librar_mismo_dia — ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} todos libres`
+      )
+    }
+  }
+  // Soft no_librar_mismo_dia: just warn
+  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && !r.is_hard && r.staff_ids.length >= 2)) {
+    for (const dayPlan of days) {
+      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
+      const offIds = new Set(dayPlan.offStaff)
+      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id) && offIds.has(id))
+      if (conflictOff.length < rule.staff_ids.length) continue
+      warnings.push(
+        `${dayPlan.date}: no_librar_mismo_dia — ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} todos libres (regla blanda)`
+      )
     }
   }
 
