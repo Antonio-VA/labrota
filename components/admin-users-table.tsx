@@ -52,6 +52,8 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
       if (result?.error) {
         setRole(prev)
         toast.error(result.error)
+      } else {
+        toast.success("Rol actualizado")
       }
     })
   }
