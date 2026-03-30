@@ -4923,7 +4923,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex-1 flex items-center justify-center">
                   {!canEdit ? (
-                    <div className="flex flex-col items-center gap-3 w-full max-w-[380px] text-center">
+                    <div className="flex flex-col items-center gap-3 w-full max-w-[380px] text-center mt-[15vh]">
                       <CalendarDays className="size-10 text-muted-foreground/40" />
                       <p className="text-[16px] font-medium text-muted-foreground">{t("noRotaYet")}</p>
                       <p className="text-[14px] text-muted-foreground/70">{t("noRotaYetDescription")}</p>
