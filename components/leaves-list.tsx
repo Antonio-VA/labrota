@@ -182,9 +182,8 @@ function DateRangePicker({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-50" onClick={() => setIsOpen(false)} />
-          <div className="relative z-50">
-            <div className="absolute left-0 right-0 top-1 bg-background border border-border rounded-xl shadow-lg p-3 animate-in fade-in-0 zoom-in-95 duration-150">
+          <div className="fixed inset-0 z-50 bg-black/20 flex items-end md:items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false) }}>
+            <div className="bg-background border border-border rounded-xl shadow-lg p-4 w-full max-w-[320px] animate-in fade-in-0 zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
               {/* Selection hint */}
               <p className="text-[12px] text-muted-foreground text-center mb-2">
                 {selecting === "start"
