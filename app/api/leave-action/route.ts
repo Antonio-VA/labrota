@@ -76,6 +76,12 @@ export async function GET(request: NextRequest) {
       .lte("date", leave.end_date)
   }
 
+  // Notify the staff member about the decision
+  try {
+    const { notifyLeaveDecision } = await import("@/app/(clinic)/leaves/actions")
+    await notifyLeaveDecision({ leaveId, orgId: leave.organisation_id, decision: newStatus as "approved" | "rejected" })
+  } catch { /* email failure should not block */ }
+
   const title = action === "approve" ? "Leave approved" : "Leave rejected"
   const desc = action === "approve"
     ? "The leave has been approved and the schedule updated."
