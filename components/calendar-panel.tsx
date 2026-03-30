@@ -3209,21 +3209,24 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         )}
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
-                      <div className="flex items-center gap-0.5 mt-auto text-[12px] font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1.5 mt-auto">
                         {day.labCount > 0 && (
-                          <span style={{ borderLeft: "2px solid #3B82F6", paddingLeft: 3 }}>{day.labCount}E</span>
-                        )}
-                        {day.labCount > 0 && (day.andrologyCount > 0 || day.adminCount > 0) && (
-                          <span className="text-muted-foreground/30 mx-0.5">|</span>
+                          <div className="flex items-center gap-1">
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#3B82F6" }} />
+                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.labCount}</span>
+                          </div>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span style={{ borderLeft: "2px solid #10B981", paddingLeft: 3 }}>{day.andrologyCount}A</span>
-                        )}
-                        {day.andrologyCount > 0 && day.adminCount > 0 && (
-                          <span className="text-muted-foreground/30 mx-0.5">|</span>
+                          <div className="flex items-center gap-1">
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#10B981" }} />
+                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.andrologyCount}</span>
+                          </div>
                         )}
                         {day.adminCount > 0 && (
-                          <span style={{ borderLeft: "2px solid #64748B", paddingLeft: 3 }}>{day.adminCount}Ad</span>
+                          <div className="flex items-center gap-1">
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#64748B" }} />
+                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.adminCount}</span>
+                          </div>
                         )}
                       </div>
                     ) : null}

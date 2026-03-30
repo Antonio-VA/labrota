@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, Briefcase, Hourglass } from "lucide-react"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { toast } from "sonner"
-import { moveAssignment, moveAssignmentShift, removeAssignment } from "@/app/(clinic)/rota/actions"
+import { moveAssignment, moveAssignmentShift, removeAssignment, upsertAssignment } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { StaffWithSkills, ShiftType, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, ShiftTimes } from "@/app/(clinic)/rota/actions"
@@ -73,7 +73,6 @@ export function TransposedShiftGrid({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const localDays = data?.days ?? []
   const shiftTypes = data?.shiftTypes ?? []
   const shiftCodes = shiftTypes.filter((s) => s.active !== false).map((s) => s.code)
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
@@ -92,45 +91,179 @@ export function TransposedShiftGrid({
 
   const today = new Date().toISOString().split("T")[0]
 
-  if (!data || localDays.length === 0) return null
+  // Local optimistic state — mirrors data.days but allows instant UI updates
+  type DayData = NonNullable<typeof data>["days"][0]
+  const [localDays, setLocalDays] = useState<DayData[]>([])
+  const prevDataRef = useMemo(() => ({ days: data?.days }), [data?.days])
+  if (data?.days && data.days !== prevDataRef.days) {
+    // Sync from server when data changes
+    // Using this pattern to avoid useEffect flash
+  }
+  const days = data?.days ?? localDays
+  // Keep localDays synced with server data
+  const daysToRender = useMemo(() => {
+    if (localDays.length > 0) return localDays
+    return data?.days ?? []
+  }, [localDays, data?.days])
+
+  // Sync local days from server data
+  const syncFromServer = useCallback(() => {
+    setLocalDays(data?.days ?? [])
+  }, [data?.days])
+
+  // Initialize local days from data
+  useMemo(() => {
+    if (data?.days) setLocalDays(data.days)
+  }, [data?.days])
+
+  if (!data || daysToRender.length === 0) return null
 
   const gridCols = `120px repeat(${shiftCodes.length}, 1fr) minmax(80px, 1fr)`
 
+  // Parse drop target ID: "T1-2026-03-30" → { shift: "T1", date: "2026-03-30" }
+  function parseDropId(id: string): { shift: string; date: string } | null {
+    const dateMatch = id.match(/(\d{4}-\d{2}-\d{2})$/)
+    if (!dateMatch) return null
+    const date = dateMatch[1]
+    const shift = id.slice(0, id.length - date.length - 1)
+    return { shift, date }
+  }
+
   // Find assignment by DnD ID
   function findAssignment(id: string) {
-    for (const day of localDays) {
+    for (const day of daysToRender) {
       const a = day.assignments.find((a) => a.id === id)
       if (a) return { assignment: a, date: day.date }
     }
     return null
   }
 
+  // Optimistic: move assignment to a different date (keeping same shift)
+  function optimisticMoveDate(assignmentId: string, fromDate: string, toDate: string) {
+    setLocalDays((prev) => {
+      const next = prev.map((d) => ({ ...d, assignments: [...d.assignments] }))
+      const srcDay = next.find((d) => d.date === fromDate)
+      const destDay = next.find((d) => d.date === toDate)
+      if (!srcDay || !destDay) return prev
+      const idx = srcDay.assignments.findIndex((a) => a.id === assignmentId)
+      if (idx === -1) return prev
+      const [moved] = srcDay.assignments.splice(idx, 1)
+      destDay.assignments.push(moved)
+      return next
+    })
+  }
+
+  // Optimistic: change shift on same day
+  function optimisticChangeShift(assignmentId: string, date: string, newShift: string) {
+    setLocalDays((prev) =>
+      prev.map((d) =>
+        d.date === date
+          ? { ...d, assignments: d.assignments.map((a) => a.id === assignmentId ? { ...a, shift_type: newShift } : a) }
+          : d
+      )
+    )
+  }
+
+  // Optimistic: remove assignment (move to OFF)
+  function optimisticRemove(assignmentId: string, date: string) {
+    setLocalDays((prev) =>
+      prev.map((d) =>
+        d.date === date
+          ? { ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) }
+          : d
+      )
+    )
+  }
+
   async function handleDragEnd(e: DragEndEvent) {
     setActiveId(null)
     if (!e.over || isPublished) return
-    const src = findAssignment(String(e.active.id))
-    if (!src) return
-    const targetId = String(e.over.id) // format: "shiftCode-date" e.g. "A-2026-03-29"
-    // Extract date (YYYY-MM-DD) from the end, shift code is everything before it
-    const dateMatch = targetId.match(/(\d{4}-\d{2}-\d{2})$/)
-    const targetDate = dateMatch ? dateMatch[1] : ""
-    const targetShift = targetDate ? targetId.slice(0, targetId.length - targetDate.length - 1) : targetId
-    if (!targetDate) return
 
-    if (targetDate !== src.date) {
-      // Move to different day
-      const result = await moveAssignment(src.assignment.id, targetDate)
-      if (result.error) toast.error(result.error)
+    const activeIdStr = String(e.active.id)
+    const targetId = String(e.over.id)
+    const target = parseDropId(targetId)
+    if (!target) return
+
+    // Dragging from OFF into a shift cell
+    if (activeIdStr.startsWith("off-")) {
+      const staffId = activeIdStr.slice(4)
+      if (target.shift === "OFF") return
+      // Optimistic: add to target cell
+      const staff = staffList.find((s) => s.id === staffId)
+      if (!staff) return
+      const tempId = `temp-${Date.now()}`
+      setLocalDays((prev) =>
+        prev.map((d) =>
+          d.date === target.date
+            ? {
+                ...d,
+                assignments: [...d.assignments, {
+                  id: tempId,
+                  staff_id: staffId,
+                  shift_type: target.shift,
+                  is_manual_override: true,
+                  trainee_staff_id: null,
+                  notes: null,
+                  function_label: null,
+                  tecnica_id: null,
+                  whole_team: false,
+                  staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
+                }],
+              }
+            : d
+        )
+      )
+      const result = await upsertAssignment({ weekStart: data!.weekStart, staffId, date: target.date, shiftType: target.shift })
+      if (result.error) { toast.error(result.error); syncFromServer() }
       else onRefresh?.()
-    } else if (targetShift !== src.assignment.shift_type && targetShift !== "OFF") {
-      // Change shift on same day
-      const result = await moveAssignmentShift(src.assignment.id, targetShift)
-      if (result.error) toast.error(result.error)
+      return
+    }
+
+    // Dragging existing assignment
+    const src = findAssignment(activeIdStr)
+    if (!src) return
+
+    // Drop onto OFF = remove
+    if (target.shift === "OFF") {
+      optimisticRemove(src.assignment.id, src.date)
+      const result = await removeAssignment(src.assignment.id)
+      if (result.error) { toast.error(result.error); syncFromServer() }
+      else onRefresh?.()
+      return
+    }
+
+    // Move to different day (keep or change shift)
+    if (target.date !== src.date) {
+      optimisticMoveDate(src.assignment.id, src.date, target.date)
+      if (target.shift !== src.assignment.shift_type) {
+        optimisticChangeShift(src.assignment.id, target.date, target.shift)
+      }
+      const result = await moveAssignment(src.assignment.id, target.date)
+      if (result.error) { toast.error(result.error); syncFromServer() }
+      else {
+        // Also change shift if needed
+        if (target.shift !== src.assignment.shift_type) {
+          const r2 = await moveAssignmentShift(src.assignment.id, target.shift)
+          if (r2.error) toast.error(r2.error)
+        }
+        onRefresh?.()
+      }
+      return
+    }
+
+    // Same day, different shift
+    if (target.shift !== src.assignment.shift_type) {
+      optimisticChangeShift(src.assignment.id, src.date, target.shift)
+      const result = await moveAssignmentShift(src.assignment.id, target.shift)
+      if (result.error) { toast.error(result.error); syncFromServer() }
       else onRefresh?.()
     }
   }
 
   const activeAssignment = activeId ? findAssignment(activeId) : null
+  const activeOffStaff = activeId?.startsWith("off-")
+    ? staffList.find((s) => s.id === activeId.slice(4))
+    : null
 
   return (
     <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
@@ -156,7 +289,7 @@ export function TransposedShiftGrid({
           </div>
 
           {/* Day rows */}
-          {localDays.map((day) => {
+          {daysToRender.map((day) => {
             const dow = new Date(day.date + "T12:00:00").getDay()
             const dayKey = DOW_KEYS[dow]
             const dayNum = new Date(day.date + "T12:00:00").getDate()
@@ -275,15 +408,20 @@ export function TransposedShiftGrid({
                     )
                   })}
                   {offStaff.slice(0, compact ? 3 : 5).map((s) => (
-                    <div
-                      key={s.id}
-                      className={cn("flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}
-                      onMouseEnter={() => setHovered(s.id)}
-                      onMouseLeave={() => setHovered(null)}
-                      style={colorChips && hoveredStaffId === s.id && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
-                    >
-                      <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
-                    </div>
+                    <DraggablePill key={s.id} id={`off-${s.id}`} disabled={isPublished}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground transition-colors duration-150",
+                          compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]",
+                          !isPublished && "cursor-grab hover:bg-accent/30"
+                        )}
+                        onMouseEnter={() => setHovered(s.id)}
+                        onMouseLeave={() => setHovered(null)}
+                        style={hoveredStaffId === s.id && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
+                      >
+                        <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
+                      </div>
+                    </DraggablePill>
                   ))}
                   {offStaff.length > (compact ? 3 : 5) && (
                     <span className="text-[9px] text-muted-foreground/50 self-center">+{offStaff.length - (compact ? 3 : 5)}</span>
@@ -296,17 +434,25 @@ export function TransposedShiftGrid({
       </div>
 
       {/* Drag overlay */}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeAssignment && (
           <div className="opacity-90 shadow-lg rounded border border-border bg-background px-2 py-1 text-[11px] font-medium"
             style={{
-              borderLeft: colorChips
-                ? `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`
-                : "3px solid #D4D4D8",
+              borderLeft: `3px solid ${ROLE_BORDER[activeAssignment.assignment.staff.role] ?? "#94A3B8"}`,
               borderRadius: 4,
             }}
           >
             {activeAssignment.assignment.staff.first_name} {activeAssignment.assignment.staff.last_name[0]}.
+          </div>
+        )}
+        {activeOffStaff && (
+          <div className="opacity-90 shadow-lg rounded border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground"
+            style={{
+              borderLeft: `3px solid ${ROLE_BORDER[activeOffStaff.role] ?? "#94A3B8"}`,
+              borderRadius: 4,
+            }}
+          >
+            {activeOffStaff.first_name} {activeOffStaff.last_name[0]}.
           </div>
         )}
       </DragOverlay>
