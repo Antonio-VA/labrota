@@ -1190,8 +1190,10 @@ export function runRotaEngine({
     }
 
     // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
+    // Runs for ALL modes (including shift-coverage-aware) to prevent shifts being left
+    // completely empty when their configured coverage is 0 but staff are available.
     const dayPlan = days[days.length - 1]
-    if (!shiftCoverageEnabled && defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
+    if (defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
       const shiftCount: Record<string, number> = {}
       for (const sc of defaultShiftCodes) shiftCount[sc] = 0
       for (const a of dayPlan.assignments) shiftCount[a.shift_type] = (shiftCount[a.shift_type] ?? 0) + 1
