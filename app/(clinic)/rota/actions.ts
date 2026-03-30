@@ -351,12 +351,31 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     : new Set(shiftTypesData.map((st) => st.code))
 
   // Populate day assignments
+  // In by_shift mode, each staff member may have one shift row (function_label="")
+  // plus multiple task-detail rows (function_label="OPU" etc). We only show the
+  // shift row in the grid; task-detail rows are metadata for the task sub-view.
+  // In by_task mode, every row is meaningful (each is a distinct task assignment).
+  const seenStaffDay = new Set<string>() // "staffId:date" — dedup for by_shift
+
   for (const a of assignmentsData ?? []) {
     const day = dayMap[a.date]
     if (!day) continue
     if (validShiftCodes && !validShiftCodes.has(a.shift_type)) continue
     const staff = a.staff as { id: string; first_name: string; last_name: string; role: string } | null
     if (!staff) continue
+
+    // In by_shift mode, skip task-detail rows — only keep the shift-level row
+    if (orgDisplayMode === "by_shift" && a.function_label && a.function_label !== "") {
+      continue
+    }
+
+    // Deduplicate: in by_shift mode, one entry per staff per day
+    if (orgDisplayMode === "by_shift") {
+      const key = `${a.staff_id}:${a.date}`
+      if (seenStaffDay.has(key)) continue
+      seenStaffDay.add(key)
+    }
+
     day.assignments.push({
       id: a.id,
       staff_id: a.staff_id,
