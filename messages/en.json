@@ -540,7 +540,7 @@
     "notLinked": "No linked staff member",
     "notLinkedDescription": "Your account is not linked to any staff member. Contact your manager to link it.",
     "viewerRequestInfo": "Your leave requests will be reviewed by a manager before being approved.",
-    "viewerApprovalInfo": "Your leave must be approved by a manager before it takes effect.",
+    "viewerApprovalInfo": "Get manager approval before adding leave.",
     "requestBanner": "This request will be sent to your manager for approval.",
     "sendRequest": "Send request"
   },

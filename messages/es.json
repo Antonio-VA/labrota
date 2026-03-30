@@ -540,7 +540,7 @@
     "notLinked": "Sin empleado asociado",
     "notLinkedDescription": "Tu cuenta no está vinculada a ningún empleado. Contacta con tu responsable para vincularla.",
     "viewerRequestInfo": "Tus solicitudes de ausencia serán revisadas por un responsable antes de ser aprobadas.",
-    "viewerApprovalInfo": "Tus ausencias deben ser aprobadas por un responsable antes de hacerse efectivas.",
+    "viewerApprovalInfo": "Solicita aprobación de tu responsable antes de añadir una ausencia.",
     "requestBanner": "Esta solicitud será enviada a tu responsable para su aprobación.",
     "sendRequest": "Enviar solicitud"
   },
