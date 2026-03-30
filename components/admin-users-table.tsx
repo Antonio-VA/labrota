@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
-import { renameOrgUser, removeOrgUser } from "@/app/admin/actions"
+import { renameOrgUser, removeOrgUser, updateOrgUserRole } from "@/app/admin/actions"
+import { toast } from "sonner"
 import { Check, X, Pencil } from "lucide-react"
 
 export interface UserRow {
@@ -38,9 +39,22 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
   const [isEditing, setIsEditing]     = useState(false)
   const [draft, setDraft]             = useState(user.displayName ?? "")
   const [displayName, setDisplayName] = useState(user.displayName)
+  const [role, setRole]               = useState(user.role)
   const [error, setError]             = useState("")
   const [isPending, startTransition]  = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleRoleChange(newRole: string) {
+    const prev = role
+    setRole(newRole)
+    startTransition(async () => {
+      const result = await updateOrgUserRole(user.id, orgId, newRole)
+      if (result?.error) {
+        setRole(prev)
+        toast.error(result.error)
+      }
+    })
+  }
 
   useEffect(() => {
     if (isEditing) inputRef.current?.focus()
@@ -128,15 +142,18 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
         )}
       </td>
 
-      {/* Role badge */}
+      {/* Role dropdown */}
       <td className="px-4 py-3">
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-          user.role === "viewer"
-            ? "bg-muted text-muted-foreground"
-            : "bg-blue-50 text-blue-700"
-        }`}>
-          {user.role === "viewer" ? "Viewer" : "Admin"}
-        </span>
+        <select
+          value={role}
+          onChange={(e) => handleRoleChange(e.target.value)}
+          disabled={isPending}
+          className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none cursor-pointer"
+        >
+          {role === "admin" && <option value="admin">Admin</option>}
+          <option value="manager">Manager</option>
+          <option value="viewer">Viewer</option>
+        </select>
       </td>
 
       {/* Last login */}

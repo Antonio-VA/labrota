@@ -96,22 +96,22 @@ export default async function OrgDetailPage({
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "Personal activo", value: String(staffRes.count ?? 0), isNumber: true },
-          { label: "Horarios (total)", value: String(rotasRes.count ?? 0), isNumber: true },
-          { label: "Horarios (30 días)", value: String(recentRotasRes.count ?? 0), isNumber: true },
-          { label: "Último acceso", value: lastLoginOverall ? fmt(lastLoginOverall) : "Nunca", isNumber: false },
-        ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
-            <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-            <p className={cn("mt-0.5 leading-tight", kpi.isNumber ? "text-[22px] font-semibold text-foreground" : "text-[14px] font-medium text-foreground")}>{kpi.value}</p>
-          </div>
-        ))}
-      </div>
-
       <AdminOrgTabs
+        estadisticas={
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: "Personal activo", value: String(staffRes.count ?? 0), isNumber: true },
+              { label: "Horarios (total)", value: String(rotasRes.count ?? 0), isNumber: true },
+              { label: "Horarios (30 días)", value: String(recentRotasRes.count ?? 0), isNumber: true },
+              { label: "Último acceso", value: lastLoginOverall ? fmt(lastLoginOverall) : "Nunca", isNumber: false },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+                <p className={cn("mt-0.5 leading-tight", kpi.isNumber ? "text-[22px] font-semibold text-foreground" : "text-[14px] font-medium text-foreground")}>{kpi.value}</p>
+              </div>
+            ))}
+          </div>
+        }
         funcionalidades={
           <AdminOrgDetailClient
             orgId={id} userRows={userRows} section="funcionalidades"

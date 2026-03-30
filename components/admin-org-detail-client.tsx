@@ -6,9 +6,9 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil } from "lucide-react"
+import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -194,6 +194,44 @@ export function AdminOrgDetailClient({
           </div>
         )
       })()}
+
+      {/* Import rota actions */}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
+          <p className="text-[14px] font-medium">Importar horarios</p>
+          <p className="text-[12px] text-muted-foreground">Importar horarios existentes desde Excel, PDF o imagen. Se cambiará tu organización activa a esta clínica.</p>
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await adminSwitchToOrg(orgId)
+                  window.open("/onboarding/import", "_blank")
+                })
+              }}
+            >
+              <FileUp className="size-3.5" />
+              Importar datos históricos
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await adminSwitchToOrg(orgId)
+                  window.open("/onboarding/import-rota", "_blank")
+                })
+              }}
+            >
+              <CalendarPlus className="size-3.5" />
+              Importar horarios futuros
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Reset implementation modal */}
       {resetModalOpen && (

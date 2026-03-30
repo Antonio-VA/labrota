@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -14,6 +15,38 @@ async function assertSuperAdmin() {
   if (!user || user.app_metadata?.role !== "super_admin") {
     throw new Error("Unauthorised")
   }
+}
+
+// ── adminSwitchToOrg — switch super admin's active org context ────────────────
+export async function adminSwitchToOrg(orgId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.app_metadata?.role !== "super_admin") throw new Error("Unauthorised")
+
+  const admin = createAdminClient()
+
+  // Ensure super admin is a member of this org (add as admin if not)
+  const { data: existing } = await admin
+    .from("organisation_members")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("organisation_id", orgId)
+    .maybeSingle()
+
+  if (!existing) {
+    await admin.from("organisation_members").insert({
+      user_id: user.id,
+      organisation_id: orgId,
+      role: "admin",
+    } as never)
+  }
+
+  // Set active org in profile + cookie
+  await admin.from("profiles").update({ organisation_id: orgId } as never).eq("id", user.id)
+  const cookieStore = await cookies()
+  cookieStore.set("labrota_active_org", orgId, { path: "/", maxAge: 365 * 86400, sameSite: "lax" })
+
+  return { success: true }
 }
 
 // ── createOrganisation ────────────────────────────────────────────────────────
@@ -157,6 +190,22 @@ export async function renameOrgUser(userId: string, orgId: string, newName: stri
     .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
+  return { success: true }
+}
+
+// ── updateOrgUserRole ─────────────────────────────────────────────────────────
+export async function updateOrgUserRole(userId: string, orgId: string, newRole: string) {
+  await assertSuperAdmin()
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisation_members")
+    .update({ role: newRole } as never)
+    .eq("user_id", userId)
+    .eq("organisation_id", orgId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }
 
