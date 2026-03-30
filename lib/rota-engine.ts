@@ -848,6 +848,25 @@ export function runRotaEngine({
       }
 
       const assignedToShift = new Set<string>()
+      const shiftSkills: Record<string, Set<string>> = {}
+      for (const sc of defaultShiftCodes) shiftSkills[sc] = new Set()
+
+      // ── Pre-place staff with fixed shift assignments (asignacion_fija) ──
+      // These must be placed BEFORE coverage steps so the counters are accurate.
+      // Otherwise a person counted in T5 during coverage gets overridden to T1 after,
+      // leaving T5 empty despite having configured minimums.
+      for (const [staffId, fixedShift] of Object.entries(fixedShiftOverrides)) {
+        if (!defaultShiftCodes.includes(fixedShift)) continue
+        const s = assigned.find((st) => st.id === staffId)
+        if (!s || assignedToShift.has(staffId)) continue
+        dayPlanAssignments.push({ staff_id: staffId, shift_type: fixedShift as ShiftType })
+        assignedToShift.add(staffId)
+        shiftFilled[fixedShift] = (shiftFilled[fixedShift] ?? 0) + 1
+        if (s.role === "lab") shiftFilledLab[fixedShift] = (shiftFilledLab[fixedShift] ?? 0) + 1
+        else if (s.role === "andrology") shiftFilledAndro[fixedShift] = (shiftFilledAndro[fixedShift] ?? 0) + 1
+        else shiftFilledAdmin[fixedShift] = (shiftFilledAdmin[fixedShift] ?? 0) + 1
+        for (const sk of s.staff_skills) shiftSkills[fixedShift]?.add(sk.skill)
+      }
 
       // ── Rotation preference for coverage-aware mode ──
       // Returns a score (lower = preferred) for placing a staff member in a given shift.
@@ -911,9 +930,6 @@ export function runRotaEngine({
       // ── Step 0: Place staff required for technique coverage per shift ──
       // For each shift, find techniques that MUST be covered there and ensure
       // at least one qualified person is assigned. Rarest technique first.
-      const shiftSkills: Record<string, Set<string>> = {}
-      for (const sc of defaultShiftCodes) shiftSkills[sc] = new Set()
-
       for (const shiftCode of defaultShiftCodes) {
         const requiredTechs = techRequiredInShift[shiftCode]
         if (!requiredTechs) continue
@@ -1181,11 +1197,14 @@ export function runRotaEngine({
 
     days.push({ date, assignments: dayPlanAssignments, skillGaps })
 
-    // Apply asignacion_fija shift overrides
-    for (const [staffId, fixedShift] of Object.entries(fixedShiftOverrides)) {
-      const asg = dayPlanAssignments.find((a) => a.staff_id === staffId)
-      if (asg && asg.shift_type !== fixedShift) {
-        asg.shift_type = fixedShift as ShiftType
+    // Apply asignacion_fija shift overrides (non-coverage mode only —
+    // coverage mode pre-places these before Steps 0-3)
+    if (!shiftCoverageEnabled) {
+      for (const [staffId, fixedShift] of Object.entries(fixedShiftOverrides)) {
+        const asg = dayPlanAssignments.find((a) => a.staff_id === staffId)
+        if (asg && asg.shift_type !== fixedShift) {
+          asg.shift_type = fixedShift as ShiftType
+        }
       }
     }
 
