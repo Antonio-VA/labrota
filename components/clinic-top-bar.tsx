@@ -86,7 +86,7 @@ export function ClinicTopBar({
                         localStorage.setItem("activeOrgId", org.id)
                         startSwitch(async () => {
                           await switchOrgAction(org.id)
-                          window.location.href = "/"
+                          window.location.reload()
                         })
                       }}
                       className="flex-1 text-left truncate"
