@@ -544,6 +544,7 @@
     "viewerApprovalInfo": "Get manager approval before adding leave.",
     "requestBanner": "This request will be sent to your manager for approval.",
     "sendRequest": "Send request",
+    "requestSent": "Leave request sent successfully",
     "cancelLeave": "Cancel",
     "cancelConfirm": "Cancel this leave?",
     "cancelledSuccess": "Leave cancelled."

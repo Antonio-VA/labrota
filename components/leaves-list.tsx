@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet"
 import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave } from "@/app/(clinic)/leaves/actions"
 import { formatDateWithYear } from "@/lib/format-date"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { LeaveWithStaff, Staff, LeaveType } from "@/lib/types/database"
 
@@ -117,6 +118,7 @@ function LeaveForm({
         notes: (fd.get("notes") as string) || undefined,
       })
       if (result.error) { setRequestError(result.error); return }
+      toast.success(t("requestSent"))
       router.refresh()
       onSuccess()
     })
