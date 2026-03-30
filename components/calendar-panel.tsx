@@ -213,12 +213,14 @@ function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [open])
 
-  // Build weeks: 4 past + current + 8 future = 13 weeks
+  // Build periods: when view=month show 4-week blocks, otherwise individual weeks
+  // 4 past + current + 8 future = 13 entries
   const weeks = useMemo(() => {
+    const step = view === "month" ? 28 : 7
     const result: { monday: string; label: string; isCurrent: boolean }[] = []
     for (let i = -4; i <= 8; i++) {
-      const monday = addDays(weekStart, i * 7)
-      const end = addDays(monday, 6)
+      const monday = addDays(weekStart, i * step)
+      const end = addDays(monday, step - 1)
       const mDate = new Date(monday + "T12:00:00")
       const eDate = new Date(end + "T12:00:00")
       const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(mDate)
@@ -229,7 +231,7 @@ function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
       result.push({ monday, label, isCurrent: i === 0 })
     }
     return result
-  }, [weekStart, locale])
+  }, [weekStart, locale, view])
 
   return (
     <div className="relative" ref={ref}>
@@ -243,7 +245,11 @@ function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[200px] max-h-[320px] overflow-y-auto">
           {weeks.map((w) => {
-            const isThisWeek = w.monday === getMondayOfWeek(new Date(TODAY + "T12:00:00"))
+            const todayMonday = getMondayOfWeek(new Date(TODAY + "T12:00:00"))
+            const step = view === "month" ? 28 : 7
+            const isThisWeek = view === "month"
+              ? todayMonday >= w.monday && todayMonday < addDays(w.monday, step)
+              : w.monday === todayMonday
             return (
               <button
                 key={w.monday}
