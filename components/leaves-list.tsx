@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave } from "@/app/(clinic)/leaves/actions"
+import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave } from "@/app/(clinic)/leaves/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import type { LeaveWithStaff, Staff, LeaveType } from "@/lib/types/database"
@@ -241,19 +241,55 @@ function LeaveForm({
   )
 }
 
+// ── Status badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof useTranslations<"leaves">> }) {
+  const cfg: Record<string, { bg: string; text: string }> = {
+    pending:   { bg: "bg-amber-50 border-amber-200", text: "text-amber-700" },
+    approved:  { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700" },
+    rejected:  { bg: "bg-red-50 border-red-200", text: "text-red-700" },
+    cancelled: { bg: "bg-slate-50 border-slate-200", text: "text-slate-500" },
+  }
+  const c = cfg[leave.status] ?? cfg.pending
+  const reviewerInfo = leave.reviewed_at && leave.reviewer_name
+    ? ` · ${leave.reviewer_name}`
+    : ""
+  const timeInfo = leave.reviewed_at
+    ? ` · ${new Date(leave.reviewed_at).toLocaleDateString()}`
+    : ""
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium w-fit", c.bg, c.text)}>
+        {t(`status.${leave.status}`)}
+      </span>
+      {(reviewerInfo || timeInfo) && leave.status !== "pending" && (
+        <span className="text-[10px] text-muted-foreground leading-tight">
+          {timeInfo.replace(" · ", "")}{reviewerInfo}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // ── Leaves table ──────────────────────────────────────────────────────────────
 function LeavesTable({
   rows,
   locale,
   onEdit,
+  onCancel,
   t,
   muted,
+  showStatus,
+  canCancel,
 }: {
   rows: LeaveWithStaff[]
   locale: "es" | "en"
   onEdit: (leave: LeaveWithStaff) => void
+  onCancel?: (leaveId: string) => void
   t: ReturnType<typeof useTranslations<"leaves">>
   muted: boolean
+  showStatus?: boolean
+  canCancel?: (leave: LeaveWithStaff) => boolean
 }) {
   const cellClass = muted ? "text-muted-foreground" : ""
 
@@ -267,6 +303,7 @@ function LeavesTable({
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
             <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
+            {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
             <th className="w-10" />
           </tr>
         </thead>
@@ -286,7 +323,21 @@ function LeavesTable({
               <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
               <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
               <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
-              <td className="px-4 py-2.5" />
+              {showStatus && (
+                <td className="px-4 py-2.5">
+                  <StatusBadge leave={leave} t={t} />
+                </td>
+              )}
+              <td className="px-4 py-2.5 text-right">
+                {onCancel && canCancel?.(leave) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
+                    className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    {t("cancelLeave")}
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -444,6 +495,23 @@ export function LeavesList({
   const [typeFilter, setTypeFilter] = useState<LeaveType | "all">("all")
   const [showHistory, setShowHistory] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
+  const [, startCancelTransition] = useTransition()
+
+  function handleCancel(leaveId: string) {
+    if (!confirm(t("cancelConfirm"))) return
+    startCancelTransition(async () => {
+      await cancelLeave(leaveId)
+      router.refresh()
+    })
+  }
+
+  function canCancelLeave(leave: LeaveWithStaff): boolean {
+    // Viewers can cancel their own pending/approved leaves
+    // Admins/managers can cancel any pending/approved leave
+    if (leave.status !== "pending" && leave.status !== "approved") return false
+    if (isViewer) return leave.staff_id === viewerStaffId
+    return true
+  }
 
   // Viewers without linked staff can't access leaves
   if (isViewer && !viewerStaffId) {
@@ -491,7 +559,7 @@ export function LeavesList({
       {/* KPI summary band — hide for viewers */}
       {!isViewer && visibleLeaves.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <KpiCards leaves={visibleLeaves} />
+          <KpiCards leaves={visibleLeaves.filter((l) => l.status !== "cancelled" && l.status !== "rejected")} />
         </div>
       )}
 
@@ -547,7 +615,7 @@ export function LeavesList({
 
       {/* Upcoming / active leaves */}
       {filteredUpcoming.length > 0 && (
-        <LeavesTable rows={filteredUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} />
+        <LeavesTable rows={filteredUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
       )}
 
       {filteredUpcoming.length === 0 && filteredPast.length > 0 && (
@@ -569,7 +637,7 @@ export function LeavesList({
 
       {/* Past leaves */}
       {showHistory && filteredPast.length > 0 && (
-        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted />
+        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
       )}
 
       {/* Sheet */}

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const newStatus = action === "approve" ? "approved" : "rejected"
   const { error } = await admin
     .from("leaves")
-    .update({ status: newStatus } as never)
+    .update({ status: newStatus, reviewed_at: new Date().toISOString() } as never)
     .eq("id", leaveId)
 
   if (error) {

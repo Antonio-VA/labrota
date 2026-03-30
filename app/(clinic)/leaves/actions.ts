@@ -460,6 +460,8 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { data: leave, error: fetchError } = await supabase
     .from("leaves")
     .select("staff_id, start_date, end_date, type")
@@ -471,7 +473,11 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   const { error } = await supabase
     .from("leaves")
-    .update({ status: "approved" } as never)
+    .update({
+      status: "approved",
+      reviewed_by: user?.id ?? null,
+      reviewed_at: new Date().toISOString(),
+    } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
@@ -492,14 +498,20 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 }
 
 /** Admin rejects a pending leave request. */
-export async function rejectLeave(leaveId: string, reason?: string): Promise<{ error?: string }> {
+export async function rejectLeave(leaveId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { error } = await supabase
     .from("leaves")
-    .delete()
+    .update({
+      status: "rejected",
+      reviewed_by: user?.id ?? null,
+      reviewed_at: new Date().toISOString(),
+    } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
@@ -507,4 +519,135 @@ export async function rejectLeave(leaveId: string, reason?: string): Promise<{ e
 
   revalidatePath("/leaves")
   return {}
+}
+
+/** User cancels their own leave (pending or approved). Notifies managers. */
+export async function cancelLeave(leaveId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  const { data: leave } = await admin
+    .from("leaves")
+    .select("id, staff_id, type, start_date, end_date, status, organisation_id, staff:staff!inner(first_name, last_name)")
+    .eq("id", leaveId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { id: string; staff_id: string; type: string; start_date: string; end_date: string; status: string; organisation_id: string; staff: { first_name: string; last_name: string } } | null }
+
+  if (!leave) return { error: "Leave not found." }
+  if (leave.status !== "pending" && leave.status !== "approved") {
+    return { error: "Only pending or approved leaves can be cancelled." }
+  }
+
+  const { error } = await admin
+    .from("leaves")
+    .update({ status: "cancelled" } as never)
+    .eq("id", leaveId)
+    .eq("organisation_id", orgId)
+
+  if (error) return { error: error.message }
+
+  // Notify managers about the cancellation
+  try {
+    const staffName = `${leave.staff.first_name} ${leave.staff.last_name}`
+
+    const [managersRes, orgRes, labConfigRes] = await Promise.all([
+      admin.from("organisation_members").select("user_id").eq("organisation_id", orgId).in("role", ["admin", "manager"]),
+      admin.from("organisations").select("name").eq("id", orgId).single(),
+      admin.from("lab_config").select("country").eq("organisation_id", orgId).maybeSingle(),
+    ])
+
+    const managers = (managersRes.data ?? []) as Array<{ user_id: string }>
+    if (managers.length) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, email")
+        .in("id", managers.map((m) => m.user_id)) as { data: Array<{ id: string; email: string }> | null }
+
+      const emails = (profiles ?? []).map((p) => p.email).filter(Boolean)
+      const orgName = (orgRes.data as { name: string } | null)?.name ?? "LabRota"
+      const country = (labConfigRes.data as { country?: string } | null)?.country ?? ""
+      const locale: "es" | "en" = country === "ES" || country === "" ? "es" : "en"
+
+      if (emails.length > 0) {
+        await sendLeaveCancellationEmail({
+          to: emails, staffName, type: leave.type,
+          startDate: leave.start_date, endDate: leave.end_date,
+          wasApproved: leave.status === "approved",
+          orgName, locale,
+        })
+      }
+    }
+  } catch {
+    // Email failure should not block
+  }
+
+  revalidatePath("/leaves")
+  return {}
+}
+
+async function sendLeaveCancellationEmail(params: {
+  to: string[]; staffName: string; type: string
+  startDate: string; endDate: string; wasApproved: boolean
+  orgName: string; locale: "es" | "en"
+}) {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) return
+
+  const isEs = params.locale === "es"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.labrota.app"
+
+  const typeLabels: Record<string, { es: string; en: string }> = {
+    annual: { es: "Vacaciones", en: "Annual leave" }, sick: { es: "Baja médica", en: "Sick leave" },
+    personal: { es: "Asuntos propios", en: "Personal leave" }, training: { es: "Formación", en: "Training" },
+    maternity: { es: "Maternidad/Paternidad", en: "Maternity/Paternity" }, other: { es: "Otros", en: "Other" },
+  }
+  const typeLabel = typeLabels[params.type]?.[params.locale] ?? params.type
+  const fmtDate = (d: string) => new Date(d + "T12:00:00").toLocaleDateString(isEs ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short" })
+
+  const statusNote = params.wasApproved
+    ? (isEs ? "Esta ausencia ya estaba aprobada. Revisa el horario si es necesario." : "This leave was already approved. Review the schedule if needed.")
+    : ""
+
+  const subject = isEs
+    ? `Ausencia cancelada: ${params.staffName}`
+    : `Leave cancelled: ${params.staffName}`
+
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <span style="font-size:24px;color:#1B4F8A;"><span style="font-weight:300;">lab</span><span style="font-weight:700;">rota</span></span>
+  </div>
+  <div style="background:white;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+    <div style="background:#64748b;padding:20px 24px;">
+      <h1 style="margin:0;color:white;font-size:18px;font-weight:600;">${isEs ? "Ausencia cancelada" : "Leave cancelled"}</h1>
+      <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">${params.orgName}</p>
+    </div>
+    <div style="padding:24px;">
+      <p style="margin:0 0 16px;color:#334155;font-size:15px;">
+        ${isEs
+          ? `<strong>${params.staffName}</strong> ha cancelado su ausencia.`
+          : `<strong>${params.staffName}</strong> has cancelled their leave.`}
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 16px;" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;width:120px;">${isEs ? "Tipo" : "Type"}</td><td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${typeLabel}</td></tr>
+        <tr><td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Desde" : "From"}</td><td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${fmtDate(params.startDate)}</td></tr>
+        <tr><td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Hasta" : "To"}</td><td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${fmtDate(params.endDate)}</td></tr>
+      </table>
+      ${statusNote ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:0 0 16px;"><p style="margin:0;color:#92400e;font-size:13px;">⚠️ ${statusNote}</p></div>` : ""}
+      <p style="text-align:center;margin:16px 0 0;"><a href="${baseUrl}/leaves" style="color:#1B4F8A;font-size:13px;text-decoration:underline;">${isEs ? "Abrir LabRota" : "Open LabRota"}</a></p>
+    </div>
+  </div>
+  <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">${isEs ? "Este email fue enviado automáticamente por LabRota." : "This email was sent automatically by LabRota."}</p>
+</div></body></html>`
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "LabRota <noreply@labrota.app>", to: params.to, subject, html }),
+  })
 }

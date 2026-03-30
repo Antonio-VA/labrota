@@ -69,8 +69,37 @@ export default async function LeavesPage() {
       .order("last_name"),
   ])
 
-  const leaves = (leavesData ?? []) as LeaveWithStaff[]
+  const rawLeaves = (leavesData ?? []) as LeaveWithStaff[]
   const staff  = (staffData  ?? []) as Staff[]
+
+  // Resolve reviewer names for leaves that have reviewed_by
+  const reviewerIds = [...new Set(rawLeaves.map((l) => l.reviewed_by).filter(Boolean))] as string[]
+  let reviewerMap: Record<string, string> = {}
+  if (reviewerIds.length > 0) {
+    const admin = createAdminClient()
+    const { data: reviewerProfiles } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", reviewerIds) as { data: Array<{ id: string; full_name: string | null }> | null }
+    // Also check org display names
+    const orgId = (await supabase.from("profiles").select("organisation_id").eq("id", user!.id).single()).data?.organisation_id
+    if (orgId && reviewerProfiles) {
+      const { data: memberNames } = await admin
+        .from("organisation_members")
+        .select("user_id, display_name")
+        .eq("organisation_id", orgId)
+        .in("user_id", reviewerIds) as { data: Array<{ user_id: string; display_name: string | null }> | null }
+      const memberNameMap = Object.fromEntries((memberNames ?? []).map((m) => [m.user_id, m.display_name]))
+      reviewerMap = Object.fromEntries(
+        (reviewerProfiles ?? []).map((p) => [p.id, memberNameMap[p.id] ?? p.full_name ?? "Manager"])
+      )
+    }
+  }
+
+  const leaves = rawLeaves.map((l) => ({
+    ...l,
+    reviewer_name: l.reviewed_by ? reviewerMap[l.reviewed_by] ?? null : null,
+  }))
 
   return (
     <>

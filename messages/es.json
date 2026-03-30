@@ -512,7 +512,8 @@
     "status": {
       "pending": "Pendiente",
       "approved": "Aprobada",
-      "rejected": "Rechazada"
+      "rejected": "Rechazada",
+      "cancelled": "Cancelada"
     },
     "fields": {
       "staff": "Empleado",
@@ -542,7 +543,10 @@
     "viewerRequestInfo": "Tus solicitudes de ausencia serán revisadas por un responsable antes de ser aprobadas.",
     "viewerApprovalInfo": "Solicita aprobación de tu responsable antes de añadir una ausencia.",
     "requestBanner": "Esta solicitud será enviada a tu responsable para su aprobación.",
-    "sendRequest": "Enviar solicitud"
+    "sendRequest": "Enviar solicitud",
+    "cancelLeave": "Cancelar",
+    "cancelConfirm": "¿Cancelar esta ausencia?",
+    "cancelledSuccess": "Ausencia cancelada."
   },
   "lab": {
     "title": "Laboratorio",

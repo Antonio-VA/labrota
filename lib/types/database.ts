@@ -23,7 +23,7 @@ export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
 export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
 export type LeaveType         = 'annual' | 'sick' | 'personal' | 'training' | 'maternity' | 'other'
-export type LeaveStatus       = 'pending' | 'approved' | 'rejected'
+export type LeaveStatus       = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type SkillName = string
 
 export type SkillLevel        = 'certified' | 'training'
@@ -111,6 +111,8 @@ export interface Leave {
   status:          LeaveStatus
   notes:           string | null
   created_by:      string | null
+  reviewed_by:     string | null
+  reviewed_at:     string | null
   created_at:      string
   updated_at:      string
 }
@@ -362,6 +364,7 @@ export interface RotaAssignmentWithStaff extends RotaAssignment {
 
 export interface LeaveWithStaff extends Leave {
   staff: Pick<Staff, 'id' | 'first_name' | 'last_name' | 'role'>
+  reviewer_name?: string | null
 }
 
 // ── Supabase Database type (for typed createClient<Database>()) ───────────────
