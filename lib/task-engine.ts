@@ -456,25 +456,13 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         taskDemand.push({ code: tecCode, needed, department: tec.department || "lab" })
       }
     } else {
-      // Fallback: distribute department minimums evenly across department tasks
-      for (const [dept, deptTecnicas] of Object.entries(tecByDept)) {
-        const minForDept = deptMins[dept] ?? 0
-        if (minForDept <= 0 || deptTecnicas.length === 0) continue
-
-        // Each task gets floor(min/numTasks), remainder distributed to first tasks
-        const perTask = Math.floor(minForDept / deptTecnicas.length)
-        const remainder = minForDept % deptTecnicas.length
-
-        for (let i = 0; i < deptTecnicas.length; i++) {
-          const needed = perTask + (i < remainder ? 1 : 0)
-          if (needed > 0) {
-            taskDemand.push({
-              code: deptTecnicas[i].codigo,
-              needed,
-              department: dept,
-            })
-          }
-        }
+      // Fallback: at least 1 person per active technique
+      for (const tec of tecnicas) {
+        taskDemand.push({
+          code: tec.codigo,
+          needed: 1,
+          department: tec.department || "lab",
+        })
       }
     }
 

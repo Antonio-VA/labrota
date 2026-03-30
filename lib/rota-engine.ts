@@ -1467,8 +1467,10 @@ export function runRotaEngine({
     }
   }
 
-  // ── PHASE 4: Task assignment (only when taskCoverageEnabled) ────────────────
-  if (taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0) {
+  // ── PHASE 4: Task assignment ─────────────────────────────────────────────────
+  const hasExplicitTaskCoverage = taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0
+  const hasActiveTecnicas = tecnicas.length > 0
+  if (hasExplicitTaskCoverage || hasActiveTecnicas) {
     const taskConflictThreshold = labConfig.task_conflict_threshold ?? 3
 
     for (const dayPlan of days) {
@@ -1483,16 +1485,28 @@ export function runRotaEngine({
 
       // 4.1: Build task demand for this day
       const taskDemand: { code: string; needed: number; typical_shifts: Set<string>; avoid_shifts: Set<string> }[] = []
-      for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay)) {
-        const needed = dayCov[dayCode] ?? 0
-        if (needed <= 0) continue
-        const tec = tecnicas.find((t) => t.codigo === tecCode)
-        taskDemand.push({
-          code: tecCode,
-          needed,
-          typical_shifts: new Set(tec?.typical_shifts ?? []),
-          avoid_shifts: new Set(tec?.avoid_shifts ?? []),
-        })
+      if (hasExplicitTaskCoverage) {
+        for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay!)) {
+          const needed = dayCov[dayCode] ?? 0
+          if (needed <= 0) continue
+          const tec = tecnicas.find((t) => t.codigo === tecCode)
+          taskDemand.push({
+            code: tecCode,
+            needed,
+            typical_shifts: new Set(tec?.typical_shifts ?? []),
+            avoid_shifts: new Set(tec?.avoid_shifts ?? []),
+          })
+        }
+      } else {
+        // Fallback: at least 1 person per active technique
+        for (const tec of tecnicas) {
+          taskDemand.push({
+            code: tec.codigo,
+            needed: 1,
+            typical_shifts: new Set(tec.typical_shifts ?? []),
+            avoid_shifts: new Set(tec.avoid_shifts ?? []),
+          })
+        }
       }
 
       // 4.1b: Apply restriccion_dia_tecnica rules — remove demand for blocked techniques
