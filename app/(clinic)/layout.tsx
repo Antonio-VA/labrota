@@ -83,16 +83,27 @@ export default async function ClinicLayout({
       else if (activeMembership?.role === "manager") userRole = "manager"
     }
 
-    // Resolve viewer's staff_id by email match
-    if (userRole === "viewer" && user.email && activeOrgId) {
-      const { data: staffMatch } = await admin
-        .from("staff")
-        .select("id")
+    // Resolve viewer's staff_id: first check linked_staff_id, then fallback to email match
+    if (userRole === "viewer" && activeOrgId) {
+      const { data: membership } = await admin
+        .from("organisation_members")
+        .select("linked_staff_id")
+        .eq("user_id", user.id)
         .eq("organisation_id", activeOrgId)
-        .eq("email", user.email)
-        .neq("onboarding_status", "inactive")
-        .maybeSingle() as { data: { id: string } | null }
-      viewerStaffId = staffMatch?.id ?? null
+        .maybeSingle() as { data: { linked_staff_id: string | null } | null }
+
+      if (membership?.linked_staff_id) {
+        viewerStaffId = membership.linked_staff_id
+      } else if (user.email) {
+        const { data: staffMatch } = await admin
+          .from("staff")
+          .select("id")
+          .eq("organisation_id", activeOrgId)
+          .eq("email", user.email)
+          .neq("onboarding_status", "inactive")
+          .maybeSingle() as { data: { id: string } | null }
+        viewerStaffId = staffMatch?.id ?? null
+      }
     }
 
     if (memberships && memberships.length > 1) {
