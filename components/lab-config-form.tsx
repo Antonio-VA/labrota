@@ -314,23 +314,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       </div>
 
-      {/* ── CONFLICTO POR TAREA (solo by_task) ─────────────────────────── */}
-      {rotaDisplayMode === "by_task" && (
-        <div className="rounded-lg border border-border bg-background px-5">
-          <SectionHeader title="Conflicto por tarea" />
-          <div className="flex flex-col gap-0">
-            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X tareas en el mismo día">
-              <Input
-                type="number" min={2} max={10}
-                value={values.task_conflict_threshold}
-                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v >= 2) setValues((p) => ({ ...p, task_conflict_threshold: v })) }}
-                disabled={isPending}
-                className="w-16 text-center"
-              />
-            </FieldRow>
-          </div>
-        </div>
-      )}
+      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
 
       </>}
 
@@ -690,6 +674,66 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 />
               </div>
               <span className="text-[11px] text-muted-foreground">%</span>
+            </div>
+          </FieldRow>
+        </div>
+      </div>
+
+      {/* ── CONFLICTO POR TAREA (solo by_task) ─────────────────────────── */}
+      {rotaDisplayMode === "by_task" && (
+        <div className="rounded-lg border border-border bg-background px-5">
+          <SectionHeader title="Conflicto por tarea" />
+          <div className="flex flex-col gap-0">
+            <FieldRow label="Umbral de conflicto" hint="Avisar cuando una persona está asignada a más de X tareas en el mismo día">
+              <Input
+                type="number" min={2} max={10}
+                value={values.task_conflict_threshold}
+                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v >= 2) setValues((p) => ({ ...p, task_conflict_threshold: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+            </FieldRow>
+          </div>
+        </div>
+      )}
+
+      {/* ── RATIO DE COBERTURA ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("sections.ratioCobertura")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.ratioDescription")}</p>
+        <div className="flex flex-col gap-0">
+          <FieldRow label={t("fields.ratioOptimal")} hint={t("fields.ratioOptimalHint")}>
+            <div className="flex items-center gap-1">
+              <button type="button" disabled={isPending || values.ratio_optimal <= 0.1} onClick={() => setValues((p) => ({ ...p, ratio_optimal: Math.round((p.ratio_optimal - 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronDown className="size-3.5" />
+              </button>
+              <Input
+                type="number" min={0.1} max={5} step={0.1}
+                value={values.ratio_optimal}
+                onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_optimal: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <button type="button" disabled={isPending || values.ratio_optimal >= 5} onClick={() => setValues((p) => ({ ...p, ratio_optimal: Math.round((p.ratio_optimal + 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronUp className="size-3.5" />
+              </button>
+            </div>
+          </FieldRow>
+          <FieldRow label={t("fields.ratioMinimum")} hint={t("fields.ratioMinimumHint")}>
+            <div className="flex items-center gap-1">
+              <button type="button" disabled={isPending || values.ratio_minimum <= 0.1} onClick={() => setValues((p) => ({ ...p, ratio_minimum: Math.round((p.ratio_minimum - 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronDown className="size-3.5" />
+              </button>
+              <Input
+                type="number" min={0.1} max={5} step={0.1}
+                value={values.ratio_minimum}
+                onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setValues((p) => ({ ...p, ratio_minimum: v })) }}
+                disabled={isPending}
+                className="w-16 text-center"
+              />
+              <button type="button" disabled={isPending || values.ratio_minimum >= 5} onClick={() => setValues((p) => ({ ...p, ratio_minimum: Math.round((p.ratio_minimum + 0.1) * 10) / 10 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+                <ChevronUp className="size-3.5" />
+              </button>
             </div>
           </FieldRow>
         </div>

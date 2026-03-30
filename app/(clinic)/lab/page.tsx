@@ -113,7 +113,7 @@ export default async function LabConfigPage() {
                 <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-4">
                   Departamentos
                 </p>
-                <DepartmentsTab initialDepartments={departments} enableSubDepartments={rotaDisplayMode === "by_task" || (config as any)?.enable_task_in_shift === true} />
+                <DepartmentsTab initialDepartments={departments} enableSubDepartments={rotaDisplayMode !== "by_task" && (config as any)?.enable_task_in_shift !== true} />
               </div>
             }
             turnos={
