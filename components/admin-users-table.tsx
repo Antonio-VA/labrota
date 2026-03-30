@@ -2,8 +2,9 @@
 
 import { useState, useTransition, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
-import { renameOrgUser, removeOrgUser } from "@/app/admin/actions"
-import { Check, X, Pencil } from "lucide-react"
+import { renameOrgUser, removeOrgUser, adminLinkUserToStaff } from "@/app/admin/actions"
+import { Check, X, Pencil, Link2, Link2Off } from "lucide-react"
+import { toast } from "sonner"
 
 export interface UserRow {
   id:          string
@@ -12,32 +13,43 @@ export interface UserRow {
   orgId:       string
   role:        string
   lastLogin:   string | null
+  linkedStaffId?: string | null
 }
 
-export function AdminUsersTable({ users, orgId }: { users: UserRow[]; orgId: string }) {
+interface StaffOption {
+  id: string
+  first_name: string
+  last_name: string
+  role: string
+}
+
+export function AdminUsersTable({ users, orgId, staff = [] }: { users: UserRow[]; orgId: string; staff?: StaffOption[] }) {
   return (
     <table className="w-full text-[14px]">
       <thead>
         <tr className="border-b border-border bg-muted">
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nombre</th>
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rol</th>
+          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Personal vinculado</th>
           <th className="px-4 py-3 text-left font-medium text-muted-foreground">Último acceso</th>
           <th className="px-4 py-3" />
         </tr>
       </thead>
       <tbody>
         {users.map((u) => (
-          <UserTableRow key={u.id} user={u} orgId={orgId} />
+          <UserTableRow key={u.id} user={u} orgId={orgId} staff={staff} />
         ))}
       </tbody>
     </table>
   )
 }
 
-function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
+function UserTableRow({ user, orgId, staff }: { user: UserRow; orgId: string; staff: StaffOption[] }) {
   const [isEditing, setIsEditing]     = useState(false)
   const [draft, setDraft]             = useState(user.displayName ?? "")
   const [displayName, setDisplayName] = useState(user.displayName)
+  const [linkedStaffId, setLinkedStaffId] = useState(user.linkedStaffId ?? null)
+  const [linkingOpen, setLinkingOpen] = useState(false)
   const [error, setError]             = useState("")
   const [isPending, startTransition]  = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -71,9 +83,26 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
     })
   }
 
+  function handleLink(staffId: string | null) {
+    const prev = linkedStaffId
+    setLinkedStaffId(staffId)
+    setLinkingOpen(false)
+    startTransition(async () => {
+      const result = await adminLinkUserToStaff(user.id, orgId, staffId)
+      if (result.error) {
+        setLinkedStaffId(prev)
+        toast.error(result.error)
+      } else {
+        toast.success(staffId ? "Vinculado" : "Desvinculado")
+      }
+    })
+  }
+
+  const linkedStaff = linkedStaffId ? staff.find((s) => s.id === linkedStaffId) : null
+
   return (
     <tr className="border-b border-border last:border-0">
-      {/* Name — inline editable, email shown as tooltip */}
+      {/* Name — inline editable, email shown below */}
       <td className="px-4 py-3">
         {isEditing ? (
           <div className="flex items-center gap-1.5">
@@ -135,8 +164,38 @@ function UserTableRow({ user, orgId }: { user: UserRow; orgId: string }) {
             ? "bg-muted text-muted-foreground"
             : "bg-blue-50 text-blue-700"
         }`}>
-          {user.role === "viewer" ? "Viewer" : "Admin"}
+          {user.role === "viewer" ? "Viewer" : user.role === "manager" ? "Manager" : "Admin"}
         </span>
+      </td>
+
+      {/* Linked staff */}
+      <td className="px-4 py-3">
+        {linkingOpen ? (
+          <div className="flex items-center gap-1">
+            <select
+              defaultValue={linkedStaffId ?? ""}
+              onChange={(e) => handleLink(e.target.value || null)}
+              disabled={isPending}
+              className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
+            >
+              <option value="">— Sin vincular —</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+              ))}
+            </select>
+            <button onClick={() => setLinkingOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="size-3" />
+            </button>
+          </div>
+        ) : linkedStaff ? (
+          <button onClick={() => setLinkingOpen(true)} className="flex items-center gap-1 text-[12px] text-primary hover:underline">
+            <Link2 className="size-3" />{linkedStaff.first_name} {linkedStaff.last_name}
+          </button>
+        ) : (
+          <button onClick={() => setLinkingOpen(true)} className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground">
+            <Link2Off className="size-3" />Vincular
+          </button>
+        )}
       </td>
 
       {/* Last login */}

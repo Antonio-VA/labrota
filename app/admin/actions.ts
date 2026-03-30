@@ -201,6 +201,32 @@ export async function removeOrgUser(userId: string, orgId: string) {
   revalidatePath(`/admin/orgs/${orgId}`)
 }
 
+// ── adminLinkUserToStaff ──────────────────────────────────────────────────────
+export async function adminLinkUserToStaff(userId: string, orgId: string, staffId: string | null): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+
+  if (staffId) {
+    const { data: staff } = await admin
+      .from("staff")
+      .select("id")
+      .eq("id", staffId)
+      .eq("organisation_id", orgId)
+      .maybeSingle()
+    if (!staff) return { error: "Staff member not found in this organisation." }
+  }
+
+  const { error } = await admin
+    .from("organisation_members")
+    .update({ linked_staff_id: staffId } as never)
+    .eq("organisation_id", orgId)
+    .eq("user_id", userId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return {}
+}
+
 // ── createOrgUser ─────────────────────────────────────────────────────────────
 export async function createOrgUser(formData: FormData) {
   await assertSuperAdmin()

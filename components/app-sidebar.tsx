@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3, Settings } from "lucide-react"
 import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
-import { useCanEdit } from "@/lib/role-context"
+import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -112,6 +112,7 @@ export function AppSidebar() {
   }, [])
 
   const canEdit = useCanEdit()
+  const viewerStaffId = useViewerStaffId()
 
   const navItems = canEdit ? [
     { key: "schedule", icon: CalendarDays, href: "/" },
@@ -120,9 +121,11 @@ export function AppSidebar() {
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "reports",  icon: BarChart3,    href: "/reports" },
     { key: "settings", icon: Settings,     href: "/settings" },
-  ] as const : [
+  ] as const : viewerStaffId ? [
     { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
+  ] as const : [
+    { key: "schedule", icon: CalendarDays, href: "/" },
   ] as const
 
   return (
