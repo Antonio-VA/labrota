@@ -5440,12 +5440,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       />
 
       {/* Week notes — desktop only */}
-      <div className="hidden md:block" data-week-notes>
+      <div className="hidden md:block shrink-0" data-week-notes>
         {view === "week" && <WeekNotes weekStart={weekStart} />}
       </div>
 
       {/* Bottom taskbar — desktop only, hidden for viewers */}
-      <div className="hidden md:block">
+      <div className="hidden md:block shrink-0">
         {canEdit && view === "week" && !weekData && loadingWeek && (
           <div className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-2">
             <div className="h-3 w-20 rounded bg-muted animate-pulse" />
