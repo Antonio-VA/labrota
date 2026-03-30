@@ -70,7 +70,7 @@ export function MobileBottomNav() {
   return (
     <div
       className={cn(
-        "fixed right-4 z-40 lg:hidden transition-all duration-300 ease-out",
+        "fixed left-1/2 -translate-x-1/2 z-40 lg:hidden transition-all duration-300 ease-out",
         visible ? "bottom-3 opacity-100" : "bottom-[-80px] opacity-0",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
@@ -102,7 +102,7 @@ export function MobileBottomNav() {
                     <rect x="3" y="4" width="18" height="18" rx="2" />
                     <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
-                  <span className={cn("relative top-[3px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                  <span className={cn("relative top-[2px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
                     {new Date().getDate()}
                   </span>
                 </div>
