@@ -132,12 +132,19 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
     body.push(row)
   }
 
-  // ── Off/Libre row ──────────────────────────────────────────────────────
-  if (data.onLeaveByDate && data.staffNames) {
+  // ── Off/Libre row — all staff not assigned that day ─────────────────
+  if (data.staffNames) {
+    const allStaffIds = Object.keys(data.staffNames)
+    const leaveByDate = data.onLeaveByDate ?? {}
     const offRow: string[] = [locale === "es" ? "Libre" : "Off"]
     for (const day of data.days) {
-      const offIds = data.onLeaveByDate[day.date] ?? []
-      const names = offIds.map((id) => data.staffNames[id] ?? id).filter(Boolean)
+      const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+      const leaveIds = new Set(leaveByDate[day.date] ?? [])
+      const offIds = allStaffIds.filter((id) => !assignedIds.has(id))
+      // Show leave staff first, then others
+      const onLeave = offIds.filter((id) => leaveIds.has(id))
+      const notLeave = offIds.filter((id) => !leaveIds.has(id))
+      const names = [...onLeave, ...notLeave].map((id) => data.staffNames[id]).filter(Boolean)
       offRow.push(names.join("\n") || "—")
     }
     body.push(offRow)

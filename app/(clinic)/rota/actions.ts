@@ -293,14 +293,14 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
-      .select("id, first_name, last_name, role") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string }[] | null }>,
+      .select("id, first_name, last_name, role, onboarding_status") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string }[] | null }>,
     supabase
       .from("staff_skills")
       .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
   ])
 
   // Build a staff lookup map so we don't depend on a join
-  const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string }> = {}
+  const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string }> = {}
   for (const s of staffRes.data ?? []) staffLookup[s.id] = s
 
   // If newer columns missing, retry with minimal select
@@ -512,9 +512,10 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Build staffNames map for PDF off row
+  // Build staffNames map for PDF off row — active staff only
   const staffNames: Record<string, string> = {}
   for (const [id, s] of Object.entries(staffLookup)) {
+    if (s.onboarding_status === "inactive") continue
     staffNames[id] = `${s.first_name} ${s.last_name[0]}.`
   }
 

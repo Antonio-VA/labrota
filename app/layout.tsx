@@ -22,6 +22,12 @@ import type { Viewport } from "next"
 export const metadata: Metadata = {
   title: "LabRota",
   description: "Embryology lab shift scheduling and AI assistant",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "LabRota",
+  },
   icons: {
     icon: "/brand/favicon.svg",
     apple: "/brand/favicon.svg",

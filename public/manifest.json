@@ -1,0 +1,16 @@
+{
+  "name": "LabRota",
+  "short_name": "LabRota",
+  "description": "Shift scheduling for IVF labs",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1b4f8a",
+  "icons": [
+    {
+      "src": "/brand/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
