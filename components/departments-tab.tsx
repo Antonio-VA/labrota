@@ -129,7 +129,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
         onChange={(e) => onChange({ ...dept, name: e.target.value, name_en: e.target.value })}
         disabled={disabled}
         placeholder={t("namePlaceholder")}
-        className="h-7 text-[13px] flex-1"
+        className="h-7 text-[13px] flex-1 min-w-0"
       />
       <Input
         value={dept.abbreviation}
@@ -137,12 +137,12 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
         disabled={disabled}
         placeholder="ABR"
         maxLength={3}
-        className="h-7 text-[13px] font-mono uppercase w-[64px] shrink-0"
+        className="h-7 text-[13px] font-mono uppercase w-[60px] shrink-0 text-center"
       />
 
       {/* Preview pill */}
       <span
-        className="text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5 shrink-0"
+        className="text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5 shrink-0 w-[40px] text-center"
         style={{ borderLeft: `3px solid ${dept.colour}`, borderRadius: 4 }}
       >
         {dept.abbreviation || dept.name.slice(0, 3) || "—"}
@@ -159,7 +159,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
           <Trash2 className="size-3.5" />
         </button>
       ) : (
-        <div className="size-[26px] shrink-0" /> /* spacer to keep alignment */
+        <div className="size-[26px] shrink-0" />
       )}
     </div>
   )
