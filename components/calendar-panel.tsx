@@ -463,7 +463,6 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
   biopsyForecast: number; biopsyTooltip: string
 }) {
   const t = useTranslations("schedule")
-  const tc = useTranslations("common")
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
   const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
@@ -485,8 +484,21 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     const n = parseInt(draft, 10)
     if (!isNaN(n) && n >= 0) onChange(date, n === defaultValue ? null : n)
     else setDraft(String(value))
-    setOpen(false)
   }
+
+  // Autosave when draft changes (debounced via effect)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!open) return
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(() => {
+      const n = parseInt(draft, 10)
+      if (!isNaN(n) && n >= 0 && n !== value) {
+        onChange(date, n === defaultValue ? null : n)
+      }
+    }, 600)
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current) }
+  }, [draft, open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function reset() {
     onChange(date, null)
@@ -533,74 +545,37 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
 
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-44 flex flex-col gap-2"
+          className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-36 flex flex-col gap-2"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
             <span className="text-[11px] text-muted-foreground text-right">{t("punctions")}</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => setDraft((d) => String(Math.max(0, (parseInt(d, 10) || 0) - 1)))}
-                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <ChevronDown className="size-3" />
-              </button>
-              <input
-                autoFocus
-                type="number"
-                min={0}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
-                className="w-10 text-[12px] text-center border border-input rounded px-0.5 py-0.5 outline-none focus:border-primary bg-background"
-              />
-              <button
-                onClick={() => setDraft((d) => String((parseInt(d, 10) || 0) + 1))}
-                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <ChevronUp className="size-3" />
-              </button>
-            </div>
+            <input
+              autoFocus
+              type="number"
+              min={0}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
+              className="w-14 text-[12px] text-center border border-input rounded px-1 py-1 outline-none focus:border-primary bg-background"
+            />
             <span className="text-[11px] text-muted-foreground text-right">{t("biopsies")}</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => setBiopsyDraft((d) => String(Math.max(0, (parseInt(d, 10) || 0) - 1)))}
-                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <ChevronDown className="size-3" />
-              </button>
-              <input
-                type="number"
-                min={0}
-                value={biopsyDraft}
-                onChange={(e) => setBiopsyDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") save() }}
-                className="w-10 text-[12px] text-center border border-input rounded px-0.5 py-0.5 outline-none focus:border-primary bg-background"
-              />
-              <button
-                onClick={() => setBiopsyDraft((d) => String((parseInt(d, 10) || 0) + 1))}
-                className="size-5 flex items-center justify-center rounded border border-input hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <ChevronUp className="size-3" />
-              </button>
-            </div>
+            <input
+              type="number"
+              min={0}
+              value={biopsyDraft}
+              onChange={(e) => setBiopsyDraft(e.target.value)}
+              className="w-14 text-[12px] text-center border border-input rounded px-1 py-1 outline-none focus:border-primary bg-background"
+            />
           </div>
-          <div className="flex gap-1">
+          {isOverride && (
             <button
-              onClick={save}
-              className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
+              onClick={reset}
+              className="text-[11px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
             >
-              {tc("save")}
+              Reset
             </button>
-            {isOverride && (
-              <button
-                onClick={reset}
-                className="flex-1 text-[11px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
-              >
-                Reset
-              </button>
-            )}
-          </div>
+          )}
         </div>
       )}
     </div>
