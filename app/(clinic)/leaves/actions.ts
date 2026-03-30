@@ -541,9 +541,16 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
     return { error: "Only pending or approved leaves can be cancelled." }
   }
 
+  // Get the current user for tracking who cancelled
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { error } = await admin
     .from("leaves")
-    .update({ status: "cancelled" } as never)
+    .update({
+      status: "cancelled",
+      reviewed_by: user?.id ?? null,
+      reviewed_at: new Date().toISOString(),
+    } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 

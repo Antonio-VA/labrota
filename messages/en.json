@@ -538,6 +538,8 @@
     "next30Days": "Next 30 days",
     "hideHistory": "Hide history",
     "showHistory": "Show history ({count})",
+    "hideCancelled": "Hide cancelled",
+    "showCancelled": "Show cancelled ({count})",
     "notLinked": "No linked staff member",
     "notLinkedDescription": "Your account is not linked to any staff member. Contact your manager to link it.",
     "viewerRequestInfo": "Your leave requests will be reviewed by a manager before being approved.",

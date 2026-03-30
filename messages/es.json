@@ -538,6 +538,8 @@
     "next30Days": "Próximos 30 días",
     "hideHistory": "Ocultar historial",
     "showHistory": "Mostrar historial ({count})",
+    "hideCancelled": "Ocultar canceladas",
+    "showCancelled": "Mostrar canceladas ({count})",
     "notLinked": "Sin empleado asociado",
     "notLinkedDescription": "Tu cuenta no está vinculada a ningún empleado. Contacta con tu responsable para vincularla.",
     "viewerRequestInfo": "Tus solicitudes de ausencia serán revisadas por un responsable antes de ser aprobadas.",

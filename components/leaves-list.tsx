@@ -590,6 +590,7 @@ export function LeavesList({
   const [editing, setEditing] = useState<LeaveWithStaff | null>(null)
   const [typeFilter, setTypeFilter] = useState<LeaveType | "all">("all")
   const [showHistory, setShowHistory] = useState(false)
+  const [showCancelled, setShowCancelled] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
   const [, startCancelTransition] = useTransition()
 
@@ -631,8 +632,12 @@ export function LeavesList({
     return true
   })
 
-  const filteredUpcoming = filtered.filter((l) => l.end_date >= TODAY)
-  const filteredPast     = filtered.filter((l) => l.end_date <  TODAY)
+  // Separate cancelled from active leaves
+  const activeFiltered    = filtered.filter((l) => (l.status ?? "approved") !== "cancelled")
+  const cancelledFiltered = filtered.filter((l) => (l.status ?? "approved") === "cancelled")
+
+  const filteredUpcoming = activeFiltered.filter((l) => l.end_date >= TODAY)
+  const filteredPast     = activeFiltered.filter((l) => l.end_date <  TODAY)
 
   function openCreate() {
     setEditing(null)
@@ -735,6 +740,24 @@ export function LeavesList({
       {/* Past leaves */}
       {showHistory && filteredPast.length > 0 && (
         <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
+      )}
+
+      {/* Cancelled toggle */}
+      {cancelledFiltered.length > 0 && (
+        <button
+          onClick={() => setShowCancelled((v) => !v)}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+        >
+          <span>{showCancelled ? "▾" : "▸"}</span>
+          {showCancelled
+            ? t("hideCancelled")
+            : t("showCancelled", { count: cancelledFiltered.length })}
+        </button>
+      )}
+
+      {/* Cancelled leaves */}
+      {showCancelled && cancelledFiltered.length > 0 && (
+        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} />
       )}
 
       {/* Sheet */}
