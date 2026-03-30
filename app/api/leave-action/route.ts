@@ -51,12 +51,19 @@ export async function GET(request: NextRequest) {
   const newStatus = action === "approve" ? "approved" : "rejected"
   const { error } = await admin
     .from("leaves")
-    .update({ status: newStatus, reviewed_at: new Date().toISOString() } as never)
+    .update({ status: newStatus } as never)
     .eq("id", leaveId)
 
   if (error) {
     return new NextResponse(errorPage("Failed to update leave."), { status: 500, headers: { "Content-Type": "text/html" } })
   }
+
+  // Try to store review timestamp (column may not exist before migration)
+  await admin
+    .from("leaves")
+    .update({ reviewed_at: new Date().toISOString() } as never)
+    .eq("id", leaveId)
+    .then(() => {})
 
   // If approved, remove conflicting rota assignments
   if (action === "approve") {

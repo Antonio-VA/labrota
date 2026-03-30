@@ -520,6 +520,7 @@
       "type": "Leave type",
       "startDate": "Start date",
       "endDate": "End date",
+      "dates": "Dates",
       "notes": "Notes"
     },
     "addSuccess": "Leave for {name} added: {from} – {to}.",

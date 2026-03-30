@@ -520,6 +520,7 @@
       "type": "Tipo de ausencia",
       "startDate": "Fecha inicio",
       "endDate": "Fecha fin",
+      "dates": "Fechas",
       "notes": "Notas"
     },
     "addSuccess": "Ausencia de {name} añadida: {from} – {to}.",

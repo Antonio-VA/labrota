@@ -473,15 +473,19 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   const { error } = await supabase
     .from("leaves")
-    .update({
-      status: "approved",
-      reviewed_by: user?.id ?? null,
-      reviewed_at: new Date().toISOString(),
-    } as never)
+    .update({ status: "approved" } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
+
+  // Try to store reviewer info (columns may not exist before migration)
+  await supabase
+    .from("leaves")
+    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+    .eq("id", leaveId)
+    .eq("organisation_id", orgId)
+    .then(() => {})
 
   // Auto-remove conflicting rota assignments
   await supabase
@@ -507,15 +511,19 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
 
   const { error } = await supabase
     .from("leaves")
-    .update({
-      status: "rejected",
-      reviewed_by: user?.id ?? null,
-      reviewed_at: new Date().toISOString(),
-    } as never)
+    .update({ status: "rejected" } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
   if (error) return { error: error.message }
+
+  // Try to store reviewer info (columns may not exist before migration)
+  await supabase
+    .from("leaves")
+    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+    .eq("id", leaveId)
+    .eq("organisation_id", orgId)
+    .then(() => {})
 
   revalidatePath("/leaves")
   return {}
@@ -546,13 +554,19 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
 
   const { error } = await admin
     .from("leaves")
-    .update({
-      status: "cancelled",
-      reviewed_by: user?.id ?? null,
-      reviewed_at: new Date().toISOString(),
-    } as never)
+    .update({ status: "cancelled" } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
+
+  // Try to store reviewer info (columns may not exist before migration)
+  if (!error) {
+    await admin
+      .from("leaves")
+      .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+      .eq("id", leaveId)
+      .eq("organisation_id", orgId)
+      .then(() => {})
+  }
 
   if (error) return { error: error.message }
 
