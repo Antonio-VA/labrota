@@ -55,10 +55,15 @@ export function OrgUsersTable({
   }
 
   function handleRoleChange(userId: string, newRole: string) {
+    const prev = users
+    setUsers((u) => u.map((x) => x.userId === userId ? { ...x, role: newRole } : x))
     startTransition(async () => {
       const result = await updateUserRole(userId, newRole)
-      if (result.error) { toast.error(result.error); return }
-      setUsers((prev) => prev.map((u) => u.userId === userId ? { ...u, role: newRole } : u))
+      if (result.error) {
+        setUsers(prev)
+        toast.error(result.error)
+        return
+      }
       toast.success(t("roleUpdated"))
     })
   }
@@ -110,7 +115,6 @@ export function OrgUsersTable({
           </div>
           <div className="flex items-center gap-2">
             <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="h-8 rounded border border-input bg-transparent px-2 text-[13px] outline-none">
-              <option value="admin">Admin</option>
               <option value="manager">Manager</option>
               <option value="viewer">Viewer</option>
             </select>
@@ -148,10 +152,10 @@ export function OrgUsersTable({
                     <select
                       value={u.role}
                       onChange={(e) => handleRoleChange(u.userId, e.target.value)}
-                      disabled={isPending}
-                      className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none cursor-pointer"
+                      disabled={isPending || u.role === "admin"}
+                      className={cn("h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none cursor-pointer", u.role === "admin" && "opacity-70 cursor-not-allowed")}
                     >
-                      <option value="admin">Admin</option>
+                      {u.role === "admin" && <option value="admin">Admin</option>}
                       <option value="manager">Manager</option>
                       <option value="viewer">Viewer</option>
                     </select>

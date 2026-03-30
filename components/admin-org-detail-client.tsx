@@ -72,7 +72,7 @@ export function AdminOrgDetailClient({
   const [isResetting, startReset] = useTransition()
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
-  const [appRole, setAppRole] = useState("admin")
+  const [appRole, setAppRole] = useState("manager")
 
   const countryConfig = getCountry(country)
 
@@ -567,7 +567,6 @@ export function AdminOrgDetailClient({
                 <label className="text-[13px] font-medium">Rol</label>
                 <select value={appRole} onChange={(e) => setAppRole(e.target.value)} disabled={isPending}
                   className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-[14px] outline-none focus-visible:border-ring">
-                  <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
                   <option value="viewer">Viewer</option>
                 </select>
