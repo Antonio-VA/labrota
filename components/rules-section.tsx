@@ -61,6 +61,19 @@ const RULE_TYPES: RotaRuleType[] = [
   "asignacion_fija",
 ]
 
+// Which org modes each rule type applies to
+const RULE_MODE: Record<RotaRuleType, "both" | "by_shift" | "by_task"> = {
+  no_coincidir: "both",
+  no_misma_tarea: "by_task",
+  no_librar_mismo_dia: "by_shift",
+  supervisor_requerido: "both",
+  max_dias_consecutivos: "both",
+  distribucion_fines_semana: "both",
+  descanso_fin_de_semana: "by_shift",
+  restriccion_dia_tecnica: "both",
+  asignacion_fija: "both",
+}
+
 // ── Rule form state ────────────────────────────────────────────────────────────
 interface RuleFormState {
   type: RotaRuleType
@@ -170,6 +183,7 @@ function RuleSheet({
   staff,
   tecnicas = [],
   shiftTypes = [],
+  allowedTypes,
   onSaved,
 }: {
   open: boolean
@@ -178,6 +192,7 @@ function RuleSheet({
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
   tecnicas?: Pick<Tecnica, "codigo" | "nombre_es" | "nombre_en" | "activa">[]
   shiftTypes?: Pick<ShiftTypeDefinition, "code" | "name_es" | "name_en">[]
+  allowedTypes: Set<RotaRuleType>
   onSaved: (rule: RotaRule) => void
 }) {
   const t = useTranslations("lab.rules")
@@ -261,7 +276,7 @@ function RuleSheet({
               value={form.type}
               onChange={(e) => set("type", e.target.value as RotaRuleType)}
             >
-              {RULE_TYPES.map((rt) => (
+              {RULE_TYPES.filter((rt) => allowedTypes.has(rt)).map((rt) => (
                 <option key={rt} value={rt}>{t(`types.${rt}`)}</option>
               ))}
             </select>
@@ -636,13 +651,21 @@ export function RulesSection({
   staff,
   tecnicas = [],
   shiftTypes = [],
+  rotaDisplayMode = "by_shift",
 }: {
   rules: RotaRule[]
   staff: Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
   tecnicas?: Pick<Tecnica, "codigo" | "nombre_es" | "nombre_en" | "activa">[]
   shiftTypes?: Pick<ShiftTypeDefinition, "code" | "name_es" | "name_en">[]
+  rotaDisplayMode?: string
 }) {
   const t = useTranslations("lab.rules")
+  const allowedTypes = useMemo(() => new Set(
+    RULE_TYPES.filter((rt) => {
+      const mode = RULE_MODE[rt]
+      return mode === "both" || mode === rotaDisplayMode
+    })
+  ), [rotaDisplayMode])
   const [rules, setRules] = useState<RotaRule[]>(initialRules)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<RotaRule | null>(null)
@@ -696,8 +719,9 @@ export function RulesSection({
   }
 
   const now = new Date().toISOString()
-  const activeRules = useMemo(() => rules.filter((r) => !r.expires_at || r.expires_at > now), [rules, now])
-  const expiredRules = useMemo(() => rules.filter((r) => r.expires_at && r.expires_at <= now), [rules, now])
+  const visibleRules = useMemo(() => rules.filter((r) => allowedTypes.has(r.type)), [rules, allowedTypes])
+  const activeRules = useMemo(() => visibleRules.filter((r) => !r.expires_at || r.expires_at > now), [visibleRules, now])
+  const expiredRules = useMemo(() => visibleRules.filter((r) => r.expires_at && r.expires_at <= now), [visibleRules, now])
   const [showExpired, setShowExpired] = useState(false)
 
   function formatExpiry(iso: string) {
@@ -883,6 +907,7 @@ export function RulesSection({
         staff={staff}
         tecnicas={tecnicas}
         shiftTypes={shiftTypes}
+        allowedTypes={allowedTypes}
         onSaved={handleSaved}
       />
     </div>
