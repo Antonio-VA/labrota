@@ -162,7 +162,7 @@ export async function requestLeave(params: {
   // Use admin client to bypass RLS — viewers don't have INSERT on leaves
   const admin = createAdminClient()
 
-  const { error } = await admin
+  const { data: insertedLeave, error } = await admin
     .from("leaves")
     .insert({
       staff_id: params.staffId,
@@ -173,27 +173,43 @@ export async function requestLeave(params: {
       notes: params.notes?.trim() || null,
       organisation_id: orgId,
     } as never)
+    .select("id")
+    .single() as { data: { id: string } | null; error: unknown }
 
-  if (error) return { error: error.message }
+  if (error || !insertedLeave) return { error: (error as { message?: string })?.message ?? "Insert failed." }
 
   // Send email notification to managers/admins
   try {
-    const { data: staff } = await admin
-      .from("staff")
-      .select("first_name, last_name")
-      .eq("id", params.staffId)
-      .single() as { data: { first_name: string; last_name: string } | null }
+    const [staffRes, managersRes, orgRes, labConfigRes, activeStaffRes, overlappingLeavesRes] = await Promise.all([
+      admin.from("staff").select("first_name, last_name, role").eq("id", params.staffId).single(),
+      admin.from("organisation_members").select("user_id, role").eq("organisation_id", orgId).in("role", ["admin", "manager"]),
+      admin.from("organisations").select("name").eq("id", orgId).single(),
+      admin.from("lab_config").select("country").eq("organisation_id", orgId).maybeSingle(),
+      admin.from("staff").select("id, role", { count: "exact" }).eq("organisation_id", orgId).eq("onboarding_status", "active"),
+      // Find other approved/pending leaves that overlap with this request
+      admin.from("leaves").select("staff_id, staff:staff!inner(first_name, last_name, role)")
+        .eq("organisation_id", orgId)
+        .neq("staff_id", params.staffId)
+        .in("status", ["approved", "pending"])
+        .lte("start_date", params.endDate)
+        .gte("end_date", params.startDate),
+    ])
 
+    const staff = staffRes.data as { first_name: string; last_name: string; role: string } | null
     const staffName = staff ? `${staff.first_name} ${staff.last_name}` : "Unknown"
+    const managers = (managersRes.data ?? []) as Array<{ user_id: string; role: string }>
+    const orgName = (orgRes.data as { name: string } | null)?.name ?? "LabRota"
+    const country = (labConfigRes.data as { country?: string } | null)?.country ?? ""
+    const locale: "es" | "en" = country === "ES" || country === "" ? "es" : "en"
+    const totalActive = activeStaffRes.count ?? 0
+    const overlapping = (overlappingLeavesRes.data ?? []) as Array<{ staff_id: string; staff: { first_name: string; last_name: string; role: string } }>
 
-    // Get managers/admins in this org
-    const { data: managers } = await admin
-      .from("organisation_members")
-      .select("user_id, role")
-      .eq("organisation_id", orgId)
-      .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string; role: string }> | null }
+    // Deduplicate overlapping staff
+    const overlapNames = [...new Map(overlapping.map((l) => [l.staff_id, `${l.staff.first_name} ${l.staff.last_name}`])).values()]
+    const sameRoleOverlap = overlapping.filter((l) => l.staff.role === staff?.role)
+    const sameRoleCount = new Set(sameRoleOverlap.map((l) => l.staff_id)).size
 
-    if (managers?.length) {
+    if (managers.length) {
       const { data: profiles } = await admin
         .from("profiles")
         .select("id, email")
@@ -201,20 +217,20 @@ export async function requestLeave(params: {
 
       const emails = (profiles ?? []).map((p) => p.email).filter(Boolean)
       if (emails.length > 0) {
-        const { data: org } = await admin
-          .from("organisations")
-          .select("name")
-          .eq("id", orgId)
-          .single() as { data: { name: string } | null }
-
         await sendLeaveRequestEmail({
           to: emails,
+          leaveId: insertedLeave.id,
           staffName,
+          staffRole: staff?.role ?? "lab",
           type: params.type,
           startDate: params.startDate,
           endDate: params.endDate,
           notes: params.notes?.trim() || null,
-          orgName: org?.name ?? "LabRota",
+          orgName,
+          locale,
+          overlapNames,
+          sameRoleOverlapCount: sameRoleCount,
+          totalActiveStaff: totalActive,
         })
       }
     }
@@ -228,27 +244,203 @@ export async function requestLeave(params: {
 
 async function sendLeaveRequestEmail(params: {
   to: string[]
+  leaveId: string
   staffName: string
+  staffRole: string
   type: string
   startDate: string
   endDate: string
   notes: string | null
   orgName: string
+  locale: "es" | "en"
+  overlapNames: string[]
+  sameRoleOverlapCount: number
+  totalActiveStaff: number
 }) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !serviceKey) return
-
-  // Use Supabase Edge Function or direct SMTP — for now use Supabase's auth.admin
-  // to send via the built-in email. We'll use a simple fetch to a Supabase edge function.
-  // Fallback: use Resend or similar if configured.
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return
 
-  const typeLabels: Record<string, string> = {
-    annual: "Vacaciones", sick: "Baja médica", personal: "Asuntos propios",
-    training: "Formación", maternity: "Maternidad/Paternidad", other: "Otros",
+  const { signLeaveAction } = await import("@/app/api/leave-action/route")
+  const approveToken = signLeaveAction(params.leaveId, "approve")
+  const rejectToken = signLeaveAction(params.leaveId, "reject")
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.labrota.app"
+  const approveUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=approve&token=${approveToken}`
+  const rejectUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=reject&token=${rejectToken}`
+  const appUrl = `${baseUrl}/leaves`
+
+  const isEs = params.locale === "es"
+
+  const typeLabels: Record<string, { es: string; en: string }> = {
+    annual:    { es: "Vacaciones",            en: "Annual leave" },
+    sick:      { es: "Baja médica",           en: "Sick leave" },
+    personal:  { es: "Asuntos propios",       en: "Personal leave" },
+    training:  { es: "Formación",             en: "Training" },
+    maternity: { es: "Maternidad/Paternidad", en: "Maternity/Paternity" },
+    other:     { es: "Otros",                 en: "Other" },
   }
+  const typeLabel = typeLabels[params.type]?.[params.locale] ?? params.type
+
+  const roleLabels: Record<string, { es: string; en: string }> = {
+    lab:       { es: "Lab", en: "Lab" },
+    andrology: { es: "Andrología", en: "Andrology" },
+    admin:     { es: "Admin", en: "Admin" },
+  }
+  const roleLabel = roleLabels[params.staffRole]?.[params.locale] ?? params.staffRole
+
+  // Calculate days
+  const days = Math.round((new Date(params.endDate + "T12:00:00").getTime() - new Date(params.startDate + "T12:00:00").getTime()) / 86400000) + 1
+
+  // Format dates nicely
+  const fmtDate = (d: string) => {
+    const date = new Date(d + "T12:00:00")
+    return date.toLocaleDateString(isEs ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+  }
+
+  // Build warning section
+  let warningHtml = ""
+  if (params.overlapNames.length > 0) {
+    const warningTitle = isEs ? "Posible impacto en cobertura" : "Potential coverage impact"
+    const alsoOff = isEs
+      ? `También de ausencia en este período:`
+      : `Also off during this period:`
+    const sameRoleNote = params.sameRoleOverlapCount > 0
+      ? (isEs
+          ? `${params.sameRoleOverlapCount} persona${params.sameRoleOverlapCount > 1 ? "s" : ""} del mismo rol (${roleLabel}) también ausente${params.sameRoleOverlapCount > 1 ? "s" : ""}.`
+          : `${params.sameRoleOverlapCount} ${roleLabel} team member${params.sameRoleOverlapCount > 1 ? "s" : ""} also off.`)
+      : ""
+
+    warningHtml = `
+      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;">
+        <p style="margin:0 0 6px;font-weight:600;color:#92400e;font-size:14px;">⚠️ ${warningTitle}</p>
+        <p style="margin:0 0 4px;color:#78350f;font-size:13px;">${alsoOff}</p>
+        <p style="margin:0 0 4px;color:#78350f;font-size:13px;font-weight:500;">${params.overlapNames.join(", ")}</p>
+        ${sameRoleNote ? `<p style="margin:6px 0 0;color:#92400e;font-size:12px;font-weight:600;">${sameRoleNote}</p>` : ""}
+      </div>`
+  }
+
+  const subject = isEs
+    ? `Solicitud de ausencia: ${params.staffName}`
+    : `Leave request: ${params.staffName}`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:24px;">
+    <span style="font-size:24px;color:#1B4F8A;letter-spacing:-0.5px;">
+      <span style="font-weight:300;">lab</span><span style="font-weight:700;">rota</span>
+    </span>
+  </div>
+
+  <!-- Card -->
+  <div style="background:white;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+
+    <!-- Blue header strip -->
+    <div style="background:#1B4F8A;padding:20px 24px;">
+      <h1 style="margin:0;color:white;font-size:18px;font-weight:600;">
+        ${isEs ? "Nueva solicitud de ausencia" : "New leave request"}
+      </h1>
+      <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">
+        ${params.orgName}
+      </p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:24px;">
+
+      <p style="margin:0 0 20px;color:#334155;font-size:15px;">
+        ${isEs
+          ? `<strong>${params.staffName}</strong> ha solicitado una ausencia.`
+          : `<strong>${params.staffName}</strong> has requested leave.`}
+      </p>
+
+      <!-- Details table -->
+      <table style="width:100%;border-collapse:collapse;margin:0 0 16px;" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;width:120px;">
+            ${isEs ? "Tipo" : "Type"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">
+            ${typeLabel}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">
+            ${isEs ? "Desde" : "From"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">
+            ${fmtDate(params.startDate)}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">
+            ${isEs ? "Hasta" : "To"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">
+            ${fmtDate(params.endDate)}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">
+            ${isEs ? "Duración" : "Duration"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">
+            ${days} ${isEs ? (days === 1 ? "día" : "días") : (days === 1 ? "day" : "days")}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">
+            ${isEs ? "Rol" : "Role"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">
+            ${roleLabel}
+          </td>
+        </tr>
+        ${params.notes ? `
+        <tr>
+          <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">
+            ${isEs ? "Notas" : "Notes"}
+          </td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#475569;font-style:italic;">
+            ${params.notes}
+          </td>
+        </tr>` : ""}
+      </table>
+
+      ${warningHtml}
+
+      <!-- Action buttons -->
+      <div style="text-align:center;margin:24px 0 8px;">
+        <a href="${approveUrl}" style="display:inline-block;background:#059669;color:white;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;margin-right:12px;">
+          ${isEs ? "✓ Aprobar" : "✓ Approve"}
+        </a>
+        <a href="${rejectUrl}" style="display:inline-block;background:white;color:#dc2626;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;border:2px solid #fecaca;">
+          ${isEs ? "✗ Rechazar" : "✗ Reject"}
+        </a>
+      </div>
+
+      <p style="text-align:center;margin:16px 0 0;">
+        <a href="${appUrl}" style="color:#1B4F8A;font-size:13px;text-decoration:underline;">
+          ${isEs ? "Abrir LabRota" : "Open LabRota"}
+        </a>
+      </p>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
+    ${isEs ? "Este email fue enviado automáticamente por LabRota." : "This email was sent automatically by LabRota."}
+  </p>
+
+</div>
+</body>
+</html>`
 
   await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -256,20 +448,8 @@ async function sendLeaveRequestEmail(params: {
     body: JSON.stringify({
       from: `LabRota <noreply@labrota.app>`,
       to: params.to,
-      subject: `Solicitud de ausencia: ${params.staffName}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px;">
-          <h2 style="color: #1B4F8A; font-size: 18px;">Nueva solicitud de ausencia</h2>
-          <p><strong>${params.staffName}</strong> ha solicitado una ausencia en <strong>${params.orgName}</strong>.</p>
-          <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Tipo</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${typeLabels[params.type] ?? params.type}</td></tr>
-            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Desde</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.startDate}</td></tr>
-            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Hasta</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.endDate}</td></tr>
-            ${params.notes ? `<tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Notas</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.notes}</td></tr>` : ""}
-          </table>
-          <p style="color: #64748b; font-size: 13px;">Accede a LabRota para aprobar o rechazar esta solicitud.</p>
-        </div>
-      `,
+      subject,
+      html,
     }),
   })
 }
