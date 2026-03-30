@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
@@ -158,7 +159,10 @@ export async function requestLeave(params: {
   if (!orgId) return { error: "No organisation found." }
   if (params.endDate < params.startDate) return { error: "La fecha de fin debe ser posterior a la de inicio." }
 
-  const { error } = await supabase
+  // Use admin client to bypass RLS — viewers don't have INSERT on leaves
+  const admin = createAdminClient()
+
+  const { error } = await admin
     .from("leaves")
     .insert({
       staff_id: params.staffId,
@@ -171,8 +175,103 @@ export async function requestLeave(params: {
     } as never)
 
   if (error) return { error: error.message }
+
+  // Send email notification to managers/admins
+  try {
+    const { data: staff } = await admin
+      .from("staff")
+      .select("first_name, last_name")
+      .eq("id", params.staffId)
+      .single() as { data: { first_name: string; last_name: string } | null }
+
+    const staffName = staff ? `${staff.first_name} ${staff.last_name}` : "Unknown"
+
+    // Get managers/admins in this org
+    const { data: managers } = await admin
+      .from("organisation_members")
+      .select("user_id, role")
+      .eq("organisation_id", orgId)
+      .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string; role: string }> | null }
+
+    if (managers?.length) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, email")
+        .in("id", managers.map((m) => m.user_id)) as { data: Array<{ id: string; email: string }> | null }
+
+      const emails = (profiles ?? []).map((p) => p.email).filter(Boolean)
+      if (emails.length > 0) {
+        const { data: org } = await admin
+          .from("organisations")
+          .select("name")
+          .eq("id", orgId)
+          .single() as { data: { name: string } | null }
+
+        await sendLeaveRequestEmail({
+          to: emails,
+          staffName,
+          type: params.type,
+          startDate: params.startDate,
+          endDate: params.endDate,
+          notes: params.notes?.trim() || null,
+          orgName: org?.name ?? "LabRota",
+        })
+      }
+    }
+  } catch {
+    // Email failure should not block the request
+  }
+
   revalidatePath("/leaves")
   return {}
+}
+
+async function sendLeaveRequestEmail(params: {
+  to: string[]
+  staffName: string
+  type: string
+  startDate: string
+  endDate: string
+  notes: string | null
+  orgName: string
+}) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SECRET_KEY
+  if (!supabaseUrl || !serviceKey) return
+
+  // Use Supabase Edge Function or direct SMTP — for now use Supabase's auth.admin
+  // to send via the built-in email. We'll use a simple fetch to a Supabase edge function.
+  // Fallback: use Resend or similar if configured.
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) return
+
+  const typeLabels: Record<string, string> = {
+    annual: "Vacaciones", sick: "Baja médica", personal: "Asuntos propios",
+    training: "Formación", maternity: "Maternidad/Paternidad", other: "Otros",
+  }
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: `LabRota <noreply@labrota.app>`,
+      to: params.to,
+      subject: `Solicitud de ausencia: ${params.staffName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px;">
+          <h2 style="color: #1B4F8A; font-size: 18px;">Nueva solicitud de ausencia</h2>
+          <p><strong>${params.staffName}</strong> ha solicitado una ausencia en <strong>${params.orgName}</strong>.</p>
+          <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Tipo</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${typeLabels[params.type] ?? params.type}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Desde</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.startDate}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Hasta</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.endDate}</td></tr>
+            ${params.notes ? `<tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">Notas</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${params.notes}</td></tr>` : ""}
+          </table>
+          <p style="color: #64748b; font-size: 13px;">Accede a LabRota para aprobar o rechazar esta solicitud.</p>
+        </div>
+      `,
+    }),
+  })
 }
 
 /** Admin approves a pending leave request. */

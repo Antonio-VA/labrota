@@ -87,6 +87,7 @@ function LeaveForm({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDeleting, startDelete] = useTransition()
   const [isRequesting, startRequest] = useTransition()
+  const [requestError, setRequestError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -115,7 +116,7 @@ function LeaveForm({
         endDate: fd.get("end_date") as string,
         notes: (fd.get("notes") as string) || undefined,
       })
-      if (result.error) return // TODO: show error
+      if (result.error) { setRequestError(result.error); return }
       router.refresh()
       onSuccess()
     })
@@ -203,8 +204,8 @@ function LeaveForm({
       </div>
 
       {/* Error */}
-      {(state as { error?: string } | null)?.error && (
-        <p className="text-[14px] text-destructive">{(state as { error: string }).error}</p>
+      {((state as { error?: string } | null)?.error || requestError) && (
+        <p className="text-[14px] text-destructive">{(state as { error?: string } | null)?.error ?? requestError}</p>
       )}
 
       {/* Footer */}
