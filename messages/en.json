@@ -133,6 +133,8 @@
     "rotaLocked": "This rota is locked. Unlock it to make changes.",
     "noRota": "No rota for this week",
     "noRotaDescription": "Generate a rota automatically or copy the previous one.",
+    "noRotaYet": "The rota is not ready yet",
+    "noRotaYetDescription": "Your manager will publish this week's rota soon.",
     "preserveOverrides": "Preserve manual overrides?",
     "preserveOverridesDescription": "If you keep overrides, only unedited shifts will be regenerated.",
     "keepOverrides": "Keep overrides",

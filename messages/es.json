@@ -133,6 +133,8 @@
     "rotaLocked": "Este horario está bloqueado. Desbloquéalo para editar.",
     "noRota": "Sin horario esta semana",
     "noRotaDescription": "Genera un horario automáticamente o copia el anterior.",
+    "noRotaYet": "El horario aún no está listo",
+    "noRotaYetDescription": "Tu responsable publicará el horario de esta semana próximamente.",
     "preserveOverrides": "¿Conservar modificaciones manuales?",
     "preserveOverridesDescription": "Si conservas las modificaciones, sólo se regenerarán los turnos no editados.",
     "keepOverrides": "Conservar modificaciones",

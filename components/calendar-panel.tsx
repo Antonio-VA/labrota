@@ -4944,8 +4944,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   colorBorders={colorChips}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
-                <div className="relative flex-1">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-5 w-full max-w-[420px]">
+                <div className="flex-1 flex items-center justify-center">
+                  {!canEdit ? (
+                    <div className="flex flex-col items-center gap-3 w-full max-w-[380px] text-center">
+                      <CalendarDays className="size-10 text-muted-foreground/40" />
+                      <p className="text-[16px] font-medium text-muted-foreground">{t("noRotaYet")}</p>
+                      <p className="text-[14px] text-muted-foreground/70">{t("noRotaYetDescription")}</p>
+                    </div>
+                  ) : (
+                  <div className="flex flex-col items-center gap-5 w-full max-w-[420px]">
                     <Sparkles className="size-12" style={{ color: "var(--pref-bg)" }} />
                     <div className="text-center">
                       <p className="text-[18px] font-semibold" style={{ color: "var(--pref-bg)" }}>Semana sin horario</p>
@@ -4988,6 +4995,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               ) : calendarLayout === "shift" && daysAsRows ? (
                 <TransposedShiftGrid
