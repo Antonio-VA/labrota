@@ -59,7 +59,7 @@ export function ClinicTopBar({
             <button
               onClick={() => setOrgMenuOpen((v) => !v)}
               disabled={isSwitching}
-              className="flex items-center gap-2 text-[14px] font-medium text-white/90 hover:text-white transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 text-[14px] font-medium text-white/90 hover:text-white hover:bg-white/15 rounded-lg px-2.5 py-1.5 -mx-2.5 -my-1.5 transition-colors disabled:opacity-60"
             >
               {orgLogoUrl && !logoError && (
                 <img src={orgLogoUrl} alt="" className="size-7 object-cover rounded-md shrink-0" style={{ border: "1.5px solid rgba(255,255,255,0.4)" }} onError={() => setLogoError(true)} />
@@ -76,7 +76,7 @@ export function ClinicTopBar({
                       "flex items-center gap-2 w-full px-4 py-2.5 text-[14px] transition-colors group/org",
                       org.id === activeOrgId
                         ? "bg-accent text-accent-foreground font-medium"
-                        : "hover:bg-muted text-foreground"
+                        : "hover:bg-accent/60 text-foreground"
                     )}
                   >
                     <button
