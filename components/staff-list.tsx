@@ -764,9 +764,9 @@ function StaffTable({
   const someSelected = members.some((m) => selectedIds.has(m.id))
 
   return (
-    <div className={cn("rounded-lg border border-border overflow-hidden bg-background", muted && "opacity-60")}>
-      {/* Header */}
-      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center" style={{ gridTemplateColumns: buildGrid(visibleCols) }}>
+    <div className={cn("rounded-lg border border-border bg-background", muted && "opacity-60")}>
+      {/* Header — sticky below toolbar */}
+      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols) }}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -1257,8 +1257,8 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
       {/* Content section */}
       <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Toolbar — sticky */}
+      <div className="flex items-center justify-between gap-3 sticky top-0 z-20 bg-background pt-1 pb-3 -mx-6 px-6 md:-mx-8 md:px-8">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Input
             placeholder={t("searchPlaceholder")}
