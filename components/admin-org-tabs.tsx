@@ -51,7 +51,7 @@ export function AdminOrgTabs({
       </div>
       <div className="w-full">
         {TAB_KEYS.map((key) => (
-          <div key={key} className={key !== active ? "hidden" : undefined}>
+          <div key={key} className={key !== active ? "hidden" : "flex flex-col gap-5"}>
             {content[key]}
           </div>
         ))}
