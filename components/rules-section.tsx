@@ -59,6 +59,9 @@ const RULE_TYPES: RotaRuleType[] = [
   "descanso_fin_de_semana",
   "restriccion_dia_tecnica",
   "asignacion_fija",
+  "tecnicas_juntas",
+  "tarea_multidepartamento",
+  "equipo_completo",
 ]
 
 // Which org modes each rule type applies to
@@ -72,6 +75,9 @@ const RULE_MODE: Record<RotaRuleType, "both" | "by_shift" | "by_task"> = {
   descanso_fin_de_semana: "both",
   restriccion_dia_tecnica: "both",
   asignacion_fija: "both",
+  tecnicas_juntas: "by_task",
+  tarea_multidepartamento: "by_task",
+  equipo_completo: "by_task",
 }
 
 // ── Rule form state ────────────────────────────────────────────────────────────
@@ -94,6 +100,13 @@ interface RuleFormState {
   supervisorDays: string[]
   fixedShift: string
   fixedDays: string[]
+  linkedTecnicas: string[]
+  linkedDays: string[]
+  multiDeptTecnica: string
+  multiDeptDepartments: string[]
+  multiDeptDays: string[]
+  wholeTeamTecnicas: string[]
+  wholeTeamDays: string[]
 }
 
 function defaultForm(): RuleFormState {
@@ -116,6 +129,13 @@ function defaultForm(): RuleFormState {
     supervisorDays: [],
     fixedShift: "",
     fixedDays: [],
+    linkedTecnicas: [],
+    linkedDays: [],
+    multiDeptTecnica: "",
+    multiDeptDepartments: [],
+    multiDeptDays: [],
+    wholeTeamTecnicas: [],
+    wholeTeamDays: [],
   }
 }
 
@@ -139,6 +159,13 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     supervisorDays: (rule.params.supervisorDays as string[] | undefined) ?? [],
     fixedShift: String((rule.params.fixedShift as string | undefined) ?? ""),
     fixedDays: (rule.params.fixedDays as string[] | undefined) ?? [],
+    linkedTecnicas: (rule.params.tecnica_codes as string[] | undefined) ?? [],
+    linkedDays: (rule.params.days as string[] | undefined) ?? [],
+    multiDeptTecnica: String((rule.params.tecnica_code as string | undefined) ?? ""),
+    multiDeptDepartments: (rule.params.departments as string[] | undefined) ?? [],
+    multiDeptDays: (rule.params.days as string[] | undefined) ?? [],
+    wholeTeamTecnicas: (rule.params.tecnica_codes as string[] | undefined) ?? [],
+    wholeTeamDays: (rule.params.days as string[] | undefined) ?? [],
   }
 }
 
@@ -163,6 +190,19 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
   if (form.type === "asignacion_fija") {
     if (form.fixedShift) params.fixedShift = form.fixedShift
     if (form.fixedDays.length > 0) params.fixedDays = form.fixedDays
+  }
+  if (form.type === "tecnicas_juntas") {
+    params.tecnica_codes = form.linkedTecnicas
+    if (form.linkedDays.length > 0) params.days = form.linkedDays
+  }
+  if (form.type === "tarea_multidepartamento") {
+    params.tecnica_code = form.multiDeptTecnica
+    params.departments = form.multiDeptDepartments
+    if (form.multiDeptDays.length > 0) params.days = form.multiDeptDays
+  }
+  if (form.type === "equipo_completo") {
+    params.tecnica_codes = form.wholeTeamTecnicas
+    if (form.wholeTeamDays.length > 0) params.days = form.wholeTeamDays
   }
   return {
     type: form.type,
@@ -538,8 +578,210 @@ function RuleSheet({
             </>
           )}
 
+          {form.type === "tecnicas_juntas" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.linkedTecnicas")}</label>
+                <div className="flex flex-col gap-1 border border-border rounded-[8px] p-2 max-h-[200px] overflow-y-auto">
+                  {tecnicas.filter((tc) => tc.activa).map((tc) => {
+                    const selected = form.linkedTecnicas.includes(tc.codigo)
+                    return (
+                      <label key={tc.codigo} className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px]">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            setForm((p) => ({
+                              ...p,
+                              linkedTecnicas: selected
+                                ? p.linkedTecnicas.filter((c) => c !== tc.codigo)
+                                : [...p.linkedTecnicas, tc.codigo],
+                            }))
+                          }}
+                        />
+                        {tc.nombre_es} ({tc.codigo})
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.linkedTecnicasHint")}</p>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.linkedDays")} <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                    const selected = form.linkedDays.includes(day)
+                    const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            linkedDays: selected
+                              ? p.linkedDays.filter((d) => d !== day)
+                              : [...p.linkedDays, day],
+                          }))
+                        }}
+                        className={cn(
+                          "size-9 rounded-full border text-[13px] font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary text-white"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {dayLabels[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.linkedDaysHint")}</p>
+              </div>
+            </>
+          )}
+
+          {form.type === "tarea_multidepartamento" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.technique")}</label>
+                <select
+                  className={inputClass}
+                  value={form.multiDeptTecnica}
+                  onChange={(e) => set("multiDeptTecnica", e.target.value)}
+                >
+                  <option value="">{t("params.selectTechnique")}</option>
+                  {tecnicas.filter((tc) => tc.activa).map((tc) => (
+                    <option key={tc.codigo} value={tc.codigo}>{tc.nombre_es} ({tc.codigo})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.requiredDepartments")}</label>
+                <div className="flex flex-col gap-1 border border-border rounded-[8px] p-2">
+                  {["lab", "andrology", "admin"].map((dept) => {
+                    const selected = form.multiDeptDepartments.includes(dept)
+                    return (
+                      <label key={dept} className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px]">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            setForm((p) => ({
+                              ...p,
+                              multiDeptDepartments: selected
+                                ? p.multiDeptDepartments.filter((d) => d !== dept)
+                                : [...p.multiDeptDepartments, dept],
+                            }))
+                          }}
+                        />
+                        {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.requiredDepartmentsHint")}</p>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.linkedDays")} <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                    const selected = form.multiDeptDays.includes(day)
+                    const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            multiDeptDays: selected
+                              ? p.multiDeptDays.filter((d) => d !== day)
+                              : [...p.multiDeptDays, day],
+                          }))
+                        }}
+                        className={cn(
+                          "size-9 rounded-full border text-[13px] font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary text-white"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {dayLabels[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.linkedDaysHint")}</p>
+              </div>
+            </>
+          )}
+
+          {form.type === "equipo_completo" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.wholeTeamTecnicas")}</label>
+                <div className="flex flex-col gap-1 border border-border rounded-[8px] p-2 max-h-[200px] overflow-y-auto">
+                  {tecnicas.filter((tc) => tc.activa).map((tc) => {
+                    const selected = form.wholeTeamTecnicas.includes(tc.codigo)
+                    return (
+                      <label key={tc.codigo} className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-muted text-[13px]">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            setForm((p) => ({
+                              ...p,
+                              wholeTeamTecnicas: selected
+                                ? p.wholeTeamTecnicas.filter((c) => c !== tc.codigo)
+                                : [...p.wholeTeamTecnicas, tc.codigo],
+                            }))
+                          }}
+                        />
+                        {tc.nombre_es} ({tc.codigo})
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.wholeTeamTecnicasHint")}</p>
+              </div>
+              <div>
+                <label className={labelSelect}>{t("params.linkedDays")} <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                    const selected = form.wholeTeamDays.includes(day)
+                    const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            wholeTeamDays: selected
+                              ? p.wholeTeamDays.filter((d) => d !== day)
+                              : [...p.wholeTeamDays, day],
+                          }))
+                        }}
+                        className={cn(
+                          "size-9 rounded-full border text-[13px] font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary text-white"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {dayLabels[day]}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-1">{t("params.linkedDaysHint")}</p>
+              </div>
+            </>
+          )}
+
           {/* Affected staff — hidden for technique-only rules */}
-          {form.type !== "restriccion_dia_tecnica" && <div>
+          {form.type !== "restriccion_dia_tecnica" && form.type !== "tecnicas_juntas" && form.type !== "tarea_multidepartamento" && form.type !== "equipo_completo" && <div>
             <label className={labelSelect}>{t("affectedStaff")}</label>
             {requiresStaffPair && (
               <p className="text-[11px] text-muted-foreground mb-1">{t("selectAtLeastTwo")}</p>
@@ -785,6 +1027,29 @@ export function RulesSection({
       if (fixedShift) parts.push(`turno ${fixedShift}`)
       if (fixedDays.length > 0) parts.push(fixedDays.map((d) => dayLabelMap[d] ?? d).join(", "))
       return parts.join(" → ")
+    }
+    if (rule.type === "tecnicas_juntas") {
+      const codes = (rule.params.tecnica_codes as string[] | undefined) ?? []
+      const tecNames = codes.map((c) => tecnicas.find((tc) => tc.codigo === c)?.nombre_es ?? c).join(" + ")
+      const days = (rule.params.days as string[] | undefined) ?? []
+      const daysStr = days.length > 0 ? ` (${days.map((d) => dayLabelMap[d] ?? d).join(", ")})` : ""
+      return `${tecNames}${daysStr}`
+    }
+    if (rule.type === "tarea_multidepartamento") {
+      const code = rule.params.tecnica_code as string | undefined
+      const tec = tecnicas.find((tc) => tc.codigo === code)
+      const tecName = tec?.nombre_es ?? code ?? "?"
+      const depts = (rule.params.departments as string[] | undefined) ?? []
+      const days = (rule.params.days as string[] | undefined) ?? []
+      const daysStr = days.length > 0 ? ` (${days.map((d) => dayLabelMap[d] ?? d).join(", ")})` : ""
+      return `${tecName}: ${depts.join(" + ")}${daysStr}`
+    }
+    if (rule.type === "equipo_completo") {
+      const codes = (rule.params.tecnica_codes as string[] | undefined) ?? []
+      const tecNames = codes.map((c) => tecnicas.find((tc) => tc.codigo === c)?.nombre_es ?? c).join(", ")
+      const days = (rule.params.days as string[] | undefined) ?? []
+      const daysStr = days.length > 0 ? ` (${days.map((d) => dayLabelMap[d] ?? d).join(", ")})` : ""
+      return `${tecNames}${daysStr}`
     }
     return t(`descriptions.${rule.type}`)
   }

@@ -560,6 +560,17 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       deptTaskCodes[dept] = tecs.map((t) => t.codigo)
     }
 
+    // ── tecnicas_juntas: build linked groups ──────────────────────────────
+    // Each group = set of technique codes that must go to the same person on this day
+    const linkedGroups: string[][] = []
+    for (const rule of rules.filter((r) => r.enabled && r.type === "tecnicas_juntas")) {
+      const codes = (rule.params.tecnica_codes as string[] | undefined) ?? []
+      if (codes.length < 2) continue
+      const ruleDays = (rule.params.days as string[] | undefined) ?? []
+      if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) continue
+      linkedGroups.push(codes)
+    }
+
     // Force training technique assignments from supervisor rules
     for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
       const trainingTecCode = rule.params.training_tecnica_code as string | undefined
@@ -580,7 +591,89 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
     }
 
+    // Track which tasks have already been assigned via a linked group
+    const assignedViaGroup = new Set<string>()
+
     for (const task of taskDemand) {
+      // Skip tasks already filled as part of a linked group
+      if (assignedViaGroup.has(task.code)) continue
+
+      // Check if this task belongs to a linked group
+      const group = linkedGroups.find((g) => g.includes(task.code))
+
+      if (group) {
+        // ── Linked group assignment: assign all grouped tasks to the same person
+        const groupTasks = taskDemand.filter((td) => group.includes(td.code))
+        const maxNeeded = Math.max(...groupTasks.map((td) => td.needed))
+
+        // Find candidates qualified for ALL tasks in the group
+        const candidates = workingStaff.filter((s) => {
+          const skills = staffSkillsCache[s.id]
+          if (!skills) return false
+          return groupTasks.every((gt) => isQualified(skills, gt.code))
+        })
+
+        // Fallback: if no one is qualified for ALL, find candidates for the most tasks
+        let bestCandidates = candidates
+        if (candidates.length === 0) {
+          const scored = workingStaff
+            .map((s) => {
+              const skills = staffSkillsCache[s.id]
+              if (!skills) return { s, count: 0 }
+              const count = groupTasks.filter((gt) => isQualified(skills, gt.code)).length
+              return { s, count }
+            })
+            .filter((x) => x.count > 0)
+            .sort((a, b) => b.count - a.count)
+          bestCandidates = scored.map((x) => x.s)
+          if (bestCandidates.length > 0) {
+            warnings.push(`${date}: tecnicas_juntas — nadie cualificado para todas (${group.join("+")})`)
+          }
+        }
+
+        // Sort candidates
+        bestCandidates.sort((a, b) => {
+          const aCount = staffTaskCount[a.id] ?? 0
+          const bCount = staffTaskCount[b.id] ?? 0
+          if (aCount !== bCount) return aCount - bCount
+          return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+        })
+
+        let filled = 0
+        for (const candidate of bestCandidates) {
+          if (filled >= maxNeeded) break
+          const skills = staffSkillsCache[candidate.id]
+          if (!skills) continue
+
+          // Assign all group tasks this candidate is qualified for
+          for (const gt of groupTasks) {
+            if (!isQualified(skills, gt.code)) continue
+            dayAssignments.push({
+              staff_id: candidate.id,
+              shift_type: dummyShift,
+              function_label: gt.code,
+            })
+            staffTaskCount[candidate.id] = (staffTaskCount[candidate.id] ?? 0) + 1
+            if (!staffTasks[candidate.id]) staffTasks[candidate.id] = new Set()
+            staffTasks[candidate.id].add(gt.code)
+            assignedStaffIds.add(candidate.id)
+          }
+          filled++
+        }
+
+        // Mark all group tasks as handled
+        for (const gt of groupTasks) {
+          assignedViaGroup.add(gt.code)
+          gt.needed = Math.max(0, gt.needed - filled)
+        }
+
+        if (filled < maxNeeded) {
+          warnings.push(`${date}: COBERTURA INSUFICIENTE — ${group.join("+")} necesita ${maxNeeded}, asignados ${filled}`)
+        }
+        continue
+      }
+
+      // ── Standard (non-grouped) assignment
       // Find qualified candidates
       const candidates = workingStaff.filter((s) => {
         if (s.role !== task.department) return false
@@ -640,6 +733,54 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         })
         if (allTraining) {
           warnings.push(`${date}: solo personal en formación para ${task.code}`)
+        }
+      }
+    }
+
+    // ── 2e-pre: tarea_multidepartamento — ensure departments are represented
+    for (const rule of rules.filter((r) => r.enabled && r.type === "tarea_multidepartamento")) {
+      const tecCode = rule.params.tecnica_code as string | undefined
+      if (!tecCode) continue
+      const requiredDepts = (rule.params.departments as string[] | undefined) ?? []
+      if (requiredDepts.length === 0) continue
+      const ruleDays = (rule.params.days as string[] | undefined) ?? []
+      if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) continue
+
+      // Which departments already have someone assigned to this task?
+      const assignedDepts = new Set<string>()
+      for (const a of dayAssignments) {
+        if (a.function_label !== tecCode) continue
+        const s = workingStaff.find((st) => st.id === a.staff_id)
+        if (s) assignedDepts.add(s.role)
+      }
+
+      for (const dept of requiredDepts) {
+        if (assignedDepts.has(dept)) continue
+        // Need to add someone from this department
+        const candidates = workingStaff.filter((s) => {
+          if (s.role !== dept) return false
+          if (dayAssignments.some((a) => a.staff_id === s.id && a.function_label === tecCode)) return false
+          const skills = staffSkillsCache[s.id]
+          return skills && isQualified(skills, tecCode)
+        }).sort((a, b) => {
+          const aCount = staffTaskCount[a.id] ?? 0
+          const bCount = staffTaskCount[b.id] ?? 0
+          if (aCount !== bCount) return aCount - bCount
+          return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+        })
+
+        if (candidates.length > 0) {
+          const pick = candidates[0]
+          dayAssignments.push({ staff_id: pick.id, shift_type: dummyShift, function_label: tecCode })
+          staffTaskCount[pick.id] = (staffTaskCount[pick.id] ?? 0) + 1
+          if (!staffTasks[pick.id]) staffTasks[pick.id] = new Set()
+          staffTasks[pick.id].add(tecCode)
+          assignedStaffIds.add(pick.id)
+          assignedDepts.add(dept)
+        } else if (rule.is_hard) {
+          warnings.push(`${date}: tarea_multidepartamento — no hay personal de ${dept} cualificado para ${tecCode} (regla obligatoria)`)
+        } else {
+          warnings.push(`${date}: tarea_multidepartamento — no hay personal de ${dept} cualificado para ${tecCode}`)
         }
       }
     }

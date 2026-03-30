@@ -294,6 +294,9 @@ export type RotaRuleType =
   | 'no_librar_mismo_dia'
   | 'restriccion_dia_tecnica'
   | 'asignacion_fija'
+  | 'tecnicas_juntas'
+  | 'tarea_multidepartamento'
+  | 'equipo_completo'
 
 export interface RotaRule {
   id:              string

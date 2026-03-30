@@ -661,7 +661,10 @@
         "descanso_fin_de_semana": "Descanso alterno fin de semana",
         "no_turno_doble": "Sin turno doble",
         "restriccion_dia_tecnica": "Restricción día/técnica",
-        "asignacion_fija": "Asignación fija"
+        "asignacion_fija": "Asignación fija",
+        "tecnicas_juntas": "Técnicas juntas",
+        "tarea_multidepartamento": "Tarea multidepartamento",
+        "equipo_completo": "Equipo completo"
       },
       "descriptions": {
         "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día",
@@ -673,7 +676,10 @@
         "descanso_fin_de_semana": "Si trabaja un fin de semana, el siguiente (o anterior) lo libra, más días de descanso contiguos",
         "no_turno_doble": "Impide asignar dos turnos en el mismo día",
         "restriccion_dia_tecnica": "Restringe una técnica a ciertos días de la semana",
-        "asignacion_fija": "Asigna siempre al personal seleccionado en días y/o turnos específicos"
+        "asignacion_fija": "Asigna siempre al personal seleccionado en días y/o turnos específicos",
+        "tecnicas_juntas": "Asigna las técnicas seleccionadas a la misma persona",
+        "tarea_multidepartamento": "Obliga a que una tarea tenga personal de los departamentos indicados",
+        "equipo_completo": "Marca tareas como 'Todos' por día de la semana (no afecta al motor)"
       },
       "params": {
         "maxDays": "Máx. días consecutivos",
@@ -700,7 +706,15 @@
         "fixedShift": "Turno fijo",
         "anyShift": "Cualquier turno",
         "fixedDays": "Días fijos",
-        "fixedDaysHint": "Si vacío, se aplica todos los días laborables"
+        "fixedDaysHint": "Si vacío, se aplica todos los días laborables",
+        "linkedTecnicas": "Técnicas vinculadas",
+        "linkedTecnicasHint": "Selecciona al menos 2 técnicas para asignar a la misma persona",
+        "linkedDays": "Días",
+        "linkedDaysHint": "Si vacío, se aplica todos los días",
+        "requiredDepartments": "Departamentos requeridos",
+        "requiredDepartmentsHint": "La tarea debe tener al menos 1 persona de cada departamento seleccionado",
+        "wholeTeamTecnicas": "Técnicas de equipo completo",
+        "wholeTeamTecnicasHint": "Estas técnicas se marcarán como 'Todos' en la planificación"
       }
     }
   },

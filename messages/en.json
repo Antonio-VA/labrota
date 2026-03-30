@@ -661,7 +661,10 @@
         "descanso_fin_de_semana": "Alternating weekend rest",
         "no_turno_doble": "No double shift",
         "restriccion_dia_tecnica": "Technique day restriction",
-        "asignacion_fija": "Fixed assignment"
+        "asignacion_fija": "Fixed assignment",
+        "tecnicas_juntas": "Linked techniques",
+        "tarea_multidepartamento": "Multi-department task",
+        "equipo_completo": "Whole team"
       },
       "descriptions": {
         "no_coincidir": "Selected members cannot be scheduled on the same day",
@@ -673,7 +676,10 @@
         "descanso_fin_de_semana": "If a person works one weekend, the next (or previous) is off, plus contiguous rest days",
         "no_turno_doble": "Prevents assigning two shifts on the same day",
         "restriccion_dia_tecnica": "Restricts a technique to specific days of the week",
-        "asignacion_fija": "Always assigns selected staff on specific days and/or shifts"
+        "asignacion_fija": "Always assigns selected staff on specific days and/or shifts",
+        "tecnicas_juntas": "Assigns selected techniques to the same person",
+        "tarea_multidepartamento": "Requires staff from the specified departments on a task",
+        "equipo_completo": "Marks tasks as 'All' by day of the week (does not affect engine)"
       },
       "params": {
         "maxDays": "Max consecutive days",
@@ -700,7 +706,15 @@
         "fixedShift": "Fixed shift",
         "anyShift": "Any shift",
         "fixedDays": "Fixed days",
-        "fixedDaysHint": "If empty, applies every working day"
+        "fixedDaysHint": "If empty, applies every working day",
+        "linkedTecnicas": "Linked techniques",
+        "linkedTecnicasHint": "Select at least 2 techniques to assign to the same person",
+        "linkedDays": "Days",
+        "linkedDaysHint": "If empty, applies every day",
+        "requiredDepartments": "Required departments",
+        "requiredDepartmentsHint": "The task must have at least 1 person from each selected department",
+        "wholeTeamTecnicas": "Whole team techniques",
+        "wholeTeamTecnicasHint": "These techniques will be marked as 'All' in the schedule"
       }
     }
   },

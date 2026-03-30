@@ -686,6 +686,7 @@ export async function generateRota(
     organisation_id: string; rota_id: string; staff_id: string; date: string;
     shift_type: string; is_manual_override: boolean; function_label: string;
     tecnica_id?: string | null;
+    whole_team?: boolean;
   }[] = []
   let engineWarnings: string[] = []
 
@@ -725,6 +726,19 @@ export async function generateRota(
 
     // Convert task engine output to DB rows
     // In by_task mode, every assignment row has a function_label (task code)
+    // Build equipo_completo lookup: date → set of tecnica codes that are whole-team
+    const wholeTeamByDate: Record<string, Set<string>> = {}
+    for (const rule of activeRules.filter((r) => r.type === "equipo_completo")) {
+      const codes = (rule.params.tecnica_codes as string[] | undefined) ?? []
+      const ruleDays = (rule.params.days as string[] | undefined) ?? []
+      for (const d of weekDates) {
+        const dayCode = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(d + "T12:00:00").getDay()]
+        if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) continue
+        if (!wholeTeamByDate[d]) wholeTeamByDate[d] = new Set()
+        for (const c of codes) wholeTeamByDate[d].add(c)
+      }
+    }
+
     toInsert = taskResult.days.flatMap((day) =>
       day.assignments
         .filter((a) => !overrideKeys.has(`${a.staff_id}:${day.date}`))
@@ -737,6 +751,7 @@ export async function generateRota(
           is_manual_override: false,
           function_label: a.function_label,
           tecnica_id: tecnicaIdMap[a.function_label] ?? null,
+          whole_team: wholeTeamByDate[day.date]?.has(a.function_label) ?? false,
         }))
     )
   } else {
