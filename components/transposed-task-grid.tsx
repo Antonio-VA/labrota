@@ -37,11 +37,12 @@ interface TransposedTaskGridProps {
   onRemoveAssignment?: (id: string) => void
   onCellClick?: (date: string, tecnicaCode: string) => void
   onChipClick?: (staff_id: string) => void
+  onDateClick?: (date: string) => void
 }
 
 export function TransposedTaskGrid({
   data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact,
-  colorChips = true, onRemoveAssignment, onCellClick, onChipClick,
+  colorChips = true, onRemoveAssignment, onCellClick, onChipClick, onDateClick,
 }: TransposedTaskGridProps) {
   const t = useTranslations("schedule")
   const { hoveredStaffId, setHovered } = useStaffHover()
@@ -106,8 +107,10 @@ export function TransposedTaskGrid({
               {/* Row header: day */}
               <div
                 key={`header-${day.date}`}
+                onClick={() => onDateClick?.(day.date)}
                 className={cn(
-                  "border-b border-r border-border px-2 py-1.5 flex items-center justify-end gap-1.5 bg-muted sticky left-0 z-10 cursor-pointer hover:bg-muted/80",
+                  "border-b border-r border-border px-2 py-1.5 flex items-center justify-end gap-1.5 bg-muted sticky left-0 z-10",
+                  onDateClick && "cursor-pointer hover:bg-muted/80",
                   holiday && "bg-amber-50/60"
                 )}
                 style={{

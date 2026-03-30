@@ -4980,6 +4980,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     setSheetOpen(true)
                   }}
                   onChipClick={openProfile}
+                  onDateClick={handleMonthDayClick}
                 />
               ) : weekData.rotaDisplayMode === "by_task" ? (
                 /* By task: always show TaskGrid — it handles its own empty state */
@@ -5001,6 +5002,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   compact={compact}
                   colorBorders={colorChips}
                   showPuncBiopsy={false}
+                  onDateClick={handleMonthDayClick}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex-1 flex items-start justify-center pt-[18vh]">

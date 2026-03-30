@@ -589,6 +589,7 @@ export function TaskGrid({
   compact = false,
   colorBorders = true,
   showPuncBiopsy = true,
+  onDateClick,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -607,6 +608,7 @@ export function TaskGrid({
   compact?: boolean
   colorBorders?: boolean
   showPuncBiopsy?: boolean
+  onDateClick?: (date: string) => void
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -837,15 +839,20 @@ export function TaskGrid({
               )}
               style={d.getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
             >
-              <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
-              <span className={cn(
-                "font-semibold leading-none",
-                compact ? "text-[13px]" : "text-[18px]",
-                isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
-                : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
-              )}>
-                {dayNum}
-              </span>
+              <button
+                onClick={() => onDateClick?.(day.date)}
+                className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+              >
+                <span className={cn("uppercase tracking-wider text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>{wday}</span>
+                <span className={cn(
+                  "font-semibold leading-none",
+                  compact ? "text-[13px]" : "text-[18px]",
+                  isToday ? (compact ? "size-5 text-[11px]" : "size-6") + " bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                  : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                )}>
+                  {dayNum}
+                </span>
+              </button>
               {holidayName && (
                 <Tooltip>
                   <TooltipTrigger render={
