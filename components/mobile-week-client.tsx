@@ -26,7 +26,7 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
   }, [open])
 
   const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
-  if (allWarnings.length === 0) return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-medium shrink-0"><CheckCircle2 className="size-3" /></span>
+  if (allWarnings.length === 0) return <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
 
   return (
     <div className="relative shrink-0" ref={ref}>
