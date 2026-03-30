@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { MobileGate } from "@/components/mobile-gate"
 import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
 
@@ -102,18 +101,14 @@ export default async function LeavesPage() {
   }))
 
   return (
-    <>
-      <div className="flex-1 overflow-auto p-6 md:p-8">
-        <MobileGate>
-          <LeavesList
-            leaves={leaves}
-            staff={staff}
-            userRole={userRole}
-            viewerStaffId={viewerStaffId}
-            enableLeaveRequests={enableLeaveRequests}
-          />
-        </MobileGate>
-      </div>
-    </>
+    <div className="flex-1 overflow-auto p-4 md:p-8">
+      <LeavesList
+        leaves={leaves}
+        staff={staff}
+        userRole={userRole}
+        viewerStaffId={viewerStaffId}
+        enableLeaveRequests={enableLeaveRequests}
+      />
+    </div>
   )
 }

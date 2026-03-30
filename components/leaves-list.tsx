@@ -271,7 +271,58 @@ function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof
   )
 }
 
-// ── Leaves table ──────────────────────────────────────────────────────────────
+// ── Mobile leave card ────────────────────────────────────────────────────────
+function LeaveCard({
+  leave,
+  locale,
+  onEdit,
+  onCancel,
+  t,
+  muted,
+  showStatus,
+  canCancel,
+}: {
+  leave: LeaveWithStaff
+  locale: "es" | "en"
+  onEdit: (leave: LeaveWithStaff) => void
+  onCancel?: (leaveId: string) => void
+  t: ReturnType<typeof useTranslations<"leaves">>
+  muted: boolean
+  showStatus?: boolean
+  canCancel?: boolean
+}) {
+  const days = daysBetween(leave.start_date, leave.end_date)
+  return (
+    <div
+      className={cn("rounded-lg border border-border bg-background px-3.5 py-3 active:bg-muted/40 transition-colors", muted && "opacity-70")}
+      onClick={() => onEdit(leave)}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className={cn("text-[14px] font-medium leading-tight", muted && "text-muted-foreground")}>
+          {leave.staff.first_name} {leave.staff.last_name}
+        </p>
+        {showStatus && <StatusBadge leave={leave} t={t} />}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
+        <span className={cn("text-[12px]", muted ? "text-muted-foreground" : "text-foreground/70")}>
+          {formatDateWithYear(leave.start_date, locale)} — {formatDateWithYear(leave.end_date, locale)}
+        </span>
+        <span className="text-[12px] text-muted-foreground">({days}d)</span>
+      </div>
+      {onCancel && canCancel && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
+          className="mt-2 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
+        >
+          {t("cancelLeave")}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Leaves table + mobile cards ──────────────────────────────────────────────
 function LeavesTable({
   rows,
   locale,
@@ -294,55 +345,75 @@ function LeavesTable({
   const cellClass = muted ? "text-muted-foreground" : ""
 
   return (
-    <div className={`rounded-lg border border-border overflow-hidden mb-3 bg-background ${muted ? "opacity-70" : ""}`}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-background">
-            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>
-            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
-            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
-            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
-            <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
-            {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
-            <th className="w-10" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((leave) => (
-            <tr
-              key={leave.id}
-              className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => onEdit(leave)}
-            >
-              <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
-                {leave.staff.first_name} {leave.staff.last_name}
-              </td>
-              <td className="px-4 py-2.5">
-                <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
-              </td>
-              <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
-              <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
-              <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
-              {showStatus && (
-                <td className="px-4 py-2.5">
-                  <StatusBadge leave={leave} t={t} />
-                </td>
-              )}
-              <td className="px-4 py-2.5 text-right">
-                {onCancel && canCancel?.(leave) && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
-                    className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    {t("cancelLeave")}
-                  </button>
-                )}
-              </td>
+    <>
+      {/* Mobile cards */}
+      <div className="flex flex-col gap-2 md:hidden mb-3">
+        {rows.map((leave) => (
+          <LeaveCard
+            key={leave.id}
+            leave={leave}
+            locale={locale}
+            onEdit={onEdit}
+            onCancel={onCancel}
+            t={t}
+            muted={muted}
+            showStatus={showStatus}
+            canCancel={canCancel?.(leave)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className={`hidden md:block rounded-lg border border-border overflow-hidden mb-3 bg-background ${muted ? "opacity-70" : ""}`}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-background">
+              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>
+              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
+              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
+              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
+              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
+              {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
+              <th className="w-10" />
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((leave) => (
+              <tr
+                key={leave.id}
+                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={() => onEdit(leave)}
+              >
+                <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
+                  {leave.staff.first_name} {leave.staff.last_name}
+                </td>
+                <td className="px-4 py-2.5">
+                  <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
+                </td>
+                <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
+                <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
+                <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
+                {showStatus && (
+                  <td className="px-4 py-2.5">
+                    <StatusBadge leave={leave} t={t} />
+                  </td>
+                )}
+                <td className="px-4 py-2.5 text-right">
+                  {onCancel && canCancel?.(leave) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
+                      className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      {t("cancelLeave")}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
@@ -400,11 +471,11 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
       {cards.map((kpi) => (
-        <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
-          <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-          <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+        <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-3 md:px-4 py-2.5 md:py-3">
+          <p className="text-[11px] md:text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+          <p className="text-[20px] md:text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
         </div>
       ))}
     </div>
@@ -555,10 +626,10 @@ export function LeavesList({
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col pb-16 md:pb-0">
       {/* KPI summary band — hide for viewers */}
       {!isViewer && visibleLeaves.length > 0 && (
-        <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
+        <div className="hidden md:block -mx-8 -mt-8 px-8 pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
           <KpiCards leaves={visibleLeaves.filter((l) => l.status !== "cancelled" && l.status !== "rejected")} />
         </div>
       )}
@@ -577,7 +648,7 @@ export function LeavesList({
       {/* Content section */}
       <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <div className="flex items-center justify-between gap-2 md:gap-3 mb-4 flex-wrap">
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as LeaveType | "all")}
@@ -591,7 +662,7 @@ export function LeavesList({
         <div className="flex items-center gap-2">
           <Button size="lg" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
           {!isViewer && (
-            <Button size="lg" variant="outline" onClick={() => setFileImportOpen(true)}>
+            <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setFileImportOpen(true)}>
               <FileUp className="size-4" />
               {t("addFromFile")}
             </Button>

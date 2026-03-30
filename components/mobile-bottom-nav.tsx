@@ -2,23 +2,34 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
 
-const NAV_ITEMS = [
+type NavItem = { key: string; icon: React.ElementType; href: string }
+
+const BASE_ITEMS: NavItem[] = [
   { key: "day",  icon: CalendarDays,  href: "/" },
   { key: "week", icon: CalendarRange, href: "/mobile-week" },
-] as const
+]
+
+const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana" },
-  en: { day: "Day", week: "Week" },
+  es: { day: "Día", week: "Semana", leaves: "Ausencias" },
+  en: { day: "Day", week: "Week", leaves: "Leave" },
 }
 
 export function MobileBottomNav() {
   const locale = useLocale() as "es" | "en"
   const pathname = usePathname()
+  const canEdit = useCanEdit()
+  const viewerStaffId = useViewerStaffId()
+
+  // Show leaves tab for admins/managers, or viewers with a linked staff
+  const showLeaves = canEdit || !!viewerStaffId
+  const navItems = showLeaves ? [...BASE_ITEMS, LEAVES_ITEM] : BASE_ITEMS
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
 
@@ -65,7 +76,7 @@ export function MobileBottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <nav className="flex items-center gap-0 px-2.5 py-1.5 rounded-full glass-nav-pop">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           // Active if: user just tapped this one, OR route matches and nothing else was tapped
           const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
