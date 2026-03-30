@@ -307,7 +307,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       )}
 
-      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} />}
+      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
 
       </>}
 

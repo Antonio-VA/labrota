@@ -886,6 +886,16 @@
     "daily": "Daily rotation",
     "dailyDesc": "A different shift each day within the week"
   },
+  "taskRotation": {
+    "title": "Task rotation",
+    "description": "Defines how tasks are rotated among staff across the week.",
+    "stable": "Stable",
+    "stableDesc": "Same person, same task each week",
+    "weekly": "Weekly rotation",
+    "weeklyDesc": "Same task all week, changes next week",
+    "daily": "Daily rotation",
+    "dailyDesc": "A different task each day within the week"
+  },
   "turnos": {
     "shiftTypes": "Shift types",
     "changesSaved": "Changes saved",

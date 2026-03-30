@@ -9,18 +9,21 @@ import { ArrowRightLeft, RefreshCw, Anchor } from "lucide-react"
 
 export type RotationMode = "stable" | "weekly" | "daily"
 
-const OPTION_KEYS: { key: RotationMode; labelKey: string; descKey: string; icon: typeof Anchor }[] = [
-  { key: "stable", labelKey: "stable", descKey: "stableDesc", icon: Anchor },
-  { key: "weekly", labelKey: "weekly", descKey: "weeklyDesc", icon: RefreshCw },
-  { key: "daily", labelKey: "daily", descKey: "dailyDesc", icon: ArrowRightLeft },
+const OPTION_KEYS: { key: RotationMode; icon: typeof Anchor }[] = [
+  { key: "stable", icon: Anchor },
+  { key: "weekly", icon: RefreshCw },
+  { key: "daily", icon: ArrowRightLeft },
 ]
 
-export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
+export function ShiftRotationSetting({ initialValue, onChange, registerSave, isByTask }: {
   initialValue: string
   onChange?: (mode: RotationMode) => void
   registerSave?: (fn: () => Promise<void>) => void
+  isByTask?: boolean
 }) {
   const t = useTranslations("shiftRotation")
+  const tt = useTranslations("taskRotation")
+  const tr = isByTask ? tt : t
   const [value, setValue] = useState<RotationMode>((initialValue as RotationMode) || "stable")
   const [isPending, startTransition] = useTransition()
 
@@ -39,10 +42,10 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
   return (
     <div className="rounded-lg border border-border bg-background px-5 py-4">
       <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-        {t("title")}
+        {tr("title")}
       </p>
       <p className="text-[12px] text-muted-foreground mb-3">
-        {t("description")}
+        {tr("description")}
       </p>
       <div className="flex flex-col gap-2">
         {OPTION_KEYS.map((opt) => {
@@ -64,8 +67,8 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave }: {
             >
               <Icon className={cn("size-4 mt-0.5 shrink-0", selected ? "text-primary" : "text-muted-foreground")} />
               <div>
-                <p className={cn("text-[14px] font-medium", selected && "text-primary")}>{t(opt.labelKey)}</p>
-                <p className="text-[12px] text-muted-foreground">{t(opt.descKey)}</p>
+                <p className={cn("text-[14px] font-medium", selected && "text-primary")}>{tr(opt.key)}</p>
+                <p className="text-[12px] text-muted-foreground">{tr(`${opt.key}Desc`)}</p>
               </div>
             </button>
           )
