@@ -69,12 +69,14 @@ function LeaveForm({
   onSuccess,
   viewerStaffId,
   isRequestMode,
+  onCancelLeave,
 }: {
   staff: Staff[]
   editing: LeaveWithStaff | null
   onSuccess: () => void
   viewerStaffId?: string | null
   isRequestMode?: boolean
+  onCancelLeave?: (leaveId: string) => void
 }) {
   const isViewerMode = !!viewerStaffId
   const t  = useTranslations("leaves")
@@ -222,21 +224,42 @@ function LeaveForm({
             </Button>
           </div>
 
-          {editing && !confirmDelete && (!isViewerMode || editing.staff_id === viewerStaffId) && (
-            <Button type="button" variant="destructive" disabled={pending || isDeleting} onClick={() => setConfirmDelete(true)}>
-              {tc("delete")}
-            </Button>
-          )}
-          {editing && confirmDelete && (!isViewerMode || editing.staff_id === viewerStaffId) && (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="destructive" disabled={isDeleting} onClick={handleDelete}>
-                {isDeleting ? "…" : tc("confirm")}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
-                {tc("cancel")}
-              </Button>
-            </div>
-          )}
+          {editing && (!isViewerMode || editing.staff_id === viewerStaffId) && (() => {
+            const status = editing.status ?? "approved"
+            const showCancel = onCancelLeave && (status === "pending" || status === "approved")
+            const showDelete = !isViewerMode && !showCancel
+
+            if (showCancel && !confirmDelete) {
+              return (
+                <Button type="button" variant="destructive" disabled={pending || isDeleting} onClick={() => setConfirmDelete(true)}>
+                  {t("cancelLeave")}
+                </Button>
+              )
+            }
+            if (showDelete && !confirmDelete) {
+              return (
+                <Button type="button" variant="destructive" disabled={pending || isDeleting} onClick={() => setConfirmDelete(true)}>
+                  {tc("delete")}
+                </Button>
+              )
+            }
+            if (confirmDelete) {
+              return (
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="destructive" disabled={isDeleting} onClick={() => {
+                    if (showCancel) { onCancelLeave!(editing.id); onSuccess() }
+                    else handleDelete()
+                  }}>
+                    {isDeleting ? "…" : tc("confirm")}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
+                    {tc("cancel")}
+                  </Button>
+                </div>
+              )
+            }
+            return null
+          })()}
         </div>
       </SheetFooter>
     </form>
@@ -581,7 +604,8 @@ export function LeavesList({
   function canCancelLeave(leave: LeaveWithStaff): boolean {
     // Viewers can cancel their own pending/approved leaves
     // Admins/managers can cancel any pending/approved leave
-    if (leave.status !== "pending" && leave.status !== "approved") return false
+    const status = leave.status ?? "approved" // DB default before migration
+    if (status !== "pending" && status !== "approved") return false
     if (isViewer) return leave.staff_id === viewerStaffId
     return true
   }
@@ -729,6 +753,7 @@ export function LeavesList({
               onSuccess={closeSheet}
               viewerStaffId={isViewer ? viewerStaffId : undefined}
               isRequestMode={enableLeaveRequests}
+              onCancelLeave={enableLeaveRequests ? handleCancel : undefined}
             />
           </div>
         </SheetContent>
