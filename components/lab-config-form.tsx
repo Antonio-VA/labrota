@@ -460,7 +460,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
 
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
           {isByShift && shiftCoverageEnabled
-            ? "Define cuántas personas de cada departamento necesitas por turno y día. El generador te avisará si el equipo no es suficiente."
+            ? "Define cuántas personas de cada departamento necesitas por turno y día. Dejar en blanco para no requerir un departamento en un día concreto."
             : "El generador no producirá una rota que no cumpla estos mínimos. Pon 0 para no requerir un departamento en un día concreto."}
         </p>
       </div>
