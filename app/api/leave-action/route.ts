@@ -87,7 +87,7 @@ function resultPage(title: string, description: string, accentColor: string) {
 </div>
 <h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#0f172a;">${title}</h1>
 <p style="margin:0 0 24px;font-size:14px;color:#64748b;">${description}</p>
-<a href="https://app.labrota.app/leaves" style="display:inline-block;background:#1B4F8A;color:white;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;">Open LabRota</a>
+<a href="https://www.labrota.app/leaves" style="display:inline-block;background:#1B4F8A;color:white;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;">Open LabRota</a>
 </div></body></html>`
 }
 

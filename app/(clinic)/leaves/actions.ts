@@ -264,7 +264,7 @@ async function sendLeaveRequestEmail(params: {
   const approveToken = signLeaveAction(params.leaveId, "approve")
   const rejectToken = signLeaveAction(params.leaveId, "reject")
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.labrota.app"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
   const approveUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=approve&token=${approveToken}`
   const rejectUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=reject&token=${rejectToken}`
   const appUrl = `${baseUrl}/leaves`
@@ -597,7 +597,7 @@ async function sendLeaveCancellationEmail(params: {
   if (!resendKey) return
 
   const isEs = params.locale === "es"
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.labrota.app"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
 
   const typeLabels: Record<string, { es: string; en: string }> = {
     annual: { es: "Vacaciones", en: "Annual leave" }, sick: { es: "Baja médica", en: "Sick leave" },
