@@ -238,7 +238,7 @@ export function TransposedShiftGrid({
                                   ? `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`
                                   : undefined,
                                 borderRadius: 4,
-                                ...(colorChips && isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
+                                ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}

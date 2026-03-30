@@ -91,7 +91,7 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
  * these modern color functions.
  */
 function convertOklabColors(root: HTMLElement) {
-  const oklabRe = /oklch?\([^)]+\)/gi
+  const modernColorRe = /(?:oklch?|lab|lch|color)\([^)]+\)/gi
 
   function processElement(el: HTMLElement) {
     const style = el.style
@@ -105,21 +105,22 @@ function convertOklabColors(root: HTMLElement) {
     ]
 
     for (const prop of colorProps) {
-      const val = computed.getPropertyValue(prop.replace(/([A-Z])/g, "-$1").toLowerCase())
-      if (val && oklabRe.test(val)) {
-        // The computed style should already be resolved to rgb by the browser
-        // But if it's still oklab, force it through a temp element
+      const cssProp = prop.replace(/([A-Z])/g, "-$1").toLowerCase()
+      const val = computed.getPropertyValue(cssProp)
+      if (val && modernColorRe.test(val)) {
+        modernColorRe.lastIndex = 0
         const resolved = resolveColor(val)
         if (resolved) {
-          style.setProperty(prop.replace(/([A-Z])/g, "-$1").toLowerCase(), resolved, "important")
+          style.setProperty(cssProp, resolved, "important")
         }
       }
     }
 
-    // Also inline any CSS custom properties that resolve to oklab
+    // Also inline any CSS custom properties that resolve to modern color functions
     const inlineStyle = el.getAttribute("style") ?? ""
-    if (oklabRe.test(inlineStyle)) {
-      el.setAttribute("style", inlineStyle.replace(oklabRe, (match) => resolveColor(match) ?? match))
+    if (modernColorRe.test(inlineStyle)) {
+      modernColorRe.lastIndex = 0
+      el.setAttribute("style", inlineStyle.replace(modernColorRe, (match) => resolveColor(match) ?? match))
     }
 
     for (const child of el.children) {
