@@ -38,7 +38,7 @@ interface TransposedShiftGridProps {
   compact?: boolean
   colorChips?: boolean
   timeFormat?: string
-  onCellClick?: (date: string, shiftType: ShiftType) => void
+  onCellClick?: (date: string) => void
   onChipClick?: (assignment: { staff_id: string }, date: string) => void
   onRefresh?: () => void
 }
@@ -94,7 +94,7 @@ export function TransposedShiftGrid({
 
   if (!data || localDays.length === 0) return null
 
-  const gridCols = `100px repeat(${shiftCodes.length}, 1fr) minmax(80px, 1fr)`
+  const gridCols = `120px repeat(${shiftCodes.length}, 1fr) minmax(80px, 1fr)`
 
   // Find assignment by DnD ID
   function findAssignment(id: string) {
@@ -177,14 +177,14 @@ export function TransposedShiftGrid({
                     holiday && "bg-amber-50/60"
                   )}
                   style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
-                  onClick={() => onChipClick?.({ staff_id: "" } as any, day.date)}
+                  onClick={() => onCellClick?.(day.date)}
                 >
                   {day.warnings.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-muted-foreground uppercase">{wday}</span>
                     <span className={cn(
                       "font-semibold leading-none",
-                      isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
+                      isToday ? "size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[12px]" : "text-[16px] text-primary"
                     )}>
                       {dayNum}
                     </span>
@@ -236,9 +236,9 @@ export function TransposedShiftGrid({
                               style={{
                                 borderLeft: colorChips
                                   ? `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`
-                                  : "3px solid #D4D4D8",
+                                  : undefined,
                                 borderRadius: 4,
-                                ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
+                                ...(colorChips && isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}
@@ -280,7 +280,7 @@ export function TransposedShiftGrid({
                       className={cn("flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}
                       onMouseEnter={() => setHovered(s.id)}
                       onMouseLeave={() => setHovered(null)}
-                      style={hoveredStaffId === s.id && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
+                      style={colorChips && hoveredStaffId === s.id && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
                     </div>

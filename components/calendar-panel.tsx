@@ -1178,9 +1178,9 @@ function StaffProfilePanel({
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, deptFilter }: {
+function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, deptFilter, colorChips = true }: {
   data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
-  liveDays?: RotaDay[] | null; deptFilter?: Set<string>
+  liveDays?: RotaDay[] | null; deptFilter?: Set<string>; colorChips?: boolean
 }) {
   const t = useTranslations("schedule")
   const ROLE_LABEL = buildDeptMaps(data.departments ?? []).label
@@ -1285,9 +1285,9 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
             className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
-            style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+            style={isHov && colorChips && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
-            {staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
+            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
           </button>
@@ -1521,10 +1521,10 @@ function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffW
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 h-7 px-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[12px] font-semibold hover:bg-amber-500/20 transition-colors shrink-0"
+        className="flex items-center gap-1 h-7 px-1.5 rounded-md text-amber-500 dark:text-amber-400 text-[12px] font-semibold hover:bg-amber-500/10 transition-colors shrink-0"
       >
-        <AlertTriangle className="size-3.5 shrink-0" />
-        {totalIssues}
+        <AlertTriangle className="size-4 shrink-0" />
+        <span className="tabular-nums">{totalIssues}</span>
       </button>
 
       {open && (() => {
@@ -2570,10 +2570,9 @@ function ShiftGrid({
               <div
                 key={dateStr}
                 className={cn(
-                  "relative flex flex-col items-center justify-center py-1.5 gap-[2px]",
+                  "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-l border-border",
                   holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted"
                 )}
-                style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
@@ -2672,9 +2671,8 @@ function ShiftGrid({
                   isOver={overId === cellId}
                   isPublished={isPublished}
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
-                  style={isSatCell ? { borderLeft: "1px dashed var(--border)" } : undefined}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1",
+                    "p-1.5 flex flex-col gap-1 border-l border-border",
                     dayShifts.length === 0 && effectivePDay === 0 ? "bg-muted/40" : "bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
@@ -2765,8 +2763,7 @@ function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                style={isSaturday ? { borderLeft: "1px dashed var(--border)" } : undefined}
-                className="p-1.5 flex flex-col gap-1 bg-muted"
+                className="p-1.5 flex flex-col gap-1 bg-muted border-l border-border"
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
                 {onLeaveStaff.map((s) => {
@@ -2777,7 +2774,7 @@ function ShiftGrid({
                     onMouseEnter={() => setHovered(s.id)}
                     onMouseLeave={() => setHovered(null)}
                     className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-default transition-colors duration-150"
-                    style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
+                    style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(colorChips && isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
                     <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
@@ -2793,7 +2790,7 @@ function ShiftGrid({
                       onMouseEnter={() => setHovered(s.id)}
                       onMouseLeave={() => setHovered(null)}
                       className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border transition-colors duration-150"
-                      style={{ borderLeft: `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}`, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
+                      style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(colorChips && isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
                     </div>
@@ -4649,11 +4646,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onClick: handleUnlock,
                 disabled: isPending,
               }] : []),
-              // ── Group 2: Export ──
+              // ── Export ──
               ...(hasAssignments && view === "week" ? [{
                 label: t("exportPdf"),
                 icon: <FileText className="size-3.5" />,
-                dividerBefore: true,
                 onClick: () => {
                   if (!weekData) return
                   import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
@@ -4701,12 +4697,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   }
                 },
               }] : []),
-              // ── Group 2b: Templates (moved up, right after export) ──
+              // ── Templates ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
-                dividerBefore: true,
               }, {
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
@@ -4715,9 +4710,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
-                dividerBefore: true,
               }] : []),
-              // ── Group 3: View options ──
+              // ── View options ──
               ...((view === "week" || view === "month") ? [{
                 label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
@@ -4761,7 +4755,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   label: locale === "es" ? "Vista favorita" : "Favorite view",
                   icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
                   onClick: () => {},
-                  dividerBefore: true,
                 }] : [{
                   label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
                   icon: <Star className="size-3.5" />,
@@ -4772,18 +4765,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     saveUserPreferences({ favoriteView: fav })
                     toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
                   },
-                  dividerBefore: true,
                 }]
               })(),
-              // Templates moved to Group 2b (after exports)
-              // ── Group 4b: History (week view with assignments) ──
+              // ── History ──
               ...(view === "week" && hasAssignments ? [{
                 label: t("viewHistory"),
                 icon: <Clock className="size-3.5" />,
                 onClick: () => setHistoryOpen(true),
-                dividerBefore: true,
               }] : []),
-              // ── Group 5: Destructive (editors only) ──
+              // ── Destructive ──
               ...(canEdit && hasAssignments && !isPublished ? [{
                 label: view === "month" ? t("delete4Weeks") : t("deleteRota"),
                 icon: <Trash2 className="size-3.5" />,
@@ -4986,6 +4976,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   compact={compact}
                   colorChips={colorChips}
                   timeFormat={weekData?.timeFormat}
+                  onCellClick={(date) => { setSheetDate(date); setSheetOpen(true) }}
                   onChipClick={(a) => openProfile(a.staff_id)}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                 />
@@ -5472,6 +5463,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             onPillClick={openProfile}
             liveDays={weekData?.rotaDisplayMode === "by_task" ? null : liveDays}
             deptFilter={deptFilter}
+            colorChips={colorChips}
           />
         )}
         {canEdit && view === "month" && monthSummary && !loadingMonth && (
