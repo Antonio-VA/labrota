@@ -349,13 +349,15 @@ export function applyTheme(prefs: UserPreferences) {
     root.style.setProperty("--header-bg", prefs.accentColor)
   }
 
-  // Font scale — applied via zoom on html element
+  // Font scale — applied via font-size on html element
   if (prefs.fontScale && prefs.fontScale !== "m") {
     const scale = prefs.fontScale === "s" ? "0.9" : "1.1"
     root.style.setProperty("--font-scale", scale)
-    root.style.zoom = scale
+    root.style.fontSize = `calc(14px * ${scale})`
+    root.style.zoom = ""
   } else {
     root.style.removeProperty("--font-scale")
+    root.style.fontSize = ""
     root.style.zoom = ""
   }
 

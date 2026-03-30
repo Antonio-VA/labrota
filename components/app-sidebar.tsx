@@ -100,7 +100,7 @@ export function AppSidebar() {
           if (prefs.fontScale && prefs.fontScale !== "m") {
             const scale = prefs.fontScale === "s" ? "0.9" : prefs.fontScale === "l" ? "1.1" : "1"
             root.style.setProperty("--font-scale", scale)
-            root.style.zoom = scale
+            root.style.fontSize = `calc(14px * ${scale})`
           }
         })
       }

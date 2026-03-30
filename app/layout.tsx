@@ -68,7 +68,7 @@ export default async function RootLayout({
   }
   if (fontScale) {
     rootStyle["--font-scale"] = fontScale
-    rootStyle["zoom"] = fontScale
+    rootStyle["fontSize"] = `calc(14px * ${fontScale})`
   }
 
   return (
