@@ -674,9 +674,8 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
 
       // ── Standard (non-grouped) assignment
-      // Find qualified candidates
+      // Find qualified candidates (skill-based, no department filter)
       const candidates = workingStaff.filter((s) => {
-        if (s.role !== task.department) return false
         const skills = staffSkillsCache[s.id]
         return skills && isQualified(skills, task.code)
       })
@@ -827,6 +826,92 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           const names = conflicting.map((id) => staff.find((s) => s.id === id)?.first_name ?? id)
           warnings.push(`${date}: ${names.join(" + ")} asignados a ${taskCode} (no_misma_tarea, soft)`)
         }
+      }
+    }
+
+    // ── 2f-pre: Budget-filling pass ────────────────────────────────────
+    // After meeting minimum demand, distribute remaining staff capacity
+    // across tasks they're qualified for. This ensures staff use their
+    // full weekly budget and all tasks get adequate coverage.
+
+    // Build no_misma_tarea conflict lookup: for each task, which staff IDs
+    // are already assigned and would conflict with new additions?
+    const noMismaTareaGroups: { staffIds: Set<string> }[] = []
+    for (const rule of rules.filter((r) => r.enabled && r.type === "no_misma_tarea" && r.is_hard)) {
+      noMismaTareaGroups.push({ staffIds: new Set(rule.staff_ids) })
+    }
+
+    function wouldConflictNoMismaTarea(staffId: string, taskCode: string): boolean {
+      for (const group of noMismaTareaGroups) {
+        if (!group.staffIds.has(staffId)) continue
+        // Check if another member of this conflict group is already on this task
+        const otherOnTask = dayAssignments.some((a) =>
+          a.function_label === taskCode && a.staff_id !== staffId && group.staffIds.has(a.staff_id)
+        )
+        if (otherOnTask) return true
+      }
+      return false
+    }
+
+    // Collect working staff qualifications
+    const allQualifiedTasks: Record<string, string[]> = {} // staff_id → task codes they can do
+    for (const s of workingStaff) {
+      const skills = staffSkillsCache[s.id]
+      if (!skills) continue
+      const qualifiedFor = tecnicas.filter((t) => isQualified(skills, t.codigo)).map((t) => t.codigo)
+      if (qualifiedFor.length > 0) allQualifiedTasks[s.id] = qualifiedFor
+    }
+
+    // Sort tasks by how many staff are already assigned (fewest first → spread load)
+    const taskAssignCount: Record<string, number> = {}
+    for (const a of dayAssignments) {
+      taskAssignCount[a.function_label] = (taskAssignCount[a.function_label] ?? 0) + 1
+    }
+
+    // Staff sorted by fewest tasks assigned today (prioritise idle staff)
+    const staffByLoad = [...workingStaff].sort((a, b) => {
+      const aCount = staffTaskCount[a.id] ?? 0
+      const bCount = staffTaskCount[b.id] ?? 0
+      if (aCount !== bCount) return aCount - bCount
+      return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+    })
+
+    // Keep filling until every working staff member has at least one task
+    for (const s of staffByLoad) {
+      if (assignedStaffIds.has(s.id) && (staffTaskCount[s.id] ?? 0) >= 1) continue
+      const qualified = allQualifiedTasks[s.id]
+      if (!qualified || qualified.length === 0) continue
+
+      // Pick the task with fewest current assignees that this staff can do
+      const sortedTasks = [...qualified]
+        .filter((t) => !wouldConflictNoMismaTarea(s.id, t))
+        .sort((a, b) => (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0))
+      if (sortedTasks.length === 0) continue
+      const pick = sortedTasks[0]
+      dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: pick })
+      staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
+      if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
+      staffTasks[s.id].add(pick)
+      assignedStaffIds.add(s.id)
+      taskAssignCount[pick] = (taskAssignCount[pick] ?? 0) + 1
+    }
+
+    // Second pass: fill remaining budget for staff who can take more tasks
+    // (staff with multiple skills should contribute to multiple techniques)
+    for (const s of staffByLoad) {
+      const qualified = allQualifiedTasks[s.id]
+      if (!qualified || qualified.length <= 1) continue
+      const currentTasks = staffTasks[s.id] ?? new Set()
+      // Add tasks this staff is qualified for but not yet assigned to
+      const unassigned = qualified
+        .filter((t) => !currentTasks.has(t) && !wouldConflictNoMismaTarea(s.id, t))
+        .sort((a, b) => (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0))
+      for (const task of unassigned) {
+        if ((staffTaskCount[s.id] ?? 0) >= taskConflictThreshold) break
+        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: task })
+        staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
+        staffTasks[s.id]!.add(task)
+        taskAssignCount[task] = (taskAssignCount[task] ?? 0) + 1
       }
     }
 
