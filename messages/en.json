@@ -550,6 +550,7 @@
     "requestSent": "Leave request sent successfully",
     "cancelLeave": "Cancel",
     "cancelConfirm": "Cancel this leave?",
+    "confirmCancel": "Yes, cancel",
     "cancelledSuccess": "Leave cancelled."
   },
   "lab": {

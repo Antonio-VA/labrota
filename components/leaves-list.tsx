@@ -786,10 +786,17 @@ export function LeavesList({
   const [, startCancelTransition] = useTransition()
 
   function handleCancel(leaveId: string) {
-    if (!confirm(t("cancelConfirm"))) return
-    startCancelTransition(async () => {
-      await cancelLeave(leaveId)
-      router.refresh()
+    toast(t("cancelConfirm"), {
+      action: {
+        label: t("confirmCancel"),
+        onClick: () => {
+          startCancelTransition(async () => {
+            await cancelLeave(leaveId)
+            toast.success(t("cancelledSuccess"))
+            router.refresh()
+          })
+        },
+      },
     })
   }
 

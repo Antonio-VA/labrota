@@ -550,6 +550,7 @@
     "requestSent": "Solicitud enviada correctamente",
     "cancelLeave": "Cancelar",
     "cancelConfirm": "¿Cancelar esta ausencia?",
+    "confirmCancel": "Sí, cancelar",
     "cancelledSuccess": "Ausencia cancelada."
   },
   "lab": {
