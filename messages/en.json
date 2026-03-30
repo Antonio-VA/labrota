@@ -1025,7 +1025,8 @@
     "dayRegenerated": "Day regenerated: {count} assignments",
     "wholeTeam": "Whole team",
     "pickups": "Pick ups",
-    "biopsies": "Biopsies"
+    "biopsies": "Biopsies",
+    "showLess": "Show less"
   },
   "errors": {
     "notFound": "Page not found",

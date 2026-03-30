@@ -1025,7 +1025,8 @@
     "dayRegenerated": "Día regenerado: {count} asignaciones",
     "wholeTeam": "Todo el equipo",
     "pickups": "Punciones",
-    "biopsies": "Biopsias"
+    "biopsies": "Biopsias",
+    "showLess": "Ver menos"
   },
   "errors": {
     "notFound": "Página no encontrada",

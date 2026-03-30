@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react"
 import { useTranslations } from "next-intl"
-import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users, Sparkles } from "lucide-react"
+import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users, Sparkles, Info, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
 import {
@@ -229,11 +229,8 @@ function DraggableCard({
           <span className="font-medium truncate leading-tight">
             {assignment.staff.first_name} {assignment.staff.last_name}
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground shrink-0 leading-tight">
-            {ROLE_LABEL[assignment.staff.role] ?? assignment.staff.role}
-          </span>
           {pillLabel && pillColor && (
-            <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto leading-tight", pillColor)}>
+            <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 leading-tight", pillColor)}>
               {pillLabel}
             </span>
           )}
@@ -485,6 +482,7 @@ export function AssignmentSheet({
   const [showDeleteAll, setShowDeleteAll] = useState(false)
   const [showRegenConfirm, setShowRegenConfirm] = useState(false)
   const [isRegenerating, startRegen] = useTransition()
+  const [warningsExpanded, setWarningsExpanded] = useState(false)
 
   // Sync from day prop
   useEffect(() => {
@@ -676,86 +674,51 @@ export function AssignmentSheet({
         <div className="border-b px-4 py-3 flex flex-col gap-1.5 shrink-0">
           <div className="flex items-center gap-2">
             <p className="text-[14px] font-medium capitalize leading-tight">{dateLabel}</p>
-            {/* Coverage indicator */}
-            {assignments.length > 0 && (
-              allCovered ? (
-                <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <AlertTriangle className="size-3.5 text-amber-500 shrink-0 cursor-default" />
-                  } />
-                  <TooltipContent side="bottom" className="max-w-[240px]">
-                    {skillGaps.length > 0 && (
-                      <>
-                        <p className="font-medium text-[12px] mb-1">{t("uncoveredTasks")}</p>
-                        {skillGaps.map((sk) => (
-                          <p key={sk} className="text-[11px] text-muted-foreground">· {sk}</p>
-                        ))}
-                      </>
-                    )}
-                    {warnings.length > 0 && (
-                      <>
-                        {skillGaps.length > 0 && <div className="h-px bg-border my-1" />}
-                        {warnings.map((w, i) => (
-                          <p key={i} className="text-[11px] text-muted-foreground">· {w.message}</p>
-                        ))}
-                      </>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              )
+            {assignments.length > 0 && allCovered && (
+              <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
             )}
           </div>
-          {/* Actions — regenerate / copy / delete */}
-          {!isPublished && rota && (
-            <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
-              <button
-                onClick={() => setShowRegenConfirm(true)}
-                disabled={assignments.length === 0}
-                className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-              >
-                <Sparkles className="size-3.5" />
-                {t("regenerateDay")}
-              </button>
-              {assignments.length === 0 && date && (
-                <button
-                  onClick={() => {
-                    startSave(async () => {
-                      const r = await copyDayFromLastWeek(weekStart, date)
-                      if (r.error) toast.error(r.error)
-                      else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
-                    })
-                  }}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Copy className="size-3.5" />
-                  {t("copyPrevWeek")}
-                </button>
-              )}
-              <div className="flex-1" />
-              {assignments.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <button
-                      onClick={() => setShowDeleteAll(true)}
-                      className="text-muted-foreground/50 hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  } />
-                  <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          )}
 
-          {/* P+B index + Pick ups + Biopsies */}
+          {/* Inline warnings */}
+          {assignments.length > 0 && !allCovered && (() => {
+            const allWarnings = [
+              ...skillGaps.map((sk) => ({ type: "gap" as const, text: sk })),
+              ...warnings.map((w) => ({ type: "warn" as const, text: w.message })),
+            ]
+            const VISIBLE_COUNT = 2
+            const hasMore = allWarnings.length > VISIBLE_COUNT
+            const visible = warningsExpanded ? allWarnings : allWarnings.slice(0, VISIBLE_COUNT)
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/20 px-3 py-2">
+                <div className="flex flex-col gap-0.5">
+                  {visible.map((w, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <AlertTriangle className="size-3 text-amber-500 mt-0.5 shrink-0" />
+                      <span className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">{w.text}</span>
+                    </div>
+                  ))}
+                </div>
+                {hasMore && (
+                  <button
+                    onClick={() => setWarningsExpanded((v) => !v)}
+                    className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-1 hover:underline"
+                  >
+                    {warningsExpanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                    {warningsExpanded ? t("showLess") : `+${allWarnings.length - VISIBLE_COUNT} more`}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* P+B index + Pick ups + Biopsies + Staff count */}
           {(() => {
             const p = effectiveP
             const b = biopsyForecast ?? 0
             const totalProc = p + b
-            const qualifiedCount = assignments.length
+            const embCount = assignments.filter((a) => a.staff.role === "lab").length
+            const androCount = assignments.filter((a) => a.staff.role === "andrology").length
+            const qualifiedCount = embCount + androCount
             const pbIndex = totalProc > 0 ? (qualifiedCount / totalProc) : 0
             const pbIndexStr = pbIndex.toFixed(1)
             const opt = 1.0
@@ -763,18 +726,21 @@ export function AssignmentSheet({
             const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : totalProc > 0 ? "text-destructive" : "text-muted-foreground"
             return totalProc > 0 ? (
               <div className="px-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground border-b border-border/50">
+                <span className={cn("font-semibold tabular-nums", indexColor)}>
+                  P+B: {pbIndexStr}
+                </span>
                 <Tooltip>
                   <TooltipTrigger render={
-                    <span className={cn("font-semibold tabular-nums cursor-default", indexColor)}>
-                      P+B: {pbIndexStr}
-                    </span>
+                    <Info className="size-3 text-muted-foreground/50 cursor-help" />
                   } />
-                  <TooltipContent side="bottom" className="whitespace-pre-line text-[11px]">
-                    {`${p} punciones + ${b} biopsias = ${totalProc} procedimientos\nÍndice P+B: ${pbIndexStr}`}
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-[11px] max-w-[260px]">
+                    {`P+B = Staff ÷ Procedures\n${qualifiedCount} staff (${embCount} emb + ${androCount} andro) ÷ ${totalProc} (${p} pickups + ${b} biopsies)\n\nOptimal: ≥ 1.0 · Min: ≥ 0.75`}
                   </TooltipContent>
                 </Tooltip>
                 <span className="text-muted-foreground/40">·</span>
                 <span>{p} punciones + {b} biopsias</span>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{qualifiedCount} ({embCount} emb + {androCount} andro)</span>
               </div>
             ) : null
           })()}
@@ -841,7 +807,7 @@ export function AssignmentSheet({
                   <span className="font-medium text-foreground">{biopsyForecast}</span>
                 </>
               )}
-              {!isPublished && rota && <Pencil className="size-3 text-muted-foreground ml-auto" />}
+              {!isPublished && rota && <Pencil className="size-3 text-muted-foreground ml-1" />}
             </button>
           )}
         </div>
@@ -1031,7 +997,49 @@ export function AssignmentSheet({
               </div>
             </DroppableOffSection>
 
-            {/* Actions bar moved to top (below header) */}
+            {/* Actions — regenerate / copy / delete */}
+            {!isPublished && rota && (
+              <div className="px-4 py-2 flex items-center gap-2 border-t border-border">
+                <button
+                  onClick={() => setShowRegenConfirm(true)}
+                  disabled={assignments.length === 0}
+                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                >
+                  <Sparkles className="size-3.5" />
+                  {t("regenerateDay")}
+                </button>
+                {assignments.length === 0 && date && (
+                  <button
+                    onClick={() => {
+                      startSave(async () => {
+                        const r = await copyDayFromLastWeek(weekStart, date)
+                        if (r.error) toast.error(r.error)
+                        else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
+                      })
+                    }}
+                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Copy className="size-3.5" />
+                    {t("copyPrevWeek")}
+                  </button>
+                )}
+                <div className="flex-1" />
+                {assignments.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger render={
+                      <button
+                        onClick={() => setShowDeleteAll(true)}
+                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    } />
+                    <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+
             {/* Confirmations */}
             {!isPublished && rota && (
               <div className="px-4 py-3 flex flex-col gap-3">
@@ -1111,9 +1119,6 @@ export function AssignmentSheet({
               >
                 <span className="font-medium truncate flex-1">
                   {activeAssignment.staff.first_name} {activeAssignment.staff.last_name}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {ROLE_LABEL[activeAssignment.staff.role]}
                 </span>
               </div>
             )}

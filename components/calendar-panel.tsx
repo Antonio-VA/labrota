@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -4685,18 +4685,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 },
               }, {
                 label: locale === "es" ? "Copiar imagen" : "Copy image",
-                icon: <Copy className="size-3.5" />,
+                icon: <Image className="size-3.5" />,
                 onClick: async () => {
                   const gridEl = document.querySelector("[data-calendar-content]") as HTMLElement
                   if (!gridEl) return
                   try {
-                    const { copyRotaToClipboard } = await import("@/lib/share-capture")
+                    const { shareRotaCapture } = await import("@/lib/share-capture")
                     const notesEl = document.querySelector("[data-week-notes]") as HTMLElement | null
                     const dateLabel = formatToolbarLabel("week", currentDate, weekStart, locale)
-                    await copyRotaToClipboard({ gridEl, dateLabel, notesEl })
-                    toast.success(locale === "es" ? "Imagen copiada al portapapeles" : "Image copied to clipboard")
+                    await shareRotaCapture({ gridEl, dateLabel, notesEl, fileName: `horario_${weekStart}.png` })
+                    toast.success(locale === "es" ? "Imagen guardada" : "Image saved")
                   } catch (err) {
-                    toast.error(locale === "es" ? "No se pudo copiar la imagen" : "Could not copy image")
+                    toast.error(locale === "es" ? "No se pudo capturar la imagen" : "Could not capture image")
                     console.error("Copy failed:", err)
                   }
                 },
