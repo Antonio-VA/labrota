@@ -1026,7 +1026,9 @@
     "wholeTeam": "Whole team",
     "pickups": "Pick ups",
     "biopsies": "Biopsies",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "qualifiedStaff": "staff",
+    "pbTooltip": "P+B = Qualified Staff ÷ Procedures\n\n{staff} qualified ({emb} embryologists + {andro} andrologists) ÷ {total} procedures ({pickups} pick ups + {biopsies} biopsies)\n\nOnly embryologists and andrologists count for the ratio.\n\nOptimal: ≥ 1.0 · Minimum: ≥ 0.75"
   },
   "errors": {
     "notFound": "Page not found",

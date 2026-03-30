@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useTransition } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { X, Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, CalendarX, Copy, Hourglass, Users, Sparkles, Info, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
@@ -469,6 +469,7 @@ export function AssignmentSheet({
   const t = useTranslations("assignmentSheet")
   const tc = useTranslations("common")
   const ts = useTranslations("schedule")
+  const locale = useLocale()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Merge department colours into the module-level ROLE_BORDER for sub-components
@@ -515,7 +516,7 @@ export function AssignmentSheet({
   const allCovered = skillGaps.length === 0 && warnings.length === 0
 
   const dateLabel = date
-    ? new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long" }).format(
+    ? new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
         new Date(date + "T12:00:00")
       )
     : ""
@@ -711,7 +712,7 @@ export function AssignmentSheet({
             )
           })()}
 
-          {/* P+B index + Pick ups + Biopsies + Staff count */}
+          {/* P+B section — procedures, ratio, staff count */}
           {(() => {
             const p = effectiveP
             const b = biopsyForecast ?? 0
@@ -723,93 +724,107 @@ export function AssignmentSheet({
             const pbIndexStr = pbIndex.toFixed(1)
             const opt = 1.0
             const min = 0.75
-            const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : totalProc > 0 ? "text-destructive" : "text-muted-foreground"
-            return totalProc > 0 ? (
-              <div className="px-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground border-b border-border/50">
-                <span className={cn("font-semibold tabular-nums", indexColor)}>
-                  P+B: {pbIndexStr}
-                </span>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Info className="size-3 text-muted-foreground/50 cursor-help" />
-                  } />
-                  <TooltipContent side="bottom" className="whitespace-pre-line text-[11px] max-w-[260px]">
-                    {`P+B = Staff ÷ Procedures\n${qualifiedCount} staff (${embCount} emb + ${androCount} andro) ÷ ${totalProc} (${p} pickups + ${b} biopsies)\n\nOptimal: ≥ 1.0 · Min: ≥ 0.75`}
-                  </TooltipContent>
-                </Tooltip>
-                <span className="text-muted-foreground/40">·</span>
-                <span>{p} punciones + {b} biopsias</span>
-                <span className="text-muted-foreground/40">·</span>
-                <span>{qualifiedCount} ({embCount} emb + {androCount} andro)</span>
-              </div>
-            ) : null
-          })()}
+            const indexColor = totalProc > 0
+              ? pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : "text-destructive"
+              : "text-muted-foreground"
 
-          {/* Pick ups + Biopsies — single clickable zone */}
-          {editingP ? (
-            <div className="flex flex-col gap-2 bg-muted/30 rounded-lg px-3 py-2.5 border border-border">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] text-muted-foreground">{t("pickups")}</span>
-                  <input
-                    autoFocus
-                    type="number"
-                    min={0}
-                    value={pDraft}
-                    onChange={(e) => setPDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") commitPunctions(); if (e.key === "Escape") setEditingP(false) }}
-                    className="w-14 text-[13px] text-center border border-primary rounded px-1 py-1 outline-none bg-background font-medium"
-                  />
-                </div>
-                {biopsyForecast !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[12px] text-muted-foreground">{t("biopsies")}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      defaultValue={biopsyForecast}
-                      className="w-14 text-[13px] font-medium text-center border border-input rounded px-1 py-1 bg-background outline-none focus:border-primary"
-                    />
+            return (
+              <div className="flex flex-col gap-1.5">
+                {/* Procedures row — clickable to edit */}
+                {editingP ? (
+                  <div className="flex flex-col gap-2 bg-muted/30 rounded-lg px-3 py-2.5 border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] text-muted-foreground">{t("pickups")}</span>
+                        <input
+                          autoFocus
+                          type="number"
+                          min={0}
+                          value={pDraft}
+                          onChange={(e) => setPDraft(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") commitPunctions(); if (e.key === "Escape") setEditingP(false) }}
+                          className="w-14 text-[13px] text-center border border-primary rounded px-1 py-1 outline-none bg-background font-medium"
+                        />
+                      </div>
+                      {biopsyForecast !== undefined && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] text-muted-foreground">{t("biopsies")}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            defaultValue={biopsyForecast}
+                            className="w-14 text-[13px] font-medium text-center border border-input rounded px-1 py-1 bg-background outline-none focus:border-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={commitPunctions}
+                        className="flex-1 text-[12px] font-medium bg-primary text-primary-foreground rounded-md px-3 py-1.5 hover:opacity-90 transition-opacity"
+                      >
+                        {tc("save")}
+                      </button>
+                      <button
+                        onClick={() => setEditingP(false)}
+                        className="text-[12px] text-muted-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
+                      >
+                        {tc("cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 text-[12px] rounded-lg px-3 py-2 transition-colors text-left",
+                      !isPublished && rota && "hover:bg-muted/50 cursor-pointer active:bg-muted"
+                    )}
+                  >
+                    <span className="text-muted-foreground">{t("pickups")}: </span>
+                    <span className={cn("font-medium", hasOverride ? "text-primary" : "text-foreground")}>{effectiveP}</span>
+                    {biopsyForecast !== undefined && (
+                      <>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="text-muted-foreground">{t("biopsies")}: </span>
+                        <span className="font-medium text-foreground">{biopsyForecast}</span>
+                      </>
+                    )}
+                    {!isPublished && rota && <Pencil className="size-3 text-muted-foreground ml-1" />}
+                  </button>
+                )}
+
+                {/* P+B ratio + staff breakdown — only when procedures exist */}
+                {totalProc > 0 && (
+                  <div className="flex items-center gap-2 px-3 pb-1 text-[11px]">
+                    <span className={cn("font-bold tabular-nums text-[13px]", indexColor)}>
+                      P+B: {pbIndexStr}
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger render={
+                        <Info className="size-3 text-muted-foreground/50 cursor-help" />
+                      } />
+                      <TooltipContent side="bottom" className="whitespace-pre-line text-[11px] max-w-[280px]">
+                        {t("pbTooltip", {
+                          staff: qualifiedCount,
+                          emb: embCount,
+                          andro: androCount,
+                          total: totalProc,
+                          pickups: p,
+                          biopsies: b,
+                        })}
+                      </TooltipContent>
+                    </Tooltip>
+                    <span className="text-muted-foreground">
+                      {qualifiedCount} {t("qualifiedStaff")} ({embCount} emb + {androCount} andro) ÷ {totalProc}
+                    </span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={commitPunctions}
-                  className="flex-1 text-[12px] font-medium bg-primary text-primary-foreground rounded-md px-3 py-1.5 hover:opacity-90 transition-opacity"
-                >
-                  {tc("save")}
-                </button>
-                <button
-                  onClick={() => setEditingP(false)}
-                  className="text-[12px] text-muted-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
-                >
-                  {tc("cancel")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                if (!isPublished && rota) { setPDraft(String(effectiveP)); setEditingP(true) }
-              }}
-              className={cn(
-                "flex items-center gap-3 text-[12px] rounded-lg px-3 py-2 transition-colors text-left",
-                !isPublished && rota && "hover:bg-muted/50 cursor-pointer active:bg-muted"
-              )}
-            >
-              <span className="text-muted-foreground">{t("pickups")}: </span>
-              <span className={cn("font-medium", hasOverride ? "text-primary" : "text-foreground")}>{effectiveP}</span>
-              {biopsyForecast !== undefined && (
-                <>
-                  <span className="text-muted-foreground/40">·</span>
-                  <span className="text-muted-foreground">{t("biopsies")}: </span>
-                  <span className="font-medium text-foreground">{biopsyForecast}</span>
-                </>
-              )}
-              {!isPublished && rota && <Pencil className="size-3 text-muted-foreground ml-1" />}
-            </button>
-          )}
+            )
+          })()}
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
@@ -999,80 +1014,9 @@ export function AssignmentSheet({
 
             {/* Actions — regenerate / copy / delete */}
             {!isPublished && rota && (
-              <div className="px-4 py-2 flex items-center gap-2 border-t border-border">
-                <button
-                  onClick={() => setShowRegenConfirm(true)}
-                  disabled={assignments.length === 0}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-                >
-                  <Sparkles className="size-3.5" />
-                  {t("regenerateDay")}
-                </button>
-                {assignments.length === 0 && date && (
-                  <button
-                    onClick={() => {
-                      startSave(async () => {
-                        const r = await copyDayFromLastWeek(weekStart, date)
-                        if (r.error) toast.error(r.error)
-                        else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
-                      })
-                    }}
-                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    <Copy className="size-3.5" />
-                    {t("copyPrevWeek")}
-                  </button>
-                )}
-                <div className="flex-1" />
-                {assignments.length > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <button
-                        onClick={() => setShowDeleteAll(true)}
-                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    } />
-                    <TooltipContent side="left">{t("deleteDayShifts")}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
-
-            {/* Confirmations */}
-            {!isPublished && rota && (
-              <div className="px-4 py-3 flex flex-col gap-3">
-                {assignments.length > 0 && showDeleteAll && (
-                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="size-3.5 text-destructive mt-0.5 shrink-0" />
-                      <p className="text-[12px] text-destructive leading-snug">
-                        {t("deleteDayConfirm")}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-3 text-[12px] border-destructive/30 text-destructive hover:bg-destructive/5"
-                        onClick={handleDeleteAll}
-                      >
-                        {tc("delete")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-3 text-[12px]"
-                        onClick={() => setShowDeleteAll(false)}
-                      >
-                        {tc("cancel")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {/* Regenerar día confirmation */}
-                {showRegenConfirm && (
+              <div className="px-3 py-3 border-t border-border flex flex-col gap-2">
+                {/* Inline confirmation — replaces buttons when active */}
+                {showRegenConfirm ? (
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2">
                     <p className="text-[12px] text-foreground leading-snug">
                       {t("regenerateDayConfirm")}
@@ -1103,6 +1047,75 @@ export function AssignmentSheet({
                         {tc("cancel")}
                       </Button>
                     </div>
+                  </div>
+                ) : showDeleteAll ? (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="size-3.5 text-destructive mt-0.5 shrink-0" />
+                      <p className="text-[12px] text-destructive leading-snug">
+                        {t("deleteDayConfirm")}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-[12px] border-destructive/30 text-destructive hover:bg-destructive/5"
+                        onClick={handleDeleteAll}
+                      >
+                        {tc("delete")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-3 text-[12px]"
+                        onClick={() => setShowDeleteAll(false)}
+                      >
+                        {tc("cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Action buttons */
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-[12px] gap-1.5"
+                      onClick={() => setShowRegenConfirm(true)}
+                      disabled={assignments.length === 0}
+                    >
+                      <Sparkles className="size-3.5" />
+                      {t("regenerateDay")}
+                    </Button>
+                    {assignments.length === 0 && date && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-[12px] gap-1.5"
+                        onClick={() => {
+                          startSave(async () => {
+                            const r = await copyDayFromLastWeek(weekStart, date)
+                            if (r.error) toast.error(r.error)
+                            else { toast.success(ts("copyAssignments", { count: r.count ?? 0 })); onSaved() }
+                          })
+                        }}
+                      >
+                        <Copy className="size-3.5" />
+                        {t("copyPrevWeek")}
+                      </Button>
+                    )}
+                    <div className="flex-1" />
+                    {assignments.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground/50 hover:text-destructive"
+                        onClick={() => setShowDeleteAll(true)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

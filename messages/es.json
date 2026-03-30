@@ -1026,7 +1026,9 @@
     "wholeTeam": "Todo el equipo",
     "pickups": "Punciones",
     "biopsies": "Biopsias",
-    "showLess": "Ver menos"
+    "showLess": "Ver menos",
+    "qualifiedStaff": "personal",
+    "pbTooltip": "P+B = Personal cualificado ÷ Procedimientos\n\n{staff} cualificados ({emb} embriólogos + {andro} andrólogos) ÷ {total} procedimientos ({pickups} punciones + {biopsies} biopsias)\n\nSolo embriólogos y andrólogos cuentan para el ratio.\n\nÓptimo: ≥ 1.0 · Mínimo: ≥ 0.75"
   },
   "errors": {
     "notFound": "Página no encontrada",
