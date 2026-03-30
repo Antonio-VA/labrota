@@ -76,7 +76,7 @@ export default async function LabConfigPage() {
                 </p>
               )
             }
-            reglas={<RulesSection rules={rules} staff={staff} tecnicas={tecnicas} />}
+            reglas={<RulesSection rules={rules} staff={staff} tecnicas={tecnicas} shiftTypes={shiftTypes} />}
             generador={
               config ? (
                 <LabConfigForm config={config} section="parametros" rotaDisplayMode={rotaDisplayMode} initialRotation={(config as { shift_rotation?: string } | null)?.shift_rotation ?? "stable"} />

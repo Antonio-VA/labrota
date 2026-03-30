@@ -660,7 +660,8 @@
         "distribucion_fines_semana": "Distribución fines de semana",
         "descanso_fin_de_semana": "Descanso alterno fin de semana",
         "no_turno_doble": "Sin turno doble",
-        "restriccion_dia_tecnica": "Restricción día/técnica"
+        "restriccion_dia_tecnica": "Restricción día/técnica",
+        "asignacion_fija": "Asignación fija"
       },
       "descriptions": {
         "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día",
@@ -671,7 +672,8 @@
         "distribucion_fines_semana": "Limita cuántos fines de semana por mes puede trabajar una persona",
         "descanso_fin_de_semana": "Si trabaja un fin de semana, el siguiente (o anterior) lo libra, más días de descanso contiguos",
         "no_turno_doble": "Impide asignar dos turnos en el mismo día",
-        "restriccion_dia_tecnica": "Restringe una técnica a ciertos días de la semana"
+        "restriccion_dia_tecnica": "Restringe una técnica a ciertos días de la semana",
+        "asignacion_fija": "Asigna siempre al personal seleccionado en días y/o turnos específicos"
       },
       "params": {
         "maxDays": "Máx. días consecutivos",
@@ -686,12 +688,19 @@
         "recoveryPreviousHint": "Si trabaja el fin de semana N, debió librar el fin de semana N-1",
         "restDays": "Días de descanso contiguos",
         "restDaysHint": "Días libres adicionales tras el fin de semana trabajado",
+        "trainingTechnique": "Técnica de formación",
+        "noTechnique": "Sin técnica específica",
+        "trainingTechniqueHint": "Asignará automáticamente esta técnica al personal supervisado",
         "technique": "Técnica",
         "selectTechnique": "Seleccionar técnica…",
         "dayMode": "Modo",
         "dayModeNever": "Nunca en estos días",
         "dayModeOnly": "Solo en estos días",
-        "selectDays": "Días de la semana"
+        "selectDays": "Días de la semana",
+        "fixedShift": "Turno fijo",
+        "anyShift": "Cualquier turno",
+        "fixedDays": "Días fijos",
+        "fixedDaysHint": "Si vacío, se aplica todos los días laborables"
       }
     }
   },

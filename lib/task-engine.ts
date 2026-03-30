@@ -406,6 +406,25 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
     }
 
+    // asignacion_fija: force-include staff on specified days, prevent hard removals
+    const fixedShiftOverrides: Record<string, string> = {} // staff_id → forced shift code
+    for (const rule of rules.filter((r) => r.enabled && r.type === "asignacion_fija")) {
+      const fixedShift = rule.params.fixedShift as string | undefined
+      const fixedDays = (rule.params.fixedDays as string[] | undefined) ?? []
+      if (fixedDays.length > 0 && !fixedDays.includes(dayCode)) continue
+      for (const staffId of rule.staff_ids) {
+        const s = eligibleStaff.find((st) => st.id === staffId)
+        if (!s) continue
+        if (rule.is_hard) {
+          hardRemovals.delete(staffId) // override any earlier hard removal
+          if (fixedShift) fixedShiftOverrides[staffId] = fixedShift
+          warnings.push(`${date}: ${s.first_name} ${s.last_name} — asignación fija${fixedShift ? ` (${fixedShift})` : ""}`)
+        } else if (hardRemovals.has(staffId)) {
+          warnings.push(`${date}: ${s.first_name} ${s.last_name} no asignado — asignación fija no cumplida (regla blanda)`)
+        }
+      }
+    }
+
     // Working staff for today (after rule removals)
     const workingStaff = eligibleStaff.filter((s) => !hardRemovals.has(s.id))
 
@@ -493,6 +512,26 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     const deptTaskCodes: Record<string, string[]> = {}
     for (const [dept, tecs] of Object.entries(tecByDept)) {
       deptTaskCodes[dept] = tecs.map((t) => t.codigo)
+    }
+
+    // Force training technique assignments from supervisor rules
+    for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+      const trainingTecCode = rule.params.training_tecnica_code as string | undefined
+      if (!trainingTecCode) continue
+      const supervisorId = rule.params.supervisor_id as string | undefined
+      const traineeIds = rule.staff_ids.filter((id) => id !== supervisorId)
+      for (const traineeId of traineeIds) {
+        if (!workingStaff.some((s) => s.id === traineeId)) continue
+        if (hardRemovals.has(traineeId)) continue
+        const demandEntry = taskDemand.find((td) => td.code === trainingTecCode)
+        if (!demandEntry) continue
+        dayAssignments.push({ staff_id: traineeId, shift_type: dummyShift, function_label: trainingTecCode })
+        staffTaskCount[traineeId] = (staffTaskCount[traineeId] ?? 0) + 1
+        if (!staffTasks[traineeId]) staffTasks[traineeId] = new Set()
+        staffTasks[traineeId].add(trainingTecCode)
+        assignedStaffIds.add(traineeId)
+        demandEntry.needed = Math.max(0, demandEntry.needed - 1)
+      }
     }
 
     for (const task of taskDemand) {
@@ -626,6 +665,12 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           skillGaps.push(tec.codigo as SkillName)
         }
       }
+    }
+
+    // Apply asignacion_fija shift overrides
+    for (const a of dayAssignments) {
+      const overrideShift = fixedShiftOverrides[a.staff_id]
+      if (overrideShift) a.shift_type = overrideShift
     }
 
     days.push({ date, assignments: dayAssignments, offStaff, skillGaps })

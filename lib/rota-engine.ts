@@ -461,6 +461,7 @@ export function runRotaEngine({
     }
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
+    const fixedShiftOverrides: Record<string, string> = {} // staff_id → forced shift code from asignacion_fija
 
     // 6. Apply scheduling rules
     if (rules.length > 0) {
@@ -648,6 +649,40 @@ export function runRotaEngine({
           // At the shift-assignment stage, we just ensure both are assigned (prerequisite for the check).
           // The actual técnica conflict detection happens in the rota actions or UI layer.
           // Store the rule params so warnings can reference it.
+        }
+
+        if (rule.type === "asignacion_fija") {
+          const fixedShift = rule.params.fixedShift as string | undefined
+          const fixedDays = (rule.params.fixedDays as string[] | undefined) ?? []
+          // If fixedDays specified, only apply on those days
+          if (fixedDays.length > 0 && !fixedDays.includes(dayCode)) continue
+
+          for (const staffId of rule.staff_ids) {
+            const s = staff.find((st) => st.id === staffId)
+            if (!s) continue
+            if (s.onboarding_status === "inactive") continue
+            if (s.start_date > date || (s.end_date && s.end_date < date)) continue
+            if (leaveMap[s.id]?.has(date)) continue
+
+            const alreadyAssigned = assigned.some((a) => a.id === s.id)
+            if (alreadyAssigned) {
+              if (fixedShift) fixedShiftOverrides[staffId] = fixedShift
+            } else if (rule.is_hard) {
+              // Force-assign on this day
+              assigned.push(s)
+              if (s.role === "lab") assignedLab = [...assignedLab, s]
+              else if (s.role === "andrology") assignedAndrology = [...assignedAndrology, s]
+              else assignedAdmin = [...assignedAdmin, s]
+              if (fixedShift) fixedShiftOverrides[staffId] = fixedShift
+              warnings.push(
+                `${date}: ${s.first_name} ${s.last_name} — asignación fija${fixedShift ? ` (${fixedShift})` : ""}`
+              )
+            } else {
+              warnings.push(
+                `${date}: ${s.first_name} ${s.last_name} no asignado — asignación fija no cumplida (regla blanda)`
+              )
+            }
+          }
         }
       }
 
@@ -1146,6 +1181,14 @@ export function runRotaEngine({
 
     days.push({ date, assignments: dayPlanAssignments, skillGaps })
 
+    // Apply asignacion_fija shift overrides
+    for (const [staffId, fixedShift] of Object.entries(fixedShiftOverrides)) {
+      const asg = dayPlanAssignments.find((a) => a.staff_id === staffId)
+      if (asg && asg.shift_type !== fixedShift) {
+        asg.shift_type = fixedShift as ShiftType
+      }
+    }
+
     // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
     const dayPlan = days[days.length - 1]
     if (!shiftCoverageEnabled && defaultShiftCodes.length > 1 && dayPlan.assignments.length > 0) {
@@ -1411,6 +1454,19 @@ export function runRotaEngine({
     }
   }
 
+  // ── Collect training technique assignments from supervisor rules ──────────
+  // Map: trainee staff_id → forced technique code (from supervisor_requerido rules with training_tecnica_code)
+  const trainingTecnicaMap: Record<string, string> = {}
+  for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+    const trainingTecCode = rule.params.training_tecnica_code as string | undefined
+    if (!trainingTecCode) continue
+    const supervisorId = rule.params.supervisor_id as string | undefined
+    const traineeIds = rule.staff_ids.filter((id) => id !== supervisorId)
+    for (const id of traineeIds) {
+      trainingTecnicaMap[id] = trainingTecCode
+    }
+  }
+
   // ── PHASE 4: Task assignment (only when taskCoverageEnabled) ────────────────
   if (taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0) {
     const taskConflictThreshold = labConfig.task_conflict_threshold ?? 3
@@ -1484,6 +1540,21 @@ export function runRotaEngine({
 
       // Track task assignments for no_misma_tarea checking
       const dayTaskMap: Record<string, Set<string>> = {} // staff_id → set of task codes
+
+      // 4.3b: Force training technique assignments from supervisor rules
+      for (const { staff_id } of assignedStaff) {
+        const forcedTec = trainingTecnicaMap[staff_id]
+        if (!forcedTec) continue
+        // Only force if the technique exists in demand (even if filled)
+        const demandEntry = taskDemand.find((td) => td.code === forcedTec)
+        if (!demandEntry) continue
+        taskAssignments.push({ staff_id, tecnica_code: forcedTec, date })
+        staffTaskCount[staff_id] = (staffTaskCount[staff_id] ?? 0) + 1
+        if (!dayTaskMap[staff_id]) dayTaskMap[staff_id] = new Set()
+        dayTaskMap[staff_id].add(forcedTec)
+        // Reduce remaining demand
+        demandEntry.needed = Math.max(0, demandEntry.needed - 1)
+      }
 
       for (const task of taskDemand) {
         // Find qualified staff for this task

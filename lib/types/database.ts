@@ -293,6 +293,7 @@ export type RotaRuleType =
   | 'no_misma_tarea'
   | 'no_librar_mismo_dia'
   | 'restriccion_dia_tecnica'
+  | 'asignacion_fija'
 
 export interface RotaRule {
   id:              string
