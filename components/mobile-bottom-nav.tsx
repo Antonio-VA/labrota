@@ -97,12 +97,12 @@ export function MobileBottomNav() {
               )}
             >
               {item.key === "day" ? (
-                <div className="relative size-6 flex items-center justify-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.8 : 1.4} strokeLinecap="round" strokeLinejoin="round" className="absolute inset-0">
+                <div className="relative size-6">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.8 : 1.4} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" />
                     <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
-                  <span className={cn("relative top-[2px] text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                  <span className={cn("absolute inset-0 top-[10px] flex items-center justify-center text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
                     {new Date().getDate()}
                   </span>
                 </div>
