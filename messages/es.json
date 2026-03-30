@@ -133,6 +133,8 @@
     "rotaLocked": "Este horario está bloqueado. Desbloquéalo para editar.",
     "noRota": "Sin horario esta semana",
     "noRotaDescription": "Genera un horario automáticamente o copia el anterior.",
+    "noRotaYet": "El horario aún no está listo",
+    "noRotaYetDescription": "Tu responsable publicará el horario de esta semana próximamente.",
     "preserveOverrides": "¿Conservar modificaciones manuales?",
     "preserveOverridesDescription": "Si conservas las modificaciones, sólo se regenerarán los turnos no editados.",
     "keepOverrides": "Conservar modificaciones",
@@ -534,7 +536,13 @@
     "upcomingLeaves": "Próx. ausencias",
     "next30Days": "Próximos 30 días",
     "hideHistory": "Ocultar historial",
-    "showHistory": "Mostrar historial ({count})"
+    "showHistory": "Mostrar historial ({count})",
+    "notLinked": "Sin empleado asociado",
+    "notLinkedDescription": "Tu cuenta no está vinculada a ningún empleado. Contacta con tu responsable para vincularla.",
+    "viewerRequestInfo": "Tus solicitudes de ausencia serán revisadas por un responsable antes de ser aprobadas.",
+    "viewerApprovalInfo": "Tus ausencias deben ser aprobadas por un responsable antes de hacerse efectivas.",
+    "requestBanner": "Esta solicitud será enviada a tu responsable para su aprobación.",
+    "sendRequest": "Enviar solicitud"
   },
   "lab": {
     "title": "Laboratorio",

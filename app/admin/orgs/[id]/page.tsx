@@ -32,7 +32,7 @@ export default async function OrgDetailPage({
     admin.from("staff").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("onboarding_status", "active"),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).gte("created_at", thirtyDaysAgo),
-    admin.from("organisation_members").select("user_id, role, display_name").eq("organisation_id", id),
+    admin.from("organisation_members").select("user_id, role, display_name, linked_staff_id").eq("organisation_id", id),
     admin.from("lab_config").select("country, region, enable_leave_requests, enable_notes").eq("organisation_id", id).maybeSingle(),
     admin.from("departments").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
@@ -43,10 +43,19 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("week_start, status, created_at").eq("organisation_id", id).order("week_start", { ascending: false }).limit(8) as unknown as Promise<{ data: { week_start: string; status: string; created_at: string }[] | null }>,
   ])
 
+  // Fetch staff for linking
+  const staffListRes = await admin
+    .from("staff")
+    .select("id, first_name, last_name, role")
+    .eq("organisation_id", id)
+    .eq("onboarding_status", "active")
+    .order("first_name")
+
   if (!orgRes.data) notFound()
 
   const org = orgRes.data as Organisation
-  type MemberRecord = { user_id: string; role: string; display_name: string | null }
+  const orgStaff = (staffListRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string }[]
+  type MemberRecord = { user_id: string; role: string; display_name: string | null; linked_staff_id: string | null }
   const memberRecords = (profilesRes.data ?? []) as MemberRecord[]
 
   const memberUserIds = memberRecords.map((m) => m.user_id)
@@ -81,6 +90,7 @@ export default async function OrgDetailPage({
         orgId: id,
         role: m.role,
         lastLogin: lastLoginByUser[profile.id] ? fmt(lastLoginByUser[profile.id]!) : null,
+        linkedStaffId: m.linked_staff_id,
       }
     })
 
@@ -262,6 +272,7 @@ export default async function OrgDetailPage({
             orgId={id} userRows={userRows} section="usuarios"
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+            orgStaff={orgStaff}
           />
         }
         implementacion={

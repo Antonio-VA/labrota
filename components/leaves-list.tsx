@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX,
 } from "lucide-react"
 import { LeaveFileImport } from "@/components/leave-file-import"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave } from "@/app/(clinic)/leaves/actions"
+import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave } from "@/app/(clinic)/leaves/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import type { LeaveWithStaff, Staff, LeaveType } from "@/lib/types/database"
@@ -67,21 +67,26 @@ function LeaveForm({
   editing,
   onSuccess,
   viewerStaffId,
+  isRequestMode,
 }: {
   staff: Staff[]
   editing: LeaveWithStaff | null
   onSuccess: () => void
   viewerStaffId?: string | null
+  isRequestMode?: boolean
 }) {
   const isViewerMode = !!viewerStaffId
   const t  = useTranslations("leaves")
   const tc = useTranslations("common")
 
+  // In request mode (viewer + leave requests enabled), use requestLeave action
+  const useRequestFlow = isRequestMode && isViewerMode && !editing
   const action = editing ? updateLeave.bind(null, editing.id) : createLeave
   const [state, formAction, isPending] = useActionState(action, null)
 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDeleting, startDelete] = useTransition()
+  const [isRequesting, startRequest] = useTransition()
   const router = useRouter()
 
   useEffect(() => {
@@ -99,8 +104,34 @@ function LeaveForm({
     })
   }
 
+  function handleRequestSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startRequest(async () => {
+      const result = await requestLeave({
+        staffId: fd.get("staff_id") as string,
+        type: fd.get("type") as string,
+        startDate: fd.get("start_date") as string,
+        endDate: fd.get("end_date") as string,
+        notes: (fd.get("notes") as string) || undefined,
+      })
+      if (result.error) return // TODO: show error
+      router.refresh()
+      onSuccess()
+    })
+  }
+
+  const pending = isPending || isRequesting
+
   return (
-    <form action={formAction} className="flex flex-col gap-4 px-4 flex-1 overflow-auto">
+    <form action={useRequestFlow ? undefined : formAction} onSubmit={useRequestFlow ? handleRequestSubmit : undefined} className="flex flex-col gap-4 px-4 flex-1 overflow-auto">
+      {/* Request mode banner */}
+      {useRequestFlow && (
+        <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-[13px] text-sky-700">
+          <Info className="size-4 mt-0.5 shrink-0" />
+          <span>{t("requestBanner")}</span>
+        </div>
+      )}
       {/* Staff */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[14px] font-medium">{t("fields.staff")}</label>
@@ -180,16 +211,16 @@ function LeaveForm({
       <SheetFooter className="px-0 mt-auto">
         <div className="flex items-center justify-between gap-2 w-full">
           <div className="flex gap-2">
-            <Button type="submit" disabled={isPending || isDeleting}>
-              {isPending ? tc("saving") : editing ? tc("save") : tc("create")}
+            <Button type="submit" disabled={pending || isDeleting}>
+              {pending ? tc("saving") : useRequestFlow ? t("sendRequest") : editing ? tc("save") : tc("create")}
             </Button>
-            <Button type="button" variant="outline" disabled={isPending} onClick={onSuccess}>
+            <Button type="button" variant="outline" disabled={pending} onClick={onSuccess}>
               {tc("cancel")}
             </Button>
           </div>
 
           {editing && !confirmDelete && (!isViewerMode || editing.staff_id === viewerStaffId) && (
-            <Button type="button" variant="destructive" disabled={isPending || isDeleting} onClick={() => setConfirmDelete(true)}>
+            <Button type="button" variant="destructive" disabled={pending || isDeleting} onClick={() => setConfirmDelete(true)}>
               {tc("delete")}
             </Button>
           )}
@@ -394,11 +425,13 @@ export function LeavesList({
   staff,
   userRole = "admin",
   viewerStaffId,
+  enableLeaveRequests = false,
 }: {
   leaves: LeaveWithStaff[]
   staff: Staff[]
   userRole?: "admin" | "manager" | "viewer"
   viewerStaffId?: string | null
+  enableLeaveRequests?: boolean
 }) {
   const isViewer = userRole === "viewer"
   const t      = useTranslations("leaves")
@@ -411,7 +444,23 @@ export function LeavesList({
   const [showHistory, setShowHistory] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
 
-  const filtered = leaves.filter((l) => {
+  // Viewers without linked staff can't access leaves
+  if (isViewer && !viewerStaffId) {
+    return (
+      <EmptyState
+        icon={UserX}
+        title={t("notLinked")}
+        description={t("notLinkedDescription")}
+      />
+    )
+  }
+
+  // Filter leaves: viewers see only their own
+  const visibleLeaves = isViewer
+    ? leaves.filter((l) => l.staff_id === viewerStaffId)
+    : leaves
+
+  const filtered = visibleLeaves.filter((l) => {
     if (typeFilter !== "all" && l.type !== typeFilter) return false
     return true
   })
@@ -438,15 +487,23 @@ export function LeavesList({
 
   return (
     <div className="flex flex-col">
-      {/* KPI summary band */}
-      {leaves.length > 0 && (
+      {/* KPI summary band — hide for viewers */}
+      {!isViewer && visibleLeaves.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <KpiCards leaves={leaves} />
+          <KpiCards leaves={visibleLeaves} />
+        </div>
+      )}
+
+      {/* Viewer info banner */}
+      {isViewer && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-[13px] text-sky-700 mb-4">
+          <Info className="size-4 mt-0.5 shrink-0" />
+          <span>{enableLeaveRequests ? t("viewerRequestInfo") : t("viewerApprovalInfo")}</span>
         </div>
       )}
 
       {/* Pending leave requests (admins only) */}
-      <PendingRequests leaves={leaves} isAdmin={!isViewer} locale={locale} />
+      <PendingRequests leaves={visibleLeaves} isAdmin={!isViewer} locale={locale} />
 
       {/* Content section */}
       <div className="flex flex-col gap-4">
@@ -463,16 +520,18 @@ export function LeavesList({
           ))}
         </select>
         <div className="flex items-center gap-2">
-          <Button size="lg" onClick={openCreate}>{t("addLeave")}</Button>
-          <Button size="lg" variant="outline" onClick={() => setFileImportOpen(true)}>
-            <FileUp className="size-4" />
-            {t("addFromFile")}
-          </Button>
+          <Button size="lg" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
+          {!isViewer && (
+            <Button size="lg" variant="outline" onClick={() => setFileImportOpen(true)}>
+              <FileUp className="size-4" />
+              {t("addFromFile")}
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Empty state — no leaves at all */}
-      {leaves.length === 0 && (
+      {visibleLeaves.length === 0 && (
         <EmptyState
           icon={CalendarOff}
           title={t("noLeaves")}
@@ -481,7 +540,7 @@ export function LeavesList({
         />
       )}
 
-      {leaves.length > 0 && filtered.length === 0 && (
+      {visibleLeaves.length > 0 && filtered.length === 0 && (
         <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
       )}
 
@@ -527,6 +586,7 @@ export function LeavesList({
               editing={editing}
               onSuccess={closeSheet}
               viewerStaffId={isViewer ? viewerStaffId : undefined}
+              isRequestMode={enableLeaveRequests}
             />
           </div>
         </SheetContent>

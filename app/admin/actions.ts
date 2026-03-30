@@ -250,6 +250,32 @@ export async function removeOrgUser(userId: string, orgId: string) {
   revalidatePath(`/admin/orgs/${orgId}`)
 }
 
+// ── adminLinkUserToStaff ──────────────────────────────────────────────────────
+export async function adminLinkUserToStaff(userId: string, orgId: string, staffId: string | null): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+
+  if (staffId) {
+    const { data: staff } = await admin
+      .from("staff")
+      .select("id")
+      .eq("id", staffId)
+      .eq("organisation_id", orgId)
+      .maybeSingle()
+    if (!staff) return { error: "Staff member not found in this organisation." }
+  }
+
+  const { error } = await admin
+    .from("organisation_members")
+    .update({ linked_staff_id: staffId } as never)
+    .eq("organisation_id", orgId)
+    .eq("user_id", userId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return {}
+}
+
 // ── createOrgUser ─────────────────────────────────────────────────────────────
 export async function createOrgUser(formData: FormData) {
   await assertSuperAdmin()
@@ -441,7 +467,7 @@ export async function toggleOrgNotes(orgId: string, enabled: boolean) {
 export async function copyOrganisation(
   sourceOrgId: string,
   newName: string,
-  options: { departments?: boolean; shifts?: boolean; tasks?: boolean; rules?: boolean; staff?: boolean; users?: boolean; config?: boolean }
+  options: { departments?: boolean; shifts?: boolean; tasks?: boolean; rules?: boolean; staff?: boolean; users?: boolean; config?: boolean; rotas?: boolean }
 ): Promise<{ error?: string; orgId?: string }> {
   await assertSuperAdmin()
   const admin = createAdminClient()
@@ -521,14 +547,47 @@ export async function copyOrganisation(
   await Promise.all(copyTasks)
 
   // Staff must be sequential: skills depend on inserted staff IDs
+  // Track old→new staff ID mapping for rotas
+  const staffIdMap = new Map<string, string>()
   if (options.staff) {
     const { data } = await admin.from("staff").select("*, staff_skills(*)").eq("organisation_id", sourceOrgId)
     for (const s of (data ?? []) as any[]) {
       const { id: oldId, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: skills, ...rest } = s
       const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: newOrgId } as never).select("id").single()
-      if (ns && skills?.length) {
-        const skillRows = skills.map((sk: any) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } })
-        await admin.from("staff_skills").insert(skillRows as never)
+      if (ns) {
+        staffIdMap.set(oldId, (ns as any).id)
+        if (skills?.length) {
+          const skillRows = skills.map((sk: any) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } })
+          await admin.from("staff_skills").insert(skillRows as never)
+        }
+      }
+    }
+  }
+
+  // Copy rotas and assignments (requires staff mapping)
+  if (options.rotas) {
+    const { data: rotas } = await admin.from("rotas").select("*").eq("organisation_id", sourceOrgId).order("week_start")
+    for (const r of (rotas ?? []) as any[]) {
+      const oldRotaId = r.id
+      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rotaRest } = r
+      const { data: newRota } = await admin.from("rotas").insert({ ...rotaRest, organisation_id: newOrgId } as never).select("id").single()
+      if (newRota) {
+        const newRotaId = (newRota as any).id
+        const { data: assignments } = await admin.from("rota_assignments").select("*").eq("rota_id", oldRotaId)
+        if (assignments?.length) {
+          const assignmentRows = (assignments as any[])
+            .map((a) => {
+              const { id: _, organisation_id: __, rota_id: ___, created_at: ____, updated_at: _____, ...aRest } = a
+              const newStaffId = staffIdMap.get(a.staff_id)
+              if (!newStaffId) return null
+              const newTraineeId = a.trainee_staff_id ? staffIdMap.get(a.trainee_staff_id) ?? null : null
+              return { ...aRest, rota_id: newRotaId, organisation_id: newOrgId, staff_id: newStaffId, trainee_staff_id: newTraineeId }
+            })
+            .filter(Boolean)
+          if (assignmentRows.length) {
+            await admin.from("rota_assignments").insert(assignmentRows as never)
+          }
+        }
       }
     }
   }

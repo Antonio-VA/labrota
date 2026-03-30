@@ -133,6 +133,8 @@
     "rotaLocked": "This rota is locked. Unlock it to make changes.",
     "noRota": "No rota for this week",
     "noRotaDescription": "Generate a rota automatically or copy the previous one.",
+    "noRotaYet": "The rota is not ready yet",
+    "noRotaYetDescription": "Your manager will publish this week's rota soon.",
     "preserveOverrides": "Preserve manual overrides?",
     "preserveOverridesDescription": "If you keep overrides, only unedited shifts will be regenerated.",
     "keepOverrides": "Keep overrides",
@@ -534,7 +536,13 @@
     "upcomingLeaves": "Upcoming leaves",
     "next30Days": "Next 30 days",
     "hideHistory": "Hide history",
-    "showHistory": "Show history ({count})"
+    "showHistory": "Show history ({count})",
+    "notLinked": "No linked staff member",
+    "notLinkedDescription": "Your account is not linked to any staff member. Contact your manager to link it.",
+    "viewerRequestInfo": "Your leave requests will be reviewed by a manager before being approved.",
+    "viewerApprovalInfo": "Your leave must be approved by a manager before it takes effect.",
+    "requestBanner": "This request will be sent to your manager for approval.",
+    "sendRequest": "Send request"
   },
   "lab": {
     "title": "Lab",

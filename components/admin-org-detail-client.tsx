@@ -29,6 +29,7 @@ export function AdminOrgDetailClient({
   implementationStatus,
   section = "all",
   hideUsers = false,
+  orgStaff = [],
 }: {
   orgId: string
   userRows: UserRow[]
@@ -53,6 +54,7 @@ export function AdminOrgDetailClient({
   }
   section?: "all" | "funcionalidades" | "facturacion" | "configuracion" | "usuarios" | "implementacion"
   hideUsers?: boolean
+  orgStaff?: { id: string; first_name: string; last_name: string; role: string }[]
 }) {
   const router = useRouter()
   const [orgName, setOrgName] = useState(initialName)
@@ -576,7 +578,7 @@ export function AdminOrgDetailClient({
               <p className="text-[14px] text-muted-foreground">Sin usuarios</p>
             </div>
           ) : (
-            <AdminUsersTable users={userRows} orgId={orgId} />
+            <AdminUsersTable users={userRows} orgId={orgId} staff={orgStaff} />
           )}
         </div>
       </div>}
