@@ -66,7 +66,7 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
       let ok = 0
       for (const row of selectedRows) {
         const result = await copyOrganisation(row.id, `Copia de ${row.name}`, {
-          departments: true, shifts: true, tasks: true, rules: true, staff: true, config: true,
+          departments: true, shifts: true, tasks: true, rules: true, staff: true, users: true, config: true, rotas: true,
         })
         if (!result.error) ok++
       }

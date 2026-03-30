@@ -35,7 +35,7 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
   // Copy modal
   const [copyOpen, setCopyOpen] = useState(false)
   const [copyName, setCopyName] = useState(`${org.name} (copia)`)
-  const [copyOpts, setCopyOpts] = useState({ departments: true, shifts: true, tasks: true, rules: true, config: true, staff: false, users: false })
+  const [copyOpts, setCopyOpts] = useState({ departments: true, shifts: true, tasks: true, rules: true, config: true, staff: false, users: false, rotas: false })
   const [isCopying, startCopy] = useTransition()
 
   return (
@@ -116,17 +116,19 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
                 { key: "rules", label: "Reglas", default: true },
                 { key: "staff", label: "Personal", default: false },
                 { key: "users", label: "Usuarios", default: false },
+                { key: "rotas", label: "Horarios", default: false },
               ] as { key: keyof typeof copyOpts; label: string; default: boolean }[]).map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 text-[13px] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={copyOpts[key]}
                     onChange={(e) => setCopyOpts((p) => ({ ...p, [key]: e.target.checked }))}
-                    disabled={isCopying}
+                    disabled={isCopying || (key === "rotas" && !copyOpts.staff)}
                     className="size-4 rounded accent-primary"
                   />
                   {label}
                   {(key === "staff" || key === "users") && <span className="text-[11px] text-muted-foreground">(no recomendado)</span>}
+                  {key === "rotas" && <span className="text-[11px] text-muted-foreground">(requiere personal)</span>}
                 </label>
               ))}
             </div>
