@@ -4727,6 +4727,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               ...(hasAssignments && view === "week" ? [{
                 label: t("exportPdf"),
                 icon: <FileText className="size-3.5" />,
+                dividerBefore: true,
+                sectionLabel: locale === "es" ? "Exportar" : "Export",
                 onClick: () => {
                   if (!weekData) return
                   import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
@@ -4784,6 +4786,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
+                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }, {
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
@@ -4793,6 +4796,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
                 dividerBefore: true,
+                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }] : []),
               // ── View options ──
               ...((view === "week" || view === "month") ? [{
@@ -4801,6 +4805,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 onClick: () => setCompact((c) => !c),
                 active: compact,
                 dividerBefore: true,
+                sectionLabel: locale === "es" ? "Personalización" : "View",
               },
               {
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
@@ -4838,9 +4843,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   label: locale === "es" ? "Vista favorita" : "Favorite view",
                   icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
                   onClick: () => {},
+                  dividerBefore: true,
                 }] : [{
                   label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
                   icon: <Star className="size-3.5" />,
+                  dividerBefore: true,
                   onClick: () => {
                     const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
                     setFavoriteView(fav)
@@ -4855,6 +4862,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 label: t("viewHistory"),
                 icon: <Clock className="size-3.5" />,
                 onClick: () => setHistoryOpen(true),
+                dividerBefore: true,
               }] : []),
               // ── Destructive ──
               ...(canEdit && hasAssignments && !isPublished ? [{

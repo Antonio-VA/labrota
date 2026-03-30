@@ -13,7 +13,7 @@ const LABEL_FONT   = { bold: true, sz: 10, name: "Calibri", color: { rgb: "1E293
 const BODY_FONT    = { sz: 10, name: "Calibri", color: { rgb: "334155" } }
 const TOTAL_FILL   = { fgColor: { rgb: "E2E8F0" } }
 const TOTAL_FONT   = { bold: true, sz: 10, name: "Calibri", color: { rgb: "1E293B" } }
-const OFF_FILL     = { fgColor: { rgb: "FEF9C3" } }
+const OFF_FILL     = { fgColor: { rgb: "F1F5F9" } }
 const BORDER_COLOR = { rgb: "CBD5E1" }
 const BORDER = {
   top:    { style: "thin" as const, color: BORDER_COLOR },
@@ -67,7 +67,7 @@ const labelStyle: CellStyle  = { font: LABEL_FONT, fill: LABEL_FILL, border: BOR
 const bodyStyle: CellStyle   = { font: BODY_FONT, border: BORDER, alignment: { vertical: "top", wrapText: true } }
 const totalStyle: CellStyle  = { font: TOTAL_FONT, fill: TOTAL_FILL, border: BORDER, alignment: { horizontal: "center", vertical: "center" } }
 const offLabelStyle: CellStyle = { font: LABEL_FONT, fill: OFF_FILL, border: BORDER, alignment: { vertical: "center" } }
-const offBodyStyle: CellStyle  = { font: { ...BODY_FONT, color: { rgb: "92400E" } }, fill: OFF_FILL, border: BORDER, alignment: { vertical: "top", wrapText: true } }
+const offBodyStyle: CellStyle  = { font: { ...BODY_FONT, color: { rgb: "64748B" } }, fill: OFF_FILL, border: BORDER, alignment: { vertical: "top", wrapText: true } }
 
 // ── By shift export ─────────────────────────────────────────────────────────
 
@@ -119,7 +119,7 @@ export function exportWeekByShift(data: RotaWeekData, locale: string, daysAsRows
       const label = s ? `${code}\n${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}` : code
       setCell(ws, 1, i + 1, label, headerStyle)
     })
-    setCell(ws, 1, shiftCodes.length + 1, offLabel, { ...headerStyle, fill: { fgColor: { rgb: "92400E" } } })
+    setCell(ws, 1, shiftCodes.length + 1, offLabel, { ...headerStyle, fill: { fgColor: { rgb: "64748B" } } })
 
     // Data rows
     for (let i = 0; i < data.days.length; i++) {

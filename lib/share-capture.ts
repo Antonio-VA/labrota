@@ -86,41 +86,46 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
 }
 
 /**
- * Walk the cloned DOM and replace any oklab/oklch color values
- * with their computed rgb equivalents. html2canvas cannot parse
- * these modern color functions.
+ * Walk the cloned DOM and force all colors to be inlined as rgb values.
+ * html2canvas cannot parse modern CSS color functions (lab, oklch, oklab, lch, color).
+ * We also strip these from <style> elements since html2canvas reads stylesheets directly.
  */
 function convertOklabColors(root: HTMLElement) {
   const modernColorRe = /(?:oklch?|lab|lch|color)\([^)]+\)/gi
 
+  // 1. Replace modern colors in all <style> tags
+  const styleEls = root.querySelectorAll("style")
+  for (const styleEl of styleEls) {
+    const text = styleEl.textContent ?? ""
+    if (modernColorRe.test(text)) {
+      modernColorRe.lastIndex = 0
+      styleEl.textContent = text.replace(modernColorRe, (match) => resolveColor(match) ?? "transparent")
+    }
+  }
+
+  // 2. Force-inline computed colors on every element
+  const colorProps = [
+    "color", "background-color", "border-color",
+    "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+    "outline-color", "text-decoration-color",
+  ] as const
+
   function processElement(el: HTMLElement) {
-    const style = el.style
     const computed = window.getComputedStyle(el)
 
-    // Properties that commonly contain colors
-    const colorProps = [
-      "color", "backgroundColor", "borderColor",
-      "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
-      "outlineColor", "textDecorationColor", "boxShadow",
-    ]
-
     for (const prop of colorProps) {
-      const cssProp = prop.replace(/([A-Z])/g, "-$1").toLowerCase()
-      const val = computed.getPropertyValue(cssProp)
-      if (val && modernColorRe.test(val)) {
-        modernColorRe.lastIndex = 0
-        const resolved = resolveColor(val)
-        if (resolved) {
-          style.setProperty(cssProp, resolved, "important")
-        }
+      const val = computed.getPropertyValue(prop)
+      if (val && val !== "transparent" && val !== "rgba(0, 0, 0, 0)") {
+        // Always inline — this ensures html2canvas sees rgb, never lab/oklch
+        el.style.setProperty(prop, val, "important")
       }
     }
 
-    // Also inline any CSS custom properties that resolve to modern color functions
-    const inlineStyle = el.getAttribute("style") ?? ""
-    if (modernColorRe.test(inlineStyle)) {
+    // Handle box-shadow separately (can contain colors)
+    const shadow = computed.getPropertyValue("box-shadow")
+    if (shadow && shadow !== "none" && modernColorRe.test(shadow)) {
       modernColorRe.lastIndex = 0
-      el.setAttribute("style", inlineStyle.replace(modernColorRe, (match) => resolveColor(match) ?? match))
+      el.style.setProperty("box-shadow", shadow.replace(modernColorRe, (m) => resolveColor(m) ?? "transparent"), "important")
     }
 
     for (const child of el.children) {
