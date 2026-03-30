@@ -408,7 +408,7 @@ function LeaveForm({
         <div className="flex items-center justify-between gap-2 w-full">
           <div className="flex gap-2">
             <Button type="submit" disabled={pending || isDeleting}>
-              {pending ? tc("saving") : useRequestFlow ? t("sendRequest") : editing ? tc("save") : tc("create")}
+              {pending ? tc("saving") : useRequestFlow ? t("submitRequest") : editing ? tc("save") : tc("create")}
             </Button>
             <Button type="button" variant="outline" disabled={pending} onClick={onSuccess}>
               {tc("cancel")}
