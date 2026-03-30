@@ -825,7 +825,10 @@ export async function generateRota(
     )
 
     // Append task-level rows from shift engine's Phase 4
-    if (shiftEngineTaskAssignments.length > 0) {
+    // Only when enable_task_in_shift is on — otherwise Phase 4 task rows
+    // would create duplicate DB rows that show as duplicates in the shift grid.
+    const enableTaskInShift = labConfig.enable_task_in_shift ?? false
+    if (enableTaskInShift && shiftEngineTaskAssignments.length > 0) {
       const taskRows = shiftEngineTaskAssignments
         .filter((ta) => !overrideKeys.has(`${ta.staff_id}:${ta.date}`))
         .map((ta) => {

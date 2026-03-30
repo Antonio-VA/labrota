@@ -1469,10 +1469,12 @@ export function runRotaEngine({
     }
   }
 
-  // ── PHASE 4: Task assignment ─────────────────────────────────────────────────
+  // ── PHASE 4: Task assignment (shift engine) ─────────────────────────────────
+  // Only runs when explicit task coverage is configured. By_task orgs use the
+  // task engine instead. By_shift orgs without task coverage should not produce
+  // task-level rows — having active técnicas alone is not enough.
   const hasExplicitTaskCoverage = taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0
-  const hasActiveTecnicas = tecnicas.length > 0
-  if (hasExplicitTaskCoverage || hasActiveTecnicas) {
+  if (hasExplicitTaskCoverage) {
     const taskConflictThreshold = labConfig.task_conflict_threshold ?? 3
 
     for (const dayPlan of days) {
@@ -1485,30 +1487,18 @@ export function runRotaEngine({
 
       if (assignedStaff.length === 0) continue
 
-      // 4.1: Build task demand for this day
+      // 4.1: Build task demand for this day (explicit coverage only)
       const taskDemand: { code: string; needed: number; typical_shifts: Set<string>; avoid_shifts: Set<string> }[] = []
-      if (hasExplicitTaskCoverage) {
-        for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay!)) {
-          const needed = dayCov[dayCode] ?? 0
-          if (needed <= 0) continue
-          const tec = tecnicas.find((t) => t.codigo === tecCode)
-          taskDemand.push({
-            code: tecCode,
-            needed,
-            typical_shifts: new Set(tec?.typical_shifts ?? []),
-            avoid_shifts: new Set(tec?.avoid_shifts ?? []),
-          })
-        }
-      } else {
-        // Fallback: at least 1 person per active technique
-        for (const tec of tecnicas) {
-          taskDemand.push({
-            code: tec.codigo,
-            needed: 1,
-            typical_shifts: new Set(tec.typical_shifts ?? []),
-            avoid_shifts: new Set(tec.avoid_shifts ?? []),
-          })
-        }
+      for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay!)) {
+        const needed = dayCov[dayCode] ?? 0
+        if (needed <= 0) continue
+        const tec = tecnicas.find((t) => t.codigo === tecCode)
+        taskDemand.push({
+          code: tecCode,
+          needed,
+          typical_shifts: new Set(tec?.typical_shifts ?? []),
+          avoid_shifts: new Set(tec?.avoid_shifts ?? []),
+        })
       }
 
       // 4.1b: Apply restriccion_dia_tecnica rules — remove demand for blocked techniques
