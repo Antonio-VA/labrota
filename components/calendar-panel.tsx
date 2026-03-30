@@ -194,6 +194,76 @@ function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: stri
   return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
 }
 
+// ── Week jump picker ─────────────────────────────────────────────────────────
+
+function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
+  currentDate: string; weekStart: string; view: ViewMode; locale: string
+  onSelect: (date: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [open])
+
+  // Build weeks: 4 past + current + 8 future = 13 weeks
+  const weeks = useMemo(() => {
+    const result: { monday: string; label: string; isCurrent: boolean }[] = []
+    for (let i = -4; i <= 8; i++) {
+      const monday = addDays(weekStart, i * 7)
+      const end = addDays(monday, 6)
+      const mDate = new Date(monday + "T12:00:00")
+      const eDate = new Date(end + "T12:00:00")
+      const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(mDate)
+      const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(eDate)
+      const label = sMon === eMon
+        ? `${mDate.getDate()}–${eDate.getDate()} ${sMon}`
+        : `${mDate.getDate()} ${sMon} – ${eDate.getDate()} ${eMon}`
+      result.push({ monday, label, isCurrent: i === 0 })
+    }
+    return result
+  }, [weekStart, locale])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-[14px] font-medium capitalize hover:bg-accent/50 px-2 py-1 rounded-md transition-colors flex items-center gap-1.5"
+      >
+        {formatToolbarLabel(view, currentDate, weekStart, locale)}
+        <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[200px] max-h-[320px] overflow-y-auto">
+          {weeks.map((w) => {
+            const isThisWeek = w.monday === getMondayOfWeek(new Date(TODAY + "T12:00:00"))
+            return (
+              <button
+                key={w.monday}
+                onClick={() => { onSelect(w.monday); setOpen(false) }}
+                className={cn(
+                  "w-full text-left px-3 py-1.5 text-[13px] capitalize hover:bg-accent transition-colors flex items-center justify-between gap-3",
+                  w.isCurrent && "bg-accent font-medium",
+                )}
+              >
+                <span>{w.label}</span>
+                {isThisWeek && <span className="text-[11px] text-muted-foreground">{locale === "es" ? "hoy" : "today"}</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Staff chip (Vista por persona) ────────────────────────────────────────────
 
 function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
@@ -4540,9 +4610,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               <ChevronRight />
             </Button>
           </div>
-          <span className="text-[14px] font-medium capitalize">
-            {formatToolbarLabel(view, currentDate, weekStart, locale)}
-          </span>
+          <WeekJumpButton
+            currentDate={currentDate}
+            weekStart={weekStart}
+            view={view}
+            locale={locale}
+            onSelect={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
+          />
         </div>
 
         {/* CENTRE — absolutely positioned so it stays centred regardless of left/right width */}
