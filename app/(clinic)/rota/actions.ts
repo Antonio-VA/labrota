@@ -351,11 +351,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     : new Set(shiftTypesData.map((st) => st.code))
 
   // Populate day assignments
-  // In by_shift mode, each staff member may have one shift row (function_label="")
-  // plus multiple task-detail rows (function_label="OPU" etc). We only show the
-  // shift row in the grid; task-detail rows are metadata for the task sub-view.
-  // In by_task mode, every row is meaningful (each is a distinct task assignment).
-  const seenStaffDay = new Set<string>() // "staffId:date" — dedup for by_shift
+  // In by_shift mode, each staff member should appear once per day in the shift
+  // grid. The engine may create extra task-detail rows (Phase 4); we deduplicate
+  // by staff_id+date, preferring the shift-level row (function_label="").
+  // In by_task mode, every row is a distinct task assignment — no dedup.
+  const seenStaffDay = new Map<string, number>() // "staffId:date" → index in day.assignments
 
   for (const a of assignmentsData ?? []) {
     const day = dayMap[a.date]
@@ -364,16 +364,31 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const staff = a.staff as { id: string; first_name: string; last_name: string; role: string } | null
     if (!staff) continue
 
-    // In by_shift mode, skip task-detail rows — only keep the shift-level row
-    if (orgDisplayMode === "by_shift" && a.function_label && a.function_label !== "") {
-      continue
-    }
-
     // Deduplicate: in by_shift mode, one entry per staff per day
     if (orgDisplayMode === "by_shift") {
       const key = `${a.staff_id}:${a.date}`
-      if (seenStaffDay.has(key)) continue
-      seenStaffDay.add(key)
+      const existingIdx = seenStaffDay.get(key)
+      if (existingIdx !== undefined) {
+        // Prefer the shift-level row (function_label="" or null) over task-detail rows
+        const isShiftRow = !a.function_label || a.function_label === ""
+        if (isShiftRow) {
+          // Replace the existing entry with the shift-level row
+          day.assignments[existingIdx] = {
+            id: a.id,
+            staff_id: a.staff_id,
+            shift_type: a.shift_type as ShiftType,
+            is_manual_override: a.is_manual_override,
+            trainee_staff_id: a.trainee_staff_id,
+            notes: a.notes,
+            function_label: null,
+            tecnica_id: null,
+            whole_team: false,
+            staff: { id: staff.id, first_name: staff.first_name, last_name: staff.last_name, role: staff.role as StaffRole },
+          }
+        }
+        continue
+      }
+      seenStaffDay.set(key, day.assignments.length)
     }
 
     day.assignments.push({
