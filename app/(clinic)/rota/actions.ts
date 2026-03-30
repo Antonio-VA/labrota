@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
+import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot, captureWeekSnapshot } from "@/lib/rota-snapshots"
 import type {
@@ -457,13 +458,21 @@ export async function generateRota(
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
-    supabase.from("tecnicas").select("codigo, typical_shifts").eq("activa", true) as unknown as Promise<{ data: { codigo: string; typical_shifts: string[] }[] | null }>,
+    supabase.from("tecnicas").select("id, codigo, department, typical_shifts, avoid_shifts").eq("activa", true) as unknown as Promise<{ data: { id: string; codigo: string; department: string; typical_shifts: string[]; avoid_shifts: string[] }[] | null }>,
   ])
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
   if (!labConfig) return { error: "Lab configuration not found. Set it up in the Lab settings page." }
 
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
+
+  // Determine rota display mode (by_shift vs by_task)
+  const { data: orgRow } = await supabase
+    .from("organisations")
+    .select("rota_display_mode")
+    .limit(1)
+    .maybeSingle() as { data: { rota_display_mode?: string } | null }
+  const rotaDisplayMode = orgRow?.rota_display_mode ?? "by_shift"
 
   // Upsert rota record
   const { data: rotaRow, error: rotaError } = await supabase
@@ -516,54 +525,144 @@ export async function generateRota(
   const punctionsOverride: Record<string, number> = rotaOverrides?.punctions_override ?? {}
 
   // Normalise preferred_shift against the org's actual shift_type codes.
-  // Staff seeded with old 'am'/'pm'/'full' values (before the shift_types migration) would
-  // otherwise get assignments saved with those stale codes, making them invisible in the grid.
   const shiftTypesData = (shiftTypesForEngine.data ?? []) as import("@/lib/types/database").ShiftTypeDefinition[]
   const validEngineCodes = new Set(shiftTypesData.map((st) => st.code))
   const normalizedStaff = ((staffRes.data ?? []) as StaffWithSkills[]).map((s) => {
     return validEngineCodes.size > 0 && s.preferred_shift && !validEngineCodes.has(s.preferred_shift)
-      ? { ...s, preferred_shift: null }  // engine will fall back to default (T1 / admin_default_shift)
+      ? { ...s, preferred_shift: null }
       : s
   })
 
-  // Run engine
-  const { days, taskAssignments: engineTaskAssignments, warnings: engineWarnings } = runRotaEngine({
-    weekStart,
-    staff: normalizedStaff,
-    leaves: (leavesRes.data ?? []) as Leave[],
-    recentAssignments: (recentAssignmentsRes.data ?? []) as RotaAssignment[],
-    labConfig,
-    shiftTypes: shiftTypesData,
-    punctionsOverride,
-    rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date()),
-    tecnicas: (tecnicasForEngine.data ?? []).map((t: any) => ({
-      codigo: t.codigo,
-      department: t.department ?? "lab",
-      typical_shifts: t.typical_shifts ?? [],
-      avoid_shifts: t.avoid_shifts ?? [],
-    })),
-    shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
-    taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
-    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
-    shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
-    shiftCoverageByDay: labConfig.shift_coverage_by_day as import("@/lib/types/database").ShiftCoverageByDay | null,
-  })
+  const tecnicasData = (tecnicasForEngine.data ?? []) as { id: string; codigo: string; department: string; typical_shifts: string[]; avoid_shifts: string[] }[]
+  const tecnicaIdMap: Record<string, string> = {}
+  for (const t of tecnicasData) tecnicaIdMap[t.codigo] = t.id
 
-  // Insert new assignments (skip individual staff+date that have manual overrides)
-  const toInsert = days.flatMap((day) =>
-    day.assignments
-      .filter((a) => !overrideKeys.has(`${a.staff_id}:${day.date}`))
-      .map((a) => ({
-        organisation_id: orgId,
-        rota_id: rotaId,
-        staff_id: a.staff_id,
-        date: day.date,
-        shift_type: a.shift_type,
-        is_manual_override: false,
-        function_label: "",
-      }))
-  )
+  const engineTecnicas = tecnicasData.map((t) => ({
+    codigo: t.codigo,
+    department: t.department ?? "lab",
+    typical_shifts: t.typical_shifts ?? [],
+    avoid_shifts: t.avoid_shifts ?? [],
+  }))
+  const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date())
+  const engineLeaves = (leavesRes.data ?? []) as Leave[]
+  const engineRecentAssignments = (recentAssignmentsRes.data ?? []) as RotaAssignment[]
 
+  let toInsert: {
+    organisation_id: string; rota_id: string; staff_id: string; date: string;
+    shift_type: string; is_manual_override: boolean; function_label: string;
+    tecnica_id?: string | null;
+  }[] = []
+  let engineWarnings: string[] = []
+
+  if (rotaDisplayMode === "by_task") {
+    // ── BY_TASK MODE: use task engine ────────────────────────────────────
+    // Fetch recent task assignments for rotation inference
+    const { data: recentTaskRows } = await supabase
+      .from("rota_assignments")
+      .select("staff_id, function_label, date")
+      .gte("date", fourWeeksAgoStr)
+      .lt("date", weekStart)
+      .neq("function_label", "")
+      .not("function_label", "is", null) as { data: { staff_id: string; function_label: string; date: string }[] | null }
+
+    const recentTaskAssignments = (recentTaskRows ?? []).map((r) => ({
+      staff_id: r.staff_id,
+      tecnica_code: r.function_label,
+      date: r.date,
+    }))
+
+    const taskResult = runTaskEngine({
+      weekStart,
+      staff: normalizedStaff,
+      leaves: engineLeaves,
+      recentAssignments: engineRecentAssignments,
+      labConfig,
+      shiftTypes: shiftTypesData,
+      rules: activeRules,
+      tecnicas: engineTecnicas,
+      taskRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+      taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
+      taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
+      recentTaskAssignments,
+    })
+
+    engineWarnings = taskResult.warnings
+
+    // Convert task engine output to DB rows
+    // In by_task mode, every assignment row has a function_label (task code)
+    toInsert = taskResult.days.flatMap((day) =>
+      day.assignments
+        .filter((a) => !overrideKeys.has(`${a.staff_id}:${day.date}`))
+        .map((a) => ({
+          organisation_id: orgId,
+          rota_id: rotaId,
+          staff_id: a.staff_id,
+          date: day.date,
+          shift_type: a.shift_type,
+          is_manual_override: false,
+          function_label: a.function_label,
+          tecnica_id: tecnicaIdMap[a.function_label] ?? null,
+        }))
+    )
+  } else {
+    // ── BY_SHIFT MODE: use shift engine (existing) ──────────────────────
+    const { days, taskAssignments: shiftEngineTaskAssignments, warnings } = runRotaEngine({
+      weekStart,
+      staff: normalizedStaff,
+      leaves: engineLeaves,
+      recentAssignments: engineRecentAssignments,
+      labConfig,
+      shiftTypes: shiftTypesData,
+      punctionsOverride,
+      rules: activeRules,
+      tecnicas: engineTecnicas,
+      shiftRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+      taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
+      taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
+      shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
+      shiftCoverageByDay: labConfig.shift_coverage_by_day as import("@/lib/types/database").ShiftCoverageByDay | null,
+    })
+
+    engineWarnings = warnings
+
+    // Shift assignment rows (function_label = "")
+    toInsert = days.flatMap((day) =>
+      day.assignments
+        .filter((a) => !overrideKeys.has(`${a.staff_id}:${day.date}`))
+        .map((a) => ({
+          organisation_id: orgId,
+          rota_id: rotaId,
+          staff_id: a.staff_id,
+          date: day.date,
+          shift_type: a.shift_type,
+          is_manual_override: false,
+          function_label: "",
+        }))
+    )
+
+    // Append task-level rows from shift engine's Phase 4
+    if (shiftEngineTaskAssignments.length > 0) {
+      const taskRows = shiftEngineTaskAssignments
+        .filter((ta) => !overrideKeys.has(`${ta.staff_id}:${ta.date}`))
+        .map((ta) => {
+          const dayPlan = days.find((d) => d.date === ta.date)
+          const shiftAssignment = dayPlan?.assignments.find((a) => a.staff_id === ta.staff_id)
+          return {
+            organisation_id: orgId,
+            rota_id: rotaId,
+            staff_id: ta.staff_id,
+            date: ta.date,
+            shift_type: shiftAssignment?.shift_type ?? "T1",
+            is_manual_override: false,
+            function_label: ta.tecnica_code,
+            tecnica_id: tecnicaIdMap[ta.tecnica_code] ?? null,
+          }
+        })
+      toInsert.push(...taskRows)
+    }
+  }
+
+  // Insert assignments
   if (toInsert.length === 0) {
     const staffCount = (staffRes.data ?? []).length
     if (staffCount === 0) {
@@ -575,50 +674,11 @@ export async function generateRota(
     return { error: `Engine assigned 0 staff for this week (${staffCount} staff loaded). Check that working patterns include weekdays in this week and no one is on leave all week.` }
   }
 
-  if (toInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from("rota_assignments")
-      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+  const { error: insertError } = await supabase
+    .from("rota_assignments")
+    .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
-    if (insertError) return { error: insertError.message }
-  }
-
-  // Insert task-level assignments (by_task mode)
-  if (engineTaskAssignments.length > 0) {
-    // Build tecnica_id lookup from code
-    const tecnicaIdMap: Record<string, string> = {}
-    for (const t of (tecnicasForEngine.data ?? []) as any[]) {
-      tecnicaIdMap[t.codigo] = t.id
-    }
-
-    const taskRows = engineTaskAssignments
-      .filter((ta) => !overrideKeys.has(`${ta.staff_id}:${ta.date}`))
-      .map((ta) => {
-        // Find the shift this person is on for this day
-        const dayPlan = days.find((d) => d.date === ta.date)
-        const shiftAssignment = dayPlan?.assignments.find((a) => a.staff_id === ta.staff_id)
-        return {
-          organisation_id: orgId,
-          rota_id: rotaId,
-          staff_id: ta.staff_id,
-          date: ta.date,
-          shift_type: shiftAssignment?.shift_type ?? "T1",
-          is_manual_override: false,
-          function_label: ta.tecnica_code,
-          tecnica_id: tecnicaIdMap[ta.tecnica_code] ?? null,
-        }
-      })
-
-    if (taskRows.length > 0) {
-      const { error: taskError } = await supabase
-        .from("rota_assignments")
-        .upsert(taskRows as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
-
-      if (taskError) {
-        engineWarnings.push(`Task assignment insert failed: ${taskError.message}`)
-      }
-    }
-  }
+  if (insertError) return { error: insertError.message }
 
   // Audit log
   const { data: { user: auditUser } } = await supabase.auth.getUser()
@@ -629,11 +689,10 @@ export async function generateRota(
     action: "rota_generated",
     entityType: "rota",
     entityId: rotaId,
-    metadata: { weekStart, method: generationType, assignmentCount: toInsert.length, preserveOverrides },
+    metadata: { weekStart, method: generationType, assignmentCount: toInsert.length, preserveOverrides, rotaDisplayMode },
   })
 
   revalidatePath("/")
-  // Include engine coverage model info for debugging
   const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
   return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
 }
