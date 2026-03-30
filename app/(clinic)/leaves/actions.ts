@@ -202,7 +202,7 @@ export async function requestLeave(params: {
     const country = (labConfigRes.data as { country?: string } | null)?.country ?? ""
     const locale: "es" | "en" = country === "ES" || country === "" ? "es" : "en"
     const totalActive = activeStaffRes.count ?? 0
-    const overlapping = (overlappingLeavesRes.data ?? []) as Array<{ staff_id: string; staff: { first_name: string; last_name: string; role: string } }>
+    const overlapping = (overlappingLeavesRes.data ?? []) as unknown as Array<{ staff_id: string; staff: { first_name: string; last_name: string; role: string } }>
 
     // Deduplicate overlapping staff
     const overlapNames = [...new Map(overlapping.map((l) => [l.staff_id, `${l.staff.first_name} ${l.staff.last_name}`])).values()]

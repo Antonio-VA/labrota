@@ -81,7 +81,7 @@ export default async function LeavesPage() {
       .select("id, full_name")
       .in("id", reviewerIds) as { data: Array<{ id: string; full_name: string | null }> | null }
     // Also check org display names
-    const orgId = (await supabase.from("profiles").select("organisation_id").eq("id", user!.id).single()).data?.organisation_id
+    const orgId = ((await supabase.from("profiles").select("organisation_id").eq("id", user!.id).single()).data as { organisation_id: string | null } | null)?.organisation_id
     if (orgId && reviewerProfiles) {
       const { data: memberNames } = await admin
         .from("organisation_members")
