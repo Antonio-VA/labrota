@@ -23,7 +23,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted" style={{ scrollbarGutter: "stable" }}>
+    <div className="min-h-screen bg-[#f8fafc]" style={{ scrollbarGutter: "stable" }}>
       {/* Top nav — same style as clinic app */}
       <header className="h-[52px] bg-background border-b border-border flex items-center justify-between px-6">
         <div className="flex items-center gap-3">

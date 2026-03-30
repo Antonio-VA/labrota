@@ -26,7 +26,7 @@ export default async function OrgDetailPage({
 
   const [
     orgRes, staffRes, rotasRes, recentRotasRes, profilesRes, labConfigRes,
-    deptRes, shiftRes, tecnicaRes, assignmentRes,
+    deptRes, shiftRes, tecnicaRes, assignmentRes, publishedRotasRes, leavesRes, recentRotaListRes,
   ] = await Promise.all([
     admin.from("organisations").select("*").eq("id", id).single(),
     admin.from("staff").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("onboarding_status", "active"),
@@ -38,6 +38,9 @@ export default async function OrgDetailPage({
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("tecnicas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("rota_assignments").select("id", { count: "exact", head: true }).eq("organisation_id", id).limit(1),
+    admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "published"),
+    admin.from("leaves").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "approved"),
+    admin.from("rotas").select("week_start, status, created_at").eq("organisation_id", id).order("week_start", { ascending: false }).limit(8) as unknown as Promise<{ data: { week_start: string; status: string; created_at: string }[] | null }>,
   ])
 
   if (!orgRes.data) notFound()
@@ -98,18 +101,130 @@ export default async function OrgDetailPage({
 
       <AdminOrgTabs
         estadisticas={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "Personal activo", value: String(staffRes.count ?? 0), isNumber: true },
-              { label: "Horarios (total)", value: String(rotasRes.count ?? 0), isNumber: true },
-              { label: "Horarios (30 días)", value: String(recentRotasRes.count ?? 0), isNumber: true },
-              { label: "Último acceso", value: lastLoginOverall ? fmt(lastLoginOverall) : "Nunca", isNumber: false },
-            ].map((kpi) => (
-              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
-                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-                <p className={cn("mt-0.5 leading-tight", kpi.isNumber ? "text-[22px] font-semibold text-foreground" : "text-[14px] font-medium text-foreground")}>{kpi.value}</p>
+          <div className="flex flex-col gap-5">
+            {/* Summary row */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">Uso</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Horarios generados</span>
+                    <span className="text-[14px] font-semibold">{rotasRes.count ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Publicados</span>
+                    <span className="text-[14px] font-semibold">{publishedRotasRes.count ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Últimos 30 días</span>
+                    <span className="text-[14px] font-semibold">{recentRotasRes.count ?? 0}</span>
+                  </div>
+                </div>
               </div>
-            ))}
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">Equipo</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Personal activo</span>
+                    <span className="text-[14px] font-semibold">{staffRes.count ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Usuarios</span>
+                    <span className="text-[14px] font-semibold">{memberRecords.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Ausencias aprobadas</span>
+                    <span className="text-[14px] font-semibold">{leavesRes.count ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-background px-5 py-4">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">Actividad</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Último acceso</span>
+                    <span className="text-[13px] font-medium">{lastLoginOverall ? fmt(lastLoginOverall) : "Nunca"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Creada</span>
+                    <span className="text-[13px] font-medium">{fmt(org.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent rotas table */}
+            {(recentRotaListRes.data ?? []).length > 0 && (
+              <div className="rounded-lg border border-border bg-background overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border">
+                  <p className="text-[13px] font-medium text-muted-foreground">Últimos horarios</p>
+                </div>
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">Semana</th>
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">Estado</th>
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">Creado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(recentRotaListRes.data ?? []).map((r, i) => (
+                      <tr key={r.week_start + i} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2 font-medium">{fmt(r.week_start)}</td>
+                        <td className="px-4 py-2">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            r.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                          )}>
+                            {r.status === "published" ? "Publicado" : "Borrador"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground">{fmt(r.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* User activity */}
+            <div className="rounded-lg border border-border bg-background overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border">
+                <p className="text-[13px] font-medium text-muted-foreground">Actividad de usuarios</p>
+              </div>
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Usuario</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Rol</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Último acceso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userRows.map((u) => (
+                    <tr key={u.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-2">
+                        <div>
+                          <span className="font-medium">{u.displayName ?? u.email}</span>
+                          {u.displayName && <p className="text-[11px] text-muted-foreground">{u.email}</p>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          u.role === "admin" ? "bg-blue-50 text-blue-700"
+                            : u.role === "viewer" ? "bg-gray-100 text-gray-600"
+                            : "bg-indigo-50 text-indigo-700"
+                        )}>
+                          {u.role === "admin" ? "Admin" : u.role === "viewer" ? "Viewer" : "Manager"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{u.lastLogin ?? "Nunca"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         }
         funcionalidades={

@@ -5,9 +5,11 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Archive } from "lucide-react"
+import { Archive, Pause, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { createBackup } from "@/app/admin/backup-actions"
+import { toggleOrgStatus, deleteOrganisation } from "@/app/admin/actions"
+import { useRouter } from "next/navigation"
 import { formatDateWithYear } from "@/lib/format-date"
 
 interface OrgRow {
@@ -24,6 +26,7 @@ interface OrgRow {
 }
 
 export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string }) {
+  const router = useRouter()
   const formatDate = (d: string) => formatDateWithYear(d, locale as "es" | "en")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
@@ -52,6 +55,38 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
     })
   }
 
+  function handleBulkSuspend() {
+    const ids = [...selected]
+    const activeIds = ids.filter((id) => rows.find((r) => r.id === id)?.is_active)
+    if (activeIds.length === 0) { toast.info("No hay organizaciones activas seleccionadas"); return }
+    if (!confirm(`¿Suspender ${activeIds.length} organización${activeIds.length !== 1 ? "es" : ""}?`)) return
+    startTransition(async () => {
+      let ok = 0
+      for (const id of activeIds) {
+        await toggleOrgStatus(id, true)
+        ok++
+      }
+      toast.success(`${ok} organización${ok !== 1 ? "es" : ""} suspendida${ok !== 1 ? "s" : ""}`)
+      setSelected(new Set())
+      router.refresh()
+    })
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selected]
+    if (!confirm(`¿Eliminar ${ids.length} organización${ids.length !== 1 ? "es" : ""} permanentemente? Esta acción no se puede deshacer.`)) return
+    startTransition(async () => {
+      let ok = 0
+      for (const id of ids) {
+        await deleteOrganisation(id)
+        ok++
+      }
+      toast.success(`${ok} organización${ok !== 1 ? "es" : ""} eliminada${ok !== 1 ? "s" : ""}`)
+      setSelected(new Set())
+      router.refresh()
+    })
+  }
+
   return (
     <>
       {/* Bulk action bar */}
@@ -61,7 +96,15 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={handleBulkBackup} disabled={isPending} className="gap-1.5">
             <Archive className="size-3.5" />
-            {isPending ? "Creando copias…" : "Backup ahora"}
+            Backup
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleBulkSuspend} disabled={isPending} className="gap-1.5">
+            <Pause className="size-3.5" />
+            Suspender
+          </Button>
+          <Button size="sm" variant="destructive" onClick={handleBulkDelete} disabled={isPending} className="gap-1.5">
+            <Trash2 className="size-3.5" />
+            Eliminar
           </Button>
           <button onClick={() => setSelected(new Set())} className="text-[12px] text-muted-foreground hover:text-foreground">
             Cancelar
