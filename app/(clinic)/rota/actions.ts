@@ -189,12 +189,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const dates = getWeekDates(weekStart)
 
   // Fetch rota record, lab config, approved leaves, shift types, técnicas, and rules in parallel.
-  const [rotaResult, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
+  const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
     supabase
       .from("rotas")
       .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null; error: { message: string } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
@@ -207,6 +207,17 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
     supabase.from("rota_rules").select("type, enabled, params").eq("enabled", true).eq("type", "restriccion_dia_tecnica") as unknown as Promise<{ data: { type: string; enabled: boolean; params: Record<string, unknown> }[] | null }>,
   ])
+
+  // Fallback: if engine_warnings column doesn't exist yet, retry without it
+  let rotaResult = rotaResultFull
+  if (rotaResultFull.error && !rotaResultFull.data) {
+    const fallback = await supabase
+      .from("rotas")
+      .select("id, status, published_at, published_by, punctions_override")
+      .eq("week_start", weekStart)
+      .maybeSingle() as unknown as typeof rotaResultFull
+    rotaResult = fallback
+  }
 
   const rotaData  = rotaResult.data
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
