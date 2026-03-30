@@ -4652,17 +4652,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <FileText className="size-3.5" />,
                 onClick: () => {
                   if (!weekData) return
-                  import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
+                  import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
                     const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-                    // Collect notes from the DOM
                     const notesEl = document.querySelector("[data-week-notes]")
                     const noteTexts = notesEl
                       ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
                       : []
+                    const n = noteTexts.length > 0 ? noteTexts : undefined
                     if (weekData.rotaDisplayMode === "by_task") {
-                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
+                    } else if (calendarLayout === "person") {
+                      exportPdfByPerson(weekData, on, locale, n, daysAsRows)
                     } else {
-                      exportPdfByShift(weekData, on, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                      exportPdfByShift(weekData, on, locale, n, daysAsRows)
                     }
                   })
                 },
@@ -4671,11 +4673,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <Sheet className="size-3.5" />,
                 onClick: () => {
                   if (!weekData) return
-                  import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByTask }) => {
+                  import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
                     if (weekData.rotaDisplayMode === "by_task") {
-                      exportWeekByTask(weekData, weekData.tecnicas ?? [], locale)
+                      exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
+                    } else if (calendarLayout === "person") {
+                      exportWeekByPerson(weekData, locale, daysAsRows)
                     } else {
-                      exportWeekByShift(weekData, locale)
+                      exportWeekByShift(weekData, locale, daysAsRows)
                     }
                   })
                 },

@@ -44,12 +44,17 @@ const COLORS = {
 const MARGIN = 14
 const FONT = "helvetica"
 
+const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+const ROLE_LABEL: Record<string, Record<string, string>> = {
+  es: { lab: "Embriología", andrology: "Andrología", admin: "Admin" },
+  en: { lab: "Embryology", andrology: "Andrology", admin: "Admin" },
+}
+
 /** Share or open PDF — uses Web Share API on mobile, opens in new tab on desktop */
 async function sharePdf(doc: jsPDF, filename: string) {
   const blob = doc.output("blob")
   const file = new File([blob], filename, { type: "application/pdf" })
 
-  // Try native share (works on mobile Safari, Chrome Android, etc.)
   if (typeof navigator !== "undefined" && navigator.share && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: filename })
@@ -59,23 +64,15 @@ async function sharePdf(doc: jsPDF, filename: string) {
     }
   }
 
-  // Fallback: open in new tab
   const url = URL.createObjectURL(blob)
   window.open(url, "_blank")
-  // Revoke after a delay so the tab can load
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-// ── By shift export ──────────────────────────────────────────────────────────
-
-export async function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[]) {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+/** Render header + return startY for table */
+function renderHeader(doc: jsPDF, orgName: string, data: RotaWeekData, locale: string, timestamp: string): number {
   const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const timeFormat = data.timeFormat ?? "24h"
-  const timestamp = fmtTimestamp(locale)
 
-  // ── Header ──────────────────────────────────────────────────────────────
   doc.setFontSize(16)
   doc.setFont(FONT, "bold")
   doc.setTextColor(...COLORS.black)
@@ -86,7 +83,6 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
   doc.setTextColor(...COLORS.gray)
   doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
-  // Timestamp top-right
   doc.setFontSize(8)
   doc.setFont(FONT, "normal")
   doc.setTextColor(...COLORS.gray)
@@ -99,89 +95,14 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
     doc.text(locale === "es" ? "Publicado" : "Published", pageWidth - MARGIN, 20, { align: "right" })
   }
 
-  // ── Day headers ─────────────────────────────────────────────────────────
-  const dayHeaders = data.days.map((d) => {
-    const dt = new Date(d.date + "T12:00:00")
-    const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(dt)
-    const num = dt.getDate()
-    return `${wday} ${num}`
-  })
+  return 26
+}
 
-  // ── Build shift rows ────────────────────────────────────────────────────
-  const shiftTypes = (data.shiftTypes ?? []).filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order)
-  const body: string[][] = []
+/** Render notes + footer */
+function renderFooter(doc: jsPDF, locale: string, timestamp: string, notes?: string[]) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
 
-  for (const st of shiftTypes) {
-    const row: string[] = [
-      `${st.code}\n${formatTime(st.start_time, timeFormat)}–${formatTime(st.end_time, timeFormat)}`
-    ]
-    for (const day of data.days) {
-      const assignments = day.assignments
-        .filter((a) => a.shift_type === st.code)
-        .sort((a, b) => {
-          const order: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-          return (order[a.staff.role] ?? 9) - (order[b.staff.role] ?? 9)
-        })
-      const names = assignments.map((a) => {
-        let name = `${a.staff.first_name} ${a.staff.last_name[0]}.`
-        if (a.function_label) name += ` (${a.function_label})`
-        return name
-      })
-      row.push(names.join("\n") || "—")
-    }
-    body.push(row)
-  }
-
-  // ── Off/Libre row — all staff not assigned that day ─────────────────
-  if (data.staffNames) {
-    const allStaffIds = Object.keys(data.staffNames)
-    const leaveByDate = data.onLeaveByDate ?? {}
-    const offRow: string[] = [locale === "es" ? "Libre" : "Off"]
-    for (const day of data.days) {
-      const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-      const leaveIds = new Set(leaveByDate[day.date] ?? [])
-      const offIds = allStaffIds.filter((id) => !assignedIds.has(id))
-      // Show leave staff first, then others
-      const onLeave = offIds.filter((id) => leaveIds.has(id))
-      const notLeave = offIds.filter((id) => !leaveIds.has(id))
-      const names = [...onLeave, ...notLeave].map((id) => data.staffNames[id]).filter(Boolean)
-      offRow.push(names.join("\n") || "—")
-    }
-    body.push(offRow)
-  }
-
-  // ── Table ───────────────────────────────────────────────────────────────
-  autoTable(doc, {
-    startY: 26,
-    head: [["", ...dayHeaders]],
-    body,
-    theme: "grid",
-    styles: {
-      fontSize: 7.5,
-      font: FONT,
-      cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
-      lineColor: COLORS.border,
-      lineWidth: 0.2,
-      textColor: COLORS.black,
-      minCellHeight: 10,
-      fillColor: COLORS.white,
-    },
-    headStyles: {
-      fillColor: COLORS.white,
-      textColor: COLORS.black,
-      fontStyle: "bold",
-      fontSize: 8,
-      halign: "center",
-      cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
-    },
-    columnStyles: {
-      0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black },
-    },
-    margin: { left: MARGIN, right: MARGIN },
-    tableWidth: "auto",
-  })
-
-  // ── Notes section ───────────────────────────────────────────────────────
   if (notes && notes.length > 0) {
     const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
     const notesY = finalY + 8
@@ -191,7 +112,6 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
     doc.setTextColor(...COLORS.gray)
     doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
 
-    // Divider line
     doc.setDrawColor(...COLORS.lightGray)
     doc.setLineWidth(0.15)
     doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
@@ -204,80 +124,24 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
     })
   }
 
-  // ── Footer ──────────────────────────────────────────────────────────────
   doc.setFontSize(7)
   doc.setTextColor(...COLORS.lightGray)
   doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
-
-  // ── Share / open ────────────────────────────────────────────────────────
-  const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
-  await sharePdf(doc, filename)
 }
 
-// ── By task export ───────────────────────────────────────────────────────────
-
-export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[]) {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const timestamp = fmtTimestamp(locale)
-
-  // ── Header ──────────────────────────────────────────────────────────────
-  doc.setFontSize(16)
-  doc.setFont(FONT, "bold")
-  doc.setTextColor(...COLORS.black)
-  doc.text(orgName, MARGIN, 14)
-
-  doc.setFontSize(10)
-  doc.setFont(FONT, "normal")
-  doc.setTextColor(...COLORS.gray)
-  doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
-
-  // Timestamp top-right
-  doc.setFontSize(8)
-  doc.setFont(FONT, "normal")
-  doc.setTextColor(...COLORS.gray)
-  doc.text(timestamp, pageWidth - MARGIN, 14, { align: "right" })
-
-  if (data.rota?.status === "published") {
-    doc.setTextColor(...COLORS.darkGray)
-    doc.setFont(FONT, "bold")
-    doc.setFontSize(8)
-    doc.text(locale === "es" ? "Publicado" : "Published", pageWidth - MARGIN, 20, { align: "right" })
-  }
-
-  // ── Day headers ─────────────────────────────────────────────────────────
-  const dayHeaders = data.days.map((d) => {
+/** Day header labels */
+function dayHeaders(data: RotaWeekData, locale: string): string[] {
+  return data.days.map((d) => {
     const dt = new Date(d.date + "T12:00:00")
     const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(dt)
     return `${wday} ${dt.getDate()}`
   })
+}
 
-  // ── Build task rows ─────────────────────────────────────────────────────
-  const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
-  const body: string[][] = []
-
-  for (const tc of activeTecnicas) {
-    const row: string[] = [tc.nombre_es]
-    for (const day of data.days) {
-      const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
-      const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
-      if (isWholeTeam) {
-        row.push(locale === "es" ? "Todo" : "All")
-      } else {
-        const names = assignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
-        row.push(names.join(" / ") || "—")
-      }
-    }
-    body.push(row)
-  }
-
-  // ── Table ───────────────────────────────────────────────────────────────
-  autoTable(doc, {
-    startY: 26,
-    head: [[locale === "es" ? "Técnica" : "Technique", ...dayHeaders]],
-    body,
-    theme: "grid",
+/** Table styling shared across all exports */
+function tableStyles() {
+  return {
+    theme: "grid" as const,
     styles: {
       fontSize: 7.5,
       font: FONT,
@@ -291,45 +155,258 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
     headStyles: {
       fillColor: COLORS.white,
       textColor: COLORS.black,
-      fontStyle: "bold",
+      fontStyle: "bold" as const,
       fontSize: 8,
-      halign: "center",
+      halign: "center" as const,
       cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
     },
-    columnStyles: {
-      0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black },
-    },
     margin: { left: MARGIN, right: MARGIN },
-    tableWidth: "auto",
-  })
+    tableWidth: "auto" as const,
+  }
+}
 
-  // ── Notes section ───────────────────────────────────────────────────────
-  if (notes && notes.length > 0) {
-    const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140
-    const notesY = finalY + 8
+// ── By shift export ──────────────────────────────────────────────────────────
 
-    doc.setFontSize(9)
-    doc.setFont(FONT, "bold")
-    doc.setTextColor(...COLORS.gray)
-    doc.text(locale === "es" ? "Notas" : "Notes", MARGIN, notesY)
+export async function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const timeFormat = data.timeFormat ?? "24h"
+  const timestamp = fmtTimestamp(locale)
+  const startY = renderHeader(doc, orgName, data, locale, timestamp)
 
-    doc.setDrawColor(...COLORS.lightGray)
-    doc.setLineWidth(0.15)
-    doc.line(MARGIN, notesY + 1.5, pageWidth - MARGIN, notesY + 1.5)
+  const headers = dayHeaders(data, locale)
+  const shiftTypes = (data.shiftTypes ?? []).filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order)
 
-    doc.setFont(FONT, "normal")
-    doc.setFontSize(8)
-    doc.setTextColor(...COLORS.black)
-    notes.forEach((n, i) => {
-      doc.text(`•  ${n}`, MARGIN + 1, notesY + 6 + i * 5)
+  if (daysAsRows) {
+    // Transposed: days as rows, shifts as columns
+    const shiftHeaders = shiftTypes.map((st) => `${st.code}\n${formatTime(st.start_time, timeFormat)}–${formatTime(st.end_time, timeFormat)}`)
+    const offLabel = locale === "es" ? "Libre" : "Off"
+    const body: string[][] = []
+
+    for (let i = 0; i < data.days.length; i++) {
+      const day = data.days[i]
+      const row: string[] = [headers[i]]
+      for (const st of shiftTypes) {
+        const assignments = day.assignments
+          .filter((a) => a.shift_type === st.code)
+          .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+        const names = assignments.map((a) => {
+          let name = `${a.staff.first_name} ${a.staff.last_name[0]}.`
+          if (a.function_label) name += ` (${a.function_label})`
+          return name
+        })
+        row.push(names.join("\n") || "—")
+      }
+      // OFF column
+      if (data.staffNames) {
+        const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+        const leaveIds = new Set(data.onLeaveByDate?.[day.date] ?? [])
+        const offNames = Object.keys(data.staffNames)
+          .filter((id) => !assignedIds.has(id))
+          .map((id) => data.staffNames[id]).filter(Boolean)
+        row.push(offNames.join("\n") || "—")
+      }
+      body.push(row)
+    }
+
+    autoTable(doc, {
+      startY,
+      head: [["", ...shiftHeaders, offLabel]],
+      body,
+      ...tableStyles(),
+      columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
+    })
+  } else {
+    // Standard: shifts as rows, days as columns
+    const body: string[][] = []
+    for (const st of shiftTypes) {
+      const row: string[] = [
+        `${st.code}\n${formatTime(st.start_time, timeFormat)}–${formatTime(st.end_time, timeFormat)}`
+      ]
+      for (const day of data.days) {
+        const assignments = day.assignments
+          .filter((a) => a.shift_type === st.code)
+          .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+        const names = assignments.map((a) => {
+          let name = `${a.staff.first_name} ${a.staff.last_name[0]}.`
+          if (a.function_label) name += ` (${a.function_label})`
+          return name
+        })
+        row.push(names.join("\n") || "—")
+      }
+      body.push(row)
+    }
+
+    // Off row
+    if (data.staffNames) {
+      const allStaffIds = Object.keys(data.staffNames)
+      const offRow: string[] = [locale === "es" ? "Libre" : "Off"]
+      for (const day of data.days) {
+        const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+        const offNames = allStaffIds.filter((id) => !assignedIds.has(id)).map((id) => data.staffNames[id]).filter(Boolean)
+        offRow.push(offNames.join("\n") || "—")
+      }
+      body.push(offRow)
+    }
+
+    autoTable(doc, {
+      startY,
+      head: [["", ...headers]],
+      body,
+      ...tableStyles(),
+      columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
     })
   }
 
-  // ── Footer ──────────────────────────────────────────────────────────────
-  doc.setFontSize(7)
-  doc.setTextColor(...COLORS.lightGray)
-  doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
+  renderFooter(doc, locale, timestamp, notes)
+  await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
+}
 
-  const filename = `${slugify(orgName)}-rota-${data.weekStart}.pdf`
-  await sharePdf(doc, filename)
+// ── By person export ─────────────────────────────────────────────────────────
+
+export async function exportPdfByPerson(data: RotaWeekData, orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const timeFormat = data.timeFormat ?? "24h"
+  const timestamp = fmtTimestamp(locale)
+  const startY = renderHeader(doc, orgName, data, locale, timestamp)
+
+  const headers = dayHeaders(data, locale)
+  const labels = ROLE_LABEL[locale] ?? ROLE_LABEL.en
+
+  // Build staff map: staff_id → { name, role, days: { date → shift label } }
+  const staffMap: Record<string, { name: string; role: string; days: Record<string, string>; total: number }> = {}
+  for (const day of data.days) {
+    for (const a of day.assignments) {
+      if (!staffMap[a.staff_id]) {
+        staffMap[a.staff_id] = {
+          name: `${a.staff.first_name} ${a.staff.last_name[0]}.`,
+          role: a.staff.role,
+          days: {},
+          total: 0,
+        }
+      }
+      const tecLabel = a.function_label ? ` (${a.function_label})` : ""
+      staffMap[a.staff_id].days[day.date] = `${a.shift_type}${tecLabel}`
+      staffMap[a.staff_id].total++
+    }
+  }
+
+  const sorted = Object.values(staffMap).sort((a, b) =>
+    (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.name.localeCompare(b.name)
+  )
+
+  if (daysAsRows) {
+    // Transposed: days as rows, staff as columns
+    const staffHeaders = sorted.map((s) => s.name)
+    const body: string[][] = []
+
+    for (let i = 0; i < data.days.length; i++) {
+      const day = data.days[i]
+      const row = [headers[i]]
+      for (const s of sorted) {
+        row.push(s.days[day.date] ?? "—")
+      }
+      body.push(row)
+    }
+
+    // Total row
+    const totalRow = [locale === "es" ? "Total" : "Total"]
+    for (const s of sorted) totalRow.push(String(s.total))
+    body.push(totalRow)
+
+    autoTable(doc, {
+      startY,
+      head: [["", ...staffHeaders]],
+      body,
+      ...tableStyles(),
+      columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
+    })
+  } else {
+    // Standard: staff as rows, days as columns
+    const body: string[][] = []
+    for (const s of sorted) {
+      const row = [s.name, labels[s.role] ?? s.role]
+      for (const day of data.days) {
+        row.push(s.days[day.date] ?? "—")
+      }
+      row.push(String(s.total))
+      body.push(row)
+    }
+
+    autoTable(doc, {
+      startY,
+      head: [[locale === "es" ? "Personal" : "Staff", locale === "es" ? "Depto" : "Dept", ...headers, "Total"]],
+      body,
+      ...tableStyles(),
+      columnStyles: {
+        0: { cellWidth: 28, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black },
+        1: { cellWidth: 20, fillColor: COLORS.white, textColor: COLORS.gray, fontSize: 7 },
+      },
+    })
+  }
+
+  renderFooter(doc, locale, timestamp, notes)
+  await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
+}
+
+// ── By task export ───────────────────────────────────────────────────────────
+
+export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const timestamp = fmtTimestamp(locale)
+  const startY = renderHeader(doc, orgName, data, locale, timestamp)
+
+  const headers = dayHeaders(data, locale)
+  const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
+
+  function staffForTechDay(tc: Tecnica, dayIdx: number): string {
+    const day = data.days[dayIdx]
+    const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
+    const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
+    if (isWholeTeam) return locale === "es" ? "Todo" : "All"
+    const names = assignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+    return names.join(" / ") || "—"
+  }
+
+  if (daysAsRows) {
+    // Transposed: days as rows, techniques as columns
+    const techHeaders = activeTecnicas.map((t) => t.nombre_es)
+    const body: string[][] = []
+
+    for (let i = 0; i < data.days.length; i++) {
+      const row = [headers[i]]
+      for (const tc of activeTecnicas) {
+        row.push(staffForTechDay(tc, i))
+      }
+      body.push(row)
+    }
+
+    autoTable(doc, {
+      startY,
+      head: [["", ...techHeaders]],
+      body,
+      ...tableStyles(),
+      columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
+    })
+  } else {
+    // Standard: techniques as rows, days as columns
+    const body: string[][] = []
+    for (const tc of activeTecnicas) {
+      const row: string[] = [tc.nombre_es]
+      for (let i = 0; i < data.days.length; i++) {
+        row.push(staffForTechDay(tc, i))
+      }
+      body.push(row)
+    }
+
+    autoTable(doc, {
+      startY,
+      head: [[locale === "es" ? "Técnica" : "Technique", ...headers]],
+      body,
+      ...tableStyles(),
+      columnStyles: { 0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black } },
+    })
+  }
+
+  renderFooter(doc, locale, timestamp, notes)
+  await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
 }
