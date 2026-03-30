@@ -816,9 +816,10 @@ export function LeavesList({
     return true
   })
 
-  // Separate cancelled from active leaves
-  const activeFiltered    = filtered.filter((l) => (l.status ?? "approved") !== "cancelled")
-  const cancelledFiltered = filtered.filter((l) => (l.status ?? "approved") === "cancelled")
+  // Separate cancelled/rejected from active leaves
+  const inactiveStatuses = ["cancelled", "rejected"]
+  const activeFiltered    = filtered.filter((l) => !inactiveStatuses.includes(l.status ?? "approved"))
+  const cancelledFiltered = filtered.filter((l) => inactiveStatuses.includes(l.status ?? "approved"))
 
   const filteredUpcoming = activeFiltered.filter((l) => l.end_date >= TODAY)
   const filteredPast     = activeFiltered.filter((l) => l.end_date <  TODAY)

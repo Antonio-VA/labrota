@@ -56,14 +56,20 @@ export default async function LeavesPage() {
     }
   }
 
+  // Use admin client for viewers (RLS may block their reads)
+  const queryClient = userRole === "viewer" ? createAdminClient() : supabase
+  const orgId = user ? ((await supabase.from("profiles").select("organisation_id").eq("id", user.id).single()).data as { organisation_id: string | null } | null)?.organisation_id : null
+
   const [{ data: leavesData }, { data: staffData }] = await Promise.all([
-    supabase
+    queryClient
       .from("leaves")
       .select("*, staff(id, first_name, last_name, role)")
+      .eq("organisation_id", orgId!)
       .order("start_date", { ascending: false }),
-    supabase
+    queryClient
       .from("staff")
       .select("*")
+      .eq("organisation_id", orgId!)
       .eq("onboarding_status", "active")
       .order("last_name"),
   ])
@@ -75,15 +81,13 @@ export default async function LeavesPage() {
   const reviewerIds = [...new Set(rawLeaves.map((l) => l.reviewed_by).filter(Boolean))] as string[]
   let reviewerMap: Record<string, string> = {}
   if (reviewerIds.length > 0) {
-    const admin = createAdminClient()
-    const { data: reviewerProfiles } = await admin
+    const adminClient = createAdminClient()
+    const { data: reviewerProfiles } = await adminClient
       .from("profiles")
       .select("id, full_name")
       .in("id", reviewerIds) as { data: Array<{ id: string; full_name: string | null }> | null }
-    // Also check org display names
-    const orgId = ((await supabase.from("profiles").select("organisation_id").eq("id", user!.id).single()).data as { organisation_id: string | null } | null)?.organisation_id
     if (orgId && reviewerProfiles) {
-      const { data: memberNames } = await admin
+      const { data: memberNames } = await adminClient
         .from("organisation_members")
         .select("user_id, display_name")
         .eq("organisation_id", orgId)
