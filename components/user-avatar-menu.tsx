@@ -83,7 +83,9 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
 
   function signOut() {
     const supabase = createClient()
-    supabase.auth.signOut().then(() => router.push("/login"))
+    supabase.auth.signOut().then(() => {
+      window.location.href = "/login"
+    })
   }
 
   const fullName = initialUser.fullName ?? ""

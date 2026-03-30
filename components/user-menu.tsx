@@ -48,7 +48,7 @@ export function UserMenu() {
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push("/login")
+    window.location.href = "/login"
   }
 
   if (!user) return null

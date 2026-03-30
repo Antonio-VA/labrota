@@ -286,10 +286,11 @@ function LeaveForm({
 
   useEffect(() => {
     if ((state as { success?: boolean } | null)?.success) {
+      toast.success(t("leaveSaved"))
       router.refresh()
       onSuccess()
     }
-  }, [state, onSuccess, router])
+  }, [state, onSuccess, router, editing, t])
 
   function handleDelete() {
     startDelete(async () => {
@@ -760,6 +761,7 @@ export function LeavesList({
 }) {
   const isViewer = userRole === "viewer"
   const t      = useTranslations("leaves")
+  const tc     = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const router = useRouter()
 
@@ -830,8 +832,14 @@ export function LeavesList({
   }
 
   function openEdit(leave: LeaveWithStaff) {
-    // Viewers can only edit their own leaves
+    // Viewers can only view their own leaves
     if (isViewer && leave.staff_id !== viewerStaffId) return
+    // When leave requests are enabled, leaves are read-only (cancel & recreate)
+    if (enableLeaveRequests) {
+      setEditing(leave)
+      setOpen(true)
+      return
+    }
     setEditing(leave)
     setOpen(true)
   }
@@ -950,33 +958,75 @@ export function LeavesList({
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
           <SheetHeader className="border-b border-border">
             <SheetTitle className="text-[16px]">
-              {editing ? t("editLeave") : t("addLeave")}
+              {editing && enableLeaveRequests ? t("leaveDetails") : editing ? t("editLeave") : enableLeaveRequests ? t("sendRequest") : t("addLeave")}
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-auto py-4">
-            {/* Status info inside panel */}
-            {editing && enableLeaveRequests && (
-              <div className="px-4 mb-4">
+            {editing && enableLeaveRequests ? (
+              /* Read-only detail view when leave requests are enabled */
+              <div className="flex flex-col gap-4 px-4">
+                {/* Status */}
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
                   <StatusBadge leave={editing} t={t} />
                   {editing.reviewed_at && (
                     <span className="text-[12px] text-muted-foreground">
-                      {new Date(editing.reviewed_at).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}
+                      {formatDateWithYear(editing.reviewed_at, locale)}
                       {editing.reviewer_name && ` · ${editing.reviewer_name}`}
                     </span>
                   )}
                 </div>
+
+                {/* Details */}
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.staff")}</p>
+                    <p className="text-[14px]">{editing.staff.first_name} {editing.staff.last_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.type")}</p>
+                    <LeaveTypeBadge type={editing.type} label={t(`types.${editing.type}`)} />
+                  </div>
+                  <div>
+                    <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.dates")}</p>
+                    <p className="text-[14px]">
+                      {formatDateWithYear(editing.start_date, locale)} — {formatDateWithYear(editing.end_date, locale)}
+                      <span className="text-muted-foreground ml-1">({daysBetween(editing.start_date, editing.end_date)}d)</span>
+                    </p>
+                  </div>
+                  {editing.notes && (
+                    <div>
+                      <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.notes")}</p>
+                      <p className="text-[14px] text-muted-foreground">{editing.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <SheetFooter className="px-0 mt-auto">
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <Button type="button" variant="outline" onClick={closeSheet}>
+                      {tc("close")}
+                    </Button>
+                    {canCancelLeave(editing) && (
+                      <Button type="button" variant="destructive" onClick={() => { handleCancel(editing.id); closeSheet() }}>
+                        {t("cancelLeave")}
+                      </Button>
+                    )}
+                  </div>
+                </SheetFooter>
               </div>
+            ) : (
+              /* Editable form (create or edit without leave requests) */
+              <LeaveForm
+                key={editing?.id ?? "new"}
+                staff={staff}
+                editing={editing}
+                onSuccess={closeSheet}
+                viewerStaffId={isViewer ? viewerStaffId : undefined}
+                isRequestMode={enableLeaveRequests}
+                onCancelLeave={enableLeaveRequests ? handleCancel : undefined}
+              />
             )}
-            <LeaveForm
-              key={editing?.id ?? "new"}
-              staff={staff}
-              editing={editing}
-              onSuccess={closeSheet}
-              viewerStaffId={isViewer ? viewerStaffId : undefined}
-              isRequestMode={enableLeaveRequests}
-              onCancelLeave={enableLeaveRequests ? handleCancel : undefined}
-            />
           </div>
         </SheetContent>
       </Sheet>
