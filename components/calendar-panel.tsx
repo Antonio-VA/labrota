@@ -1188,6 +1188,15 @@ function StaffProfilePanel({
                       .map((id) => staffList.find((s) => s.id === id))
                       .filter(Boolean)
                     const otherNames = otherStaff.map((s) => `${s!.first_name} ${s!.last_name[0]}.`).join(", ")
+                    // Extract day pattern from various param keys
+                    const dayKeys = ["supervisorDays", "fixedDays", "restrictedDays", "days"] as const
+                    const ruleDays = dayKeys.reduce<string[]>((acc, k) => acc.length > 0 ? acc : ((rule.params[k] as string[] | undefined) ?? []), [])
+                    const dayStr = ruleDays.length > 0 ? ruleDays.map((d) => DAY_ES_2[d] ?? d).join(", ") : ""
+                    // Extra info: training technique, fixed shift
+                    const trainingTec = rule.params.training_tecnica_code as string | undefined
+                    const tecLabel = trainingTec ? (weekData?.tecnicas?.find((tc) => tc.codigo === trainingTec)?.nombre_es ?? trainingTec) : null
+                    const fixedShift = rule.params.fixedShift as string | undefined
+                    const detail = [otherNames, dayStr ? `(${dayStr})` : "", tecLabel, fixedShift].filter(Boolean).join(" · ")
                     return (
                       <div key={i} className="flex items-start gap-2">
                         <div className={cn(
@@ -1196,8 +1205,8 @@ function StaffProfilePanel({
                         )} />
                         <div className="min-w-0">
                           <p className="text-[12px] font-medium text-foreground">{tLab(`rules.types.${rule.type}`)}</p>
-                          {otherNames && (
-                            <p className="text-[11px] text-muted-foreground truncate">{otherNames}</p>
+                          {detail && (
+                            <p className="text-[11px] text-muted-foreground truncate">{detail}</p>
                           )}
                           {rule.notes && (
                             <p className="text-[11px] text-muted-foreground italic truncate">{rule.notes}</p>
