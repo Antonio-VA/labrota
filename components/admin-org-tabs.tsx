@@ -32,7 +32,7 @@ export function AdminOrgTabs({
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border -mb-2">
+      <div className="flex border-b border-border -mb-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         {TAB_KEYS.map((key) => (
           <button
             key={key}

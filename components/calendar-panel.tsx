@@ -3491,28 +3491,40 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
   return (
     <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
-      {/* Punctions + biopsies + P+B index header */}
+      {/* Punctions + biopsies + staff count + P+B index header */}
       {(punctions !== undefined || biopsyForecast !== undefined) && (() => {
         const p = punctions ?? 0
         const b = biopsyForecast ?? 0
         const totalProc = p + b
-        const qualifiedCount = day.assignments.length
-        const pbIndex = totalProc > 0 ? (qualifiedCount / totalProc) : 0
+        const totalStaff = day.assignments.length
+        const pbIndex = totalProc > 0 ? (totalStaff / totalProc) : 0
         const pbIndexStr = pbIndex.toFixed(1)
         const opt = ratioOptimal ?? 1.0
         const min = ratioMinimum ?? 0.75
         const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : "text-destructive"
-        const tooltipEs = `${p} punciones + ${b} biopsias = ${totalProc} procedimientos\nÍndice P+B: ${pbIndexStr}`
-        const tooltipEn = `${p} punctions + ${b} biopsies = ${totalProc} procedures\nP+B index: ${pbIndexStr}`
+        // Count by role
+        const staffById = new Map((staffList ?? []).map((s) => [s.id, s]))
+        let emCount = 0, anCount = 0, adCount = 0
+        for (const a of day.assignments) {
+          const s = staffById.get(a.staff_id)
+          if (s?.role === "lab") emCount++
+          else if (s?.role === "andrology") anCount++
+          else adCount++
+        }
+        const staffBreakdown = [emCount > 0 && `${emCount} emb`, anCount > 0 && `${anCount} andro`, adCount > 0 && `${adCount} ad`].filter(Boolean).join(" + ")
+        const tooltipEs = `${p} punciones + ${b} biopsias = ${totalProc} procedimientos\n${totalStaff} personal / ${totalProc} procedimientos = ${pbIndexStr}\nÓptimo: ≥ ${opt} · Mínimo: ≥ ${min}`
+        const tooltipEn = `${p} pick ups + ${b} biopsies = ${totalProc} procedures\n${totalStaff} staff / ${totalProc} procedures = ${pbIndexStr}\nOptimal: ≥ ${opt} · Minimum: ≥ ${min}`
         return (
-          <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-            <span>P: <strong className="text-foreground">{p}</strong></span>
-            <span>B: <strong className="text-foreground">{b}</strong></span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-0.5 text-[12px] text-muted-foreground">
+              <span>{tc("pickUps")}: <strong className="text-foreground">{p}</strong> · {tc("biopsies")}: <strong className="text-foreground">{b}</strong></span>
+              <span>{totalStaff} {tc("staff")} ({staffBreakdown})</span>
+            </div>
             {totalProc > 0 && (
               <Tooltip>
                 <TooltipTrigger render={
-                  <span className={cn("font-semibold tabular-nums cursor-default", indexColor)}>
-                    P+B: {pbIndexStr}
+                  <span className={cn("text-[18px] font-semibold tabular-nums cursor-default leading-none", indexColor)}>
+                    {pbIndexStr}
                   </span>
                 } />
                 <TooltipContent side="bottom" className="whitespace-pre-line text-[11px]">
@@ -3520,8 +3532,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                 </TooltipContent>
               </Tooltip>
             )}
-            <span className="text-muted-foreground/40">·</span>
-            <span>{t("assignmentCount", { count: day.assignments.length })}</span>
           </div>
         )
       })()}
@@ -3755,18 +3765,13 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "manual"
+type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "manual"
 
 const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
   {
-    key: "strict_template", icon: <BookmarkX className="size-5" />,
-    titleKey: "strictTemplate", descKey: "strictTemplateDesc",
-    badge: "HARD", badgeColor: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-  },
-  {
     key: "flexible_template", icon: <Bookmark className="size-5" />,
-    titleKey: "flexibleTemplate", descKey: "flexibleTemplateDesc",
-    badge: "SOFT", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+    titleKey: "templateApply", descKey: "templateApplyDesc",
+    badge: "TPL", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
   },
   {
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
@@ -3810,7 +3815,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 
   if (!open) return null
 
-  const needsTemplate = selected === "strict_template" || selected === "flexible_template"
+  const needsTemplate = selected === "flexible_template"
   const canGenerate = selected && (!needsTemplate || selectedTplId)
 
   return (
@@ -4294,6 +4299,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
+  const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
   const [initialLoaded, setInitialLoaded] = useState(false)
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
@@ -4412,6 +4418,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const fetchWeek = useCallback((ws: string) => {
     const version = ++fetchVersionRef.current
     aiReasoningRef.current = null // clear client-side reasoning on week change
+    setActiveStrategy(null)
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
@@ -4565,6 +4572,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     const weeksToGenerate = multiWeekScope ?? [weekStart]
     setMultiWeekScope(null)
 
+    setActiveStrategy(strategy)
     setLoadingWeek(true)
     startTransition(async () => {
       try {
@@ -4576,8 +4584,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             const result = await clearWeek(ws)
             if (result.error) { errorMsg = result.error; break }
             successCount++
-          } else if ((strategy === "strict_template" || strategy === "flexible_template") && templateId) {
-            const result = await applyTemplate(templateId, ws, strategy === "strict_template")
+          } else if (strategy === "flexible_template" && templateId) {
+            const result = await applyTemplate(templateId, ws, true)
             if (result.error) { errorMsg = result.error; break }
             successCount++
           } else if (strategy === "ai_reasoning") {
@@ -5138,6 +5146,20 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
                   ) : (
                     <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+                  )}
+                  {activeStrategy === "ai_reasoning" && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                      <BrainCircuit className="size-8 text-amber-500 animate-pulse" />
+                      <p className="text-[14px] font-medium text-foreground">{t("claudeThinking")}</p>
+                      <p className="text-[12px] text-muted-foreground max-w-xs text-center">{t("claudeThinkingDesc")}</p>
+                    </div>
+                  )}
+                  {(activeStrategy === "ai_optimal" || activeStrategy === "ai_optimal_v2") && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                      <Sparkles className="size-8 text-primary animate-pulse" />
+                      <p className="text-[14px] font-medium text-foreground">{t("engineGenerating")}</p>
+                      <p className="text-[12px] text-muted-foreground">{t("engineGeneratingDesc")}</p>
+                    </div>
                   )}
                 </div>
               )}
