@@ -1667,8 +1667,7 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
     supabase
       .from("rota_rules")
       .select("type, is_hard, staff_ids, params, notes")
-      .eq("enabled", true)
-      .contains("staff_ids", [staffId]) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[] | null }>,
+      .eq("enabled", true) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[] | null }>,
   ])
 
   return {
@@ -1677,7 +1676,9 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
     pastLeaves: pastLeavesRes.data ?? [],
     prevWeekAssignments: prevWeekRes.data ?? [],
     nextWeekAssignments: nextWeekRes.data ?? [],
-    rules: rulesRes.data ?? [],
+    rules: (rulesRes.data ?? []).filter((r) =>
+      r.staff_ids.includes(staffId) || r.params.supervisor_id === staffId
+    ),
   }
 }
 

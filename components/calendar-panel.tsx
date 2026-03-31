@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragm
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { useCanEdit } from "@/lib/role-context"
+import { useCanEdit, useUserRole } from "@/lib/role-context"
 import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
@@ -905,8 +905,10 @@ function StaffProfilePanel({
   const tl        = useTranslations("leaves")
   const ts        = useTranslations("skills")
   const tLab      = useTranslations("lab")
+  const userRole  = useUserRole()
   const [data, setData]       = useState<StaffProfileData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showAdjWeeks, setShowAdjWeeks] = useState(false)
 
   const weekStart = weekData?.weekStart ?? null
   useEffect(() => {
@@ -1001,7 +1003,7 @@ function StaffProfilePanel({
         {/* ── Content ────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
 
-          {/* Weekly shift strip — this week's assignments */}
+          {/* Weekly shift strips — current + collapsible prev/next */}
           <div className="px-5 py-3 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("currentWeek")}</p>
             <div className="grid grid-cols-7 gap-1">
@@ -1029,6 +1031,76 @@ function StaffProfilePanel({
                 )
               })}
             </div>
+
+            {/* Collapsible prev/next weeks */}
+            <button
+              onClick={() => setShowAdjWeeks(!showAdjWeeks)}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground mt-2 w-full"
+            >
+              {showAdjWeeks ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+              <span>{t("previousWeek")} / {t("nextWeek")}</span>
+            </button>
+
+            {showAdjWeeks && (
+              <div className="mt-2 flex flex-col gap-3">
+                {/* Previous week */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("previousWeek")}</p>
+                  {loading ? (
+                    <div className="shimmer-bar h-7 w-full rounded" />
+                  ) : (
+                    <div className="grid grid-cols-7 gap-1 opacity-60">
+                      {Array.from({ length: 7 }).map((_, i) => {
+                        const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
+                        const d = new Date(ws); d.setDate(d.getDate() - 7 + i)
+                        const dateStr = d.toISOString().split("T")[0]
+                        const a = (data?.prevWeekAssignments ?? []).find((a) => a.date === dateStr)
+                        return (
+                          <div key={i} className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
+                            <div className={cn(
+                              "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
+                              a ? "bg-muted text-foreground/60 border border-border"
+                                : "bg-muted/50 text-muted-foreground/30 border border-border/30"
+                            )}>
+                              {a ? a.shift_type : "—"}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                {/* Next week */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("nextWeek")}</p>
+                  {loading ? (
+                    <div className="shimmer-bar h-7 w-full rounded" />
+                  ) : (
+                    <div className="grid grid-cols-7 gap-1 opacity-60">
+                      {Array.from({ length: 7 }).map((_, i) => {
+                        const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
+                        const d = new Date(ws); d.setDate(d.getDate() + 7 + i)
+                        const dateStr = d.toISOString().split("T")[0]
+                        const a = (data?.nextWeekAssignments ?? []).find((a) => a.date === dateStr)
+                        return (
+                          <div key={i} className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
+                            <div className={cn(
+                              "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
+                              a ? "bg-muted text-foreground/60 border border-border"
+                                : "bg-muted/50 text-muted-foreground/30 border border-border/30"
+                            )}>
+                              {a ? a.shift_type : "—"}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Shift debt — last 4 weeks */}
@@ -1100,66 +1172,8 @@ function StaffProfilePanel({
             </div>
           )}
 
-          {/* Previous week strip */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("previousWeek")}</p>
-            {loading ? (
-              <div className="shimmer-bar h-7 w-full rounded" />
-            ) : (
-              <div className="grid grid-cols-7 gap-1 opacity-70">
-                {Array.from({ length: 7 }).map((_, i) => {
-                  const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
-                  const d = new Date(ws); d.setDate(d.getDate() - 7 + i)
-                  const dateStr = d.toISOString().split("T")[0]
-                  const a = (data?.prevWeekAssignments ?? []).find((a) => a.date === dateStr)
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-0.5">
-                      <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
-                      <div className={cn(
-                        "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
-                        a ? "bg-muted text-foreground/60 border border-border"
-                          : "bg-muted/50 text-muted-foreground/30 border border-border/30"
-                      )}>
-                        {a ? a.shift_type : "—"}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Next week strip */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("nextWeek")}</p>
-            {loading ? (
-              <div className="shimmer-bar h-7 w-full rounded" />
-            ) : (
-              <div className="grid grid-cols-7 gap-1 opacity-70">
-                {Array.from({ length: 7 }).map((_, i) => {
-                  const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
-                  const d = new Date(ws); d.setDate(d.getDate() + 7 + i)
-                  const dateStr = d.toISOString().split("T")[0]
-                  const a = (data?.nextWeekAssignments ?? []).find((a) => a.date === dateStr)
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-0.5">
-                      <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
-                      <div className={cn(
-                        "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
-                        a ? "bg-muted text-foreground/60 border border-border"
-                          : "bg-muted/50 text-muted-foreground/30 border border-border/30"
-                      )}>
-                        {a ? a.shift_type : "—"}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Scheduling rules affecting this person */}
-          {staff && (
+          {/* Scheduling rules affecting this person — managers/admins only */}
+          {staff && userRole !== "viewer" && (
             <div className="px-5 py-3 border-b border-border">
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("activeRules")}</p>
               {loading ? (
