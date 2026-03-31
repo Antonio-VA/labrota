@@ -3279,8 +3279,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                       {day.staffCount > 0 && (
                         day.hasSkillGaps
-                          ? <AlertTriangle className="size-4 text-amber-500" />
-                          : <CheckCircle2 className="size-4 text-emerald-500 dark:text-emerald-400" />
+                          ? <AlertTriangle className="size-3.5 text-amber-500" />
+                          : <Check className="size-3.5 text-emerald-500" />
                       )}
                     </div>
 
@@ -3320,20 +3320,20 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         day.holidayName && "border border-amber-400/50 rounded-full px-1.5 py-0.5"
                       )}>
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #3B82F6", color: "#3B82F6" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
+                            style={{ border: "1.5px solid #3B82F6" }}>
                             {day.labCount}
                           </span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #10B981", color: "#10B981" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
+                            style={{ border: "1.5px solid #10B981" }}>
                             {day.andrologyCount}
                           </span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #64748B", color: "#64748B" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
+                            style={{ border: "1.5px solid #64748B" }}>
                             {day.adminCount}
                           </span>
                         )}
@@ -5738,6 +5738,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         })()}
         rotaDisplayMode={weekData?.rotaDisplayMode}
         taskConflictThreshold={weekData?.taskConflictThreshold}
+        enableTaskInShift={weekData?.enableTaskInShift ?? false}
       />
 
       {/* Multi-week generation scope dialog */}

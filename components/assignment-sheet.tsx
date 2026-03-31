@@ -62,7 +62,7 @@ const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "androlog
 
 function AssignmentPopover({
   assignment, staffSkills, tecnicas, departments = [],
-  onFunctionSave, onTecnicaSave, isPublished, children,
+  onFunctionSave, onTecnicaSave, isPublished, enableTaskInShift = true, children,
 }: {
   assignment: { id: string; staff: { role: string }; function_label: string | null; tecnica_id: string | null }
   staffSkills: { skill: string; level: string }[]
@@ -71,6 +71,7 @@ function AssignmentPopover({
   onFunctionSave: (id: string, label: string | null) => void
   onTecnicaSave: (id: string, tecnicaId: string | null) => void
   isPublished: boolean
+  enableTaskInShift?: boolean
   children: React.ReactNode
 }) {
   const tSheet = useTranslations("assignmentSheet")
@@ -99,7 +100,8 @@ function AssignmentPopover({
   const roleDept = departments.find((d) => d.parent_id == null && d.code === assignment.staff.role)
   const roleSubDepts = roleDept ? departments.filter((d) => d.parent_id === roleDept.id) : []
 
-  if ((availableTecnicas.length === 0 && roleSubDepts.length === 0) || isPublished) return <>{children}</>
+  const visibleTecnicas = enableTaskInShift ? availableTecnicas : []
+  if ((visibleTecnicas.length === 0 && roleSubDepts.length === 0) || isPublished) return <>{children}</>
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
@@ -139,12 +141,12 @@ function AssignmentPopover({
             </>
           )}
           {/* Tareas section */}
-          {availableTecnicas.length > 0 && (
+          {visibleTecnicas.length > 0 && (
             <>
               <div className="h-px bg-border mx-2 my-1" />
               <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{tSheet("tasksLabel")}</p>
               <div className="flex flex-col">
-                {availableTecnicas.map((tec) => {
+                {visibleTecnicas.map((tec) => {
                   const isActive = assignment.tecnica_id === tec.id
                   const color = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
                   return (
@@ -180,7 +182,7 @@ function AssignmentPopover({
 
 function DraggableCard({
   assignment, tecnica, staffSkills, tecnicas,
-  onRemove, disabled, isPublished,
+  onRemove, disabled, isPublished, enableTaskInShift,
   onFunctionSave, onTecnicaSave,
 }: {
   assignment: Assignment
@@ -190,6 +192,7 @@ function DraggableCard({
   onRemove: () => void
   disabled: boolean
   isPublished: boolean
+  enableTaskInShift: boolean
   onFunctionSave: (id: string, label: string | null) => void
   onTecnicaSave: (id: string, tecnicaId: string | null) => void
 }) {
@@ -224,6 +227,7 @@ function DraggableCard({
         onFunctionSave={onFunctionSave}
         onTecnicaSave={onTecnicaSave}
         isPublished={isPublished}
+        enableTaskInShift={enableTaskInShift}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="font-medium truncate leading-tight">
@@ -458,13 +462,14 @@ interface Props {
   biopsyForecast?: number
   rotaDisplayMode?: string
   taskConflictThreshold?: number
+  enableTaskInShift?: boolean
 }
 
 export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
   shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
-  timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold = 3,
+  timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold = 3, enableTaskInShift = true,
 }: Props) {
   const t = useTranslations("assignmentSheet")
   const tc = useTranslations("common")
@@ -963,6 +968,7 @@ export function AssignmentSheet({
                           onRemove={() => handleRemove(a.id)}
                           disabled={isPublished || a.id.startsWith("temp-")}
                           isPublished={isPublished}
+                          enableTaskInShift={enableTaskInShift}
                           onFunctionSave={handleFunctionSave}
                           onTecnicaSave={handleTecnicaSave}
                         />
