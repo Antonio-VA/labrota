@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
+import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot, captureWeekSnapshot } from "@/lib/rota-snapshots"
@@ -196,9 +197,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
     supabase
       .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override, engine_warnings, generation_type")
+      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null; generation_type?: string | null } | null; error: { message: string } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null; error: { message: string } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
@@ -212,24 +213,15 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
   ])
 
-  // Fallback: if engine_warnings/generation_type columns don't exist yet, retry without them
+  // Fallback: if engine_warnings column doesn't exist yet, retry without it
   let rotaResult = rotaResultFull
   if (rotaResultFull.error && !rotaResultFull.data) {
     const fallback = await supabase
       .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
+      .select("id, status, published_at, published_by, punctions_override")
       .eq("week_start", weekStart)
       .maybeSingle() as unknown as typeof rotaResultFull
-    if (fallback.error && !fallback.data) {
-      const fallback2 = await supabase
-        .from("rotas")
-        .select("id, status, published_at, published_by, punctions_override")
-        .eq("week_start", weekStart)
-        .maybeSingle() as unknown as typeof rotaResultFull
-      rotaResult = fallback2
-    } else {
-      rotaResult = fallback
-    }
+    rotaResult = fallback
   }
 
   const rotaData  = rotaResult.data
@@ -854,8 +846,9 @@ export async function generateRota(
         }))
     )
   } else {
-    // ── BY_SHIFT MODE: use shift engine (existing) ──────────────────────
-    const { days, taskAssignments: shiftEngineTaskAssignments, warnings } = runRotaEngine({
+    // ── BY_SHIFT MODE: use shift engine ──────────────────────────────────
+    const engineFn = generationType === "ai_optimal_v2" ? runRotaEngineV2 : runRotaEngine
+    const { days, taskAssignments: shiftEngineTaskAssignments, warnings } = engineFn({
       weekStart,
       staff: normalizedStaff,
       leaves: engineLeaves,
@@ -1123,34 +1116,50 @@ export async function generateRotaWithAI(
   const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
 
   const systemPrompt = `You are an expert IVF lab scheduler. Generate a weekly staff rota for an embryology clinic.
+You must follow a strict 3-level constraint hierarchy. Higher levels ALWAYS take priority.
 
-ABSOLUTE CONSTRAINTS (violations = invalid schedule):
-1. BUDGET: Each staff member MUST work EXACTLY their days_per_week. Not more, not less. A staff member with days_per_week=5 must be assigned to exactly 5 days. This is the #1 constraint.
-2. LEAVE: Staff on leave on a date MUST NOT be assigned that day.
-3. ACTIVE SHIFTS: Each date lists its activeShifts. Do NOT assign ANY staff to shifts not in the activeShifts list for that date. If a day has activeShifts=["T1","T2","T4"], do NOT assign anyone to T3 or T5.
-4. ONE SHIFT PER DAY: Each staff member gets exactly one shift per working day.
-5. HARD RULES: Rules marked is_hard=true are inviolable.
+═══ LEVEL 1 — ABSOLUTE (break = invalid schedule) ═══
+These constraints are physically impossible to violate. If a Level 2 or 3 constraint conflicts with Level 1, Level 1 wins.
 
-IMPORTANT CONSTRAINTS:
-6. COVERAGE: If shift coverage requirements are provided, meet the minimum staff count per role per shift per day.
-7. DAYS OFF: Lab-wide days off preference is "${daysOffPref}". ${daysOffPref === "always_weekend" ? "Days off MUST be on weekends (Saturday/Sunday) only." : daysOffPref === "prefer_weekend" ? "Days off should PREFERABLY be on weekends, but weekday offs are acceptable if needed." : "Days off can be on any day."}
-8. AVOID DAYS: If a staff member has avoid_days (e.g. ["sat","sun"]), try not to schedule them on those days. These are the days they prefer to be OFF.
-9. PREFERRED SHIFT / AVOID SHIFTS: Respect shift preferences when possible.
-10. SOFT RULES: Rules marked is_hard=false should be respected when possible.
-11. WORKLOAD BALANCE: Staff who worked more recently (higher recent_days_worked) should not be favoured.
+L1.1 LEAVE: Staff on approved leave MUST NOT be assigned that day. Non-negotiable.
+L1.2 BUDGET: Each staff member MUST work EXACTLY their days_per_week number of days. Not more, not less. A person with days_per_week=5 must appear in exactly 5 days.
+L1.3 ACTIVE SHIFTS: Each date lists its activeShifts. Do NOT assign anyone to shifts not in activeShifts. If coverage_per_day shows all zeros for a shift on a day, that shift needs ZERO staff.
+L1.4 DAYS OFF MODE: "${daysOffPref}". ${daysOffPref === "always_weekend" ? "Days off MUST be on Saturday and/or Sunday. Staff cannot have weekday days off unless their budget is < 5 and coverage doesn't need them." : daysOffPref === "prefer_weekend" ? "Days off should PREFERABLY be on weekends. Weekday offs are acceptable if coverage requires it, but minimise them." : "Days off can be on any day."}
+L1.5 CALENDAR RULES: restriccion_dia_tecnica — techniques restricted to or excluded from certain days. These are absolute.
+L1.6 COVERAGE MINIMUMS: Meet the minimum staff count per role per shift per day. Where coverage shows {lab:0, andrology:0, admin:0}, assign NOBODY.
+L1.7 ONE SHIFT PER DAY: Each staff member gets exactly one shift per working day.
+
+═══ LEVEL 2 — MANDATORY (override only if Level 1 requires it) ═══
+
+L2.1 TECHNIQUE COVERAGE: Place staff with the right certified skills in shifts that need those techniques. A shift requiring OPU must have an OPU-certified person.
+L2.2 HARD USER RULES (is_hard=true): Apply all rules marked as hard. If a hard rule conflicts with L1 (e.g., removing someone would break coverage), L1 wins and the rule is noted as violated.
+L2.3 PREFERRED DAYS OFF: avoid_days is a STRONG signal — these are days the employee wants OFF. Heavily penalise scheduling on avoided days. preferred_days is a weaker positive signal.
+L2.4 PREFERRED SHIFTS: avoid_shifts is a STRONG signal — never place in avoided shifts unless no alternative. preferred_shift is a weaker positive preference.
+
+═══ LEVEL 3 — OPTIMISATION (only if no Level 1/2 loss) ═══
+
+L3.1 FAIR SHARE: If total staff exceeds shift minimums (excess budget), distribute evenly across shifts rather than piling into one.
+L3.2 SHIFT ROTATION: Vary shift assignments across the week/over time for variety.
+L3.3 SOFT RULES (is_hard=false): Respect when possible without breaking anything above.
+L3.4 WORKLOAD BALANCE: Staff who worked more recently (higher recent_days_worked) should get slightly less-preferred slots.
 
 RULE TYPE REFERENCE:
 - no_coincidir (scope=same_day): listed staff cannot work the same day. (scope=same_shift): cannot be in same shift but can work same day.
 - no_librar_mismo_dia: listed staff cannot both be off the same day.
-- no_misma_tarea: listed staff cannot do the same task on the same day.
 - supervisor_requerido: supervisor must be on the same shift as supervised staff.
-- max_dias_consecutivos: max consecutive working days (check recent history).
+- max_dias_consecutivos: max consecutive working days.
 - distribucion_fines_semana: max weekend days per month.
 - descanso_fin_de_semana: alternating weekend rest.
 - asignacion_fija: staff always assigned to a fixed shift/days.
 - restriccion_dia_tecnica: technique restricted to/excluded from certain days.
 
-APPROACH: First calculate how many days each person needs to work vs how many days are available. Then assign day by day, checking activeShifts per date, filling coverage requirements, and ensuring budgets are met exactly.`
+APPROACH:
+1. First, calculate each person's total available days (7 minus leave days this week).
+2. Then determine how many days they must work (days_per_week) and which days they must be OFF.
+3. For "${daysOffPref}" mode: ${daysOffPref === "always_weekend" ? "off days must be weekends" : daysOffPref === "prefer_weekend" ? "prefer weekends for off days" : "any day works for off days"}.
+4. Check coverage minimums per shift per day. Where coverage is all zeros, that shift is CLOSED.
+5. Assign day by day: fill shift minimums first (L1.6), then place remaining staff for budget (L1.2), then distribute across shifts fairly (L3.1).
+6. Apply L2 rules — remove/swap only if it doesn't break L1.`
 
   const userPrompt = `Generate the rota for week starting ${weekStart}.
 
@@ -1246,7 +1255,12 @@ Use staff IDs (not names) and shift codes exactly as provided.`
 
     // Save warnings + reasoning to rota
     const allWarnings = [...aiWarnings, `[ai-reasoning] ${reasoning}`]
-    await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId).then(() => {})
+    const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId)
+    if (warnError) {
+      // engine_warnings column might not exist — try creating it won't work via RLS,
+      // but log so reasoning is at least returned in the response
+      console.error("Failed to save engine_warnings:", warnError.message)
+    }
 
     // Audit
     const { data: { user: auditUser } } = await supabase.auth.getUser()

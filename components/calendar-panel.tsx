@@ -3755,7 +3755,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "ai_reasoning" | "manual"
+type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "manual"
 
 const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
   {
@@ -3771,7 +3771,12 @@ const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titl
   {
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
     titleKey: "aiOptimal", descKey: "aiOptimalDesc",
-    badge: "IA", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
+    badge: "v1", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
+  },
+  {
+    key: "ai_optimal_v2", icon: <Sparkles className="size-5" />,
+    titleKey: "aiOptimalV2", descKey: "aiOptimalV2Desc",
+    badge: "v2", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
   },
   {
     key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
@@ -4294,6 +4299,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [showReasoningModal, setShowReasoningModal] = useState(false)
+  const aiReasoningRef = useRef<string | null>(null) // preserve reasoning across fetches
   const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
@@ -4405,6 +4411,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const fetchVersionRef = useRef(0)
   const fetchWeek = useCallback((ws: string) => {
     const version = ++fetchVersionRef.current
+    aiReasoningRef.current = null // clear client-side reasoning on week change
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
@@ -4575,6 +4582,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             successCount++
           } else if (strategy === "ai_reasoning") {
             const result = await generateRotaWithAI(ws, false)
+            if (result.error) { errorMsg = result.error; break }
+            // Store reasoning client-side so it's available even if DB save failed
+            if (result.reasoning) {
+              aiReasoningRef.current = result.reasoning
+            }
+            successCount++
+          } else if (strategy === "ai_optimal_v2") {
+            const result = await generateRota(ws, false, "ai_optimal_v2")
             if (result.error) { errorMsg = result.error; break }
             successCount++
           } else {
@@ -4872,7 +4887,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {weekData?.aiReasoning && hasAssignments && (
+          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (
             <button
               onClick={() => setShowReasoningModal(true)}
               className="flex items-center gap-1 h-8 px-2.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-medium shrink-0"
@@ -5760,7 +5775,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       {/* AI Reasoning modal */}
       <AIReasoningModal
         open={showReasoningModal}
-        reasoning={weekData?.aiReasoning ?? ""}
+        reasoning={weekData?.aiReasoning ?? aiReasoningRef.current ?? ""}
         onClose={() => setShowReasoningModal(false)}
       />
 
