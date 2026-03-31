@@ -3813,6 +3813,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [selected, setSelected] = useState<GenerationStrategy | null>(null)
   const [templates, setTemplates] = useState<RotaTemplate[]>([])
   const [loadingTpl, setLoadingTpl] = useState(false)
