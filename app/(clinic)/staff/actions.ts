@@ -152,11 +152,13 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
   if (updateError) return { error: updateError.message }
 
   // Replace all skills: delete then re-insert
-  await supabase.from("staff_skills").delete().eq("staff_id", id).eq("organisation_id", orgId)
+  const { error: delError } = await supabase.from("staff_skills").delete().eq("staff_id", id).eq("organisation_id", orgId)
+  if (delError) return { error: delError.message }
   if (skills.length > 0) {
-    await supabase.from("staff_skills").insert(
+    const { error: insError } = await supabase.from("staff_skills").insert(
       skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
     )
+    if (insError) return { error: insError.message }
   }
 
   revalidatePath("/staff")
