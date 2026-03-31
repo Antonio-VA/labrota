@@ -45,6 +45,7 @@ import {
   applyTemplate,
   clearWeek,
   copyPreviousWeek,
+  generateRotaHybrid,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -3765,7 +3766,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "manual"
+type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "ai_hybrid" | "manual"
 
 const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
   {
@@ -3782,6 +3783,11 @@ const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titl
     key: "ai_optimal_v2", icon: <Sparkles className="size-5" />,
     titleKey: "aiOptimalV2", descKey: "aiOptimalV2Desc",
     badge: "v2", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  {
+    key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
+    titleKey: "aiHybrid", descKey: "aiHybridDesc",
+    badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
   },
   {
     key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
@@ -3901,8 +3907,8 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 
 // ── AI Reasoning modal ───────────────────────────────────────────────────────
 
-function AIReasoningModal({ open, reasoning, onClose }: {
-  open: boolean; reasoning: string; onClose: () => void
+function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
+  open: boolean; reasoning: string; onClose: () => void; variant?: "claude" | "hybrid"
 }) {
   const t = useTranslations("schedule")
 
@@ -3914,8 +3920,8 @@ function AIReasoningModal({ open, reasoning, onClose }: {
       <div className="relative bg-background rounded-xl border border-border shadow-xl w-[600px] max-w-[90vw] max-h-[80vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BrainCircuit className="size-4 text-amber-600" />
-            <p className="text-[15px] font-medium">{t("aiReasoningTitle")}</p>
+            <BrainCircuit className={cn("size-4", variant === "hybrid" ? "text-purple-600" : "text-amber-600")} />
+            <p className="text-[15px] font-medium">{variant === "hybrid" ? t("hybridReasoningTitle") : t("aiReasoningTitle")}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="size-4" />
@@ -4306,6 +4312,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [showReasoningModal, setShowReasoningModal] = useState(false)
   const aiReasoningRef = useRef<string | null>(null) // preserve reasoning across fetches
+  const reasoningSourceRef = useRef<"claude" | "hybrid" | null>(null)
   const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
@@ -4418,6 +4425,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const fetchWeek = useCallback((ws: string) => {
     const version = ++fetchVersionRef.current
     aiReasoningRef.current = null // clear client-side reasoning on week change
+    reasoningSourceRef.current = null
     setActiveStrategy(null)
     setLoadingWeek(true)
     setLiveDays(null)
@@ -4588,12 +4596,20 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             const result = await applyTemplate(templateId, ws, true)
             if (result.error) { errorMsg = result.error; break }
             successCount++
+          } else if (strategy === "ai_hybrid") {
+            const result = await generateRotaHybrid(ws, false)
+            if (result.error) { errorMsg = result.error; break }
+            if (result.reasoning) {
+              aiReasoningRef.current = result.reasoning
+              reasoningSourceRef.current = "hybrid"
+            }
+            successCount++
           } else if (strategy === "ai_reasoning") {
             const result = await generateRotaWithAI(ws, false)
             if (result.error) { errorMsg = result.error; break }
-            // Store reasoning client-side so it's available even if DB save failed
             if (result.reasoning) {
               aiReasoningRef.current = result.reasoning
+              reasoningSourceRef.current = "claude"
             }
             successCount++
           } else if (strategy === "ai_optimal_v2") {
@@ -4899,16 +4915,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (
-            <button
-              onClick={() => setShowReasoningModal(true)}
-              className="flex items-center gap-1 h-8 px-2.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-medium shrink-0"
-              title={t("viewAiReasoning")}
-            >
-              <BrainCircuit className="size-3.5" />
-              <span className="hidden sm:inline">{t("aiInsights")}</span>
-            </button>
-          )}
+          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (() => {
+            const isHybrid = reasoningSourceRef.current === "hybrid"
+            return (
+              <button
+                onClick={() => setShowReasoningModal(true)}
+                className={cn(
+                  "flex items-center gap-1 h-8 px-2.5 rounded-md border transition-colors text-[13px] font-medium shrink-0",
+                  isHybrid
+                    ? "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
+                    : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                )}
+                title={t("viewAiReasoning")}
+              >
+                <BrainCircuit className="size-3.5" />
+                <span className="hidden sm:inline">{t("aiInsights")}</span>
+              </button>
+            )
+          })()}
           {showActions && !isPublished && (
             <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
               {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
@@ -5150,6 +5174,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
                   ) : (
                     <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+                  )}
+                  {activeStrategy === "ai_hybrid" && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="size-6 text-primary animate-pulse" />
+                        <span className="text-muted-foreground">+</span>
+                        <BrainCircuit className="size-6 text-purple-500 animate-pulse" />
+                      </div>
+                      <p className="text-[14px] font-medium text-foreground">{t("hybridGenerating")}</p>
+                      <p className="text-[12px] text-muted-foreground max-w-xs text-center">{t("hybridGeneratingDesc")}</p>
+                    </div>
                   )}
                   {activeStrategy === "ai_reasoning" && (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
@@ -5803,6 +5838,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         open={showReasoningModal}
         reasoning={weekData?.aiReasoning ?? aiReasoningRef.current ?? ""}
         onClose={() => setShowReasoningModal(false)}
+        variant={reasoningSourceRef.current === "hybrid" ? "hybrid" : "claude"}
       />
 
       {/* Template modals */}

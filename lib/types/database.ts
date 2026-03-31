@@ -117,7 +117,7 @@ export interface Leave {
   updated_at:      string
 }
 
-export type GenerationType = 'strict_template' | 'flexible_template' | 'ai_optimal' | 'ai_optimal_v2' | 'ai_reasoning' | 'manual'
+export type GenerationType = 'strict_template' | 'flexible_template' | 'ai_optimal' | 'ai_optimal_v2' | 'ai_reasoning' | 'ai_hybrid' | 'manual'
 
 export interface Rota {
   id:                 string
