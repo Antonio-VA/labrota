@@ -3869,9 +3869,6 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                       : (locale === "es" ? "Más lento" : "Slower")}
                   </span>
                 )}
-                <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
-                  {card.badge}
-                </span>
               </button>
             ))}
           </div>
