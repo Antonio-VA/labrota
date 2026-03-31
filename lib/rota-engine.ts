@@ -1350,11 +1350,10 @@ export function runRotaEngine({
     // For each shift, check technique coverage
     for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
       if (!dayShiftSet.has(shiftCode)) continue
+      const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
+      const staffIdsInShift = new Set(staffInShift.map((a) => a.staff_id))
 
       for (const techCode of techCodes) {
-        // Re-read staff in shift each iteration so swaps are visible
-        const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
-
         // Check if at least one qualified person is in this shift
         const hasCoverage = staffInShift.some((a) => {
           const member = assignedById.get(a.staff_id)
@@ -1363,76 +1362,41 @@ export function runRotaEngine({
         if (hasCoverage) continue
 
         // Gap found — try to resolve
+        // 1. Try to swap: find someone in ANOTHER shift who is qualified and swap them
+        //    BUT never move someone out of a shift that would drop below its minimum
         let resolved = false
-
-        // Find all qualified candidates in other shifts (no min guard yet)
         const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
           if (a.shift_type === shiftCode) return false
           if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)) return false
+          // Guard: don't move supervised staff (supervisor rules place them deliberately)
           if (supervisedStaffIds.has(a.staff_id)) return false
+          // Guard: don't move if source shift would drop below minimum
+          const sourceMin = shiftMinForGuard[a.shift_type] ?? 0
+          if (sourceMin > 0 && (shiftCountAfterDist[a.shift_type] ?? 0) <= sourceMin) return false
           return true
         })
 
-        // Score by rarity then workload
-        const scored = qualifiedInOtherShifts.map((a) => {
-          const qualCount = assigned.filter((s) =>
-            s.staff_skills.some((sk) => sk.skill === techCode)
-          ).length
-          return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
-        }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
+        if (qualifiedInOtherShifts.length > 0) {
+          // Pick rarest: person whose qualification is shared by fewest others
+          const scored = qualifiedInOtherShifts.map((a) => {
+            const qualCount = assigned.filter((s) =>
+              s.staff_skills.some((sk) => sk.skill === techCode)
+            ).length
+            return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
+          }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
 
-        // 1. First pass: try one-way move (source shift above minimum)
-        for (const { a: candidate } of scored) {
-          const member = assignedById.get(candidate.staff_id)
-          const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
-          if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
-          const sourceMin = shiftMinForGuard[candidate.shift_type] ?? 0
-          if (sourceMin > 0 && (shiftCountAfterDist[candidate.shift_type] ?? 0) <= sourceMin) continue
-          shiftCountAfterDist[candidate.shift_type]--
-          shiftCountAfterDist[shiftCode] = (shiftCountAfterDist[shiftCode] ?? 0) + 1
-          candidate.shift_type = shiftCode as ShiftType
-          resolved = true
-          break
-        }
-
-        // 2. Second pass: targeted swap when blocked by min guard.
-        //    Swap the candidate with someone in the target shift who is NOT
-        //    the sole provider of any other technique required here.
-        if (!resolved) {
-          const targetTechs = techByShift[shiftCode] ?? []
+          // Try candidates in order — skip only if they explicitly prefer their current shift
           for (const { a: candidate } of scored) {
             const member = assignedById.get(candidate.staff_id)
             const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
+            // Block swap only if person explicitly prefers their CURRENT shift
             if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
-            const sourceShift = candidate.shift_type
-            const candidateSkills = new Set(member?.staff_skills.map((sk) => sk.skill) ?? [])
-
-            const swapPartner = staffInShift.find((p) => {
-              if (supervisedStaffIds.has(p.staff_id)) return false
-              const pm = assignedById.get(p.staff_id)
-              const pPref = pm?.preferred_shift?.split(",").filter(Boolean) ?? []
-              if (pPref.length > 0 && pPref.includes(shiftCode)) return false
-              // Check that removing this person won't create new technique gaps.
-              // After swap the target shift has: (current staff - partner + candidate)
-              for (const tt of targetTechs) {
-                if (tt === techCode) continue // candidate covers this
-                if (candidateSkills.has(tt)) continue // candidate also covers this
-                // Is there someone else already in the shift who covers tt?
-                const coveredByOthers = staffInShift.some((s) => {
-                  if (s.staff_id === p.staff_id) return false // partner is leaving
-                  return assignedById.get(s.staff_id)?.staff_skills.some((sk) => sk.skill === tt)
-                })
-                if (!coveredByOthers) return false // would create a new gap
-              }
-              return true
-            })
-
-            if (swapPartner) {
-              candidate.shift_type = shiftCode as ShiftType
-              swapPartner.shift_type = sourceShift as ShiftType
-              resolved = true
-              break
-            }
+            // Update shift counts
+            shiftCountAfterDist[candidate.shift_type]--
+            shiftCountAfterDist[shiftCode] = (shiftCountAfterDist[shiftCode] ?? 0) + 1
+            candidate.shift_type = shiftCode as ShiftType
+            resolved = true
+            break
           }
         }
 
