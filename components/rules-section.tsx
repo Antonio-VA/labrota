@@ -1074,9 +1074,11 @@ export function RulesSection({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-medium">{t(`types.${rule.type}`)}</span>
+            {rule.type !== "restriccion_dia_tecnica" && (
             <Badge variant={rule.is_hard ? "skill-gap" : "outline"} className="text-[11px]">
               {rule.is_hard ? t("hard") : t("soft")}
             </Badge>
+            )}
             {!rule.enabled && (
               <Badge variant="inactive" className="text-[11px]">{t("disabled")}</Badge>
             )}
