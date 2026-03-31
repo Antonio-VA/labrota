@@ -85,84 +85,24 @@ export interface RotaWeekData {
 }
 
 
-// ── Spanish national public holidays ─────────────────────────────────────────
+// ── Public holidays (via date-holidays library) ─────────────────────────────
+// Supports national + regional holidays for all configured countries.
+// Source: https://github.com/commenthol/date-holidays (200+ countries, lunar calendars)
 
-function easterSunday(year: number): Date {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25)
-  const g = Math.floor((b - f + 1) / 3)
-  const h = (19 * a + b - d - g + 15) % 30
-  const i = Math.floor(c / 4), k = c % 4
-  const l = (32 + 2 * e + 2 * i - h - k) % 7
-  const m = Math.floor((a + 11 * h + 22 * l) / 451)
-  const month = Math.floor((h + l - 7 * m + 114) / 31)
-  const day = ((h + l - 7 * m + 114) % 31) + 1
-  return new Date(year, month - 1, day)
-}
+import Holidays from "date-holidays"
+import { REGION_TO_LIB_STATE } from "@/lib/regional-config"
 
-function getPublicHolidays(year: number, country = "ES"): Record<string, string> {
-  const easter = easterSunday(year)
-  const goodFriday = new Date(easter); goodFriday.setDate(goodFriday.getDate() - 2)
-  const easterMonday = new Date(easter); easterMonday.setDate(easter.getDate() + 1)
-  const fmt = (d: Date) => d.toISOString().split("T")[0]
-
-  const HOLIDAYS: Record<string, Record<string, string>> = {
-    ES: {
-      [`${year}-01-01`]: "Año Nuevo",
-      [`${year}-01-06`]: "Reyes Magos",
-      [fmt(goodFriday)]: "Viernes Santo",
-      [`${year}-05-01`]: "Día del Trabajo",
-      [`${year}-08-15`]: "Asunción de la Virgen",
-      [`${year}-10-12`]: "Día de la Hispanidad",
-      [`${year}-11-01`]: "Todos los Santos",
-      [`${year}-12-06`]: "Día de la Constitución",
-      [`${year}-12-08`]: "Inmaculada Concepción",
-      [`${year}-12-25`]: "Navidad",
-    },
-    AE: {
-      [`${year}-01-01`]: "New Year's Day",
-      [`${year}-12-01`]: "Commemoration Day",
-      [`${year}-12-02`]: "National Day",
-      [`${year}-12-03`]: "National Day Holiday",
-    },
-    GB: {
-      [`${year}-01-01`]: "New Year's Day",
-      [fmt(goodFriday)]: "Good Friday",
-      [fmt(easterMonday)]: "Easter Monday",
-      [`${year}-05-05`]: "Early May Bank Holiday",
-      [`${year}-05-26`]: "Spring Bank Holiday",
-      [`${year}-08-25`]: "Summer Bank Holiday",
-      [`${year}-12-25`]: "Christmas Day",
-      [`${year}-12-26`]: "Boxing Day",
-    },
-    US: {
-      [`${year}-01-01`]: "New Year's Day",
-      [`${year}-07-04`]: "Independence Day",
-      [`${year}-11-11`]: "Veterans Day",
-      [`${year}-12-25`]: "Christmas Day",
-    },
-    IN: {
-      [`${year}-01-26`]: "Republic Day",
-      [`${year}-08-15`]: "Independence Day",
-      [`${year}-10-02`]: "Gandhi Jayanti",
-      [`${year}-12-25`]: "Christmas",
-    },
-    PT: {
-      [`${year}-01-01`]: "Ano Novo",
-      [fmt(goodFriday)]: "Sexta-feira Santa",
-      [`${year}-04-25`]: "Dia da Liberdade",
-      [`${year}-05-01`]: "Dia do Trabalhador",
-      [`${year}-06-10`]: "Dia de Portugal",
-      [`${year}-08-15`]: "Assunção de Nossa Senhora",
-      [`${year}-10-05`]: "Implantação da República",
-      [`${year}-11-01`]: "Todos os Santos",
-      [`${year}-12-01`]: "Restauração da Independência",
-      [`${year}-12-08`]: "Imaculada Conceição",
-      [`${year}-12-25`]: "Natal",
-    },
+function getPublicHolidays(year: number, country = "ES", region?: string | null): Record<string, string> {
+  const libState = region ? REGION_TO_LIB_STATE[country]?.[region] : undefined
+  const hd = libState ? new Holidays(country, libState) : new Holidays(country)
+  const holidays = hd.getHolidays(year)
+  const result: Record<string, string> = {}
+  for (const h of holidays) {
+    if (h.type !== "public") continue
+    const date = h.date.split(" ")[0] // "2026-01-01 00:00:00" → "2026-01-01"
+    result[date] = h.name
   }
-
-  return HOLIDAYS[country] ?? HOLIDAYS["ES"] ?? {}
+  return result
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -308,7 +248,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Compute public holidays for every year spanned by this week
   const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
   const orgCountry = (labConfig as { country?: string } | null)?.country || "ES"
-  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry)))
+  const orgRegion = (labConfig as { region?: string } | null)?.region || null
+  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
 
   if (!rota) {
     return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null }
@@ -2313,7 +2254,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .lte("start_date", gridDates[gridDates.length - 1])
       .gte("end_date", gridDates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
-    supabase.from("lab_config").select("punctions_by_day, country").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null } | null }>,
+    supabase.from("lab_config").select("punctions_by_day, country, region").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null } | null }>,
     supabase
       .from("rotas")
       .select("week_start, status")
@@ -2375,7 +2316,8 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   // Public holidays
   const years = [...new Set(gridDates.map((d) => parseInt(d.slice(0, 4))))]
   const monthCountry = (labConfigRes.data as { country?: string } | null)?.country || "ES"
-  const holidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, monthCountry)))
+  const monthRegion = (labConfigRes.data as { region?: string } | null)?.region || null
+  const holidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, monthCountry, monthRegion)))
 
   // Week statuses
   const rotaMap = Object.fromEntries((rotasRes.data ?? []).map((r) => [r.week_start, r.status]))

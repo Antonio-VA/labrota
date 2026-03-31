@@ -147,3 +147,21 @@ export const COUNTRIES: CountryConfig[] = [
 export function getCountry(code: string): CountryConfig | undefined {
   return COUNTRIES.find((c) => c.code === code)
 }
+
+/**
+ * Map our region codes → date-holidays library state codes.
+ * Countries without regional holidays in the library (AE, PT, SA, FR, IT)
+ * are omitted — they'll use national holidays only.
+ */
+export const REGION_TO_LIB_STATE: Record<string, Record<string, string>> = {
+  ES: {
+    and: "AN", ara: "AR", ast: "AS", bal: "IB", can: "CN", cnt: "CB",
+    clm: "CM", cyl: "CL", cat: "CT", val: "VC", ext: "EX", gal: "GA",
+    rio: "RI", mad: "MD", mur: "MC", nav: "NC", vac: "PV", ceu: "CE", mel: "ML",
+  },
+  GB: { eng: "ENG", sco: "SCT", wal: "WLS", nir: "NIR" },
+  US: { ca: "CA", ny: "NY", tx: "TX", fl: "FL", il: "IL", ma: "MA" },
+  DE: { bay: "BY", nrw: "NW", baw: "BW", ber: "BE", ham: "HH" },
+  IN: { mah: "MH", del: "DL", kar: "KA", tn: "TN" },
+  AU: { nsw: "NSW", vic: "VIC", qld: "QLD" },
+}
