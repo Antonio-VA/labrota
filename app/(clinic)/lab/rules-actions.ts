@@ -15,8 +15,9 @@ export async function createRule(
     .from("rota_rules")
     .insert({ ...data, organisation_id: orgId } as never)
     .select()
-    .single()
+    .maybeSingle()
   if (error) return { error: error.message }
+  if (!rule) return { error: "Rule was not created — check database permissions." }
   revalidatePath("/lab")
   return { rule: rule as import("@/lib/types/database").RotaRule }
 }
@@ -34,8 +35,9 @@ export async function updateRule(
     .eq("id", id)
     .eq("organisation_id", orgId)
     .select()
-    .single()
+    .maybeSingle()
   if (error) return { error: error.message }
+  if (!rule) return { error: "Rule not found or permission denied." }
   revalidatePath("/lab")
   return { rule: rule as import("@/lib/types/database").RotaRule }
 }
