@@ -744,9 +744,21 @@ export function runRotaEngine({
       ` | reserved=${reservedIds.size} weekend=${weekend}`
     )
 
-    // 9. Skill gaps
+    // 9. Skill gaps — skip techniques blocked by restriccion_dia_tecnica rules on this day
     const coveredSkills = new Set(assigned.flatMap((s) => s.staff_skills.map((sk) => sk.skill)))
-    const skillGaps = [...allOrgSkills].filter((skill) => !coveredSkills.has(skill)) as SkillName[]
+    const tecDayRestrictions = rules.filter((r) => r.enabled && r.type === "restriccion_dia_tecnica")
+    const skillGaps = ([...allOrgSkills] as SkillName[]).filter((skill) => {
+      if (coveredSkills.has(skill)) return false
+      const blocked = tecDayRestrictions.some((r) => {
+        const tecCode = r.params.tecnica_code as string | undefined
+        if (tecCode !== skill) return false
+        const dayMode = r.params.dayMode as string | undefined
+        const restrictedDays = (r.params.restrictedDays as string[] | undefined) ?? []
+        if (restrictedDays.length === 0) return false
+        return dayMode === "only" ? !restrictedDays.includes(dayCode) : restrictedDays.includes(dayCode)
+      })
+      return !blocked
+    })
     if (skillGaps.length > 0) {
       warnings.push(`${date}: skill gaps — ${skillGaps.join(", ")}`)
     }

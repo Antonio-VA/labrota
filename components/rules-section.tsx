@@ -205,9 +205,11 @@ function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_i
     params.tecnica_codes = form.wholeTeamTecnicas
     if (form.wholeTeamDays.length > 0) params.days = form.wholeTeamDays
   }
+  // restriccion_dia_tecnica is always hard — no soft option makes sense
+  const isHard = form.type === "restriccion_dia_tecnica" ? true : form.is_hard
   return {
     type: form.type,
-    is_hard: form.is_hard,
+    is_hard: isHard,
     enabled: form.enabled,
     staff_ids: form.staff_ids,
     params,
@@ -326,7 +328,8 @@ function RuleSheet({
             <p className="text-[12px] text-muted-foreground mt-1">{t(`descriptions.${form.type}`)}</p>
           </div>
 
-          {/* Hard / Soft */}
+          {/* Hard / Soft — hidden for restriccion_dia_tecnica (always hard by definition) */}
+          {form.type !== "restriccion_dia_tecnica" && (
           <div className="flex gap-2">
             <button
               type="button"
@@ -355,6 +358,7 @@ function RuleSheet({
               {t("soft")}
             </button>
           </div>
+          )}
 
           {/* Type-specific params */}
           {form.type === "max_dias_consecutivos" && (
