@@ -362,7 +362,7 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
     >
       <span className="truncate">{first} {last[0]}.</span>
       {trainingTecCode && (
-        <span className={cn("inline-flex items-center gap-0.5 font-semibold px-1 py-0.5 rounded border shrink-0 bg-amber-50 border-amber-200 text-amber-700", compact ? "text-[8px]" : "text-[9px]", !pillLabel && "ml-auto")}>
+        <span className={cn("inline-flex items-center gap-0.5 shrink-0 text-amber-600", compact ? "text-[8px]" : "text-[9px]", !pillLabel && "ml-auto")}>
           <Hourglass className="size-2" />
           {trainingTecCode}
         </span>
