@@ -256,6 +256,7 @@
     "preferred": "Preferred",
     "dayPreferences": "Day preferences",
     "preferredShift": "Preferred shift",
+    "noPreference": "No preference",
     "editMode": "Edit mode",
     "done": "Done",
     "byShift": "By shift",

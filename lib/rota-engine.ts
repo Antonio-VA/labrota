@@ -308,6 +308,7 @@ export function runRotaEngine({
         if (s.onboarding_status === "inactive" || s.role !== role) return false
         if (s.start_date > date || (s.end_date && s.end_date < date)) return false
         if (leaveMap[s.id]?.has(date)) return false
+        if (s.working_pattern?.length && !s.working_pattern.includes(dayCode)) return false
         const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
         return reserved < (s.days_per_week ?? 5)
       }).sort((a, b) => {

@@ -755,13 +755,10 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
   if (!open) {
     return (
       <div className="px-5 py-2 border-t border-border">
-        <button
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[12px] text-primary hover:underline"
-        >
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-1.5 text-[12px]">
           <CalendarPlus className="size-3.5" />
           {tl("addLeave")}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -1296,9 +1293,23 @@ function StaffProfilePanel({
                   <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
                   <p className="text-foreground font-medium">{(staff.working_pattern ?? []).map((d) => DAY_ES_2[d] ?? d).join(", ")}</p>
                 </div>
-                {((staff.preferred_days?.length ?? 0) > 0 || (staff.avoid_days?.length ?? 0) > 0) && (
-                  <div className="col-span-2">
-                    <p className="text-muted-foreground">{t("dayPreferences")}</p>
+                <div>
+                  <p className="text-muted-foreground">{t("preferredShift")}</p>
+                  {staff.preferred_shift ? (
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {staff.preferred_shift.split(",").filter(Boolean).map((s) => (
+                        <span key={s} className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          {s.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-foreground font-medium">{t("noPreference")}</p>
+                  )}
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">{t("dayPreferences")}</p>
+                  {(staff.preferred_days?.length ?? 0) > 0 || (staff.avoid_days?.length ?? 0) > 0 ? (
                     <div className="flex items-center gap-1 mt-0.5">
                       {(staff.preferred_days ?? []).map((d) => (
                         <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[var(--pref-bg)] text-white">{DAY_ES_2[d] ?? d}</span>
@@ -1307,24 +1318,14 @@ function StaffProfilePanel({
                         <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FEE2E2] text-[#B91C1C]">{DAY_ES_2[d] ?? d}</span>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-foreground font-medium">{t("noPreference")}</p>
+                  )}
+                </div>
                 {staff.end_date && (
                   <div>
                     <p className="text-muted-foreground">{t("endDate")}</p>
                     <p className="text-foreground font-medium">{formatDateWithYear(staff.end_date, locale)}</p>
-                  </div>
-                )}
-                {staff.preferred_shift && (
-                  <div className="col-span-2">
-                    <p className="text-muted-foreground mb-1">{t("preferredShifts")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {staff.preferred_shift.split(",").filter(Boolean).map((s) => (
-                        <span key={s} className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                          {s.trim()}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 )}
                 {staff.email && (
@@ -1347,26 +1348,9 @@ function StaffProfilePanel({
           }
         }} />
 
-        {/* ── Footer: quick actions ────────────────────────────── */}
-        <div className="border-t border-border px-5 py-3 shrink-0 flex items-center gap-2">
-          <Button
-            variant="outline" size="sm"
-            className="flex-1 gap-1.5 text-[12px]"
-            render={<a href={`/staff/${staffId}`} />}
-          >
-            <UserCog className="size-3.5" />
-            {tStaff("profile")}
-          </Button>
-          {staff?.email && (
-            <Button
-              variant="outline" size="sm"
-              className="flex-1 gap-1.5 text-[12px]"
-              render={<a href={`mailto:${staff.email}`} />}
-            >
-              <Mail className="size-3.5" />
-              Email
-            </Button>
-          )}
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <div className="border-t border-border px-5 py-3 shrink-0 flex items-center justify-between">
+          <a href={`/staff/${staffId}`} className="text-[12px] text-primary hover:underline">{tStaff("profile")}</a>
         </div>
       </div>
     </>

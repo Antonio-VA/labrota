@@ -319,6 +319,7 @@ export function runRotaEngineV2({
         if (s.onboarding_status === "inactive" || s.role !== role) return false
         if (s.start_date > date || (s.end_date && s.end_date < date)) return false
         if (leaveMap[s.id]?.has(date)) return false
+        if (s.working_pattern?.length && !s.working_pattern.includes(dayCode)) return false
         const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
         return reserved < (s.days_per_week ?? 5)
       }).sort((a, b) => {
@@ -326,10 +327,6 @@ export function runRotaEngineV2({
         const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
         const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
         if (aRes !== bRes) return aRes - bRes
-        // Then prefer pattern match
-        const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
-        const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
-        if (aInPattern !== bInPattern) return aInPattern - bInPattern
         // For "prefer_weekend" days off: on weekdays, prefer staff who would lose a weekend slot;
         // on weekends, prefer staff with fewer weekend assignments (save weekends for those who need them)
         if (daysOffPref === "prefer_weekend" && wknd) {
