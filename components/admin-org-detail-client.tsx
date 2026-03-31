@@ -431,31 +431,11 @@ export function AdminOrgDetailClient({
           </div>
 
           {displayMode === "by_shift" ? (<>
-            {/* AI Óptimo version picker */}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[14px] font-medium">AI Óptimo — motor</p>
-                <p className="text-[12px] text-muted-foreground">Versión del motor que se usa para "AI Óptimo"</p>
-              </div>
-              <div className="flex rounded-lg border border-border overflow-hidden">
-                {(["v1", "v2"] as const).map((v) => (
-                  <button key={v} type="button" disabled={isPending} onClick={() => setAiOptimalVersion(v)}
-                    className={cn("px-4 py-1.5 text-[13px] font-medium transition-colors",
-                      aiOptimalVersion === v ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
-                    )}>
-                    {v.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
             {/* Híbrido toggle */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[14px] font-medium">Motor Híbrido</p>
-                <p className="text-[12px] text-muted-foreground">Combina el motor v2 con revisión de Claude. Activado por defecto.</p>
+                <p className="text-[12px] text-muted-foreground">Combina el motor con revisión de Claude. Activado por defecto.</p>
               </div>
               <button type="button" disabled={isPending} onClick={() => setEngineHybridEnabled(!engineHybridEnabled)}
                 className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
@@ -485,18 +465,6 @@ export function AdminOrgDetailClient({
               </button>
             </div>
           </>) : (<>
-            {/* Task optimal version — v2 not available yet */}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[14px] font-medium">Óptimo por Técnica — motor</p>
-                <p className="text-[12px] text-muted-foreground">Versión del motor de tareas</p>
-              </div>
-              <div className="flex rounded-lg border border-border overflow-hidden">
-                <button type="button" className="px-4 py-1.5 text-[13px] font-medium bg-primary text-primary-foreground" disabled>V1</button>
-                <button type="button" className="px-4 py-1.5 text-[13px] font-medium bg-transparent text-muted-foreground/40 cursor-not-allowed" disabled>V2 (próx.)</button>
-              </div>
-            </div>
-
             <div className="h-px bg-border" />
 
             {/* Task Híbrido — coming soon */}

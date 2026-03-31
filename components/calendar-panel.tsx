@@ -3747,7 +3747,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "ai_hybrid" | "manual"
 
-type StrategyCardMeta = { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }
+type StrategyCardMeta = { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string; speed?: "fast" | "slow" }
 
 function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib/types/database").EngineConfig | undefined): StrategyCardMeta[] {
   const isByTask = rotaDisplayMode === "by_task"
@@ -3780,6 +3780,7 @@ function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib
       key: "ai_optimal", icon: <Sparkles className="size-5" />,
       titleKey: "aiOptimal", descKey: "aiOptimalDesc",
       badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      speed: "fast",
     })
     // 4. Hybrid (if enabled for org, default true)
     if (engineConfig?.hybridEnabled ?? true) {
@@ -3787,6 +3788,7 @@ function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib
         key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
         titleKey: "aiHybrid", descKey: "aiHybridDesc",
         badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        speed: "slow",
       })
     }
     // 5. Claude reasoning (if enabled for org, default false)
@@ -3855,6 +3857,18 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
                 <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
                 <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{t(card.titleKey)}</p>
                 <p className="text-[12px] text-muted-foreground leading-snug">{t(card.descKey)}</p>
+                {card.speed && (
+                  <span className={cn(
+                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                    card.speed === "fast"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  )}>
+                    {card.speed === "fast"
+                      ? (locale === "es" ? "Rápido" : "Fast")
+                      : (locale === "es" ? "Más lento" : "Slower")}
+                  </span>
+                )}
                 <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded border absolute top-3 right-3", card.badgeColor)}>
                   {card.badge}
                 </span>
@@ -3910,6 +3924,28 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 
 // ── AI Reasoning modal ───────────────────────────────────────────────────────
 
+function parseHybridInsights(text: string): { changes: string[]; issues: string[] } | null {
+  // Extract the structured summary sections from Claude's hybrid output
+  const changesMatch = text.match(/Changes?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
+  const issuesMatch = text.match(/Remaining issues?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
+
+  if (!changesMatch && !issuesMatch) return null
+
+  const parseBullets = (block: string) =>
+    block.split('\n')
+      .map(l => l
+        .replace(/^[•\-*]\s*/, '')
+        .replace(/\([0-9a-f]{7,10}\)/gi, '') // strip internal IDs like (7ce46b5d)
+        .trim()
+      )
+      .filter(Boolean)
+
+  return {
+    changes: changesMatch ? parseBullets(changesMatch[1]) : [],
+    issues: issuesMatch ? parseBullets(issuesMatch[1]) : [],
+  }
+}
+
 function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
   open: boolean; reasoning: string; onClose: () => void; variant?: "claude" | "hybrid"
 }) {
@@ -3917,10 +3953,12 @@ function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
 
   if (!open) return null
 
+  const parsed = variant === "hybrid" ? parseHybridInsights(reasoning) : null
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[600px] max-w-[90vw] max-h-[80vh] flex flex-col">
+      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[560px] max-w-[90vw] max-h-[80vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BrainCircuit className={cn("size-4", variant === "hybrid" ? "text-purple-600" : "text-amber-600")} />
@@ -3931,9 +3969,47 @@ function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
-            {reasoning}
-          </div>
+          {parsed ? (
+            <div className="flex flex-col gap-4">
+              {/* Changes made */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="size-2 rounded-full bg-emerald-500" />
+                  <p className="text-[13px] font-medium text-foreground">{t("hybridChangesMade")}</p>
+                </div>
+                {parsed.changes.length === 0 ? (
+                  <p className="text-[13px] text-muted-foreground pl-3.5">{t("hybridNoChanges")}</p>
+                ) : (
+                  <ul className="flex flex-col gap-1.5 pl-3.5">
+                    {parsed.changes.map((c, i) => (
+                      <li key={i} className="text-[13px] text-foreground/80 leading-snug">{c}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Remaining issues */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="size-2 rounded-full bg-amber-500" />
+                  <p className="text-[13px] font-medium text-foreground">{t("hybridRemainingIssues")}</p>
+                </div>
+                {parsed.issues.length === 0 ? (
+                  <p className="text-[13px] text-muted-foreground pl-3.5">{t("hybridNoIssues")}</p>
+                ) : (
+                  <ul className="flex flex-col gap-2 pl-3.5">
+                    {parsed.issues.map((issue, i) => (
+                      <li key={i} className="text-[13px] text-foreground/80 leading-snug">{issue}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
+              {reasoning}
+            </div>
+          )}
         </div>
       </div>
     </div>
