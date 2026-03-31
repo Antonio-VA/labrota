@@ -2313,7 +2313,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .lte("start_date", gridDates[gridDates.length - 1])
       .gte("end_date", gridDates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
-    supabase.from("lab_config").select("punctions_by_day").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null } | null }>,
+    supabase.from("lab_config").select("punctions_by_day, country").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null } | null }>,
     supabase
       .from("rotas")
       .select("week_start, status")
