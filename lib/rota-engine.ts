@@ -135,6 +135,7 @@ export function runRotaEngine({
   const days: DayPlan[] = []
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
+  warnings.push(`ENGINE TEST: rules received = ${rules.length}, supervisor rules = ${rules.filter(r => r.type === "supervisor_requerido").length}`)
 
   // Log which coverage model is active
   if (shiftCoverageEnabled && shiftCoverageByDay) {
