@@ -1521,14 +1521,13 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
   // ── 5. Call Claude to optimise ─────────────────────────────────────────────
   const assignmentSchema = z.object({
-    reasoning: z.string().describe("What you changed from the base rota and why. If nothing changed, say so. 3-8 sentences."),
-    changes_made: z.array(z.string()).describe("List of specific swaps/changes made, e.g. 'Swapped Ana from T1→T2 on Mon to respect avoid_shifts'"),
+    assessment: z.string().describe("A short overall assessment of the rota quality: how well it satisfies staff preferences and rules, and whether any issues remain. 2-3 sentences, no mention of specific changes made."),
     assignments: z.array(z.object({
       staff_id: z.string(),
       date: z.string().describe("ISO date YYYY-MM-DD"),
       shift_type: z.string().describe("Shift code"),
     })),
-    warnings: z.array(z.string()).describe("Any L2/L3 constraints that could not be satisfied even after optimisation"),
+    warnings: z.array(z.string()).describe("Any L2/L3 constraints that could not be satisfied even after optimisation — only real unresolved issues, not false alarms"),
   })
 
   try {
@@ -1540,7 +1539,8 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       maxOutputTokens: 16000,
     })
 
-    const { reasoning, changes_made, assignments: aiAssignments, warnings: aiWarnings } = result.object
+    const { assessment, assignments: aiAssignments, warnings: aiWarnings } = result.object
+    const reasoning = assessment
 
     // Validate assignments
     const validStaffIds = new Set(allStaff.map((s) => s.id))
@@ -1611,10 +1611,9 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     if (insertError) return { error: insertError.message }
 
-    // Build reasoning summary
-    const changesStr = changes_made.length > 0 ? `\n\nChanges:\n${changes_made.map((c) => `• ${c}`).join("\n")}` : ""
+    // Build reasoning summary — assessment + unresolved issues only (no changes list)
     const warningsStr = aiWarnings.length > 0 ? `\n\nRemaining issues:\n${aiWarnings.map((w) => `• ${w}`).join("\n")}` : ""
-    const fullReasoning = `${reasoning}${budgetNote}${changesStr}${warningsStr}`
+    const fullReasoning = `${reasoning}${budgetNote}${warningsStr}`
 
     // Recalculate shift coverage warnings from FINAL assignments (not stale engine warnings)
     const finalCoverageWarnings: string[] = []
@@ -1662,7 +1661,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       action: "rota_generated",
       entityType: "rota",
       entityId: rotaId,
-      metadata: { weekStart, method: "ai_hybrid", assignmentCount: toInsert.length, preserveOverrides, budgetFallback: budgetViolation, changesCount: changes_made.length },
+      metadata: { weekStart, method: "ai_hybrid", assignmentCount: toInsert.length, preserveOverrides, budgetFallback: budgetViolation },
     })
 
     revalidatePath("/")

@@ -3925,12 +3925,16 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 
 // ── AI Reasoning modal ───────────────────────────────────────────────────────
 
-function parseHybridInsights(text: string): { changes: string[]; issues: string[] } | null {
-  // Extract the structured summary sections from Claude's hybrid output
-  const changesMatch = text.match(/Changes?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
+function parseHybridInsights(text: string): { assessment: string; issues: string[] } | null {
+  // The format is: assessment text (first paragraph) + optional "Remaining issues:" bullet list
   const issuesMatch = text.match(/Remaining issues?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
 
-  if (!changesMatch && !issuesMatch) return null
+  // Extract assessment: everything before "Remaining issues:" (or the whole text if no issues section)
+  const assessmentRaw = issuesMatch
+    ? text.slice(0, text.search(/Remaining issues?:/i)).trim()
+    : text.trim()
+
+  if (!assessmentRaw && !issuesMatch) return null
 
   const parseBullets = (block: string) =>
     block.split('\n')
@@ -3941,16 +3945,11 @@ function parseHybridInsights(text: string): { changes: string[]; issues: string[
       )
       .filter(Boolean)
 
-  // Filter out engine warnings that Claude itself identifies as false alarms —
-  // these come from the engine's first-pass and are already resolved in the final rota.
-  const FALSE_ALARM_PHRASES = /false alarm|appears (to be )?incorrect|not a real issue|already satisfied/i
-
   const rawIssues = issuesMatch ? parseBullets(issuesMatch[1]) : []
-  const issues = rawIssues.filter(line => !FALSE_ALARM_PHRASES.test(line))
 
   return {
-    changes: changesMatch ? parseBullets(changesMatch[1]) : [],
-    issues,
+    assessment: assessmentRaw,
+    issues: rawIssues,
   }
 }
 
@@ -3979,28 +3978,16 @@ function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {parsed ? (
-            <div className="flex flex-col gap-4">
-              {/* Changes made */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <div className="size-2 rounded-full bg-emerald-500" />
-                  <p className="text-[13px] font-medium text-foreground">{t("hybridChangesMade")}</p>
-                </div>
-                {parsed.changes.length === 0 ? (
-                  <p className="text-[13px] text-muted-foreground pl-3.5">{t("hybridNoChanges")}</p>
-                ) : (
-                  <ul className="flex flex-col gap-1.5 pl-3.5">
-                    {parsed.changes.map((c, i) => (
-                      <li key={i} className="text-[13px] text-foreground/80 leading-snug">{c}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            <div className="flex flex-col gap-5">
+              {/* General assessment */}
+              {parsed.assessment && (
+                <p className="text-[13px] leading-relaxed text-foreground/80">{parsed.assessment}</p>
+              )}
 
               {/* Remaining issues */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <div className="size-2 rounded-full bg-amber-500" />
+                  <div className={cn("size-2 rounded-full", parsed.issues.length === 0 ? "bg-emerald-500" : "bg-amber-500")} />
                   <p className="text-[13px] font-medium text-foreground">{t("hybridRemainingIssues")}</p>
                 </div>
                 {parsed.issues.length === 0 ? (
