@@ -457,9 +457,7 @@ export function runRotaEngineV2({
 
     let assignedLab = staff.filter((s) => assignedSet.has(s.id) && s.role === "lab")
     let assignedAndrology = staff.filter((s) => assignedSet.has(s.id) && s.role === "andrology")
-    let assignedAdmin = adminRequired > 0
-      ? staff.filter((s) => assignedSet.has(s.id) && s.role === "admin")
-      : []
+    let assignedAdmin = staff.filter((s) => assignedSet.has(s.id) && s.role === "admin")
 
     // Warn if minimum still not met
     if (assignedLab.length < labRequired) {

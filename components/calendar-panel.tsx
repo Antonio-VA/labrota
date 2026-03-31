@@ -4899,12 +4899,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             return (
               <button
                 onClick={() => setShowReasoningModal(true)}
-                className={cn(
-                  "flex items-center gap-1 h-8 px-2.5 rounded-md border transition-colors text-[13px] font-medium shrink-0",
-                  isHybrid
-                    ? "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-                    : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                )}
+                className="flex items-center gap-1 h-8 px-2.5 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-[13px] font-medium shrink-0"
                 title={t("viewAiReasoning")}
               >
                 <BrainCircuit className="size-3.5" />
