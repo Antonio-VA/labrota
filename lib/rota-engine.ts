@@ -509,22 +509,31 @@ export function runRotaEngine({
         }
 
         if (rule.type === "no_coincidir") {
-          const conflictIds = new Set(rule.staff_ids)
-          const conflicting = assigned.filter((s) => conflictIds.has(s.id))
-          if (conflicting.length > 1) {
-            const byWorkload = [...conflicting].sort(
-              (a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-            )
-            for (let i = 1; i < byWorkload.length; i++) {
-              if (rule.is_hard) {
-                hardRemovals.add(byWorkload[i].id)
-                warnings.push(`${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} retirado — no coincidir con ${byWorkload[0].first_name} ${byWorkload[0].last_name} (regla obligatoria)`)
-              } else {
-                warnings.push(
-                  `${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} coincide con ${byWorkload[0].first_name} ${byWorkload[0].last_name}`)
+          const scope = (rule.params.scope as string | undefined) ?? "same_day"
+          const ruleDays = (rule.params.days as string[] | undefined) ?? []
+          // Day filter: if days specified (same_shift only), skip if today isn't one
+          if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) {
+            // Rule doesn't apply today — skip
+          } else if (scope === "same_day") {
+            // Same day: cannot both work on the same day
+            const conflictIds = new Set(rule.staff_ids)
+            const conflicting = assigned.filter((s) => conflictIds.has(s.id))
+            if (conflicting.length > 1) {
+              const byWorkload = [...conflicting].sort(
+                (a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+              )
+              for (let i = 1; i < byWorkload.length; i++) {
+                if (rule.is_hard) {
+                  hardRemovals.add(byWorkload[i].id)
+                  warnings.push(`${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} retirado — no coincidir con ${byWorkload[0].first_name} ${byWorkload[0].last_name} (regla obligatoria)`)
+                } else {
+                  warnings.push(
+                    `${date}: ${byWorkload[i].first_name} ${byWorkload[i].last_name} coincide con ${byWorkload[0].first_name} ${byWorkload[0].last_name}`)
+                }
               }
             }
           }
+          // scope === "same_shift" is handled post-distribution (after shift assignment)
         }
 
         if (rule.type === "supervisor_requerido") {
@@ -1318,6 +1327,47 @@ export function runRotaEngine({
         // No training technique — just co-locate on the same shift
         if (supAsg.shift_type !== traineeAsg.shift_type) {
           supAsg.shift_type = traineeAsg.shift_type
+        }
+      }
+    }
+
+    // Post-distribution: no_coincidir same_shift enforcement
+    // If two conflicting staff ended up in the same shift, move one to a different shift.
+    const noCoincidirShiftRules = rules.filter((r) => r.enabled && r.type === "no_coincidir" && r.params.scope === "same_shift")
+    for (const rule of noCoincidirShiftRules) {
+      const ruleDays = (rule.params.days as string[] | undefined) ?? []
+      if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) continue
+      const conflictIds = new Set(rule.staff_ids)
+      // Group conflicting staff by shift
+      const byShift: Record<string, typeof dayPlanAssignments> = {}
+      for (const a of dayPlanAssignments) {
+        if (!conflictIds.has(a.staff_id)) continue
+        if (!byShift[a.shift_type]) byShift[a.shift_type] = []
+        byShift[a.shift_type].push(a)
+      }
+      for (const [, shiftGroup] of Object.entries(byShift)) {
+        if (shiftGroup.length <= 1) continue
+        // Keep the first, move the rest to another shift
+        for (let i = 1; i < shiftGroup.length; i++) {
+          const toMove = shiftGroup[i]
+          // Find the shift with the fewest staff (that doesn't have another conflicting member)
+          const shiftCounts: Record<string, number> = {}
+          for (const sc of defaultShiftCodes) shiftCounts[sc] = 0
+          for (const a of dayPlanAssignments) shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
+          const conflictInShift = new Set(dayPlanAssignments.filter((a) => conflictIds.has(a.staff_id)).map((a) => a.shift_type))
+          const target = defaultShiftCodes
+            .filter((sc) => !conflictInShift.has(sc))
+            .sort((a, b) => (shiftCounts[a] ?? 0) - (shiftCounts[b] ?? 0))[0]
+          if (target) {
+            toMove.shift_type = target as ShiftType
+            if (!rule.is_hard) {
+              warnings.push(`${date}: ${assigned.find((s) => s.id === toMove.staff_id)?.first_name ?? "?"} movido de turno — no coincidir en mismo turno`)
+            }
+          } else if (!rule.is_hard) {
+            const name1 = assigned.find((s) => s.id === shiftGroup[0].staff_id)?.first_name ?? "?"
+            const name2 = assigned.find((s) => s.id === toMove.staff_id)?.first_name ?? "?"
+            warnings.push(`${date}: ${name2} coincide en turno con ${name1} (no hay turno alternativo)`)
+          }
         }
       }
     }

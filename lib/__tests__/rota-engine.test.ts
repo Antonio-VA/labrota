@@ -419,7 +419,7 @@ describe("runRotaEngine — rules", () => {
     const rule: RotaRule = {
       id: "rule1", organisation_id: ORG, type: "max_dias_consecutivos",
       is_hard: true, enabled: true, staff_ids: [], params: { maxDays: 5 },
-      notes: null, created_at: "", updated_at: "",
+      notes: null, expires_at: null, created_at: "", updated_at: "",
     }
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
@@ -445,7 +445,7 @@ describe("runRotaEngine — rules", () => {
     const rule: RotaRule = {
       id: "rule1", organisation_id: ORG, type: "max_dias_consecutivos",
       is_hard: false, enabled: true, staff_ids: [], params: { maxDays: 5 },
-      notes: null, created_at: "", updated_at: "",
+      notes: null, expires_at: null, created_at: "", updated_at: "",
     }
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
@@ -474,7 +474,7 @@ describe("runRotaEngine — rules", () => {
     const rule: RotaRule = {
       id: "rule2", organisation_id: ORG, type: "no_coincidir",
       is_hard: true, enabled: true, staff_ids: ["s1", "s2"], params: {},
-      notes: null, created_at: "", updated_at: "",
+      notes: null, expires_at: null, created_at: "", updated_at: "",
     }
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
@@ -502,7 +502,7 @@ describe("runRotaEngine — rules", () => {
     const rule: RotaRule = {
       id: "rule1", organisation_id: ORG, type: "max_dias_consecutivos",
       is_hard: true, enabled: false, staff_ids: [], params: { maxDays: 5 }, // disabled
-      notes: null, created_at: "", updated_at: "",
+      notes: null, expires_at: null, created_at: "", updated_at: "",
     }
     const result = runRotaEngine({
       weekStart: WEEK, staff, leaves: [], recentAssignments,

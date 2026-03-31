@@ -108,6 +108,8 @@ interface RuleFormState {
   multiDeptDays: string[]
   wholeTeamTecnicas: string[]
   wholeTeamDays: string[]
+  coincideScope: "same_day" | "same_shift"
+  coincideDays: string[]
 }
 
 function defaultForm(): RuleFormState {
@@ -137,6 +139,8 @@ function defaultForm(): RuleFormState {
     multiDeptDays: [],
     wholeTeamTecnicas: [],
     wholeTeamDays: [],
+    coincideScope: "same_day",
+    coincideDays: [],
   }
 }
 
@@ -167,11 +171,17 @@ function ruleToForm(rule: RotaRule): RuleFormState {
     multiDeptDays: (rule.params.days as string[] | undefined) ?? [],
     wholeTeamTecnicas: (rule.params.tecnica_codes as string[] | undefined) ?? [],
     wholeTeamDays: (rule.params.days as string[] | undefined) ?? [],
+    coincideScope: ((rule.params.scope as string | undefined) ?? "same_day") as "same_day" | "same_shift",
+    coincideDays: (rule.params.days as string[] | undefined) ?? [],
   }
 }
 
 function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organisation_id"> {
   const params: Record<string, unknown> = {}
+  if (form.type === "no_coincidir") {
+    params.scope = form.coincideScope
+    if (form.coincideScope === "same_shift" && form.coincideDays.length > 0) params.days = form.coincideDays
+  }
   if (form.type === "max_dias_consecutivos") params.maxDays = parseInt(form.maxDays, 10) || 5
   if (form.type === "distribucion_fines_semana") params.maxPerMonth = parseInt(form.maxPerMonth, 10) || 2
   if (form.type === "supervisor_requerido") {
@@ -361,6 +371,58 @@ function RuleSheet({
           )}
 
           {/* Type-specific params */}
+          {form.type === "no_coincidir" && (
+            <>
+              <div>
+                <label className={labelSelect}>{t("params.coincideScope")}</label>
+                <select
+                  className={inputClass}
+                  value={form.coincideScope}
+                  onChange={(e) => set("coincideScope", e.target.value as "same_day" | "same_shift")}
+                >
+                  <option value="same_day">{t("params.coincideScopeDay")}</option>
+                  <option value="same_shift">{t("params.coincideScopeShift")}</option>
+                </select>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  {form.coincideScope === "same_day" ? t("params.coincideScopeDayHint") : t("params.coincideScopeShiftHint")}
+                </p>
+              </div>
+              {form.coincideScope === "same_shift" && (
+                <div>
+                  <label className={labelSelect}>{t("params.coincideDays")} <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((day) => {
+                      const selected = form.coincideDays.includes(day)
+                      const dayLabels: Record<string, string> = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" }
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setForm((p) => ({
+                              ...p,
+                              coincideDays: selected
+                                ? p.coincideDays.filter((d) => d !== day)
+                                : [...p.coincideDays, day],
+                            }))
+                          }}
+                          className={cn(
+                            "size-9 rounded-full border text-[13px] font-medium transition-colors",
+                            selected
+                              ? "border-primary bg-primary text-white"
+                              : "border-border bg-background text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {dayLabels[day]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-[12px] text-muted-foreground mt-1">{t("params.coincideDaysHint")}</p>
+                </div>
+              )}
+            </>
+          )}
           {form.type === "max_dias_consecutivos" && (
             <div>
               <label className={labelSelect}>{t("params.maxDays")}</label>
@@ -997,7 +1059,11 @@ export function RulesSection({
         const s = staff.find((st) => st.id === id)
         return s ? s.first_name : "?"
       }).join(", ")
-      return `${t(`descriptions.${rule.type}`)} — ${names}`
+      const scope = rule.type === "no_coincidir" && rule.params.scope === "same_shift"
+        ? ` [${t("params.coincideScopeShift").toLowerCase()}]` : ""
+      const days = rule.type === "no_coincidir" && (rule.params.days as string[] | undefined)?.length
+        ? ` (${(rule.params.days as string[]).map((d) => dayLabelMap[d] ?? d).join(", ")})` : ""
+      return `${t(`descriptions.${rule.type}`)} — ${names}${scope}${days}`
     }
     if (rule.type === "supervisor_requerido") {
       const supId = rule.params.supervisor_id as string | undefined

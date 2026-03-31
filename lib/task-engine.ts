@@ -389,25 +389,31 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         }
 
         if (rule.type === "no_coincidir") {
-          const ruleStaff = rule.staff_ids
-          if (ruleStaff.length >= 2) {
-            const present = eligibleStaff.filter((s) => ruleStaff.includes(s.id) && !hardRemovals.has(s.id))
-            if (present.length >= 2 && rule.is_hard) {
-              // Remove the one with lower workload (keep the busier one)
-              present.sort((a, b) => (workloadScore[b.id] ?? 0) - (workloadScore[a.id] ?? 0))
-              for (let i = 1; i < present.length; i++) {
-                if (!reservedIds.has(present[i].id)) {
-                  hardRemovals.add(present[i].id)
+          const scope = (rule.params.scope as string | undefined) ?? "same_day"
+          const ruleDays = (rule.params.days as string[] | undefined) ?? []
+          if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) {
+            // Rule doesn't apply today — skip
+          } else if (scope === "same_day") {
+            const ruleStaff = rule.staff_ids
+            if (ruleStaff.length >= 2) {
+              const present = eligibleStaff.filter((s) => ruleStaff.includes(s.id) && !hardRemovals.has(s.id))
+              if (present.length >= 2 && rule.is_hard) {
+                present.sort((a, b) => (workloadScore[b.id] ?? 0) - (workloadScore[a.id] ?? 0))
+                for (let i = 1; i < present.length; i++) {
+                  if (!reservedIds.has(present[i].id)) {
+                    hardRemovals.add(present[i].id)
+                  }
                 }
+                const removedNames = present.slice(1).filter((s) => !reservedIds.has(s.id)).map((s) => s.first_name)
+                if (removedNames.length > 0) {
+                  warnings.push(`${date}: ${removedNames.join(", ")} retirado — no coincidir con ${present[0].first_name} (regla obligatoria)`)
+                }
+              } else if (present.length >= 2) {
+                warnings.push(`${date}: ${present.map((s) => s.first_name).join(" + ")} assigned together (no_coincidir, soft)`)
               }
-              const removedNames = present.slice(1).filter((s) => !reservedIds.has(s.id)).map((s) => s.first_name)
-              if (removedNames.length > 0) {
-                warnings.push(`${date}: ${removedNames.join(", ")} retirado — no coincidir con ${present[0].first_name} (regla obligatoria)`)
-              }
-            } else if (present.length >= 2) {
-              warnings.push(`${date}: ${present.map((s) => s.first_name).join(" + ")} assigned together (no_coincidir, soft)`)
             }
           }
+          // scope === "same_shift" not applicable in task engine (no shifts)
         }
 
         if (rule.type === "descanso_fin_de_semana" && weekend) {

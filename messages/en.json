@@ -675,7 +675,7 @@
         "equipo_completo": "Whole team"
       },
       "descriptions": {
-        "no_coincidir": "Selected members cannot be scheduled on the same day",
+        "no_coincidir": "Selected members cannot coincide on the same day or shift",
         "no_misma_tarea": "Selected members cannot be assigned to the same task/technique on the same day",
         "no_librar_mismo_dia": "Selected members cannot both be off on the same day",
         "supervisor_requerido": "The supervisor will always be assigned on the same day and shift as the selected staff",
@@ -722,7 +722,14 @@
         "requiredDepartments": "Required departments",
         "requiredDepartmentsHint": "The task must have at least 1 person from each selected department",
         "wholeTeamTecnicas": "Whole team techniques",
-        "wholeTeamTecnicasHint": "These techniques will be marked as 'All' in the schedule"
+        "wholeTeamTecnicasHint": "These techniques will be marked as 'All' in the schedule",
+        "coincideScope": "Scope",
+        "coincideScopeDay": "Same day",
+        "coincideScopeShift": "Same shift",
+        "coincideScopeDayHint": "Cannot both work on the same day",
+        "coincideScopeShiftHint": "Can work the same day but must be in different shifts",
+        "coincideDays": "Days of the week",
+        "coincideDaysHint": "If empty, applies every day"
       }
     }
   },

@@ -675,7 +675,7 @@
         "equipo_completo": "Equipo completo"
       },
       "descriptions": {
-        "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día",
+        "no_coincidir": "Los miembros seleccionados no pueden coincidir en el mismo día o turno",
         "no_misma_tarea": "Los miembros seleccionados no pueden estar asignados a la misma tarea/técnica el mismo día",
         "no_librar_mismo_dia": "Los miembros seleccionados no pueden librar el mismo día",
         "supervisor_requerido": "El supervisor siempre estará asignado en el mismo día y turno que el personal seleccionado",
@@ -722,7 +722,14 @@
         "requiredDepartments": "Departamentos requeridos",
         "requiredDepartmentsHint": "La tarea debe tener al menos 1 persona de cada departamento seleccionado",
         "wholeTeamTecnicas": "Técnicas de equipo completo",
-        "wholeTeamTecnicasHint": "Estas técnicas se marcarán como 'Todos' en la planificación"
+        "wholeTeamTecnicasHint": "Estas técnicas se marcarán como 'Todos' en la planificación",
+        "coincideScope": "Alcance",
+        "coincideScopeDay": "Mismo día",
+        "coincideScopeShift": "Mismo turno",
+        "coincideScopeDayHint": "No pueden trabajar el mismo día",
+        "coincideScopeShiftHint": "Pueden trabajar el mismo día pero en turnos distintos",
+        "coincideDays": "Días de la semana",
+        "coincideDaysHint": "Si vacío, se aplica todos los días"
       }
     }
   },
