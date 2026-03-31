@@ -1391,14 +1391,31 @@ export function runRotaEngine({
 
             const sourceShift = candidate.shift_type
 
-            // Find a swap partner in the TARGET shift who can go to the source shift
-            // The swap partner must NOT be supervised and must NOT prefer the target shift
+            // Find a swap partner in the TARGET shift who can go to the source shift.
+            // The swap partner must NOT be supervised, NOT prefer the target shift,
+            // and NOT be the sole provider of any technique required in the target shift.
+            const targetTechs = techByShift[shiftCode] ?? []
             const swapPartner = staffInShift.find((p) => {
               if (p.staff_id === candidate.staff_id) return false
               if (supervisedStaffIds.has(p.staff_id)) return false
               const pm = assignedById.get(p.staff_id)
               const pPref = pm?.preferred_shift?.split(",").filter(Boolean) ?? []
               if (pPref.length > 0 && pPref.includes(shiftCode)) return false
+              // Check: would removing this person leave any target-shift technique uncovered?
+              // (The incoming candidate will cover techCode, so exclude that from the check)
+              const otherStaffInShiftAfterSwap = staffInShift
+                .filter((s) => s.staff_id !== p.staff_id)
+                .map((s) => assignedById.get(s.staff_id))
+              // Also count the incoming candidate's skills
+              const candidateSkills = new Set(member?.staff_skills.map((sk) => sk.skill) ?? [])
+              for (const tt of targetTechs) {
+                if (tt === techCode) continue // the candidate covers this one
+                if (candidateSkills.has(tt)) continue // candidate also covers this technique
+                const coveredByRemaining = otherStaffInShiftAfterSwap.some((m) =>
+                  m?.staff_skills.some((sk) => sk.skill === tt)
+                )
+                if (!coveredByRemaining) return false // removing this person would create a new gap
+              }
               return true
             })
 
