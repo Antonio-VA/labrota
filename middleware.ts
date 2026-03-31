@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -44,9 +44,7 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/auth") ||
       pathname.startsWith("/_next") ||
       pathname.startsWith("/brand") ||
-      pathname === "/login" ||
-      pathname === "/forgot-password" ||
-      pathname === "/reset-password"
+      pathname === "/login"
     ) {
       return supabaseResponse
     }
@@ -77,10 +75,7 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/brand") ||
-    pathname === "/forgot-password" ||
-    pathname === "/reset-password" ||
-    pathname === "/set-password"
+    pathname.startsWith("/brand")
   ) {
     return supabaseResponse
   }
