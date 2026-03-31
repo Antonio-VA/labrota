@@ -1523,13 +1523,13 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
   // ── 5. Call Claude to optimise ─────────────────────────────────────────────
   const assignmentSchema = z.object({
-    assessment: z.string().describe("A short overall assessment of the rota quality: how well it satisfies staff preferences and rules, and whether any issues remain. 2-3 sentences, no mention of specific changes made."),
+    assessment: z.string().describe("One or two short sentences summarising the overall rota quality — does it meet coverage and preferences, and is there anything unresolved? Be concise. No bullet points, no details."),
     assignments: z.array(z.object({
       staff_id: z.string(),
       date: z.string().describe("ISO date YYYY-MM-DD"),
       shift_type: z.string().describe("Shift code"),
     })),
-    warnings: z.array(z.string()).describe("Any L2/L3 constraints that could not be satisfied even after optimisation — only real unresolved issues, not false alarms"),
+    warnings: z.array(z.string()).describe("Unresolved hard/soft constraints only — one short phrase each (e.g. 'Rida A. on T1 Sunday — avoid_shifts conflict, no viable swap'). No engine warnings, no false alarms."),
   })
 
   try {
@@ -1603,7 +1603,8 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
         function_label: "",
       }))
 
-    if (toInsert.length === 0) {
+    // toInsert can be 0 if every slot is already a manual override (already in DB) — that's valid
+    if (toInsert.length === 0 && overrideAssignments.length === 0) {
       return { error: "Hybrid generation produced 0 valid assignments." }
     }
 
