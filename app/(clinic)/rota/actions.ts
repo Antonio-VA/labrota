@@ -1203,6 +1203,7 @@ Use staff IDs (not names) and shift codes exactly as provided.`
       schema: assignmentSchema,
       system: systemPrompt,
       prompt: userPrompt,
+      maxOutputTokens: 16000,
     })
 
     const { reasoning, assignments: aiAssignments, warnings: aiWarnings } = result.object

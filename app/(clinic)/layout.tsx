@@ -1,3 +1,5 @@
+export const maxDuration = 120 // Allow up to 2min for AI rota generation
+
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"

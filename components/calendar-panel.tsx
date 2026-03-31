@@ -4619,9 +4619,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         fetchWeek(weekStart)
         if (view === "month") fetchMonth(monthStart, weekStart)
       } catch (e) {
-        const msg = e instanceof Error ? e.message : t("generatingError")
+        const raw = e instanceof Error ? e.message : String(e)
+        const isTimeout = /failed to fetch|timeout|aborted|network/i.test(raw)
+        const msg = isTimeout ? t("generatingTimeout") : raw || t("generatingError")
         setError(msg)
         toast.error(msg)
+      } finally {
+        setActiveStrategy(null)
       }
     })
   }

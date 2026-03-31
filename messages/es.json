@@ -301,6 +301,7 @@
     "weeksGenerated": "{count} semanas generadas",
     "scheduleGenerated": "Horario generado",
     "generatingError": "Error generando el horario.",
+    "generatingTimeout": "La generación ha tardado demasiado. Inténtalo de nuevo — las peticiones a Claude pueden tardar hasta 2 minutos.",
     "weeksWithErrors": "{count} semanas con error",
     "fourWeeksDeleted": "4 semanas eliminadas",
     "newLeave": "Nueva ausencia",

@@ -301,6 +301,7 @@
     "weeksGenerated": "{count} weeks generated",
     "scheduleGenerated": "Rota generated",
     "generatingError": "Error generating the rota.",
+    "generatingTimeout": "Generation timed out. Please try again — Claude requests can take up to 2 minutes.",
     "weeksWithErrors": "{count} weeks with errors",
     "fourWeeksDeleted": "4 weeks deleted",
     "newLeave": "New leave",
