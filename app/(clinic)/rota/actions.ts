@@ -310,7 +310,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .select("id, first_name, last_name, role, onboarding_status") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string }[] | null }>,
     supabase
       .from("staff_skills")
-      .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
+      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
   ])
 
   // Build a staff lookup map so we don't depend on a join
@@ -338,11 +338,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   const staffSkillMap: Record<string, SkillName[]> = {}
   for (const ss of skillsData ?? []) {
+    if (ss.level !== "certified") continue
     if (!staffSkillMap[ss.staff_id]) staffSkillMap[ss.staff_id] = []
     staffSkillMap[ss.staff_id].push(ss.skill as SkillName)
   }
 
-  const allOrgSkills = [...new Set((skillsData ?? []).map((ss) => ss.skill as SkillName))]
+  const allOrgSkills = [...new Set((skillsData ?? []).filter((ss) => ss.level === "certified").map((ss) => ss.skill as SkillName))]
 
   // Only include assignments whose shift_type exists in this org's shift_types table.
   // Assignments with stale codes (e.g. 'am'/'pm'/'full' from before the shift_types migration)
@@ -1474,7 +1475,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
     supabase
       .from("staff_skills")
-      .select("staff_id, skill") as unknown as Promise<{ data: { staff_id: string; skill: string }[] | null }>,
+      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
     supabase
       .from("leaves")
       .select("staff_id, start_date, end_date")
@@ -1517,13 +1518,14 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     staffTotals[a.staff_id].count++
   }
 
-  // Skills
+  // Skills — only certified count for coverage warnings
   const staffSkillMap: Record<string, string[]> = {}
   for (const ss of skillsRes.data ?? []) {
+    if (ss.level !== "certified") continue
     if (!staffSkillMap[ss.staff_id]) staffSkillMap[ss.staff_id] = []
     staffSkillMap[ss.staff_id].push(ss.skill)
   }
-  const allOrgSkills = [...new Set((skillsRes.data ?? []).map((ss) => ss.skill))]
+  const allOrgSkills = [...new Set((skillsRes.data ?? []).filter((ss) => ss.level === "certified").map((ss) => ss.skill))]
 
   // Leave map: date → count
   const leaveByDate: Record<string, number> = {}
