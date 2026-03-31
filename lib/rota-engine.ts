@@ -980,8 +980,6 @@ export function runRotaEngine({
             else if (pick.role === "andrology") shiftFilledAndro[shiftCode]++
             else shiftFilledAdmin[shiftCode]++
             for (const sk of pick.staff_skills) shiftSkills[shiftCode].add(sk.skill)
-          } else {
-            warnings.push(`${date}: ${shiftCode} — no hay personal cualificado para ${techCode}`)
           }
         }
       }
@@ -1186,6 +1184,23 @@ export function runRotaEngine({
                 improved = true
               }
             }
+          }
+        }
+      }
+
+      // ── Post-distribution: check technique coverage per shift ──
+      // Only warn if a required technique is STILL uncovered after all steps.
+      for (const shiftCode of defaultShiftCodes) {
+        const totalMin = (shiftMinLab[shiftCode] ?? 0) + (shiftMinAndro[shiftCode] ?? 0) + (shiftMinAdmin[shiftCode] ?? 0)
+        if (totalMin === 0) continue
+        const requiredTechs = techRequiredInShift[shiftCode]
+        if (!requiredTechs) continue
+        const shiftStaffIds = dayPlanAssignments.filter((a) => a.shift_type === shiftCode).map((a) => a.staff_id)
+        const shiftStaff = allAssignableStaff.filter((s) => shiftStaffIds.includes(s.id))
+        for (const techCode of requiredTechs) {
+          const covered = shiftStaff.some((s) => s.staff_skills.some((sk) => sk.skill === techCode))
+          if (!covered) {
+            warnings.push(`${date}: ${shiftCode} — no hay personal cualificado para ${techCode}`)
           }
         }
       }
