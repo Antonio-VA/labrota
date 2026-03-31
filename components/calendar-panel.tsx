@@ -3753,28 +3753,35 @@ function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib
   const isByTask = rotaDisplayMode === "by_task"
   const cards: StrategyCardMeta[] = []
 
-  // Templates always first
+  // 1. Templates
   cards.push({
     key: "flexible_template", icon: <Bookmark className="size-5" />,
     titleKey: "templateApply", descKey: "templateApplyDesc",
     badge: "TPL", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
   })
 
+  // 2. Blank week
+  cards.push({
+    key: "manual", icon: <Grid3X3 className="size-5" />,
+    titleKey: "blankWeek", descKey: "blankWeekDesc",
+    badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
+  })
+
   if (isByTask) {
-    // Task-based optimal (always shown for by_task orgs)
+    // 3. Task-based optimal (always shown for by_task orgs)
     cards.push({
       key: "ai_optimal", icon: <Sparkles className="size-5" />,
       titleKey: "taskOptimal", descKey: "taskOptimalDesc",
       badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     })
   } else {
-    // Shift-based optimal (always shown for by_shift orgs)
+    // 3. Shift-based optimal
     cards.push({
       key: "ai_optimal", icon: <Sparkles className="size-5" />,
       titleKey: "aiOptimal", descKey: "aiOptimalDesc",
       badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     })
-    // Hybrid (if enabled for org, default true)
+    // 4. Hybrid (if enabled for org, default true)
     if (engineConfig?.hybridEnabled ?? true) {
       cards.push({
         key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
@@ -3782,7 +3789,7 @@ function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib
         badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
       })
     }
-    // Claude reasoning (if enabled for org, default false)
+    // 5. Claude reasoning (if enabled for org, default false)
     if (engineConfig?.reasoningEnabled ?? false) {
       cards.push({
         key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
@@ -3791,13 +3798,6 @@ function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib
       })
     }
   }
-
-  // Manual always last
-  cards.push({
-    key: "manual", icon: <Grid3X3 className="size-5" />,
-    titleKey: "blankWeek", descKey: "blankWeekDesc",
-    badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
-  })
 
   return cards
 }
