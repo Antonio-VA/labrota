@@ -2657,7 +2657,7 @@ function ShiftGrid({
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden w-full">
           {/* Header */}
-          <div className="grid grid-cols-[120px_repeat(7,1fr)] border-b border-border">
+          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             <div className="border-r border-border h-[52px]" />
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center justify-center py-1 gap-1">
@@ -2671,9 +2671,9 @@ function ShiftGrid({
           </div>
           {/* Rows — enough to cover up to 5 shifts + off */}
           {Array.from({ length: 6 }).map((_, row) => (
-            <div key={row} className="grid grid-cols-[120px_repeat(7,1fr)] border-b border-border last:border-b-0">
-              <div className="border-r border-border flex items-center justify-center px-2 py-3">
-                <div className="shimmer-bar h-3 w-10" />
+            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
+              <div className="border-r border-border flex items-center justify-end px-2 py-3">
+                <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="p-2 flex items-center justify-center min-h-[64px] bg-background">
