@@ -1081,9 +1081,6 @@ export function runRotaEngine({
           for (const sk of s.staff_skills) shiftSkills[shiftCode].add(sk.skill)
         }
 
-        if (shiftFilledLab[shiftCode] < min) {
-          warnings.push(`${date}: ${shiftCode} — lab insuficiente: ${shiftFilledLab[shiftCode]}/${min}`)
-        }
       }
 
       // ── Step 2: Fair share remaining embryologists across shifts ──
@@ -1162,9 +1159,6 @@ export function runRotaEngine({
             assignedToShift.add(s.id)
             shiftFilled[shiftCode] = (shiftFilled[shiftCode] ?? 0) + 1
             roleFilledMap[shiftCode] = (roleFilledMap[shiftCode] ?? 0) + 1
-          }
-          if (roleFilledMap[shiftCode] < min) {
-            warnings.push(`${date}: ${shiftCode} — ${roleName} insuficiente: ${roleFilledMap[shiftCode]}/${min}`)
           }
         }
         // Then: fair share remaining to least-filled shift (rotation as tiebreaker)
@@ -1571,6 +1565,30 @@ export function runRotaEngine({
       const dayPlan = days[days.length - 1]
       dayPlan.assignments = dayPlan.assignments.filter((a) => !overBudget.has(a.staff_id))
       assigned = assigned.filter((s) => !overBudget.has(s.id))
+    }
+
+    // Final shift coverage check — after ALL distribution and swap passes
+    if (shiftCoverageEnabled && shiftCoverageByDay) {
+      const finalPlan = days[days.length - 1]
+      const finalByShift: Record<string, { lab: number; andrology: number; admin: number }> = {}
+      for (const a of finalPlan.assignments) {
+        const s = staff.find((st) => st.id === a.staff_id)
+        if (!s) continue
+        if (!finalByShift[a.shift_type]) finalByShift[a.shift_type] = { lab: 0, andrology: 0, admin: 0 }
+        if (s.role === "lab") finalByShift[a.shift_type].lab++
+        else if (s.role === "andrology") finalByShift[a.shift_type].andrology++
+        else finalByShift[a.shift_type].admin++
+      }
+      const dayShiftsFinal = activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .map((st) => st.code)
+      for (const sc of dayShiftsFinal) {
+        const req = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        const got = finalByShift[sc] ?? { lab: 0, andrology: 0, admin: 0 }
+        if (got.lab < req.lab) warnings.push(`${date}: ${sc} — lab insuficiente: ${got.lab}/${req.lab}`)
+        if (got.andrology < req.andrology) warnings.push(`${date}: ${sc} — andrología insuficiente: ${got.andrology}/${req.andrology}`)
+        if (got.admin < req.admin) warnings.push(`${date}: ${sc} — admin insuficiente: ${got.admin}/${req.admin}`)
+      }
     }
 
     // Update scores so later days in the week account for earlier assignments
