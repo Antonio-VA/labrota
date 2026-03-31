@@ -5097,7 +5097,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
-              }] : [{ dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } as never]),
+              }] : []),
               {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
