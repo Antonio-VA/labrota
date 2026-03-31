@@ -3954,7 +3954,8 @@ function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
 
   if (!open) return null
 
-  const parsed = variant === "hybrid" ? parseHybridInsights(reasoning) : null
+  // Always try to parse — hybrid format is self-identifying (contains "Changes:" / "Remaining issues:")
+  const parsed = parseHybridInsights(reasoning)
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -5252,7 +5253,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
                   )}
                   {activeStrategy === "ai_hybrid" && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
                       <div className="flex items-center gap-2">
                         <Sparkles className="size-6 text-primary animate-pulse" />
                         <span className="text-muted-foreground">+</span>
@@ -5263,14 +5264,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     </div>
                   )}
                   {activeStrategy === "ai_reasoning" && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
                       <BrainCircuit className="size-8 text-amber-500 animate-pulse" />
                       <p className="text-[14px] font-medium text-foreground">{t("claudeThinking")}</p>
                       <p className="text-[12px] text-muted-foreground max-w-xs text-center">{t("claudeThinkingDesc")}</p>
                     </div>
                   )}
                   {(activeStrategy === "ai_optimal" || activeStrategy === "ai_optimal_v2") && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/80">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
                       <Sparkles className="size-8 text-primary animate-pulse" />
                       <p className="text-[14px] font-medium text-foreground">{t("engineGenerating")}</p>
                       <p className="text-[12px] text-muted-foreground">{t("engineGeneratingDesc")}</p>
