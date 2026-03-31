@@ -4,7 +4,6 @@ import { useState, useTransition, useRef, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { Department } from "@/lib/types/database"
 import { saveDepartments, seedDefaultDepartments } from "@/app/(clinic)/lab/department-actions"
@@ -89,12 +88,15 @@ type Draft = {
   parent_id: string | null
 }
 
+// ── Grid layout ─────────────────────────────────────────────────────────────
+
+const GRID_COLS = "24px 28px minmax(140px,1fr) 80px 56px 36px"
+
 // ── Sortable row ─────────────────────────────────────────────────────────────
 
-function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
-  dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean; isChild?: boolean
+function SortableRow({ dept, onChange, onDelete, disabled, even }: {
+  dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean; even?: boolean
 }) {
-  const t = useTranslations("departments")
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: dept.sortId })
@@ -102,6 +104,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    gridTemplateColumns: GRID_COLS,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.5 : undefined,
   }
@@ -110,57 +113,62 @@ function SortableRow({ dept, onChange, onDelete, disabled, isChild }: {
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("flex items-center gap-2 p-2 rounded-lg border border-border bg-background", isChild && "ml-6")}
+      className={cn(
+        "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50 gap-x-2",
+        even ? "bg-muted/20" : "bg-background",
+        isDragging && "shadow-md rounded-md"
+      )}
     >
       {/* Drag handle */}
       <button
         type="button"
-        className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground touch-none"
+        className="p-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground touch-none"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="size-4" />
+        <GripVertical className="size-3.5" />
       </button>
 
-      {/* Color · Name · Abbreviation */}
+      {/* Color */}
       <ColorCircle value={dept.colour} onChange={(c) => onChange({ ...dept, colour: c })} disabled={disabled} />
-      <Input
+
+      {/* Name */}
+      <input
         value={dept.name}
         onChange={(e) => onChange({ ...dept, name: e.target.value, name_en: e.target.value })}
         disabled={disabled}
-        placeholder={t("namePlaceholder")}
-        className="h-7 text-[13px] flex-1 min-w-0"
+        placeholder="Embriología"
+        className="bg-transparent text-[13px] font-medium outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full"
       />
-      <Input
+
+      {/* Abbreviation */}
+      <input
         value={dept.abbreviation}
         onChange={(e) => onChange({ ...dept, abbreviation: e.target.value.toUpperCase().slice(0, 3) })}
         disabled={disabled}
         placeholder="ABR"
         maxLength={3}
-        className="h-7 text-[13px] font-mono uppercase w-[60px] shrink-0 text-center"
+        className="bg-transparent text-[13px] font-mono uppercase outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full text-center"
       />
 
       {/* Preview pill */}
       <span
-        className="text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5 shrink-0 w-[40px] text-center"
+        className="text-[11px] font-medium text-foreground border border-border bg-background px-1.5 py-0.5 text-center"
         style={{ borderLeft: `3px solid ${dept.colour}`, borderRadius: 4 }}
       >
         {dept.abbreviation || dept.name.slice(0, 3) || "—"}
       </span>
 
       {/* Delete */}
-      {!dept.is_default ? (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onDelete}
-          className="shrink-0 p-1 rounded text-muted-foreground/30 hover:text-destructive transition-colors disabled:opacity-50"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-      ) : (
-        <div className="size-[26px] shrink-0" />
-      )}
+      <button
+        type="button" disabled={disabled || dept.is_default} onClick={onDelete}
+        className={cn(
+          "p-1 rounded transition-colors disabled:opacity-30",
+          dept.is_default ? "invisible" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        )}
+      >
+        <Trash2 className="size-3.5" />
+      </button>
     </div>
   )
 }
@@ -267,7 +275,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments = true
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {departments.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-[14px] text-muted-foreground mb-3">{t("noDepartments")}</p>
@@ -276,52 +284,38 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments = true
           </Button>
         </div>
       )}
+
+      {/* Table header */}
       {departments.length > 0 && (
-        <div className="flex justify-end">
-          <Button type="button" variant="ghost" size="sm" onClick={handleSeed} disabled={isPending} className="text-[12px] text-muted-foreground">
-            {t("loadDefaultsShort")}
-          </Button>
-        </div>
+        <>
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={handleSeed} disabled={isPending} className="text-[12px] text-muted-foreground">
+              {t("loadDefaultsShort")}
+            </Button>
+          </div>
+          <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border gap-x-2" style={{ gridTemplateColumns: GRID_COLS }}>
+            <span />
+            <span />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("namePlaceholder")}</span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("abbreviation") ?? "ABR"}</span>
+            <span />
+            <span />
+          </div>
+        </>
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={departments.map((d) => d.sortId)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-2">
-            {/* Render parents first, then their children */}
-            {departments.filter((d) => !d.parent_id).map((dept) => {
-              const children = departments.filter((d) => d.parent_id === dept.id || d.parent_id === dept.sortId)
-              return (
-                <div key={dept.sortId} className="flex flex-col gap-1.5">
-                  <SortableRow
-                    dept={dept}
-                    onChange={(draft) => updateRow(dept.sortId, draft)}
-                    onDelete={() => deleteRow(dept.sortId)}
-                    disabled={isPending}
-                  />
-                  {enableSubDepartments && children.map((child) => (
-                    <SortableRow
-                      key={child.sortId}
-                      dept={child}
-                      onChange={(draft) => updateRow(child.sortId, draft)}
-                      onDelete={() => deleteRow(child.sortId)}
-                      disabled={isPending}
-                      isChild
-                    />
-                  ))}
-                  {enableSubDepartments && !isPending && (
-                    <button
-                      type="button"
-                      onClick={() => addRow(dept.id ?? dept.sortId)}
-                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-6 py-0.5"
-                    >
-                      <Plus className="size-3" />
-                      {t("addSubDepartment")}
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+        <SortableContext items={departments.filter((d) => !d.parent_id).map((d) => d.sortId)} strategy={verticalListSortingStrategy}>
+          {departments.filter((d) => !d.parent_id).map((dept, idx) => (
+            <SortableRow
+              key={dept.sortId}
+              dept={dept}
+              onChange={(draft) => updateRow(dept.sortId, draft)}
+              onDelete={() => deleteRow(dept.sortId)}
+              disabled={isPending}
+              even={idx % 2 === 0}
+            />
+          ))}
         </SortableContext>
       </DndContext>
 
