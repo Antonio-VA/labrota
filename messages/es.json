@@ -647,6 +647,8 @@
       "affectedStaff": "Personal afectado",
       "adminNotes": "Nota interna (solo admin)",
       "save": "Guardar regla",
+      "updated": "Regla actualizada",
+      "created": "Regla creada",
       "cancel": "Cancelar",
       "confirmDelete": "¿Eliminar esta regla?",
       "errorMinTwoStaff": "Selecciona al menos 2 personas para esta regla",

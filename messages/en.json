@@ -647,6 +647,8 @@
       "affectedStaff": "Affected staff",
       "adminNotes": "Internal note (admin only)",
       "save": "Save rule",
+      "updated": "Rule updated",
+      "created": "Rule created",
       "cancel": "Cancel",
       "confirmDelete": "Delete this rule?",
       "errorMinTwoStaff": "Select at least 2 people for this rule",

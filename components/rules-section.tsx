@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
+import { toast } from "sonner"
 import { PlusIcon, Pencil, Trash2, ShieldAlert, ShieldCheck, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -288,7 +289,9 @@ function RuleSheet({
         : await createRule(data)
       if (result.error) {
         setError(result.error)
+        toast.error(result.error)
       } else {
+        toast.success(editing ? t("updated") : t("created"))
         onOpenChange(false)
         if (result.rule) onSaved(result.rule)
       }
