@@ -47,17 +47,32 @@ export type WorkingPattern    = WorkingDay[]
 // ── Row types (what you get back from SELECT) ─────────────────────────────────
 export type RotaDisplayMode = 'by_shift' | 'by_task'
 
+export interface EngineConfig {
+  aiOptimalVersion:     string   // 'v1' | 'v2'
+  hybridEnabled:        boolean
+  reasoningEnabled:     boolean
+  taskOptimalVersion:   string   // 'v1' | 'v2'
+  taskHybridEnabled:    boolean
+  taskReasoningEnabled: boolean
+}
+
 export interface Organisation {
-  id:                 string
-  name:               string
-  slug:               string
-  is_active:          boolean
-  logo_url:           string | null
-  rota_display_mode:  RotaDisplayMode
-  billing_start:      string | null
-  billing_end:        string | null
-  billing_fee:        number | null
-  created_at:         string
+  id:                       string
+  name:                     string
+  slug:                     string
+  is_active:                boolean
+  logo_url:                 string | null
+  rota_display_mode:        RotaDisplayMode
+  billing_start:            string | null
+  billing_end:              string | null
+  billing_fee:              number | null
+  ai_optimal_version:       string
+  engine_hybrid_enabled:    boolean
+  engine_reasoning_enabled: boolean
+  task_optimal_version:     string
+  task_hybrid_enabled:      boolean
+  task_reasoning_enabled:   boolean
+  created_at:               string
 }
 
 export interface Profile {

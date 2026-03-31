@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -26,6 +26,12 @@ export function AdminOrgDetailClient({
   initialEnableNotes = true,
   initialEnableTaskInShift = false,
   initialBilling = { start: null, end: null, fee: null },
+  initialAiOptimalVersion = "v2",
+  initialEngineHybridEnabled = true,
+  initialEngineReasoningEnabled = false,
+  initialTaskOptimalVersion = "v1",
+  initialTaskHybridEnabled = false,
+  initialTaskReasoningEnabled = false,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -43,6 +49,12 @@ export function AdminOrgDetailClient({
   initialEnableNotes?: boolean
   initialEnableTaskInShift?: boolean
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
+  initialAiOptimalVersion?: string
+  initialEngineHybridEnabled?: boolean
+  initialEngineReasoningEnabled?: boolean
+  initialTaskOptimalVersion?: string
+  initialTaskHybridEnabled?: boolean
+  initialTaskReasoningEnabled?: boolean
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -63,6 +75,12 @@ export function AdminOrgDetailClient({
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
+  const [aiOptimalVersion, setAiOptimalVersion] = useState(initialAiOptimalVersion)
+  const [engineHybridEnabled, setEngineHybridEnabled] = useState(initialEngineHybridEnabled)
+  const [engineReasoningEnabled, setEngineReasoningEnabled] = useState(initialEngineReasoningEnabled)
+  const [taskOptimalVersion] = useState(initialTaskOptimalVersion)
+  const [taskHybridEnabled, setTaskHybridEnabled] = useState(initialTaskHybridEnabled)
+  const [taskReasoningEnabled, setTaskReasoningEnabled] = useState(initialTaskReasoningEnabled)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -127,6 +145,15 @@ export function AdminOrgDetailClient({
       }
       const r2 = await updateOrgRegional(orgId, country, region)
       if (r2.error) { toast.error(r2.error); hasError = true }
+      const r4 = await updateOrgEngineConfig(orgId, {
+        ai_optimal_version: aiOptimalVersion,
+        engine_hybrid_enabled: engineHybridEnabled,
+        engine_reasoning_enabled: engineReasoningEnabled,
+        task_optimal_version: taskOptimalVersion,
+        task_hybrid_enabled: taskHybridEnabled,
+        task_reasoning_enabled: taskReasoningEnabled,
+      })
+      if (r4?.error) { toast.error(r4.error); hasError = true }
       const r3 = await updateOrgBilling(orgId, {
         billing_start: billing.start || null,
         billing_end: billing.end || null,
@@ -394,6 +421,121 @@ export function AdminOrgDetailClient({
           </>)}
         </div>
       </div>
+
+      {/* ── MOTORES DE GENERACIÓN ─────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
+          <div>
+            <p className="text-[14px] font-medium">Motores de generación</p>
+            <p className="text-[12px] text-muted-foreground mt-0.5">Configura qué motores de IA están disponibles para esta organización.</p>
+          </div>
+
+          {displayMode === "by_shift" ? (<>
+            {/* AI Óptimo version picker */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">AI Óptimo — motor</p>
+                <p className="text-[12px] text-muted-foreground">Versión del motor que se usa para "AI Óptimo"</p>
+              </div>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {(["v1", "v2"] as const).map((v) => (
+                  <button key={v} type="button" disabled={isPending} onClick={() => setAiOptimalVersion(v)}
+                    className={cn("px-4 py-1.5 text-[13px] font-medium transition-colors",
+                      aiOptimalVersion === v ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
+                    )}>
+                    {v.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Híbrido toggle */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">Motor Híbrido</p>
+                <p className="text-[12px] text-muted-foreground">Combina el motor v2 con revisión de Claude. Activado por defecto.</p>
+              </div>
+              <button type="button" disabled={isPending} onClick={() => setEngineHybridEnabled(!engineHybridEnabled)}
+                className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  engineHybridEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                )}>
+                <span className={cn("pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                  engineHybridEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Razonamiento Claude toggle */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">Razonamiento Claude</p>
+                <p className="text-[12px] text-muted-foreground">Claude razona paso a paso. Solo para depuración — desactivado por defecto.</p>
+              </div>
+              <button type="button" disabled={isPending} onClick={() => setEngineReasoningEnabled(!engineReasoningEnabled)}
+                className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  engineReasoningEnabled ? "bg-amber-500" : "bg-muted-foreground/20"
+                )}>
+                <span className={cn("pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                  engineReasoningEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+          </>) : (<>
+            {/* Task optimal version — v2 not available yet */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">Óptimo por Técnica — motor</p>
+                <p className="text-[12px] text-muted-foreground">Versión del motor de tareas</p>
+              </div>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button type="button" className="px-4 py-1.5 text-[13px] font-medium bg-primary text-primary-foreground" disabled>V1</button>
+                <button type="button" className="px-4 py-1.5 text-[13px] font-medium bg-transparent text-muted-foreground/40 cursor-not-allowed" disabled>V2 (próx.)</button>
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Task Híbrido — coming soon */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium text-muted-foreground">Híbrido por Técnica <span className="text-[11px] font-normal">(próximamente)</span></p>
+                <p className="text-[12px] text-muted-foreground/60">Motor híbrido adaptado para organizaciones por tarea</p>
+              </div>
+              <button type="button" disabled={isPending} onClick={() => setTaskHybridEnabled(!taskHybridEnabled)}
+                className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  taskHybridEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                )}>
+                <span className={cn("pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                  taskHybridEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Task Razonamiento — coming soon */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium text-muted-foreground">Razonamiento por Técnica <span className="text-[11px] font-normal">(próximamente)</span></p>
+                <p className="text-[12px] text-muted-foreground/60">Razonamiento Claude adaptado para organizaciones por tarea</p>
+              </div>
+              <button type="button" disabled={isPending} onClick={() => setTaskReasoningEnabled(!taskReasoningEnabled)}
+                className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  taskReasoningEnabled ? "bg-amber-500" : "bg-muted-foreground/20"
+                )}>
+                <span className={cn("pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                  taskReasoningEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+          </>)}
+        </div>
+      </div>
+
       <div className="pt-3">
         <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
           {isPending ? "Guardando…" : "Guardar cambios"}

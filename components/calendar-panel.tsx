@@ -3747,43 +3747,67 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "ai_hybrid" | "manual"
 
-const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
-  {
+type StrategyCardMeta = { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }
+
+function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib/types/database").EngineConfig | undefined): StrategyCardMeta[] {
+  const isByTask = rotaDisplayMode === "by_task"
+  const cards: StrategyCardMeta[] = []
+
+  // Templates always first
+  cards.push({
     key: "flexible_template", icon: <Bookmark className="size-5" />,
     titleKey: "templateApply", descKey: "templateApplyDesc",
     badge: "TPL", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-  },
-  {
-    key: "ai_optimal", icon: <Sparkles className="size-5" />,
-    titleKey: "aiOptimal", descKey: "aiOptimalDesc",
-    badge: "v1", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
-  },
-  {
-    key: "ai_optimal_v2", icon: <Sparkles className="size-5" />,
-    titleKey: "aiOptimalV2", descKey: "aiOptimalV2Desc",
-    badge: "v2", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  },
-  {
-    key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
-    titleKey: "aiHybrid", descKey: "aiHybridDesc",
-    badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-  },
-  {
-    key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
-    titleKey: "aiReasoning", descKey: "aiReasoningDesc",
-    badge: "CLAUDE", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  },
-  {
+  })
+
+  if (isByTask) {
+    // Task-based optimal (always shown for by_task orgs)
+    cards.push({
+      key: "ai_optimal", icon: <Sparkles className="size-5" />,
+      titleKey: "taskOptimal", descKey: "taskOptimalDesc",
+      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    })
+  } else {
+    // Shift-based optimal (always shown for by_shift orgs)
+    cards.push({
+      key: "ai_optimal", icon: <Sparkles className="size-5" />,
+      titleKey: "aiOptimal", descKey: "aiOptimalDesc",
+      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    })
+    // Hybrid (if enabled for org, default true)
+    if (engineConfig?.hybridEnabled ?? true) {
+      cards.push({
+        key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
+        titleKey: "aiHybrid", descKey: "aiHybridDesc",
+        badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      })
+    }
+    // Claude reasoning (if enabled for org, default false)
+    if (engineConfig?.reasoningEnabled ?? false) {
+      cards.push({
+        key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
+        titleKey: "aiReasoning", descKey: "aiReasoningDesc",
+        badge: "CLAUDE", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      })
+    }
+  }
+
+  // Manual always last
+  cards.push({
     key: "manual", icon: <Grid3X3 className="size-5" />,
     titleKey: "blankWeek", descKey: "blankWeekDesc",
     badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
-  },
-]
+  })
 
-function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate }: {
+  return cards
+}
+
+function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate, rotaDisplayMode, engineConfig }: {
   open: boolean; weekStart: string; weekLabel: string
   onClose: () => void
   onGenerate: (strategy: GenerationStrategy, templateId?: string) => void
+  rotaDisplayMode: string
+  engineConfig?: import("@/lib/types/database").EngineConfig
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -3815,7 +3839,7 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
         {/* Strategy cards — 2×2 grid */}
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            {STRATEGY_CARD_META.map((card) => (
+            {buildStrategyCards(rotaDisplayMode, engineConfig).map((card) => (
               <button
                 key={card.key}
                 type="button"
@@ -4591,12 +4615,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               reasoningSourceRef.current = "claude"
             }
             successCount++
-          } else if (strategy === "ai_optimal_v2") {
-            const result = await generateRota(ws, false, "ai_optimal_v2")
-            if (result.error) { errorMsg = result.error; break }
-            successCount++
-          } else {
-            const result = await generateRota(ws, false, "ai_optimal")
+          } else if (strategy === "ai_optimal") {
+            // Route to the engine version configured for this org + display mode
+            const isByTask = weekData?.rotaDisplayMode === "by_task"
+            const version = isByTask
+              ? (weekData?.engineConfig?.taskOptimalVersion ?? "v1")
+              : (weekData?.engineConfig?.aiOptimalVersion ?? "v2")
+            const genType = version === "v1" ? "ai_optimal" : "ai_optimal_v2"
+            const result = await generateRota(ws, false, genType)
             if (result.error) { errorMsg = result.error; break }
             successCount++
           }
@@ -5805,6 +5831,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
         onClose={() => setShowStrategyModal(false)}
         onGenerate={handleStrategyGenerate}
+        rotaDisplayMode={weekData?.rotaDisplayMode ?? "by_shift"}
+        engineConfig={weekData?.engineConfig}
       />
 
       {/* AI Reasoning modal */}

@@ -452,6 +452,25 @@ export async function toggleOrgTaskInShift(orgId: string, enabled: boolean) {
   return { success: true }
 }
 
+export async function updateOrgEngineConfig(orgId: string, config: {
+  ai_optimal_version: string
+  engine_hybrid_enabled: boolean
+  engine_reasoning_enabled: boolean
+  task_optimal_version: string
+  task_hybrid_enabled: boolean
+  task_reasoning_enabled: boolean
+}) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update(config as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 export async function toggleOrgNotes(orgId: string, enabled: boolean) {
   await assertSuperAdmin()
   const admin = createAdminClient()
