@@ -135,7 +135,6 @@ export function runRotaEngine({
   const days: DayPlan[] = []
   const taskAssignments: TaskAssignment[] = []
   const warnings: string[] = []
-  warnings.push(`ENGINE TEST: rules received = ${rules.length}, supervisor rules = ${rules.filter(r => r.type === "supervisor_requerido").length}`)
 
   // Log which coverage model is active
   if (shiftCoverageEnabled && shiftCoverageByDay) {
@@ -1226,22 +1225,16 @@ export function runRotaEngine({
     // When a training technique is specified, prefer a shift where that technique
     // is typically done (based on tecnica.typical_shifts).
     const supRules = rules.filter((r) => r.enabled && r.type === "supervisor_requerido")
-    if (supRules.length > 0) {
-      console.log(`[engine] ${date}: supervisor rules: ${supRules.length}, total rules: ${rules.length}`)
-    }
     for (const rule of supRules) {
       const supervisorId = rule.params.supervisor_id as string | undefined
-      if (!supervisorId) { console.log(`[engine] ${date}: supervisor rule skipped — no supervisor_id`); continue }
+      if (!supervisorId) continue
       const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
-      if (supDays.length > 0 && !supDays.includes(dayCode)) { console.log(`[engine] ${date}: supervisor rule skipped — day ${dayCode} not in [${supDays}]`); continue }
+      if (supDays.length > 0 && !supDays.includes(dayCode)) continue
       const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
       const supAsg = dayPlanAssignments.find((a) => a.staff_id === supervisorId)
-      if (!supAsg) { console.log(`[engine] ${date}: supervisor rule skipped — supervisor not in assignments (${supervisorId.slice(0,8)})`); continue }
+      if (!supAsg) continue
       const traineeAsg = dayPlanAssignments.find((a) => supervisedIds.includes(a.staff_id))
-      if (!traineeAsg) { console.log(`[engine] ${date}: supervisor rule skipped — no trainee in assignments`); continue }
-      const supStaff = assigned.find((s) => s.id === supervisorId)
-      const traineeStaff = assigned.find((s) => supervisedIds.includes(s.id))
-      console.log(`[engine] ${date}: supervisor co-location: ${supStaff?.first_name ?? "?"} (${supAsg.shift_type}) → ${traineeStaff?.first_name ?? "?"} (${traineeAsg.shift_type})`)
+      if (!traineeAsg) continue
 
       // Determine valid shifts for the training technique (if any)
       const trainingTec = rule.params.training_tecnica_code as string | undefined
@@ -1557,6 +1550,58 @@ export function runRotaEngine({
         warnings.push(
           `${dayPlan.date}: no_librar_mismo_dia — could not resolve: ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} all off`
         )
+      }
+    }
+  }
+
+  // ── Re-enforce supervisor co-location after Phase 3 ────────────────────────
+  // Phase 3 (no_librar_mismo_dia) swaps staff between days, potentially splitting
+  // supervised pairs. Re-apply co-location for all supervisor rules.
+  const dayCodeLookup = ["sun","mon","tue","wed","thu","fri","sat"] as const
+  for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+    const supervisorId = rule.params.supervisor_id as string | undefined
+    if (!supervisorId) continue
+    const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+    const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
+    const trainingTec = rule.params.training_tecnica_code as string | undefined
+    const validShifts = trainingTec ? tecnicaTypicalShifts[trainingTec] : null
+
+    for (const dayPlan of days) {
+      const dc = dayCodeLookup[new Date(dayPlan.date + "T12:00:00").getDay()] as string
+      if (supDays.length > 0 && !supDays.includes(dc)) continue
+      const supAsg = dayPlan.assignments.find((a) => a.staff_id === supervisorId)
+      if (!supAsg) continue
+      const traineeAsg = dayPlan.assignments.find((a) => supervisedIds.includes(a.staff_id))
+      if (!traineeAsg) continue
+      if (supAsg.shift_type === traineeAsg.shift_type) continue
+
+      // Determine target shift
+      const dayShiftSet = new Set(activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
+        .map((st) => st.code))
+
+      if (validShifts && validShifts.size > 0) {
+        const traineeInValid = validShifts.has(traineeAsg.shift_type)
+        const supInValid = validShifts.has(supAsg.shift_type)
+        if (traineeInValid) {
+          supAsg.shift_type = traineeAsg.shift_type
+        } else if (supInValid) {
+          traineeAsg.shift_type = supAsg.shift_type
+        } else {
+          const shiftCounts: Record<string, number> = {}
+          for (const a of dayPlan.assignments) shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
+          const bestShift = [...validShifts]
+            .filter((s) => dayShiftSet.has(s))
+            .sort((a, b) => (shiftCounts[b] ?? 0) - (shiftCounts[a] ?? 0))[0]
+          if (bestShift) {
+            supAsg.shift_type = bestShift as ShiftType
+            traineeAsg.shift_type = bestShift as ShiftType
+          } else {
+            supAsg.shift_type = traineeAsg.shift_type
+          }
+        }
+      } else {
+        supAsg.shift_type = traineeAsg.shift_type
       }
     }
   }
