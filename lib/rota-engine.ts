@@ -1187,23 +1187,6 @@ export function runRotaEngine({
           }
         }
       }
-
-      // ── Post-distribution: check technique coverage per shift ──
-      // Only warn if a required technique is STILL uncovered after all steps.
-      for (const shiftCode of defaultShiftCodes) {
-        const totalMin = (shiftMinLab[shiftCode] ?? 0) + (shiftMinAndro[shiftCode] ?? 0) + (shiftMinAdmin[shiftCode] ?? 0)
-        if (totalMin === 0) continue
-        const requiredTechs = techRequiredInShift[shiftCode]
-        if (!requiredTechs) continue
-        const shiftStaffIds = dayPlanAssignments.filter((a) => a.shift_type === shiftCode).map((a) => a.staff_id)
-        const shiftStaff = allAssignableStaff.filter((s) => shiftStaffIds.includes(s.id))
-        for (const techCode of requiredTechs) {
-          const covered = shiftStaff.some((s) => s.staff_skills.some((sk) => sk.skill === techCode))
-          if (!covered) {
-            warnings.push(`${date}: ${shiftCode} — no hay personal cualificado para ${techCode}`)
-          }
-        }
-      }
     } else {
       // ── Original distribution (no per-shift coverage) ──
       for (const s of assigned) {
@@ -1383,7 +1366,9 @@ export function runRotaEngine({
         if (!resolved) {
           const shiftDef = shiftTypes.find((st) => st.code === shiftCode)
           const shiftName = shiftDef ? shiftDef.code : shiftCode
-          warnings.push(`${date}: ${shiftName} sin personal cualificado para ${techCode}`)
+          // Internal log only — getRotaWeek generates the user-facing
+          // "technique_shift_gap" warning with full technique names
+          warnings.push(`[engine] ${date}: ${shiftName} sin personal cualificado para ${techCode}`)
         }
       }
     }
