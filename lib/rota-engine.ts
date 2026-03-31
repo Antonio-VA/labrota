@@ -1362,15 +1362,17 @@ export function runRotaEngine({
         if (hasCoverage) continue
 
         // Gap found — try to resolve
-        // 1. Try a TRUE two-way swap: find someone qualified in another shift AND
-        //    someone in the target shift to exchange with. Shift counts stay the same
-        //    so minimum guards are automatically satisfied.
+        // 1. Try to swap: find someone in ANOTHER shift who is qualified and swap them
+        //    BUT never move someone out of a shift that would drop below its minimum
         let resolved = false
         const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
           if (a.shift_type === shiftCode) return false
           if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)) return false
           // Guard: don't move supervised staff (supervisor rules place them deliberately)
           if (supervisedStaffIds.has(a.staff_id)) return false
+          // Guard: don't move if source shift would drop below minimum
+          const sourceMin = shiftMinForGuard[a.shift_type] ?? 0
+          if (sourceMin > 0 && (shiftCountAfterDist[a.shift_type] ?? 0) <= sourceMin) return false
           return true
         })
 
@@ -1383,37 +1385,14 @@ export function runRotaEngine({
             return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
           }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
 
+          // Try candidates in order — skip only if they explicitly prefer their current shift
           for (const { a: candidate } of scored) {
             const member = assignedById.get(candidate.staff_id)
             const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
             // Block swap only if person explicitly prefers their CURRENT shift
             if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
-
-            const sourceShift = candidate.shift_type
-
-            // Find a swap partner in the TARGET shift who can go to the source shift
-            // The swap partner must NOT be supervised and must NOT prefer the target shift
-            const swapPartner = staffInShift.find((p) => {
-              if (p.staff_id === candidate.staff_id) return false
-              if (supervisedStaffIds.has(p.staff_id)) return false
-              const pm = assignedById.get(p.staff_id)
-              const pPref = pm?.preferred_shift?.split(",").filter(Boolean) ?? []
-              if (pPref.length > 0 && pPref.includes(shiftCode)) return false
-              return true
-            })
-
-            if (swapPartner) {
-              // True two-way swap — shift counts unchanged
-              candidate.shift_type = shiftCode as ShiftType
-              swapPartner.shift_type = sourceShift as ShiftType
-              resolved = true
-              break
-            }
-
-            // No swap partner available — fall back to one-way move if shift min allows
-            const sourceMin = shiftMinForGuard[sourceShift] ?? 0
-            if (sourceMin > 0 && (shiftCountAfterDist[sourceShift] ?? 0) <= sourceMin) continue
-            shiftCountAfterDist[sourceShift]--
+            // Update shift counts
+            shiftCountAfterDist[candidate.shift_type]--
             shiftCountAfterDist[shiftCode] = (shiftCountAfterDist[shiftCode] ?? 0) + 1
             candidate.shift_type = shiftCode as ShiftType
             resolved = true
