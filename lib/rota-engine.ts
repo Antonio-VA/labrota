@@ -1241,6 +1241,24 @@ export function runRotaEngine({
       }
     }
 
+    // Post-distribution: supervisor shift co-location
+    // Ensure supervisor is on the same shift as their trainee(s)
+    for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+      const supervisorId = rule.params.supervisor_id as string | undefined
+      if (!supervisorId) continue
+      const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+      if (supDays.length > 0 && !supDays.includes(dayCode)) continue
+      const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
+      const supAsg = dayPlanAssignments.find((a) => a.staff_id === supervisorId)
+      if (!supAsg) continue
+      // Find the shift of the first assigned trainee
+      const traineeAsg = dayPlanAssignments.find((a) => supervisedIds.includes(a.staff_id))
+      if (!traineeAsg) continue
+      if (supAsg.shift_type !== traineeAsg.shift_type) {
+        supAsg.shift_type = traineeAsg.shift_type
+      }
+    }
+
     // Post-distribution: balance shifts — move excess from overstaffed to empty shifts
     // Only when shift coverage is NOT enabled — the coverage-aware distribution
     // intentionally places staff per configured minimums. Empty shifts with 0
