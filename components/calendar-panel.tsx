@@ -1932,7 +1932,7 @@ function PersonGrid({
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
                 <span className={cn(
                   "font-semibold leading-none text-[18px]",
-                  today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
+                  today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
                   : holiday ? "text-amber-600" : "text-primary"
                 )}>
                   {dayN}
@@ -2761,7 +2761,7 @@ function ShiftGrid({
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
                   <span className={cn(
                     "font-semibold leading-none text-[18px]",
-                    today ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
+                    today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
                     : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
                   )}>
                     {dayN}
