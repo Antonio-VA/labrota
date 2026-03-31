@@ -207,7 +207,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
-    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
+    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]).then(
+      (res) => res.error
+        ? supabase.from("rota_rules").select("type, enabled, staff_ids, params").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]).then((fb) => ({ data: (fb.data ?? []).map((r: Record<string, unknown>) => ({ ...r, expires_at: null })) }))
+        : { data: res.data }
+    ) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
   ])
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
