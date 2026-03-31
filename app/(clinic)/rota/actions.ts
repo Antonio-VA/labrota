@@ -1312,11 +1312,13 @@ export async function generateRotaHybrid(
   await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId).then(() => {})
 
   const overrideKeys = new Set<string>()
+  let overrideAssignments: { staff_id: string; date: string; shift_type: string }[] = []
   if (preserveOverrides) {
     const { data: overrides } = await supabase
-      .from("rota_assignments").select("staff_id, date")
-      .eq("rota_id", rotaId).eq("is_manual_override", true) as { data: { staff_id: string; date: string }[] | null }
-    for (const o of overrides ?? []) overrideKeys.add(`${o.staff_id}:${o.date}`)
+      .from("rota_assignments").select("staff_id, date, shift_type")
+      .eq("rota_id", rotaId).eq("is_manual_override", true) as { data: { staff_id: string; date: string; shift_type: string }[] | null }
+    overrideAssignments = overrides ?? []
+    for (const o of overrideAssignments) overrideKeys.add(`${o.staff_id}:${o.date}`)
   }
 
   captureWeekSnapshot(rotaId, weekStart)
@@ -1624,7 +1626,11 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       const staffById = new Map(allStaff.map((s) => [s.id, s]))
       for (const date of weekDates) {
         const dc = dayNames[new Date(date + "T12:00:00").getDay()]
-        const dayAssignments = finalAssignments.filter((a) => a.date === date)
+        // Merge AI assignments with manual overrides so coverage is counted correctly
+        const dayAssignments = [
+          ...finalAssignments.filter((a) => a.date === date),
+          ...overrideAssignments.filter((a) => a.date === date),
+        ]
         const dayShifts = activeShifts
           .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
           .map((st) => st.code)
