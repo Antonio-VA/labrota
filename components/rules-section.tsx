@@ -273,7 +273,7 @@ function RuleSheet({
     })
   }
 
-  const requiresStaffPair = form.type === "no_librar_mismo_dia" || form.type === "no_coincidir" || form.type === "no_misma_tarea"
+  const requiresStaffPair = form.type === "no_librar_mismo_dia" || form.type === "no_coincidir" || form.type === "no_misma_tarea" || form.type === "supervisor_requerido"
 
   function handleSubmit() {
     if (requiresStaffPair && form.staff_ids.length < 2) {
@@ -803,7 +803,7 @@ function RuleSheet({
                     onChange={() => set("staff_ids", [])}
                     className="rounded border-border accent-primary"
                   />
-                  <span className="font-medium">Todo el personal</span>
+                  <span className="font-medium">{t("allStaff")}</span>
                 </label>
               )}
               <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">

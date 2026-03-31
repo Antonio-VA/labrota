@@ -1208,6 +1208,12 @@ function StaffProfilePanel({
                           {detail && (
                             <p className="text-[11px] text-muted-foreground truncate">{detail}</p>
                           )}
+                          {rule.expires_at && (
+                            <p className="text-[11px] text-muted-foreground">
+                              <Clock className="inline size-2.5 mr-0.5 -mt-0.5" />
+                              {formatDateWithYear(rule.expires_at, locale)}
+                            </p>
+                          )}
                           {rule.notes && (
                             <p className="text-[11px] text-muted-foreground italic truncate">{rule.notes}</p>
                           )}

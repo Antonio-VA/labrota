@@ -1626,7 +1626,7 @@ export interface StaffProfileData {
   /** Next week assignments (7 days) */
   nextWeekAssignments: { date: string; shift_type: string }[]
   /** Enabled rules that include this staff member in staff_ids */
-  rules: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[]
+  rules: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null; expires_at: string | null }[]
 }
 
 export async function getStaffProfile(staffId: string, weekStart?: string): Promise<StaffProfileData> {
@@ -1691,8 +1691,8 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
       .order("date") as unknown as Promise<{ data: { date: string; shift_type: string }[] | null }>,
     supabase
       .from("rota_rules")
-      .select("type, is_hard, staff_ids, params, notes")
-      .eq("enabled", true) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[] | null }>,
+      .select("type, is_hard, staff_ids, params, notes, expires_at")
+      .eq("enabled", true) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null; expires_at: string | null }[] | null }>,
   ])
 
   return {
