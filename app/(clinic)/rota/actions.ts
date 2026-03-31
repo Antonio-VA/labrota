@@ -2248,6 +2248,9 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   }
 
+  const orgRes = await (supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>)
+  const rotaDisplayMode = orgRes.data?.rota_display_mode ?? "by_shift"
+
   const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes] = await Promise.all([
     supabase
       .from("rota_assignments")
@@ -2391,7 +2394,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   const biopsyConversionRate = (ratioConfigRes.data as { biopsy_conversion_rate?: number } | null)?.biopsy_conversion_rate ?? 0.5
   const biopsyDay5Pct = (ratioConfigRes.data as { biopsy_day5_pct?: number } | null)?.biopsy_day5_pct ?? 0.5
   const biopsyDay6Pct = (ratioConfigRes.data as { biopsy_day6_pct?: number } | null)?.biopsy_day6_pct ?? 0.5
-  return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum, firstDayOfWeek, timeFormat, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct, rotaDisplayMode: "by_shift", taskConflictThreshold: 3, enableTaskInShift: false }
+  return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum, firstDayOfWeek, timeFormat, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct, rotaDisplayMode, taskConflictThreshold: 3, enableTaskInShift: false }
 }
 
 // ── getStaffProfile ───────────────────────────────────────────────────────────
