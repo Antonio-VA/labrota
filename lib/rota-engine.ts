@@ -1226,14 +1226,17 @@ export function runRotaEngine({
     // is typically done (based on tecnica.typical_shifts).
     for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
       const supervisorId = rule.params.supervisor_id as string | undefined
-      if (!supervisorId) continue
+      if (!supervisorId) { warnings.push(`[debug] ${date}: supervisor rule skipped — no supervisor_id`); continue }
       const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
       if (supDays.length > 0 && !supDays.includes(dayCode)) continue
       const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
       const supAsg = dayPlanAssignments.find((a) => a.staff_id === supervisorId)
-      if (!supAsg) continue
+      if (!supAsg) { warnings.push(`[debug] ${date}: supervisor rule skipped — supervisor not assigned (${supervisorId.slice(0,8)})`); continue }
       const traineeAsg = dayPlanAssignments.find((a) => supervisedIds.includes(a.staff_id))
-      if (!traineeAsg) continue
+      if (!traineeAsg) { warnings.push(`[debug] ${date}: supervisor rule skipped — no trainee assigned (supervised: ${supervisedIds.map(id => id.slice(0,8)).join(",")})`); continue }
+      const supStaff = assigned.find((s) => s.id === supervisorId)
+      const traineeStaff = assigned.find((s) => supervisedIds.includes(s.id))
+      warnings.push(`[debug] ${date}: supervisor co-location: ${supStaff?.first_name ?? "?"} (${supAsg.shift_type}) → ${traineeStaff?.first_name ?? "?"} (${traineeAsg.shift_type})`)
 
       // Determine valid shifts for the training technique (if any)
       const trainingTec = rule.params.training_tecnica_code as string | undefined
