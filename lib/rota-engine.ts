@@ -939,13 +939,43 @@ export function runRotaEngine({
         }
       }
 
+      // Search ALL roles — techniques like CNG/SEM may belong to andro staff.
+      const allAssignableStaff = [...labStaff, ...androStaff, ...adminStaff]
+
+      // ── Scarcity ranking ──────────────────────────────────────────────────
+      // For each technique required in a shift, count how many active staff
+      // can cover it. A staff member's scarcity score for a shift = sum of
+      // (1 / providers) for each technique they cover in that shift.
+      // Higher score = more scarce = should be placed in that shift first.
+      const scarcityForShift: Record<string, Record<string, number>> = {} // staffId → shiftCode → score
+      const techProviderCount: Record<string, number> = {} // techCode → how many active staff have it
+      for (const tec of tecnicas) {
+        if (!tec.typical_shifts?.length) continue
+        const providers = allAssignableStaff.filter((s) =>
+          s.staff_skills.some((sk) => sk.skill === tec.codigo)
+        ).length
+        techProviderCount[tec.codigo] = providers
+      }
+      for (const s of allAssignableStaff) {
+        scarcityForShift[s.id] = {}
+        for (const shiftCode of defaultShiftCodes) {
+          const requiredTechs = techRequiredInShift[shiftCode]
+          if (!requiredTechs) continue
+          let score = 0
+          for (const sk of s.staff_skills) {
+            if (!requiredTechs.has(sk.skill)) continue
+            const providers = techProviderCount[sk.skill] ?? 0
+            if (providers > 0) score += 1 / providers
+          }
+          scarcityForShift[s.id][shiftCode] = score
+        }
+      }
+
       // ── Step 0: Place ONE qualified person per shift for technique coverage ──
       // For each shift with configured coverage, try to place a single person
       // who covers as many required techniques as possible. This is a hint to
       // the coverage distribution — Steps 1-3 do the real filling.
       // We must NOT over-allocate: at most 1 person per shift here.
-      // Search ALL roles — techniques like CNG/SEM may belong to andro staff.
-      const allAssignableStaff = [...labStaff, ...androStaff, ...adminStaff]
 
       for (const shiftCode of defaultShiftCodes) {
         const totalMin = (shiftMinLab[shiftCode] ?? 0) + (shiftMinAndro[shiftCode] ?? 0) + (shiftMinAdmin[shiftCode] ?? 0)
@@ -997,7 +1027,11 @@ export function runRotaEngine({
 
         const pool = labStaff.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
           .sort((a, b) => {
-            // Prefer staff whose rotation preference matches this shift
+            // Priority 1: scarcity — place staff with rare skills where they're needed
+            const aScar = scarcityForShift[a.id]?.[shiftCode] ?? 0
+            const bScar = scarcityForShift[b.id]?.[shiftCode] ?? 0
+            if (aScar !== bScar) return bScar - aScar
+            // Priority 2: rotation preference
             const aRot = rotationPreference(a.id, shiftCode)
             const bRot = rotationPreference(b.id, shiftCode)
             if (aRot !== bRot) return aRot - bRot
@@ -1023,7 +1057,13 @@ export function runRotaEngine({
 
       // ── Step 2: Fair share remaining embryologists across shifts ──
       // Respect avoid_shifts as hard, spread skills evenly
+      // Sort by max scarcity first — staff with rare skills get placed first
       const unplacedLab = labStaff.filter((s) => !assignedToShift.has(s.id))
+        .sort((a, b) => {
+          const aMax = Math.max(...Object.values(scarcityForShift[a.id] ?? {}), 0)
+          const bMax = Math.max(...Object.values(scarcityForShift[b.id] ?? {}), 0)
+          return bMax - aMax
+        })
       for (const s of unplacedLab) {
         const personSkills = new Set(s.staff_skills.map((sk) => sk.skill))
         // Hard: filter out avoided shifts
@@ -1042,15 +1082,19 @@ export function runRotaEngine({
           const aGap = (shiftMinLab[a] ?? 0) - (shiftFilledLab[a] ?? 0)
           const bGap = (shiftMinLab[b] ?? 0) - (shiftFilledLab[b] ?? 0)
           if (aGap !== bGap) return bGap - aGap
-          // Priority 2: rotation preference (weekly/daily/stable)
+          // Priority 2: scarcity — place this person where their rare skills are needed
+          const aScar = scarcityForShift[s.id]?.[a] ?? 0
+          const bScar = scarcityForShift[s.id]?.[b] ?? 0
+          if (aScar !== bScar) return bScar - aScar
+          // Priority 3: rotation preference (weekly/daily/stable)
           const aRot = rotationPreference(s.id, a)
           const bRot = rotationPreference(s.id, b)
           if (aRot !== bRot) return aRot - bRot
-          // Priority 3: least-filled overall
+          // Priority 4: least-filled overall
           const aFill = shiftFilled[a] ?? 0
           const bFill = shiftFilled[b] ?? 0
           if (aFill !== bFill) return aFill - bFill
-          // Priority 4: shift where this person adds the most NEW skills
+          // Priority 5: shift where this person adds the most NEW skills
           const aNewSkills = [...personSkills].filter((sk) => !shiftSkills[a]?.has(sk)).length
           const bNewSkills = [...personSkills].filter((sk) => !shiftSkills[b]?.has(sk)).length
           return bNewSkills - aNewSkills
