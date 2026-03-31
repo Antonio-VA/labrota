@@ -1837,11 +1837,12 @@ function PersonGrid({
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="rounded-lg border border-border overflow-hidden w-full">
           <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-            <div className="h-[52px] border-b border-r border-border" />
+            <div className="h-[72px] border-b border-r border-border" />
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
                 <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-7 h-7 rounded-full" />
+                <div className="shimmer-bar w-8 h-8 rounded-full" />
+                <div className="shimmer-bar h-2.5 w-12 rounded" />
               </div>
             ))}
             {Array.from({ length: 8 }).map((_, i) => (
@@ -2652,14 +2653,12 @@ function ShiftGrid({
         <div className="rounded-lg border border-border overflow-hidden w-full">
           {/* Header */}
           <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            <div className="border-r border-border h-[52px]" />
+            <div className="border-r border-border h-[72px]" />
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-1 gap-1">
+              <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1">
                 <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-7 h-7 rounded-full" />
-                <div className="flex gap-0.5">
-                  {[0, 1, 2].map((j) => <div key={j} className="shimmer-bar size-1.5 rounded-full" />)}
-                </div>
+                <div className="shimmer-bar w-8 h-8 rounded-full" />
+                <div className="shimmer-bar h-2.5 w-12 rounded" />
               </div>
             ))}
           </div>
