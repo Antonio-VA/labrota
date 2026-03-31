@@ -4996,19 +4996,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (() => {
-            const isHybrid = reasoningSourceRef.current === "hybrid"
-            return (
-              <button
-                onClick={() => setShowReasoningModal(true)}
-                className="flex items-center gap-1 h-8 px-2.5 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-[13px] font-medium shrink-0"
-                title={t("viewAiReasoning")}
-              >
-                <BrainCircuit className="size-3.5" />
-                <span className="hidden sm:inline">{t("aiInsights")}</span>
-              </button>
-            )
-          })()}
+          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowReasoningModal(true)}
+              title={t("viewAiReasoning")}
+              className="h-8 gap-1.5 shrink-0"
+            >
+              <BrainCircuit className="size-3.5" />
+              <span className="hidden sm:inline">{t("aiInsights")}</span>
+            </Button>
+          )}
           {showActions && !isPublished && (
             <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
               {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
