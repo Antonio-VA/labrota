@@ -865,13 +865,9 @@ function StaffTable({
 
             {/* Department */}
             {visibleCols.has("role") && (
-              <div className="hidden md:flex items-center">
-                <span
-                  className="inline-flex items-center bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground border border-border"
-                  style={{ borderLeft: `3px solid ${deptBorder[member.role] ?? "#94A3B8"}`, borderRadius: 4 }}
-                >
-                  {deptLabel[member.role] ?? member.role}
-                </span>
+              <div className="hidden md:flex items-center gap-1.5">
+                <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
+                <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
               </div>
             )}
 
