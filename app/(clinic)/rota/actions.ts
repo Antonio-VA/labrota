@@ -60,6 +60,7 @@ export interface RotaWeekData {
   punctionsDefault: Record<string, number>
   shiftTypes: ShiftTypeDefinition[]
   shiftTimes: ShiftTimes | null
+  engineConfig: import("@/lib/types/database").EngineConfig
   /** supervisor_requerido rules: date → staff_id → training tecnica code */
   trainingByStaff: Record<string, Record<string, string>>
   /** date → list of staff_ids on approved leave that day */
@@ -192,13 +193,21 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Fetch org display mode — single query via RLS (profiles linked to org)
+  // Fetch org display mode + engine config — single query via RLS (profiles linked to org)
   const { data: orgRow } = await supabase
     .from("organisations")
-    .select("rota_display_mode")
+    .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
     .limit(1)
-    .maybeSingle() as { data: { rota_display_mode?: string } | null }
+    .maybeSingle() as { data: { rota_display_mode?: string; ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }
   const orgDisplayMode = orgRow?.rota_display_mode ?? "by_shift"
+  const engineConfig: import("@/lib/types/database").EngineConfig = {
+    aiOptimalVersion:     orgRow?.ai_optimal_version     ?? "v2",
+    hybridEnabled:        orgRow?.engine_hybrid_enabled  ?? true,
+    reasoningEnabled:     orgRow?.engine_reasoning_enabled ?? false,
+    taskOptimalVersion:   orgRow?.task_optimal_version   ?? "v1",
+    taskHybridEnabled:    orgRow?.task_hybrid_enabled    ?? false,
+    taskReasoningEnabled: orgRow?.task_reasoning_enabled ?? false,
+  }
 
   const rota = rotaData
     ? {
@@ -252,7 +261,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null, engineConfig }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -586,7 +595,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     if (reasoningEntry) aiReasoning = reasoningEntry.replace("[ai-reasoning] ", "")
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning, engineConfig }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────

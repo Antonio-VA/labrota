@@ -247,6 +247,12 @@ export default async function OrgDetailPage({
             initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
             initialEnableTaskInShift={(labConfigRes.data as { enable_task_in_shift?: boolean } | null)?.enable_task_in_shift ?? false}
             initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
+            initialAiOptimalVersion={(org as any).ai_optimal_version ?? "v2"}
+            initialEngineHybridEnabled={(org as any).engine_hybrid_enabled ?? true}
+            initialEngineReasoningEnabled={(org as any).engine_reasoning_enabled ?? false}
+            initialTaskOptimalVersion={(org as any).task_optimal_version ?? "v1"}
+            initialTaskHybridEnabled={(org as any).task_hybrid_enabled ?? false}
+            initialTaskReasoningEnabled={(org as any).task_reasoning_enabled ?? false}
           />
         }
         facturacion={
