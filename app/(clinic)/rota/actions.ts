@@ -95,7 +95,8 @@ import { REGION_TO_LIB_STATE } from "@/lib/regional-config"
 
 function getPublicHolidays(year: number, country = "ES", region?: string | null): Record<string, string> {
   const libState = region ? REGION_TO_LIB_STATE[country]?.[region] : undefined
-  const hd = libState ? new Holidays(country, libState) : new Holidays(country)
+  const opts = { languages: ["en"] }
+  const hd = libState ? new Holidays(country, libState, undefined, opts) : new Holidays(country, undefined, undefined, opts)
   const holidays = hd.getHolidays(year)
   const result: Record<string, string> = {}
   for (const h of holidays) {

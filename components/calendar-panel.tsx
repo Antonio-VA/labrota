@@ -3255,7 +3255,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       !day.isCurrentMonth
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
-                        ? "bg-amber-500/10 border-amber-500/20"
+                        ? day.isWeekend ? "bg-muted/40 border-border hover:bg-accent/20" : "bg-muted/20 border-border hover:bg-accent/10"
                         : day.staffCount > 0
                         ? day.isWeekend
                           ? "bg-muted/40 border-border hover:bg-accent/20"
@@ -3286,7 +3286,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
 
                     {/* Holiday name */}
                     {day.holidayName && day.isCurrentMonth && (
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight truncate w-full mt-1">{day.holidayName}</span>
+                      <span className="text-[10px] text-amber-500/80 leading-tight truncate w-full mt-1">{day.holidayName}</span>
                     )}
 
                     {/* Staff display — shift mode (dept badges) or person mode (initials) */}
@@ -3315,7 +3315,10 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         )}
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
-                      <div className="flex items-center gap-1.5 mt-auto">
+                      <div className={cn(
+                        "flex items-center gap-1.5 mt-auto",
+                        day.holidayName && "border border-amber-400/50 rounded-full px-2 py-0.5"
+                      )}>
                         {day.labCount > 0 && (
                           <div className="flex items-center gap-1">
                             <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#3B82F6" }} />
