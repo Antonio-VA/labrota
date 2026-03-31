@@ -205,7 +205,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
-    supabase.from("rota_rules").select("type, enabled, params").eq("enabled", true).eq("type", "restriccion_dia_tecnica") as unknown as Promise<{ data: { type: string; enabled: boolean; params: Record<string, unknown> }[] | null }>,
+    supabase.from("rota_rules").select("type, enabled, staff_ids, params").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown> }[] | null }>,
   ])
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
@@ -221,7 +221,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   const rotaData  = rotaResult.data
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
-  const tecDayRules = (rulesRes.data ?? []) as { type: string; enabled: boolean; params: Record<string, unknown> }[]
+  const allFetchedRules = (rulesRes.data ?? []) as { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown> }[]
+  const tecDayRules = allFetchedRules.filter((r) => r.type === "restriccion_dia_tecnica")
+  const supervisorRules = allFetchedRules.filter((r) => r.type === "supervisor_requerido")
   const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
 
   // Fetch org display mode — single query via RLS (profiles linked to org)
@@ -554,6 +556,27 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         if (ratio < ratioMin) {
           day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (mín. ${ratioMin})` })
         }
+      }
+    }
+  }
+
+  // Check supervisor co-location rules — warn if pair is split
+  const DOW_CODES = ["sun","mon","tue","wed","thu","fri","sat"] as const
+  for (const rule of supervisorRules) {
+    const supervisorId = rule.params.supervisor_id as string | undefined
+    if (!supervisorId) continue
+    const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+    const supervisedIds = (rule.staff_ids ?? []).filter((id) => id !== supervisorId)
+    for (const day of Object.values(dayMap)) {
+      const dayDow = DOW_CODES[new Date(day.date + "T12:00:00").getDay()]
+      if (supDays.length > 0 && !supDays.includes(dayDow)) continue
+      const supAsg = day.assignments.find((a) => a.staff_id === supervisorId)
+      const traineeAsg = day.assignments.find((a) => supervisedIds.includes(a.staff_id))
+      if (!supAsg || !traineeAsg) continue
+      if (supAsg.shift_type !== traineeAsg.shift_type) {
+        const supName = staffLookup[supervisorId]?.first_name ?? "?"
+        const traineeName = staffLookup[supervisedIds[0]]?.first_name ?? "?"
+        day.warnings.push({ category: "rule", message: `Supervisor ${supName} (${supAsg.shift_type}) y ${traineeName} (${traineeAsg.shift_type}) deberían estar en el mismo turno` })
       }
     }
   }
