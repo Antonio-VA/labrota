@@ -1659,8 +1659,40 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     const warningsStr = aiWarnings.length > 0 ? `\n\nRemaining issues:\n${aiWarnings.map((w) => `• ${w}`).join("\n")}` : ""
     const fullReasoning = `${reasoning}${budgetNote}${changesStr}${warningsStr}`
 
-    // Save warnings + reasoning
-    const allWarnings = [...aiWarnings, ...engineWarningsSummary, `[ai-reasoning] ${fullReasoning}`]
+    // Recalculate shift coverage warnings from FINAL assignments (not stale engine warnings)
+    const finalCoverageWarnings: string[] = []
+    if (labConfig.shift_coverage_enabled && labConfig.shift_coverage_by_day) {
+      const scByDay = labConfig.shift_coverage_by_day as ShiftCoverageByDay
+      const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+      const activeShifts = shiftTypes.filter((st) => st.active !== false)
+      const staffById = new Map(allStaff.map((s) => [s.id, s]))
+      for (const date of weekDates) {
+        const dc = dayNames[new Date(date + "T12:00:00").getDay()]
+        const dayAssignments = finalAssignments.filter((a) => a.date === date)
+        const dayShifts = activeShifts
+          .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
+          .map((st) => st.code)
+        for (const sc of dayShifts) {
+          const rawCov = (scByDay as Record<string, Record<string, unknown>>)[sc]?.[dc]
+          const req = rawCov == null ? { lab: 0, andrology: 0, admin: 0 }
+            : typeof rawCov === "number" ? { lab: rawCov, andrology: 0, admin: 0 }
+            : rawCov as { lab: number; andrology: number; admin: number }
+          let lab = 0, andro = 0, admin = 0
+          for (const a of dayAssignments.filter((x) => x.shift_type === sc)) {
+            const s = staffById.get(a.staff_id)
+            if (s?.role === "lab") lab++
+            else if (s?.role === "andrology") andro++
+            else admin++
+          }
+          if (lab < req.lab) finalCoverageWarnings.push(`${date}: ${sc} — lab insuficiente: ${lab}/${req.lab}`)
+          if (andro < req.andrology) finalCoverageWarnings.push(`${date}: ${sc} — andrología insuficiente: ${andro}/${req.andrology}`)
+          if (admin < req.admin) finalCoverageWarnings.push(`${date}: ${sc} — admin insuficiente: ${admin}/${req.admin}`)
+        }
+      }
+    }
+
+    // Save warnings + reasoning (use recalculated coverage + Claude's own warnings, not stale engine ones)
+    const allWarnings = [...aiWarnings, ...finalCoverageWarnings, `[ai-reasoning] ${fullReasoning}`]
     const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId)
     if (warnError) console.error("Failed to save engine_warnings:", warnError.message)
 
