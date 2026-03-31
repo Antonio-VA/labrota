@@ -1606,7 +1606,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       return true
     })
 
-    // L1 safety check: verify budget hasn't changed
+    // L1 safety check: verify Claude didn't exceed days_per_week budget
     const budgetByStaff: Record<string, number> = {}
     for (const a of deduped) {
       budgetByStaff[a.staff_id] = (budgetByStaff[a.staff_id] ?? 0) + 1
@@ -1614,8 +1614,11 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     let budgetViolation = false
     for (const s of allStaff) {
       const aiDays = budgetByStaff[s.id] ?? 0
-      const engineDays = engineResult.days.reduce((c, d) => c + (d.assignments.some((a) => a.staff_id === s.id) ? 1 : 0), 0)
-      if (aiDays !== engineDays) {
+      const cap = s.days_per_week ?? 5
+      // Account for leave days this week — staff can't exceed cap minus leave days
+      const leaveDays = weekDates.filter((d) => leaveByDate[d]?.includes(s.id)).length
+      const effectiveCap = Math.max(0, cap - leaveDays)
+      if (aiDays > effectiveCap) {
         budgetViolation = true
         break
       }
