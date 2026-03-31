@@ -2912,12 +2912,12 @@ function ShiftGrid({
                                 staffId={a.staff_id}
                                 staffColor={staffColorMap[a.staff_id]}
                                 departments={data?.departments ?? []}
-                                trainingTecCode={data?.trainingByStaff?.[a.staff_id] ?? null}
+                                trainingTecCode={data?.trainingByStaff?.[day.date]?.[a.staff_id] ?? null}
                               />
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{data?.trainingByStaff?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>

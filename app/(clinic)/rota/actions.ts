@@ -57,8 +57,8 @@ export interface RotaWeekData {
   punctionsDefault: Record<string, number>
   shiftTypes: ShiftTypeDefinition[]
   shiftTimes: ShiftTimes | null
-  /** supervisor_requerido rules: staff_id → training tecnica code */
-  trainingByStaff: Record<string, string>
+  /** supervisor_requerido rules: date → staff_id → training tecnica code */
+  trainingByStaff: Record<string, Record<string, string>>
   /** date → list of staff_ids on approved leave that day */
   onLeaveByDate: Record<string, string[]>
   /** date → staff_id → leave type */
@@ -229,15 +229,23 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supervisorRules = allFetchedRules.filter((r) => r.type === "supervisor_requerido")
   const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
 
-  // Build training map: for each supervisor rule with a training technique,
-  // map supervised staff (excluding the supervisor) to the technique code
-  const trainingByStaff: Record<string, string> = {}
+  // Build training map: date → staff_id → tecnica code
+  // Only for supervisor rules with a training technique, respecting active days
+  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+  const trainingByStaff: Record<string, Record<string, string>> = {}
   for (const rule of supervisorRules) {
     const trainingTec = rule.params.training_tecnica_code as string | undefined
     if (!trainingTec) continue
     const supervisorId = rule.params.supervisor_id as string | undefined
-    for (const sid of rule.staff_ids) {
-      if (sid !== supervisorId) trainingByStaff[sid] = trainingTec
+    const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+    const traineeIds = rule.staff_ids.filter((id) => id !== supervisorId)
+    for (const d of dates) {
+      const dow = dayNames[new Date(d + "T12:00:00").getDay()]
+      if (supDays.length > 0 && !supDays.includes(dow)) continue
+      if (!trainingByStaff[d]) trainingByStaff[d] = {}
+      for (const sid of traineeIds) {
+        trainingByStaff[d][sid] = trainingTec
+      }
     }
   }
 
