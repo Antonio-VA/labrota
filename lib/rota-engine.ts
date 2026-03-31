@@ -1226,20 +1226,22 @@ export function runRotaEngine({
     // When a training technique is specified, prefer a shift where that technique
     // is typically done (based on tecnica.typical_shifts).
     const supRules = rules.filter((r) => r.enabled && r.type === "supervisor_requerido")
-    warnings.push(`${date}: supervisor rules found: ${supRules.length}, total rules: ${rules.length}`)
+    if (supRules.length > 0) {
+      console.log(`[engine] ${date}: supervisor rules: ${supRules.length}, total rules: ${rules.length}`)
+    }
     for (const rule of supRules) {
       const supervisorId = rule.params.supervisor_id as string | undefined
-      if (!supervisorId) { warnings.push(`${date}: supervisor rule skipped — no supervisor_id`); continue }
+      if (!supervisorId) { console.log(`[engine] ${date}: supervisor rule skipped — no supervisor_id`); continue }
       const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
-      if (supDays.length > 0 && !supDays.includes(dayCode)) continue
+      if (supDays.length > 0 && !supDays.includes(dayCode)) { console.log(`[engine] ${date}: supervisor rule skipped — day ${dayCode} not in [${supDays}]`); continue }
       const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
       const supAsg = dayPlanAssignments.find((a) => a.staff_id === supervisorId)
-      if (!supAsg) { warnings.push(`${date}: supervisor rule skipped — supervisor not assigned today`); continue }
+      if (!supAsg) { console.log(`[engine] ${date}: supervisor rule skipped — supervisor not in assignments (${supervisorId.slice(0,8)})`); continue }
       const traineeAsg = dayPlanAssignments.find((a) => supervisedIds.includes(a.staff_id))
-      if (!traineeAsg) { warnings.push(`${date}: supervisor rule skipped — trainee not assigned today`); continue }
+      if (!traineeAsg) { console.log(`[engine] ${date}: supervisor rule skipped — no trainee in assignments`); continue }
       const supStaff = assigned.find((s) => s.id === supervisorId)
       const traineeStaff = assigned.find((s) => supervisedIds.includes(s.id))
-      warnings.push(`${date}: supervisor co-location: ${supStaff?.first_name ?? "?"} (${supAsg.shift_type}) → ${traineeStaff?.first_name ?? "?"} (${traineeAsg.shift_type})`)
+      console.log(`[engine] ${date}: supervisor co-location: ${supStaff?.first_name ?? "?"} (${supAsg.shift_type}) → ${traineeStaff?.first_name ?? "?"} (${traineeAsg.shift_type})`)
 
       // Determine valid shifts for the training technique (if any)
       const trainingTec = rule.params.training_tecnica_code as string | undefined
