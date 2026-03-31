@@ -952,7 +952,7 @@ export function runRotaEngine({
       for (const tec of tecnicas) {
         if (!tec.typical_shifts?.length) continue
         const providers = allAssignableStaff.filter((s) =>
-          s.staff_skills.some((sk) => sk.skill === tec.codigo)
+          s.staff_skills.some((sk) => sk.skill === tec.codigo && sk.level === "certified")
         ).length
         techProviderCount[tec.codigo] = providers
       }
@@ -963,6 +963,7 @@ export function runRotaEngine({
           if (!requiredTechs) continue
           let score = 0
           for (const sk of s.staff_skills) {
+            if (sk.level !== "certified") continue
             if (!requiredTechs.has(sk.skill)) continue
             const providers = techProviderCount[sk.skill] ?? 0
             if (providers > 0) score += 1 / providers
@@ -983,26 +984,22 @@ export function runRotaEngine({
         const requiredTechs = techRequiredInShift[shiftCode]
         if (!requiredTechs || requiredTechs.size === 0) continue
 
-        // Check if someone already placed covers at least one required technique
+        // Check if someone already placed covers at least one required technique (certified only)
         const alreadyCovered = dayPlanAssignments.some((a) =>
           a.shift_type === shiftCode &&
-          allAssignableStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => requiredTechs.has(sk.skill))
+          allAssignableStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => requiredTechs.has(sk.skill) && sk.level === "certified")
         )
         if (alreadyCovered) continue
 
-        // Find the best unplaced person: covers the most required techniques in this shift
+        // Find the best unplaced person: covers the most required techniques (certified only)
         const candidates = allAssignableStaff.filter((s) => {
           if (assignedToShift.has(s.id)) return false
           if (s.avoid_shifts?.includes(shiftCode)) return false
-          return s.staff_skills.some((sk) => requiredTechs.has(sk.skill))
+          return s.staff_skills.some((sk) => requiredTechs.has(sk.skill) && sk.level === "certified")
         }).sort((a, b) => {
-          const aCovers = a.staff_skills.filter((sk) => requiredTechs.has(sk.skill)).length
-          const bCovers = b.staff_skills.filter((sk) => requiredTechs.has(sk.skill)).length
+          const aCovers = a.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
+          const bCovers = b.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
           if (aCovers !== bCovers) return bCovers - aCovers
-          // Prefer certified
-          const aCert = a.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
-          const bCert = b.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
-          if (aCert !== bCert) return bCert - aCert
           return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
         })
 
@@ -1405,10 +1402,10 @@ export function runRotaEngine({
       const staffIdsInShift = new Set(staffInShift.map((a) => a.staff_id))
 
       for (const techCode of techCodes) {
-        // Check if at least one qualified person is in this shift
+        // Check if at least one certified person is in this shift
         const hasCoverage = staffInShift.some((a) => {
           const member = assignedById.get(a.staff_id)
-          return member?.staff_skills.some((sk) => sk.skill === techCode)
+          return member?.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified")
         })
         if (hasCoverage) continue
 
@@ -1418,7 +1415,7 @@ export function runRotaEngine({
         let resolved = false
         const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
           if (a.shift_type === shiftCode) return false
-          if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)) return false
+          if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified")) return false
           // Guard: don't move supervised staff (supervisor rules place them deliberately)
           if (supervisedStaffIds.has(a.staff_id)) return false
           // Guard: don't move if source shift would drop below minimum
