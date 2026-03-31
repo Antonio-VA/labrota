@@ -927,73 +927,40 @@ export function runRotaEngine({
         }
       }
 
-      // ── Step 0: Place staff required for technique coverage per shift ──
-      // For each shift, find techniques that MUST be covered there and ensure
-      // at least one qualified person is assigned.
-      // Process scarcest shift+technique pairs first — shifts with fewer
-      // qualified candidates get priority so T5 (1 slot) isn't starved by
-      // T1 (2 slots) grabbing all qualified staff first.
-      // Search ALL roles (lab, andro, admin) — techniques like CNG/SEM may
-      // belong to andrology staff, not just embryologists.
+      // ── Step 0: Place ONE qualified person per shift for technique coverage ──
+      // For each shift with configured coverage, try to place a single person
+      // who covers as many required techniques as possible. This is a hint to
+      // the coverage distribution — Steps 1-3 do the real filling.
+      // We must NOT over-allocate: at most 1 person per shift here.
+      // Search ALL roles — techniques like CNG/SEM may belong to andro staff.
       const allAssignableStaff = [...labStaff, ...androStaff, ...adminStaff]
 
-      // Build all (shift, technique) pairs that need coverage
-      type ShiftTechPair = { shiftCode: string; techCode: string }
-      const shiftTechPairs: ShiftTechPair[] = []
       for (const shiftCode of defaultShiftCodes) {
         const totalMin = (shiftMinLab[shiftCode] ?? 0) + (shiftMinAndro[shiftCode] ?? 0) + (shiftMinAdmin[shiftCode] ?? 0)
         if (totalMin === 0) continue
         const requiredTechs = techRequiredInShift[shiftCode]
-        if (!requiredTechs) continue
-        for (const techCode of requiredTechs) {
-          shiftTechPairs.push({ shiftCode, techCode })
-        }
-      }
+        if (!requiredTechs || requiredTechs.size === 0) continue
 
-      // Sort by scarcity: fewest qualified unplaced candidates first
-      // Re-sort on each iteration since placing someone changes availability
-      while (shiftTechPairs.length > 0) {
-        // Score each pair by how many unplaced candidates can cover it
-        shiftTechPairs.sort((a, b) => {
-          const aCand = allAssignableStaff.filter((s) =>
-            !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(a.shiftCode) &&
-            !(techAvoidShift[a.techCode]?.has(a.shiftCode)) &&
-            s.staff_skills.some((sk) => sk.skill === a.techCode)
-          ).length
-          const bCand = allAssignableStaff.filter((s) =>
-            !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(b.shiftCode) &&
-            !(techAvoidShift[b.techCode]?.has(b.shiftCode)) &&
-            s.staff_skills.some((sk) => sk.skill === b.techCode)
-          ).length
-          return aCand - bCand
-        })
-
-        const { shiftCode, techCode } = shiftTechPairs.shift()!
-
-        // Check if someone already placed in this shift covers this technique
+        // Check if someone already placed covers at least one required technique
         const alreadyCovered = dayPlanAssignments.some((a) =>
           a.shift_type === shiftCode &&
-          allAssignableStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)
+          allAssignableStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => requiredTechs.has(sk.skill))
         )
         if (alreadyCovered) continue
 
-        // Find qualified unplaced staff for this technique+shift
+        // Find the best unplaced person: covers the most required techniques in this shift
         const candidates = allAssignableStaff.filter((s) => {
           if (assignedToShift.has(s.id)) return false
           if (s.avoid_shifts?.includes(shiftCode)) return false
-          if (techAvoidShift[techCode]?.has(shiftCode)) return false
-          return s.staff_skills.some((sk) => sk.skill === techCode)
+          return s.staff_skills.some((sk) => requiredTechs.has(sk.skill))
         }).sort((a, b) => {
-          // Prefer certified over training
-          const aCert = a.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified") ? 0 : 1
-          const bCert = b.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified") ? 0 : 1
-          if (aCert !== bCert) return aCert - bCert
-          // Prefer staff who cover the most uncovered techniques in this shift
-          // (placing one person who covers 4 techniques is better than one who covers 1)
-          const shiftTechs = techRequiredInShift[shiftCode] ?? new Set()
-          const aCovers = [...shiftTechs].filter((t) => !shiftSkills[shiftCode]?.has(t) && a.staff_skills.some((sk) => sk.skill === t)).length
-          const bCovers = [...shiftTechs].filter((t) => !shiftSkills[shiftCode]?.has(t) && b.staff_skills.some((sk) => sk.skill === t)).length
+          const aCovers = a.staff_skills.filter((sk) => requiredTechs.has(sk.skill)).length
+          const bCovers = b.staff_skills.filter((sk) => requiredTechs.has(sk.skill)).length
           if (aCovers !== bCovers) return bCovers - aCovers
+          // Prefer certified
+          const aCert = a.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
+          const bCert = b.staff_skills.filter((sk) => requiredTechs.has(sk.skill) && sk.level === "certified").length
+          if (aCert !== bCert) return bCert - aCert
           return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
         })
 
