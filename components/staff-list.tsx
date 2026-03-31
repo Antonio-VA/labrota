@@ -1167,7 +1167,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     if (search && !fullName.includes(search.toLowerCase())) return false
     if (roleFilter   !== "all" && s.role              !== roleFilter)   return false
     if (statusFilter !== "all" && s.onboarding_status !== statusFilter) return false
-    if (skillFilter  !== "all" && !s.staff_skills.some((sk) => sk.skill === skillFilter)) return false
+    if (skillFilter  !== "all" && !s.staff_skills.some((sk) => sk.skill === skillFilter && sk.level === "certified")) return false
     return true
   })
 
