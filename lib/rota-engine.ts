@@ -930,14 +930,22 @@ export function runRotaEngine({
       // ── Step 0: Place staff required for technique coverage per shift ──
       // For each shift, find techniques that MUST be covered there and ensure
       // at least one qualified person is assigned. Rarest technique first.
+      // Search ALL roles (lab, andro, admin) — techniques like CNG/SEM may
+      // belong to andrology staff, not just embryologists.
+      const allAssignableStaff = [...labStaff, ...androStaff, ...adminStaff]
       for (const shiftCode of defaultShiftCodes) {
+        // Skip shifts with zero total coverage for the day — no one should be
+        // placed there, so technique warnings are irrelevant.
+        const totalMin = (shiftMinLab[shiftCode] ?? 0) + (shiftMinAndro[shiftCode] ?? 0) + (shiftMinAdmin[shiftCode] ?? 0)
+        if (totalMin === 0) continue
+
         const requiredTechs = techRequiredInShift[shiftCode]
         if (!requiredTechs) continue
 
         // Sort techniques by rarest first (fewest qualified staff available)
         const sortedTechs = [...requiredTechs].sort((a, b) => {
-          const aQual = labStaff.filter((s) => !assignedToShift.has(s.id) && s.staff_skills.some((sk) => sk.skill === a)).length
-          const bQual = labStaff.filter((s) => !assignedToShift.has(s.id) && s.staff_skills.some((sk) => sk.skill === b)).length
+          const aQual = allAssignableStaff.filter((s) => !assignedToShift.has(s.id) && s.staff_skills.some((sk) => sk.skill === a)).length
+          const bQual = allAssignableStaff.filter((s) => !assignedToShift.has(s.id) && s.staff_skills.some((sk) => sk.skill === b)).length
           return aQual - bQual
         })
 
@@ -945,12 +953,12 @@ export function runRotaEngine({
           // Check if someone already placed in this shift covers this technique
           const alreadyCovered = dayPlanAssignments.some((a) =>
             a.shift_type === shiftCode &&
-            labStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)
+            allAssignableStaff.find((s) => s.id === a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)
           )
           if (alreadyCovered) continue
 
-          // Find qualified unplaced lab staff for this technique+shift
-          const candidates = labStaff.filter((s) => {
+          // Find qualified unplaced staff for this technique+shift
+          const candidates = allAssignableStaff.filter((s) => {
             if (assignedToShift.has(s.id)) return false
             if (s.avoid_shifts?.includes(shiftCode)) return false // hard: respect staff avoid
             if (techAvoidShift[techCode]?.has(shiftCode)) return false // hard: respect technique avoid
@@ -968,7 +976,9 @@ export function runRotaEngine({
             dayPlanAssignments.push({ staff_id: pick.id, shift_type: shiftCode as ShiftType })
             assignedToShift.add(pick.id)
             shiftFilled[shiftCode]++
-            shiftFilledLab[shiftCode]++
+            if (pick.role === "lab") shiftFilledLab[shiftCode]++
+            else if (pick.role === "andrology") shiftFilledAndro[shiftCode]++
+            else shiftFilledAdmin[shiftCode]++
             for (const sk of pick.staff_skills) shiftSkills[shiftCode].add(sk.skill)
           } else {
             warnings.push(`${date}: ${shiftCode} — no hay personal cualificado para ${techCode}`)
