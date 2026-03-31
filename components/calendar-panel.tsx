@@ -2672,7 +2672,7 @@ function ShiftGrid({
           {/* Rows — enough to cover up to 5 shifts + off */}
           {Array.from({ length: 6 }).map((_, row) => (
             <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
-              <div className="border-r border-border flex items-center justify-end px-2 py-3">
+              <div className="border-r border-border flex items-center justify-center px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
