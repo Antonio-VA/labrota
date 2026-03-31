@@ -1221,7 +1221,9 @@ export function runRotaEngine({
     }
 
     // Post-distribution: supervisor shift co-location
-    // Ensure supervisor is on the same shift as their trainee(s)
+    // Ensure supervisor is on the same shift as their trainee(s).
+    // When a training technique is specified, prefer a shift where that technique
+    // is typically done (based on tecnica.typical_shifts).
     for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
       const supervisorId = rule.params.supervisor_id as string | undefined
       if (!supervisorId) continue
@@ -1230,11 +1232,44 @@ export function runRotaEngine({
       const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
       const supAsg = dayPlanAssignments.find((a) => a.staff_id === supervisorId)
       if (!supAsg) continue
-      // Find the shift of the first assigned trainee
       const traineeAsg = dayPlanAssignments.find((a) => supervisedIds.includes(a.staff_id))
       if (!traineeAsg) continue
-      if (supAsg.shift_type !== traineeAsg.shift_type) {
-        supAsg.shift_type = traineeAsg.shift_type
+
+      // Determine valid shifts for the training technique (if any)
+      const trainingTec = rule.params.training_tecnica_code as string | undefined
+      const validShifts = trainingTec ? tecnicaTypicalShifts[trainingTec] : null
+
+      if (validShifts && validShifts.size > 0) {
+        const traineeInValid = validShifts.has(traineeAsg.shift_type)
+        const supInValid = validShifts.has(supAsg.shift_type)
+
+        if (traineeInValid) {
+          // Trainee is already in a valid shift — move supervisor there
+          supAsg.shift_type = traineeAsg.shift_type
+        } else if (supInValid) {
+          // Supervisor is in a valid shift — move trainee there
+          traineeAsg.shift_type = supAsg.shift_type
+        } else {
+          // Neither is in a valid shift — pick the valid shift with most staff
+          // (so we don't create an empty source shift)
+          const shiftCounts: Record<string, number> = {}
+          for (const a of dayPlanAssignments) shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
+          const bestShift = [...validShifts]
+            .filter((s) => dayShiftSet.has(s))
+            .sort((a, b) => (shiftCounts[b] ?? 0) - (shiftCounts[a] ?? 0))[0]
+          if (bestShift) {
+            supAsg.shift_type = bestShift as ShiftType
+            traineeAsg.shift_type = bestShift as ShiftType
+          } else {
+            // No valid shift active today — just co-locate
+            supAsg.shift_type = traineeAsg.shift_type
+          }
+        }
+      } else {
+        // No training technique — just co-locate on the same shift
+        if (supAsg.shift_type !== traineeAsg.shift_type) {
+          supAsg.shift_type = traineeAsg.shift_type
+        }
       }
     }
 
