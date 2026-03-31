@@ -96,7 +96,7 @@ export async function shareCapture(element: HTMLElement, fileName: string) {
  *    so html2canvas uses inline styles rather than stylesheet lookups.
  */
 function sanitizeModernColors(doc: Document, root: HTMLElement) {
-  const modernColorRe = /(?:oklch?|lab|lch|color)\([^)]+\)/gi
+  const modernColorRe = /(?:oklch?|oklab|lab|lch|color)\([^)]+\)/gi
 
   // 1. Replace modern colors in ALL <style> tags in the entire cloned document
   const styleEls = doc.querySelectorAll("style")
@@ -106,6 +106,12 @@ function sanitizeModernColors(doc: Document, root: HTMLElement) {
       modernColorRe.lastIndex = 0
       styleEl.textContent = text.replace(modernColorRe, (match) => resolveColor(match) ?? "transparent")
     }
+  }
+
+  // 1b. Disable all external linked stylesheets — html2canvas re-fetches and parses
+  //     these, and they may contain modern color functions we can't patch.
+  for (const link of doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
+    link.disabled = true
   }
 
   // 2. Also nuke any CSS custom properties in :root that contain modern colors
@@ -154,7 +160,12 @@ function sanitizeModernColors(doc: Document, root: HTMLElement) {
     for (const prop of colorProps) {
       const val = computed.getPropertyValue(prop)
       if (val && val !== "transparent" && val !== "rgba(0, 0, 0, 0)") {
-        el.style.setProperty(prop, val, "important")
+        // Safari/iOS may return computed values in lab()/oklch() — resolve to rgb()
+        const safe = modernColorRe.test(val)
+          ? (modernColorRe.lastIndex = 0, resolveColor(val) ?? val)
+          : val
+        modernColorRe.lastIndex = 0
+        el.style.setProperty(prop, safe, "important")
       }
     }
 
