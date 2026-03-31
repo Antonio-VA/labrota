@@ -3316,26 +3316,26 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
                       <div className={cn(
-                        "flex items-center gap-1.5 mt-auto",
-                        day.holidayName && "border border-amber-400/50 rounded-full px-2 py-0.5"
+                        "flex items-center gap-1 mt-auto",
+                        day.holidayName && "border border-amber-400/50 rounded-full px-1.5 py-0.5"
                       )}>
                         {day.labCount > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#3B82F6" }} />
-                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.labCount}</span>
-                          </div>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #3B82F6", color: "#3B82F6" }}>
+                            {day.labCount}
+                          </span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#10B981" }} />
-                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.andrologyCount}</span>
-                          </div>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #10B981", color: "#10B981" }}>
+                            {day.andrologyCount}
+                          </span>
                         )}
                         {day.adminCount > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: "#64748B" }} />
-                            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{day.adminCount}</span>
-                          </div>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #64748B", color: "#64748B" }}>
+                            {day.adminCount}
+                          </span>
                         )}
                       </div>
                     ) : null}
@@ -5062,23 +5062,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     }
                   })
                 },
-              }, {
-                label: locale === "es" ? "Copiar imagen" : "Copy image",
-                icon: <Image className="size-3.5" />,
-                onClick: async () => {
-                  const gridEl = document.querySelector("[data-calendar-content]") as HTMLElement
-                  if (!gridEl) return
-                  try {
-                    const { shareRotaCapture } = await import("@/lib/share-capture")
-                    const notesEl = document.querySelector("[data-week-notes]") as HTMLElement | null
-                    const dateLabel = formatToolbarLabel("week", currentDate, weekStart, locale)
-                    await shareRotaCapture({ gridEl, dateLabel, notesEl, fileName: `horario_${weekStart}.png` })
-                    toast.success(locale === "es" ? "Imagen guardada" : "Image saved")
-                  } catch (err) {
-                    toast.error(locale === "es" ? "No se pudo capturar la imagen" : "Could not capture image")
-                    console.error("Copy failed:", err)
-                  }
-                },
               }] : []),
               // ── Templates ──
               ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
@@ -5099,7 +5082,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }] : []),
               // ── View options ──
-              ...((view === "week" || view === "month") ? [{
+              ...((view === "week" || view === "month") ? [
+              ...(!(view === "month" && calendarLayout === "person") ? [{
                 label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
@@ -5112,7 +5096,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
-              },
+              }] : [{ dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } as never]),
               {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
@@ -5590,13 +5574,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     if (result.error) toast.error(result.error)
                     else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeekSilent(weekStart) }
                   } : undefined}
-                  onShare={async () => {
-                    if (!mobileContentRef.current) return
-                    const { shareRotaCapture } = await import("@/lib/share-capture")
-                    const notesEl = document.querySelector("[data-week-notes]") as HTMLElement | null
-                    const dateLabel = formatToolbarLabel("week", currentDate, weekStart, locale)
-                    await shareRotaCapture({ gridEl: mobileContentRef.current, dateLabel, notesEl, fileName: `rota-${currentDate.replace(/-/g, "")}.png` })
-                  }}
+                  onShare={undefined}
                   isPending={isPending}
                   compact={mobileCompact}
                   onToggleCompact={toggleMobileCompact}
