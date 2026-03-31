@@ -1224,7 +1224,9 @@ export function runRotaEngine({
     // Ensure supervisor is on the same shift as their trainee(s).
     // When a training technique is specified, prefer a shift where that technique
     // is typically done (based on tecnica.typical_shifts).
-    for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+    const supRules = rules.filter((r) => r.enabled && r.type === "supervisor_requerido")
+    warnings.push(`${date}: supervisor rules found: ${supRules.length}, total rules: ${rules.length}`)
+    for (const rule of supRules) {
       const supervisorId = rule.params.supervisor_id as string | undefined
       if (!supervisorId) { warnings.push(`${date}: supervisor rule skipped — no supervisor_id`); continue }
       const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
