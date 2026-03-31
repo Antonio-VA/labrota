@@ -309,10 +309,30 @@ export function runRotaEngineV2({
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
     const dayCoverage = labConfig.coverage_by_day?.[dayCode]
-    const labReq = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
-    const andReq = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
 
-    for (const [role, required] of [["lab", labReq], ["andrology", andReq]] as const) {
+    // Use same coverage source as Phase 2
+    let labReq: number, andReq: number, adminReq: number
+    if (shiftCoverageEnabled && shiftCoverageByDay) {
+      let labSum = 0, androSum = 0, adminSum = 0
+      const dayShiftsP1 = activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .map((st) => st.code)
+      for (const sc of dayShiftsP1) {
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        labSum += cov.lab
+        androSum += cov.andrology
+        adminSum += cov.admin
+      }
+      labReq = Math.max(labSum, dynamicLabMin)
+      andReq = androSum
+      adminReq = adminSum
+    } else {
+      labReq = Math.max(dayCoverage?.lab ?? labConfig.min_lab_coverage, dynamicLabMin)
+      andReq = dayCoverage?.andrology ?? labConfig.min_andrology_coverage
+      adminReq = dayCoverage?.admin ?? 0
+    }
+
+    for (const [role, required] of [["lab", labReq], ["andrology", andReq], ["admin", adminReq]] as const) {
       if (required <= 0) continue
       // Find eligible staff for this day+role, sorted by fewest total reservations
       const eligible = staff.filter((s) => {
