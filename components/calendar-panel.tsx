@@ -719,11 +719,10 @@ function OverflowMenu({ items }: { items: MenuItem[] }) {
 
 // ── Staff profile panel ───────────────────────────────────────────────────────
 
-function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCreated: () => void }) {
+function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId: string | null; open: boolean; onClose: () => void; onCreated: () => void }) {
   const t = useTranslations("schedule")
   const tl = useTranslations("leaves")
   const tc = useTranslations("common")
-  const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [type, setType] = useState("annual")
   const [startDate, setStartDate] = useState("")
@@ -735,7 +734,7 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
     setStartDate("")
     setEndDate("")
     setNotes("")
-    setOpen(false)
+    onClose()
   }
 
   function handleSubmit() {
@@ -752,16 +751,7 @@ function InlineLeaveForm({ staffId, onCreated }: { staffId: string | null; onCre
     })
   }
 
-  if (!open) {
-    return (
-      <div className="px-5 py-2 border-t border-border">
-        <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-1.5 text-[12px]">
-          <CalendarPlus className="size-3.5" />
-          {tl("addLeave")}
-        </Button>
-      </div>
-    )
-  }
+  if (!open) return null
 
   return (
     <div className="px-5 py-3 border-t border-border flex flex-col gap-2">
@@ -915,6 +905,7 @@ function StaffProfilePanel({
   const [data, setData]       = useState<StaffProfileData | null>(null)
   const [loading, setLoading] = useState(false)
   const [showAdjWeeks, setShowAdjWeeks] = useState(false)
+  const [showLeaveForm, setShowLeaveForm] = useState(false)
 
   const weekStart = weekData?.weekStart ?? null
   useEffect(() => {
@@ -1340,7 +1331,7 @@ function StaffProfilePanel({
         </div>
 
         {/* ── Inline leave form ─────────────────────────────────── */}
-        <InlineLeaveForm staffId={staffId} onCreated={() => {
+        <InlineLeaveForm staffId={staffId} open={showLeaveForm} onClose={() => setShowLeaveForm(false)} onCreated={() => {
           // Re-fetch profile to update leaves
           if (staffId) {
             setLoading(true)
@@ -1350,6 +1341,10 @@ function StaffProfilePanel({
 
         {/* ── Footer ───────────────────────────────────────────── */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex items-center justify-between">
+          <Button variant="outline" onClick={() => setShowLeaveForm(true)} className="gap-1.5 text-[13px]">
+            <CalendarPlus className="size-4" />
+            {tl("addLeave")}
+          </Button>
           <a href={`/staff/${staffId}`} className="text-[12px] text-primary hover:underline">{tStaff("profile")}</a>
         </div>
       </div>

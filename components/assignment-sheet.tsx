@@ -1081,12 +1081,11 @@ export function AssignmentSheet({
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-7 text-[12px] gap-1.5"
+                    className="gap-1.5 text-[13px]"
                     onClick={() => setShowRegenConfirm(true)}
                     disabled={assignments.length === 0}
                   >
-                    <Sparkles className="size-3.5" />
+                    <Sparkles className="size-4" />
                     {t("regenerateDay")}
                   </Button>
                   {assignments.length === 0 && date && (
