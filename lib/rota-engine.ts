@@ -1272,10 +1272,10 @@ export function runRotaEngine({
     const assignedById = new Map(assigned.map((s) => [s.id, s]))
 
     // ── Technique-shift alignment pass ──────────────────────────────────────
-    // Skip when shift coverage is enabled — the distribution already placed
-    // staff using getPreferredShift (which respects technique typical_shifts).
-    // Running alignment after would move people and destroy the balanced distribution.
-    if (!shiftCoverageEnabled) {
+    // After distribution, check each technique's typical_shift for coverage.
+    // If a shift is missing a qualified person, try to swap with someone from
+    // another shift. The shiftMinForGuard prevents breaking coverage minimums.
+    {
 
     // Check each technique's typical_shift for coverage. If a shift is missing
     // a qualified person for a mapped technique, try to reassign or add one.
@@ -1394,7 +1394,7 @@ export function runRotaEngine({
         }
       }
     }
-    } // end if (!shiftCoverageEnabled) — skip alignment pass
+    } // end technique-shift alignment pass
 
     // Hard guard: remove anyone who would exceed their weekly budget
     // (can happen if Phase 1 over-reserves)
