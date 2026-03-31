@@ -4341,8 +4341,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
   const [compact, setCompact] = useState(false)
   const [personSimplified, setPersonSimplified] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("labrota_person_simplified") === "true"
+    if (typeof window === "undefined") return true
+    const stored = localStorage.getItem("labrota_person_simplified")
+    return stored === null ? true : stored === "true" // default true
   })
   const [daysAsRows, setDaysAsRows] = useState(() => {
     if (typeof window === "undefined") return false
