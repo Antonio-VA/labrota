@@ -929,6 +929,300 @@ export async function generateRota(
   return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
 }
 
+// ── generateRotaWithAI ────────────────────────────────────────────────────────
+// Pure AI rota generation using Claude. Serialises all org context into a prompt
+// and lets the model reason about optimal staff placement.
+
+export async function generateRotaWithAI(
+  weekStart: string,
+  preserveOverrides: boolean,
+): Promise<{ error?: string; assignmentCount?: number; reasoning?: string }> {
+  const { anthropic } = await import("@ai-sdk/anthropic")
+  const { generateObject } = await import("ai")
+  const { z } = await import("zod")
+
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  const weekDates = getWeekDates(weekStart)
+  const fourWeeksAgo = new Date(weekStart + "T12:00:00")
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+
+  // Fetch all data (same as generateRota)
+  const [staffRes, leavesRes, recentRes, labConfigRes, rulesRes, shiftTypesRes, tecnicasRes] = await Promise.all([
+    supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
+    supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
+    supabase.from("rota_assignments").select("staff_id, date, shift_type").gte("date", fourWeeksAgoStr).lt("date", weekStart),
+    supabase.from("lab_config").select("*").single(),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
+    supabase.from("tecnicas").select("id, codigo, nombre_es, department, typical_shifts, avoid_shifts").eq("activa", true) as unknown as Promise<{ data: { id: string; codigo: string; nombre_es: string; department: string; typical_shifts: string[]; avoid_shifts: string[] }[] | null }>,
+  ])
+
+  const labConfig = labConfigRes.data as LabConfig | null
+  if (!labConfig) return { error: "Lab configuration not found." }
+  if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
+
+  const staff = (staffRes.data ?? []) as StaffWithSkills[]
+  const leaves = (leavesRes.data ?? []) as Leave[]
+  const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
+  const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || new Date(r.expires_at) > new Date())
+  const shiftTypes = ((shiftTypesRes.data ?? []) as ShiftTypeDefinition[]).filter((st) => st.active !== false)
+  const tecnicas = (tecnicasRes.data ?? []) as { id: string; codigo: string; nombre_es: string; department: string; typical_shifts: string[]; avoid_shifts: string[] }[]
+
+  // Determine active shift codes per day of week
+  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+  const shiftCodes = shiftTypes.map((st) => st.code)
+
+  // Build shift coverage info
+  const shiftCoverage = labConfig.shift_coverage_enabled && labConfig.shift_coverage_by_day
+    ? labConfig.shift_coverage_by_day as Record<string, Record<string, { lab: number; andrology: number; admin: number }>>
+    : null
+
+  // Build leave map
+  const leaveByDate: Record<string, string[]> = {}
+  for (const l of leaves) {
+    for (const d of weekDates) {
+      if (d >= l.start_date && d <= l.end_date) {
+        if (!leaveByDate[d]) leaveByDate[d] = []
+        leaveByDate[d].push(l.staff_id)
+      }
+    }
+  }
+
+  // Build recent workload
+  const recentWorkload: Record<string, number> = {}
+  for (const a of recentAssignments) {
+    recentWorkload[a.staff_id] = (recentWorkload[a.staff_id] ?? 0) + 1
+  }
+
+  // Upsert rota record
+  const { data: rotaRow, error: rotaError } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .select("id").single()
+  if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
+  const rotaId = (rotaRow as { id: string }).id
+
+  await supabase.from("rotas").update({ generation_type: "ai_reasoning" } as never).eq("id", rotaId).then(() => {})
+
+  // Handle overrides
+  const overrideKeys = new Set<string>()
+  if (preserveOverrides) {
+    const { data: overrides } = await supabase
+      .from("rota_assignments").select("staff_id, date")
+      .eq("rota_id", rotaId).eq("is_manual_override", true) as { data: { staff_id: string; date: string }[] | null }
+    for (const o of overrides ?? []) overrideKeys.add(`${o.staff_id}:${o.date}`)
+  }
+
+  captureWeekSnapshot(rotaId, weekStart)
+
+  if (preserveOverrides) {
+    await supabase.from("rota_assignments").delete().eq("rota_id", rotaId).eq("is_manual_override", false)
+  } else {
+    await supabase.from("rota_assignments").delete().eq("rota_id", rotaId)
+  }
+
+  // ── Serialise context for Claude ──────────────────────────────────────────
+  const staffContext = staff.map((s) => ({
+    id: s.id,
+    name: `${s.first_name} ${s.last_name}`,
+    role: s.role,
+    days_per_week: s.days_per_week,
+    preferred_shift: s.preferred_shift,
+    avoid_shifts: s.avoid_shifts,
+    working_pattern: s.working_pattern,
+    certified_skills: s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill),
+    training_skills: s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill),
+    recent_days_worked: recentWorkload[s.id] ?? 0,
+  }))
+
+  const rulesContext = activeRules.map((r) => {
+    const staffNames = r.staff_ids.map((id) => {
+      const s = staff.find((st) => st.id === id)
+      return s ? `${s.first_name} ${s.last_name} (${id})` : id
+    })
+    return {
+      type: r.type,
+      is_hard: r.is_hard,
+      staff: staffNames,
+      params: r.params,
+      notes: r.notes,
+    }
+  })
+
+  const shiftsContext = shiftTypes.map((st) => ({
+    code: st.code,
+    name: st.name_es,
+    time: `${st.start_time ?? "?"}-${st.end_time ?? "?"}`,
+    active_days: st.active_days?.length ? st.active_days : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  }))
+
+  const tecnicasContext = tecnicas.map((t) => ({
+    code: t.codigo,
+    name: t.nombre_es,
+    department: t.department,
+    typical_shifts: t.typical_shifts ?? [],
+    avoid_shifts: t.avoid_shifts ?? [],
+  }))
+
+  const datesWithInfo = weekDates.map((d) => {
+    const dow = dayNames[new Date(d + "T12:00:00").getDay()]
+    const onLeave = (leaveByDate[d] ?? []).map((id) => {
+      const s = staff.find((st) => st.id === id)
+      return s ? `${s.first_name} ${s.last_name}` : id
+    })
+    const activeShifts = shiftTypes
+      .filter((st) => !st.active_days?.length || st.active_days.includes(dow))
+      .map((st) => st.code)
+    return { date: d, dayOfWeek: dow, onLeave, activeShifts }
+  })
+
+  const coverageContext = shiftCoverage
+    ? Object.entries(shiftCoverage).map(([shift, days]) => ({ shift, minimums: days }))
+    : `Global minimums: lab=${labConfig.min_lab_coverage ?? 0}, andrology=${labConfig.min_andrology_coverage ?? 0}`
+
+  const systemPrompt = `You are an expert IVF lab scheduler. Generate a weekly staff rota for an embryology clinic.
+
+CRITICAL RULES:
+- Every staff member should work exactly their days_per_week (budget). This is the most important constraint.
+- Staff on leave on a given date MUST NOT be assigned that day.
+- HARD rules are inviolable. SOFT rules should be respected when possible.
+- Coverage minimums per shift per day must be met if provided.
+- Staff should only be placed in shifts that are active on that day.
+- Respect preferred_shift and avoid_shifts preferences.
+- Staff with certified skills for techniques mapped to specific shifts should be placed in those shifts.
+- Balance workload: staff who worked more recently should get slightly fewer days.
+- Each staff member gets exactly ONE shift per working day (no double shifts).
+
+RULE TYPE REFERENCE:
+- no_coincidir (scope=same_day): listed staff cannot work the same day. (scope=same_shift): cannot be in the same shift but can work same day.
+- no_librar_mismo_dia: listed staff cannot both be off the same day.
+- no_misma_tarea: listed staff cannot do the same task on the same day.
+- supervisor_requerido: supervisor must be on the same shift as supervised staff.
+- max_dias_consecutivos: max consecutive working days (check recent history).
+- distribucion_fines_semana: max weekend days per month.
+- descanso_fin_de_semana: alternating weekend rest.
+- asignacion_fija: staff always assigned to a fixed shift/days.
+- restriccion_dia_tecnica: technique restricted to/excluded from certain days.
+
+Think step by step. First analyse each staff member's budget and constraints, then build the schedule day by day.`
+
+  const userPrompt = `Generate the rota for week starting ${weekStart}.
+
+## Staff (${staffContext.length} members)
+${JSON.stringify(staffContext, null, 2)}
+
+## Shifts
+${JSON.stringify(shiftsContext, null, 2)}
+
+## Dates
+${JSON.stringify(datesWithInfo, null, 2)}
+
+## Coverage Requirements
+${JSON.stringify(coverageContext, null, 2)}
+
+## Scheduling Rules (${rulesContext.length} rules)
+${JSON.stringify(rulesContext, null, 2)}
+
+## Techniques
+${JSON.stringify(tecnicasContext, null, 2)}
+
+Generate assignments for each date. Use staff IDs (not names) and shift codes exactly as provided.`
+
+  // Define output schema
+  const assignmentSchema = z.object({
+    reasoning: z.string().describe("Step-by-step reasoning explaining key decisions, trade-offs, and why certain placements were made. 3-8 sentences."),
+    assignments: z.array(z.object({
+      staff_id: z.string(),
+      date: z.string().describe("ISO date YYYY-MM-DD"),
+      shift_type: z.string().describe("Shift code"),
+    })),
+    warnings: z.array(z.string()).describe("Any constraints that could not be fully satisfied, or trade-offs made"),
+  })
+
+  try {
+    const result = await generateObject({
+      model: anthropic("claude-sonnet-4-6"),
+      schema: assignmentSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+    })
+
+    const { reasoning, assignments: aiAssignments, warnings: aiWarnings } = result.object
+
+    // Validate: filter out invalid staff/shift/date combos
+    const validStaffIds = new Set(staff.map((s) => s.id))
+    const validShiftCodes = new Set(shiftCodes)
+    const validDates = new Set(weekDates)
+
+    const validAssignments = aiAssignments.filter((a) => {
+      if (!validStaffIds.has(a.staff_id)) return false
+      if (!validShiftCodes.has(a.shift_type)) return false
+      if (!validDates.has(a.date)) return false
+      // Skip if staff is on leave
+      if (leaveByDate[a.date]?.includes(a.staff_id)) return false
+      return true
+    })
+
+    // Deduplicate: one assignment per staff per date
+    const seen = new Set<string>()
+    const deduped = validAssignments.filter((a) => {
+      const key = `${a.staff_id}:${a.date}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    // Filter out overrides
+    const toInsert = deduped
+      .filter((a) => !overrideKeys.has(`${a.staff_id}:${a.date}`))
+      .map((a) => ({
+        organisation_id: orgId,
+        rota_id: rotaId,
+        staff_id: a.staff_id,
+        date: a.date,
+        shift_type: a.shift_type,
+        is_manual_override: false,
+        function_label: "",
+      }))
+
+    if (toInsert.length === 0) {
+      return { error: `AI generated 0 valid assignments. ${aiWarnings.join("; ")}` }
+    }
+
+    const { error: insertError } = await supabase
+      .from("rota_assignments")
+      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+
+    if (insertError) return { error: insertError.message }
+
+    // Save warnings + reasoning to rota
+    const allWarnings = [...aiWarnings, `[ai-reasoning] ${reasoning}`]
+    await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId).then(() => {})
+
+    // Audit
+    const { data: { user: auditUser } } = await supabase.auth.getUser()
+    logAuditEvent({
+      orgId,
+      userId: auditUser?.id,
+      userEmail: auditUser?.email,
+      action: "rota_generated",
+      entityType: "rota",
+      entityId: rotaId,
+      metadata: { weekStart, method: "ai_reasoning", assignmentCount: toInsert.length, preserveOverrides, aiWarnings },
+    })
+
+    revalidatePath("/")
+    return { assignmentCount: toInsert.length, reasoning }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "AI generation failed"
+    return { error: `AI generation error: ${msg}` }
+  }
+}
+
 // ── getActiveStaff ────────────────────────────────────────────────────────────
 
 export async function getActiveStaff(): Promise<StaffWithSkills[]> {

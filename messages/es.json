@@ -263,6 +263,8 @@
     "flexibleTemplateDesc": "Usa una plantilla como punto de partida. El algoritmo ajusta según disponibilidad, reglas y preferencias de turno.",
     "aiOptimal": "Óptimo IA",
     "aiOptimalDesc": "El agente genera la horario óptimo desde cero usando todas las reglas, preferencias, habilidades y equidad de turnos.",
+    "aiReasoning": "Razonamiento Claude",
+    "aiReasoningDesc": "Claude analiza todas las restricciones y genera el horario con razonamiento paso a paso. Más lento pero puede gestionar mejor compensaciones complejas.",
     "blankWeek": "Semana en blanco",
     "blankWeekDesc": "Empieza con una horario vacío y asigna los turnos manualmente.",
     "generateScheduleFor": "Generar horario — {week}",

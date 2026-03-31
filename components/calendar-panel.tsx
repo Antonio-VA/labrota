@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit, useUserRole } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ import {
   getRotaWeek,
   getRotaMonthSummary,
   generateRota,
+  generateRotaWithAI,
   publishRota,
   unlockRota,
   getActiveStaff,
@@ -3754,7 +3755,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "manual"
+type GenerationStrategy = "strict_template" | "flexible_template" | "ai_optimal" | "ai_reasoning" | "manual"
 
 const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string }[] = [
   {
@@ -3771,6 +3772,11 @@ const STRATEGY_CARD_META: { key: GenerationStrategy; icon: React.ReactNode; titl
     key: "ai_optimal", icon: <Sparkles className="size-5" />,
     titleKey: "aiOptimal", descKey: "aiOptimalDesc",
     badge: "IA", badgeColor: "bg-purple-500/10 text-muted-foreground border-purple-500/20",
+  },
+  {
+    key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
+    titleKey: "aiReasoning", descKey: "aiReasoningDesc",
+    badge: "CLAUDE", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   },
   {
     key: "manual", icon: <Grid3X3 className="size-5" />,
@@ -4532,6 +4538,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
             successCount++
           } else if ((strategy === "strict_template" || strategy === "flexible_template") && templateId) {
             const result = await applyTemplate(templateId, ws, strategy === "strict_template")
+            if (result.error) { errorMsg = result.error; break }
+            successCount++
+          } else if (strategy === "ai_reasoning") {
+            const result = await generateRotaWithAI(ws, false)
             if (result.error) { errorMsg = result.error; break }
             successCount++
           } else {

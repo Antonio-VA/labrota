@@ -263,6 +263,8 @@
     "flexibleTemplateDesc": "Uses a template as a starting point. The algorithm adjusts based on availability, rules and shift preferences.",
     "aiOptimal": "AI optimal",
     "aiOptimalDesc": "The agent generates the optimal rota from scratch using all rules, preferences, skills and shift equity.",
+    "aiReasoning": "Claude reasoning",
+    "aiReasoningDesc": "Claude analyses all constraints and generates the rota with step-by-step reasoning. Slower but may handle complex trade-offs better.",
     "blankWeek": "Blank week",
     "blankWeekDesc": "Start with an empty rota and assign shifts manually.",
     "generateScheduleFor": "Generate rota — {week}",
