@@ -498,18 +498,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     )
     const shiftCovEnabledForWarning = labConfig?.shift_coverage_enabled ?? false
     const shiftCovByDayForWarning = labConfig?.shift_coverage_by_day as ShiftCoverageByDay | null
-    // Task-uncovered-in-shift warnings for by_shift orgs:
-    // Only warn when explicit task coverage is configured for the technique.
-    // typical_shifts means "CAN be done here", not "MUST be covered in every shift".
-    const taskCovEnabled = labConfig?.task_coverage_enabled ?? false
-    const taskCovByDay = labConfig?.task_coverage_by_day as Record<string, Record<string, number>> | null
-    if (orgDisplayMode === "by_shift" && taskCovEnabled && taskCovByDay && tecnicas.length > 0 && day.assignments.length > 0) {
+    if (orgDisplayMode === "by_shift" && tecnicas.length > 0 && day.assignments.length > 0) {
       for (const tec of tecnicas) {
-        // Only warn for techniques with explicit task coverage configured
-        const tecCov = taskCovByDay[tec.codigo]
-        if (!tecCov) continue
-        const needed = tecCov[dayCodeForWarning] ?? 0
-        if (needed <= 0) continue
         if (!tec.typical_shifts || tec.typical_shifts.length === 0) continue
         // Skip if none of this technique's shifts are active today
         if (!tec.typical_shifts.some((s: string) => activeDayShifts.has(s))) continue
