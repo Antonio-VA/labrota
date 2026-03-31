@@ -882,42 +882,93 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
     })
 
-    // Keep filling until every working staff member has at least one task
+    // Task-to-group lookup: task code → its linked group array (same JS reference per group)
+    const taskToLinkedGroup = new Map<string, string[]>()
+    for (const g of linkedGroups) {
+      for (const c of g) taskToLinkedGroup.set(c, g)
+    }
+
+    // ── 2f: Budget-filling pass ─────────────────────────────────────────────
+    // Assign every unassigned working staff to their best-fit technique group.
+    // "Best fit" = the linked group (tecnicas_juntas rule) for which the staff
+    // is qualified for the most tasks. Staff are assigned to ALL tasks in their
+    // group that they can do. Staff with no matching group get the least-covered
+    // standalone task instead.
     for (const s of staffByLoad) {
       if (assignedStaffIds.has(s.id) && (staffTaskCount[s.id] ?? 0) >= 1) continue
       const qualified = allQualifiedTasks[s.id]
       if (!qualified || qualified.length === 0) continue
 
-      // Pick the task with fewest current assignees that this staff can do
-      const sortedTasks = [...qualified]
-        .filter((t) => !wouldConflictNoMismaTarea(s.id, t))
-        .sort((a, b) => (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0))
-      if (sortedTasks.length === 0) continue
-      const pick = sortedTasks[0]
-      dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: pick })
-      staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
-      if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
-      staffTasks[s.id].add(pick)
-      assignedStaffIds.add(s.id)
-      taskAssignCount[pick] = (taskAssignCount[pick] ?? 0) + 1
+      // Find best-fit linked group (most tasks the staff is qualified for)
+      let bestGroup: string[] | null = null
+      let bestScore = 0
+      for (const g of linkedGroups) {
+        const score = g.filter((t) => qualified.includes(t)).length
+        if (score > bestScore) { bestScore = score; bestGroup = g }
+      }
+
+      if (bestGroup && bestScore > 0) {
+        // Assign to all qualified tasks in the best-fit group
+        for (const taskCode of bestGroup) {
+          if (!qualified.includes(taskCode)) continue
+          if (wouldConflictNoMismaTarea(s.id, taskCode)) continue
+          if ((staffTaskCount[s.id] ?? 0) >= taskConflictThreshold) break
+          dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: taskCode })
+          staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
+          if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
+          staffTasks[s.id].add(taskCode)
+          assignedStaffIds.add(s.id)
+          taskAssignCount[taskCode] = (taskAssignCount[taskCode] ?? 0) + 1
+        }
+      } else {
+        // No linked group: pick the least-covered task (prefer standalone over grouped)
+        const pick = [...qualified]
+          .filter((t) => !wouldConflictNoMismaTarea(s.id, t))
+          .sort((a, b) => {
+            const aGrouped = taskToLinkedGroup.has(a) ? 1 : 0
+            const bGrouped = taskToLinkedGroup.has(b) ? 1 : 0
+            if (aGrouped !== bGrouped) return aGrouped - bGrouped
+            return (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0)
+          })[0]
+        if (!pick) continue
+        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: pick })
+        staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
+        if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
+        staffTasks[s.id].add(pick)
+        assignedStaffIds.add(s.id)
+        taskAssignCount[pick] = (taskAssignCount[pick] ?? 0) + 1
+      }
     }
 
-    // Second pass: fill remaining budget for staff who can take more tasks
-    // (staff with multiple skills should contribute to multiple techniques)
+    // ── 2g: Group-extension pass ────────────────────────────────────────────
+    // Staff already assigned to any task in a linked group should also cover
+    // the other tasks in that same group they're qualified for.
+    // Staff NOT in any linked group do NOT get additional tasks — this prevents
+    // multi-skilled staff from flooding every task row.
     for (const s of staffByLoad) {
       const qualified = allQualifiedTasks[s.id]
-      if (!qualified || qualified.length <= 1) continue
-      const currentTasks = staffTasks[s.id] ?? new Set()
-      // Add tasks this staff is qualified for but not yet assigned to
-      const unassigned = qualified
-        .filter((t) => !currentTasks.has(t) && !wouldConflictNoMismaTarea(s.id, t))
-        .sort((a, b) => (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0))
-      for (const task of unassigned) {
+      if (!qualified) continue
+      const currentTasks = staffTasks[s.id]
+      if (!currentTasks || currentTasks.size === 0) continue
+
+      // Find the linked group this staff is part of (first match wins)
+      let myGroup: string[] | null = null
+      for (const taskCode of currentTasks) {
+        const g = taskToLinkedGroup.get(taskCode)
+        if (g) { myGroup = g; break }
+      }
+      if (!myGroup) continue // No linked group → no extension
+
+      // Extend to remaining qualified tasks in the same group only
+      for (const taskCode of myGroup) {
+        if (currentTasks.has(taskCode)) continue
+        if (!qualified.includes(taskCode)) continue
+        if (wouldConflictNoMismaTarea(s.id, taskCode)) continue
         if ((staffTaskCount[s.id] ?? 0) >= taskConflictThreshold) break
-        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: task })
+        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: taskCode })
         staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
-        staffTasks[s.id]!.add(task)
-        taskAssignCount[task] = (taskAssignCount[task] ?? 0) + 1
+        currentTasks.add(taskCode)
+        taskAssignCount[taskCode] = (taskAssignCount[taskCode] ?? 0) + 1
       }
     }
 
