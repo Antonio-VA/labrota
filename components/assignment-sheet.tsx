@@ -100,8 +100,9 @@ function AssignmentPopover({
   const roleDept = departments.find((d) => d.parent_id == null && d.code === assignment.staff.role)
   const roleSubDepts = roleDept ? departments.filter((d) => d.parent_id === roleDept.id) : []
 
-  const visibleTecnicas = enableTaskInShift ? availableTecnicas : []
-  if ((visibleTecnicas.length === 0 && roleSubDepts.length === 0) || isPublished) return <>{children}</>
+  if (!enableTaskInShift || isPublished) return <>{children}</>
+  const visibleTecnicas = availableTecnicas
+  if (visibleTecnicas.length === 0 && roleSubDepts.length === 0) return <>{children}</>
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">

@@ -3320,20 +3320,20 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         day.holidayName && "border border-amber-400/50 rounded-full px-1.5 py-0.5"
                       )}>
                         {day.labCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
-                            style={{ border: "1.5px solid #3B82F6" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #3B82F6", color: "#0f172a" }}>
                             {day.labCount}
                           </span>
                         )}
                         {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
-                            style={{ border: "1.5px solid #10B981" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #10B981", color: "#0f172a" }}>
                             {day.andrologyCount}
                           </span>
                         )}
                         {day.adminCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px] text-foreground"
-                            style={{ border: "1.5px solid #64748B" }}>
+                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
+                            style={{ border: "1.5px solid #64748B", color: "#0f172a" }}>
                             {day.adminCount}
                           </span>
                         )}
