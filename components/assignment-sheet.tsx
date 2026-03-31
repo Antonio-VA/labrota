@@ -1017,7 +1017,7 @@ export function AssignmentSheet({
 
           {/* Sticky footer — regenerate / copy / delete */}
           {!isPublished && rota && (
-            <div className="px-3 py-2.5 border-t border-border flex flex-col gap-2 shrink-0 bg-background">
+            <div className="px-3 py-4 border-t border-border flex flex-col gap-2 shrink-0 bg-background">
               {showRegenConfirm ? (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2">
                   <p className="text-[12px] text-foreground leading-snug">
@@ -1081,7 +1081,7 @@ export function AssignmentSheet({
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
-                    className="gap-1.5 text-[13px]"
+                    className="gap-1.5 text-[14px] h-9"
                     onClick={() => setShowRegenConfirm(true)}
                     disabled={assignments.length === 0}
                   >

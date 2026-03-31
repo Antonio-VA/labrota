@@ -1340,12 +1340,12 @@ function StaffProfilePanel({
         }} />
 
         {/* ── Footer ───────────────────────────────────────────── */}
-        <div className="border-t border-border px-5 py-3 shrink-0 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setShowLeaveForm(true)} className="gap-1.5 text-[13px]">
+        <div className="border-t border-border px-5 py-4 shrink-0 flex items-center justify-between">
+          <Button variant="outline" onClick={() => setShowLeaveForm(true)} className="gap-1.5 text-[14px] h-9">
             <CalendarPlus className="size-4" />
             {tl("addLeave")}
           </Button>
-          <a href={`/staff/${staffId}`} className="text-[12px] text-primary hover:underline">{tStaff("profile")}</a>
+          <a href={`/staff/${staffId}`} className="text-[13px] text-primary hover:underline">{tStaff("profile")}</a>
         </div>
       </div>
     </>
