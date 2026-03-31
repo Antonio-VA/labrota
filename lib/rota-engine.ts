@@ -1027,10 +1027,16 @@ export function runRotaEngine({
 
         const pool = labStaff.filter((s) => !assignedToShift.has(s.id) && !s.avoid_shifts?.includes(shiftCode))
           .sort((a, b) => {
-            // Priority 1: scarcity — place staff with rare skills where they're needed
-            const aScar = scarcityForShift[a.id]?.[shiftCode] ?? 0
-            const bScar = scarcityForShift[b.id]?.[shiftCode] ?? 0
-            if (aScar !== bScar) return bScar - aScar
+            // Priority 1: net scarcity — scarcity for this shift minus max scarcity elsewhere.
+            // Positive = this is the best shift for this person's rare skills.
+            // Negative = this person is more valuable somewhere else — save them.
+            const aHere = scarcityForShift[a.id]?.[shiftCode] ?? 0
+            const aMax = Math.max(...Object.values(scarcityForShift[a.id] ?? {}), 0)
+            const aNet = aHere - aMax
+            const bHere = scarcityForShift[b.id]?.[shiftCode] ?? 0
+            const bMax = Math.max(...Object.values(scarcityForShift[b.id] ?? {}), 0)
+            const bNet = bHere - bMax
+            if (aNet !== bNet) return bNet - aNet
             // Priority 2: rotation preference
             const aRot = rotationPreference(a.id, shiftCode)
             const bRot = rotationPreference(b.id, shiftCode)
@@ -1082,10 +1088,11 @@ export function runRotaEngine({
           const aGap = (shiftMinLab[a] ?? 0) - (shiftFilledLab[a] ?? 0)
           const bGap = (shiftMinLab[b] ?? 0) - (shiftFilledLab[b] ?? 0)
           if (aGap !== bGap) return bGap - aGap
-          // Priority 2: scarcity — place this person where their rare skills are needed
+          // Priority 2: scarcity — prefer the shift where this person's rare skills are most needed
           const aScar = scarcityForShift[s.id]?.[a] ?? 0
           const bScar = scarcityForShift[s.id]?.[b] ?? 0
           if (aScar !== bScar) return bScar - aScar
+
           // Priority 3: rotation preference (weekly/daily/stable)
           const aRot = rotationPreference(s.id, a)
           const bRot = rotationPreference(s.id, b)
