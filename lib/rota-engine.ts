@@ -1472,7 +1472,7 @@ export function runRotaEngine({
           swapDay.assignments.push({ staff_id: donor.id, shift_type: cpShift })
 
           warnings.push(
-            `${dayPlan.date}: no_librar_mismo_dia — swapped ${conflictPerson.first_name} ↔ ${donor.first_name}`
+            `[engine] ${dayPlan.date}: no_librar_mismo_dia — swapped ${conflictPerson.first_name} ↔ ${donor.first_name}`
           )
           fixed = true
         }
