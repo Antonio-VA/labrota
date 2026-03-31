@@ -3941,9 +3941,16 @@ function parseHybridInsights(text: string): { changes: string[]; issues: string[
       )
       .filter(Boolean)
 
+  // Filter out engine warnings that Claude itself identifies as false alarms —
+  // these come from the engine's first-pass and are already resolved in the final rota.
+  const FALSE_ALARM_PHRASES = /false alarm|appears (to be )?incorrect|not a real issue|already satisfied/i
+
+  const rawIssues = issuesMatch ? parseBullets(issuesMatch[1]) : []
+  const issues = rawIssues.filter(line => !FALSE_ALARM_PHRASES.test(line))
+
   return {
     changes: changesMatch ? parseBullets(changesMatch[1]) : [],
-    issues: issuesMatch ? parseBullets(issuesMatch[1]) : [],
+    issues,
   }
 }
 
