@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "sonner"
 import "./globals.css"
@@ -109,6 +110,7 @@ export default async function RootLayout({
           <TooltipProvider delay={600}>{children}</TooltipProvider>
           <Toaster position="top-right" richColors closeButton />
         </NextIntlClientProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
