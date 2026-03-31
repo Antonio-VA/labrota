@@ -4990,7 +4990,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setShowReasoningModal(true)}
               title={t("viewAiReasoning")}
