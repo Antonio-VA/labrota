@@ -323,9 +323,10 @@ type ShiftBadgeProps = {
   staffId?: string
   staffColor?: string
   departments?: import("@/lib/types/database").Department[]
+  trainingTecCode?: string | null
 }
 
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [] }: ShiftBadgeProps) {
+function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [], trainingTecCode }: ShiftBadgeProps) {
   const { hoveredStaffId, setHovered } = useStaffHover()
   // Resolve department code to abbreviation for pill display
   const deptMatch = functionLabel ? departments.find((d) => d.code === functionLabel) : null
@@ -359,6 +360,12 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
       onMouseLeave={() => staffId && setHovered(null)}
     >
       <span className="truncate">{first} {last[0]}.</span>
+      {trainingTecCode && (
+        <span className={cn("inline-flex items-center gap-0.5 font-semibold px-1 py-0.5 rounded border shrink-0 bg-amber-50 border-amber-200 text-amber-700", compact ? "text-[8px]" : "text-[9px]", !pillLabel && "ml-auto")}>
+          <Hourglass className="size-2" />
+          {trainingTecCode}
+        </span>
+      )}
       {pillLabel && (pillColor || deptPillStyle) ? (
         <span
           className={cn("font-semibold px-1 py-0.5 rounded border ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}
@@ -2904,11 +2911,12 @@ function ShiftGrid({
                                 staffId={a.staff_id}
                                 staffColor={staffColorMap[a.staff_id]}
                                 departments={data?.departments ?? []}
+                                trainingTecCode={data?.trainingByStaff?.[a.staff_id] ?? null}
                               />
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
+                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{data?.trainingByStaff?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
