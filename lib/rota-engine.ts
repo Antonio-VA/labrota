@@ -1315,6 +1315,14 @@ export function runRotaEngine({
     // Check each technique's typical_shift for coverage. If a shift is missing
     // a qualified person for a mapped technique, try to reassign or add one.
 
+    // Build set of staff protected by supervisor rules (active today) — never move them
+    const supervisedStaffIds = new Set<string>()
+    for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
+      const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
+      if (supDays.length > 0 && !supDays.includes(dayCode)) continue
+      for (const id of rule.staff_ids) supervisedStaffIds.add(id)
+    }
+
     // Group techniques by their typical shift
     const techByShift: Record<string, string[]> = {} // shift_code → [tecnica_codigo...]
     for (const [codigo, shifts] of Object.entries(tecnicaTypicalShifts)) {
@@ -1359,6 +1367,8 @@ export function runRotaEngine({
         const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
           if (a.shift_type === shiftCode) return false
           if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode)) return false
+          // Guard: don't move supervised staff (supervisor rules place them deliberately)
+          if (supervisedStaffIds.has(a.staff_id)) return false
           // Guard: don't move if source shift would drop below minimum
           const sourceMin = shiftMinForGuard[a.shift_type] ?? 0
           if (sourceMin > 0 && (shiftCountAfterDist[a.shift_type] ?? 0) <= sourceMin) return false
