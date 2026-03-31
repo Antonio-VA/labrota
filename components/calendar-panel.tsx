@@ -3889,6 +3889,38 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   )
 }
 
+// ── AI Reasoning modal ───────────────────────────────────────────────────────
+
+function AIReasoningModal({ open, reasoning, onClose }: {
+  open: boolean; reasoning: string; onClose: () => void
+}) {
+  const t = useTranslations("schedule")
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[600px] max-w-[90vw] max-h-[80vh] flex flex-col">
+        <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="size-4 text-amber-600" />
+            <p className="text-[15px] font-medium">{t("aiReasoningTitle")}</p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
+            {reasoning}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Save template modal ──────────────────────────────────────────────────────
 
 function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
@@ -4261,6 +4293,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
+  const [showReasoningModal, setShowReasoningModal] = useState(false)
   const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
@@ -4838,6 +4871,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )}
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
+          )}
+          {weekData?.aiReasoning && hasAssignments && (
+            <button
+              onClick={() => setShowReasoningModal(true)}
+              className="flex items-center gap-1 h-8 px-2.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors text-[13px] font-medium shrink-0"
+              title={t("viewAiReasoning")}
+            >
+              <BrainCircuit className="size-3.5" />
+              <span className="hidden sm:inline">{t("aiInsights")}</span>
+            </button>
           )}
           {showActions && !isPublished && (
             <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
@@ -5712,6 +5755,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
         onClose={() => setShowStrategyModal(false)}
         onGenerate={handleStrategyGenerate}
+      />
+
+      {/* AI Reasoning modal */}
+      <AIReasoningModal
+        open={showReasoningModal}
+        reasoning={weekData?.aiReasoning ?? ""}
+        onClose={() => setShowReasoningModal(false)}
       />
 
       {/* Template modals */}
