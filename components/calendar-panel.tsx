@@ -904,15 +904,17 @@ function StaffProfilePanel({
   const tStaff    = useTranslations("staff")
   const tl        = useTranslations("leaves")
   const ts        = useTranslations("skills")
+  const tLab      = useTranslations("lab")
   const [data, setData]       = useState<StaffProfileData | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const weekStart = weekData?.weekStart ?? null
   useEffect(() => {
     if (!staffId || !open) return
     setData(null)
     setLoading(true)
-    getStaffProfile(staffId).then((d) => { setData(d); setLoading(false) })
-  }, [staffId, open])
+    getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })
+  }, [staffId, open, weekStart])
 
   const staff = staffId ? staffList.find((s) => s.id === staffId) : null
   const deptMaps = buildDeptMaps(weekData?.departments ?? [])
@@ -1098,33 +1100,102 @@ function StaffProfilePanel({
             </div>
           )}
 
-          {/* Last shifts */}
+          {/* Previous week strip */}
           <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("recentShifts")}</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("previousWeek")}</p>
             {loading ? (
-              <div className="flex flex-col gap-1.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="shimmer-bar h-4 w-full rounded" />
-                ))}
-              </div>
-            ) : !data?.recentAssignments.length ? (
-              <p className="text-[12px] text-muted-foreground italic">{t("noRecentShifts")}</p>
+              <div className="shimmer-bar h-7 w-full rounded" />
             ) : (
-              <div className="flex flex-col gap-0.5">
-                {data.recentAssignments.slice(0, 10).map((a, i) => (
-                  <div key={i} className="flex items-center justify-between text-[12px] py-0.5">
-                    <span className="text-muted-foreground capitalize">{formatDate(a.date, locale)}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-foreground">{a.shift_type}</span>
-                      {a.function_label && !a.function_label.startsWith("dept_") && (
-                        <span className="text-[9px] px-1 py-0.5 rounded border bg-blue-50 border-blue-200 text-blue-700 font-semibold">{a.function_label}</span>
-                      )}
+              <div className="grid grid-cols-7 gap-1 opacity-70">
+                {Array.from({ length: 7 }).map((_, i) => {
+                  const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
+                  const d = new Date(ws); d.setDate(d.getDate() - 7 + i)
+                  const dateStr = d.toISOString().split("T")[0]
+                  const a = (data?.prevWeekAssignments ?? []).find((a) => a.date === dateStr)
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
+                      <div className={cn(
+                        "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
+                        a ? "bg-muted text-foreground/60 border border-border"
+                          : "bg-muted/50 text-muted-foreground/30 border border-border/30"
+                      )}>
+                        {a ? a.shift_type : "—"}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
+
+          {/* Next week strip */}
+          <div className="px-5 py-3 border-b border-border">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("nextWeek")}</p>
+            {loading ? (
+              <div className="shimmer-bar h-7 w-full rounded" />
+            ) : (
+              <div className="grid grid-cols-7 gap-1 opacity-70">
+                {Array.from({ length: 7 }).map((_, i) => {
+                  const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
+                  const d = new Date(ws); d.setDate(d.getDate() + 7 + i)
+                  const dateStr = d.toISOString().split("T")[0]
+                  const a = (data?.nextWeekAssignments ?? []).find((a) => a.date === dateStr)
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
+                      <div className={cn(
+                        "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
+                        a ? "bg-muted text-foreground/60 border border-border"
+                          : "bg-muted/50 text-muted-foreground/30 border border-border/30"
+                      )}>
+                        {a ? a.shift_type : "—"}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Scheduling rules affecting this person */}
+          {staff && (
+            <div className="px-5 py-3 border-b border-border">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("activeRules")}</p>
+              {loading ? (
+                <div className="shimmer-bar h-4 w-40 rounded" />
+              ) : !data?.rules?.length ? (
+                <p className="text-[12px] text-muted-foreground italic">{t("noActiveRules")}</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {data.rules.map((rule, i) => {
+                    const otherStaff = rule.staff_ids
+                      .filter((id) => id !== staffId)
+                      .map((id) => staffList.find((s) => s.id === id))
+                      .filter(Boolean)
+                    const otherNames = otherStaff.map((s) => `${s!.first_name} ${s!.last_name[0]}.`).join(", ")
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className={cn(
+                          "mt-1 size-1.5 rounded-full shrink-0",
+                          rule.is_hard ? "bg-red-400" : "bg-amber-400"
+                        )} />
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-medium text-foreground">{tLab(`rules.types.${rule.type}`)}</p>
+                          {otherNames && (
+                            <p className="text-[11px] text-muted-foreground truncate">{otherNames}</p>
+                          )}
+                          {rule.notes && (
+                            <p className="text-[11px] text-muted-foreground italic truncate">{rule.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Upcoming leaves */}
           <div className="px-5 py-3 border-b border-border">
@@ -1200,10 +1271,22 @@ function StaffProfilePanel({
                     </div>
                   </div>
                 )}
-                {staff.preferred_shift && (
+                {staff.end_date && (
                   <div>
-                    <p className="text-muted-foreground">{t("preferredShift")}</p>
-                    <p className="text-foreground font-medium">{staff.preferred_shift}</p>
+                    <p className="text-muted-foreground">{t("endDate")}</p>
+                    <p className="text-foreground font-medium">{formatDateWithYear(staff.end_date, locale)}</p>
+                  </div>
+                )}
+                {staff.preferred_shift && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground mb-1">{t("preferredShifts")}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {staff.preferred_shift.split(",").filter(Boolean).map((s) => (
+                        <span key={s} className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          {s.trim()}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {staff.email && (
@@ -1222,7 +1305,7 @@ function StaffProfilePanel({
           // Re-fetch profile to update leaves
           if (staffId) {
             setLoading(true)
-            getStaffProfile(staffId).then((d) => { setData(d); setLoading(false) })
+            getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })
           }
         }} />
 

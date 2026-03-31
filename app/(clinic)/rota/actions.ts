@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
+import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot, captureWeekSnapshot } from "@/lib/rota-snapshots"
@@ -1597,9 +1597,15 @@ export interface StaffProfileData {
   upcomingLeaves: { start_date: string; end_date: string; type: string }[]
   /** Last 3 past leaves */
   pastLeaves: { start_date: string; end_date: string; type: string }[]
+  /** Previous week assignments (7 days) */
+  prevWeekAssignments: { date: string; shift_type: string }[]
+  /** Next week assignments (7 days) */
+  nextWeekAssignments: { date: string; shift_type: string }[]
+  /** Enabled rules that include this staff member in staff_ids */
+  rules: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[]
 }
 
-export async function getStaffProfile(staffId: string): Promise<StaffProfileData> {
+export async function getStaffProfile(staffId: string, weekStart?: string): Promise<StaffProfileData> {
   const supabase = await createClient()
   const today    = new Date().toISOString().split("T")[0]
 
@@ -1608,7 +1614,19 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
   const since = eightWeeksAgo.toISOString().split("T")[0]
 
-  const [assignmentsRes, leavesRes, pastLeavesRes] = await Promise.all([
+  // Compute previous and next week date ranges relative to the viewed week
+  const viewedMonday = weekStart ? new Date(weekStart + "T12:00:00") : new Date(getMondayOfWeek() + "T12:00:00")
+  const prevMonday = new Date(viewedMonday)
+  prevMonday.setDate(prevMonday.getDate() - 7)
+  const prevSunday = new Date(prevMonday)
+  prevSunday.setDate(prevSunday.getDate() + 6)
+  const nextMonday = new Date(viewedMonday)
+  nextMonday.setDate(nextMonday.getDate() + 7)
+  const nextSunday = new Date(nextMonday)
+  nextSunday.setDate(nextSunday.getDate() + 6)
+  const fmt = (d: Date) => d.toISOString().split("T")[0]
+
+  const [assignmentsRes, leavesRes, pastLeavesRes, prevWeekRes, nextWeekRes, rulesRes] = await Promise.all([
     supabase
       .from("rota_assignments")
       .select("date, shift_type, function_label")
@@ -1633,12 +1651,34 @@ export async function getStaffProfile(staffId: string): Promise<StaffProfileData
       .lt("end_date", today)
       .order("end_date", { ascending: false })
       .limit(3) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
+    supabase
+      .from("rota_assignments")
+      .select("date, shift_type")
+      .eq("staff_id", staffId)
+      .gte("date", fmt(prevMonday))
+      .lte("date", fmt(prevSunday))
+      .order("date") as unknown as Promise<{ data: { date: string; shift_type: string }[] | null }>,
+    supabase
+      .from("rota_assignments")
+      .select("date, shift_type")
+      .eq("staff_id", staffId)
+      .gte("date", fmt(nextMonday))
+      .lte("date", fmt(nextSunday))
+      .order("date") as unknown as Promise<{ data: { date: string; shift_type: string }[] | null }>,
+    supabase
+      .from("rota_rules")
+      .select("type, is_hard, staff_ids, params, notes")
+      .eq("enabled", true)
+      .contains("staff_ids", [staffId]) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null }[] | null }>,
   ])
 
   return {
     recentAssignments: assignmentsRes.data ?? [],
     upcomingLeaves: leavesRes.data ?? [],
     pastLeaves: pastLeavesRes.data ?? [],
+    prevWeekAssignments: prevWeekRes.data ?? [],
+    nextWeekAssignments: nextWeekRes.data ?? [],
+    rules: rulesRes.data ?? [],
   }
 }
 
