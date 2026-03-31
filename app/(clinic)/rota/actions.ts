@@ -212,15 +212,24 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
   ])
 
-  // Fallback: if engine_warnings column doesn't exist yet, retry without it
+  // Fallback: if engine_warnings/generation_type columns don't exist yet, retry without them
   let rotaResult = rotaResultFull
   if (rotaResultFull.error && !rotaResultFull.data) {
     const fallback = await supabase
       .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override")
+      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
       .maybeSingle() as unknown as typeof rotaResultFull
-    rotaResult = fallback
+    if (fallback.error && !fallback.data) {
+      const fallback2 = await supabase
+        .from("rotas")
+        .select("id, status, published_at, published_by, punctions_override")
+        .eq("week_start", weekStart)
+        .maybeSingle() as unknown as typeof rotaResultFull
+      rotaResult = fallback2
+    } else {
+      rotaResult = fallback
+    }
   }
 
   const rotaData  = rotaResult.data
@@ -1051,6 +1060,7 @@ export async function generateRotaWithAI(
     preferred_shift: s.preferred_shift,
     avoid_shifts: s.avoid_shifts,
     working_pattern: s.working_pattern,
+    avoid_days: s.avoid_days,
     certified_skills: s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill),
     training_skills: s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill),
     recent_days_worked: recentWorkload[s.id] ?? 0,
@@ -1097,25 +1107,40 @@ export async function generateRotaWithAI(
     return { date: d, dayOfWeek: dow, onLeave, activeShifts }
   })
 
+  // Build explicit coverage context with zeros for days without requirements
+  const allDayNames = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+  const zeroCoverage = { lab: 0, andrology: 0, admin: 0 }
   const coverageContext = shiftCoverage
-    ? Object.entries(shiftCoverage).map(([shift, days]) => ({ shift, minimums: days }))
+    ? Object.entries(shiftCoverage).map(([shift, days]) => {
+        const fullDays: Record<string, { lab: number; andrology: number; admin: number }> = {}
+        for (const d of allDayNames) {
+          fullDays[d] = (days as Record<string, { lab: number; andrology: number; admin: number }>)[d] ?? zeroCoverage
+        }
+        return { shift, coverage_per_day: fullDays }
+      })
     : `Global minimums: lab=${labConfig.min_lab_coverage ?? 0}, andrology=${labConfig.min_andrology_coverage ?? 0}`
+
+  const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
 
   const systemPrompt = `You are an expert IVF lab scheduler. Generate a weekly staff rota for an embryology clinic.
 
-CRITICAL RULES:
-- Every staff member should work exactly their days_per_week (budget). This is the most important constraint.
-- Staff on leave on a given date MUST NOT be assigned that day.
-- HARD rules are inviolable. SOFT rules should be respected when possible.
-- Coverage minimums per shift per day must be met if provided.
-- Staff should only be placed in shifts that are active on that day.
-- Respect preferred_shift and avoid_shifts preferences.
-- Staff with certified skills for techniques mapped to specific shifts should be placed in those shifts.
-- Balance workload: staff who worked more recently should get slightly fewer days.
-- Each staff member gets exactly ONE shift per working day (no double shifts).
+ABSOLUTE CONSTRAINTS (violations = invalid schedule):
+1. BUDGET: Each staff member MUST work EXACTLY their days_per_week. Not more, not less. A staff member with days_per_week=5 must be assigned to exactly 5 days. This is the #1 constraint.
+2. LEAVE: Staff on leave on a date MUST NOT be assigned that day.
+3. ACTIVE SHIFTS: Each date lists its activeShifts. Do NOT assign ANY staff to shifts not in the activeShifts list for that date. If a day has activeShifts=["T1","T2","T4"], do NOT assign anyone to T3 or T5.
+4. ONE SHIFT PER DAY: Each staff member gets exactly one shift per working day.
+5. HARD RULES: Rules marked is_hard=true are inviolable.
+
+IMPORTANT CONSTRAINTS:
+6. COVERAGE: If shift coverage requirements are provided, meet the minimum staff count per role per shift per day.
+7. DAYS OFF: Lab-wide days off preference is "${daysOffPref}". ${daysOffPref === "always_weekend" ? "Days off MUST be on weekends (Saturday/Sunday) only." : daysOffPref === "prefer_weekend" ? "Days off should PREFERABLY be on weekends, but weekday offs are acceptable if needed." : "Days off can be on any day."}
+8. AVOID DAYS: If a staff member has avoid_days (e.g. ["sat","sun"]), try not to schedule them on those days. These are the days they prefer to be OFF.
+9. PREFERRED SHIFT / AVOID SHIFTS: Respect shift preferences when possible.
+10. SOFT RULES: Rules marked is_hard=false should be respected when possible.
+11. WORKLOAD BALANCE: Staff who worked more recently (higher recent_days_worked) should not be favoured.
 
 RULE TYPE REFERENCE:
-- no_coincidir (scope=same_day): listed staff cannot work the same day. (scope=same_shift): cannot be in the same shift but can work same day.
+- no_coincidir (scope=same_day): listed staff cannot work the same day. (scope=same_shift): cannot be in same shift but can work same day.
 - no_librar_mismo_dia: listed staff cannot both be off the same day.
 - no_misma_tarea: listed staff cannot do the same task on the same day.
 - supervisor_requerido: supervisor must be on the same shift as supervised staff.
@@ -1125,7 +1150,7 @@ RULE TYPE REFERENCE:
 - asignacion_fija: staff always assigned to a fixed shift/days.
 - restriccion_dia_tecnica: technique restricted to/excluded from certain days.
 
-Think step by step. First analyse each staff member's budget and constraints, then build the schedule day by day.`
+APPROACH: First calculate how many days each person needs to work vs how many days are available. Then assign day by day, checking activeShifts per date, filling coverage requirements, and ensuring budgets are met exactly.`
 
   const userPrompt = `Generate the rota for week starting ${weekStart}.
 
@@ -1138,7 +1163,8 @@ ${JSON.stringify(shiftsContext, null, 2)}
 ## Dates
 ${JSON.stringify(datesWithInfo, null, 2)}
 
-## Coverage Requirements
+## Coverage Requirements (per shift, per day)
+Coverage shows the EXACT number of staff needed per role per shift per day. Where all values are 0, that shift needs NO staff that day — do NOT assign anyone.
 ${JSON.stringify(coverageContext, null, 2)}
 
 ## Scheduling Rules (${rulesContext.length} rules)
@@ -1147,7 +1173,9 @@ ${JSON.stringify(rulesContext, null, 2)}
 ## Techniques
 ${JSON.stringify(tecnicasContext, null, 2)}
 
-Generate assignments for each date. Use staff IDs (not names) and shift codes exactly as provided.`
+IMPORTANT: Only assign staff to shifts listed in activeShifts for each date. If a date has activeShifts=["T1","T2"], only use T1 and T2.
+Each staff member must be assigned to EXACTLY their days_per_week number of days.
+Use staff IDs (not names) and shift codes exactly as provided.`
 
   // Define output schema
   const assignmentSchema = z.object({
