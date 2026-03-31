@@ -291,8 +291,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
 
       {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
 
-      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
-
       </>}
 
       {(section === "all" || section === "cobertura") && <>
