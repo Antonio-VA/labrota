@@ -1239,6 +1239,37 @@ export function runRotaEngine({
           }
         }
       }
+      // ── Coverage repair pass ──────────────────────────────────────────────
+      // Coverage minimums are hard constraints. After all distribution steps
+      // (including rotation optimization), verify each shift meets its minimum
+      // per role. If not, pull someone of the right role from an overstaffed shift.
+      for (const role of ["lab", "andrology", "admin"] as const) {
+        const minMap = role === "lab" ? shiftMinLab : role === "andrology" ? shiftMinAndro : shiftMinAdmin
+        for (const shiftCode of defaultShiftCodes) {
+          const min = minMap[shiftCode] ?? 0
+          if (min === 0) continue
+          const inShift = dayPlanAssignments.filter((a) => a.shift_type === shiftCode && assigned.find((s) => s.id === a.staff_id)?.role === role)
+          let deficit = min - inShift.length
+          if (deficit <= 0) continue
+          // Find candidates from overstaffed shifts of the same role
+          for (const srcShift of defaultShiftCodes) {
+            if (srcShift === shiftCode || deficit <= 0) continue
+            const srcMin = minMap[srcShift] ?? 0
+            const srcInShift = dayPlanAssignments.filter((a) => a.shift_type === srcShift && assigned.find((s) => s.id === a.staff_id)?.role === role)
+            const surplus = srcInShift.length - srcMin
+            if (surplus <= 0) continue
+            // Move up to `deficit` surplus staff from srcShift to shiftCode
+            const toMove = Math.min(deficit, surplus)
+            let moved = 0
+            for (const a of srcInShift) {
+              if (moved >= toMove) break
+              a.shift_type = shiftCode as ShiftType
+              moved++
+            }
+            deficit -= moved
+          }
+        }
+      }
     } else {
       // ── Original distribution (no per-shift coverage) ──
       for (const s of assigned) {
