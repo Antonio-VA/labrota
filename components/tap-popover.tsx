@@ -1,21 +1,29 @@
 "use client"
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react"
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 
 export function TapPopover({ trigger, children }: { trigger: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; arrowLeft: string } | null>(null)
 
-  // Calculate position when opening
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
+    const vw = window.innerWidth
+    const triggerCenter = rect.left + rect.width / 2
+    // Clamp so the popover stays ~180px wide inside the viewport with 8px margin
+    const halfPop = 90
+    const margin = 8
+    const clamped = Math.max(halfPop + margin, Math.min(triggerCenter, vw - halfPop - margin))
+    // Move arrow to point at the actual trigger center
+    const arrowPct = ((triggerCenter - clamped) / (halfPop * 2) + 0.5) * 100
     setPos({
       top: rect.top + window.scrollY,
-      left: rect.left + rect.width / 2,
+      left: clamped + window.scrollX,
+      arrowLeft: `${Math.max(12, Math.min(88, arrowPct))}%`,
     })
   }, [open])
 
@@ -53,7 +61,10 @@ export function TapPopover({ trigger, children }: { trigger: ReactNode; children
           }}
         >
           {children}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 size-2 -mt-1 rotate-45 bg-foreground" />
+          <div
+            className="absolute top-full size-2 -mt-1 rotate-45 bg-foreground"
+            style={{ left: pos.arrowLeft, transform: "translateX(-50%) rotate(45deg)" }}
+          />
         </div>,
         document.body
       )}

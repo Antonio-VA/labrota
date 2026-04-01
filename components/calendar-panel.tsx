@@ -3473,50 +3473,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
   return (
     <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
-      {/* Punctions + biopsies + staff count + P+B index header */}
-      {(punctions !== undefined || biopsyForecast !== undefined) && (() => {
-        const p = punctions ?? 0
-        const b = biopsyForecast ?? 0
-        const totalProc = p + b
-        const totalStaff = day.assignments.length
-        const pbIndex = totalProc > 0 ? (totalStaff / totalProc) : 0
-        const pbIndexStr = pbIndex.toFixed(1)
-        const opt = ratioOptimal ?? 1.0
-        const min = ratioMinimum ?? 0.75
-        const indexColor = pbIndex >= opt ? "text-emerald-600" : pbIndex >= min ? "text-amber-600" : "text-destructive"
-        // Count by role
-        const staffById = new Map((staffList ?? []).map((s) => [s.id, s]))
-        let emCount = 0, anCount = 0, adCount = 0
-        for (const a of day.assignments) {
-          const s = staffById.get(a.staff_id)
-          if (s?.role === "lab") emCount++
-          else if (s?.role === "andrology") anCount++
-          else adCount++
-        }
-        const staffBreakdown = [emCount > 0 && `${emCount} emb`, anCount > 0 && `${anCount} andro`, adCount > 0 && `${adCount} ad`].filter(Boolean).join(" + ")
-        const tooltipEs = `${p} punciones + ${b} biopsias = ${totalProc} procedimientos\n${totalStaff} personal / ${totalProc} procedimientos = ${pbIndexStr}\nÓptimo: ≥ ${opt} · Mínimo: ≥ ${min}`
-        const tooltipEn = `${p} pick ups + ${b} biopsies = ${totalProc} procedures\n${totalStaff} staff / ${totalProc} procedures = ${pbIndexStr}\nOptimal: ≥ ${opt} · Minimum: ≥ ${min}`
-        return (
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-0.5 text-[12px] text-muted-foreground">
-              <span>{tc("pickUps")}: <strong className="text-foreground">{p}</strong> · {tc("biopsies")}: <strong className="text-foreground">{b}</strong></span>
-              <span>{totalStaff} {tc("staff")} ({staffBreakdown})</span>
-            </div>
-            {totalProc > 0 && (
-              <Tooltip>
-                <TooltipTrigger render={
-                  <span className={cn("text-[18px] font-semibold tabular-nums cursor-default leading-none", indexColor)}>
-                    {pbIndexStr}
-                  </span>
-                } />
-                <TooltipContent side="bottom" className="whitespace-pre-line text-[11px]">
-                  {locale === "es" ? tooltipEs : tooltipEn}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        )
-      })()}
 
       {(day.skillGaps.length > 0) && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2">
@@ -3562,7 +3518,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
             {shiftIdx > 0 && <div className="h-px bg-border/50 my-1" />}
             <div key={shiftCode} className="flex flex-col gap-1.5">
               {/* Shift header */}
-              <div className="flex items-center gap-2 pl-2 border-l-[3px] border-primary/40">
+              <div className="flex items-center gap-2">
                 <span className="text-[14px] font-semibold">{shiftCode}</span>
                 {timeLabel && <span className="text-[12px] text-muted-foreground">{timeLabel}</span>}
                 <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
@@ -4259,52 +4215,52 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
         <MoreHorizontal className="size-5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-[100] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
-          <button onClick={() => { setOpen(false); onGenerateWeek() }} disabled={isPending} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
-            <Sparkles className="size-4" />
+        <div className="absolute right-0 top-11 z-[100] w-56 rounded-2xl border border-border bg-background shadow-lg overflow-hidden py-1.5">
+          <button onClick={() => { setOpen(false); onGenerateWeek() }} disabled={isPending} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
+            <Sparkles className="size-4.5 shrink-0" />
             {locale === "es" ? "Generar semana" : "Generate week"}
           </button>
           {onGenerateDay && (
-            <button onClick={() => { setOpen(false); onGenerateDay() }} disabled={isPending} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
-              <CalendarDays className="size-4" />
+            <button onClick={() => { setOpen(false); onGenerateDay() }} disabled={isPending} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
+              <CalendarDays className="size-4.5 shrink-0" />
               {locale === "es" ? "Regenerar día" : "Regenerate day"}
             </button>
           )}
           {onShare && (
-            <button onClick={() => { setOpen(false); onShare() }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-              <Share className="size-4" />
+            <button onClick={() => { setOpen(false); onShare() }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+              <Share className="size-4.5 shrink-0" />
               {locale === "es" ? "Compartir imagen" : "Share image"}
             </button>
           )}
           {onToggleCompact && (
             <>
-              <div className="h-px bg-border mx-2 my-1" />
-              <button onClick={() => { onToggleCompact(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <Rows3 className="size-4" />
+              <div className="h-px bg-border mx-3 my-1" />
+              <button onClick={() => { onToggleCompact(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                <Rows3 className="size-4.5 shrink-0" />
                 {locale === "es" ? "Vista compacta" : "Compact view"}
-                {compact && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
+                {compact && <Check className="size-4 text-primary ml-auto" />}
               </button>
               {onToggleDeptColor && (
-                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                  <span className="size-4 rounded-sm shrink-0" style={{ borderLeft: "3px solid #3B82F6", borderTop: "3px solid #10B981", borderRight: "3px solid #64748B", borderBottom: "3px solid #F59E0B" }} />
+                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                  <span className="size-4.5 rounded-sm shrink-0" style={{ borderLeft: "3px solid #3B82F6", borderTop: "3px solid #10B981", borderRight: "3px solid #64748B", borderBottom: "3px solid #F59E0B" }} />
                   {locale === "es" ? "Colores departamento" : "Department colors"}
-                  {deptColor && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
+                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
                 </button>
               )}
               {onToggleHighlight && (
-                <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                  <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
+                <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                  <span className="size-4.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
                   {locale === "es" ? "Resaltar" : "Highlights"}
-                  {highlight && <CheckCircle2 className="size-3.5 text-primary ml-auto" />}
+                  {highlight && <Check className="size-4 text-primary ml-auto" />}
                 </button>
               )}
             </>
           )}
           {onSaveFavorite && (
             <>
-              <div className="h-px bg-border mx-2 my-1" />
-              <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className={cn("size-4", isFavorite ? "text-amber-400 fill-amber-400" : "")} />
+              <div className="h-px bg-border mx-3 my-1" />
+              <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                <Star className={cn("size-4.5 shrink-0", isFavorite ? "text-amber-400 fill-amber-400" : "")} />
                 {isFavorite
                   ? (locale === "es" ? "Vista favorita actual" : "Current favorite view")
                   : (locale === "es" ? "Guardar vista favorita" : "Save favorite view")}
@@ -4419,8 +4375,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
     return localStorage.getItem("labrota_mobile_compact") !== "false"
   })
   const [mobileDeptColor, setMobileDeptColor] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_mobile_dept_color") !== "false"
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("labrota_mobile_dept_color") === "true"
   })
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
@@ -5558,9 +5514,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 {tc("today")}
               </button>
               <div className="flex-1" />
-              {/* Warnings pill */}
-              {weekData && (
-                <WarningsPill days={weekData?.days ?? []} staffList={staffList} />
+              {/* Day status icon — warning or check for the current day only */}
+              {currentDayData && currentDayData.assignments.length > 0 && (
+                currentDayData.skillGaps.length > 0 || currentDayData.warnings.length > 0
+                  ? <AlertTriangle className="size-4 text-amber-500 shrink-0" />
+                  : <Check className="size-4 text-emerald-500 shrink-0" />
               )}
               {canEdit && (
                 <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">

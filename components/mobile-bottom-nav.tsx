@@ -27,7 +27,6 @@ export function MobileBottomNav() {
   const canEdit = useCanEdit()
   const viewerStaffId = useViewerStaffId()
 
-  // Show leaves tab for admins/managers, or viewers with a linked staff
   const showLeaves = canEdit || !!viewerStaffId
   const navItems = showLeaves ? [...BASE_ITEMS, LEAVES_ITEM] : BASE_ITEMS
   const [visible, setVisible] = useState(true)
@@ -57,12 +56,10 @@ export function MobileBottomNav() {
   }, [])
 
   const router = useRouter()
-  // Tracks which button the user tapped — lights up instantly, clears when route resolves
   const [activeKey, setActiveKey] = useState<string | null>(null)
   useEffect(() => { setActiveKey(null) }, [pathname])
 
   const handleTap = useCallback((key: string, href: string) => {
-    // Instant visual switch: set active key synchronously before navigation
     setActiveKey(key)
     router.push(href)
   }, [router])
@@ -71,43 +68,42 @@ export function MobileBottomNav() {
     <div
       className={cn(
         "fixed left-1/2 -translate-x-1/2 z-40 lg:hidden transition-all duration-300 ease-out",
-        visible ? "bottom-3 opacity-100" : "bottom-[-80px] opacity-0",
+        visible ? "bottom-3 opacity-100" : "bottom-[-90px] opacity-0",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-3 py-2.5 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-4 py-3 rounded-full glass-nav-pop">
         {navItems.map((item) => {
-          // Active if: user just tapped this one, OR route matches and nothing else was tapped
           const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
             <button
               key={item.key}
-              // onTouchStart fires the instant the finger contacts — no waiting for lift
               onTouchStart={() => handleTap(item.key, item.href)}
-              // onClick for non-touch (desktop fallback)
               onClick={(e) => {
-                // Prevent double-fire on touch devices (touchstart already handled it)
                 if (activeKey === item.key) return
                 handleTap(item.key, item.href)
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-[2px] w-[70px] py-2 rounded-full transition-none",
+                "flex flex-col items-center justify-center gap-1 w-[78px] py-2.5 rounded-full transition-none",
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
               )}
             >
               {item.key === "day" ? (
-                <div className="relative size-6">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.8 : 1.4} strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
+                <div className="relative size-[26px]">
+                  <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.7 : 1.3} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3.5" width="20" height="20" rx="3" />
+                    <line x1="3" y1="10" x2="23" y2="10" />
                   </svg>
-                  <span className={cn("absolute inset-0 top-[10px] flex items-center justify-center text-[10px] font-bold leading-none", isActive ? "text-primary" : "text-muted-foreground")}>
+                  <span className={cn(
+                    "absolute inset-0 top-[10px] flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )}>
                     {new Date().getDate()}
                   </span>
                 </div>
               ) : (
-                <item.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.7} />
+                <item.icon className="size-[26px]" strokeWidth={isActive ? 2 : 1.5} />
               )}
               <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
                 {LABELS[locale]?.[item.key] ?? item.key}
