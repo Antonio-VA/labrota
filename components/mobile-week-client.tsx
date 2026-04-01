@@ -576,6 +576,13 @@ export function MobileWeekClient() {
     return m
   }, [data?.departments])
 
+  // Per-staff highlight color (individual color field)
+  const staffColorLookup = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const s of staffList) if (s.color) m[s.id] = s.color
+    return m
+  }, [staffList])
+
   const hasWarnings = days.some((d) => d.warnings.length > 0 || d.skillGaps.length > 0)
   const warningCount = days.reduce((acc, d) => acc + d.warnings.length + d.skillGaps.length, 0)
 
@@ -682,11 +689,7 @@ export function MobileWeekClient() {
                 const isSat = dow === 6
                 const isSun = dow === 0
                 return (
-                  <div key={day.date} className={cn(
-                    "px-1 py-2 text-center border-r border-border last:border-r-0",
-                    isSat && "border-l-2 border-l-border",
-                    isSun && "border-l border-l-border"
-                  )}>
+                  <div key={day.date} className="px-1 py-2 text-center border-r border-border last:border-r-0">
                     <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
                     {isToday ? (
                       <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-[14px] font-bold">{num}</span>
@@ -731,11 +734,7 @@ export function MobileWeekClient() {
                         const dow = new Date(day.date + "T12:00:00").getDay()
                         const isSat = dow === 6; const isSun = dow === 0
                         return (
-                          <div key={day.date} className={cn(
-                            "px-0.5 py-1 border-r border-border last:border-r-0 flex flex-col items-center justify-center min-w-0",
-                            isSat && "border-l-2 border-l-border",
-                            isSun && "border-l border-l-border"
-                          )}>
+                          <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 flex flex-col items-center justify-center min-w-0">
                             {a && st ? (
                               <TapPopover trigger={
                                 <div
@@ -750,7 +749,7 @@ export function MobileWeekClient() {
                                 <p className="text-[11px] opacity-70">{a.shift_type} · {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}</p>
                               </TapPopover>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground/30">—</span>
+                              <span className="text-[10px] font-medium text-muted-foreground/40">{locale === "es" ? "Lib" : "Off"}</span>
                             )}
                           </div>
                         )
@@ -789,11 +788,7 @@ export function MobileWeekClient() {
                       const dow = new Date(day.date + "T12:00:00").getDay()
                       const isSat = dow === 6; const isSun = dow === 0
                       return (
-                        <div key={day.date} className={cn(
-                          "px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start",
-                          isSat && "border-l-2 border-l-border",
-                          isSun && "border-l border-l-border"
-                        )}>
+                        <div key={day.date} className="px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start">
                           {assignments.map((a) => {
                             const isHL = highlightEnabled && highlightedStaff === a.staff_id
                             const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
@@ -843,9 +838,7 @@ export function MobileWeekClient() {
                     return (
                       <div key={day.date} className={cn(
                         "px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1",
-                        !isActive && "bg-muted/40",
-                        isSat && "border-l-2 border-l-border",
-                        isSun && "border-l border-l-border"
+                        !isActive && "bg-muted/40"
                       )}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
@@ -882,7 +875,7 @@ export function MobileWeekClient() {
             )}
 
             {/* Off / Libres row — hidden in person view */}
-            {weekViewMode !== "person" && <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+            {weekViewMode !== "person" && <div className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
@@ -894,11 +887,7 @@ export function MobileWeekClient() {
                 const dow = new Date(day.date + "T12:00:00").getDay()
                 const isSat = dow === 6; const isSun = dow === 0
                 return (
-                  <div key={day.date} className={cn(
-                    "px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start",
-                    isSat && "border-l-2 border-l-border",
-                    isSun && "border-l border-l-border"
-                  )}>
+                  <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start" style={{ backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" }}>
                     {[...leaveIds].map((sid) => {
                       const s = fullStaffMap[sid]
                       const lType = (leaveTypes[sid] ?? "other") as keyof typeof LEAVE_ICONS

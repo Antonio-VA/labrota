@@ -296,7 +296,7 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
       const day = data.days[i]
       const row = [headers[i]]
       for (const s of sorted) {
-        row.push(s.days[day.date] ?? "—")
+        row.push(s.days[day.date] ?? (locale === "es" ? "Lib" : "Off"))
       }
       body.push(row)
     }
@@ -319,7 +319,7 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
     for (const s of sorted) {
       const row = [s.name, labels[s.role] ?? s.role]
       for (const day of data.days) {
-        row.push(s.days[day.date] ?? "—")
+        row.push(s.days[day.date] ?? (locale === "es" ? "Lib" : "Off"))
       }
       row.push(String(s.total))
       body.push(row)
@@ -335,6 +335,17 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
         1: { cellWidth: 20, fillColor: COLORS.white, textColor: COLORS.gray, fontSize: 7 },
       },
     })
+  }
+
+  // Shift times legend below the table
+  const shiftTypes = (data.shiftTypes ?? []).filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order)
+  if (shiftTypes.length > 0) {
+    const legendY = ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 140) + 5
+    doc.setFontSize(7.5)
+    doc.setFont(FONT, "normal")
+    doc.setTextColor(...COLORS.gray)
+    const parts = shiftTypes.map((st) => `${st.code}  ${formatTime(st.start_time, timeFormat)}–${formatTime(st.end_time, timeFormat)}`)
+    doc.text(parts.join("    "), MARGIN, legendY)
   }
 
   renderFooter(doc, locale, notes)
