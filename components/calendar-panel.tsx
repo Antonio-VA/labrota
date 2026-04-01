@@ -4565,12 +4565,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
 
-  // Apply favorite view on first mount
+  // Apply favorite view on first mount — only if no session-stored view exists
   const favAppliedRef = useRef(false)
   useEffect(() => {
     if (favAppliedRef.current || !favoriteView) return
     favAppliedRef.current = true
-    setView(favoriteView.view as ViewMode)
+    // Only apply the favorite view mode if there's no session-stored value (i.e. new tab, not a refresh)
+    const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
+    if (!sessionView) setView(favoriteView.view as ViewMode)
     setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
     setDaysAsRows(favoriteView.daysAsRows)
     setCompact(favoriteView.compact)
