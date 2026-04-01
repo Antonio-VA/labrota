@@ -547,9 +547,11 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
 
 // ── Day stats (punciones + biopsy forecast) ──────────────────────────────────
 
-function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabled, biopsyForecast, biopsyTooltip, compact }: {
+function DayStatsInput({ date, value, defaultValue, isOverride, onChange, onBiopsyChange, disabled, biopsyForecast, biopsyTooltip, compact }: {
   date: string; value: number; defaultValue: number; isOverride: boolean
-  onChange: (date: string, value: number | null) => void; disabled: boolean
+  onChange: (date: string, value: number | null) => void
+  onBiopsyChange?: (date: string, value: number) => void
+  disabled: boolean
   biopsyForecast: number; biopsyTooltip: string
   compact?: boolean
 }) {
@@ -578,7 +580,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     else setDraft(String(value))
   }
 
-  // Autosave when draft changes (debounced via effect)
+  // Autosave punctions when draft changes (debounced)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!open) return
@@ -591,6 +593,20 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     }, 600)
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current) }
   }, [draft, open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Autosave biopsies when biopsyDraft changes (debounced)
+  const biopsySaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!open || !onBiopsyChange) return
+    if (biopsySaveTimeoutRef.current) clearTimeout(biopsySaveTimeoutRef.current)
+    biopsySaveTimeoutRef.current = setTimeout(() => {
+      const n = parseInt(biopsyDraft, 10)
+      if (!isNaN(n) && n >= 0 && n !== biopsyForecast) {
+        onBiopsyChange(date, n)
+      }
+    }, 600)
+    return () => { if (biopsySaveTimeoutRef.current) clearTimeout(biopsySaveTimeoutRef.current) }
+  }, [biopsyDraft, open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function reset() {
     onChange(date, null)
@@ -2014,6 +2030,7 @@ function PersonGrid({
                     defaultValue={pDefault}
                     isOverride={hasOverride}
                     onChange={onPunctionsChange ?? (() => {})}
+                    onBiopsyChange={onBiopsyChange}
                     disabled={!onPunctionsChange}
                     biopsyForecast={forecast}
                     biopsyTooltip={tooltip}
@@ -2464,7 +2481,7 @@ function ShiftGrid({
   onCellClick, onChipClick,
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
-  punctionsDefault, punctionsOverride, onPunctionsChange,
+  punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
   onRefresh, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
@@ -2483,6 +2500,7 @@ function ShiftGrid({
   punctionsDefault: Record<string, number>
   punctionsOverride: Record<string, number>
   onPunctionsChange: (date: string, value: number | null) => void
+  onBiopsyChange?: (date: string, value: number) => void
   onRefresh: () => void
   weekStart: string
   compact?: boolean
@@ -2852,6 +2870,7 @@ function ShiftGrid({
                       defaultValue={defaultP}
                       isOverride={hasOverride}
                       onChange={onPunctionsChange}
+                      onBiopsyChange={onBiopsyChange}
                       disabled={isPublished || !data.rota}
                       biopsyForecast={forecast}
                       biopsyTooltip={tooltip}
@@ -3084,7 +3103,7 @@ function rotateArray<T>(arr: T[], offset: number): T[] {
   return [...arr.slice(o), ...arr.slice(0, o)]
 }
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, monthViewMode = "shift", colorChips }: {
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
@@ -3094,6 +3113,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   firstDayOfWeek?: number
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
+  onBiopsyChange?: (date: string, value: number) => void
   monthViewMode?: "shift" | "person"
   colorChips?: boolean
 }) {
@@ -3182,6 +3202,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
             </div>
               {week.map((day) => {
                 const isToday    = day.date === TODAY
+                const isPast     = day.date < TODAY
                 const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
                 const dayDow     = new Date(day.date + "T12:00:00").getDay()
                 const isSat      = dayDow === 6
@@ -3220,6 +3241,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                     }}
                     className={cn(
                       "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[100px] flex-1",
+                      isPast && !isToday && "opacity-55",
                       !day.isCurrentMonth
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
@@ -3309,6 +3331,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       const d5str = d5ago.toISOString().split("T")[0]
                       const d6str = d6ago.toISOString().split("T")[0]
                       function getPuncFromSummary(dateStr: string): number {
+                        if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
                         const found = s.days.find((dd) => dd.date === dateStr)
                         if (found) return found.punctions
                         // Fallback: same weekday from any day in summary
@@ -3327,6 +3350,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                             defaultValue={day.punctions}
                             isOverride={isOverride}
                             onChange={onPunctionsChange ?? (() => {})}
+                            onBiopsyChange={onBiopsyChange}
                             disabled={!onPunctionsChange}
                             biopsyForecast={bForecast}
                             biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
@@ -4444,6 +4468,32 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   // Local punctions override
   const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>({})
 
+  // Handle biopsy override: back-calculate punction adjustments for D-5 and D-6
+  // Formula: since d5Pct + d6Pct = 1, ΔP = ΔBiopsies / conversionRate
+  function handleBiopsyChange(date: string, biopsyNew: number) {
+    const cr = weekData?.biopsyConversionRate ?? monthSummary?.biopsyConversionRate ?? 0.5
+    const d5Pct = weekData?.biopsyDay5Pct ?? monthSummary?.biopsyDay5Pct ?? 0.5
+    const d6Pct = weekData?.biopsyDay6Pct ?? monthSummary?.biopsyDay6Pct ?? 0.5
+    const pd = weekData?.punctionsDefault ?? {}
+
+    const d = new Date(date + "T12:00:00")
+    const d5 = new Date(d); d5.setDate(d5.getDate() - 5); const d5str = d5.toISOString().split("T")[0]
+    const d6 = new Date(d); d6.setDate(d6.getDate() - 6); const d6str = d6.toISOString().split("T")[0]
+
+    const P5 = punctionsOverride[d5str] ?? pd[d5str] ?? monthSummary?.days.find((dd) => dd.date === d5str)?.punctions ?? 0
+    const P6 = punctionsOverride[d6str] ?? pd[d6str] ?? monthSummary?.days.find((dd) => dd.date === d6str)?.punctions ?? 0
+
+    const bForecast = Math.round(P5 * cr * d5Pct + P6 * cr * d6Pct)
+    const delta = biopsyNew - bForecast
+    if (Math.abs(delta) < 0.5 || cr === 0) return
+
+    const pDelta = delta / cr  // distribute equally since d5Pct + d6Pct = 1
+    const P5new = Math.max(0, Math.round(P5 + pDelta))
+    const P6new = Math.max(0, Math.round(P6 + pDelta))
+
+    setPunctionsOverrideLocal((prev) => ({ ...prev, [d5str]: P5new, [d6str]: P6new }))
+  }
+
   // Derived
   const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
   const monthStart = getMonthStart(currentDate)
@@ -5270,6 +5320,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={handlePunctionsChange}
+                  onBiopsyChange={handleBiopsyChange}
                   biopsyConversionRate={weekData?.biopsyConversionRate}
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
@@ -5365,6 +5416,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={handlePunctionsChange}
+                  onBiopsyChange={handleBiopsyChange}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   weekStart={weekStart}
                   compact={compact}
@@ -5435,6 +5487,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               firstDayOfWeek={weekData?.firstDayOfWeek ?? 0}
               punctionsOverride={punctionsOverride}
               onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+              onBiopsyChange={canEdit ? handleBiopsyChange : undefined}
               monthViewMode={monthViewMode}
               colorChips={colorChips}
             />

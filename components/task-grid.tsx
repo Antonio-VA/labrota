@@ -486,15 +486,20 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
 
 // ── Punciones + Biopsy editable ───────────────────────────────────────────────
 
-function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast, onChange, disabled }: {
+function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast, onChange, onBiopsyChange, disabled }: {
   date: string; value: number; defaultValue: number; isOverride: boolean
-  biopsyForecast: number; onChange?: (date: string, value: number | null) => void; disabled: boolean
+  biopsyForecast: number
+  onChange?: (date: string, value: number | null) => void
+  onBiopsyChange?: (date: string, value: number) => void
+  disabled: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(String(value))
+  const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
   const popRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setDraft(String(value)) }, [value])
+  useEffect(() => { setBiopsyDraft(String(biopsyForecast)) }, [biopsyForecast])
 
   useEffect(() => {
     if (!open) return
@@ -509,6 +514,8 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
     const n = parseInt(draft, 10)
     if (!isNaN(n) && n >= 0) onChange?.(date, n === defaultValue ? null : n)
     else setDraft(String(value))
+    const nb = parseInt(biopsyDraft, 10)
+    if (!isNaN(nb) && nb >= 0 && nb !== biopsyForecast) onBiopsyChange?.(date, nb)
     setOpen(false)
   }
 
@@ -527,7 +534,7 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
   return (
     <div ref={popRef} className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setBiopsyDraft(String(biopsyForecast)); setOpen((o) => !o) }}
         className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-background/80 cursor-pointer"
       >
         <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
@@ -551,7 +558,14 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
               className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
             <span className="text-[11px] text-muted-foreground text-right">Biopsias</span>
-            <span className="text-[12px] text-center text-muted-foreground tabular-nums">{biopsyForecast}</span>
+            <input
+              type="number"
+              min={0}
+              value={biopsyDraft}
+              onChange={(e) => setBiopsyDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false) }}
+              className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
+            />
           </div>
           <div className="flex gap-1">
             <button onClick={save} className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity">
@@ -582,6 +596,7 @@ export function TaskGrid({
   punctionsDefault = {},
   punctionsOverride = {},
   onPunctionsChange,
+  onBiopsyChange,
   biopsyConversionRate = 0.5,
   biopsyDay5Pct = 0.5,
   biopsyDay6Pct = 0.5,
@@ -601,6 +616,7 @@ export function TaskGrid({
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
+  onBiopsyChange?: (date: string, value: number) => void
   biopsyConversionRate?: number
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
@@ -869,6 +885,7 @@ export function TaskGrid({
                   isOverride={hasOverride}
                   biopsyForecast={biopsyForecast}
                   onChange={onPunctionsChange}
+                  onBiopsyChange={onBiopsyChange}
                   disabled={isPublished || !data.rota}
                 />
               )}
