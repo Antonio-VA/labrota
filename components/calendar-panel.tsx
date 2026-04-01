@@ -5071,13 +5071,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               }] : []),
               // ── View options ──
               ...((view === "week" || (view === "month" && calendarLayout === "person")) ? [
+              ...(view === "week" ? [{
+                label: t("daysAsRows"),
+                icon: <ArrowRightLeft className="size-3.5" />,
+                onClick: toggleDaysAsRows,
+                active: daysAsRows,
+                dividerBefore: true,
+                sectionLabel: locale === "es" ? "Personalización" : "View",
+              }] : []),
               ...(!(view === "month" && calendarLayout === "person") ? [{
                 label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
                 onClick: () => setCompact((c) => !c),
                 active: compact,
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Personalización" : "View",
               },
               {
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
@@ -5090,18 +5096,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
                 onClick: toggleColorChips,
                 active: colorChips,
+                ...(view === "month" && calendarLayout === "person" ? { dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } : {}),
               }, {
                 label: t("highlightPerson"),
                 icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
                 onClick: toggleHighlightHover,
                 active: highlightHover,
-              },
-              ...(view === "week" ? [{
-                label: t("daysAsRows"),
-                icon: <ArrowRightLeft className="size-3.5" />,
-                onClick: toggleDaysAsRows,
-                active: daysAsRows,
-              }] : [])] : []),
+              }] : []),
               // ── Favorite view ──
               ...(() => {
                 const isFav = favoriteView
