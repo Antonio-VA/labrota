@@ -3211,16 +3211,26 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 if (day.labCount > 0) deptParts.push(`Lab ${day.labCount}`)
                 if (day.andrologyCount > 0) deptParts.push(`${locale === "es" ? "Andr" : "Andr"} ${day.andrologyCount}`)
                 if (day.adminCount > 0) deptParts.push(`Admin ${day.adminCount}`)
-                // PB Index — computed separately for colored tooltip rendering
+                // PB Index — b/pu ratio vs expected conversion rate, shown as colored indicator
                 const tooltipPb = (() => {
                   const s = summary as RotaMonthSummary
                   const pu = punctionsOverride[day.date] ?? day.punctions
                   const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
                   const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const p5 = s.days.find((dd) => dd.date === d5ago.toISOString().split("T")[0])?.punctions ?? 0
-                  const p6 = s.days.find((dd) => dd.date === d6ago.toISOString().split("T")[0])?.punctions ?? 0
-                  const b = Math.round(p5 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
-                  return (pu > 0 || b > 0) ? { pu, b } : null
+                  const d5str = d5ago.toISOString().split("T")[0]
+                  const d6str = d6ago.toISOString().split("T")[0]
+                  const p5 = punctionsOverride[d5str] ?? s.days.find((dd) => dd.date === d5str)?.punctions ?? 0
+                  const p6 = punctionsOverride[d6str] ?? s.days.find((dd) => dd.date === d6str)?.punctions ?? 0
+                  const cr = s.biopsyConversionRate ?? 0.5
+                  const b = Math.round(p5 * cr * (s.biopsyDay5Pct ?? 0.5) + p6 * cr * (s.biopsyDay6Pct ?? 0.5))
+                  if (pu === 0 && b === 0) return null
+                  const indexPct = pu > 0 ? Math.round((b / pu) * 100) : null
+                  const expectedPct = Math.round(cr * 100)
+                  const color = indexPct === null ? "text-muted-foreground"
+                    : indexPct >= expectedPct * 0.8 ? "text-emerald-400"
+                    : indexPct >= expectedPct * 0.5 ? "text-amber-400"
+                    : "text-red-400"
+                  return { indexPct, color }
                 })()
                 const tooltipParts: string[] = []
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${locale === "es" ? "personas" : "staff"}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
@@ -3369,11 +3379,11 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         <span className="flex items-center gap-1.5 flex-wrap">
                           {tooltipText && <span>{tooltipText}</span>}
                           {tooltipText && tooltipPb && <span className="opacity-40">·</span>}
-                          {tooltipPb && <>
-                            <span className="text-sky-300 font-semibold">PU {tooltipPb.pu}</span>
-                            <span className="opacity-40">·</span>
-                            <span className="text-emerald-300 font-semibold">B {tooltipPb.b}</span>
-                          </>}
+                          {tooltipPb && (
+                            <span className={cn("font-semibold", tooltipPb.color)}>
+                              {tooltipPb.indexPct !== null ? `PB ${tooltipPb.indexPct}%` : "PB —"}
+                            </span>
+                          )}
                         </span>
                       </TooltipContent>
                     )}
