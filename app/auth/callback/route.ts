@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   // Resolve final destination BEFORE creating the response so that session
   // cookies set by verifyOtp / exchangeCodeForSession land on the right object.
   let destination = next
-  if (type === "invite")                               destination = "/set-password"
+  if (type === "invite")                                destination = "/"
   if (type === "recovery" || next === "/reset-password") destination = "/reset-password"
 
   const cookieStore = await cookies()
