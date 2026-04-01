@@ -3366,7 +3366,13 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 const tooltipParts: string[] = []
                 if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${locale === "es" ? "personas" : "staff"}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
                 if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${locale === "es" ? "ausencias" : "absences"}`)
-                if (day.hasSkillGaps) tooltipParts.push(locale === "es" ? "Tareas sin cobertura" : "Uncovered tasks")
+                if (day.hasSkillGaps) {
+                  if ((day.warningMessages?.length ?? 0) > 0) {
+                    tooltipParts.push(...day.warningMessages)
+                  } else {
+                    tooltipParts.push(locale === "es" ? "Tareas sin cobertura" : "Uncovered tasks")
+                  }
+                }
                 if (day.holidayName) tooltipParts.push(day.holidayName)
                 const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
 

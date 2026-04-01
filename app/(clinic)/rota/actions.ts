@@ -2178,6 +2178,8 @@ export interface MonthDaySummary {
   /** Staff initials for person view (up to 6) */
   staffInitials: { id: string; initials: string; role: string }[]
   shiftCounts: Record<string, number>
+  /** Engine warning messages for this day (from rota engine_warnings) */
+  warningMessages: string[]
 }
 
 export interface MonthWeekStatus {
@@ -2327,14 +2329,18 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   // Week statuses
   const rotaMap = Object.fromEntries((rotasRes.data ?? []).map((r) => [r.week_start, r.status]))
 
-  // Build set of dates that have engine warnings (for month view amber triangles)
-  const datesWithEngineWarnings = new Set<string>()
+  // Build map of date → warning messages from engine (for month view amber triangles + tooltips)
+  const engineWarningsByDate: Record<string, string[]> = {}
   for (const r of rotasRes.data ?? []) {
     if (!r.engine_warnings) continue
     for (const w of r.engine_warnings) {
       if (w.startsWith("[ai-reasoning]")) continue
-      const match = w.match(/^(\d{4}-\d{2}-\d{2}):/)
-      if (match) datesWithEngineWarnings.add(match[1])
+      const match = w.match(/^(\d{4}-\d{2}-\d{2}):\s*(.+)$/)
+      if (match) {
+        const [, date, message] = match
+        if (!engineWarningsByDate[date]) engineWarningsByDate[date] = []
+        engineWarningsByDate[date].push(message)
+      }
     }
   }
   const weekStarts: string[] = []
@@ -2383,7 +2389,8 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       labCount,
       andrologyCount,
       adminCount: entries.filter((e) => e.role === "admin").length,
-      hasSkillGaps: hasSkillGaps || hasCoverageWarning || datesWithEngineWarnings.has(date),
+      hasSkillGaps: hasSkillGaps || hasCoverageWarning || (engineWarningsByDate[date]?.length ?? 0) > 0,
+      warningMessages: engineWarningsByDate[date] ?? [],
       isWeekend,
       isCurrentMonth: weekStartOverride ? true : date.startsWith(currentMonthPrefix),
       punctions: puncByDay[dowKey] ?? 0,
