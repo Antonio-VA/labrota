@@ -128,6 +128,8 @@
     "nextPeriod": "Next period",
     "generateRota": "Generate rota",
     "regenerateRota": "Regenerate rota",
+    "emptyWeekTitle": "No rota this week",
+    "emptyWeekDesc": "The generator considers shifts, minimum coverage, team preferences and absences. Ready in seconds.",
     "publishRota": "Publish rota",
     "unlockRota": "Unlock rota",
     "exportPdf": "Export PDF",

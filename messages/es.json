@@ -128,6 +128,8 @@
     "nextPeriod": "Período siguiente",
     "generateRota": "Generar horario",
     "regenerateRota": "Regenerar horario",
+    "emptyWeekTitle": "Semana sin horario",
+    "emptyWeekDesc": "El generador tiene en cuenta turnos, coberturas mínimas, preferencias del equipo y ausencias. Listo en segundos.",
     "publishRota": "Publicar horario",
     "unlockRota": "Desbloquear horario",
     "exportPdf": "Exportar PDF",

@@ -5351,9 +5351,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   <div className="flex flex-col items-center gap-5 w-full max-w-[420px]">
                     <Sparkles className="size-12" style={{ color: "var(--pref-bg)" }} />
                     <div className="text-center">
-                      <p className="text-[18px] font-semibold" style={{ color: "var(--pref-bg)" }}>Semana sin horario</p>
+                      <p className="text-[18px] font-semibold" style={{ color: "var(--pref-bg)" }}>{t("emptyWeekTitle")}</p>
                       <p className="text-[14px] text-muted-foreground mt-2 max-w-[380px] mx-auto leading-relaxed">
-                        El generador tiene en cuenta turnos, coberturas mínimas, preferencias del equipo y ausencias. Listo en segundos.
+                        {t("emptyWeekDesc")}
                       </p>
                     </div>
                     {!showCopyConfirm ? (
