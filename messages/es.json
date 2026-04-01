@@ -96,6 +96,7 @@
     "invalidEmail": "Por favor, introduce un correo electrónico válido.",
     "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
     "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "linkExpired": "Tu enlace de acceso ha caducado. Solicita uno nuevo a continuación.",
     "unauthorized": "No tienes permiso para acceder a esta página.",
     "welcome": "Bienvenido a LabRota",
     "subtitle": "Gestión de horarios para laboratorios de FIV",

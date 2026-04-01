@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type })
     if (!error) return response
+    // Pass the specific error code so the login page can show a helpful message
+    const errorParam = error.code === "otp_expired" ? "otp_expired" : "auth_callback_failed"
+    return NextResponse.redirect(`${origin}/login?error=${errorParam}`)
   }
 
   // PKCE / OAuth flow: code

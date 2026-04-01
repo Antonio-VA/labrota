@@ -96,6 +96,7 @@
     "invalidEmail": "Please enter a valid email address.",
     "invalidCredentials": "Incorrect email or password.",
     "sessionExpired": "Your session has expired. Please sign in again.",
+    "linkExpired": "Your access link has expired. Please request a new one below.",
     "unauthorized": "You don't have permission to access this page.",
     "welcome": "Welcome to LabRota",
     "subtitle": "Shift scheduling for IVF labs",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -9,18 +9,39 @@ import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
 import { Mail, AlertCircle, CheckCircle2 } from "lucide-react"
 
+function getInitialError(searchParams: URLSearchParams, t: (key: string) => string): { state: "idle" | "error"; message: string } {
+  const queryError = searchParams.get("error")
+  if (queryError === "otp_expired") return { state: "error", message: t("linkExpired") }
+  if (queryError) return { state: "error", message: t("sessionExpired") }
+  return { state: "idle", message: "" }
+}
+
 export default function LoginPage() {
   const t = useTranslations("auth")
   const searchParams = useSearchParams()
-  const hasCallbackError = searchParams.get("error") !== null
+  const initial = getInitialError(searchParams, t)
 
   const [email, setEmail] = useState("")
-  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">(
-    hasCallbackError ? "error" : "idle"
-  )
-  const [errorMessage, setErrorMessage] = useState(
-    hasCallbackError ? t("sessionExpired") : ""
-  )
+  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">(initial.state)
+  const [errorMessage, setErrorMessage] = useState(initial.message)
+
+  // Supabase redirects expired magic links with error details in the URL hash fragment
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash) return
+    const params = new URLSearchParams(hash.substring(1))
+    const errorCode = params.get("error_code")
+    if (errorCode === "otp_expired") {
+      setState("error")
+      setErrorMessage(t("linkExpired"))
+      // Clean the hash so a refresh doesn't re-show the error
+      window.history.replaceState(null, "", window.location.pathname + window.location.search)
+    } else if (params.get("error")) {
+      setState("error")
+      setErrorMessage(t("sessionExpired"))
+      window.history.replaceState(null, "", window.location.pathname + window.location.search)
+    }
+  }, [t])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
