@@ -1530,7 +1530,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   return (
     <div
-      className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
+      className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-1"
     >
       {/* Left: label + pills */}
       <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
@@ -1578,7 +1578,7 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
   return (
     <div
-      className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-1"
+      className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-1"
     >
       <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
       <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
@@ -5918,7 +5918,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       {/* Bottom taskbar — desktop only, hidden for viewers */}
       <div className="hidden md:block shrink-0">
         {canEdit && view === "week" && !weekData && loadingWeek && (
-          <div className="shrink-0 h-11 bg-background border-t border-border flex items-center px-4 gap-2">
+          <div className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-2">
             <div className="h-3 w-20 rounded bg-muted animate-pulse" />
             <div className="h-5 w-14 rounded bg-muted animate-pulse" />
             <div className="h-5 w-14 rounded bg-muted animate-pulse" />

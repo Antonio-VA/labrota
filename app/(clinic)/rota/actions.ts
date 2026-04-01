@@ -513,7 +513,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const day = dayMap[date]
         if (day) {
           // Determine category: coverage warnings vs rule warnings
-          const isCoverage = message.includes("COBERTURA INSUFICIENTE")
+          const isCoverage = message.includes("COBERTURA INSUFICIENTE") || message.includes("insuficiente:")
           const category = isCoverage ? "coverage" as const : "rule" as const
           // Avoid duplicating warnings already computed post-hoc
           const isDuplicate = day.warnings.some((dw) => dw.category === category && dw.message === message)
@@ -2257,9 +2257,9 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     supabase.from("lab_config").select("punctions_by_day, country, region").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null } | null }>,
     supabase
       .from("rotas")
-      .select("week_start, status")
+      .select("week_start, status, engine_warnings")
       .gte("week_start", gridDates[0])
-      .lte("week_start", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { week_start: string; status: string }[] | null }>,
+      .lte("week_start", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { week_start: string; status: string; engine_warnings: string[] | null }[] | null }>,
     supabase
       .from("staff")
       .select("id, first_name, last_name, role, days_per_week")
@@ -2326,6 +2326,17 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
   // Week statuses
   const rotaMap = Object.fromEntries((rotasRes.data ?? []).map((r) => [r.week_start, r.status]))
+
+  // Build set of dates that have engine warnings (for month view amber triangles)
+  const datesWithEngineWarnings = new Set<string>()
+  for (const r of rotasRes.data ?? []) {
+    if (!r.engine_warnings) continue
+    for (const w of r.engine_warnings) {
+      if (w.startsWith("[ai-reasoning]")) continue
+      const match = w.match(/^(\d{4}-\d{2}-\d{2}):/)
+      if (match) datesWithEngineWarnings.add(match[1])
+    }
+  }
   const weekStarts: string[] = []
   for (let i = 0; i < gridDates.length; i += 7) weekStarts.push(gridDates[i])
   const weekStatuses: MonthWeekStatus[] = weekStarts.map((ws) => ({
@@ -2372,7 +2383,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       labCount,
       andrologyCount,
       adminCount: entries.filter((e) => e.role === "admin").length,
-      hasSkillGaps: hasSkillGaps || hasCoverageWarning,
+      hasSkillGaps: hasSkillGaps || hasCoverageWarning || datesWithEngineWarnings.has(date),
       isWeekend,
       isCurrentMonth: weekStartOverride ? true : date.startsWith(currentMonthPrefix),
       punctions: puncByDay[dowKey] ?? 0,
