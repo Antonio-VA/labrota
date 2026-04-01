@@ -72,7 +72,7 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-3 py-2.5 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
           const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
@@ -85,7 +85,7 @@ export function MobileBottomNav() {
                 handleTap(item.key, item.href)
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-[70px] py-2 rounded-full transition-none",
+                "flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full transition-none",
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
               )}
             >
@@ -98,7 +98,7 @@ export function MobileBottomNav() {
                   <span className={cn(
                     "absolute left-0 right-0 flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
                     isActive ? "text-primary" : "text-muted-foreground"
-                  )} style={{ top: "10px", bottom: "2px" }}>
+                  )} style={{ top: "10px", height: "13.5px" }}>
                     {new Date().getDate()}
                   </span>
                 </div>
