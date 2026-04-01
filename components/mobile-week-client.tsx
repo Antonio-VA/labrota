@@ -280,6 +280,14 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
       {open && pos && createPortal(
         <div ref={dropRef} className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1" style={{ top: pos.top, right: pos.right }}>
           <button
+            onClick={() => { setOpen(false); onGenerateWeek?.() }}
+            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+          >
+            <Sparkles className="size-4" />
+            {locale === "es" ? "Generar rota" : "Generate rota"}
+          </button>
+          <div className="h-px bg-border mx-3 my-0.5" />
+          <button
             onClick={() => {
               setOpen(false)
               if (!data) return
@@ -711,18 +719,6 @@ export function MobileWeekClient() {
             })
           }}
         />
-      </div>
-
-      {/* Generate rota strip */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20 shrink-0">
-        <span className="text-[12px] text-muted-foreground">{data && !loading ? (days.some(d => d.assignments.length > 0) ? (locale === "es" ? "Rota generada" : "Rota ready") : (locale === "es" ? "Semana vacía" : "Empty week")) : ""}</span>
-        <button
-          onClick={() => setGenerateModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-[12px] font-semibold active:bg-primary/90 transition-colors"
-        >
-          <Sparkles className="size-3.5" />
-          {t("generateRota")}
-        </button>
       </div>
 
       {/* Scrollable grid */}
