@@ -4943,7 +4943,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
-          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && (
+          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
             <Button
               variant="ghost"
               size="sm"
