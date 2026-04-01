@@ -30,8 +30,15 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
+
+  // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback
+  if (searchParams.get("code") && !pathname.startsWith("/auth/callback")) {
+    const callbackUrl = new URL("/auth/callback", request.url)
+    callbackUrl.search = request.nextUrl.search
+    return NextResponse.redirect(callbackUrl)
+  }
   const hostname = request.headers.get("host") ?? ""
   const isAdminSubdomain =
     hostname === "admin.labrota.app" ||
