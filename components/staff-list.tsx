@@ -1108,6 +1108,8 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
         if (res.data) {
           setHeadcount(res.data)
           localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
+        } else {
+          console.error("Headcount calculation failed:", res.error)
         }
         setHeadcountLoading(false)
       })
