@@ -96,6 +96,7 @@
     "invalidEmail": "Please enter a valid email address.",
     "invalidOtp": "Please enter the code from your email.",
     "otpLabel": "Access code",
+    "otpDivider": "or enter your code",
     "verifyCode": "Verify code",
     "invalidCredentials": "Incorrect email or password.",
     "sessionExpired": "Your session has expired. Please sign in again.",
