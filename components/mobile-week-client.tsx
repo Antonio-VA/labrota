@@ -254,23 +254,6 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
             <Sparkles className="size-4" />
             {t("generateRota")}
           </button>
-          {onToggleHighlight && (
-            <>
-              <div className="h-px bg-border mx-3 my-0.5" />
-              <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
-                {locale === "es" ? "Resaltar" : "Highlights"}
-                {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
-              </button>
-              {weekViewMode === "person" && onToggleDeptColor && (
-                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                  <Users className="size-4" />
-                  {locale === "es" ? "Colores personal" : "Staff colours"}
-                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
-                </button>
-              )}
-            </>
-          )}
           {onToggleViewMode && (
             <>
               <div className="h-px bg-border mx-3 my-0.5" />
@@ -278,6 +261,23 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                 <Users className="size-4" />
                 {locale === "es" ? "Por persona" : "By person"}
                 {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
+              </button>
+              {weekViewMode === "person" && onToggleDeptColor && (
+                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
+                  {locale === "es" ? "Colores personal" : "Staff colours"}
+                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
+                </button>
+              )}
+            </>
+          )}
+          {onToggleHighlight && weekViewMode !== "person" && (
+            <>
+              <div className="h-px bg-border mx-3 my-0.5" />
+              <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
+                {locale === "es" ? "Resaltar" : "Highlights"}
+                {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
               </button>
             </>
           )}
@@ -717,11 +717,12 @@ export function MobileWeekClient() {
                 })().map((s) => {
                   const isHL = highlightEnabled && highlightedStaff === s.id
                   const roleColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
+                  const hlColor = staffColorLookup[s.id] ?? roleColor
                   return (
                     <div key={s.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
                       <div
                         className="border-r border-border bg-muted sticky left-0 z-[5] flex items-center pl-1.5 pr-1 py-1.5 gap-1 cursor-pointer min-w-0"
-                        style={{ borderLeft: `3px solid ${roleColor}` }}
+                        style={mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : undefined}
                         onClick={() => highlightEnabled && setHighlightedStaff((p) => p === s.id ? null : s.id)}
                       >
                         <div className="min-w-0">
@@ -739,7 +740,7 @@ export function MobileWeekClient() {
                               <TapPopover trigger={
                                 <div
                                   className="w-full text-center cursor-pointer active:opacity-70"
-                                  style={isHL ? { color: roleColor } : undefined}
+                                  style={isHL ? { color: hlColor } : undefined}
                                 >
                                   <span className="text-[11px] font-semibold leading-tight">{a.shift_type}</span>
                                 </div>
@@ -792,6 +793,7 @@ export function MobileWeekClient() {
                           {assignments.map((a) => {
                             const isHL = highlightEnabled && highlightedStaff === a.staff_id
                             const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
+                            const hlColor = staffColorLookup[a.staff_id] ?? roleColor
                             const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
                             const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
                             const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
@@ -800,7 +802,7 @@ export function MobileWeekClient() {
                                 <span
                                   className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
                                   style={isHL
-                                    ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
+                                    ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" }
                                     : mobileDeptColor
                                       ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
                                       : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
@@ -845,6 +847,7 @@ export function MobileWeekClient() {
                         ) : assignments.map((a) => {
                           const isHL = highlightEnabled && highlightedStaff === a.staff_id
                           const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
+                          const hlColor = staffColorLookup[a.staff_id] ?? roleColor
                           const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
                           const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
                           const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
@@ -853,7 +856,7 @@ export function MobileWeekClient() {
                               <div
                                 className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
                                 style={isHL
-                                  ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
+                                  ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" }
                                   : mobileDeptColor
                                     ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
                                     : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}

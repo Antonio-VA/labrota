@@ -2473,7 +2473,7 @@ function ShiftGrid({
     return m
   }, [data?.departments])
   const staffColorMap = useMemo(() =>
-    Object.fromEntries(staffList.map((s) => [s.id, deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+    Object.fromEntries(staffList.map((s) => [s.id, s.color || deptColorMap[s.role] || DEFAULT_DEPT_MAPS.border[s.role] || "#94A3B8"]))
   , [staffList, deptColorMap])
   const { hoveredStaffId, setHovered } = useStaffHover()
 
