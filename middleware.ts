@@ -75,7 +75,11 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/brand")
+    pathname.startsWith("/brand") ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/set-password" ||
+    pathname === "/demo"
   ) {
     return supabaseResponse
   }
@@ -91,8 +95,8 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── /login ───────────────────────────────────────────────────────────────
-  if (pathname === "/login") {
+  // ── /login & /demo ───────────────────────────────────────────────────────
+  if (pathname === "/login" || pathname === "/demo") {
     if (user) {
       if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
       return NextResponse.redirect(new URL("/", request.url))
