@@ -5187,6 +5187,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   if (confirm(msg)) {
                     startTransition(async () => {
                       if (view === "month" && monthSummary) {
+                        setLoadingMonth(true)
                         const allWeekStarts: string[] = []
                         for (let i = 0; i < monthSummary.days.length; i += 7) {
                           if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
