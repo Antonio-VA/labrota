@@ -415,18 +415,18 @@ export function MobileWeekClient() {
           <ChevronLeft className="size-5 text-muted-foreground" />
         </button>
 
+        <WeekPicker weekStart={weekStart} locale={locale} onSelect={setWeekStart} />
+
+        <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </button>
+
         <button
           onClick={() => setWeekStart(currentWeek)}
           disabled={isCurrentWeek}
           className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
         >
           {tc("today")}
-        </button>
-
-        <WeekPicker weekStart={weekStart} locale={locale} onSelect={setWeekStart} />
-
-        <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-          <ChevronRight className="size-5 text-muted-foreground" />
         </button>
 
         <div className="flex-1" />
