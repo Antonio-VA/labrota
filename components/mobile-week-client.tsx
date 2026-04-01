@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useTransition, useRef, useLayoutEffect, useMemo } from "react"
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react"
+import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -281,7 +282,7 @@ type GenStrategy = "ai_optimal" | "ai_hybrid" | "flexible_template" | "manual"
 
 interface StrategyCard {
   key: GenStrategy
-  icon: React.ReactNode
+  icon: ReactNode
   label: string
   desc: string
   badgeLabel?: string
