@@ -66,7 +66,11 @@ export default function LoginPage() {
 
     setLoading(false)
     if (error) {
-      setErrorMessage(error.message)
+      if (error.code === "over_email_send_rate_limit") {
+        setErrorMessage(t("rateLimited"))
+      } else {
+        setErrorMessage(t("sendError"))
+      }
     } else {
       setErrorMessage("")
       setOtpCode("")
@@ -95,9 +99,13 @@ export default function LoginPage() {
 
     if (error) {
       setLoading(false)
-      // Show actual Supabase error for debugging, with code if available
-      const detail = error.code ? `${error.message} (${error.code})` : error.message
-      setErrorMessage(detail)
+      if (error.code === "otp_expired") {
+        setErrorMessage(t("otpExpired"))
+      } else if (error.code === "otp_disabled") {
+        setErrorMessage(t("otpDisabled"))
+      } else {
+        setErrorMessage(t("verifyError"))
+      }
     } else {
       router.replace("/")
     }
