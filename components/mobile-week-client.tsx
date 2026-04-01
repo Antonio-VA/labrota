@@ -606,23 +606,23 @@ export function MobileWeekClient() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Sticky week toolbar */}
-      <div className="flex items-center gap-2 h-14 px-3 border-b border-border bg-background sticky top-0 z-10">
-        <button onClick={() => navigate(-1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-          <ChevronLeft className="size-5 text-muted-foreground" />
+      <div className="flex items-center gap-1 h-14 px-3 border-b border-border bg-background sticky top-0 z-10">
+        <button
+          onClick={() => setWeekStart(currentWeek)}
+          disabled={isCurrentWeek}
+          className={cn("text-[12px] font-medium px-2 py-1 rounded-md transition-colors shrink-0", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
+        >
+          {tc("today")}
+        </button>
+
+        <button onClick={() => navigate(-1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+          <ChevronLeft className="size-4 text-muted-foreground" />
         </button>
 
         <WeekPicker weekStart={weekStart} locale={locale} onSelect={setWeekStart} />
 
-        <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-          <ChevronRight className="size-5 text-muted-foreground" />
-        </button>
-
-        <button
-          onClick={() => setWeekStart(currentWeek)}
-          disabled={isCurrentWeek}
-          className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
-        >
-          {tc("today")}
+        <button onClick={() => navigate(1)} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+          <ChevronRight className="size-4 text-muted-foreground" />
         </button>
 
         <div className="flex-1" />
