@@ -482,6 +482,7 @@
     "kpiTraining": "En formación",
     "kpiCoverage": "Cobertura tareas",
     "kpiFullValidation": "Validación completa",
+    "kpiOptimalHeadcount": "Plantilla óptima",
     "bulk": {
       "addSkill": "Añadir tarea",
       "removeSkill": "Quitar tarea",

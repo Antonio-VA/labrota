@@ -389,3 +389,143 @@ export async function bulkUpdateStaffField(
   revalidatePath("/staff")
   return { updated: count }
 }
+
+// ── Optimal headcount calculation ─────────────────────────────────────────────
+
+export interface HeadcountResult {
+  total: number
+  breakdown: { department: string; label: string; headcount: number; explanation: string }[]
+  explanation: string
+  calculatedAt: string
+}
+
+export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountResult; error?: string }> {
+  const { anthropic } = await import("@ai-sdk/anthropic")
+  const { generateObject } = await import("ai")
+  const { z } = await import("zod")
+
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "Not authenticated." }
+
+  // Fetch lab config + departments + active staff summary
+  const [labConfigRes, deptRes, staffRes] = await Promise.all([
+    supabase.from("lab_config").select("*").single(),
+    supabase.from("departments").select("*").order("sort_order"),
+    supabase.from("staff").select("id, role, days_per_week").neq("onboarding_status", "inactive"),
+  ])
+
+  if (!labConfigRes.data) return { error: "Lab config not found." }
+
+  const lc = labConfigRes.data as Record<string, unknown>
+  const departments = (deptRes.data ?? []) as { code: string; name: string }[]
+  const staffList = (staffRes.data ?? []) as { id: string; role: string; days_per_week: number }[]
+
+  // Build coverage context per department
+  const coverageByDay = lc.coverage_by_day as Record<string, Record<string, number>> | null
+  const deptCoverageInfo = departments
+    .filter((d) => d.code !== "admin")
+    .map((d) => {
+      const weekdayMin = coverageByDay
+        ? Math.max(
+            ...["mon", "tue", "wed", "thu", "fri"].map(
+              (day) => (coverageByDay[day] as Record<string, number> | undefined)?.[d.code] ?? 0
+            )
+          )
+        : (d.code === "lab" ? (lc.min_lab_coverage as number ?? 0) : (lc.min_andrology_coverage as number ?? 0))
+      const weekendMin = coverageByDay
+        ? Math.max(
+            ...["sat", "sun"].map(
+              (day) => (coverageByDay[day] as Record<string, number> | undefined)?.[d.code] ?? 0
+            )
+          )
+        : (d.code === "lab" ? (lc.min_weekend_lab_coverage as number ?? 0) : (lc.min_weekend_andrology as number ?? 0))
+      const currentStaff = staffList.filter((s) => s.role === d.code)
+      const avgDaysPerWeek = currentStaff.length > 0
+        ? currentStaff.reduce((sum, s) => sum + s.days_per_week, 0) / currentStaff.length
+        : 5
+      return {
+        code: d.code,
+        name: d.name,
+        weekdayMinCoverage: weekdayMin,
+        weekendMinCoverage: weekendMin,
+        currentHeadcount: currentStaff.length,
+        avgDaysPerWeek: Math.round(avgDaysPerWeek * 10) / 10,
+      }
+    })
+
+  const adminOnWeekends = lc.admin_on_weekends as boolean
+  const adminStaff = staffList.filter((s) => s.role === "admin")
+  const adminCoverageWeekday = coverageByDay
+    ? Math.max(...["mon", "tue", "wed", "thu", "fri"].map((day) => (coverageByDay[day] as Record<string, number> | undefined)?.admin ?? 0))
+    : 0
+  const adminCoverageWeekend = adminOnWeekends
+    ? (coverageByDay ? Math.max(...["sat", "sun"].map((day) => (coverageByDay[day] as Record<string, number> | undefined)?.admin ?? 0)) : 0)
+    : 0
+
+  const prompt = `You are a workforce planning calculator for an IVF embryology lab.
+
+Calculate the OPTIMAL headcount (minimum number of staff needed) for each department to meet minimum coverage requirements year-round, accounting for holidays.
+
+INPUTS:
+- Annual holiday allowance per person: 20 days
+- Working days per year: 365
+${deptCoverageInfo.map((d) => `
+Department "${d.name}" (${d.code}):
+  - Weekday minimum coverage: ${d.weekdayMinCoverage} people/day (Mon-Fri = 261 days/year)
+  - Weekend minimum coverage: ${d.weekendMinCoverage} people/day (Sat-Sun = 104 days/year)
+  - Current headcount: ${d.currentHeadcount}
+  - Avg days_per_week per person: ${d.avgDaysPerWeek}
+`).join("")}
+${adminStaff.length > 0 || adminCoverageWeekday > 0 ? `
+Department "Admin" (admin):
+  - Weekday minimum coverage: ${adminCoverageWeekday} people/day
+  - Weekend minimum coverage: ${adminCoverageWeekend} people/day
+  - Current headcount: ${adminStaff.length}
+  - Avg days_per_week per person: ${adminStaff.length > 0 ? Math.round(adminStaff.reduce((s, st) => s + st.days_per_week, 0) / adminStaff.length * 10) / 10 : 5}
+` : ""}
+
+FORMULA APPROACH:
+1. For each department, calculate total person-days needed per year:
+   total_person_days = (weekday_min × 261) + (weekend_min × 104)
+2. Each person provides effective working days per year:
+   effective_days = (avg_days_per_week × 52) - 20 holidays
+3. Optimal headcount = ceil(total_person_days / effective_days)
+4. Always round UP (you can't have half a person)
+
+Return the optimal headcount for each department and a brief explanation.
+Only include departments that have coverage > 0.`
+
+  try {
+    const result = await generateObject({
+      model: anthropic("claude-sonnet-4-6"),
+      schema: z.object({
+        departments: z.array(z.object({
+          code: z.string(),
+          label: z.string(),
+          headcount: z.number(),
+          explanation: z.string().describe("1-2 sentence explanation of the calculation for this department"),
+        })),
+        total: z.number(),
+        summary: z.string().describe("2-3 sentence overall explanation of the methodology"),
+      }),
+      prompt,
+    })
+
+    const headcountResult: HeadcountResult = {
+      total: result.object.total,
+      breakdown: result.object.departments.map((d) => ({
+        department: d.code,
+        label: d.label,
+        headcount: d.headcount,
+        explanation: d.explanation,
+      })),
+      explanation: result.object.summary,
+      calculatedAt: new Date().toISOString(),
+    }
+
+    return { data: headcountResult }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to calculate headcount" }
+  }
+}

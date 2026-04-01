@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check, RefreshCw, Info } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,10 @@ import {
   bulkSoftDeleteStaff,
   hardDeleteStaff,
   bulkUpdateStaffField,
+  calculateOptimalHeadcount,
+  type HeadcountResult,
 } from "@/app/(clinic)/staff/actions"
+import { useLocale } from "next-intl"
 
 // ── Inline color picker for edit mode ─────────────────────────────────────────
 
@@ -1071,6 +1074,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
+  const locale = useLocale() as "es" | "en"
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -1086,6 +1090,49 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }
   const deptLabel: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
   for (const d of deptsProp) { deptBorder[d.code] = d.colour; deptLabel[d.code] = d.name }
+
+  // Optimal headcount KPI
+  const [headcount, setHeadcount] = useState<HeadcountResult | null>(null)
+  const [headcountLoading, setHeadcountLoading] = useState(false)
+  const [headcountOpen, setHeadcountOpen] = useState(false)
+  const headcountRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const cached = localStorage.getItem("labrota_headcount")
+    if (cached) {
+      try { setHeadcount(JSON.parse(cached)) } catch { /* ignore */ }
+    } else {
+      // First time — auto-calculate
+      setHeadcountLoading(true)
+      calculateOptimalHeadcount().then((res) => {
+        if (res.data) {
+          setHeadcount(res.data)
+          localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
+        }
+        setHeadcountLoading(false)
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!headcountOpen) return
+    function h(e: MouseEvent) { if (headcountRef.current && !headcountRef.current.contains(e.target as Node)) setHeadcountOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [headcountOpen])
+
+  async function recalculateHeadcount() {
+    setHeadcountLoading(true)
+    const res = await calculateOptimalHeadcount()
+    if (res.data) {
+      setHeadcount(res.data)
+      localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
+      toast.success(locale === "es" ? "Plantilla óptima recalculada" : "Optimal headcount recalculated")
+    } else {
+      toast.error(res.error ?? "Error")
+    }
+    setHeadcountLoading(false)
+  }
 
   const [search,       setSearch]       = useState("")
   const [roleFilter,   setRoleFilter]   = useState<StaffRole | "all">("all")
@@ -1235,7 +1282,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       {/* KPI summary band */}
       {staff.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             {[
               { label: t("kpiActive"), value: kpiActiveStaff.length },
               { label: t("kpiTraining"), value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
@@ -1247,6 +1294,67 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
               </div>
             ))}
+
+            {/* Optimal headcount KPI */}
+            <div ref={headcountRef} className="relative rounded-xl border border-border/60 bg-background px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiOptimalHeadcount")}</p>
+                <button
+                  onClick={() => setHeadcountOpen(!headcountOpen)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Info className="size-3" />
+                </button>
+              </div>
+              {headcountLoading ? (
+                <div className="h-7 w-12 rounded bg-muted animate-pulse mt-1" />
+              ) : headcount ? (
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <p className="text-[22px] font-semibold text-foreground leading-tight">{headcount.total}</p>
+                  <div className="flex items-center gap-1">
+                    {headcount.breakdown.map((d) => (
+                      <span key={d.department} className="text-[10px] px-1 py-0.5 rounded" style={{ backgroundColor: `${deptBorder[d.department] ?? "#94A3B8"}20`, color: deptBorder[d.department] ?? "#94A3B8" }}>
+                        {d.headcount}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[22px] font-semibold text-muted-foreground mt-0.5 leading-tight">—</p>
+              )}
+
+              {/* Explainer popover */}
+              {headcountOpen && headcount && (
+                <div className="absolute left-0 top-full mt-1 z-50 w-[340px] rounded-xl border border-border bg-background shadow-xl p-4 flex flex-col gap-3">
+                  <p className="text-[13px] text-muted-foreground">{headcount.explanation}</p>
+                  <div className="flex flex-col gap-2">
+                    {headcount.breakdown.map((d) => (
+                      <div key={d.department} className="flex items-start gap-2">
+                        <span
+                          className="mt-1 size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: deptBorder[d.department] ?? "#94A3B8" }}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[13px] font-medium">{d.label}</span>
+                            <span className="text-[13px] font-semibold">{d.headcount}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{d.explanation}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={recalculateHeadcount}
+                    disabled={headcountLoading}
+                    className="flex items-center gap-1.5 text-[12px] text-primary hover:underline self-end disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn("size-3", headcountLoading && "animate-spin")} />
+                    {locale === "es" ? "Recalcular" : "Recalculate"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
