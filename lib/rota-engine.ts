@@ -307,9 +307,10 @@ export function runRotaEngine({
   }
 
   // Adjusted budget: reduce days_per_week by number of weekday holidays
+  const reduceBudget = labConfig.public_holiday_reduce_budget ?? false
   function getEffectiveBudget(s: StaffWithSkills): number {
     const base = s.days_per_week ?? 5
-    if (holidayMode !== "saturday_coverage" || holidayCount === 0) return base
+    if (!reduceBudget || holidayCount === 0) return base
     return Math.max(1, base - holidayCount)
   }
 

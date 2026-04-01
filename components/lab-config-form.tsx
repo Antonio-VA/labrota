@@ -166,6 +166,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
     public_holiday_mode:   config.public_holiday_mode ?? "normal",
+    public_holiday_reduce_budget: config.public_holiday_reduce_budget ?? false,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -239,6 +240,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:    values.days_off_preference,
         public_holiday_mode:    values.public_holiday_mode,
+        public_holiday_reduce_budget: values.public_holiday_reduce_budget,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -324,6 +326,26 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               </div>
             </label>
           ))}
+        </div>
+        <div className="border-t border-border pt-3 pb-4">
+          <label className={cn(
+            "flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors",
+            values.public_holiday_reduce_budget
+              ? "border-primary bg-primary/5"
+              : "border-border hover:bg-muted/50"
+          )}>
+            <input
+              type="checkbox"
+              checked={values.public_holiday_reduce_budget}
+              onChange={(e) => setValues((p) => ({ ...p, public_holiday_reduce_budget: e.target.checked }))}
+              disabled={isPending}
+              className="mt-0.5 accent-primary"
+            />
+            <div>
+              <span className="text-[13px] font-medium">{t("holidayReduceBudget")}</span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t("holidayReduceBudgetHint")}</p>
+            </div>
+          </label>
         </div>
       </div>
 
