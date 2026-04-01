@@ -90,7 +90,7 @@
     "emailPlaceholder": "you@clinic.com",
     "sendLink": "Send access link",
     "checkEmail": "Check your email",
-    "checkEmailDescription": "Click the link in the email or enter the code below.",
+    "checkEmailDescription": "We sent a 6-digit code to {email}.",
     "sendCode": "Send access code",
     "resendLink": "Resend code",
     "passwordLabel": "Password",

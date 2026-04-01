@@ -90,7 +90,7 @@
     "emailPlaceholder": "tu@clinica.com",
     "sendLink": "Enviar enlace de acceso",
     "checkEmail": "Revisa tu correo",
-    "checkEmailDescription": "Haz clic en el enlace del correo o introduce el código a continuación.",
+    "checkEmailDescription": "Hemos enviado un código de 6 dígitos a {email}.",
     "sendCode": "Enviar código de acceso",
     "resendLink": "Reenviar código",
     "passwordLabel": "Contraseña",
