@@ -64,6 +64,7 @@ export interface EngineParams {
   taskCoverageByDay?: Record<string, Record<string, number>> | null  // tecnica_code → { mon: N, ... }
   shiftCoverageEnabled?: boolean
   shiftCoverageByDay?: ShiftCoverageByDay | null // shift_code → { day: { lab, andrology, admin } }
+  publicHolidays?: Record<string, string>  // date → holiday name
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ export function runRotaEngine({
   taskCoverageByDay,
   shiftCoverageEnabled = false,
   shiftCoverageByDay,
+  publicHolidays = {},
 }: EngineParams): RotaEngineResult {
   const days: DayPlan[] = []
   const taskAssignments: TaskAssignment[] = []
@@ -285,29 +287,59 @@ export function runRotaEngine({
   // Days-off preference: controls when staff get their off days
   const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
 
+  // ── Public holiday handling ──────────────────────────────────────────────
+  const holidayMode = (labConfig as any).public_holiday_mode as "normal" | "saturday_coverage" | undefined ?? "normal"
+  const allDates = getWeekDates(weekStart)
+  const holidaysThisWeek = allDates.filter((d) => publicHolidays[d])
+  const holidayCount = holidaysThisWeek.length
+
+  // When saturday_coverage mode: use Saturday coverage for holidays + reduce weekly budget
+  function getEffectiveDayCode(date: string): WorkingDay {
+    if (holidayMode === "saturday_coverage" && publicHolidays[date] && !isWeekend(date)) {
+      return "sat" // Treat weekday holidays as Saturday for coverage purposes
+    }
+    return getDayCode(date)
+  }
+
+  function isEffectiveWeekend(date: string): boolean {
+    if (holidayMode === "saturday_coverage" && publicHolidays[date]) return true
+    return isWeekend(date)
+  }
+
+  // Adjusted budget: reduce days_per_week by number of weekday holidays
+  function getEffectiveBudget(s: StaffWithSkills): number {
+    const base = s.days_per_week ?? 5
+    if (holidayMode !== "saturday_coverage" || holidayCount === 0) return base
+    return Math.max(1, base - holidayCount)
+  }
+
+  if (holidayMode === "saturday_coverage" && holidayCount > 0) {
+    warnings.push(`[engine] Public holiday mode: saturday_coverage — ${holidayCount} holiday(s) this week: ${holidaysThisWeek.map((d) => `${d} (${publicHolidays[d]})`).join(", ")}. Weekly budgets reduced by ${holidayCount}.`)
+  }
+
   // ── PHASE 1: Pre-plan minimum coverage for ALL 7 days ────────────────────
   // Reserve budget so minimum coverage is guaranteed before preferences kick in.
-  const allDates = getWeekDates(weekStart)
   const minCoverageReserved: Record<string, Set<string>> = {} // date → set of staff_ids
 
   for (const date of allDates) {
     minCoverageReserved[date] = new Set()
     const dayCode = getDayCode(date)
-    const wknd = isWeekend(date)
+    const effectiveDayCode = getEffectiveDayCode(date)
+    const wknd = isEffectiveWeekend(date)
 
-    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
+    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[effectiveDayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
-    const dayCoverage = labConfig.coverage_by_day?.[dayCode]
+    const dayCoverage = labConfig.coverage_by_day?.[effectiveDayCode]
 
     // Use same coverage source as Phase 2
     let labReq: number, andReq: number, adminReq: number
     if (shiftCoverageEnabled && shiftCoverageByDay) {
       let labSum = 0, androSum = 0, adminSum = 0
       const dayShiftsP1 = activeShiftTypes
-        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(effectiveDayCode))
         .map((st) => st.code)
       for (const sc of dayShiftsP1) {
-        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[effectiveDayCode])
         labSum += cov.lab
         androSum += cov.andrology
         adminSum += cov.admin
@@ -330,7 +362,7 @@ export function runRotaEngine({
         if (leaveMap[s.id]?.has(date)) return false
         if (s.working_pattern?.length && !s.working_pattern.includes(dayCode)) return false
         const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
-        return reserved < (s.days_per_week ?? 5)
+        return reserved < getEffectiveBudget(s)
       }).sort((a, b) => {
         // Fewest reservations first — spreads assignments evenly across staff
         const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
@@ -343,8 +375,8 @@ export function runRotaEngine({
         // For "prefer_weekend" days off: on weekdays, prefer staff who would lose a weekend slot;
         // on weekends, prefer staff with fewer weekend assignments (save weekends for those who need them)
         if (daysOffPref === "prefer_weekend" && wknd) {
-          const aWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(a.id)).length
-          const bWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(b.id)).length
+          const aWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isEffectiveWeekend(d) && s.has(a.id)).length
+          const bWkndCount = Object.entries(minCoverageReserved).filter(([d, s]) => isEffectiveWeekend(d) && s.has(b.id)).length
           if (aWkndCount !== bWkndCount) return aWkndCount - bWkndCount // fewer weekend assignments first
         }
         return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
@@ -359,12 +391,13 @@ export function runRotaEngine({
   // ── PHASE 2: Day-by-day assignment (minimum guaranteed + fill with preferences)
   for (const date of allDates) {
     const dayCode = getDayCode(date)
-    const weekend = isWeekend(date)
+    const effectiveDayCode = getEffectiveDayCode(date)
+    const weekend = isEffectiveWeekend(date)
 
-    // Coverage requirements
-    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[dayCode] ?? 0
+    // Coverage requirements — use effective day code (Saturday for holidays when enabled)
+    const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[effectiveDayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
-    const dayCoverage = labConfig.coverage_by_day?.[dayCode]
+    const dayCoverage = labConfig.coverage_by_day?.[effectiveDayCode]
 
     // When shift coverage is enabled, derive department totals by summing across shifts
     let labRequired: number
@@ -373,10 +406,10 @@ export function runRotaEngine({
     if (shiftCoverageEnabled && shiftCoverageByDay) {
       let labSum = 0, androSum = 0, adminSum = 0
       const dayShiftsForCov = activeShiftTypes
-        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(effectiveDayCode))
         .map((st) => st.code)
       for (const sc of dayShiftsForCov) {
-        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
+        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[effectiveDayCode])
         labSum += cov.lab
         androSum += cov.andrology
         adminSum += cov.admin
@@ -401,7 +434,7 @@ export function runRotaEngine({
 
     function hasBudget(s: StaffWithSkills): boolean {
       const used = weeklyShiftCount[s.id] ?? 0
-      const cap = s.days_per_week ?? 5
+      const cap = getEffectiveBudget(s)
       if (used >= cap) return false
       // Reserve slots for future days where this person is reserved in Phase 1
       // (but not yet counted in weeklyShiftCount)
@@ -432,20 +465,20 @@ export function runRotaEngine({
     // Additional staff: must have budget after accounting for future reservations
     const remaining = staff.filter((s) => {
       if (!isAvailable(s) || reservedIds.has(s.id) || !hasBudget(s)) return false
-      // "always_weekend" mode: on weekends, only reserved staff work (already handled above)
+      // "always_weekend" mode: on weekends/holidays, only reserved staff work
       if (daysOffPref === "always_weekend" && weekend) return false
       return true
     }).sort((a, b) => {
       const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
       const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
       if (aInPattern !== bInPattern) return aInPattern - bInPattern
-      // "prefer_weekend" mode: penalise weekend assignments so staff prefer weekdays off
+      // "prefer_weekend" mode: penalise weekend/holiday assignments so staff prefer weekdays off
       if (daysOffPref === "prefer_weekend" && weekend) {
         // Staff with more weekday budget remaining should be deprioritised for weekends
         const aUsed = weeklyShiftCount[a.id] ?? 0
         const bUsed = weeklyShiftCount[b.id] ?? 0
-        const aCap = a.days_per_week ?? 5
-        const bCap = b.days_per_week ?? 5
+        const aCap = getEffectiveBudget(a)
+        const bCap = getEffectiveBudget(b)
         const aRemaining = aCap - aUsed
         const bRemaining = bCap - bUsed
         // More remaining → less likely to need weekend → sort higher (deprioritise)
@@ -1558,7 +1591,7 @@ export function runRotaEngine({
     const overBudget = new Set<string>()
     for (const s of assigned) {
       const used = weeklyShiftCount[s.id] ?? 0
-      const cap = s.days_per_week ?? 5
+      const cap = getEffectiveBudget(s)
       if (used >= cap) overBudget.add(s.id)
     }
     if (overBudget.size > 0) {

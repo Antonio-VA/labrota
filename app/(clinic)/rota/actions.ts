@@ -427,7 +427,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
-    const dayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
+    const holidayModeForWarning = (labConfig as any)?.public_holiday_mode as string | undefined ?? "normal"
+    const rawDayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
+    const dayCodeForWarning = (holidayModeForWarning === "saturday_coverage" && publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? "sat" : rawDayCodeForWarning
     const activeDayShifts = new Set(
       shiftTypesData.filter((st) => st.active !== false && (!st.active_days || st.active_days.length === 0 || (st.active_days as string[]).includes(dayCodeForWarning)))
         .map((st) => st.code)
@@ -583,6 +585,12 @@ export async function generateRota(
 
   const labConfig = labConfigRes.data as import("@/lib/types/database").LabConfig | null
   if (!labConfig) return { error: "Lab configuration not found. Set it up in the Lab settings page." }
+
+  // Compute public holidays for this week
+  const genYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
+  const genCountry = labConfig.country || "ES"
+  const genRegion = labConfig.region || null
+  const genPublicHolidays: Record<string, string> = Object.assign({}, ...genYears.map((y) => getPublicHolidays(y, genCountry, genRegion)))
 
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
 
@@ -757,6 +765,7 @@ export async function generateRota(
       taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
       shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
       shiftCoverageByDay: labConfig.shift_coverage_by_day as import("@/lib/types/database").ShiftCoverageByDay | null,
+      publicHolidays: genPublicHolidays,
     })
 
     engineWarnings = warnings
@@ -1244,6 +1253,10 @@ export async function generateRotaHybrid(
   if (!labConfig) return { error: "Lab configuration not found." }
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
 
+  // Public holidays for this week
+  const hybridYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
+  const hybridHolidays: Record<string, string> = Object.assign({}, ...hybridYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
+
   const allStaff = (staffRes.data ?? []) as StaffWithSkills[]
   const leaves = (leavesRes.data ?? []) as Leave[]
   const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
@@ -1319,6 +1332,7 @@ export async function generateRotaHybrid(
     taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
     shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
     shiftCoverageByDay: labConfig.shift_coverage_by_day as ShiftCoverageByDay | null,
+    publicHolidays: hybridHolidays,
   })
 
   // ── 4. Serialise base rota + context for Claude review ─────────────────────
@@ -1868,6 +1882,10 @@ export async function regenerateDay(
   const labConfig = configRes.data as unknown as LabConfig | null
   if (!labConfig) return { error: "No lab config found." }
 
+  // Public holidays
+  const regenYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
+  const regenHolidays: Record<string, string> = Object.assign({}, ...regenYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
+
   // Run engine for the full week (needed for budget tracking)
   const { days } = runRotaEngine({
     weekStart,
@@ -1888,6 +1906,7 @@ export async function regenerateDay(
     taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
     shiftCoverageEnabled: labConfig.shift_coverage_enabled ?? false,
     shiftCoverageByDay: labConfig.shift_coverage_by_day as import("@/lib/types/database").ShiftCoverageByDay | null,
+    publicHolidays: regenHolidays,
   })
 
   // Find the specific day's assignments from the engine output
@@ -2371,13 +2390,16 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
+    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "normal"
+    const isHolidaySatCoverage = monthHolidayMode === "saturday_coverage" && !!holidays[date] && !isWeekend
+    const effectiveWeekend = isWeekend || isHolidaySatCoverage
     const labCount = entries.filter((e) => e.role === "lab").length
     const andrologyCount = entries.filter((e) => e.role === "andrology").length
     // Coverage warning: check if below minimums
     const lc = labConfigRes.data as Record<string, number> | null
     const hasCoverageWarning = staffIds.length > 0 && lc ? (
-      labCount < (isWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
-      andrologyCount < (isWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
+      labCount < (effectiveWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
+      andrologyCount < (effectiveWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
     ) : false
     const shiftCounts: Record<string, number> = {}
     for (const e of entries) {

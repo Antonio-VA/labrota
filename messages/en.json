@@ -679,6 +679,12 @@
       "adminMin": "Admin (min.)"
     },
     "holidaysHint": "Regional bank holidays will be applied automatically when generating rotas.",
+    "holidayModeTitle": "Bank holidays",
+    "holidayModeDescription": "How bank holidays affect the weekly schedule.",
+    "holidayModeNormal": "Normal coverage",
+    "holidayModeNormalHint": "Bank holidays keep the usual weekday coverage. Weekly budget is not reduced.",
+    "holidayModeSaturday": "Saturday coverage",
+    "holidayModeSaturdayHint": "Weekday bank holidays use Saturday coverage levels and each person's weekly budget is reduced by 1 per holiday.",
     "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated.",
     "rules": {

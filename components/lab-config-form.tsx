@@ -165,6 +165,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
+    public_holiday_mode:   (config as any).public_holiday_mode ?? "normal",
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -237,6 +238,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         shift_coverage_enabled: shiftCoverageEnabled,
         shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:    values.days_off_preference,
+        public_holiday_mode:    values.public_holiday_mode,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -277,6 +279,42 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 value={opt.value}
                 checked={values.days_off_preference === opt.value}
                 onChange={() => setValues((p) => ({ ...p, days_off_preference: opt.value }))}
+                disabled={isPending}
+                className="mt-0.5 accent-primary"
+              />
+              <div>
+                <span className="text-[13px] font-medium">{opt.label}</span>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* ── FESTIVOS ──────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("holidayModeTitle")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("holidayModeDescription")}</p>
+        <div className="flex flex-col gap-1 pb-4">
+          {([
+            { value: "normal", label: t("holidayModeNormal"), hint: t("holidayModeNormalHint") },
+            { value: "saturday_coverage", label: t("holidayModeSaturday"), hint: t("holidayModeSaturdayHint") },
+          ] as const).map((opt) => (
+            <label
+              key={opt.value}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors",
+                values.public_holiday_mode === opt.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-muted/50"
+              )}
+            >
+              <input
+                type="radio"
+                name="public_holiday_mode"
+                value={opt.value}
+                checked={values.public_holiday_mode === opt.value}
+                onChange={() => setValues((p) => ({ ...p, public_holiday_mode: opt.value }))}
                 disabled={isPending}
                 className="mt-0.5 accent-primary"
               />

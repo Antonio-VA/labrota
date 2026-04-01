@@ -679,6 +679,12 @@
       "adminMin": "Administración (mín.)"
     },
     "holidaysHint": "Los festivos regionales se aplicarán automáticamente al generar horarios.",
+    "holidayModeTitle": "Festivos",
+    "holidayModeDescription": "Cómo afectan los días festivos al horario semanal.",
+    "holidayModeNormal": "Cobertura normal",
+    "holidayModeNormalHint": "Los festivos mantienen la cobertura habitual del día de la semana. No se reduce el presupuesto semanal.",
+    "holidayModeSaturday": "Cobertura de sábado",
+    "holidayModeSaturdayHint": "Los festivos entre semana usan la cobertura del sábado y se reduce en 1 día el presupuesto semanal de cada persona por cada festivo.",
     "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada.",
     "rules": {

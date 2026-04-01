@@ -410,16 +410,16 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
 
   // Fetch lab config + departments + active staff summary
   const [labConfigRes, deptRes, staffRes] = await Promise.all([
-    supabase.from("lab_config").select("*").single(),
-    supabase.from("departments").select("*").order("sort_order"),
-    supabase.from("staff").select("id, role, days_per_week").neq("onboarding_status", "inactive"),
+    supabase.from("lab_config").select("*").single() as unknown as Promise<{ data: Record<string, unknown> | null }>,
+    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: { code: string; name: string }[] | null }>,
+    supabase.from("staff").select("id, role, days_per_week").neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; role: string; days_per_week: number }[] | null }>,
   ])
 
   if (!labConfigRes.data) return { error: "Lab config not found." }
 
-  const lc = labConfigRes.data as Record<string, unknown>
-  const departments = (deptRes.data ?? []) as { code: string; name: string }[]
-  const staffList = (staffRes.data ?? []) as { id: string; role: string; days_per_week: number }[]
+  const lc = labConfigRes.data
+  const departments = deptRes.data ?? []
+  const staffList = staffRes.data ?? []
 
   // Build coverage context per department
   const coverageByDay = lc.coverage_by_day as Record<string, Record<string, number>> | null
