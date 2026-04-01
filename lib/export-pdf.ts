@@ -306,12 +306,15 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
     for (const s of sorted) totalRow.push(String(s.total))
     body.push(totalRow)
 
+    const base = tableStyles()
     autoTable(doc, {
       startY,
       head: [["", ...staffHeaders]],
       body,
-      ...tableStyles(),
-      columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
+      ...base,
+      styles: { ...base.styles, fontSize: 7, cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, minCellHeight: 7, halign: "center" as const },
+      headStyles: { ...base.headStyles, fontSize: 7, cellPadding: { top: 2, right: 2, bottom: 2, left: 2 } },
+      columnStyles: { 0: { cellWidth: 20, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
     })
   } else {
     // Standard: staff as rows, days as columns
@@ -325,14 +328,17 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
       body.push(row)
     }
 
+    const base = tableStyles()
     autoTable(doc, {
       startY,
       head: [[locale === "es" ? "Personal" : "Staff", locale === "es" ? "Depto" : "Dept", ...headers, "Total"]],
       body,
-      ...tableStyles(),
+      ...base,
+      styles: { ...base.styles, fontSize: 7, cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, minCellHeight: 7, halign: "center" as const },
+      headStyles: { ...base.headStyles, fontSize: 7, cellPadding: { top: 2, right: 2, bottom: 2, left: 2 } },
       columnStyles: {
-        0: { cellWidth: 28, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black },
-        1: { cellWidth: 20, fillColor: COLORS.white, textColor: COLORS.gray, fontSize: 7 },
+        0: { cellWidth: 26, fontStyle: "bold", halign: "left" as const, fillColor: COLORS.white, textColor: COLORS.black },
+        1: { cellWidth: 15, halign: "left" as const, fillColor: COLORS.white, textColor: COLORS.gray, fontSize: 6.5 },
       },
     })
   }
