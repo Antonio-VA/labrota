@@ -38,7 +38,7 @@ export function WeeklyStrip({
   return (
     <div
       data-weekly-strip
-      className="flex items-center justify-around px-2 py-1.5 border-b border-border bg-background lg:hidden transition-all duration-200"
+      className="flex items-center justify-around px-2 h-14 border-b border-border bg-background lg:hidden transition-all duration-200"
     >
       {days.map((day, i) => {
         const isActive = day.date === currentDate
