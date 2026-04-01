@@ -382,7 +382,7 @@ export interface RotaAssignmentWithStaff extends RotaAssignment {
 }
 
 export interface LeaveWithStaff extends Leave {
-  staff: Pick<Staff, 'id' | 'first_name' | 'last_name' | 'role'>
+  staff: Pick<Staff, 'id' | 'first_name' | 'last_name' | 'role'> | null
   reviewer_name?: string | null
 }
 

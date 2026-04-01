@@ -503,7 +503,7 @@ function LeaveCard({
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <p className={cn("text-[14px] font-medium leading-tight", muted && "text-muted-foreground")}>
-          {leave.staff.first_name} {leave.staff.last_name}
+          {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
         </p>
         {showStatus && <StatusBadge leave={leave} t={t} />}
       </div>
@@ -588,7 +588,7 @@ function LeavesTable({
                 onClick={() => onEdit(leave)}
               >
                 <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
-                  {leave.staff.first_name} {leave.staff.last_name}
+                  {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
                 </td>
                 <td className="px-4 py-2.5">
                   <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
@@ -980,7 +980,7 @@ export function LeavesList({
                 <div className="flex flex-col gap-3">
                   <div>
                     <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.staff")}</p>
-                    <p className="text-[14px]">{editing.staff.first_name} {editing.staff.last_name}</p>
+                    <p className="text-[14px]">{editing.staff ? `${editing.staff.first_name} ${editing.staff.last_name}` : "—"}</p>
                   </div>
                   <div>
                     <p className="text-[12px] text-muted-foreground font-medium mb-0.5">{t("fields.type")}</p>
