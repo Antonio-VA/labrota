@@ -23,9 +23,9 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="h-dvh flex flex-col bg-[#f8fafc] overflow-hidden">
       {/* Top nav — same style as clinic app */}
-      <header className="h-[52px] bg-background border-b border-border flex items-center justify-between px-6">
+      <header className="h-[52px] shrink-0 bg-background border-b border-border flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <span className="font-sans text-[18px] leading-none tracking-normal text-primary">
             <span className="font-light">lab</span><span className="font-bold">rota</span>
@@ -39,8 +39,10 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {children}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          {children}
+        </div>
       </main>
     </div>
   )

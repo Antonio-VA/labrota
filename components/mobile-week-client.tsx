@@ -741,7 +741,20 @@ export function MobileWeekClient() {
             </div>
           </div>
         ) : !data || days.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{t("noRota")}</div>
+          <div className="flex flex-col items-center justify-center gap-4 px-6 pt-[15vh] text-center">
+            <Sparkles className="size-10 text-primary/40" />
+            <div>
+              <p className="text-[16px] font-semibold text-foreground">{t("noRota")}</p>
+              <p className="text-[13px] text-muted-foreground mt-1 max-w-[280px] leading-relaxed">{t("noRotaDescription")}</p>
+            </div>
+            <button
+              onClick={() => setGenerateModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white text-[14px] font-semibold active:bg-primary/90 transition-colors"
+            >
+              <Sparkles className="size-4" />
+              {locale === "es" ? "Generar semana" : "Generate week"}
+            </button>
+          </div>
         ) : (
           <div className="min-w-[600px] pb-[100px]">
             {/* Header: days */}

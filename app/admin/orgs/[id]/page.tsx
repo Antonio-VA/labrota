@@ -27,6 +27,7 @@ export default async function OrgDetailPage({
   const [
     orgRes, staffRes, rotasRes, recentRotasRes, profilesRes, labConfigRes,
     deptRes, shiftRes, tecnicaRes, assignmentRes, publishedRotasRes, leavesRes, recentRotaListRes,
+    rotasByTypeRes,
   ] = await Promise.all([
     admin.from("organisations").select("*").eq("id", id).single(),
     admin.from("staff").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("onboarding_status", "active"),
@@ -41,6 +42,7 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "published"),
     admin.from("leaves").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "approved"),
     admin.from("rotas").select("week_start, status, created_at").eq("organisation_id", id).order("week_start", { ascending: false }).limit(8) as unknown as Promise<{ data: { week_start: string; status: string; created_at: string }[] | null }>,
+    admin.from("rotas").select("generation_type").eq("organisation_id", id) as unknown as Promise<{ data: { generation_type: string | null }[] | null }>,
   ])
 
   // Fetch staff for linking
@@ -54,6 +56,15 @@ export default async function OrgDetailPage({
   if (!orgRes.data) notFound()
 
   const org = orgRes.data as Organisation
+
+  // Rota count by generation method
+  const rotaTypes = rotasByTypeRes.data ?? []
+  const byMethod = {
+    template: rotaTypes.filter((r) => r.generation_type === "strict_template" || r.generation_type === "flexible_template").length,
+    engine:   rotaTypes.filter((r) => r.generation_type === "ai_optimal" || r.generation_type === "ai_optimal_v2").length,
+    hybrid:   rotaTypes.filter((r) => r.generation_type === "ai_hybrid").length,
+    blank:    rotaTypes.filter((r) => r.generation_type === "manual" || r.generation_type == null).length,
+  }
   const orgStaff = (staffListRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string }[]
   type MemberRecord = { user_id: string; role: string; display_name: string | null; linked_staff_id: string | null }
   const memberRecords = (profilesRes.data ?? []) as MemberRecord[]
@@ -113,7 +124,7 @@ export default async function OrgDetailPage({
         estadisticas={
           <div className="flex flex-col gap-5">
             {/* Summary row */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 lg:grid-cols-4">
               <div className="rounded-lg border border-border bg-background px-5 py-4">
                 <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">Uso</p>
                 <div className="mt-3 flex flex-col gap-2">
@@ -158,6 +169,27 @@ export default async function OrgDetailPage({
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] text-muted-foreground">Creada</span>
                     <span className="text-[13px] font-medium">{fmt(org.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-background px-5 py-4 col-span-3 lg:col-span-1">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">Generación</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Híbrido</span>
+                    <span className="text-[14px] font-semibold text-purple-600">{byMethod.hybrid}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Motor</span>
+                    <span className="text-[14px] font-semibold text-blue-600">{byMethod.engine}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Plantilla</span>
+                    <span className="text-[14px] font-semibold text-emerald-600">{byMethod.template}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-muted-foreground">Vacío / Manual</span>
+                    <span className="text-[14px] font-semibold text-muted-foreground">{byMethod.blank}</span>
                   </div>
                 </div>
               </div>
