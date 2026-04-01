@@ -755,8 +755,14 @@ export function MobileWeekClient() {
                 const isToday = day.date === today
                 const isSat = dow === 6
                 const isSun = dow === 0
+                const isWknd = isSat || isSun
+                const isHoliday = !!data?.publicHolidays?.[day.date]
                 return (
-                  <div key={day.date} className="px-1 py-2 text-center border-r border-border last:border-r-0">
+                  <div
+                    key={day.date}
+                    className="px-1 py-2 text-center border-r border-border last:border-r-0"
+                    style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : isWknd ? { backgroundColor: "#C8D5EC" } : undefined}
+                  >
                     <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
                     {isToday ? (
                       <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-[14px] font-bold">{num}</span>

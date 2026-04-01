@@ -1925,11 +1925,11 @@ function PersonGrid({
           return (
             <div key={day.date} className={cn(
               "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-r last:border-r-0 border-border",
-              holiday ? "bg-amber-50/60" : "bg-muted"
+              holiday ? "bg-amber-100/80" : "bg-muted"
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#DDE8F5" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#C8D5EC" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -2744,6 +2744,8 @@ function ShiftGrid({
             const dayN  = String(d.getDate())
             const today = dateStr === TODAY
             const isSat = d.getDay() === 6
+            const isSun = d.getDay() === 0
+            const isWknd = isSat || isSun
             const holidayName = publicHolidays[dateStr]
 
             const defaultP      = punctionsDefault[dateStr] ?? 0
@@ -2755,8 +2757,9 @@ function ShiftGrid({
                 key={dateStr}
                 className={cn(
                   "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-l border-border",
-                  holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted"
+                  holidayName ? "bg-amber-100/80" : "bg-muted"
                 )}
+                style={isWknd && !holidayName ? { backgroundColor: "#C8D5EC" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
