@@ -939,13 +939,14 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
 }
 
 function StaffProfilePanel({
-  staffId, staffList, weekData, open, onClose,
+  staffId, staffList, weekData, open, onClose, onRefreshWeek,
 }: {
   staffId: string | null
   staffList: StaffWithSkills[]
   weekData: RotaWeekData | null
   open: boolean
   onClose: () => void
+  onRefreshWeek?: () => void
 }) {
   const localeRaw = useLocale()
   const locale    = localeRaw as "es" | "en"
@@ -1390,6 +1391,8 @@ function StaffProfilePanel({
             setLoading(true)
             getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })
           }
+          // Refresh the week view so the leave shows on the calendar grid
+          onRefreshWeek?.()
         }} />
 
         {/* ── Footer ───────────────────────────────────────────── */}
@@ -5906,6 +5909,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         weekData={weekData}
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
+        onRefreshWeek={() => fetchWeek(weekStart)}
       />
 
       {/* Rota history panel */}
