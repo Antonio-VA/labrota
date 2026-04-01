@@ -1925,7 +1925,7 @@ function PersonGrid({
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#EAF0F8" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#DDE8F5" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -2860,7 +2860,7 @@ function ShiftGrid({
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
-                  style={isWkndCell ? { backgroundColor: isEmpty ? "#E4EDF6" : "#F0F5FB" } : undefined}
+                  style={undefined}
                 >
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
@@ -2951,7 +2951,7 @@ function ShiftGrid({
                 isPublished={isPublished}
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
-                  backgroundColor: isWeekendOff ? "#E4EDF6" : "var(--muted)",
+                  backgroundColor: "var(--muted)",
                   backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
                   backgroundSize: "10px 10px",
                 }}
