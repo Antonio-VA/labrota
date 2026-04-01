@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit, Star, Palette } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { TapPopover } from "@/components/tap-popover"
@@ -262,6 +262,13 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                 {locale === "es" ? "Resaltar" : "Highlights"}
                 {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
               </button>
+              {weekViewMode === "person" && onToggleDeptColor && (
+                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Users className="size-4" />
+                  {locale === "es" ? "Colores personal" : "Staff colours"}
+                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
+                </button>
+              )}
             </>
           )}
           {onToggleViewMode && (
@@ -273,13 +280,6 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                 {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
               </button>
             </>
-          )}
-          {weekViewMode === "person" && onToggleDeptColor && (
-            <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-              <Palette className="size-4" />
-              {locale === "es" ? "Colores dept." : "Dept. colours"}
-              {deptColor && <Check className="size-4 text-primary ml-auto" />}
-            </button>
           )}
           {onSaveFavourite && (
             <>
@@ -739,14 +739,10 @@ export function MobileWeekClient() {
                             {a && st ? (
                               <TapPopover trigger={
                                 <div
-                                  className="flex flex-col items-center rounded px-1 py-0.5 border cursor-pointer active:scale-95 transition-colors w-full text-center"
-                                  style={isHL
-                                    ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
-                                    : mobileDeptColor
-                                      ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
-                                      : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                  className="w-full text-center cursor-pointer active:opacity-70"
+                                  style={isHL ? { color: roleColor } : undefined}
                                 >
-                                  <span className="text-[10px] font-semibold leading-tight truncate">{a.shift_type}</span>
+                                  <span className="text-[11px] font-semibold leading-tight">{a.shift_type}</span>
                                 </div>
                               }>
                                 <p className="font-medium">{s.first_name} {s.last_name}</p>
