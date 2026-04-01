@@ -53,6 +53,7 @@ import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-da
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
+import { bulkAddSkill, bulkRemoveSkill } from "@/app/(clinic)/staff/actions"
 import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
@@ -938,6 +939,149 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
   )
 }
 
+// ── Inline skills editor for profile panel ──────────────────────────────────
+
+function ProfileSkillsSection({
+  staffId, staffSkills, tecnicas, skillLabel, canEdit, onChanged,
+}: {
+  staffId: string
+  staffSkills: { id: string; skill: string; level: string }[]
+  tecnicas: Tecnica[]
+  skillLabel: (code: string) => string
+  canEdit: boolean
+  onChanged?: () => void
+}) {
+  const t = useTranslations("schedule")
+  const ts = useTranslations("skills")
+  const [busy, setBusy] = useState<string | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+
+  // All available skill codes from tecnicas
+  const allSkills = useMemo(() => {
+    const fromTecnicas = tecnicas
+      .filter((tc) => tc.required_skill && tc.activa)
+      .map((tc) => tc.required_skill!)
+    return [...new Set(fromTecnicas)]
+  }, [tecnicas])
+
+  const assignedSkills = new Set(staffSkills.map((s) => s.skill))
+  const unassignedSkills = allSkills.filter((s) => !assignedSkills.has(s))
+
+  async function handleAdd(skill: string, level: "certified" | "training") {
+    setBusy(skill)
+    const result = await bulkAddSkill([staffId], skill, level)
+    setBusy(null)
+    if (result.error) toast.error(result.error)
+    else { setShowAdd(false); onChanged?.() }
+  }
+
+  async function handleRemove(skill: string) {
+    setBusy(skill)
+    const result = await bulkRemoveSkill([staffId], skill)
+    setBusy(null)
+    if (result.error) toast.error(result.error)
+    else onChanged?.()
+  }
+
+  async function handleToggleLevel(skill: string, currentLevel: string) {
+    const newLevel = currentLevel === "certified" ? "training" : "certified"
+    setBusy(skill)
+    // Remove then re-add with new level
+    await bulkRemoveSkill([staffId], skill)
+    const result = await bulkAddSkill([staffId], skill, newLevel as "certified" | "training")
+    setBusy(null)
+    if (result.error) toast.error(result.error)
+    else onChanged?.()
+  }
+
+  return (
+    <div className="px-5 py-3 border-b border-border">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{ts("title")}</p>
+        {canEdit && unassignedSkills.length > 0 && (
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="text-[11px] text-primary hover:underline"
+          >
+            {showAdd ? t("cancel") : `+ ${ts("addSkill")}`}
+          </button>
+        )}
+      </div>
+
+      {/* Add skill dropdown */}
+      {showAdd && (
+        <div className="flex flex-col gap-1 mb-3 p-2 rounded-lg border border-border bg-muted/30">
+          {unassignedSkills.map((skill) => (
+            <div key={skill} className="flex items-center justify-between">
+              <span className="text-[12px] text-foreground">{skillLabel(skill)}</span>
+              <div className="flex gap-1">
+                <button
+                  disabled={busy === skill}
+                  onClick={() => handleAdd(skill, "certified")}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                >
+                  {t("certified")}
+                </button>
+                <button
+                  disabled={busy === skill}
+                  onClick={() => handleAdd(skill, "training")}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {t("inTraining")}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Current skills */}
+      {staffSkills.length === 0 && !showAdd ? (
+        <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {staffSkills.map((sk) => (
+            <span
+              key={sk.id}
+              className={cn(
+                "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium group",
+                sk.level === "certified"
+                  ? "bg-blue-50 border-blue-200 text-blue-700"
+                  : "bg-amber-50 border-amber-200 text-amber-600",
+                canEdit && "cursor-pointer hover:shadow-sm",
+                busy === sk.skill && "opacity-50"
+              )}
+            >
+              {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
+              {canEdit ? (
+                <button
+                  disabled={busy === sk.skill}
+                  onClick={() => handleToggleLevel(sk.skill, sk.level)}
+                  className="cursor-pointer"
+                  title={sk.level === "certified" ? t("clickToSetTraining") : t("clickToSetCertified")}
+                >
+                  {skillLabel(sk.skill)}
+                </button>
+              ) : (
+                skillLabel(sk.skill)
+              )}
+              {canEdit && (
+                <button
+                  disabled={busy === sk.skill}
+                  onClick={(e) => { e.stopPropagation(); handleRemove(sk.skill) }}
+                  className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="size-2.5" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StaffProfilePanel({
   staffId, staffList, weekData, open, onClose, onRefreshWeek,
 }: {
@@ -1192,35 +1336,19 @@ function StaffProfilePanel({
             )}
           </div>
 
-          {/* Capacidades (skills) */}
+          {/* Capacidades (skills) — editable */}
           {staff && (
-            <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">Habilidades</p>
-              {staff.staff_skills.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {staff.staff_skills.map((sk) => (
-                    <Tooltip key={sk.id}>
-                      <TooltipTrigger render={
-                        <span className={cn(
-                          "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium cursor-default",
-                          sk.level === "certified"
-                            ? "bg-blue-50 border-blue-200 text-blue-700"
-                            : "bg-amber-50 border-amber-200 text-amber-600 dark:text-amber-400"
-                        )}>
-                          {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
-                          {skillLabel(sk.skill)}
-                        </span>
-                      } />
-                      <TooltipContent side="top">
-                        {sk.level === "training" ? t("inTraining") : t("certified")}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ProfileSkillsSection
+              staffId={staffId!}
+              staffSkills={staff.staff_skills}
+              tecnicas={weekData?.tecnicas ?? []}
+              skillLabel={skillLabel}
+              canEdit={userRole !== "viewer"}
+              onChanged={() => {
+                // Refresh the staff list so chips update everywhere
+                onRefreshWeek?.()
+              }}
+            />
           )}
 
           {/* Scheduling rules affecting this person — managers/admins only */}

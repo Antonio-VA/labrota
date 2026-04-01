@@ -249,6 +249,7 @@
     "selectVersion": "Select a version",
     "noAssignmentsInVersion": "No assignments in this version",
     "restoring": "Restoring…",
+    "cancel": "Cancel",
     "cancelRestore": "Cancel",
     "loading": "Loading…",
     "noTaskAssigned": "No task assigned",
@@ -361,6 +362,8 @@
     "punctionsLabel": "{count} pick-ups",
     "inTraining": "In training",
     "certified": "Certified",
+    "clickToSetTraining": "Click to set as in training",
+    "clickToSetCertified": "Click to set as certified",
     "absences": "absences",
     "uncoveredTasks": "Uncovered tasks",
     "people": "people",
@@ -512,6 +515,8 @@
     }
   },
   "skills": {
+    "title": "Skills",
+    "addSkill": "Add skill",
     "icsi": "ICSI",
     "iui": "IUI",
     "vitrification": "Vitrification",

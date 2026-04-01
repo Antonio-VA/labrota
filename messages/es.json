@@ -249,6 +249,7 @@
     "selectVersion": "Selecciona una versión",
     "noAssignmentsInVersion": "Sin asignaciones en esta versión",
     "restoring": "Restaurando…",
+    "cancel": "Cancelar",
     "cancelRestore": "Cancelar",
     "loading": "Cargando…",
     "noTaskAssigned": "Sin tarea asignada",
@@ -361,6 +362,8 @@
     "punctionsLabel": "{count} punciones",
     "inTraining": "En formación",
     "certified": "Certificada",
+    "clickToSetTraining": "Clic para poner en formación",
+    "clickToSetCertified": "Clic para certificar",
     "absences": "ausencias",
     "uncoveredTasks": "Tareas sin cubrir",
     "people": "personas",
@@ -512,6 +515,8 @@
     }
   },
   "skills": {
+    "title": "Habilidades",
+    "addSkill": "Añadir habilidad",
     "icsi": "ICSI",
     "iui": "IUI",
     "vitrification": "Vitrificación",
