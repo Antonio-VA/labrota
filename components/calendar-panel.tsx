@@ -1916,12 +1916,17 @@ function PersonGrid({
           const today   = day.date === TODAY
           const holiday = publicHolidays[day.date]
           const isSat   = d.getDay() === 6
+          const isSun   = d.getDay() === 0
+          const isWknd  = isSat || isSun
           return (
             <div key={day.date} className={cn(
               "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-r last:border-r-0 border-border",
               holiday ? "bg-amber-50/60" : "bg-muted"
             )}
-            style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
+            style={{
+              ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#EAF0F8" } : {}),
+            }}
             >
               {day.warnings.length > 0 && (
                 <DayWarningPopover warnings={day.warnings} />
@@ -2838,7 +2843,10 @@ function ShiftGrid({
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
               const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
               const cellId = `${shiftRow}-${day.date}`
-              const isSatCell = new Date(day.date + "T12:00:00").getDay() === 6
+              const cellDow   = new Date(day.date + "T12:00:00").getDay()
+              const isSatCell = cellDow === 6
+              const isWkndCell = isSatCell || cellDow === 0
+              const isEmpty   = dayShifts.length === 0 && effectivePDay === 0
               return (
                 <DroppableCell
                   key={day.date}
@@ -2848,10 +2856,11 @@ function ShiftGrid({
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   className={cn(
                     "p-1.5 flex flex-col gap-1 border-l border-border",
-                    dayShifts.length === 0 && effectivePDay === 0 ? "bg-muted/40" : "bg-background",
+                    isEmpty ? "bg-muted/40" : "bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
+                  style={isWkndCell ? { backgroundColor: isEmpty ? "#E4EDF6" : "#F0F5FB" } : undefined}
                 >
                   {dayShifts.map((a) => {
                     const staffMember = staffList.find((s) => s.id === a.staff_id)
@@ -2924,8 +2933,9 @@ function ShiftGrid({
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
             const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
             const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-            const isSaturday  = dow === 6
-            const offCellId   = `OFF-${day.date}`
+            const isSaturday   = dow === 6
+            const isWeekendOff = dow === 6 || dow === 0
+            const offCellId    = `OFF-${day.date}`
 
             // Unassigned staff — leave people first (non-draggable), then others
             const allOff = staffList.filter((s) => !assignedIds.has(s.id))
@@ -2939,7 +2949,12 @@ function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 bg-muted border-l border-border"
+                className="p-1.5 flex flex-col gap-1 border-l border-border"
+                style={{
+                  backgroundColor: isWeekendOff ? "#E4EDF6" : "var(--muted)",
+                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
+                  backgroundSize: "10px 10px",
+                }}
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
                 {onLeaveStaff.map((s) => {
