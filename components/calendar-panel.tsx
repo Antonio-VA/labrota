@@ -553,6 +553,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
   biopsyForecast: number; biopsyTooltip: string
 }) {
   const t = useTranslations("schedule")
+  const locale = useLocale()
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
   const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
@@ -595,16 +596,21 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     setOpen(false)
   }
 
-  const pLabel = `${value}`
-  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
+  const puncLabel = locale === "en" ? "Retr" : "Punc"
 
   if (disabled) {
     return (
       <Tooltip>
         <TooltipTrigger render={
-          <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground cursor-default">
-            <span className={isOverride ? "text-primary" : "text-foreground/70"}>{pLabel}</span>
-            <span className="text-foreground/70">{bLabel}</span>
+          <span className="flex items-center gap-3 cursor-default">
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
+              <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground/70")}>{value}</span>
+            </span>
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
+              <span className="text-[13px] font-semibold tabular-nums text-foreground/70">{biopsyForecast}</span>
+            </span>
           </span>
         } />
         <TooltipContent side="bottom">
@@ -620,10 +626,16 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
         <TooltipTrigger render={
           <button
             onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-            className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
+            className="flex items-center gap-3 rounded px-1.5 py-1 transition-colors hover:bg-muted cursor-pointer"
           >
-            <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
-            <span className="text-muted-foreground">{bLabel}</span>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
+              <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground")}>{value}</span>
+            </div>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
+              <span className="text-[13px] font-semibold tabular-nums text-foreground">{biopsyForecast}</span>
+            </div>
           </button>
         } />
         {!open && (
@@ -3248,16 +3260,18 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         )}
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
-                      <div className="flex flex-wrap items-center gap-1 mt-1">
-                        {Object.entries(day.shiftCounts ?? {})
-                          .sort(([a], [b]) => a.localeCompare(b))
-                          .map(([shift, count]) => (
-                            <span key={shift} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-normal bg-primary/8 text-primary border border-primary/20 tabular-nums">
-                              {shift} <span className="font-semibold text-foreground">{count}</span>
-                            </span>
-                          ))}
+                      <div className="flex-1 flex items-center py-1">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {Object.entries(day.shiftCounts ?? {})
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([shift, count]) => (
+                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/5 text-primary/80 border border-primary/15 tabular-nums">
+                                {shift} <span className="font-semibold text-foreground/80">{count}</span>
+                              </span>
+                            ))}
+                        </div>
                       </div>
-                    ) : null}
+                    ) : <div className="flex-1" />}
 
                     {/* Empty cells are visually distinct via dashed border + no bg tint */}
 
@@ -3283,20 +3297,17 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       const p6src = getPuncFromSummary(d6str)
                       const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                       return (
-                        <div className="flex items-end gap-3 mt-auto pt-1 text-[11px] tabular-nums">
-                          <div className="flex flex-col items-start leading-none gap-0.5">
-                            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "en" ? "Retr" : "Punc"}</span>
-                            <DayStatsInput
-                              date={day.date}
-                              value={effectiveP}
-                              defaultValue={day.punctions}
-                              isOverride={isOverride}
-                              onChange={onPunctionsChange ?? (() => {})}
-                              disabled={!onPunctionsChange}
-                              biopsyForecast={bForecast}
-                              biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
-                            />
-                          </div>
+                        <div className="flex items-end gap-2">
+                          <DayStatsInput
+                            date={day.date}
+                            value={effectiveP}
+                            defaultValue={day.punctions}
+                            isOverride={isOverride}
+                            onChange={onPunctionsChange ?? (() => {})}
+                            disabled={!onPunctionsChange}
+                            biopsyForecast={bForecast}
+                            biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
+                          />
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-amber-500 ml-auto self-end pb-0.5">
                               <Briefcase className="size-3" />{day.leaveCount}
