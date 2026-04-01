@@ -1927,7 +1927,7 @@ function PersonGrid({
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#ECEDF0" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#E4ECF6" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -2761,7 +2761,7 @@ function ShiftGrid({
                   "relative flex flex-col items-center justify-center py-1 gap-0 border-l border-border",
                   holidayName ? "bg-amber-100/80" : "bg-muted"
                 )}
-                style={isWknd && !holidayName ? { backgroundColor: "#ECEDF0" } : undefined}
+                style={isWknd && !holidayName ? { backgroundColor: "#E4ECF6" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
