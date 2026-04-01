@@ -2030,7 +2030,6 @@ function PersonGrid({
                     defaultValue={pDefault}
                     isOverride={hasOverride}
                     onChange={onPunctionsChange ?? (() => {})}
-                    onBiopsyChange={onBiopsyChange}
                     disabled={!onPunctionsChange}
                     biopsyForecast={forecast}
                     biopsyTooltip={tooltip}
