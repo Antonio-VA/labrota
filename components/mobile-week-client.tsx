@@ -16,6 +16,13 @@ import { toast } from "sonner"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
+
+function contrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#1e293b" : "#ffffff"
+}
 const ROLE_LABEL: Record<string, Record<string, string>> = {
   es: { lab: "Lab", andrology: "Andrología", admin: "Admin" },
   en: { lab: "Lab", andrology: "Andrology", admin: "Admin" },
@@ -740,7 +747,7 @@ export function MobileWeekClient() {
                               <TapPopover trigger={
                                 <div
                                   className="w-full text-center cursor-pointer active:opacity-70"
-                                  style={isHL ? { color: hlColor } : undefined}
+                                  style={isHL ? { color: hlColor, fontWeight: 700 } : undefined}
                                 >
                                   <span className="text-[11px] font-semibold leading-tight">{a.shift_type}</span>
                                 </div>
@@ -802,7 +809,7 @@ export function MobileWeekClient() {
                                 <span
                                   className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
                                   style={isHL
-                                    ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" }
+                                    ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) }
                                     : mobileDeptColor
                                       ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
                                       : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
@@ -911,12 +918,12 @@ export function MobileWeekClient() {
                     })}
                     {offDuty.map((s) => {
                       const isHL = highlightEnabled && highlightedStaff === s.id
-                      const hlColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
+                      const hlColor = staffColorLookup[s.id] ?? deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
                       return (
                         <TapPopover key={s.id} trigger={
                           <span
                             className="inline-flex items-center text-[11px] px-1.5 py-0.5 font-medium rounded border cursor-pointer active:scale-95 transition-colors"
-                            style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--muted-foreground)" }}
+                            style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) } : { borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--muted-foreground)" }}
                             onClick={() => highlightEnabled && setHighlightedStaff((p) => p === s.id ? null : s.id)}
                           >
                             {s.first_name[0]}{s.last_name[0]}
