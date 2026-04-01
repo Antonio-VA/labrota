@@ -2239,7 +2239,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   const orgRes = await (supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>)
   const rotaDisplayMode = orgRes.data?.rota_display_mode ?? "by_shift"
 
-  const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes] = await Promise.all([
+  const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes, tecnicasRes] = await Promise.all([
     supabase
       .from("rota_assignments")
       .select("date, staff_id, shift_type, staff:staff_id(first_name, last_name, role)")
@@ -2264,6 +2264,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .from("staff")
       .select("id, first_name, last_name, role, days_per_week")
       .neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; days_per_week: number }[] | null }>,
+    supabase
+      .from("tecnicas")
+      .select("codigo, required_skill, typical_shifts")
+      .eq("activa", true) as unknown as Promise<{ data: { codigo: string; required_skill: string | null; typical_shifts: string[] | null }[] | null }>,
   ])
 
   // Assignment data
@@ -2298,6 +2302,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     staffSkillMap[ss.staff_id].push(ss.skill)
   }
   const allOrgSkills = [...new Set((skillsRes.data ?? []).filter((ss) => ss.level === "certified").map((ss) => ss.skill))]
+  const tecnicasForGap = (tecnicasRes.data ?? []).filter((t) => t.required_skill && (t.typical_shifts?.length ?? 0) > 0)
 
   // Leave map: date → count
   const leaveByDate: Record<string, number> = {}
@@ -2332,7 +2337,20 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const entries   = byDate[date] ?? []
     const staffIds  = entries.map((e) => e.staff_id)
     const covered   = new Set(staffIds.flatMap((id) => staffSkillMap[id] ?? []))
-    const hasSkillGaps = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
+    const daySkillGap = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
+    // Shift-level gap: check if each tecnica's required skill is covered within its typical shifts
+    const shiftToStaff: Record<string, string[]> = {}
+    for (const e of entries) {
+      if (!shiftToStaff[e.shift_type]) shiftToStaff[e.shift_type] = []
+      shiftToStaff[e.shift_type].push(e.staff_id)
+    }
+    const hasTechniqueShiftGap = staffIds.length > 0 && tecnicasForGap.some((tec) =>
+      (tec.typical_shifts ?? []).some((shift) => {
+        const inShift = shiftToStaff[shift] ?? []
+        return inShift.length > 0 && !inShift.some((sid) => (staffSkillMap[sid] ?? []).includes(tec.required_skill!))
+      })
+    )
+    const hasSkillGaps = daySkillGap || hasTechniqueShiftGap
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
