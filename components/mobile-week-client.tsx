@@ -863,7 +863,7 @@ export function MobileWeekClient() {
                               <div
                                 className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
                                 style={isHL
-                                  ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" }
+                                  ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) }
                                   : mobileDeptColor
                                     ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
                                     : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
