@@ -4786,27 +4786,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   // Generate / publish / unlock
   function handleGenerateClick() {
     if (view === "month" && monthSummary) {
-      // 4-week view: check which weeks have rotas
-      const allWeekStarts: string[] = []
-      for (let i = 0; i < (monthSummary.days.length ?? 0); i += 7) {
-        if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-      }
-      const withRota = new Set(
-        monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
-      )
-      const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
-
-      if (withoutRota.length === allWeekStarts.length) {
-        // NO weeks have rota — go straight to strategy for all
-        setMultiWeekScope(allWeekStarts)
-        setShowStrategyModal(true)
-      } else if (withoutRota.length > 0) {
-        // SOME weeks missing — show scope dialog
-        setShowMultiWeekDialog(true)
-      } else {
-        // ALL weeks have rota — show scope dialog (regenerate confirmation)
-        setShowMultiWeekDialog(true)
-      }
+      // 4-week view: always show scope dialog so user can pick scope
+      setShowMultiWeekDialog(true)
       return
     }
     setShowStrategyModal(true)
@@ -5169,7 +5150,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               <span className="hidden sm:inline">{t("aiInsights")}</span>
             </Button>
           )}
-          {showActions && !isPublished && (
+          {showActions && (view === "month" ? !anyMonthWeekPublished || monthSummary?.weekStatuses?.some((ws) => ws.status !== "published") : !isPublished) && (
             <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
               {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
             </Button>
@@ -5963,41 +5944,34 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
         for (let i = 0; i < monthSummary.days.length; i += 7) {
           if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
         }
+        const publishedSet = new Set(
+          monthSummary.weekStatuses.filter((ws) => ws.status === "published").map((ws) => ws.weekStart)
+        )
         const withRota = new Set(
           monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
         )
         const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
-        const allHaveRota = withoutRota.length === 0
+        // "Remaining" = weeks whose start date is >= today AND not published
+        const remaining = allWeekStarts.filter((ws) => ws >= TODAY && !publishedSet.has(ws))
+        const nonPublished = allWeekStarts.filter((ws) => !publishedSet.has(ws))
+        const hasOptions = withoutRota.length > 0 || remaining.length > 0 || nonPublished.length > 0
 
         return (
           <>
             <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
             <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
               <p className="text-[15px] font-medium">
-                {allHaveRota ? t("regenerate4WeeksTitle") : t("generate4WeeksTitle")}
+                {t("generate4WeeksTitle")}
               </p>
 
-              {allHaveRota ? (
-                <>
-                  <p className="text-[13px] text-muted-foreground">
-                    {t("overwriteWarning")}
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                      {tc("cancel")}
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => {
-                      setShowMultiWeekDialog(false)
-                      setMultiWeekScope(allWeekStarts)
-                      setShowStrategyModal(true)
-                    }}>
-                      {t("regenerate4Weeks")}
-                    </Button>
-                  </div>
-                </>
+              {!hasOptions ? (
+                <p className="text-[13px] text-muted-foreground">
+                  {locale === "es" ? "Todas las semanas están publicadas." : "All weeks are published."}
+                </p>
               ) : (
-                <>
-                  <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
+                  {/* Option 1: Generate only weeks without rota */}
+                  {withoutRota.length > 0 && (
                     <button
                       onClick={() => {
                         setShowMultiWeekDialog(false)
@@ -6011,26 +5985,52 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                         <p className="text-[12px] text-muted-foreground">{t("weeksWithoutSchedule", { count: withoutRota.length })}</p>
                       </div>
                     </button>
+                  )}
+                  {/* Option 2: Regenerate remaining (current + future) weeks */}
+                  {remaining.length > 0 && remaining.length < nonPublished.length && (
                     <button
                       onClick={() => {
                         setShowMultiWeekDialog(false)
-                        setMultiWeekScope(allWeekStarts)
+                        setMultiWeekScope(remaining)
+                        setShowStrategyModal(true)
+                      }}
+                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
+                    >
+                      {remaining.some((ws) => withRota.has(ws)) && (
+                        <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
+                      )}
+                      <p className="text-[14px] font-medium">{t("generateRemainingWeeks")}</p>
+                      <p className="text-[12px] text-muted-foreground">{t("remainingWeeksDescription", { count: remaining.length })}</p>
+                    </button>
+                  )}
+                  {/* Option 3: Regenerate all non-published weeks */}
+                  {nonPublished.length > 0 && nonPublished.length > withoutRota.length && (
+                    <button
+                      onClick={() => {
+                        setShowMultiWeekDialog(false)
+                        setMultiWeekScope(nonPublished)
                         setShowStrategyModal(true)
                       }}
                       className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
                     >
                       <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
                       <p className="text-[14px] font-medium">{t("regenerateAllWeeks")}</p>
-                      <p className="text-[12px] text-muted-foreground">{t("weeksOverwrite")}</p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {nonPublished.length === allWeekStarts.length
+                          ? t("weeksOverwrite")
+                          : (locale === "es"
+                            ? `${nonPublished.length} semana(s) — sobreescribirá horarios existentes`
+                            : `${nonPublished.length} week(s) — will overwrite existing rotas`)}
+                      </p>
                     </button>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                      {tc("cancel")}
-                    </Button>
-                  </div>
-                </>
+                  )}
+                </div>
               )}
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
+                  {tc("cancel")}
+                </Button>
+              </div>
             </div>
           </>
         )

@@ -319,6 +319,8 @@
     "generateWeeksWithout": "Generar semanas sin horario",
     "weeksWithoutSchedule": "{count} semana(s) sin horario",
     "regenerateAllWeeks": "Regenerar todas las semanas",
+    "generateRemainingWeeks": "Generar semanas restantes",
+    "remainingWeeksDescription": "{count} semana(s) desde hoy en adelante",
     "weeksOverwrite": "4 semanas — sobreescribirá horarios existentes",
     "weeksGenerated": "{count} semanas generadas",
     "scheduleGenerated": "Horario generado",

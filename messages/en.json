@@ -319,6 +319,8 @@
     "generateWeeksWithout": "Generate weeks without rota",
     "weeksWithoutSchedule": "{count} week(s) without rota",
     "regenerateAllWeeks": "Regenerate all weeks",
+    "generateRemainingWeeks": "Generate remaining weeks",
+    "remainingWeeksDescription": "{count} week(s) from today onwards",
     "weeksOverwrite": "4 weeks — will overwrite existing rotas",
     "weeksGenerated": "{count} weeks generated",
     "scheduleGenerated": "Rota generated",
