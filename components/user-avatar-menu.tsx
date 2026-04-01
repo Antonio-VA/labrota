@@ -136,13 +136,6 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
             <UserCog className="size-3.5" />
             {tu("preferences")}
           </button>
-          <button
-            onClick={() => { setOpen(false); setSupportOpen(true) }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
-          >
-            <HelpCircle className="size-3.5" />
-            {tu("support")}
-          </button>
 
           {/* Theme section */}
           <div className="border-t border-border">
@@ -163,8 +156,15 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
             ))}
           </div>
 
-          {/* Sign out */}
+          {/* Support + Sign out */}
           <div className="border-t border-border">
+            <button
+              onClick={() => { setOpen(false); setSupportOpen(true) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
+            >
+              <HelpCircle className="size-3.5" />
+              {tu("support")}
+            </button>
             <button
               onClick={() => { setOpen(false); signOut() }}
               className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left text-destructive hover:bg-destructive/10 transition-colors"
