@@ -274,7 +274,7 @@ export function TransposedShiftGrid({
           {shiftCodes.map((code) => {
             const st = shiftTypeMap[code]
             return (
-              <div key={code} className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
+              <div key={code} className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 text-center">
                 <p className="text-[13px] font-semibold text-foreground">{code}</p>
                 {st && (
                   <p className="text-[11px] text-muted-foreground tabular-nums">
@@ -284,7 +284,7 @@ export function TransposedShiftGrid({
               </div>
             )
           })}
-          <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
+          <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 text-center">
             <p className="text-[11px] font-semibold text-muted-foreground">OFF</p>
           </div>
 
@@ -345,7 +345,7 @@ export function TransposedShiftGrid({
                       key={cellId}
                       id={cellId}
                       className={cn(
-                        "border-b border-border p-1 flex flex-col gap-0.5",
+                        "border-b border-l border-border p-1 flex flex-col gap-0.5",
                         isSat && "border-t border-dashed",
                         !isActive && "bg-muted/30",
                         isActive && !isPublished && "cursor-pointer hover:bg-accent/10"
@@ -367,9 +367,6 @@ export function TransposedShiftGrid({
                                 compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]"
                               )}
                               style={{
-                                borderLeft: colorChips
-                                  ? `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`
-                                  : undefined,
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
@@ -395,7 +392,7 @@ export function TransposedShiftGrid({
                 <DroppableCell
                   key={`OFF-${day.date}`}
                   id={`OFF-${day.date}`}
-                  className={cn("border-b border-border p-1 flex flex-col gap-0.5 bg-muted/20", isSat && "border-t border-dashed")}
+                  className={cn("border-b border-l border-border p-1 flex flex-col gap-0.5 bg-muted/20", isSat && "border-t border-dashed")}
                 >
                   {[...leaveIds].map((sid) => {
                     const s = staffList.find((st) => st.id === sid)
