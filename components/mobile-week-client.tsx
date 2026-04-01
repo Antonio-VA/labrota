@@ -127,6 +127,61 @@ function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string; locale
   )
 }
 
+// ── AI insights parser (mirrors desktop parseHybridInsights) ────────────────
+
+function parseInsights(text: string): { assessment: string; issues: string[] } | null {
+  const issuesMatch = text.match(/Remaining issues?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
+  const assessmentRaw = issuesMatch ? text.slice(0, text.search(/Remaining issues?:/i)).trim() : text.trim()
+  if (!assessmentRaw && !issuesMatch) return null
+  const parseBullets = (block: string) =>
+    block.split("\n").map(l => l.replace(/^[•\-*]\s*/, "").replace(/\([0-9a-f]{7,10}\)/gi, "").trim()).filter(Boolean)
+  return { assessment: assessmentRaw, issues: issuesMatch ? parseBullets(issuesMatch[1]) : [] }
+}
+
+// ── AI insights bottom sheet ─────────────────────────────────────────────────
+
+function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reasoning: string; locale: "es" | "en"; open: boolean; onClose: () => void }) {
+  if (!open) return null
+  const parsed = parseInsights(reasoning)
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="size-4 text-indigo-500" />
+            <span className="text-[16px] font-semibold">{locale === "es" ? "Análisis IA" : "AI Insights"}</span>
+          </div>
+          <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+            <X className="size-4" />
+          </button>
+        </div>
+        {parsed ? (
+          <div className="flex flex-col gap-3">
+            {parsed.assessment && (
+              <p className="text-[13px] leading-relaxed text-foreground/80">{parsed.assessment}</p>
+            )}
+            {parsed.issues.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{locale === "es" ? "Problemas restantes" : "Remaining issues"}</p>
+                {parsed.issues.map((issue, i) => (
+                  <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
+                    <span className="mt-1 size-1.5 rounded-full bg-indigo-400 shrink-0" />
+                    <p className="text-[13px] text-indigo-700 leading-snug">{issue}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-[13px] text-foreground/70 leading-relaxed">{reasoning}</p>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Week warnings bottom sheet ──────────────────────────────────────────────
 
 function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData["days"]; locale: "es" | "en"; open: boolean; onClose: () => void }) {
@@ -490,6 +545,7 @@ export function MobileWeekClient() {
   })
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
   const [warningsOpen, setWarningsOpen] = useState(false)
+  const [insightsOpen, setInsightsOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [weekViewMode, setWeekViewMode] = useState<"task" | "person">(() => {
     if (typeof window === "undefined") return "task"
@@ -629,6 +685,12 @@ export function MobileWeekClient() {
               </>
             : <Check className="size-5 text-emerald-500" />}
         </button>
+
+        {data?.aiReasoning && (
+          <button onClick={() => setInsightsOpen(true)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+            <BrainCircuit className="size-5 text-indigo-500" />
+          </button>
+        )}
 
         <WeekOverflow
           weekStart={weekStart}
@@ -951,6 +1013,11 @@ export function MobileWeekClient() {
 
       {/* Warnings bottom sheet */}
       <WeekWarningsSheet days={days} locale={locale} open={warningsOpen} onClose={() => setWarningsOpen(false)} />
+
+      {/* AI insights bottom sheet */}
+      {data?.aiReasoning && (
+        <WeekInsightsSheet reasoning={data.aiReasoning} locale={locale} open={insightsOpen} onClose={() => setInsightsOpen(false)} />
+      )}
 
       {/* Generate week bottom sheet */}
       <WeekGenerateSheet
