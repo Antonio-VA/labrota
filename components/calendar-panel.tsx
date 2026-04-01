@@ -3559,14 +3559,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                         <TapPopover key={a.id} trigger={pillContent}>
                           <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
                           {(() => {
-                            // Show actual days working this week
                             const weekDays = data?.days ?? []
                             const workedDays = weekDays.filter((d) => d.assignments.some((as) => as.staff_id === a.staff_id))
-                            const dayAbbrs = workedDays.map((d) => {
-                              const dow = new Date(d.date + "T12:00:00").getDay()
-                              return (["D", "L", "M", "X", "J", "V", "S"])[dow]
-                            })
-                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d · {dayAbbrs.join(" ")}</p>
+                            const offCount = weekDays.length - workedDays.length
+                            const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
+                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d{offCount > 0 ? ` · ${offLabel}` : ""}</p>
                           })()}
                         </TapPopover>
                       )
@@ -3667,7 +3664,12 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                       </span>
                     }>
                       <p className="font-medium">{s.first_name} {s.last_name}</p>
-                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {(s.working_pattern ?? []).map((d) => ({ mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>)[d] ?? d).join(" ")}</p>
+                      {(() => {
+                        const workedThisWeek = (data?.days ?? []).filter((d) => d.assignments.some((a) => a.staff_id === s.id)).length
+                        const offCount = (data?.days.length ?? 5) - workedThisWeek
+                        const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
+                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {offLabel}</p>
+                      })()}
                     </TapPopover>
                   )
                 })}
@@ -3678,18 +3680,33 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
                   const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
                   return (
-                    <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50">
-                      <LeaveIcon className="size-3 text-amber-500 shrink-0" />
-                      <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
-                    </div>
+                    <TapPopover key={s.id} trigger={
+                      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 cursor-pointer">
+                        <LeaveIcon className="size-3 text-amber-500 shrink-0" />
+                        <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
+                      </div>
+                    }>
+                      <p className="font-medium">{s.first_name} {s.last_name}</p>
+                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
+                    </TapPopover>
                   )
                 })}
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
                   return (
-                    <div key={s.id} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 bg-background text-muted-foreground" style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}>
-                      <span className="text-[13px]">{s.first_name} {s.last_name}</span>
-                    </div>
+                    <TapPopover key={s.id} trigger={
+                      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 bg-background text-muted-foreground cursor-pointer" style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}>
+                        <span className="text-[13px]">{s.first_name} {s.last_name}</span>
+                      </div>
+                    }>
+                      <p className="font-medium">{s.first_name} {s.last_name}</p>
+                      {(() => {
+                        const workedThisWeek = (data?.days ?? []).filter((d) => d.assignments.some((a) => a.staff_id === s.id)).length
+                        const offCount = (data?.days.length ?? 5) - workedThisWeek
+                        const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
+                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {offLabel}</p>
+                      })()}
+                    </TapPopover>
                   )
                 })}
               </div>
@@ -5487,10 +5504,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </div>
             </div>
           ) : (
-            <div data-mobile-toolbar className="flex items-center gap-1 h-12 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
+            <div data-mobile-toolbar className="flex items-center gap-1 h-14 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
               {/* Left: date selector */}
-              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronLeft className="size-4 text-muted-foreground" />
+              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+                <ChevronLeft className="size-[18px] text-muted-foreground" />
               </button>
               <div className="relative shrink-0">
                 <input
@@ -5503,8 +5520,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
                 </span>
               </div>
-              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-8 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronRight className="size-4 text-muted-foreground" />
+              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+                <ChevronRight className="size-[18px] text-muted-foreground" />
               </button>
               <button
                 onClick={goToToday}
@@ -5517,12 +5534,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {/* Day status icon — warning or check for the current day only */}
               {currentDayData && currentDayData.assignments.length > 0 && (
                 currentDayData.skillGaps.length > 0 || currentDayData.warnings.length > 0
-                  ? <AlertTriangle className="size-4 text-amber-500 shrink-0" />
-                  : <Check className="size-4 text-emerald-500 shrink-0" />
+                  ? <AlertTriangle className="size-[18px] text-amber-500 shrink-0" />
+                  : <Check className="size-[18px] text-emerald-500 shrink-0" />
               )}
               {canEdit && (
-                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
-                  <Pencil className="size-3.5" />
+                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-10 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
+                  <Pencil className="size-[18px]" />
                 </button>
               )}
               {canEdit && (
@@ -5539,8 +5556,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   onToggleCompact={toggleMobileCompact}
                   deptColor={mobileDeptColor}
                   onToggleDeptColor={toggleMobileDeptColor}
-                  highlight={highlightHover}
-                  onToggleHighlight={toggleHighlightHover}
                   isFavorite={!!(mobileFavoriteView && mobileFavoriteView.viewMode === mobileViewMode && mobileFavoriteView.compact === mobileCompact && mobileFavoriteView.deptColor === mobileDeptColor)}
                   onSaveFavorite={() => {
                     const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }

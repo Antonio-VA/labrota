@@ -62,7 +62,7 @@ export function TapPopover({ trigger, children }: { trigger: ReactNode; children
         >
           {children}
           <div
-            className="absolute top-full size-2 -mt-1 rotate-45 bg-foreground"
+            className="absolute top-full size-2.5 -mt-[5px] bg-foreground"
             style={{ left: pos.arrowLeft, transform: "translateX(-50%) rotate(45deg)" }}
           />
         </div>,

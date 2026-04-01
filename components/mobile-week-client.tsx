@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useRef, useLayoutEffect } from "rea
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Share } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Share, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { formatDateRange } from "@/lib/format-date"
@@ -50,7 +50,7 @@ function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: stri
   )
 }
 
-function WeekOverflow({ weekStart, data, onShare, onRefresh }: { weekStart: string; data: RotaWeekData | null; onShare?: () => void; onRefresh?: () => void }) {
+function WeekOverflow({ weekStart, data, onShare, onRefresh, highlightEnabled, onToggleHighlight }: { weekStart: string; data: RotaWeekData | null; onShare?: () => void; onRefresh?: () => void; highlightEnabled?: boolean; onToggleHighlight?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [generating, setGenerating] = useState(false)
@@ -142,6 +142,16 @@ function WeekOverflow({ weekStart, data, onShare, onRefresh }: { weekStart: stri
             <Sparkles className="size-4" />
             {generating ? (locale === "es" ? "Generando…" : "Generating…") : t("generateRota")}
           </button>
+          {onToggleHighlight && (
+            <>
+              <div className="h-px bg-border mx-3 my-0.5" />
+              <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
+                {locale === "es" ? "Resaltar" : "Highlights"}
+                {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
+              </button>
+            </>
+          )}
         </div>,
         document.body
       )}
@@ -158,6 +168,18 @@ export function MobileWeekClient() {
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
   const weekGridRef = useRef<HTMLDivElement>(null)
+  const [highlightEnabled, setHighlightEnabled] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("labrota_week_highlight") === "true"
+  })
+  const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
+
+  function toggleHighlight() {
+    const next = !highlightEnabled
+    setHighlightEnabled(next)
+    localStorage.setItem("labrota_week_highlight", String(next))
+    if (!next) setHighlightedStaff(null)
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -213,7 +235,7 @@ export function MobileWeekClient() {
         </button>
         {/* Avisos — tappable with overlay */}
         <WeekAvisos days={days} locale={locale} />
-        <WeekOverflow weekStart={weekStart} data={data} onRefresh={() => {
+        <WeekOverflow weekStart={weekStart} data={data} highlightEnabled={highlightEnabled} onToggleHighlight={toggleHighlight} onRefresh={() => {
           setLoading(true)
           getRotaWeek(weekStart).then((d) => { setData(d); setLoading(false) })
         }} onShare={async () => {
@@ -228,7 +250,7 @@ export function MobileWeekClient() {
       </div>
 
       {/* Scrollable grid */}
-      <div ref={weekGridRef} className="flex-1 overflow-auto">
+      <div ref={weekGridRef} className="flex-1 overflow-auto" onClick={() => highlightedStaff && setHighlightedStaff(null)}>
         {loading ? (
           <div className="p-3 flex flex-col gap-1.5 animate-pulse">
             {/* Header row */}
@@ -307,16 +329,24 @@ export function MobileWeekClient() {
                       const isWeekend = [0, 6].includes(new Date(day.date + "T12:00:00").getDay())
                       return (
                         <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start", isWeekend && "bg-muted/20")}>
-                          {assignments.map((a) => (
+                          {assignments.map((a) => {
+                            const isHL = highlightEnabled && highlightedStaff === a.staff_id
+                            const hlColor = ROLE_COLOR[a.staff.role] ?? "#3B82F6"
+                            return (
                             <TapPopover key={a.id} trigger={
-                              <span className="text-[11px] font-medium rounded px-1.5 py-1 border border-border bg-background cursor-pointer active:scale-95">
+                              <span
+                                className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
+                                style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
+                              >
                                 {a.staff.first_name[0]}{a.staff.last_name[0]}
                               </span>
                             }>
                               <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
                               <p className="text-[11px] opacity-70">{a.shift_type}</p>
                             </TapPopover>
-                          ))}
+                            )
+                          })}
                         </div>
                       )
                     })}
@@ -345,16 +375,24 @@ export function MobileWeekClient() {
                       <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isSatCell && "border-l border-dashed border-l-border")}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
-                        ) : assignments.map((a) => (
+                        ) : assignments.map((a) => {
+                          const isHL = highlightEnabled && highlightedStaff === a.staff_id
+                          const hlColor = ROLE_COLOR[a.staff.role] ?? "#3B82F6"
+                          return (
                           <TapPopover key={a.id} trigger={
-                            <div className="text-[12px] font-medium rounded px-1.5 py-1 border border-border bg-background truncate cursor-pointer active:scale-95">
+                            <div
+                              className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
+                              style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                              onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
+                            >
                               {a.staff.first_name} {a.staff.last_name[0]}.
                             </div>
                           }>
                             <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
                             <p className="text-[11px] opacity-70">{a.shift_type}</p>
                           </TapPopover>
-                        ))}
+                          )
+                        })}
                       </div>
                     )
                   })}
