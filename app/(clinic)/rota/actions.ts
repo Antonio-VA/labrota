@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
@@ -133,6 +134,8 @@ const DOW_TO_KEY: Record<number, keyof import("@/lib/types/database").PunctionsB
 }
 
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
+  const cookieStore = await cookies()
+  const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
@@ -416,7 +419,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       // Map skill codes to technique names for user-friendly display
       const gapNames = day.skillGaps.map((sk) => {
         const tec = tecnicas.find((t) => t.codigo === sk)
-        return tec?.nombre_es ?? sk
+        return (locale === "en" ? tec?.nombre_en : tec?.nombre_es) ?? tec?.nombre_es ?? sk
       })
       day.warnings.push({ category: "skill_gap", message: gapNames.join(", ") })
     }
@@ -471,7 +474,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
           day.warnings.push({ category: "coverage", message: `Lab: ${labCount}/${labMin}` })
         }
         if (andCount < andMin) {
-          day.warnings.push({ category: "coverage", message: `Andrología: ${andCount}/${andMin}` })
+          day.warnings.push({ category: "coverage", message: `${locale === "en" ? "Andrology" : "Andrología"}: ${andCount}/${andMin}` })
         }
       }
     }
@@ -520,7 +523,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
           if (!hasCoverage) {
             day.warnings.push({
               category: "technique_shift_gap",
-              message: `${shiftCode}: sin personal cualificado para ${tec.nombre_es ?? tec.codigo}`,
+              message: locale === "en"
+                ? `${shiftCode}: no qualified staff for ${tec.nombre_en ?? tec.nombre_es ?? tec.codigo}`
+                : `${shiftCode}: sin personal cualificado para ${tec.nombre_es ?? tec.codigo}`,
             })
           }
         }
@@ -540,7 +545,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const assignedCount = day.assignments.length
         const ratio = assignedCount / totalProc
         if (ratio < ratioMin) {
-          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (mín. ${ratioMin})` })
+          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (${locale === "en" ? "min." : "mín."} ${ratioMin})` })
         }
       }
     }
@@ -562,7 +567,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       if (supAsg.shift_type !== traineeAsg.shift_type) {
         const supName = staffLookup[supervisorId]?.first_name ?? "?"
         const traineeName = staffLookup[supervisedIds[0]]?.first_name ?? "?"
-        day.warnings.push({ category: "rule", message: `Supervisor ${supName} (${supAsg.shift_type}) y ${traineeName} (${traineeAsg.shift_type}) deberían estar en el mismo turno` })
+        day.warnings.push({ category: "rule", message: locale === "en"
+          ? `Supervisor ${supName} (${supAsg.shift_type}) and ${traineeName} (${traineeAsg.shift_type}) should be on the same shift`
+          : `Supervisor ${supName} (${supAsg.shift_type}) y ${traineeName} (${traineeAsg.shift_type}) deberían estar en el mismo turno` })
       }
     }
   }
