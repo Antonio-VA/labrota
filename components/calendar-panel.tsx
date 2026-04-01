@@ -1927,7 +1927,6 @@ function PersonGrid({
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#E4ECF6" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -1937,11 +1936,11 @@ function PersonGrid({
                 onClick={() => onDateClick?.(day.date)}
                 className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
               >
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+                <span className={cn("text-[10px] uppercase tracking-wider", isWknd && !holiday ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
                 <span className={cn(
                   "font-semibold leading-none text-[18px]",
                   today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                  : holiday ? "text-amber-600" : "text-primary"
+                  : holiday ? "text-amber-600" : isWknd ? "text-muted-foreground" : "text-primary"
                 )}>
                   {dayN}
                 </span>
@@ -2761,7 +2760,6 @@ function ShiftGrid({
                   "relative flex flex-col items-center justify-center py-1 gap-0 border-l border-border",
                   holidayName ? "bg-amber-100/80" : "bg-muted"
                 )}
-                style={isWknd && !holidayName ? { backgroundColor: "#E4ECF6" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
@@ -2771,11 +2769,11 @@ function ShiftGrid({
                   onClick={() => onDateClick?.(dateStr)}
                   className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
+                  <span className={cn("text-[10px] uppercase tracking-wider", isWknd && !holidayName ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
                   <span className={cn(
                     "font-semibold leading-none text-[18px]",
                     today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                    : holidayName ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                    : holidayName ? "text-amber-600 dark:text-amber-400" : isWknd ? "text-muted-foreground" : "text-primary"
                   )}>
                     {dayN}
                   </span>

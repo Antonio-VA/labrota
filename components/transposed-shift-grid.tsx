@@ -363,7 +363,7 @@ export function TransposedShiftGrid({
                           <DraggablePill key={a.id} id={a.id} disabled={isPublished}>
                             <div
                               className={cn(
-                                "flex items-center gap-1 rounded border border-border bg-background text-foreground font-medium cursor-pointer transition-colors duration-150",
+                                "flex items-center gap-1 rounded border border-transparent hover:border-border bg-background text-foreground font-medium cursor-pointer transition-colors duration-150",
                                 compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]"
                               )}
                               style={{
@@ -392,7 +392,8 @@ export function TransposedShiftGrid({
                 <DroppableCell
                   key={`OFF-${day.date}`}
                   id={`OFF-${day.date}`}
-                  className={cn("border-b border-l border-border p-1 flex flex-col gap-0.5 bg-muted/20", isSat && "border-t border-dashed")}
+                  className={cn("border-b border-l border-border p-1 flex flex-col gap-0.5", isSat && "border-t border-dashed")}
+                  style={{ backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" }}
                 >
                   {[...leaveIds].map((sid) => {
                     const s = staffList.find((st) => st.id === sid)

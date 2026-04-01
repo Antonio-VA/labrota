@@ -761,13 +761,13 @@ export function MobileWeekClient() {
                   <div
                     key={day.date}
                     className="px-1 py-2 text-center border-r border-border last:border-r-0"
-                    style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : isWknd ? { backgroundColor: "#E4ECF6" } : undefined}
+                    style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : undefined}
                   >
-                    <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
+                    <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : isWknd && !isHoliday ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</p>
                     {isToday ? (
                       <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-[14px] font-bold">{num}</span>
                     ) : (
-                      <p className={cn("text-[14px] font-semibold", (isSat || isSun) && "text-muted-foreground")}>{num}</p>
+                      <p className={cn("text-[14px] font-semibold", isWknd && !isHoliday ? "text-muted-foreground" : "text-primary")}>{num}</p>
                     )}
                   </div>
                 )
