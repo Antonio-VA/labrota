@@ -3561,9 +3561,10 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                           {(() => {
                             const weekDays = data?.days ?? []
                             const workedDays = weekDays.filter((d) => d.assignments.some((as) => as.staff_id === a.staff_id))
-                            const offCount = weekDays.length - workedDays.length
-                            const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
-                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d{offCount > 0 ? ` · ${offLabel}` : ""}</p>
+                            const offDays = weekDays.filter((d) => !d.assignments.some((as) => as.staff_id === a.staff_id))
+                            const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                            const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
+                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
                           })()}
                         </TapPopover>
                       )
@@ -3639,9 +3640,7 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
                   return (
                     <TapPopover key={s.id} trigger={
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] italic cursor-pointer active:scale-95 transition-colors", isHov ? "" : "border-amber-200 bg-amber-50 text-amber-700")}
-                        style={isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : undefined}
-                        onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-700 text-[12px] italic cursor-pointer active:scale-95">
                         <LeaveIcon className="size-2.5 shrink-0" />
                         {s.first_name} {s.last_name[0]}.
                       </span>
@@ -3657,18 +3656,18 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                   const sColor = staffColorMap[s.id] ?? "#BFDBFE"
                   return (
                     <TapPopover key={s.id} trigger={
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] cursor-pointer active:scale-95 transition-colors", isHov ? "" : "border-border bg-background text-muted-foreground")}
-                        style={{ ...(isHov ? { backgroundColor: sColor, borderColor: sColor, color: "#1e293b" } : (mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {})), borderRadius: 6 }}
-                        onClick={(e) => { e.stopPropagation(); setHovered(hoveredStaffId === s.id ? null : s.id) }}>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-muted-foreground text-[12px] cursor-pointer active:scale-95"
+                        style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}>
                         {s.first_name} {s.last_name[0]}.
                       </span>
                     }>
                       <p className="font-medium">{s.first_name} {s.last_name}</p>
                       {(() => {
-                        const workedThisWeek = (data?.days ?? []).filter((d) => d.assignments.some((a) => a.staff_id === s.id)).length
-                        const offCount = (data?.days.length ?? 5) - workedThisWeek
-                        const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
-                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {offLabel}</p>
+                        const weekDays = data?.days ?? []
+                        const offDays = weekDays.filter((d) => !d.assignments.some((a) => a.staff_id === s.id))
+                        const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                        const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
+                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
                       })()}
                     </TapPopover>
                   )
@@ -3701,10 +3700,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
                     }>
                       <p className="font-medium">{s.first_name} {s.last_name}</p>
                       {(() => {
-                        const workedThisWeek = (data?.days ?? []).filter((d) => d.assignments.some((a) => a.staff_id === s.id)).length
-                        const offCount = (data?.days.length ?? 5) - workedThisWeek
-                        const offLabel = locale === "en" ? `Off this week: ${offCount}` : `Libre esta sem.: ${offCount}`
-                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d · {offLabel}</p>
+                        const weekDays = data?.days ?? []
+                        const offDays = weekDays.filter((d) => !d.assignments.some((a) => a.staff_id === s.id))
+                        const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                        const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
+                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
                       })()}
                     </TapPopover>
                   )
@@ -4387,6 +4387,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
+  const [dayWarningsOpen, setDayWarningsOpen] = useState(false)
   const [mobileCompact, setMobileCompact] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("labrota_mobile_compact") !== "false"
@@ -5531,11 +5532,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 {tc("today")}
               </button>
               <div className="flex-1" />
-              {/* Day status icon — warning or check for the current day only */}
+              {/* Day status icon — tappable, opens warnings panel */}
               {currentDayData && currentDayData.assignments.length > 0 && (
-                currentDayData.skillGaps.length > 0 || currentDayData.warnings.length > 0
-                  ? <AlertTriangle className="size-[18px] text-amber-500 shrink-0" />
-                  : <Check className="size-[18px] text-emerald-500 shrink-0" />
+                <button onClick={() => setDayWarningsOpen(true)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+                  {currentDayData.skillGaps.length > 0 || currentDayData.warnings.length > 0
+                    ? <AlertTriangle className="size-[18px] text-amber-500" />
+                    : <Check className="size-[18px] text-emerald-500" />}
+                </button>
               )}
               {canEdit && (
                 <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-10 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
@@ -5673,6 +5676,49 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
           )
         })()}
       </div>
+
+      {/* Day warnings panel */}
+      {dayWarningsOpen && currentDayData && createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={() => setDayWarningsOpen(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[60vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[16px] font-semibold capitalize">{formatDate(currentDayData.date, locale as "es" | "en")}</span>
+              <button onClick={() => setDayWarningsOpen(false)} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+                <X className="size-4" />
+              </button>
+            </div>
+            {currentDayData.skillGaps.length === 0 && currentDayData.warnings.length === 0 ? (
+              <div className="flex items-center gap-2 py-3">
+                <Check className="size-5 text-emerald-500 shrink-0" />
+                <span className="text-[14px] text-emerald-600">{locale === "es" ? "Sin alertas para este día" : "No issues for this day"}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {currentDayData.skillGaps.map((gap, i) => (
+                  <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
+                    <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[12px] font-medium text-red-700">{locale === "es" ? "Habilidad sin cubrir" : "Uncovered skill"}</p>
+                      <p className="text-[13px] text-red-600">{gap}</p>
+                    </div>
+                  </div>
+                ))}
+                {currentDayData.warnings.map((w, i) => (
+                  <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                    <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[12px] font-medium text-amber-700">{w.category === "coverage" ? (locale === "es" ? "Cobertura" : "Coverage") : w.category === "skill_gap" ? (locale === "es" ? "Habilidad" : "Skill") : (locale === "es" ? "Aviso" : "Warning")}</p>
+                      <p className="text-[13px] text-amber-600">{w.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Day edit sheet */}
       <AssignmentSheet

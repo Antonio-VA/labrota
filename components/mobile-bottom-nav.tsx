@@ -96,9 +96,9 @@ export function MobileBottomNav() {
                     <line x1="3" y1="10" x2="23" y2="10" />
                   </svg>
                   <span className={cn(
-                    "absolute inset-0 top-[11px] flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
+                    "absolute left-0 right-0 flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
                     isActive ? "text-primary" : "text-muted-foreground"
-                  )}>
+                  )} style={{ top: "10px", bottom: "2px" }}>
                     {new Date().getDate()}
                   </span>
                 </div>
