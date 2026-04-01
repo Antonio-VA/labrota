@@ -29,6 +29,8 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
   const formatDate = (d: string) => formatDateWithYear(d, locale as "es" | "en")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
+  const [deleteModal, setDeleteModal] = useState<{ ids: string[]; names: string[] } | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id))
   const someSelected = rows.some((r) => selected.has(r.id))
@@ -95,14 +97,21 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
 
   function handleBulkDelete() {
     const ids = [...selected]
-    if (!confirm(`¿Eliminar ${ids.length} organización${ids.length !== 1 ? "es" : ""} permanentemente? Esta acción no se puede deshacer.`)) return
+    const names = ids.map((id) => rows.find((r) => r.id === id)?.name ?? id)
+    setDeleteConfirmText("")
+    setDeleteModal({ ids, names })
+  }
+
+  function handleDeleteConfirmed() {
+    if (!deleteModal) return
     startTransition(async () => {
       let ok = 0
-      for (const id of ids) {
+      for (const id of deleteModal.ids) {
         await deleteOrganisation(id)
         ok++
       }
       toast.success(`${ok} organización${ok !== 1 ? "es" : ""} eliminada${ok !== 1 ? "s" : ""}`)
+      setDeleteModal(null)
       clearSelection()
       router.refresh()
     })
@@ -248,6 +257,50 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
             <X className="size-3 shrink-0" />
             Cancelar
           </button>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteModal(null)}>
+          <div className="bg-background border border-border rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <Trash2 className="size-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[16px] font-semibold text-foreground">Eliminar {deleteModal.ids.length} organización{deleteModal.ids.length !== 1 ? "es" : ""}</p>
+                <p className="text-[13px] text-muted-foreground mt-1">Esta acción es permanente e irreversible. Se eliminarán todos los datos asociados.</p>
+              </div>
+            </div>
+            <ul className="text-[13px] bg-muted rounded-lg px-3 py-2 flex flex-col gap-1 max-h-40 overflow-y-auto">
+              {deleteModal.names.map((name) => (
+                <li key={name} className="font-medium text-foreground">· {name}</li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] text-muted-foreground">Escribe <span className="font-mono font-semibold text-destructive">ELIMINAR</span> para confirmar</label>
+              <input
+                autoFocus
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && deleteConfirmText === "ELIMINAR") handleDeleteConfirmed() }}
+                placeholder="ELIMINAR"
+                className="h-9 border border-input rounded-lg px-3 text-[14px] outline-none focus:border-destructive bg-background"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeleteModal(null)} className="h-9 px-4 rounded-lg border border-border text-[13px] font-medium hover:bg-muted transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirmed}
+                disabled={deleteConfirmText !== "ELIMINAR" || isPending}
+                className="h-9 px-4 rounded-lg bg-destructive text-white text-[13px] font-medium hover:bg-destructive/90 transition-colors disabled:opacity-40"
+              >
+                {isPending ? "Eliminando…" : "Eliminar definitivamente"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
