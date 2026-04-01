@@ -47,10 +47,6 @@ export default function LoginPage() {
     if (step === "code") otpRef.current?.focus()
   }, [step])
 
-  function clearError() {
-    if (errorMessage) setErrorMessage("")
-  }
-
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
 
@@ -60,7 +56,7 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    clearError()
+    setErrorMessage("")
     const supabase = createClient()
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -72,6 +68,8 @@ export default function LoginPage() {
     if (error) {
       setErrorMessage(error.message)
     } else {
+      setErrorMessage("")
+      setOtpCode("")
       setStep("code")
     }
   }
@@ -86,7 +84,7 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    clearError()
+    setErrorMessage("")
     const supabase = createClient()
 
     const { error } = await supabase.auth.verifyOtp({
@@ -97,7 +95,9 @@ export default function LoginPage() {
 
     if (error) {
       setLoading(false)
-      setErrorMessage(error.code === "otp_expired" ? t("linkExpired") : error.message)
+      // Show actual Supabase error for debugging, with code if available
+      const detail = error.code ? `${error.message} (${error.code})` : error.message
+      setErrorMessage(detail)
     } else {
       router.replace("/")
     }
@@ -143,7 +143,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 placeholder={t("emailPlaceholder")}
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); clearError() }}
+                onChange={(e) => { setEmail(e.target.value); setErrorMessage("") }}
                 disabled={loading}
                 required
                 className="h-10"
@@ -181,12 +181,12 @@ export default function LoginPage() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder="00000000"
-                  maxLength={8}
+                  placeholder="000000"
+                  maxLength={6}
                   value={otpCode}
                   onChange={(e) => {
                     setOtpCode(e.target.value.replace(/\D/g, ""))
-                    clearError()
+                    setErrorMessage("")
                   }}
                   disabled={loading}
                   className="h-10 text-center tracking-[0.3em] text-[18px] font-medium"
@@ -208,7 +208,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => { setStep("email"); setOtpCode(""); clearError() }}
+              onClick={() => { setStep("email"); setOtpCode(""); setErrorMessage("") }}
               className="text-[12px] text-primary hover:underline text-center"
             >
               {t("useAnotherEmail")}
