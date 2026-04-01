@@ -547,10 +547,11 @@ function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = []
 
 // ── Day stats (punciones + biopsy forecast) ──────────────────────────────────
 
-function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabled, biopsyForecast, biopsyTooltip }: {
+function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabled, biopsyForecast, biopsyTooltip, compact }: {
   date: string; value: number; defaultValue: number; isOverride: boolean
   onChange: (date: string, value: number | null) => void; disabled: boolean
   biopsyForecast: number; biopsyTooltip: string
+  compact?: boolean
 }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
@@ -596,22 +597,31 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     setOpen(false)
   }
 
+  const pLabel = `${value}`
+  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
   const puncLabel = locale === "en" ? "Retr" : "Punc"
 
   if (disabled) {
     return (
       <Tooltip>
         <TooltipTrigger render={
-          <span className="flex items-center gap-3 cursor-default">
-            <span className="flex flex-col items-start gap-0.5">
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
-              <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground/70")}>{value}</span>
+          compact ? (
+            <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground cursor-default">
+              <span className={isOverride ? "text-primary" : "text-foreground/70"}>{pLabel}</span>
+              <span className="text-foreground/70">{bLabel}</span>
             </span>
-            <span className="flex flex-col items-start gap-0.5">
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
-              <span className="text-[13px] font-semibold tabular-nums text-foreground/70">{biopsyForecast}</span>
+          ) : (
+            <span className="flex items-center gap-3 cursor-default">
+              <span className="flex flex-col items-start gap-0.5">
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
+                <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground/70")}>{value}</span>
+              </span>
+              <span className="flex flex-col items-start gap-0.5">
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
+                <span className="text-[13px] font-semibold tabular-nums text-foreground/70">{biopsyForecast}</span>
+              </span>
             </span>
-          </span>
+          )
         } />
         <TooltipContent side="bottom">
           {biopsyForecast > 0 ? biopsyTooltip : t("punctionsLabel", { count: value })}
@@ -624,19 +634,29 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     <div ref={popRef} className="relative">
       <Tooltip>
         <TooltipTrigger render={
-          <button
-            onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-            className="flex items-center gap-3 rounded px-1.5 py-1 transition-colors hover:bg-muted cursor-pointer"
-          >
-            <div className="flex flex-col items-start gap-0.5">
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
-              <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground")}>{value}</span>
-            </div>
-            <div className="flex flex-col items-start gap-0.5">
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
-              <span className="text-[13px] font-semibold tabular-nums text-foreground">{biopsyForecast}</span>
-            </div>
-          </button>
+          compact ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+              className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
+            >
+              <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
+              <span className="text-muted-foreground">{bLabel}</span>
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
+              className="flex items-center gap-3 rounded px-1.5 py-1 transition-colors hover:bg-muted cursor-pointer"
+            >
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
+                <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground")}>{value}</span>
+              </div>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
+                <span className="text-[13px] font-semibold tabular-nums text-foreground">{biopsyForecast}</span>
+              </div>
+            </button>
+          )
         } />
         {!open && (
           <TooltipContent side="bottom">
@@ -1997,6 +2017,7 @@ function PersonGrid({
                     disabled={!onPunctionsChange}
                     biopsyForecast={forecast}
                     biopsyTooltip={tooltip}
+                    compact
                   />
                 )
               })()}
@@ -2834,6 +2855,7 @@ function ShiftGrid({
                       disabled={isPublished || !data.rota}
                       biopsyForecast={forecast}
                       biopsyTooltip={tooltip}
+                      compact
                     />
                   )
                 })()}
