@@ -131,6 +131,7 @@ export async function deleteOrganisation(orgId: string) {
     admin.from("lab_config").delete().eq("organisation_id", orgId),
     admin.from("organisation_members").delete().eq("organisation_id", orgId),
     admin.from("profiles").update({ organisation_id: null } as never).eq("organisation_id", orgId),
+    admin.from("profiles").update({ default_organisation_id: null } as never).eq("default_organisation_id", orgId),
   ])
 
   const { error } = await admin
