@@ -4,13 +4,13 @@ import { useState, useEffect, useTransition, useRef, useLayoutEffect, useMemo } 
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { TapPopover } from "@/components/tap-popover"
 import { WeekNotes } from "@/components/week-notes"
-import { getRotaWeek, generateRota, getActiveStaff, type RotaWeekData } from "@/app/(clinic)/rota/actions"
-import type { StaffWithSkills } from "@/lib/types/database"
+import { getRotaWeek, generateRota, getActiveStaff, getTemplates, applyTemplate, type RotaWeekData } from "@/app/(clinic)/rota/actions"
+import type { StaffWithSkills, RotaTemplate, EngineConfig } from "@/lib/types/database"
 import { toast } from "sonner"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
@@ -277,51 +277,174 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
 
 // ── Generate week bottom sheet ──────────────────────────────────────────────
 
-function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale }: {
+type GenStrategy = "ai_optimal" | "ai_hybrid" | "flexible_template" | "manual"
+
+interface StrategyCard {
+  key: GenStrategy
+  icon: React.ReactNode
+  label: string
+  desc: string
+  badgeLabel?: string
+  badgeCls?: string
+  speedLabel?: string
+  speedCls?: string
+}
+
+function buildMobileStrategyCards(rotaDisplayMode: string, engineConfig: EngineConfig | undefined, locale: "es" | "en"): StrategyCard[] {
+  const isByTask = rotaDisplayMode === "by_task"
+  const cards: StrategyCard[] = []
+
+  cards.push({
+    key: "flexible_template",
+    icon: <Bookmark className="size-5" />,
+    label: locale === "es" ? "Plantilla" : "Template",
+    desc: locale === "es" ? "Aplicar una plantilla guardada" : "Apply a saved template",
+    badgeLabel: "TPL", badgeCls: "bg-green-500/10 text-green-600 border-green-500/20",
+  })
+
+  cards.push({
+    key: "manual",
+    icon: <Grid3X3 className="size-5" />,
+    label: locale === "es" ? "Semana en blanco" : "Blank week",
+    desc: locale === "es" ? "Empezar desde cero" : "Start from scratch",
+    badgeLabel: "MANUAL", badgeCls: "bg-muted text-muted-foreground border-border",
+  })
+
+  cards.push({
+    key: "ai_optimal",
+    icon: <Sparkles className="size-5" />,
+    label: locale === "es" ? "IA Óptima" : "AI Optimal",
+    desc: isByTask
+      ? (locale === "es" ? "Asignación óptima de tareas" : "Optimal task assignment")
+      : (locale === "es" ? "Genera la rota óptima con IA" : "Generate optimal rota with AI"),
+    badgeLabel: "IA", badgeCls: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    speedLabel: locale === "es" ? "Rápido" : "Fast", speedCls: "bg-emerald-500/10 text-emerald-600",
+  })
+
+  if (!isByTask && (engineConfig?.hybridEnabled ?? true)) {
+    cards.push({
+      key: "ai_hybrid",
+      icon: <BrainCircuit className="size-5" />,
+      label: locale === "es" ? "IA Híbrida" : "AI Hybrid",
+      desc: locale === "es" ? "Mayor precisión, más lento" : "Higher accuracy, slower",
+      badgeLabel: "HYBRID", badgeCls: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+      speedLabel: locale === "es" ? "Más lento" : "Slower", speedCls: "bg-amber-500/10 text-amber-600",
+    })
+  }
+
+  return cards
+}
+
+function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale, rotaDisplayMode, engineConfig }: {
   open: boolean; onClose: () => void; weekStart: string; onRefresh: () => void; locale: "es" | "en"
+  rotaDisplayMode: string; engineConfig?: EngineConfig
 }) {
+  const [selected, setSelected] = useState<GenStrategy | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [templates, setTemplates] = useState<RotaTemplate[]>([])
+  const [selectedTplId, setSelectedTplId] = useState<string | null>(null)
+  const [loadingTpl, setLoadingTpl] = useState(false)
+
+  useEffect(() => {
+    if (!open) { setSelected(null); setSelectedTplId(null); return }
+    setLoadingTpl(true)
+    getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
+  }, [open])
+
   if (!open) return null
+
+  const cards = buildMobileStrategyCards(rotaDisplayMode, engineConfig, locale)
+  const needsTemplate = selected === "flexible_template"
+  const canGenerate = selected && (!needsTemplate || selectedTplId) && !generating
+
+  async function handleGenerate() {
+    if (!selected || generating) return
+    setGenerating(true)
+    try {
+      if (selected === "flexible_template" && selectedTplId) {
+        await applyTemplate(selectedTplId, weekStart, false)
+      } else if (selected === "manual") {
+        await generateRota(weekStart, false, "manual")
+      } else {
+        await generateRota(weekStart, true, selected as "ai_optimal" | "ai_hybrid")
+      }
+      toast.success(locale === "es" ? "Rota generada" : "Rota generated")
+      onRefresh(); onClose()
+    } catch {
+      toast.error(locale === "es" ? "Error al generar" : "Generation failed")
+    } finally { setGenerating(false) }
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <span className="text-[16px] font-semibold">{locale === "es" ? "Generar semana" : "Generate week"}</span>
           <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
             <X className="size-4" />
           </button>
         </div>
-        <div className="flex flex-col gap-2">
-          <button
-            disabled={generating}
-            onClick={async () => {
-              if (generating) return
-              setGenerating(true)
-              try {
-                await generateRota(weekStart, true, "ai_optimal")
-                toast.success(locale === "es" ? "Rota generada" : "Rota generated")
-                onRefresh()
-                onClose()
-              } catch {
-                toast.error(locale === "es" ? "Error al generar" : "Generation failed")
-              } finally { setGenerating(false) }
-            }}
-            className="flex items-center gap-3 w-full px-4 py-4 rounded-xl border border-border bg-background active:bg-accent transition-colors disabled:opacity-50 text-left"
-          >
-            <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Sparkles className="size-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold">{locale === "es" ? "IA Óptima" : "AI Optimal"}</p>
-              <p className="text-[12px] text-muted-foreground">{generating ? (locale === "es" ? "Generando…" : "Generating…") : (locale === "es" ? "Genera la rota óptima con IA" : "Generate optimal rota with AI")}</p>
-            </div>
+
+        {/* Strategy cards — 2×2 grid */}
+        <div className="grid grid-cols-2 gap-2.5 mb-3">
+          {cards.map((card) => {
+            const isSelected = selected === card.key
+            return (
+              <button
+                key={card.key}
+                onClick={() => { setSelected(card.key); setSelectedTplId(null) }}
+                className={cn(
+                  "flex flex-col items-start gap-1.5 rounded-xl p-3 text-left transition-all",
+                  isSelected ? "bg-primary/10" : "bg-muted/50 active:bg-muted"
+                )}
+                style={{ border: `2px solid ${isSelected ? "var(--primary)" : "var(--border)"}` }}
+              >
+                <div className={isSelected ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
+                <p className={cn("text-[13px] font-semibold leading-tight", isSelected && "text-primary")}>{card.label}</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">{card.desc}</p>
+                {card.speedLabel && (
+                  <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", card.speedCls)}>{card.speedLabel}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Template selector */}
+        {needsTemplate && (
+          <div className="mb-3">
+            {loadingTpl ? (
+              <div className="h-10 rounded-lg bg-muted animate-pulse" />
+            ) : templates.length === 0 ? (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
+                <p className="text-[12px] text-amber-600">{locale === "es" ? "No hay plantillas guardadas" : "No saved templates"}</p>
+              </div>
+            ) : (
+              <select
+                value={selectedTplId ?? ""}
+                onChange={(e) => setSelectedTplId(e.target.value || null)}
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none bg-background"
+              >
+                <option value="">{locale === "es" ? "Seleccionar plantilla…" : "Select template…"}</option>
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-border text-[14px] font-medium text-muted-foreground active:bg-accent transition-colors">
+            {locale === "es" ? "Cancelar" : "Cancel"}
           </button>
           <button
-            onClick={onClose}
-            className="w-full py-3 rounded-xl border border-border text-[14px] font-medium text-muted-foreground active:bg-accent transition-colors mt-1"
+            disabled={!canGenerate}
+            onClick={handleGenerate}
+            className="flex-1 py-3 rounded-xl bg-primary text-white text-[14px] font-semibold active:bg-primary/90 transition-colors disabled:opacity-40"
           >
-            {locale === "es" ? "Cancelar" : "Cancel"}
+            {generating ? (locale === "es" ? "Generando…" : "Generating…") : (locale === "es" ? "Generar" : "Generate")}
           </button>
         </div>
       </div>
@@ -349,6 +472,10 @@ export function MobileWeekClient() {
   const [warningsOpen, setWarningsOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [weekViewMode, setWeekViewMode] = useState<"task" | "person">("task")
+  const [mobileDeptColor, setMobileDeptColor] = useState(() => {
+    if (typeof window === "undefined") return true
+    return localStorage.getItem("labrota_mobile_dept_color") !== "false"
+  })
 
   function toggleHighlight() {
     const next = !highlightEnabled
@@ -396,6 +523,7 @@ export function MobileWeekClient() {
   }, [data?.departments])
 
   const hasWarnings = days.some((d) => d.warnings.length > 0 || d.skillGaps.length > 0)
+  const warningCount = days.reduce((acc, d) => acc + d.warnings.length + d.skillGaps.length, 0)
 
   const LEAVE_ICONS: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
   const LEAVE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
@@ -432,10 +560,15 @@ export function MobileWeekClient() {
         <div className="flex-1" />
 
         {/* Warnings button */}
-        <button onClick={() => setWarningsOpen(true)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+        <button onClick={() => setWarningsOpen(true)} className="relative size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
           {hasWarnings
             ? <AlertTriangle className="size-5 text-amber-500" />
-            : <CheckCircle2 className="size-5 text-emerald-500" />}
+            : <Check className="size-5 text-emerald-500" />}
+          {hasWarnings && warningCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-amber-500 text-white text-[9px] font-bold leading-none">
+              {warningCount}
+            </span>
+          )}
         </button>
 
         <WeekOverflow
@@ -509,46 +642,52 @@ export function MobileWeekClient() {
             {/* Rows */}
             {weekViewMode === "person" ? (
               // ── Person view ─────────────────────────────────────────────
-              (() => {
-                const allStaff = staffList.filter((s) =>
+              <>
+                {staffList.filter((s) =>
                   days.some((d) => d.assignments.some((a) => a.staff_id === s.id))
-                )
-                return allStaff.map((s) => {
+                ).map((s) => {
                   const isHL = highlightEnabled && highlightedStaff === s.id
                   const roleColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
                   return (
                     <div key={s.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
                       <div
-                        className="border-r border-border bg-muted sticky left-0 z-[5] flex items-center pl-1 pr-1 py-2 cursor-pointer"
+                        className="border-r border-border bg-muted sticky left-0 z-[5] flex items-center pl-1.5 pr-1 py-1.5 gap-1 cursor-pointer min-w-0"
                         style={{ borderLeft: `3px solid ${roleColor}` }}
                         onClick={() => highlightEnabled && setHighlightedStaff((p) => p === s.id ? null : s.id)}
                       >
-                        <span className="text-[10px] font-semibold text-foreground truncate">{s.first_name[0]}{s.last_name[0]}.</span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-foreground truncate leading-tight">{s.first_name} {s.last_name[0]}.</p>
+                          <p className="text-[9px] text-muted-foreground truncate leading-tight">{ROLE_LABEL[locale]?.[s.role] ?? s.role}</p>
+                        </div>
                       </div>
                       {days.map((day) => {
                         const a = day.assignments.find((x) => x.staff_id === s.id)
+                        const st = a ? shiftTypeMap[a.shift_type] : null
                         const dow = new Date(day.date + "T12:00:00").getDay()
                         const isSat = dow === 6; const isSun = dow === 0
-                        const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === s.id))
-                        const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                        const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
                         return (
                           <div key={day.date} className={cn(
-                            "px-1 py-2 border-r border-border last:border-r-0 flex items-center justify-center min-w-0",
+                            "px-0.5 py-1 border-r border-border last:border-r-0 flex flex-col items-center justify-center min-w-0",
                             isSat && "border-l-2 border-l-border",
                             isSun && "border-l border-l-border"
                           )}>
-                            {a ? (
+                            {a && st ? (
                               <TapPopover trigger={
-                                <span
-                                  className="text-[10px] font-semibold rounded px-1 py-0.5 border cursor-pointer active:scale-95 transition-colors truncate"
-                                  style={isHL ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                <div
+                                  className="flex flex-col items-center rounded px-1 py-0.5 border cursor-pointer active:scale-95 transition-colors w-full text-center"
+                                  style={isHL
+                                    ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
+                                    : mobileDeptColor
+                                      ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
+                                      : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
                                 >
-                                  {a.function_label ?? a.shift_type}
-                                </span>
+                                  <span className="text-[10px] font-semibold leading-tight truncate">{a.function_label ?? a.shift_type}</span>
+                                  <span className={cn("text-[8px] tabular-nums leading-tight", isHL ? "text-white/80" : "text-muted-foreground")}>{formatTime(st.start_time, timeFormat)}</span>
+                                </div>
                               }>
                                 <p className="font-medium">{s.first_name} {s.last_name}</p>
-                                <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[s.role] ?? s.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
+                                <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[s.role] ?? s.role}</p>
+                                <p className="text-[11px] opacity-70">{a.shift_type} · {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}</p>
                               </TapPopover>
                             ) : (
                               <span className="text-[10px] text-muted-foreground/30">—</span>
@@ -558,8 +697,18 @@ export function MobileWeekClient() {
                       })}
                     </div>
                   )
-                })
-              })()
+                })}
+                {/* Shift times legend */}
+                {shiftTypes.length > 0 && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2.5 border-b border-border bg-muted/30">
+                    {shiftTypes.map((st) => (
+                      <span key={st.code} className="text-[11px] text-muted-foreground">
+                        <span className="font-medium text-foreground">{st.code}</span> {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             ) : data.rotaDisplayMode === "by_task" && data.tecnicas ? (
               data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden).map((tec) => {
                 const NAMED_COLORS: Record<string, string> = { amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444" }
@@ -587,7 +736,7 @@ export function MobileWeekClient() {
                         )}>
                           {assignments.map((a) => {
                             const isHL = highlightEnabled && highlightedStaff === a.staff_id
-                            const hlColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
+                            const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
                             const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
                             const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
                             const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
@@ -595,7 +744,11 @@ export function MobileWeekClient() {
                               <TapPopover key={a.id} trigger={
                                 <span
                                   className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
-                                  style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                  style={isHL
+                                    ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
+                                    : mobileDeptColor
+                                      ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
+                                      : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
                                   onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
                                 >
                                   {a.staff.first_name[0]}{a.staff.last_name[0]}
@@ -638,7 +791,7 @@ export function MobileWeekClient() {
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => {
                           const isHL = highlightEnabled && highlightedStaff === a.staff_id
-                          const hlColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
+                          const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
                           const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
                           const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
                           const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
@@ -646,7 +799,11 @@ export function MobileWeekClient() {
                             <TapPopover key={a.id} trigger={
                               <div
                                 className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
-                                style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                style={isHL
+                                  ? { backgroundColor: roleColor, borderColor: roleColor, color: "#fff" }
+                                  : mobileDeptColor
+                                    ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
+                                    : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
                                 onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
                               >
                                 {a.staff.first_name} {a.staff.last_name[0]}.
@@ -664,8 +821,8 @@ export function MobileWeekClient() {
               ))
             )}
 
-            {/* Off / Libres row */}
-            <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+            {/* Off / Libres row — hidden in person view */}
+            {weekViewMode !== "person" && <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
@@ -721,7 +878,7 @@ export function MobileWeekClient() {
                   </div>
                 )
               })}
-            </div>
+            </div>}
 
             {/* Week notes */}
             <div data-week-notes className="px-3 pt-3">
@@ -740,6 +897,8 @@ export function MobileWeekClient() {
         onClose={() => setGenerateModalOpen(false)}
         weekStart={weekStart}
         locale={locale}
+        rotaDisplayMode={data?.rotaDisplayMode ?? "by_shift"}
+        engineConfig={data?.engineConfig}
         onRefresh={() => {
           setLoading(true)
           Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
