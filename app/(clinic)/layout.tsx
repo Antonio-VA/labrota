@@ -1,6 +1,5 @@
 export const maxDuration = 120 // Allow up to 2min for AI rota generation
 
-import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -34,18 +33,6 @@ export default async function ClinicLayout({
 
     activeOrgId = profile?.organisation_id ?? null
     defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
-
-    // Sync locale preference from DB to cookie when cookie is missing
-    const cookieStore = await cookies()
-    const hasLocaleCookie = cookieStore.has("locale")
-    const dbLocale = profile?.preferences?.locale
-    if (!hasLocaleCookie && dbLocale && dbLocale !== "browser") {
-      cookieStore.set("locale", dbLocale, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        sameSite: "lax",
-      })
-    }
 
     // Auto-switch to default org only if no active org is set (first login)
     if (defaultOrgId && !activeOrgId) {
