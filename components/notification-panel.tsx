@@ -86,10 +86,10 @@ export function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className="relative size-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors"
+        className="relative size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors"
         title="Notificaciones"
       >
-        <Bell className="size-5" />
+        <Bell className="size-6" />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
             {count > 9 ? "9+" : count}
