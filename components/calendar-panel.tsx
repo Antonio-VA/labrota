@@ -4836,7 +4836,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const rota           = weekData?.rota ?? null
   const isPublished    = rota?.status === "published"
   const isDraft        = rota?.status === "draft"
-  const hasAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
+  const hasWeekAssignments = weekData?.days.some((d) => d.assignments.length > 0) ?? false
+  const hasMonthAssignments = monthSummary?.days.some((d) => d.staffCount > 0) ?? false
+  const hasAssignments = view === "month" ? hasMonthAssignments : hasWeekAssignments
+  const anyMonthWeekPublished = monthSummary?.weekStatuses?.some((ws) => ws.status === "published") ?? false
   const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
   // Show task assignment UI only in by_task mode, or in by_shift when the feature flag is on
   const showTaskAssignment = weekData?.rotaDisplayMode === "by_task" || (weekData?.enableTaskInShift ?? false)
@@ -5174,7 +5177,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 dividerBefore: true,
               }] : []),
               // ── Destructive ──
-              ...(canEdit && hasAssignments && !isPublished ? [{
+              ...(canEdit && hasAssignments && !(view === "month" ? anyMonthWeekPublished : isPublished) ? [{
                 label: view === "month" ? t("delete4Weeks") : t("deleteRota"),
                 icon: <Trash2 className="size-3.5" />,
                 onClick: () => {
