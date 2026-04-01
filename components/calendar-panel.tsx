@@ -599,7 +599,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
 
   const pLabel = `${value}`
   const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
-  const puncLabel = locale === "en" ? "Pick" : "Punc"
+  const puncLabel = "PU"
 
   if (disabled) {
     return (
