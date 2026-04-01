@@ -5505,7 +5505,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               </div>
             </div>
           ) : (
-            <div data-mobile-toolbar className="flex items-center gap-1 h-14 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
+            <div data-mobile-toolbar className="flex items-center gap-1 h-[60px] px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
               {/* Left: date selector */}
               <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
                 <ChevronLeft className="size-[18px] text-muted-foreground" />
