@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
-import { Mail, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Mail, AlertCircle, CheckCircle2, KeyRound } from "lucide-react"
 
 function getInitialError(searchParams: URLSearchParams, t: (key: string) => string): { state: "idle" | "error"; message: string } {
   const queryError = searchParams.get("error")
@@ -19,11 +19,14 @@ function getInitialError(searchParams: URLSearchParams, t: (key: string) => stri
 export default function LoginPage() {
   const t = useTranslations("auth")
   const searchParams = useSearchParams()
+  const router = useRouter()
   const initial = getInitialError(searchParams, t)
 
   const [email, setEmail] = useState("")
-  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">(initial.state)
+  const [otpCode, setOtpCode] = useState("")
+  const [state, setState] = useState<"idle" | "loading" | "sent" | "verifying" | "error">(initial.state)
   const [errorMessage, setErrorMessage] = useState(initial.message)
+  const otpRef = useRef<HTMLInputElement>(null)
 
   // Supabase redirects expired magic links with error details in the URL hash fragment
   useEffect(() => {
@@ -34,7 +37,6 @@ export default function LoginPage() {
     if (errorCode === "otp_expired") {
       setState("error")
       setErrorMessage(t("linkExpired"))
-      // Clean the hash so a refresh doesn't re-show the error
       window.history.replaceState(null, "", window.location.pathname + window.location.search)
     } else if (params.get("error")) {
       setState("error")
@@ -43,7 +45,12 @@ export default function LoginPage() {
     }
   }, [t])
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Auto-focus OTP input when the "sent" state is reached
+  useEffect(() => {
+    if (state === "sent") otpRef.current?.focus()
+  }, [state])
+
+  async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault()
 
     if (!email.trim() || !email.includes("@")) {
@@ -68,6 +75,33 @@ export default function LoginPage() {
     }
   }
 
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault()
+
+    const code = otpCode.trim()
+    if (code.length !== 6) {
+      setErrorMessage(t("invalidOtp"))
+      setState("error")
+      return
+    }
+
+    setState("verifying")
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code,
+      type: "email",
+    })
+
+    if (error) {
+      setErrorMessage(error.code === "otp_expired" ? t("linkExpired") : error.message)
+      setState("error")
+    } else {
+      router.replace("/")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-muted flex items-start justify-center pt-[20vh] px-4">
 
@@ -86,8 +120,8 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {state === "sent" ? (
-          <div className="flex flex-col gap-3 text-center">
+        {state === "sent" || state === "verifying" ? (
+          <div className="flex flex-col gap-4">
             <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
               <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
               <div className="text-left">
@@ -95,15 +129,58 @@ export default function LoginPage() {
                 <p className="text-[13px] text-emerald-600 dark:text-emerald-400/80 mt-1">{t("checkEmailDescription", { email })}</p>
               </div>
             </div>
+
+            {/* OTP code input */}
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="otp" className="text-[13px] text-muted-foreground font-medium">
+                  {t("otpLabel")}
+                </label>
+                <Input
+                  ref={otpRef}
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "")
+                    setOtpCode(val)
+                  }}
+                  disabled={state === "verifying"}
+                  className="h-10 text-center tracking-[0.3em] text-[18px] font-medium"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full h-10"
+                disabled={state === "verifying" || otpCode.length !== 6}
+              >
+                {state === "verifying" ? (
+                  <>
+                    <KeyRound className="size-4 animate-pulse" />
+                    {t("verifyCode")}…
+                  </>
+                ) : (
+                  <>
+                    <KeyRound className="size-4" />
+                    {t("verifyCode")}
+                  </>
+                )}
+              </Button>
+            </form>
+
             <button
-              onClick={() => setState("idle")}
-              className="text-[12px] text-primary hover:underline"
+              onClick={() => { setState("idle"); setOtpCode("") }}
+              className="text-[12px] text-primary hover:underline text-center"
             >
               {t("resendLink")}
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSendOtp} className="flex flex-col gap-5">
 
             <p className="text-[14px] text-muted-foreground text-center">{t("subtitle")}</p>
 
