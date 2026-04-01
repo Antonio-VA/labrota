@@ -46,6 +46,7 @@ import {
   clearWeek,
   copyPreviousWeek,
   generateRotaHybrid,
+  getHybridUsage,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -3716,17 +3717,20 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
   const [templates, setTemplates] = useState<RotaTemplate[]>([])
   const [loadingTpl, setLoadingTpl] = useState(false)
   const [selectedTplId, setSelectedTplId] = useState<string | null>(null)
+  const [hybridQuota, setHybridQuota] = useState<{ used: number; limit: number; remaining: number } | null>(null)
 
   useEffect(() => {
     if (!open) { setSelected(null); setSelectedTplId(null); return }
     setLoadingTpl(true)
     getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
+    getHybridUsage().then(setHybridQuota)
   }, [open])
 
   if (!open) return null
 
   const needsTemplate = selected === "flexible_template"
-  const canGenerate = selected && (!needsTemplate || selectedTplId)
+  const hybridExhausted = hybridQuota !== null && hybridQuota.remaining <= 0
+  const canGenerate = selected && (!needsTemplate || selectedTplId) && !(selected === "ai_hybrid" && hybridExhausted)
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -3803,15 +3807,32 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
-          <Button
-            size="sm"
-            disabled={!canGenerate}
-            onClick={() => { if (selected) onGenerate(selected, selectedTplId ?? undefined) }}
-          >
-            {tc("generate")}
-          </Button>
+        <div className="px-5 py-3 border-t border-border shrink-0 flex flex-col gap-2">
+          {/* Hybrid quota warning */}
+          {hybridQuota !== null && selected === "ai_hybrid" && hybridQuota.remaining <= 3 && (
+            <div className={cn(
+              "rounded-lg px-3 py-2 text-[12px] flex items-center gap-2",
+              hybridQuota.remaining === 0
+                ? "bg-destructive/10 text-destructive"
+                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            )}>
+              <span className="shrink-0">⚡</span>
+              {hybridQuota.remaining === 0
+                ? (locale === "es" ? `Límite diario alcanzado (${hybridQuota.limit}/día). Vuelve mañana.` : `Daily limit reached (${hybridQuota.limit}/day). Try again tomorrow.`)
+                : (locale === "es" ? `${hybridQuota.remaining} generación${hybridQuota.remaining !== 1 ? "es" : ""} híbrida${hybridQuota.remaining !== 1 ? "s" : ""} restante${hybridQuota.remaining !== 1 ? "s" : ""} hoy` : `${hybridQuota.remaining} hybrid generation${hybridQuota.remaining !== 1 ? "s" : ""} left today`)
+              }
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
+            <Button
+              size="sm"
+              disabled={!canGenerate}
+              onClick={() => { if (selected) onGenerate(selected, selectedTplId ?? undefined) }}
+            >
+              {tc("generate")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -32,6 +32,7 @@ export function AdminOrgDetailClient({
   initialTaskOptimalVersion = "v1",
   initialTaskHybridEnabled = false,
   initialTaskReasoningEnabled = false,
+  initialDailyHybridLimit = 10,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -55,6 +56,7 @@ export function AdminOrgDetailClient({
   initialTaskOptimalVersion?: string
   initialTaskHybridEnabled?: boolean
   initialTaskReasoningEnabled?: boolean
+  initialDailyHybridLimit?: number
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -81,6 +83,7 @@ export function AdminOrgDetailClient({
   const [taskOptimalVersion] = useState(initialTaskOptimalVersion)
   const [taskHybridEnabled, setTaskHybridEnabled] = useState(initialTaskHybridEnabled)
   const [taskReasoningEnabled, setTaskReasoningEnabled] = useState(initialTaskReasoningEnabled)
+  const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -152,6 +155,7 @@ export function AdminOrgDetailClient({
         task_optimal_version: taskOptimalVersion,
         task_hybrid_enabled: taskHybridEnabled,
         task_reasoning_enabled: taskReasoningEnabled,
+        daily_hybrid_limit: dailyHybridLimit,
       })
       if (r4?.error) { toast.error(r4.error); hasError = true }
       const r3 = await updateOrgBilling(orgId, {
@@ -445,6 +449,25 @@ export function AdminOrgDetailClient({
                   engineHybridEnabled ? "translate-x-5" : "translate-x-0"
                 )} />
               </button>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            {/* Daily hybrid limit */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">Límite diario híbrido</p>
+                <p className="text-[12px] text-muted-foreground">Número máximo de generaciones híbridas por día.</p>
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={dailyHybridLimit}
+                onChange={(e) => setDailyHybridLimit(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                className="w-20 rounded-lg border border-border px-2 py-1.5 text-[14px] text-center outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background"
+                disabled={isPending}
+              />
             </div>
 
             <div className="h-px bg-border" />

@@ -72,6 +72,7 @@ export interface Organisation {
   task_optimal_version:     string
   task_hybrid_enabled:      boolean
   task_reasoning_enabled:   boolean
+  daily_hybrid_limit:       number
   created_at:               string
 }
 

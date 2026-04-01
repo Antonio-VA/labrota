@@ -253,6 +253,7 @@ export default async function OrgDetailPage({
             initialTaskOptimalVersion={(org as any).task_optimal_version ?? "v1"}
             initialTaskHybridEnabled={(org as any).task_hybrid_enabled ?? false}
             initialTaskReasoningEnabled={(org as any).task_reasoning_enabled ?? false}
+            initialDailyHybridLimit={(org as any).daily_hybrid_limit ?? 10}
           />
         }
         facturacion={

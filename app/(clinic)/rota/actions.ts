@@ -1178,6 +1178,31 @@ Use staff IDs (not names) and shift codes exactly as provided.`
 }
 
 // ── generateRotaHybrid ────────────────────────────────────────────────────────
+// ── Hybrid quota helpers ──────────────────────────────────────────────────────
+
+export async function getHybridUsage(): Promise<{ used: number; limit: number; remaining: number }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { used: 0, limit: 10, remaining: 10 }
+
+  const today = new Date().toISOString().split("T")[0]
+  const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + 86_400_000).toISOString().split("T")[0]
+
+  const [orgRes, usageRes] = await Promise.all([
+    supabase.from("organisations").select("daily_hybrid_limit").eq("id", orgId).single(),
+    supabase.from("hybrid_generation_log")
+      .select("id", { count: "exact", head: true })
+      .eq("organisation_id", orgId)
+      .gte("created_at", `${today}T00:00:00Z`)
+      .lt("created_at", `${tomorrow}T00:00:00Z`),
+  ])
+
+  const limit = (orgRes.data as { daily_hybrid_limit?: number } | null)?.daily_hybrid_limit ?? 10
+  const used = usageRes.count ?? 0
+  return { used, limit, remaining: Math.max(0, limit - used) }
+}
+
+// ── Hybrid rota generation ────────────────────────────────────────────────────
 // Hybrid approach: engine v2 builds a valid base rota (L1 guaranteed), then
 // Claude reviews and optimises L2/L3 (avoid_days, fairness, rule compliance).
 
@@ -1192,6 +1217,12 @@ export async function generateRotaHybrid(
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { error: "No organisation found." }
+
+  // ── 0. Check daily quota ───────────────────────────────────────────────────
+  const quota = await getHybridUsage()
+  if (quota.remaining <= 0) {
+    return { error: `Daily hybrid generation limit reached (${quota.limit}/day). Try again tomorrow.` }
+  }
 
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
@@ -1608,6 +1639,9 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       metadata: { weekStart, method: "ai_hybrid", assignmentCount: toInsert.length, preserveOverrides, budgetFallback: budgetViolation },
     })
 
+    // Log usage for quota tracking
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+
     revalidatePath("/")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
   } catch (e) {
@@ -1634,6 +1668,9 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     // Save engine warnings
     const userWarnings = engineResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
     await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId).then(() => {})
+
+    // Log usage for quota tracking (fallback still counts as a hybrid attempt)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
 
     revalidatePath("/")
 

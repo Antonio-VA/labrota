@@ -459,6 +459,7 @@ export async function updateOrgEngineConfig(orgId: string, config: {
   task_optimal_version: string
   task_hybrid_enabled: boolean
   task_reasoning_enabled: boolean
+  daily_hybrid_limit: number
 }) {
   await assertSuperAdmin()
   const admin = createAdminClient()

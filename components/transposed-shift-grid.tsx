@@ -399,7 +399,7 @@ export function TransposedShiftGrid({
                     const s = staffList.find((st) => st.id === sid)
                     if (!s) return null
                     return (
-                      <div key={sid} className={cn("flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}>
+                      <div key={sid} className={cn("flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/30 px-1.5", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}>
                         <Briefcase className="size-2.5 text-amber-500 shrink-0" />
                         <span className="truncate text-amber-700">{s.first_name} {s.last_name[0]}.</span>
                       </div>
@@ -409,7 +409,7 @@ export function TransposedShiftGrid({
                     <DraggablePill key={s.id} id={`off-${s.id}`} disabled={isPublished}>
                       <div
                         className={cn(
-                          "flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground transition-colors duration-150",
+                          "flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground transition-colors duration-150 bg-background",
                           compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]",
                           !isPublished && "cursor-grab hover:bg-accent/30"
                         )}
