@@ -16,9 +16,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("")
   const [otpCode, setOtpCode] = useState("")
-  const [emailSent, setEmailSent] = useState(false)
+  const [step, setStep] = useState<"email" | "code">("email")
   const [loading, setLoading] = useState(false)
-  const [verifying, setVerifying] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const otpRef = useRef<HTMLInputElement>(null)
 
@@ -44,16 +43,15 @@ export default function LoginPage() {
     }
   }, [searchParams, t])
 
-  // Auto-focus OTP input after email is sent
   useEffect(() => {
-    if (emailSent) otpRef.current?.focus()
-  }, [emailSent])
+    if (step === "code") otpRef.current?.focus()
+  }, [step])
 
   function clearError() {
     if (errorMessage) setErrorMessage("")
   }
 
-  async function handleSendOtp(e: React.FormEvent) {
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
 
     if (!email.trim() || !email.includes("@")) {
@@ -74,11 +72,11 @@ export default function LoginPage() {
     if (error) {
       setErrorMessage(error.message)
     } else {
-      setEmailSent(true)
+      setStep("code")
     }
   }
 
-  async function handleVerifyOtp(e: React.FormEvent) {
+  async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault()
 
     const code = otpCode.trim()
@@ -86,12 +84,8 @@ export default function LoginPage() {
       setErrorMessage(t("invalidOtp"))
       return
     }
-    if (!email.trim() || !email.includes("@")) {
-      setErrorMessage(t("invalidEmail"))
-      return
-    }
 
-    setVerifying(true)
+    setLoading(true)
     clearError()
     const supabase = createClient()
 
@@ -102,7 +96,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setVerifying(false)
+      setLoading(false)
       setErrorMessage(error.code === "otp_expired" ? t("linkExpired") : error.message)
     } else {
       router.replace("/")
@@ -137,105 +131,90 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Success banner */}
-        {emailSent && (
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
-            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-            <div className="text-left">
-              <p className="text-[14px] font-medium text-emerald-700 dark:text-emerald-400">{t("checkEmail")}</p>
-              <p className="text-[13px] text-emerald-600 dark:text-emerald-400/80 mt-1">{t("checkEmailDescription", { email })}</p>
+        {step === "email" ? (
+          <form onSubmit={handleSendCode} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className="text-[13px] text-muted-foreground font-medium">
+                {t("emailLabel")}
+              </label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("emailPlaceholder")}
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); clearError() }}
+                disabled={loading}
+                required
+                className="h-10"
+              />
             </div>
+
+            <Button type="submit" className="w-full h-10" disabled={loading}>
+              {loading ? (
+                <><Mail className="size-4 animate-pulse" />{t("sendCode")}…</>
+              ) : (
+                <><Mail className="size-4" />{t("sendCode")}</>
+              )}
+            </Button>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {/* Success message — click link or enter code */}
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+              <div className="text-left">
+                <p className="text-[14px] font-medium text-emerald-700 dark:text-emerald-400">{t("checkEmail")}</p>
+                <p className="text-[13px] text-emerald-600 dark:text-emerald-400/80 mt-1">{t("checkEmailDescription", { email })}</p>
+              </div>
+            </div>
+
+            {/* OTP code form */}
+            <form onSubmit={handleVerifyCode} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="otp" className="text-[13px] text-muted-foreground font-medium">
+                  {t("otpLabel")}
+                </label>
+                <Input
+                  ref={otpRef}
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="00000000"
+                  maxLength={8}
+                  value={otpCode}
+                  onChange={(e) => {
+                    setOtpCode(e.target.value.replace(/\D/g, ""))
+                    clearError()
+                  }}
+                  disabled={loading}
+                  className="h-10 text-center tracking-[0.3em] text-[18px] font-medium"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-10"
+                disabled={loading || otpCode.length < 6}
+              >
+                {loading ? (
+                  <><KeyRound className="size-4 animate-pulse" />{t("verifyCode")}…</>
+                ) : (
+                  <><KeyRound className="size-4" />{t("verifyCode")}</>
+                )}
+              </Button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => { setStep("email"); setOtpCode(""); clearError() }}
+              className="text-[12px] text-primary hover:underline text-center"
+            >
+              {t("useAnotherEmail")}
+            </button>
           </div>
         )}
-
-        {/* Email input + send button */}
-        <form onSubmit={handleSendOtp} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-[13px] text-muted-foreground font-medium">
-              {t("emailLabel")}
-            </label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder={t("emailPlaceholder")}
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); clearError() }}
-              disabled={loading}
-              required
-              className="h-10"
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full h-10"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Mail className="size-4 animate-pulse" />
-                {emailSent ? t("resendLink") : t("sendLink")}…
-              </>
-            ) : (
-              <>
-                <Mail className="size-4" />
-                {emailSent ? t("resendLink") : t("sendLink")}
-              </>
-            )}
-          </Button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 border-t border-border" />
-          <span className="text-[12px] text-muted-foreground">{t("otpDivider")}</span>
-          <div className="flex-1 border-t border-border" />
-        </div>
-
-        {/* OTP code input — always visible */}
-        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="otp" className="text-[13px] text-muted-foreground font-medium">
-              {t("otpLabel")}
-            </label>
-            <Input
-              ref={otpRef}
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="00000000"
-              maxLength={8}
-              value={otpCode}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "")
-                setOtpCode(val)
-                clearError()
-              }}
-              disabled={verifying}
-              className="h-10 text-center tracking-[0.3em] text-[18px] font-medium"
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full h-10"
-            disabled={verifying || otpCode.length < 6 || !email.trim()}
-          >
-            {verifying ? (
-              <>
-                <KeyRound className="size-4 animate-pulse" />
-                {t("verifyCode")}…
-              </>
-            ) : (
-              <>
-                <KeyRound className="size-4" />
-                {t("verifyCode")}
-              </>
-            )}
-          </Button>
-        </form>
-
       </div>
     </div>
   )
