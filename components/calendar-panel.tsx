@@ -330,6 +330,7 @@ type ShiftBadgeProps = {
 
 function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [], trainingTecCode }: ShiftBadgeProps) {
   const { hoveredStaffId, setHovered } = useStaffHover()
+  const [pillHovered, setPillHovered] = useState(false)
   // Resolve department code to abbreviation for pill display
   const deptMatch = functionLabel ? departments.find((d) => d.code === functionLabel) : null
   const pillLabel = tecnica ? tecnica.codigo : (deptMatch ? deptMatch.abbreviation : (functionLabel ?? null))
@@ -344,22 +345,25 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
     : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
     : null
   const deptPillStyle = deptMatch ? { backgroundColor: `${deptMatch.colour}15`, borderColor: `${deptMatch.colour}40`, color: deptMatch.colour } : undefined
+  const crossHovered = !!(staffId && hoveredStaffId === staffId && staffColor)
+  const showPill = pillHovered || crossHovered
 
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded border border-border font-medium w-full bg-background text-foreground transition-colors duration-150",
+        "group flex items-center gap-1.5 rounded border font-medium w-full text-foreground transition-all duration-100",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
+        showPill ? "border-border bg-background" : "border-transparent bg-transparent",
       )}
       style={{
-        borderLeft: colorChips
+        borderLeft: colorChips && showPill
           ? `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
           : undefined,
         borderRadius: 4,
-        ...(staffId && hoveredStaffId === staffId && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
+        ...(crossHovered ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
-      onMouseEnter={() => staffId && setHovered(staffId)}
-      onMouseLeave={() => staffId && setHovered(null)}
+      onMouseEnter={() => { setPillHovered(true); staffId && setHovered(staffId) }}
+      onMouseLeave={() => { setPillHovered(false); staffId && setHovered(null) }}
     >
       <span className="truncate">{first} {last[0]}.</span>
       {trainingTecCode && (
@@ -2951,7 +2955,6 @@ function ShiftGrid({
                 isPublished={isPublished}
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
-                  backgroundColor: "var(--muted)",
                   backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
                   backgroundSize: "10px 10px",
                 }}
