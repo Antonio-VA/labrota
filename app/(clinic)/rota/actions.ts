@@ -427,7 +427,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
-    const holidayModeForWarning = (labConfig as any)?.public_holiday_mode as string | undefined ?? "normal"
+    const holidayModeForWarning = labConfig?.public_holiday_mode ?? "normal"
     const rawDayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
     const dayCodeForWarning = (holidayModeForWarning === "saturday_coverage" && publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? "sat" : rawDayCodeForWarning
     const activeDayShifts = new Set(

@@ -165,7 +165,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
-    public_holiday_mode:   (config as any).public_holiday_mode ?? "normal",
+    public_holiday_mode:   config.public_holiday_mode ?? "normal",
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
