@@ -79,7 +79,7 @@ export default function LoginPage() {
     e.preventDefault()
 
     const code = otpCode.trim()
-    if (code.length !== 6) {
+    if (code.length < 6) {
       setErrorMessage(t("invalidOtp"))
       setState("error")
       return
@@ -143,7 +143,7 @@ export default function LoginPage() {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="000000"
-                  maxLength={6}
+                  maxLength={8}
                   value={otpCode}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, "")
@@ -156,7 +156,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full h-10"
-                disabled={state === "verifying" || otpCode.length !== 6}
+                disabled={state === "verifying" || otpCode.length < 6}
               >
                 {state === "verifying" ? (
                   <>
