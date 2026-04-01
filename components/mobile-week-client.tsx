@@ -947,7 +947,7 @@ export function MobileWeekClient() {
             {/* Off / Libres row — hidden in person view */}
             {weekViewMode !== "person" && <div className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
-                <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
+                <span className="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">{locale === "es" ? "Lib" : "Off"}</span>
               </div>
               {days.map((day) => {
                 const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
