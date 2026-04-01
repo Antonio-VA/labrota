@@ -70,7 +70,7 @@ async function sharePdf(doc: jsPDF, filename: string) {
 }
 
 /** Render header + return startY for table */
-function renderHeader(doc: jsPDF, orgName: string, data: RotaWeekData, locale: string, timestamp: string): number {
+function renderHeader(doc: jsPDF, orgName: string, data: RotaWeekData, locale: string): number {
   const pageWidth = doc.internal.pageSize.getWidth()
 
   doc.setFontSize(16)
@@ -83,11 +83,6 @@ function renderHeader(doc: jsPDF, orgName: string, data: RotaWeekData, locale: s
   doc.setTextColor(...COLORS.gray)
   doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
 
-  doc.setFontSize(8)
-  doc.setFont(FONT, "normal")
-  doc.setTextColor(...COLORS.gray)
-  doc.text(timestamp, pageWidth - MARGIN, 14, { align: "right" })
-
   if (data.rota?.status === "published") {
     doc.setTextColor(...COLORS.darkGray)
     doc.setFont(FONT, "bold")
@@ -99,7 +94,7 @@ function renderHeader(doc: jsPDF, orgName: string, data: RotaWeekData, locale: s
 }
 
 /** Render notes + footer */
-function renderFooter(doc: jsPDF, locale: string, timestamp: string, notes?: string[]) {
+function renderFooter(doc: jsPDF, locale: string, notes?: string[]) {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
 
@@ -126,7 +121,7 @@ function renderFooter(doc: jsPDF, locale: string, timestamp: string, notes?: str
 
   doc.setFontSize(7)
   doc.setTextColor(...COLORS.lightGray)
-  doc.text(`LabRota · ${timestamp}`, pageWidth / 2, pageHeight - 6, { align: "center" })
+  doc.text("LabRota", pageWidth / 2, pageHeight - 6, { align: "center" })
 }
 
 /** Day header labels */
@@ -170,8 +165,7 @@ function tableStyles() {
 export async function exportPdfByShift(data: RotaWeekData, orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const timeFormat = data.timeFormat ?? "24h"
-  const timestamp = fmtTimestamp(locale)
-  const startY = renderHeader(doc, orgName, data, locale, timestamp)
+  const startY = renderHeader(doc, orgName, data, locale)
 
   const headers = dayHeaders(data, locale)
   const shiftTypes = (data.shiftTypes ?? []).filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order)
@@ -257,7 +251,7 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
     })
   }
 
-  renderFooter(doc, locale, timestamp, notes)
+  renderFooter(doc, locale, notes)
   await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
 }
 
@@ -266,8 +260,7 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
 export async function exportPdfByPerson(data: RotaWeekData, orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const timeFormat = data.timeFormat ?? "24h"
-  const timestamp = fmtTimestamp(locale)
-  const startY = renderHeader(doc, orgName, data, locale, timestamp)
+  const startY = renderHeader(doc, orgName, data, locale)
 
   const headers = dayHeaders(data, locale)
   const labels = ROLE_LABEL[locale] ?? ROLE_LABEL.en
@@ -344,7 +337,7 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
     })
   }
 
-  renderFooter(doc, locale, timestamp, notes)
+  renderFooter(doc, locale, notes)
   await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
 }
 
@@ -352,8 +345,7 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
 
 export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], orgName: string, locale: string, notes?: string[], daysAsRows?: boolean) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-  const timestamp = fmtTimestamp(locale)
-  const startY = renderHeader(doc, orgName, data, locale, timestamp)
+  const startY = renderHeader(doc, orgName, data, locale)
 
   const headers = dayHeaders(data, locale)
   const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
@@ -407,6 +399,6 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
     })
   }
 
-  renderFooter(doc, locale, timestamp, notes)
+  renderFooter(doc, locale, notes)
   await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
 }

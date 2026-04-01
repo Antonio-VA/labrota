@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { getUserPreferences, saveUserPreferences, type UserPreferences } from "@/app/(clinic)/account-actions"
 import { applyTheme } from "@/components/account-panel"
+import { toast } from "sonner"
 
 const ACCENT_COLORS = [
   "#1b4f8a", "#2563EB", "#3B82F6", "#0EA5E9",
@@ -61,6 +62,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
       }
 
       await saveUserPreferences(prefs)
+      toast.success(locale === "es" ? "Preferencias guardadas" : "Preferences saved")
 
       // Reload if locale changed (next-intl needs a fresh page)
       const currentLocaleCookie = document.cookie.split(";")
