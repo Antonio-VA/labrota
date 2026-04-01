@@ -266,7 +266,7 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
   const labels = ROLE_LABEL[locale] ?? ROLE_LABEL.en
 
   // Build staff map: staff_id → { name, role, days: { date → shift label } }
-  const staffMap: Record<string, { name: string; role: string; days: Record<string, string>; total: number }> = {}
+  const staffMap: Record<string, { name: string; role: string; days: Record<string, string> }> = {}
   for (const day of data.days) {
     for (const a of day.assignments) {
       if (!staffMap[a.staff_id]) {
@@ -274,12 +274,10 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
           name: `${a.staff.first_name} ${a.staff.last_name[0]}.`,
           role: a.staff.role,
           days: {},
-          total: 0,
         }
       }
       const tecLabel = a.function_label ? ` (${a.function_label})` : ""
       staffMap[a.staff_id].days[day.date] = `${a.shift_type}${tecLabel}`
-      staffMap[a.staff_id].total++
     }
   }
 
@@ -301,11 +299,6 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
       body.push(row)
     }
 
-    // Total row
-    const totalRow = [locale === "es" ? "Total" : "Total"]
-    for (const s of sorted) totalRow.push(String(s.total))
-    body.push(totalRow)
-
     const base = tableStyles()
     autoTable(doc, {
       startY,
@@ -324,14 +317,13 @@ export async function exportPdfByPerson(data: RotaWeekData, orgName: string, loc
       for (const day of data.days) {
         row.push(s.days[day.date] ?? (locale === "es" ? "Lib" : "Off"))
       }
-      row.push(String(s.total))
       body.push(row)
     }
 
     const base = tableStyles()
     autoTable(doc, {
       startY,
-      head: [[locale === "es" ? "Personal" : "Staff", locale === "es" ? "Depto" : "Dept", ...headers, "Total"]],
+      head: [[locale === "es" ? "Personal" : "Staff", locale === "es" ? "Depto" : "Dept", ...headers]],
       body,
       ...base,
       styles: { ...base.styles, fontSize: 7, cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, minCellHeight: 7, halign: "center" as const },
