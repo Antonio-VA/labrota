@@ -613,7 +613,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, onBiop
     setOpen(false)
   }
 
-  const pLabel = `${value}`
+  const pLabel = `PU ${value}`
   const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
   const puncLabel = "PU"
 
