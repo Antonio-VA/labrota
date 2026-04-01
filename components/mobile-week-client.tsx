@@ -1,56 +1,185 @@
 "use client"
 
-import { useState, useEffect, useTransition, useRef, useLayoutEffect } from "react"
+import { useState, useEffect, useTransition, useRef, useLayoutEffect, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Share, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
-import { formatDateRange } from "@/lib/format-date"
 import { TapPopover } from "@/components/tap-popover"
-import { getRotaWeek, generateRota, type RotaWeekData } from "@/app/(clinic)/rota/actions"
+import { WeekNotes } from "@/components/week-notes"
+import { getRotaWeek, generateRota, getActiveStaff, type RotaWeekData } from "@/app/(clinic)/rota/actions"
+import type { StaffWithSkills } from "@/lib/types/database"
 import { toast } from "sonner"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
+const ROLE_LABEL: Record<string, Record<string, string>> = {
+  es: { lab: "Lab", andrology: "Andrología", admin: "Admin" },
+  en: { lab: "Lab", andrology: "Andrology", admin: "Admin" },
+}
 
-function WeekAvisos({ days, locale }: { days: RotaWeekData["days"]; locale: string }) {
+// ── Week picker dropdown ────────────────────────────────────────────────────
+
+function addDays(date: string, n: number): string {
+  const d = new Date(date + "T12:00:00")
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split("T")[0]
+}
+
+function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string; locale: "es" | "en"; onSelect: (w: string) => void }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [dropPos, setDropPos] = useState<{ top: number; left: number } | null>(null)
+  const today = new Date().toISOString().split("T")[0]
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 4, left: r.left })
   }, [open])
 
-  const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
-  if (allWarnings.length === 0) return <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent | TouchEvent) {
+      if (dropRef.current?.contains(e.target as Node)) return
+      if (btnRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
+    document.addEventListener("mousedown", h)
+    document.addEventListener("touchstart", h as any)
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h as any) }
+  }, [open])
+
+  const weeks = useMemo(() => {
+    const result: { monday: string; label: string }[] = []
+    for (let i = -4; i <= 8; i++) {
+      const monday = addDays(weekStart, i * 7)
+      const end = addDays(monday, 6)
+      const s = new Date(monday + "T12:00:00")
+      const e = new Date(end + "T12:00:00")
+      const sm = new Intl.DateTimeFormat(locale, { month: "short" }).format(s)
+      const em = new Intl.DateTimeFormat(locale, { month: "short" }).format(e)
+      const label = sm === em
+        ? `${s.getDate()}–${e.getDate()} ${sm}`
+        : `${s.getDate()} ${sm} – ${e.getDate()} ${em}`
+      result.push({ monday, label })
+    }
+    return result
+  }, [weekStart, locale])
+
+  const curLabel = (() => {
+    const s = new Date(weekStart + "T12:00:00")
+    const e = new Date(addDays(weekStart, 6) + "T12:00:00")
+    const sm = new Intl.DateTimeFormat(locale, { month: "short" }).format(s)
+    const em = new Intl.DateTimeFormat(locale, { month: "short" }).format(e)
+    return sm === em ? `${s.getDate()}–${e.getDate()} ${sm}` : `${s.getDate()} ${sm} – ${e.getDate()} ${em}`
+  })()
 
   return (
-    <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-medium active:bg-amber-100">
-        <AlertTriangle className="size-3" />
-        {allWarnings.length}
+    <>
+      <button
+        ref={btnRef}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[15px] font-semibold capitalize active:opacity-70 shrink-0"
+      >
+        {curLabel}
+        <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
       </button>
-      {open && (
-        <div className="absolute right-0 top-10 z-[200] w-72 max-h-[50vh] overflow-y-auto rounded-lg border border-border bg-background shadow-lg py-2">
-          {allWarnings.map((w, i) => {
-            const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(w.day + "T12:00:00"))
+      {open && dropPos && createPortal(
+        <div
+          ref={dropRef}
+          className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg py-1 max-h-[60vh] overflow-y-auto"
+          style={{ top: dropPos.top, left: dropPos.left }}
+        >
+          {weeks.map((w) => {
+            const isCurrent = w.monday === weekStart
+            const todayMonday = getMondayOfWeek(new Date())
+            const isThisWeek = w.monday === todayMonday
             return (
-              <p key={i} className="px-3 py-1 text-[12px] text-muted-foreground">
-                <span className="font-medium text-foreground capitalize">{dayLabel}</span> · {w.message}
-              </p>
+              <button
+                key={w.monday}
+                onClick={() => { onSelect(w.monday); setOpen(false) }}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 text-[13px] capitalize hover:bg-accent transition-colors flex items-center justify-between gap-3",
+                  isCurrent && "bg-accent/60 font-semibold"
+                )}
+              >
+                <span>{w.label}</span>
+                {isThisWeek && <span className="text-[11px] text-primary font-medium">{locale === "es" ? "hoy" : "today"}</span>}
+              </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
 
-function WeekOverflow({ weekStart, data, onShare, onRefresh, highlightEnabled, onToggleHighlight }: { weekStart: string; data: RotaWeekData | null; onShare?: () => void; onRefresh?: () => void; highlightEnabled?: boolean; onToggleHighlight?: () => void }) {
+// ── Week warnings bottom sheet ──────────────────────────────────────────────
+
+function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData["days"]; locale: "es" | "en"; open: boolean; onClose: () => void }) {
+  const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
+  const allGaps = days.flatMap((d) => d.skillGaps.map((g) => ({ day: d.date, gap: g })))
+  if (!open) return null
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[65vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[16px] font-semibold">{locale === "es" ? "Alertas de la semana" : "Week alerts"}</span>
+          <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
+            <X className="size-4" />
+          </button>
+        </div>
+        {allWarnings.length === 0 && allGaps.length === 0 ? (
+          <div className="flex items-center gap-2 py-3">
+            <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+            <span className="text-[14px] text-emerald-600">{locale === "es" ? "Sin alertas esta semana" : "No issues this week"}</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {allGaps.map((item, i) => {
+              const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(item.day + "T12:00:00"))
+              return (
+                <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
+                  <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[12px] font-medium text-red-700 capitalize">{dayLabel} · {locale === "es" ? "Habilidad sin cubrir" : "Uncovered skill"}</p>
+                    <p className="text-[13px] text-red-600">{item.gap}</p>
+                  </div>
+                </div>
+              )
+            })}
+            {allWarnings.map((w, i) => {
+              const dayLabel = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date(w.day + "T12:00:00"))
+              return (
+                <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                  <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[12px] font-medium text-amber-700 capitalize">{dayLabel}</p>
+                    <p className="text-[13px] text-amber-600">{w.message}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// ── Overflow menu ───────────────────────────────────────────────────────────
+
+function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight }: {
+  weekStart: string; data: RotaWeekData | null; onRefresh?: () => void
+  highlightEnabled?: boolean; onToggleHighlight?: () => void
+}) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [generating, setGenerating] = useState(false)
@@ -83,20 +212,7 @@ function WeekOverflow({ weekStart, data, onShare, onRefresh, highlightEnabled, o
         <MoreHorizontal className="size-5" />
       </button>
       {open && pos && createPortal(
-        <div
-          ref={dropRef}
-          className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1"
-          style={{ top: pos.top, right: pos.right }}
-        >
-          {onShare && (
-            <button
-              onClick={() => { setOpen(false); onShare() }}
-              className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
-            >
-              <Share className="size-4" />
-              {t("shareImage")}
-            </button>
-          )}
+        <div ref={dropRef} className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1" style={{ top: pos.top, right: pos.right }}>
           <button
             onClick={() => {
               setOpen(false)
@@ -132,9 +248,7 @@ function WeekOverflow({ weekStart, data, onShare, onRefresh, highlightEnabled, o
                 onRefresh?.()
               } catch {
                 toast.error(locale === "es" ? "Error al generar" : "Generation failed")
-              } finally {
-                setGenerating(false)
-              }
+              } finally { setGenerating(false) }
             }}
             disabled={generating}
             className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-40"
@@ -159,20 +273,23 @@ function WeekOverflow({ weekStart, data, onShare, onRefresh, highlightEnabled, o
   )
 }
 
+// ── Main component ──────────────────────────────────────────────────────────
+
 export function MobileWeekClient() {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const [weekStart, setWeekStart] = useState(() => getMondayOfWeek(new Date()))
   const [data, setData] = useState<RotaWeekData | null>(null)
+  const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
   const [loading, setLoading] = useState(true)
-  const [isPending, startTransition] = useTransition()
   const weekGridRef = useRef<HTMLDivElement>(null)
   const [highlightEnabled, setHighlightEnabled] = useState(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("labrota_week_highlight") === "true"
   })
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
+  const [warningsOpen, setWarningsOpen] = useState(false)
 
   function toggleHighlight() {
     const next = !highlightEnabled
@@ -183,7 +300,11 @@ export function MobileWeekClient() {
 
   useEffect(() => {
     setLoading(true)
-    getRotaWeek(weekStart).then((d) => { setData(d); setLoading(false) })
+    Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
+      setData(rotaData)
+      setStaffList(staff)
+      setLoading(false)
+    })
   }, [weekStart])
 
   function navigate(dir: number) {
@@ -192,21 +313,33 @@ export function MobileWeekClient() {
     setWeekStart(getMondayOfWeek(d))
   }
 
-  function goToToday() {
-    setWeekStart(getMondayOfWeek(new Date()))
-  }
-
   const today = new Date().toISOString().split("T")[0]
   const currentWeek = getMondayOfWeek(new Date())
   const isCurrentWeek = weekStart === currentWeek
-
-  // Week end date
-  const endDate = (() => { const d = new Date(weekStart + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toISOString().split("T")[0] })()
 
   const days = data?.days ?? []
   const shiftTypes = data?.shiftTypes?.filter((s) => s.active !== false) ?? []
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
   const timeFormat = data?.timeFormat ?? "24h"
+
+  // Build staff role/name map from staffList for the Off row
+  const fullStaffMap = useMemo(() => {
+    const m: Record<string, { fn: string; ln: string; role: string; dpw: number }> = {}
+    for (const s of staffList) m[s.id] = { fn: s.first_name, ln: s.last_name, role: s.role, dpw: s.days_per_week }
+    return m
+  }, [staffList])
+
+  const hasWarnings = days.some((d) => d.warnings.length > 0 || d.skillGaps.length > 0)
+
+  const LEAVE_ICONS: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
+  const LEAVE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+    annual:    { border: "#7DD3FC", bg: "#F0F9FF", text: "#0369A1" },
+    sick:      { border: "#FCA5A5", bg: "#FEF2F2", text: "#DC2626" },
+    personal:  { border: "#C4B5FD", bg: "#F5F3FF", text: "#7C3AED" },
+    training:  { border: "#FCD34D", bg: "#FFFBEB", text: "#D97706" },
+    maternity: { border: "#F9A8D4", bg: "#FDF2F8", text: "#DB2777" },
+    other:     { border: "#CBD5E1", bg: "#F8FAFC", text: "#475569" },
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -215,101 +348,97 @@ export function MobileWeekClient() {
         <button onClick={() => navigate(-1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
           <ChevronLeft className="size-5 text-muted-foreground" />
         </button>
-        <span className="text-[15px] font-semibold capitalize flex-1 text-center">
-          {(() => {
-            const s = new Date(weekStart + "T12:00:00")
-            const e = new Date(endDate + "T12:00:00")
-            const fmt = (d: Date) => d.toLocaleDateString(locale === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "short" })
-            return `${fmt(s)} – ${fmt(e)}`
-          })()}
-        </span>
+
+        <WeekPicker weekStart={weekStart} locale={locale} onSelect={setWeekStart} />
+
         <button onClick={() => navigate(1)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
           <ChevronRight className="size-5 text-muted-foreground" />
         </button>
+
+        <div className="flex-1" />
+
         <button
-          onClick={goToToday}
+          onClick={() => setWeekStart(currentWeek)}
           disabled={isCurrentWeek}
           className={cn("text-[13px] font-medium px-2.5 py-1 rounded-md transition-colors shrink-0", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
         >
           {tc("today")}
         </button>
-        {/* Avisos — tappable with overlay */}
-        <WeekAvisos days={days} locale={locale} />
-        <WeekOverflow weekStart={weekStart} data={data} highlightEnabled={highlightEnabled} onToggleHighlight={toggleHighlight} onRefresh={() => {
-          setLoading(true)
-          getRotaWeek(weekStart).then((d) => { setData(d); setLoading(false) })
-        }} onShare={async () => {
-          if (!weekGridRef.current) return
-          const { shareRotaCapture } = await import("@/lib/share-capture")
-          const s = new Date(weekStart + "T12:00:00")
-          const e = new Date(weekStart + "T12:00:00"); e.setDate(s.getDate() + 6)
-          const fmt = (d: Date) => d.toLocaleDateString(locale === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "short" })
-          const dateLabel = `${fmt(s)} – ${fmt(e)}`
-          await shareRotaCapture({ gridEl: weekGridRef.current, dateLabel, fileName: `rota-week-${weekStart}.png` })
-        }} />
+
+        {/* Warnings button */}
+        <button onClick={() => setWarningsOpen(true)} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+          {hasWarnings
+            ? <AlertTriangle className="size-5 text-amber-500" />
+            : <CheckCircle2 className="size-5 text-emerald-500" />}
+        </button>
+
+        <WeekOverflow
+          weekStart={weekStart}
+          data={data}
+          highlightEnabled={highlightEnabled}
+          onToggleHighlight={toggleHighlight}
+          onRefresh={() => {
+            setLoading(true)
+            Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
+              setData(rotaData); setStaffList(staff); setLoading(false)
+            })
+          }}
+        />
       </div>
 
       {/* Scrollable grid */}
       <div ref={weekGridRef} className="flex-1 overflow-auto" onClick={() => highlightedStaff && setHighlightedStaff(null)}>
         {loading ? (
           <div className="p-3 flex flex-col gap-1.5 animate-pulse">
-            {/* Header row */}
             <div className="grid grid-cols-8 gap-1">
               <div className="h-10 rounded-md bg-muted-foreground/15" />
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-10 rounded-md bg-muted-foreground/15" />
-              ))}
+              {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-10 rounded-md bg-muted-foreground/15" />)}
             </div>
-            {/* Shift rows */}
             {Array.from({ length: 5 }).map((_, r) => (
               <div key={r} className="grid grid-cols-8 gap-1">
                 <div className="h-14 rounded-md bg-muted-foreground/12" />
-                {Array.from({ length: 7 }).map((_, c) => (
-                  <div key={c} className="h-14 rounded-md bg-muted-foreground/10" />
-                ))}
+                {Array.from({ length: 7 }).map((_, c) => <div key={c} className="h-14 rounded-md bg-muted-foreground/10" />)}
               </div>
             ))}
-            {/* Libres row */}
             <div className="grid grid-cols-8 gap-1">
               <div className="h-8 rounded-md bg-muted-foreground/8" />
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-8 rounded-md bg-muted-foreground/6" />
-              ))}
+              {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-8 rounded-md bg-muted-foreground/6" />)}
             </div>
           </div>
         ) : !data || days.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">{t("noRota")}</div>
         ) : (
-          <div className="min-w-[600px] pb-24">
+          <div className="min-w-[600px] pb-6">
             {/* Header: days */}
-            <div
-              className="sticky top-0 z-10 grid border-b border-border bg-muted"
-              style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}
-            >
+            <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
               {days.map((day) => {
                 const date = new Date(day.date + "T12:00:00")
+                const dow = date.getDay()
                 const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date)
                 const num = date.getDate()
                 const isToday = day.date === today
-                const isWeekend = [0, 6].includes(date.getDay())
-                const isSat = date.getDay() === 6
+                const isSat = dow === 6
+                const isSun = dow === 0
                 return (
-                  <div key={day.date} className={cn("px-1 py-2 text-center border-r border-border last:border-r-0", isWeekend && "bg-muted/50", isSat && "border-l border-dashed border-l-border")}>
+                  <div key={day.date} className={cn(
+                    "px-1 py-2 text-center border-r border-border last:border-r-0",
+                    isSat && "border-l-2 border-l-border border-dashed",
+                    isSun && "border-l border-l-border"
+                  )}>
                     <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
                     {isToday ? (
                       <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-[14px] font-bold">{num}</span>
                     ) : (
-                      <p className={cn("text-[14px] font-semibold", isWeekend && "text-muted-foreground")}>{num}</p>
+                      <p className={cn("text-[14px] font-semibold", (isSat || isSun) && "text-muted-foreground")}>{num}</p>
                     )}
                   </div>
                 )
               })}
             </div>
 
-            {/* Rows: shifts or tasks depending on display mode */}
+            {/* Rows */}
             {data.rotaDisplayMode === "by_task" && data.tecnicas ? (
-              // By task: técnicas as rows
               data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden).map((tec) => {
                 const NAMED_COLORS: Record<string, string> = { amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444" }
                 const dotColor = tec.color?.startsWith("#") ? tec.color : (NAMED_COLORS[tec.color] ?? "#3B82F6")
@@ -319,32 +448,40 @@ export function MobileWeekClient() {
                       <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
                       <div className="px-1 py-2 flex flex-col items-end justify-center flex-1">
                         <span className="text-[11px] font-semibold text-foreground">{tec.codigo}</span>
-                      {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
-                        <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
-                      )}
+                        {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
+                          <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
+                        )}
                       </div>
                     </div>
                     {days.map((day) => {
                       const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
-                      const isWeekend = [0, 6].includes(new Date(day.date + "T12:00:00").getDay())
+                      const dow = new Date(day.date + "T12:00:00").getDay()
+                      const isSat = dow === 6; const isSun = dow === 0
                       return (
-                        <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start", isWeekend && "bg-muted/20")}>
+                        <div key={day.date} className={cn(
+                          "px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start",
+                          isSat && "border-l-2 border-l-border border-dashed",
+                          isSun && "border-l border-l-border"
+                        )}>
                           {assignments.map((a) => {
                             const isHL = highlightEnabled && highlightedStaff === a.staff_id
                             const hlColor = ROLE_COLOR[a.staff.role] ?? "#3B82F6"
+                            const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
+                            const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                            const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
                             return (
-                            <TapPopover key={a.id} trigger={
-                              <span
-                                className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
-                                style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-                                onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
-                              >
-                                {a.staff.first_name[0]}{a.staff.last_name[0]}
-                              </span>
-                            }>
-                              <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                              <p className="text-[11px] opacity-70">{a.shift_type}</p>
-                            </TapPopover>
+                              <TapPopover key={a.id} trigger={
+                                <span
+                                  className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
+                                  style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                  onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
+                                >
+                                  {a.staff.first_name[0]}{a.staff.last_name[0]}
+                                </span>
+                              }>
+                                <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                                <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[a.staff.role] ?? a.staff.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
+                              </TapPopover>
                             )
                           })}
                         </div>
@@ -354,7 +491,6 @@ export function MobileWeekClient() {
                 )
               })
             ) : (
-              // By shift: shift types as rows
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
                   <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center">
@@ -365,32 +501,38 @@ export function MobileWeekClient() {
                   {days.map((day) => {
                     const assignments = day.assignments.filter((a) => a.shift_type === st.code)
                     const dow = new Date(day.date + "T12:00:00").getDay()
-                    const isWeekend = [0, 6].includes(dow)
-                    const isSatCell = dow === 6
-                    const isTodayCell = day.date === today
+                    const isSat = dow === 6; const isSun = dow === 0
                     const activeDays = (shiftTypeMap[st.code] as { active_days?: string[] })?.active_days
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
                     return (
-                      <div key={day.date} className={cn("px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1", isWeekend && "bg-muted/20", !isActive && "bg-muted/40", isSatCell && "border-l border-dashed border-l-border")}>
+                      <div key={day.date} className={cn(
+                        "px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-col gap-1",
+                        !isActive && "bg-muted/40",
+                        isSat && "border-l-2 border-l-border border-dashed",
+                        isSun && "border-l border-l-border"
+                      )}>
                         {!isActive ? (
                           <span className="text-[8px] text-muted-foreground/30 italic self-center mt-auto mb-auto">—</span>
                         ) : assignments.map((a) => {
                           const isHL = highlightEnabled && highlightedStaff === a.staff_id
                           const hlColor = ROLE_COLOR[a.staff.role] ?? "#3B82F6"
+                          const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
+                          const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                          const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
                           return (
-                          <TapPopover key={a.id} trigger={
-                            <div
-                              className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
-                              style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-                              onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
-                            >
-                              {a.staff.first_name} {a.staff.last_name[0]}.
-                            </div>
-                          }>
-                            <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                            <p className="text-[11px] opacity-70">{a.shift_type}</p>
-                          </TapPopover>
+                            <TapPopover key={a.id} trigger={
+                              <div
+                                className="text-[12px] font-medium rounded px-1.5 py-1 border truncate cursor-pointer active:scale-95 transition-colors"
+                                style={isHL ? { backgroundColor: hlColor, borderColor: hlColor, color: "#fff" } : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                                onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
+                              >
+                                {a.staff.first_name} {a.staff.last_name[0]}.
+                              </div>
+                            }>
+                              <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                              <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[a.staff.role] ?? a.staff.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
+                            </TapPopover>
                           )
                         })}
                       </div>
@@ -399,59 +541,68 @@ export function MobileWeekClient() {
                 </div>
               ))
             )}
-            {/* Libres row */}
-            {(() => {
-              // Build staff name map from all assignments + staffList
-              const staffMap: Record<string, { fn: string; ln: string; role: string }> = {}
-              for (const d of days) for (const a of d.assignments) {
-                if (!staffMap[a.staff_id]) staffMap[a.staff_id] = { fn: a.staff.first_name, ln: a.staff.last_name, role: a.staff.role }
-              }
-              const LEAVE_ICONS: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
-              const LEAVE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
-                annual:    { border: "#7DD3FC", bg: "#F0F9FF", text: "#0369A1" },
-                sick:      { border: "#FCA5A5", bg: "#FEF2F2", text: "#DC2626" },
-                personal:  { border: "#C4B5FD", bg: "#F5F3FF", text: "#7C3AED" },
-                training:  { border: "#FCD34D", bg: "#FFFBEB", text: "#D97706" },
-                maternity: { border: "#F9A8D4", bg: "#FDF2F8", text: "#DB2777" },
-                other:     { border: "#CBD5E1", bg: "#F8FAFC", text: "#475569" },
-              }
-              return (
-            <div className="grid border-b border-border bg-muted/30" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+
+            {/* Off / Libres row */}
+            <div className="grid border-b border-border bg-muted/20" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-medium text-muted-foreground">{locale === "es" ? "Libres" : "Off"}</span>
               </div>
               {days.map((day) => {
-                const leaveIds = [...(data?.onLeaveByDate?.[day.date] ?? [])]
+                const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
                 const leaveTypes = data?.onLeaveTypeByDate?.[day.date] ?? {}
+                const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
+                const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
+                const dow = new Date(day.date + "T12:00:00").getDay()
+                const isSat = dow === 6; const isSun = dow === 0
                 return (
-                  <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start bg-muted/20">
-                    {leaveIds.map((sid) => {
-                      const s = staffMap[sid]
+                  <div key={day.date} className={cn(
+                    "px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start",
+                    isSat && "border-l-2 border-l-border border-dashed",
+                    isSun && "border-l border-l-border"
+                  )}>
+                    {[...leaveIds].map((sid) => {
+                      const s = fullStaffMap[sid]
                       const lType = (leaveTypes[sid] ?? "other") as keyof typeof LEAVE_ICONS
                       const LeaveIcon = LEAVE_ICONS[lType] ?? CalendarX
                       const colors = LEAVE_COLORS[lType] ?? LEAVE_COLORS.other
                       return (
                         <TapPopover key={sid} trigger={
-                          <span className="inline-flex items-center gap-0.5 text-[8px] font-medium rounded px-0.5 py-0.5 border cursor-pointer active:scale-95" style={{ borderColor: colors.border, backgroundColor: colors.bg, color: colors.text }} title={s ? `${s.fn} ${s.ln}` : "On leave"}>
+                          <span className="inline-flex items-center gap-0.5 text-[8px] font-medium rounded px-0.5 py-0.5 border cursor-pointer active:scale-95"
+                            style={{ borderColor: colors.border, backgroundColor: colors.bg, color: colors.text }}>
                             <LeaveIcon className="size-2 shrink-0" />
                             {s ? `${s.fn[0]}${s.ln[0]}` : "?"}
                           </span>
                         }>
-                          <p className="font-medium">{s ? `${s.fn} ${s.ln}` : "Staff"}</p>
+                          <p className="font-medium">{s ? `${s.fn} ${s.ln}` : (locale === "es" ? "Baja" : "On leave")}</p>
                           <p className="text-[11px] opacity-70">{lType}</p>
                         </TapPopover>
                       )
                     })}
+                    {offDuty.map((s) => (
+                      <TapPopover key={s.id} trigger={
+                        <span className="inline-flex items-center text-[8px] font-medium rounded px-0.5 py-0.5 border border-border bg-background text-muted-foreground cursor-pointer active:scale-95">
+                          {s.first_name[0]}{s.last_name[0]}
+                        </span>
+                      }>
+                        <p className="font-medium">{s.first_name} {s.last_name}</p>
+                        <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[s.role] ?? s.role} · {s.days_per_week}d</p>
+                      </TapPopover>
+                    ))}
                   </div>
                 )
               })}
             </div>
-              )
-            })()}
 
+            {/* Week notes */}
+            <div data-week-notes className="px-3 pt-3">
+              <WeekNotes weekStart={weekStart} />
+            </div>
           </div>
         )}
       </div>
+
+      {/* Warnings bottom sheet */}
+      <WeekWarningsSheet days={days} locale={locale} open={warningsOpen} onClose={() => setWarningsOpen(false)} />
     </div>
   )
 }
