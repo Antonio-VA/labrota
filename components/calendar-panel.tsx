@@ -1524,10 +1524,8 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 
   if (entries.length === 0) return null
 
-  // Monthly expected: days_per_week × ~4.33 (weeks in a month)
-  const monthDate = new Date(summary.monthStart + "T12:00:00")
-  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate()
-  const weeksInMonth = daysInMonth / 7
+  // Monthly expected: days_per_week × actual weeks in grid
+  const weeksInMonth = summary.days.length / 7
 
   return (
     <div
@@ -1929,7 +1927,7 @@ function PersonGrid({
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#C8D5EC" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#D8E4F3" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -2759,7 +2757,7 @@ function ShiftGrid({
                   "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-l border-border",
                   holidayName ? "bg-amber-100/80" : "bg-muted"
                 )}
-                style={isWknd && !holidayName ? { backgroundColor: "#C8D5EC" } : undefined}
+                style={isWknd && !holidayName ? { backgroundColor: "#D8E4F3" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
@@ -3189,7 +3187,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   )
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 flex-1">
       {/* Day headers — with week number column */}
       <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
         <div className="text-center text-[11px] font-medium text-muted-foreground/40 py-2">S</div>
@@ -3210,7 +3208,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
         const jan1 = new Date(d.getFullYear(), 0, 1)
         const weekNum = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
         return (
-          <div key={wi} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5">
+          <div key={wi} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 flex-1">
             {/* Week number + publish lock */}
             <div className="flex flex-col items-center justify-center gap-0.5">
               <Tooltip>
@@ -3240,14 +3238,12 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                 const isSat      = dayDow === 6
                 const isSun      = dayDow === 0
 
+                const deptParts: string[] = []
+                if (day.labCount > 0) deptParts.push(`Lab ${day.labCount}`)
+                if (day.andrologyCount > 0) deptParts.push(`${locale === "es" ? "Andr" : "Andr"} ${day.andrologyCount}`)
+                if (day.adminCount > 0) deptParts.push(`Admin ${day.adminCount}`)
                 const tooltipParts: string[] = []
-                if (day.staffCount > 0) {
-                  const depts: string[] = []
-                  if (day.labCount > 0) depts.push(`Em ${day.labCount}`)
-                  if (day.andrologyCount > 0) depts.push(`An ${day.andrologyCount}`)
-                  if (day.adminCount > 0) depts.push(`Ad ${day.adminCount}`)
-                  tooltipParts.push(depts.join(" · "))
-                }
+                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${locale === "es" ? "personas" : "staff"}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
                 if (day.punctions > 0) tooltipParts.push(`P: ${day.punctions}`)
                 {
                   const s = summary as RotaMonthSummary
@@ -3258,8 +3254,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                   const bForecast = Math.round(p5 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6 * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                   if (bForecast > 0) tooltipParts.push(`B: ${bForecast}`)
                 }
-                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${t("absences")}`)
-                if (day.hasSkillGaps) tooltipParts.push(t("uncoveredTasks"))
+                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${locale === "es" ? "ausencias" : "absences"}`)
+                if (day.hasSkillGaps) tooltipParts.push(locale === "es" ? "Tareas sin cobertura" : "Uncovered tasks")
                 if (day.holidayName) tooltipParts.push(day.holidayName)
                 const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
 
@@ -3273,7 +3269,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       ...(isSun ? { borderRight: "1px dashed var(--border)" } : {}),
                     }}
                     className={cn(
-                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[120px]",
+                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[100px] flex-1",
                       !day.isCurrentMonth
                         ? "bg-muted/40 border-border/30"
                         : day.holidayName
@@ -3337,28 +3333,14 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         )}
                       </div>
                     ) : day.staffCount > 0 && day.isCurrentMonth ? (
-                      <div className={cn(
-                        "flex items-center gap-1 mt-auto",
-                        day.holidayName && "border border-amber-400/50 rounded-full px-1.5 py-0.5"
-                      )}>
-                        {day.labCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #3B82F6", color: "#0f172a" }}>
-                            {day.labCount}
-                          </span>
-                        )}
-                        {day.andrologyCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #10B981", color: "#0f172a" }}>
-                            {day.andrologyCount}
-                          </span>
-                        )}
-                        {day.adminCount > 0 && (
-                          <span className="inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums size-[22px]"
-                            style={{ border: "1.5px solid #64748B", color: "#0f172a" }}>
-                            {day.adminCount}
-                          </span>
-                        )}
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        {Object.entries(day.shiftCounts ?? {})
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([shift, count]) => (
+                            <span key={shift} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/8 text-primary border border-primary/20 tabular-nums">
+                              {shift} <span className="font-normal text-foreground/60">{count}</span>
+                            </span>
+                          ))}
                       </div>
                     ) : null}
 
@@ -3386,17 +3368,25 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       const p6src = getPuncFromSummary(d6str)
                       const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
                       return (
-                        <div className="flex items-center gap-2 mt-1 text-[12px] tabular-nums">
-                          <MonthPunctionsEdit
-                            date={day.date}
-                            value={effectiveP}
-                            defaultValue={day.punctions}
-                            isOverride={isOverride}
-                            onChange={onPunctionsChange}
-                          />
-                          <span className="font-medium text-muted-foreground">B:{bForecast}</span>
+                        <div className="flex items-end gap-3 mt-auto pt-1 text-[11px] tabular-nums">
+                          <div className="flex flex-col items-start leading-none gap-0.5">
+                            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "es" ? "Punc" : "Punc"}</span>
+                            <MonthPunctionsEdit
+                              date={day.date}
+                              value={effectiveP}
+                              defaultValue={day.punctions}
+                              isOverride={isOverride}
+                              onChange={onPunctionsChange}
+                            />
+                          </div>
+                          {bForecast > 0 && (
+                            <div className="flex flex-col items-start leading-none gap-0.5">
+                              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "es" ? "Bio" : "Bio"}</span>
+                              <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">{bForecast}</span>
+                            </div>
+                          )}
                           {day.leaveCount > 0 && (
-                            <span className="flex items-center gap-0.5 text-amber-500">
+                            <span className="flex items-center gap-0.5 text-amber-500 ml-auto self-end pb-0.5">
                               <Briefcase className="size-3" />{day.leaveCount}
                             </span>
                           )}
@@ -5079,7 +5069,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 sectionLabel: locale === "es" ? "Plantillas" : "Templates",
               }] : []),
               // ── View options ──
-              ...((view === "week" || view === "month") ? [
+              ...((view === "week" || (view === "month" && calendarLayout === "person")) ? [
               ...(!(view === "month" && calendarLayout === "person") ? [{
                 label: t("compactView"),
                 icon: <Rows3 className="size-3.5" />,
