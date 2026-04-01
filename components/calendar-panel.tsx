@@ -845,14 +845,14 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
     <div ref={trigRef} className="w-full">
       <div
         onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded select-none flex items-center px-1.5", simplified ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50", (isOff || simplified) && "justify-center")}
+        className={cn("w-full rounded select-none flex items-center justify-center px-1.5", simplified ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
       >
         {isOff ? (
           <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
         ) : simplified ? (
           <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
         ) : (
-          <div className="flex flex-col gap-0">
+          <div className="flex flex-col gap-0 items-center">
             <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
             {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
           </div>
@@ -1922,12 +1922,12 @@ function PersonGrid({
           const isWknd  = isSat || isSun
           return (
             <div key={day.date} className={cn(
-              "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-b border-r last:border-r-0 border-border",
+              "relative flex flex-col items-center justify-center py-1 gap-0 border-b border-r last:border-r-0 border-border",
               holiday ? "bg-amber-100/80" : "bg-muted"
             )}
             style={{
               ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-              ...(isWknd && !holiday ? { backgroundColor: "#D8E4F3" } : {}),
+              ...(isWknd && !holiday ? { backgroundColor: "#ECEDF0" } : {}),
             }}
             >
               {day.warnings.length > 0 && (
@@ -1935,7 +1935,7 @@ function PersonGrid({
               )}
               <button
                 onClick={() => onDateClick?.(day.date)}
-                className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+                className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
               >
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
                 <span className={cn(
@@ -2754,10 +2754,10 @@ function ShiftGrid({
               <div
                 key={dateStr}
                 className={cn(
-                  "relative flex flex-col items-center justify-center py-1.5 gap-[2px] border-l border-border",
+                  "relative flex flex-col items-center justify-center py-1 gap-0 border-l border-border",
                   holidayName ? "bg-amber-100/80" : "bg-muted"
                 )}
-                style={isWknd && !holidayName ? { backgroundColor: "#D8E4F3" } : undefined}
+                style={isWknd && !holidayName ? { backgroundColor: "#ECEDF0" } : undefined}
               >
                 {day && day.warnings.length > 0 && (
                   <DayWarningPopover warnings={day.warnings} />
@@ -2765,7 +2765,7 @@ function ShiftGrid({
 
                 <button
                   onClick={() => onDateClick?.(dateStr)}
-                  className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
+                  className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
                 >
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{wday}</span>
                   <span className={cn(

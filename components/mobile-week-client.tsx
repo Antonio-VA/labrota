@@ -761,7 +761,7 @@ export function MobileWeekClient() {
                   <div
                     key={day.date}
                     className="px-1 py-2 text-center border-r border-border last:border-r-0"
-                    style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : isWknd ? { backgroundColor: "#D8E4F3" } : undefined}
+                    style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : isWknd ? { backgroundColor: "#ECEDF0" } : undefined}
                   >
                     <p className={cn("text-[10px] uppercase", isToday ? "text-primary font-semibold" : "text-muted-foreground")}>{wday}</p>
                     {isToday ? (
