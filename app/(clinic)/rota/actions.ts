@@ -424,61 +424,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       day.warnings.push({ category: "skill_gap", message: gapNames.join(", ") })
     }
 
-    // Coverage warnings — compare assigned staff by role against minimums
-    if (labConfig && day.assignments.length > 0) {
-      const dow    = new Date(day.date + "T12:00:00").getDay()
-      const dowKey = DOW_TO_KEY[dow]
-
-      const shiftCovEnabled = labConfig.shift_coverage_enabled ?? false
-      const shiftCovByDay = labConfig.shift_coverage_by_day as ShiftCoverageByDay | null
-
-      if (shiftCovEnabled && shiftCovByDay) {
-        // Per-shift per-department warnings
-        const activeShifts = shiftTypesData.filter((st) =>
-          st.active !== false && (!st.active_days || st.active_days.length === 0 || (st.active_days as string[]).includes(dowKey))
-        )
-        for (const st of activeShifts) {
-          const raw = shiftCovByDay[st.code]?.[dowKey]
-          const cov: ShiftCoverageEntry = raw == null
-            ? { lab: 0, andrology: 0, admin: 0 }
-            : typeof raw === "number" ? { lab: raw, andrology: 0, admin: 0 } : raw as ShiftCoverageEntry
-          const staffInShift = day.assignments.filter((a) => a.shift_type === st.code)
-          const labInShift = staffInShift.filter((a) => a.staff.role === "lab").length
-          const andInShift = staffInShift.filter((a) => a.staff.role === "andrology").length
-          const admInShift = staffInShift.filter((a) => a.staff.role === "admin").length
-          if (cov.lab > 0 && labInShift < cov.lab) {
-            day.warnings.push({ category: "coverage", message: `${st.code} Lab: ${labInShift}/${cov.lab}` })
-          }
-          if (cov.andrology > 0 && andInShift < cov.andrology) {
-            day.warnings.push({ category: "coverage", message: `${st.code} Andr: ${andInShift}/${cov.andrology}` })
-          }
-          if (cov.admin > 0 && admInShift < cov.admin) {
-            day.warnings.push({ category: "coverage", message: `${st.code} Admin: ${admInShift}/${cov.admin}` })
-          }
-        }
-      } else {
-        // Department-level warnings (no shift granularity)
-        const weekend  = day.isWeekend
-        const labCount = day.assignments.filter((a) => a.staff.role === "lab").length
-        const andCount = day.assignments.filter((a) => a.staff.role === "andrology").length
-        const dayCov = labConfig.coverage_by_day?.[dowKey]
-
-        const labMin = dayCov?.lab ?? (weekend
-          ? (labConfig.min_weekend_lab_coverage ?? labConfig.min_lab_coverage)
-          : labConfig.min_lab_coverage)
-        const andMin = dayCov?.andrology ?? (weekend
-          ? labConfig.min_weekend_andrology
-          : labConfig.min_andrology_coverage)
-
-        if (labCount < labMin) {
-          day.warnings.push({ category: "coverage", message: `Lab: ${labCount}/${labMin}` })
-        }
-        if (andCount < andMin) {
-          day.warnings.push({ category: "coverage", message: `${locale === "en" ? "Andrology" : "Andrología"}: ${andCount}/${andMin}` })
-        }
-      }
-    }
-
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
@@ -532,23 +477,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       }
     }
 
-    // Ratio de cobertura warnings
-    if (labConfig) {
-      const ratioOpt = labConfig.ratio_optimal ?? 1.0
-      const ratioMin = labConfig.ratio_minimum ?? 0.75
-      const biopsyRate = labConfig.biopsy_conversion_rate ?? 0.5
-      const pOverride = rota?.punctions_override?.[day.date]
-      const punctions = pOverride ?? punctionsDefault[day.date] ?? 0
-      const biopsyForecast = Math.round(punctions * biopsyRate)
-      const totalProc = punctions + biopsyForecast
-      if (totalProc > 0) {
-        const assignedCount = day.assignments.length
-        const ratio = assignedCount / totalProc
-        if (ratio < ratioMin) {
-          day.warnings.push({ category: "coverage", message: `Ratio P+B: ${ratio.toFixed(1)} (${locale === "en" ? "min." : "mín."} ${ratioMin})` })
-        }
-      }
-    }
   }
 
   // Check supervisor co-location rules — warn if pair is split

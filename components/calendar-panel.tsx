@@ -2860,7 +2860,7 @@ function ShiftGrid({
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   className={cn(
                     "p-1.5 flex flex-col gap-1 border-l border-border",
-                    isEmpty ? "bg-muted/40" : "bg-background",
+                    "bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
