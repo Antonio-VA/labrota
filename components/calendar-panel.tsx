@@ -594,7 +594,7 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, disabl
     setOpen(false)
   }
 
-  const pLabel = `P:${value}`
+  const pLabel = `${value}`
   const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
 
   if (disabled) {
@@ -3039,95 +3039,6 @@ function ShiftGrid({
 
 // ── Month view ────────────────────────────────────────────────────────────────
 
-// ── Month punctions inline editor ──────────────────────────────────────────
-
-function MonthPunctionsEdit({ date, value, defaultValue, isOverride, onChange }: {
-  date: string; value: number; defaultValue: number; isOverride: boolean
-  onChange?: (date: string, value: number | null) => void
-}) {
-  const t = useTranslations("schedule")
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  function save() {
-    if (onChange) onChange(date, draft === defaultValue ? null : draft)
-    setOpen(false)
-  }
-
-  if (!onChange) {
-    return (
-      <span className={cn("text-[12px] tabular-nums", isOverride ? "text-primary font-medium" : "text-muted-foreground")}>
-        P:{value}
-      </span>
-    )
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <Tooltip>
-        <TooltipTrigger render={
-          <button
-            onClick={(e) => { e.stopPropagation(); setDraft(value); setOpen((o) => !o) }}
-            className={cn(
-              "text-[12px] tabular-nums rounded px-0.5 transition-colors hover:bg-muted group/pedit",
-              isOverride ? "text-primary font-medium" : "text-muted-foreground"
-            )}
-          >
-            P:{value}
-            <Pencil className="size-2 ml-0.5 inline opacity-0 group-hover/pedit:opacity-50 transition-opacity" />
-          </button>
-        } />
-        <TooltipContent side="top">
-          {isOverride ? t("customValue", { value: defaultValue }) : t("clickToEditPunctions")}
-        </TooltipContent>
-      </Tooltip>
-
-      {open && (
-        <div
-          className="absolute left-0 bottom-full mb-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 w-32 flex flex-col gap-1.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between gap-1">
-            <button
-              onClick={() => setDraft((d) => Math.max(0, d - 1))}
-              className="size-6 rounded border border-border flex items-center justify-center text-[13px] hover:bg-muted transition-colors"
-            >−</button>
-            <input
-              type="number"
-              min={0}
-              value={draft}
-              onChange={(e) => setDraft(Math.max(0, parseInt(e.target.value, 10) || 0))}
-              className="w-10 text-center text-[12px] border border-input rounded px-1 py-0.5 outline-none bg-background"
-            />
-            <button
-              onClick={() => setDraft((d) => d + 1)}
-              className="size-6 rounded border border-border flex items-center justify-center text-[13px] hover:bg-muted transition-colors"
-            >+</button>
-          </div>
-          <div className="flex gap-1">
-            <button onClick={save} className="flex-1 text-[10px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90">OK</button>
-            {isOverride && (
-              <button
-                onClick={() => { if (onChange) onChange(date, null); setOpen(false) }}
-                className="flex-1 text-[10px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted"
-              >Reset</button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
@@ -3192,7 +3103,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   )
 
   return (
-    <div className="flex flex-col gap-1.5 flex-1">
+    <div className="flex flex-col gap-1.5 flex-1 min-h-0">
       {/* Day headers — with week number column */}
       <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
         <div className="text-center text-[11px] font-medium text-muted-foreground/40 py-2">S</div>
@@ -3342,8 +3253,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                         {Object.entries(day.shiftCounts ?? {})
                           .sort(([a], [b]) => a.localeCompare(b))
                           .map(([shift, count]) => (
-                            <span key={shift} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/8 text-primary border border-primary/20 tabular-nums">
-                              {shift} <span className="font-normal text-foreground/60">{count}</span>
+                            <span key={shift} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-normal bg-primary/8 text-primary border border-primary/20 tabular-nums">
+                              {shift} <span className="font-semibold text-foreground">{count}</span>
                             </span>
                           ))}
                       </div>
@@ -3375,21 +3286,18 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                       return (
                         <div className="flex items-end gap-3 mt-auto pt-1 text-[11px] tabular-nums">
                           <div className="flex flex-col items-start leading-none gap-0.5">
-                            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "es" ? "Punc" : "Punc"}</span>
-                            <MonthPunctionsEdit
+                            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "en" ? "Retr" : "Punc"}</span>
+                            <DayStatsInput
                               date={day.date}
                               value={effectiveP}
                               defaultValue={day.punctions}
                               isOverride={isOverride}
-                              onChange={onPunctionsChange}
+                              onChange={onPunctionsChange ?? (() => {})}
+                              disabled={!onPunctionsChange}
+                              biopsyForecast={bForecast}
+                              biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
                             />
                           </div>
-                          {bForecast > 0 && (
-                            <div className="flex flex-col items-start leading-none gap-0.5">
-                              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{locale === "es" ? "Bio" : "Bio"}</span>
-                              <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">{bForecast}</span>
-                            </div>
-                          )}
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-amber-500 ml-auto self-end pb-0.5">
                               <Briefcase className="size-3" />{day.leaveCount}
@@ -5451,7 +5359,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
         {/* Month view */}
         {view === "month" && (
-          <div className="hidden md:block overflow-auto flex-1 px-4 py-3">
+          <div className="hidden md:flex flex-col flex-1 overflow-auto px-4 py-3">
             <MonthGrid
               summary={monthSummary}
               loading={loadingMonth}
