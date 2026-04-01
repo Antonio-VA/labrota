@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit, useUserRole } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit, Minus, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -53,7 +53,7 @@ import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-da
 import { formatTime } from "@/lib/format-time"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
-import { bulkAddSkill, bulkRemoveSkill } from "@/app/(clinic)/staff/actions"
+import { bulkAddSkill, bulkRemoveSkill, bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
 import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
@@ -1118,13 +1118,6 @@ function StaffProfilePanel({
   const ROLE_LABEL = deptMaps.label
   const ROLE_BORDER = deptMaps.border
 
-  // Shift debt: assignments in last 28 days vs expected (days_per_week × 4)
-  const today28 = new Date(); today28.setDate(today28.getDate() - 28)
-  const since28 = today28.toISOString().split("T")[0]
-  const last4w  = (data?.recentAssignments ?? []).filter((a) => a.date >= since28).length
-  const expected4w = (staff?.days_per_week ?? 5) * 4
-  const debt    = last4w - expected4w
-
   // Weekly shift strip: this person's assignments for the current visible week
   const weekDays = weekData?.days ?? []
   const DOW_SHORT = locale === "es"
@@ -1298,43 +1291,44 @@ function StaffProfilePanel({
             )}
           </div>
 
-          {/* Shift debt — last 4 weeks */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("debtTitle")}</p>
-            {loading ? (
-              <div className="shimmer-bar h-6 w-24 rounded" />
-            ) : (
-              <>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className={cn(
-                    "text-[24px] font-semibold tabular-nums leading-none",
-                    debt < 0 ? "text-amber-600" : debt > 0 ? "text-red-600" : "text-foreground"
-                  )}>
-                    {last4w}
-                  </span>
-                  <span className="text-[13px] text-muted-foreground">/ {expected4w} {t("shifts")}</span>
-                  {debt !== 0 && (
-                    <span className={cn(
-                      "text-[12px] font-semibold ml-auto px-1.5 py-0.5 rounded",
-                      debt > 0 ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                    )}>
-                      {debt > 0 ? `+${debt}` : debt}
-                    </span>
-                  )}
+          {/* Availability — days per week */}
+          {staff && userRole !== "viewer" && (
+            <div className="px-5 py-3 border-b border-border">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("availability")}</p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    const current = staff.days_per_week ?? 5
+                    if (current <= 1) return
+                    const newVal = current - 1
+                    await bulkUpdateStaffField([{ id: staff.id, field: "days_per_week", value: newVal }])
+                    onRefreshWeek?.()
+                  }}
+                  disabled={loading || (staff.days_per_week ?? 5) <= 1}
+                  className="size-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Minus className="size-3.5" />
+                </button>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[22px] font-semibold tabular-nums leading-none">{staff.days_per_week ?? 5}</span>
+                  <span className="text-[13px] text-muted-foreground">{t("daysPerWeek")}</span>
                 </div>
-                {/* Progress bar */}
-                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      debt < 0 ? "bg-amber-400" : debt > 0 ? "bg-red-400" : "bg-emerald-400"
-                    )}
-                    style={{ width: `${Math.min(100, Math.round((last4w / Math.max(expected4w, 1)) * 100))}%` }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+                <button
+                  onClick={async () => {
+                    const current = staff.days_per_week ?? 5
+                    if (current >= 7) return
+                    const newVal = current + 1
+                    await bulkUpdateStaffField([{ id: staff.id, field: "days_per_week", value: newVal }])
+                    onRefreshWeek?.()
+                  }}
+                  disabled={loading || (staff.days_per_week ?? 5) >= 7}
+                  className="size-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Capacidades (skills) — editable */}
           {staff && (

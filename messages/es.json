@@ -238,6 +238,8 @@
     "noPrevDayAssignments": "No hay asignaciones el mismo día de la semana anterior.",
     "rotaCreationError": "Error creando el horario.",
     "debtTitle": "Deuda de turnos · 4 semanas",
+    "availability": "Disponibilidad",
+    "daysPerWeek": "días/semana",
     "versionHistory": "Historial de versiones",
     "viewHistory": "Ver historial",
     "restoreVersion": "Restaurar esta versión",

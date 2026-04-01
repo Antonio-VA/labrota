@@ -238,6 +238,8 @@
     "noPrevDayAssignments": "No assignments on the same day last week.",
     "rotaCreationError": "Error creating the rota.",
     "debtTitle": "Shift debt · 4 weeks",
+    "availability": "Availability",
+    "daysPerWeek": "days/week",
     "versionHistory": "Version history",
     "viewHistory": "View history",
     "restoreVersion": "Restore this version",
