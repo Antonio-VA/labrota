@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { generateSlug } from "@/lib/utils"
 
 // ── Guard: ensure caller is super admin ───────────────────────────────────────
 async function assertSuperAdmin() {
@@ -102,7 +103,7 @@ export async function renameOrganisation(orgId: string, newName: string) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
-    .update({ name } as never)
+    .update({ name, slug: generateSlug(name) } as never)
     .eq("id", orgId)
 
   if (error) return { error: error.message }
