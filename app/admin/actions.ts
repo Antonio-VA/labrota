@@ -306,6 +306,7 @@ export async function createOrgUser(formData: FormData) {
     // New user — invite them
     const { data, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName || undefined, app_role: appRole },
+      redirectTo: "https://www.labrota.app/auth/callback",
     })
     if (createError) return { error: createError.message }
     userId = data.user.id
