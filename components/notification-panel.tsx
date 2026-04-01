@@ -18,7 +18,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   shift_change:  <CalendarDays className="size-4 text-blue-500 shrink-0" />,
 }
 
-export function NotificationBell() {
+export function NotificationBell({ large }: { large?: boolean } = {}) {
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -86,10 +86,10 @@ export function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className="relative size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors"
+        className={`relative ${large ? "size-11" : "size-10"} flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors`}
         title="Notificaciones"
       >
-        <Bell className="size-6" />
+        <Bell className={large ? "size-6" : "size-5"} />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 size-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
             {count > 9 ? "9+" : count}

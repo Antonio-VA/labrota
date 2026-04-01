@@ -68,7 +68,7 @@ export function MobileHeader({
 
         {/* Right: notifications + account — white icons on navy */}
         <div className="flex items-center gap-3 [&_button]:text-white/70 [&_button:hover]:text-white">
-          <NotificationBell />
+          <NotificationBell large />
           <a
             href="/mobile-account"
             className="size-11 flex items-center justify-center rounded-full text-white/70 hover:text-white active:bg-white/10 transition-colors"
