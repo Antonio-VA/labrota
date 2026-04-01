@@ -251,16 +251,6 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
             <FileDown className="size-4" />
             {t("exportPdf")}
           </button>
-          <button
-            onClick={() => {
-              setOpen(false)
-              onGenerateWeek?.()
-            }}
-            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
-          >
-            <Sparkles className="size-4" />
-            {t("generateRota")}
-          </button>
           {onToggleViewMode && (
             <>
               <div className="h-px bg-border mx-3 my-0.5" />
@@ -269,7 +259,7 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                 {locale === "es" ? "Por persona" : "By person"}
                 {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
               </button>
-              {weekViewMode === "person" && onToggleDeptColor && (
+              {onToggleDeptColor && (
                 <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
                   <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
                   {locale === "es" ? "Colores personal" : "Staff colours"}
@@ -659,6 +649,18 @@ export function MobileWeekClient() {
             })
           }}
         />
+      </div>
+
+      {/* Generate rota strip */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20 shrink-0">
+        <span className="text-[12px] text-muted-foreground">{data && !loading ? (days.some(d => d.assignments.length > 0) ? (locale === "es" ? "Rota generada" : "Rota ready") : (locale === "es" ? "Semana vacía" : "Empty week")) : ""}</span>
+        <button
+          onClick={() => setGenerateModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-[12px] font-semibold active:bg-primary/90 transition-colors"
+        >
+          <Sparkles className="size-3.5" />
+          {t("generateRota")}
+        </button>
       </div>
 
       {/* Scrollable grid */}
