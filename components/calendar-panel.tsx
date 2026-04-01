@@ -356,8 +356,8 @@ function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, com
         showPill ? "border-border bg-background" : "border-transparent bg-transparent",
       )}
       style={{
-        borderLeft: colorChips && showPill
-          ? `3px solid ${borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
+        borderLeft: colorChips
+          ? `3px solid ${staffColor ?? borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
           : undefined,
         borderRadius: 4,
         ...(crossHovered ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
@@ -1763,14 +1763,14 @@ function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisable
       onClick={onClick}
       className={cn(
         "w-full rounded select-none flex items-center gap-1.5 px-1.5",
-        simplified ? "py-0.5 min-h-[24px] justify-center" : "py-1.5 min-h-[36px]",
+        simplified ? "py-0.5 min-h-[24px] justify-center" : "py-1.5 min-h-[36px] justify-center",
         !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
       )}
     >
       {simplified ? (
         <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
       ) : (
-        <div className="flex flex-col gap-0">
+        <div className="flex flex-col gap-0 items-center">
           <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
           {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
         </div>
@@ -3136,7 +3136,7 @@ function rotateArray<T>(arr: T[], offset: number): T[] {
   return [...arr.slice(o), ...arr.slice(0, o)]
 }
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, monthViewMode = "shift" }: {
+function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, monthViewMode = "shift", colorChips }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string
@@ -3147,6 +3147,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
   monthViewMode?: "shift" | "person"
+  colorChips?: boolean
 }) {
   const t = useTranslations("schedule")
   const { hoveredStaffId, setHovered } = useStaffHover()
@@ -3318,7 +3319,7 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                               key={i}
                               className="text-[9px] font-semibold rounded px-1 py-px border border-border transition-colors cursor-default"
                               style={{
-                                borderLeft: `2px solid ${roleColor}`,
+                                ...(colorChips ? { borderLeft: `2px solid ${roleColor}` } : {}),
                                 ...(isHov ? { backgroundColor: roleColor + "25", color: roleColor, borderColor: roleColor + "40" } : {}),
                               }}
                               onMouseEnter={() => setHovered(si.id)}
@@ -5457,6 +5458,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               punctionsOverride={punctionsOverride}
               onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
               monthViewMode={monthViewMode}
+              colorChips={colorChips}
             />
           </div>
         )}

@@ -2140,6 +2140,7 @@ export interface MonthDaySummary {
   staffRoles: string[]
   /** Staff initials for person view (up to 6) */
   staffInitials: { id: string; initials: string; role: string }[]
+  shiftCounts: Record<string, number>
 }
 
 export interface MonthWeekStatus {
@@ -2204,9 +2205,9 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes] = await Promise.all([
     supabase
       .from("rota_assignments")
-      .select("date, staff_id, staff:staff_id(first_name, last_name, role)")
+      .select("date, staff_id, shift_type, staff:staff_id(first_name, last_name, role)")
       .gte("date", gridDates[0])
-      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
+      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
     supabase
       .from("staff_skills")
       .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
@@ -2229,10 +2230,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   ])
 
   // Assignment data
-  const byDate: Record<string, { staff_id: string; role: string; first_name: string; last_name: string }[]> = {}
+  const byDate: Record<string, { staff_id: string; role: string; first_name: string; last_name: string; shift_type: string }[]> = {}
   for (const a of assignmentsRes.data ?? []) {
     if (!byDate[a.date]) byDate[a.date] = []
-    byDate[a.date].push({ staff_id: a.staff_id, role: a.staff?.role ?? "lab", first_name: a.staff?.first_name ?? "", last_name: a.staff?.last_name ?? "" })
+    byDate[a.date].push({ staff_id: a.staff_id, role: a.staff?.role ?? "lab", first_name: a.staff?.first_name ?? "", last_name: a.staff?.last_name ?? "", shift_type: a.shift_type ?? "" })
   }
 
   // Staff totals for month taskbar
@@ -2306,6 +2307,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       labCount < (isWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
       andrologyCount < (isWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
     ) : false
+    const shiftCounts: Record<string, number> = {}
+    for (const e of entries) {
+      shiftCounts[e.shift_type] = (shiftCounts[e.shift_type] ?? 0) + 1
+    }
     return {
       date,
       staffCount: staffIds.length,
@@ -2319,6 +2324,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       leaveCount: leaveByDate[date] ?? 0,
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
+      shiftCounts,
       staffInitials: [...entries]
         .sort((a, b) => {
           const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
