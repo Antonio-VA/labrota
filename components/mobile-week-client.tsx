@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit, Star, Palette } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { TapPopover } from "@/components/tap-popover"
@@ -177,11 +177,13 @@ function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData
 
 // ── Overflow menu ───────────────────────────────────────────────────────────
 
-function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode }: {
+function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, onSaveFavourite }: {
   weekStart: string; data: RotaWeekData | null; onRefresh?: () => void
   highlightEnabled?: boolean; onToggleHighlight?: () => void
   onGenerateWeek?: () => void
   weekViewMode?: "task" | "person"; onToggleViewMode?: () => void
+  deptColor?: boolean; onToggleDeptColor?: () => void
+  isFavourite?: boolean; onSaveFavourite?: () => void
 }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
@@ -219,17 +221,20 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
             onClick={() => {
               setOpen(false)
               if (!data) return
-              import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask }) => {
+              import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByTask, exportPdfByPerson }) => {
                 const orgEl = document.querySelector("[data-org-name]")
                 const orgName = orgEl?.textContent ?? "LabRota"
                 const notesEl = document.querySelector("[data-week-notes]")
                 const noteTexts = notesEl
                   ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
                   : []
-                if (data.rotaDisplayMode === "by_task") {
-                  exportPdfByTask(data, data.tecnicas ?? [], orgName, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                const notes = noteTexts.length > 0 ? noteTexts : undefined
+                if (weekViewMode === "person") {
+                  exportPdfByPerson(data, orgName, locale, notes)
+                } else if (data.rotaDisplayMode === "by_task") {
+                  exportPdfByTask(data, data.tecnicas ?? [], orgName, locale, notes)
                 } else {
-                  exportPdfByShift(data, orgName, locale, noteTexts.length > 0 ? noteTexts : undefined)
+                  exportPdfByShift(data, orgName, locale, notes)
                 }
               })
             }}
@@ -266,6 +271,23 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                 <Users className="size-4" />
                 {locale === "es" ? "Por persona" : "By person"}
                 {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
+              </button>
+            </>
+          )}
+          {weekViewMode === "person" && onToggleDeptColor && (
+            <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <Palette className="size-4" />
+              {locale === "es" ? "Colores dept." : "Dept. colours"}
+              {deptColor && <Check className="size-4 text-primary ml-auto" />}
+            </button>
+          )}
+          {onSaveFavourite && (
+            <>
+              <div className="h-px bg-border mx-3 my-0.5" />
+              <button onClick={() => { onSaveFavourite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                <Star className={cn("size-4", isFavourite ? "fill-amber-400 text-amber-400" : "")} />
+                {locale === "es" ? "Guardar vista fav." : "Save as favourite"}
+                {isFavourite && <Check className="size-4 text-primary ml-auto" />}
               </button>
             </>
           )}
@@ -472,10 +494,24 @@ export function MobileWeekClient() {
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
   const [warningsOpen, setWarningsOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
-  const [weekViewMode, setWeekViewMode] = useState<"task" | "person">("task")
+  const [weekViewMode, setWeekViewMode] = useState<"task" | "person">(() => {
+    if (typeof window === "undefined") return "task"
+    try {
+      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
+      return fav.weekViewMode === "person" ? "person" : "task"
+    } catch { return "task" }
+  })
   const [mobileDeptColor, setMobileDeptColor] = useState(() => {
     if (typeof window === "undefined") return true
+    try {
+      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
+      if (fav.mobileDeptColor !== undefined) return fav.mobileDeptColor as boolean
+    } catch {}
     return localStorage.getItem("labrota_mobile_dept_color") !== "false"
+  })
+  const [weekFavourite, setWeekFavourite] = useState<{ weekViewMode: string; mobileDeptColor: boolean } | null>(() => {
+    if (typeof window === "undefined") return null
+    try { return JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "null") } catch { return null }
   })
 
   function toggleHighlight() {
@@ -483,6 +519,23 @@ export function MobileWeekClient() {
     setHighlightEnabled(next)
     localStorage.setItem("labrota_week_highlight", String(next))
     if (!next) setHighlightedStaff(null)
+  }
+
+  function toggleMobileDeptColor() {
+    const next = !mobileDeptColor
+    setMobileDeptColor(next)
+    localStorage.setItem("labrota_mobile_dept_color", String(next))
+  }
+
+  const isFavourite = weekFavourite !== null &&
+    weekFavourite.weekViewMode === weekViewMode &&
+    weekFavourite.mobileDeptColor === mobileDeptColor
+
+  function saveFavourite() {
+    const fav = { weekViewMode, mobileDeptColor }
+    setWeekFavourite(fav)
+    localStorage.setItem("labrota_week_favourite", JSON.stringify(fav))
+    toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favourite")
   }
 
   useEffect(() => {
@@ -561,15 +614,16 @@ export function MobileWeekClient() {
         <div className="flex-1" />
 
         {/* Warnings button */}
-        <button onClick={() => setWarningsOpen(true)} className="relative size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
+        <button onClick={() => setWarningsOpen(true)} className={cn(
+          "flex items-center justify-center gap-1 rounded-full active:bg-accent shrink-0",
+          hasWarnings ? "h-9 px-2" : "size-9"
+        )}>
           {hasWarnings
-            ? <AlertTriangle className="size-5 text-amber-500" />
+            ? <>
+                <AlertTriangle className="size-5 text-amber-500 shrink-0" />
+                {warningCount > 0 && <span className="text-[13px] font-semibold text-amber-500 leading-none">{warningCount}</span>}
+              </>
             : <Check className="size-5 text-emerald-500" />}
-          {hasWarnings && warningCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-amber-500 text-white text-[9px] font-bold leading-none">
-              {warningCount}
-            </span>
-          )}
         </button>
 
         <WeekOverflow
@@ -580,6 +634,10 @@ export function MobileWeekClient() {
           weekViewMode={weekViewMode}
           onToggleViewMode={() => setWeekViewMode((m) => m === "task" ? "person" : "task")}
           onGenerateWeek={() => setGenerateModalOpen(true)}
+          deptColor={mobileDeptColor}
+          onToggleDeptColor={toggleMobileDeptColor}
+          isFavourite={isFavourite}
+          onSaveFavourite={saveFavourite}
           onRefresh={() => {
             setLoading(true)
             Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
@@ -644,9 +702,16 @@ export function MobileWeekClient() {
             {weekViewMode === "person" ? (
               // ── Person view ─────────────────────────────────────────────
               <>
-                {staffList.filter((s) =>
-                  days.some((d) => d.assignments.some((a) => a.staff_id === s.id))
-                ).map((s) => {
+                {(() => {
+                  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+                  return staffList
+                    .filter((s) => days.some((d) => d.assignments.some((a) => a.staff_id === s.id)))
+                    .sort((a, b) => {
+                      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+                      if (ro !== 0) return ro
+                      return a.first_name.localeCompare(b.first_name)
+                    })
+                })().map((s) => {
                   const isHL = highlightEnabled && highlightedStaff === s.id
                   const roleColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
                   return (
@@ -658,7 +723,6 @@ export function MobileWeekClient() {
                       >
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold text-foreground truncate leading-tight">{s.first_name} {s.last_name[0]}.</p>
-                          <p className="text-[9px] text-muted-foreground truncate leading-tight">{ROLE_LABEL[locale]?.[s.role] ?? s.role}</p>
                         </div>
                       </div>
                       {days.map((day) => {
@@ -682,8 +746,7 @@ export function MobileWeekClient() {
                                       ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
                                       : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
                                 >
-                                  <span className="text-[10px] font-semibold leading-tight truncate">{a.function_label ?? a.shift_type}</span>
-                                  <span className={cn("text-[8px] tabular-nums leading-tight", isHL ? "text-white/80" : "text-muted-foreground")}>{formatTime(st.start_time, timeFormat)}</span>
+                                  <span className="text-[10px] font-semibold leading-tight truncate">{a.shift_type}</span>
                                 </div>
                               }>
                                 <p className="font-medium">{s.first_name} {s.last_name}</p>
