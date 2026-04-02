@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
@@ -305,7 +305,7 @@ export async function updateOrgName(name: string): Promise<{ error?: string }> {
     .update({ name } as never)
     .eq("id", orgId)
   if (error) return { error: error.message }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/settings")
   revalidatePath("/")
   return {}
@@ -318,7 +318,7 @@ export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }
     .update({ logo_url: logoUrl } as never)
     .eq("id", orgId)
   if (error) return { error: error.message }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/settings")
   revalidatePath("/")
   return {}
@@ -347,7 +347,7 @@ export async function updateOrgRegional(country: string, region: string): Promis
     if (error) return { error: error.message }
   }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/settings")
   revalidatePath("/")
   return {}
@@ -360,7 +360,7 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
     .update({ enable_leave_requests: enabled } as never)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/settings")
   return {}
 }
@@ -387,7 +387,7 @@ export async function resetImplementation(): Promise<{ error?: string }> {
     admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId),
     admin.from("implementation_steps").delete().eq("organisation_id", orgId),
   ])
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/settings")
   revalidatePath("/staff")
   revalidatePath("/lab")

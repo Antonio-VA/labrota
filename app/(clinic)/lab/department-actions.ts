@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import { orgStaticTag } from "@/lib/org-context-cache"
@@ -57,7 +57,7 @@ export async function saveDepartments(
     }
   }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   revalidatePath("/")
   return {}
@@ -82,7 +82,7 @@ export async function seedDefaultDepartments(): Promise<{ seeded: boolean; error
     .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })) as never)
 
   if (error) return { seeded: false, error: error.message }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   revalidatePath("/")
   return { seeded: true }

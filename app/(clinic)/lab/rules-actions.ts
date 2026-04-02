@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type { RotaRuleInsert, RotaRuleUpdate } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
@@ -19,7 +19,7 @@ export async function createRule(
     .maybeSingle()
   if (error) return { error: error.message }
   if (!rule) return { error: "Rule was not created — check database permissions." }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return { rule: rule as import("@/lib/types/database").RotaRule }
 }
@@ -37,7 +37,7 @@ export async function updateRule(
     .maybeSingle()
   if (error) return { error: error.message }
   if (!rule) return { error: "Rule not found or permission denied." }
-  if (orgId) revalidateTag(orgStaticTag(orgId))
+  if (orgId) updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return { rule: rule as import("@/lib/types/database").RotaRule }
 }
@@ -49,7 +49,7 @@ export async function deleteRule(id: string): Promise<{ error?: string }> {
     .delete()
     .eq("id", id)
   if (error) return { error: error.message }
-  if (orgId) revalidateTag(orgStaticTag(orgId))
+  if (orgId) updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return {}
 }
@@ -64,7 +64,7 @@ export async function toggleRule(
     .update({ enabled } as never)
     .eq("id", id)
   if (error) return { error: error.message }
-  if (orgId) revalidateTag(orgStaticTag(orgId))
+  if (orgId) updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return {}
 }

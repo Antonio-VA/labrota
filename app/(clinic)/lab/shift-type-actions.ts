@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
@@ -63,7 +63,7 @@ export async function saveShiftTypes(
     await supabase.from("shift_types").delete().eq("organisation_id", orgId)
   }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   revalidatePath("/")
   return {}

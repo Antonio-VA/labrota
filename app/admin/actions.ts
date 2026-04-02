@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -404,7 +404,7 @@ export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by
     .eq("id", orgId)
 
   if (error) return { error: error.message }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }

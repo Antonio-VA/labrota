@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
@@ -150,7 +150,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
     }
   })
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   redirect("/staff?saved=1")
 }
@@ -183,7 +183,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
     if (insError) return { error: insError.message }
   }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   revalidatePath(`/staff/${id}`)
   redirect("/staff?saved=1")
@@ -194,7 +194,7 @@ export async function deleteStaff(id: string) {
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
   await supabase.from("staff").delete().eq("id", id).eq("organisation_id", orgId)
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   redirect("/staff")
 }
@@ -229,7 +229,7 @@ export async function bulkAddSkill(
 
   if (error) return { added: 0, skipped: staffIds.length, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { added: toAdd.length, skipped: alreadyHave.size }
 }
@@ -253,7 +253,7 @@ export async function bulkRemoveSkill(
 
   if (error) return { removed: 0, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { removed: (data ?? []).length }
 }
@@ -290,7 +290,7 @@ export async function bulkAddSkills(
   const { error } = await supabase.from("staff_skills").insert(rows as never)
   if (error) return { added: 0, skipped, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { added: rows.length, skipped }
 }
@@ -314,7 +314,7 @@ export async function bulkRemoveSkills(
 
   if (error) return { removed: 0, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { removed: (data ?? []).length }
 }
@@ -337,7 +337,7 @@ export async function bulkUpdateStatus(
 
   if (error) return { updated: 0, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { updated: (data ?? []).length }
 }
@@ -360,7 +360,7 @@ export async function bulkSoftDeleteStaff(
 
   if (error) return { deleted: 0, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { deleted: (data ?? []).length }
 }
@@ -392,7 +392,7 @@ export async function hardDeleteStaff(
 
   if (error) return { deleted: 0, error: error.message }
 
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { deleted: staffIds.length }
 }
@@ -416,7 +416,7 @@ export async function bulkUpdateStaffField(
       .eq("organisation_id", orgId)
     if (!error) count++
   }
-  revalidateTag(orgStaticTag(orgId))
+  updateTag(orgStaticTag(orgId))
   revalidatePath("/staff")
   return { updated: count }
 }
