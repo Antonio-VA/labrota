@@ -232,7 +232,7 @@ export interface LabConfig {
   enable_notes:             boolean
   days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day"  // default "prefer_weekend"
   public_holiday_mode:      "normal" | "saturday_coverage"  // default "normal"
-  public_holiday_reduce_budget: boolean  // default false — reduce weekly budget by 1 per holiday
+  public_holiday_reduce_budget: boolean  // default true — reduce weekly budget by 1 per holiday
   annual_leave_days:        number  // default 20 — annual holiday allowance per employee
   shift_name_am_es:         string
   shift_name_pm_es:         string

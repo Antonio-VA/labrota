@@ -355,7 +355,7 @@ export async function createOrgUser(formData: FormData) {
 }
 
 // ── updateOrgRegional ──────────────────────────────────────────────────────
-export async function updateOrgRegional(orgId: string, country: string, region: string, annualLeaveDays?: number) {
+export async function updateOrgRegional(orgId: string, country: string, region: string, annualLeaveDays?: number, reduceBudgetOnHolidays?: boolean) {
   await assertSuperAdmin()
 
   const admin = createAdminClient()
@@ -369,6 +369,7 @@ export async function updateOrgRegional(orgId: string, country: string, region: 
 
   const payload: Record<string, unknown> = { country, region, autonomous_community: region || null }
   if (annualLeaveDays !== undefined) payload.annual_leave_days = annualLeaveDays
+  if (reduceBudgetOnHolidays !== undefined) payload.public_holiday_reduce_budget = reduceBudgetOnHolidays
 
   if (!existing) {
     payload.organisation_id = orgId

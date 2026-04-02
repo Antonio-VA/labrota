@@ -34,7 +34,7 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).gte("created_at", thirtyDaysAgo),
     admin.from("organisation_members").select("user_id, role, display_name, linked_staff_id").eq("organisation_id", id),
-    admin.from("lab_config").select("country, region, enable_leave_requests, enable_notes, annual_leave_days").eq("organisation_id", id).maybeSingle(),
+    admin.from("lab_config").select("country, region, enable_leave_requests, enable_notes, annual_leave_days, public_holiday_reduce_budget").eq("organisation_id", id).maybeSingle(),
     admin.from("departments").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("tecnicas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
@@ -305,6 +305,7 @@ export default async function OrgDetailPage({
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
+            initialReduceBudgetOnHolidays={(labConfigRes.data as { public_holiday_reduce_budget?: boolean } | null)?.public_holiday_reduce_budget ?? true}
           />
         }
         usuarios={

@@ -34,6 +34,7 @@ export function AdminOrgDetailClient({
   initialTaskReasoningEnabled = false,
   initialDailyHybridLimit = 10,
   initialAnnualLeaveDays = 20,
+  initialReduceBudgetOnHolidays = true,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -59,6 +60,7 @@ export function AdminOrgDetailClient({
   initialTaskReasoningEnabled?: boolean
   initialDailyHybridLimit?: number
   initialAnnualLeaveDays?: number
+  initialReduceBudgetOnHolidays?: boolean
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -87,6 +89,7 @@ export function AdminOrgDetailClient({
   const [taskReasoningEnabled, setTaskReasoningEnabled] = useState(initialTaskReasoningEnabled)
   const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
   const [annualLeaveDays, setAnnualLeaveDays] = useState(initialAnnualLeaveDays)
+  const [reduceBudgetOnHolidays, setReduceBudgetOnHolidays] = useState(initialReduceBudgetOnHolidays)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -149,7 +152,7 @@ export function AdminOrgDetailClient({
         const r = await toggleOrgTaskInShift(orgId, enableTaskInShift)
         if (r.error) { toast.error(r.error); hasError = true }
       }
-      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays)
+      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays, reduceBudgetOnHolidays)
       if (r2.error) { toast.error(r2.error); hasError = true }
       const r4 = await updateOrgEngineConfig(orgId, {
         ai_optimal_version: aiOptimalVersion,
@@ -705,6 +708,22 @@ export function AdminOrgDetailClient({
             />
             <span className="text-[12px] text-muted-foreground">días por persona al año</span>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-background px-5 py-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={reduceBudgetOnHolidays}
+              onChange={(e) => setReduceBudgetOnHolidays(e.target.checked)}
+              disabled={isPending}
+              className="accent-primary"
+            />
+            <div>
+              <span className="text-[13px] font-medium">Reducir presupuesto en festivos</span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Reduce en 1 día el presupuesto semanal de cada persona por cada festivo de la semana.</p>
+            </div>
+          </label>
         </div>
       </div>
 
