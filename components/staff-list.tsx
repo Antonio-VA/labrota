@@ -1284,23 +1284,31 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       {/* KPI summary band */}
       {staff.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <div className="grid grid-cols-5 gap-3">
-            {[
-              { label: t("kpiActive"), value: kpiActiveStaff.length },
-              { label: t("kpiTraining"), value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
-              { label: t("kpiCoverage"), value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
-              { label: t("kpiFullValidation"), value: kpiFullyValidated },
-            ].map((kpi) => (
-              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
-                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Active headcount */}
+            <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiActive")}</p>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <p className="text-[22px] font-semibold text-foreground leading-tight">{kpiActiveStaff.length}</p>
+                <div className="flex items-center gap-1">
+                  {deptsProp.filter((d) => kpiActiveStaff.some((s) => s.role === d.code)).map((d) => {
+                    const count = kpiActiveStaff.filter((s) => s.role === d.code).length
+                    return (
+                      <span key={d.code} className="text-[10px] px-1 py-0.5 rounded" style={{ backgroundColor: `${deptBorder[d.code] ?? "#94A3B8"}20`, color: deptBorder[d.code] ?? "#94A3B8" }}>
+                        {count}
+                      </span>
+                    )
+                  })}
+                </div>
               </div>
-            ))}
+            </div>
 
-            {/* Optimal headcount KPI */}
+            {/* Minimum headcount (recommended) */}
             <div ref={headcountRef} className="relative rounded-xl border border-border/60 bg-background px-4 py-3">
               <div className="flex items-center gap-1.5">
-                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiOptimalHeadcount")}</p>
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">
+                  {t("kpiOptimalHeadcount")} <span className="normal-case font-normal">({locale === "es" ? "recomendado" : "recommended"})</span>
+                </p>
                 <button
                   onClick={() => setHeadcountOpen(!headcountOpen)}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -1357,6 +1365,19 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mt-3">
+            {[
+              { label: t("kpiTraining"), value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
+              { label: t("kpiCoverage"), value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
+              { label: t("kpiFullValidation"), value: kpiFullyValidated },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
+                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
+                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
