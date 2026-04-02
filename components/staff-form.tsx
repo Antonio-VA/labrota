@@ -190,12 +190,14 @@ export function StaffForm({
   tecnicas,
   departments: deptsProp,
   shiftTypes = [],
+  defaultDaysPerWeek = 5,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
   tecnicas?: Tecnica[]
   departments?: import("@/lib/types/database").Department[]
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
+  defaultDaysPerWeek?: number
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -434,7 +436,7 @@ export function StaffForm({
           type="number"
           min={1}
           max={7}
-          defaultValue={staff?.days_per_week ?? 5}
+          defaultValue={staff?.days_per_week ?? defaultDaysPerWeek}
           disabled={isPending}
           className="max-w-28 rounded-[8px]"
           required

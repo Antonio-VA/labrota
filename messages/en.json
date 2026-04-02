@@ -702,6 +702,9 @@
     "daysOffPreferWeekendHint": "Days off preferably fall on weekends, but staff can be assigned if needed.",
     "daysOffAnyDay": "Any day",
     "daysOffAnyDayHint": "Days off are distributed evenly across all days of the week.",
+    "defaultDaysPerWeekTitle": "Days per week (default)",
+    "defaultDaysPerWeekDescription": "Default working days per week for new staff and minimum headcount calculation.",
+    "defaultDaysPerWeekUnit": "days/week",
     "modeByShift": "By shift",
     "modeByTask": "By task",
     "noRegion": "Not selected",
@@ -1083,6 +1086,7 @@
   },
   "labTabs": {
     "coverage": "Coverage",
+    "workload": "Workload",
     "rules": "Rules",
     "generator": "Generator",
     "templates": "Templates",

@@ -48,7 +48,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation }: { config: LabConfig; section?: "all" | "cobertura" | "parametros"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation }: { config: LabConfig; section?: "all" | "cobertura" | "parametros" | "workload"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -166,6 +166,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
     public_holiday_mode:   config.public_holiday_mode ?? "saturday",
+    default_days_per_week: (config as any).default_days_per_week ?? 5,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -239,6 +240,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:    values.days_off_preference,
         public_holiday_mode:    values.public_holiday_mode,
+        default_days_per_week:  values.default_days_per_week,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -254,42 +256,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
       {(section === "all" || section === "parametros") && <>
-      {/* ── DÍAS LIBRES ─────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title={t("daysOffTitle")} />
-        <p className="text-[13px] text-muted-foreground mb-3">{t("daysOffDescription")}</p>
-        <div className="flex flex-col gap-1 pb-4">
-          {([
-            { value: "always_weekend", label: t("daysOffAlwaysWeekend"), hint: t("daysOffAlwaysWeekendHint") },
-            { value: "prefer_weekend", label: t("daysOffPreferWeekend"), hint: t("daysOffPreferWeekendHint") },
-            { value: "any_day", label: t("daysOffAnyDay"), hint: t("daysOffAnyDayHint") },
-          ] as const).map((opt) => (
-            <label
-              key={opt.value}
-              className={cn(
-                "flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors",
-                values.days_off_preference === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:bg-muted/50"
-              )}
-            >
-              <input
-                type="radio"
-                name="days_off_preference"
-                value={opt.value}
-                checked={values.days_off_preference === opt.value}
-                onChange={() => setValues((p) => ({ ...p, days_off_preference: opt.value }))}
-                disabled={isPending}
-                className="mt-0.5 accent-primary"
-              />
-              <div>
-                <span className="text-[13px] font-medium">{opt.label}</span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
 
       {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
 
@@ -731,6 +697,46 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       </div>
 
+      </>}
+
+      {(section === "all" || section === "workload") && <>
+      {/* ── DÍAS LIBRES ─────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("daysOffTitle")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("daysOffDescription")}</p>
+        <div className="flex flex-col gap-1 pb-4">
+          {([
+            { value: "always_weekend", label: t("daysOffAlwaysWeekend"), hint: t("daysOffAlwaysWeekendHint") },
+            { value: "prefer_weekend", label: t("daysOffPreferWeekend"), hint: t("daysOffPreferWeekendHint") },
+            { value: "any_day", label: t("daysOffAnyDay"), hint: t("daysOffAnyDayHint") },
+          ] as const).map((opt) => (
+            <label
+              key={opt.value}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors",
+                values.days_off_preference === opt.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-muted/50"
+              )}
+            >
+              <input
+                type="radio"
+                name="days_off_preference"
+                value={opt.value}
+                checked={values.days_off_preference === opt.value}
+                onChange={() => setValues((p) => ({ ...p, days_off_preference: opt.value }))}
+                disabled={isPending}
+                className="mt-0.5 accent-primary"
+              />
+              <div>
+                <span className="text-[13px] font-medium">{opt.label}</span>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
       {/* ── FESTIVOS ──────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
         <SectionHeader title={t("holidayModeTitle")} />
@@ -768,6 +774,34 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
       </div>
 
+      {/* ── DÍAS POR SEMANA POR DEFECTO ──────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-background px-5">
+        <SectionHeader title={t("defaultDaysPerWeekTitle")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("defaultDaysPerWeekDescription")}</p>
+        <div className="flex items-center gap-3 pb-4">
+          <div className="flex items-center gap-1">
+            <button type="button" disabled={isPending || values.default_days_per_week <= 1} onClick={() => setValues((p) => ({ ...p, default_days_per_week: p.default_days_per_week - 1 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+              <ChevronDown className="size-3.5" />
+            </button>
+            <Input
+              type="number"
+              min={1}
+              max={7}
+              value={values.default_days_per_week}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 1 && v <= 7) setValues((p) => ({ ...p, default_days_per_week: v }))
+              }}
+              disabled={isPending}
+              className="w-16 text-center text-[14px] font-medium"
+            />
+            <button type="button" disabled={isPending || values.default_days_per_week >= 7} onClick={() => setValues((p) => ({ ...p, default_days_per_week: p.default_days_per_week + 1 }))} className="size-7 flex items-center justify-center rounded border border-border hover:bg-accent disabled:opacity-30">
+              <ChevronUp className="size-3.5" />
+            </button>
+          </div>
+          <span className="text-[13px] text-muted-foreground">{t("defaultDaysPerWeekUnit")}</span>
+        </div>
+      </div>
       </>}
 
 

@@ -234,6 +234,7 @@ export interface LabConfig {
   public_holiday_mode:      "weekday" | "saturday" | "sunday"  // default "saturday" — which day's coverage to use on holidays
   public_holiday_reduce_budget: boolean  // default true — reduce weekly budget by 1 per holiday
   annual_leave_days:        number  // default 20 — annual holiday allowance per employee
+  default_days_per_week:    number  // default 5 — default working days per week for new staff + headcount calc
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string

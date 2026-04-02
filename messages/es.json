@@ -702,6 +702,9 @@
     "daysOffPreferWeekendHint": "Se intenta que los días libres caigan en fin de semana, pero se puede asignar si es necesario.",
     "daysOffAnyDay": "Cualquier día",
     "daysOffAnyDayHint": "Los días libres se distribuyen por igual entre todos los días de la semana.",
+    "defaultDaysPerWeekTitle": "Días por semana (por defecto)",
+    "defaultDaysPerWeekDescription": "Días laborables por defecto para nuevos empleados y cálculo de plantilla mínima.",
+    "defaultDaysPerWeekUnit": "días/semana",
     "modeByShift": "Por turno",
     "modeByTask": "Por tarea",
     "noRegion": "Sin seleccionar",
@@ -1083,6 +1086,7 @@
   },
   "labTabs": {
     "coverage": "Cobertura",
+    "workload": "Carga",
     "rules": "Reglas",
     "generator": "Generador",
     "templates": "Plantillas",

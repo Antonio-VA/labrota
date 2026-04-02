@@ -9,14 +9,16 @@ export default async function NewStaffPage() {
   await requireEditor()
   const t = await getTranslations("staff")
   const supabase = await createClient()
-  const [tecRes, deptRes, shiftTypesRes] = await Promise.all([
+  const [tecRes, deptRes, shiftTypesRes, labConfigRes] = await Promise.all([
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("departments").select("*").order("sort_order"),
     supabase.from("shift_types").select("*").order("sort_order"),
+    supabase.from("lab_config").select("default_days_per_week").single(),
   ])
   const tecnicas = (tecRes.data ?? []) as Tecnica[]
   const departments = (deptRes.data ?? []) as Department[]
   const shiftTypes = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
+  const defaultDaysPerWeek = (labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5
 
   return (
     <>
@@ -26,7 +28,7 @@ export default async function NewStaffPage() {
             <div>
               <h1 className="text-[18px] font-medium">{t("addStaff")}</h1>
             </div>
-            <StaffForm mode="create" tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} />
+            <StaffForm mode="create" tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} defaultDaysPerWeek={defaultDaysPerWeek} />
           </div>
         </MobileGate>
       </div>

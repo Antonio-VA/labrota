@@ -456,6 +456,8 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
   }
 
   const annualLeaveDays = lc.annual_leave_days as number ?? 20
+  const defaultDaysPerWeek = lc.default_days_per_week as number ?? 5
+  const effectiveDaysPerYear = (defaultDaysPerWeek * 52) - annualLeaveDays
   const weekdays = ["mon", "tue", "wed", "thu", "fri"]
   const weekendDays = ["sat", "sun"]
   const allDepts = [...departments.filter((d) => d.code !== "admin"), ...departments.filter((d) => d.code === "admin")]
@@ -473,17 +475,9 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
     if (maxWeekday === 0 && maxWeekend === 0) continue
 
     // Total person-days needed per year
-    // Use per-day values: each weekday appears ~52.14 times/year, each weekend day ~52.14 times
     const weekdayPersonDays = weekdayCoverages.reduce((s, c) => s + c, 0) * 52.14
     const weekendPersonDays = weekendCoverages.reduce((s, c) => s + c, 0) * 52.14
     const totalPersonDays = weekdayPersonDays + weekendPersonDays
-
-    const currentStaff = staffList.filter((s) => s.role === dept.code)
-    const avgDaysPerWeek = currentStaff.length > 0
-      ? currentStaff.reduce((sum, s) => sum + s.days_per_week, 0) / currentStaff.length
-      : 5
-    // Each person provides: (avg_days_per_week × 52) - annual leave days
-    const effectiveDaysPerYear = (avgDaysPerWeek * 52) - annualLeaveDays
 
     const optimal = Math.ceil(totalPersonDays / effectiveDaysPerYear)
     grandTotal += optimal
@@ -505,7 +499,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
       headcount: d.headcount,
       explanation: d.explanation,
     })),
-    explanation: `Minimum fully trained staff needed to meet ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums year-round. Assumes all staff are certified. Each person provides (days_per_week × 52) − ${annualLeaveDays} annual leave days of effective work per year.`,
+    explanation: `Minimum fully trained staff needed to meet ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums year-round. Assumes all staff are certified. Each person provides (${defaultDaysPerWeek} days/week × 52) − ${annualLeaveDays} holiday days = ${Math.round(effectiveDaysPerYear)} effective days/year.`,
     calculatedAt: new Date().toISOString(),
   }
 

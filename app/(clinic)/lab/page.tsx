@@ -76,6 +76,13 @@ export default async function LabConfigPage() {
                 </p>
               )
             }
+            carga={
+              config ? (
+                <LabConfigForm config={config} section="workload" rotaDisplayMode={rotaDisplayMode} />
+              ) : (
+                <p className="text-[14px] text-muted-foreground">Lab configuration not found.</p>
+              )
+            }
             reglas={<RulesSection rules={rules} staff={staff} tecnicas={tecnicas} shiftTypes={shiftTypes} rotaDisplayMode={rotaDisplayMode} />}
             generador={
               config ? (
