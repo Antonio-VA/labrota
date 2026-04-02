@@ -1318,9 +1318,14 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                   {deptsProp.filter((d) => kpiActiveStaff.some((s) => s.role === d.code)).map((d) => {
                     const count = kpiActiveStaff.filter((s) => s.role === d.code).length
                     return (
-                      <span key={d.code} className="text-[10px] px-1 py-0.5 rounded" style={{ backgroundColor: `${deptBorder[d.code] ?? "#94A3B8"}20`, color: deptBorder[d.code] ?? "#94A3B8" }}>
-                        {count}
-                      </span>
+                      <Tooltip key={d.code}>
+                        <TooltipTrigger render={
+                          <span className="text-[10px] px-1 py-0.5 rounded cursor-default" style={{ backgroundColor: `${deptBorder[d.code] ?? "#94A3B8"}20`, color: deptBorder[d.code] ?? "#94A3B8" }}>
+                            {count}
+                          </span>
+                        } />
+                        <TooltipContent side="bottom">{d.name}: {count}</TooltipContent>
+                      </Tooltip>
                     )
                   })}
                 </div>
