@@ -16,7 +16,7 @@ export interface OrgContext {
   rules: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[]
   orgDisplayMode: string
   engineConfig: EngineConfig
-  staff: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string }[]
+  staff: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; email: string | null; notes: string | null }[]
   staffSkills: { staff_id: string; skill: string; level: string }[]
 }
 
@@ -58,7 +58,7 @@ export function getCachedOrgContext(orgId: string): Promise<OrgContext> {
           .eq("id", orgId)
           .maybeSingle(),
         admin.from("staff")
-          .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, preferred_shift, start_date")
+          .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, email, notes")
           .eq("organisation_id", orgId),
         admin.from("staff_skills")
           .select("staff_id, skill, level")
@@ -82,7 +82,7 @@ export function getCachedOrgContext(orgId: string): Promise<OrgContext> {
           taskHybridEnabled:    (orgRow?.task_hybrid_enabled    as boolean | undefined) ?? false,
           taskReasoningEnabled: (orgRow?.task_reasoning_enabled as boolean | undefined) ?? false,
         },
-        staff: (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string }[],
+        staff: (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; email: string | null; notes: string | null }[],
         staffSkills: (skillsRes.data ?? []) as { staff_id: string; skill: string; level: string }[],
       }
     },

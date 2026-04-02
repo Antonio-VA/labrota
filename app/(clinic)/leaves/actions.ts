@@ -1,11 +1,12 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
+import { rotaWeeksTag } from "@/lib/rota-week-cache"
 
 function parseLeaveForm(formData: FormData) {
   return {
@@ -42,6 +43,7 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
     .eq("organisation_id", orgId)
     .gte("date", leave.start_date)
     .lte("date", leave.end_date)
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
 
   // Notify admins if this leave impacts published rotas
@@ -88,6 +90,7 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
       .eq("organisation_id", orgId)
       .gte("date", leave.start_date)
       .lte("date", leave.end_date)
+    updateTag(rotaWeeksTag(orgId))
     revalidatePath("/")
   }
 
@@ -133,6 +136,7 @@ export async function quickCreateLeave(params: {
     .gte("date", params.startDate)
     .lte("date", params.endDate)
 
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   revalidatePath("/leaves")
   return {}

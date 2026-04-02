@@ -47,6 +47,7 @@ import {
   copyPreviousWeek,
   generateRotaHybrid,
   getHybridUsage,
+  prefetchRotaWeek,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -4719,6 +4720,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
+      // Warm cache for adjacent weeks so navigation is instant
+      const offset = (n: number) => {
+        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
+      }
+      prefetchRotaWeek(offset(-7)).catch(() => {})
+      prefetchRotaWeek(offset(7)).catch(() => {})
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
       setInitialLoaded(true)

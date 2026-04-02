@@ -1,10 +1,11 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { getCachedOrgContext } from "@/lib/org-context-cache"
+import { getCachedRotaWeekLive, rotaWeekTag, rotaWeeksTag } from "@/lib/rota-week-cache"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { runTaskEngine } from "@/lib/task-engine"
@@ -149,6 +150,13 @@ const DOW_TO_KEY: Record<number, keyof import("@/lib/types/database").PunctionsB
   1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat", 0: "sun",
 }
 
+/** Warms the week cache for adjacent weeks so navigation is instant. Fire-and-forget from client. */
+export async function prefetchRotaWeek(weekStart: string): Promise<void> {
+  const orgId = await getCachedOrgId()
+  if (!orgId) return
+  await getCachedRotaWeekLive(orgId, weekStart)
+}
+
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const cookieStore = await cookies()
   const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
@@ -156,34 +164,13 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch static org context (cached) alongside the week-specific live queries.
-  const [ctx, rotaResultFull, leavesResult] = await Promise.all([
+  // Fetch static org context (cached) + live week data (cached per week, invalidated on mutation).
+  const [ctx, live] = await Promise.all([
     getCachedOrgContext(orgId!),
-    supabase
-      .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
-      .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null; error: { message: string } | null }>,
-    supabase
-      .from("leaves")
-      .select("staff_id, start_date, end_date, type")
-      .lte("start_date", dates[6])
-      .gte("end_date", dates[0])
-      .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string; type: string }[] | null }>,
+    getCachedRotaWeekLive(orgId!, weekStart),
   ])
 
-  // Fallback: if engine_warnings column doesn't exist yet, retry without it
-  let rotaResult = rotaResultFull
-  if (rotaResultFull.error && !rotaResultFull.data) {
-    const fallback = await supabase
-      .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override")
-      .eq("week_start", weekStart)
-      .maybeSingle() as unknown as typeof rotaResultFull
-    rotaResult = fallback
-  }
-
-  const rotaData  = rotaResult.data
+  const rotaData = live.rota
   const labConfig = ctx.labConfig
   const allFetchedRules = ctx.rules.filter((r) => !r.expires_at || r.expires_at > weekStart)
   const tecDayRules = allFetchedRules.filter((r) => r.type === "restriccion_dia_tecnica")
@@ -246,7 +233,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Build onLeaveByDate map
   const onLeaveByDate: Record<string, string[]> = {}
   const onLeaveTypeByDate: Record<string, Record<string, string>> = {}
-  for (const leave of leavesResult.data ?? []) {
+  for (const leave of live.leaves) {
     const s = new Date(leave.start_date + "T12:00:00")
     const e = new Date(leave.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
@@ -268,8 +255,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: ctx.departments, ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null, engineConfig }
   }
 
-  // Fetch assignments + all org staff in parallel so we can enrich assignments without
-  // relying on a PostgREST join (which can silently return null after schema migrations).
+  // Enrich cached assignments with staff info from the org context cache.
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null;
@@ -278,12 +264,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   type AssignmentRow = RawAssignment & {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
-
-  // Assignments are week-specific (live); staff + skills come from the org context cache.
-  const assignmentsRes = await supabase
-    .from("rota_assignments")
-    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team")
-    .eq("rota_id", rota.id) as unknown as { data: RawAssignment[] | null; error: { message: string } | null }
 
   // Build a staff lookup map so we don't depend on a join
   const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }> = {}
@@ -301,19 +281,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     return 1
   }
 
-  // If newer columns missing, retry with minimal select
-  let rawAssignments: RawAssignment[] = []
-  if (assignmentsRes.error) {
-    const { data: baseData } = (await supabase
-      .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[] | null }
-    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false }))
-  } else {
-    rawAssignments = assignmentsRes.data ?? []
-  }
-
-  const assignmentsData: AssignmentRow[] = rawAssignments.map((a) => ({
+  const assignmentsData: AssignmentRow[] = (live.assignments as RawAssignment[]).map((a) => ({
     ...a,
     staff: staffLookup[a.staff_id] ?? null,
   }))
@@ -883,6 +851,7 @@ export async function generateRota(
     metadata: { weekStart, method: generationType, assignmentCount: toInsert.length, preserveOverrides, rotaDisplayMode },
   })
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
   return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
@@ -1215,6 +1184,7 @@ Use staff IDs (not names) and shift codes exactly as provided.`
       metadata: { weekStart, method: "ai_reasoning", assignmentCount: toInsert.length, preserveOverrides, aiWarnings },
     })
 
+    updateTag(rotaWeekTag(orgId, weekStart))
     revalidatePath("/")
     return { assignmentCount: toInsert.length, reasoning }
   } catch (e) {
@@ -1693,6 +1663,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     // Log usage for quota tracking
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
 
+    updateTag(rotaWeekTag(orgId, weekStart))
     revalidatePath("/")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
   } catch (e) {
@@ -1723,6 +1694,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     // Log usage for quota tracking (fallback still counts as a hybrid attempt)
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
 
+    updateTag(rotaWeekTag(orgId, weekStart))
     revalidatePath("/")
 
     const msg = e instanceof Error ? e.message : "AI optimisation failed"
@@ -1790,6 +1762,7 @@ export async function upsertAssignment(params: {
       } as never)
       .eq("id", params.assignmentId)
     if (error) return { error: error.message }
+    updateTag(rotaWeekTag(orgId, params.weekStart))
     revalidatePath("/")
     return { id: params.assignmentId }
   } else {
@@ -1825,6 +1798,7 @@ export async function upsertAssignment(params: {
       entityType: "rota_assignment",
       metadata: { staffId: params.staffId, date: params.date, shiftType: params.shiftType, functionLabel: params.functionLabel ?? "" },
     })
+    updateTag(rotaWeekTag(orgId, params.weekStart))
     revalidatePath("/")
     return { id: (row as unknown as { id: string })?.id }
   }
@@ -1846,6 +1820,8 @@ export async function deleteAssignment(assignmentId: string): Promise<{ error?: 
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  if (asg?.rota?.week_start) updateTag(rotaWeekTag(orgId, asg.rota.week_start))
+  else updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -1865,6 +1841,7 @@ export async function updateAssignmentShift(
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -1887,6 +1864,7 @@ export async function deleteAllDayAssignments(
     .eq("date", date)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -1983,6 +1961,7 @@ export async function regenerateDay(
     if (error) return { error: error.message }
   }
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return { count: toInsert.length }
 }
@@ -2002,6 +1981,7 @@ export async function moveAssignment(
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2040,6 +2020,7 @@ export async function setPunctionsOverride(
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2059,6 +2040,7 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2075,6 +2057,7 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2091,6 +2074,7 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2111,6 +2095,8 @@ export async function removeAssignment(assignmentId: string): Promise<{ error?: 
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  if (asg?.rota?.week_start) updateTag(rotaWeekTag(orgId, asg.rota.week_start))
+  else updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2127,6 +2113,7 @@ export async function setTecnica(assignmentId: string, tecnicaId: string | null)
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2143,6 +2130,7 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
+  updateTag(rotaWeeksTag(orgId))
   revalidatePath("/")
   return {}
 }
@@ -2211,6 +2199,7 @@ export async function setWholeTeam(
     }
   }
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return {}
 }
@@ -2626,6 +2615,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     if (error) return { error: error.message }
   }
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return { count: toInsert.length }
 }
@@ -2704,6 +2694,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     if (error) return { error: error.message }
   }
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return { count: toInsert.length }
 }
@@ -2729,6 +2720,7 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id).then(() => {})
 
   await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return {}
 }
@@ -2862,6 +2854,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
     if (error) return { error: error.message }
   }
 
+  updateTag(rotaWeekTag(orgId, weekStart))
   revalidatePath("/")
   return { skipped: [...new Set(skipped)] }
 }

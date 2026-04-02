@@ -218,20 +218,22 @@ Guidelines:
           staffName: z.string().describe("Full or partial name of the staff member"),
         }),
         execute: async ({ staffName }) => {
-          const nameParts = staffName.trim().split(" ")
-          const searchTerm = nameParts[nameParts.length - 1]
+          const searchTerm = staffName.trim().toLowerCase()
+          const match = (ctx?.staff ?? [])
+            .filter((s) => s.onboarding_status !== "inactive")
+            .find((s) =>
+              `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm) ||
+              s.last_name.toLowerCase().includes(searchTerm)
+            )
 
-          const { data: staffList } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name, role, email, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, onboarding_status, notes, staff_skills(skill, level)")
-            .ilike("last_name", `%${searchTerm}%`)
-            .neq("onboarding_status", "inactive") as {
-              data: { id: string; first_name: string; last_name: string; role: string; email: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; onboarding_status: string; notes: string | null; staff_skills: { skill: string; level: string }[] }[] | null
-            }
+          if (!match) return { error: `No staff found matching "${staffName}"` }
 
-          if (!staffList?.length) return { error: `No staff found matching "${staffName}"` }
-
-          const staff = staffList[0]
+          const skillsByStaff: Record<string, { skill: string; level: string }[]> = {}
+          for (const ss of ctx?.staffSkills ?? []) {
+            if (!skillsByStaff[ss.staff_id]) skillsByStaff[ss.staff_id] = []
+            skillsByStaff[ss.staff_id].push({ skill: ss.skill, level: ss.level })
+          }
+          const staff = { ...match, staff_skills: skillsByStaff[match.id] ?? [] }
           const today = new Date().toISOString().split("T")[0]
           const fourWeeksAgo = new Date(); fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
           const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
