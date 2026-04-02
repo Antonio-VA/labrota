@@ -97,36 +97,43 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
     // Invite as viewer if checkbox was checked and email provided
     if (inviteViewer && staff.email) {
-      const admin = createAdminClient()
-      const fullName = `${staff.first_name} ${staff.last_name}`.trim()
+      try {
+        const admin = createAdminClient()
+        const fullName = `${staff.first_name} ${staff.last_name}`.trim()
 
-      const { data: existingProfile } = await admin
-        .from("profiles")
-        .select("id")
-        .eq("email", staff.email)
-        .maybeSingle() as { data: { id: string } | null }
-      const existing = existingProfile ? { id: existingProfile.id } : null
+        // Check if user already exists in profiles (linked to auth.users)
+        const { data: existingProfile } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("email", staff.email)
+          .maybeSingle() as { data: { id: string } | null }
 
-      let userId: string
-      if (existing) {
-        userId = existing.id
-      } else {
-        const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
-          data: { full_name: fullName },
-          redirectTo: "https://www.labrota.app/auth/callback",
-        })
-        if (inviteError) { console.error("Invite failed:", inviteError.message); return }
-        userId = invited.user.id
-      }
+        let userId: string
+        if (existingProfile) {
+          userId = existingProfile.id
+        } else {
+          const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
+            data: { full_name: fullName },
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://labrota.app"}/auth/callback`,
+          })
+          if (inviteError) { console.error("Invite failed:", inviteError.message); return }
+          userId = invited.user.id
+        }
 
-      await admin.from("organisation_members").upsert(
-        { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName } as never,
-        { onConflict: "organisation_id,user_id" }
-      )
+        // Link staff record to user
+        await admin.from("staff").update({ linked_user_id: userId } as never).eq("id", newStaffId)
 
-      const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
-      if (!profile?.organisation_id) {
-        await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
+        await admin.from("organisation_members").upsert(
+          { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName } as never,
+          { onConflict: "organisation_id,user_id" }
+        )
+
+        const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
+        if (!profile?.organisation_id) {
+          await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
+        }
+      } catch (e) {
+        console.error("Viewer invite error:", e)
       }
     }
   })
