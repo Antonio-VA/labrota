@@ -674,7 +674,18 @@
       "firstDayMon": "Monday (default)",
       "firstDaySun": "Sunday",
       "firstDaySat": "Saturday",
-      "adminHint": "Set 0 to not require admin that day"
+      "adminHint": "Set 0 to not require admin that day",
+      "proceduresTitle": "Procedures",
+      "proceduresDescription": "Procedure forecast per day of the week.",
+      "pickUps": "Pick-ups",
+      "biopsies": "Biopsies",
+      "biopsiesFooter": "Biopsies are calculated automatically from pick-ups 5 and 6 days prior (D5/D6), based on the conversion rate and distribution configured below.",
+      "biopsyTitle": "Biopsies",
+      "biopsyDescription": "Biopsy forecast based on scheduled pick-ups.",
+      "conversionRate": "Pick-up → biopsy conversion rate",
+      "conversionRateHint": "Percentage of pick-ups that result in a biopsy",
+      "d5d6Distribution": "Day 5 / day 6 distribution",
+      "d5d6DistributionHint": "Estimated split between day 5 and day 6 post pick-up"
     },
     "days": {
       "mon": "Monday",

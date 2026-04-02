@@ -635,8 +635,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       {/* ── PROCEDIMIENTOS ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
-          <SectionHeader title="Procedimientos" />
-          <p className="text-[13px] text-muted-foreground">Previsión de procedimientos por día de la semana.</p>
+          <SectionHeader title={t("fields.proceduresTitle")} />
+          <p className="text-[13px] text-muted-foreground">{t("fields.proceduresDescription")}</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -653,7 +653,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             <tbody>
               {/* Punciones row */}
               <tr className="border-b border-border/50">
-                <td className="px-3 py-1.5 text-[13px] font-medium">Punciones</td>
+                <td className="px-3 py-1.5 text-[13px] font-medium">{t("fields.pickUps")}</td>
                 {DAY_KEYS.map((day) => {
                   const isWeekend = day === "sat" || day === "sun"
                   return (
@@ -674,7 +674,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               {/* Biopsias row — auto-calculated with D5/D6 offset */}
               <tr className="bg-muted/10">
                 <td className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
-                  Biopsias
+                  {t("fields.biopsies")}
                   <span className="text-[10px] text-muted-foreground/60 ml-1">D5/D6</span>
                 </td>
                 {DAY_KEYS.map((day, dayIdx) => {
@@ -699,16 +699,16 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </table>
         </div>
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          Las biopsias se calculan automáticamente a partir de las punciones de 5 y 6 días antes (D5/D6), según la tasa de conversión y distribución configuradas a continuación.
+          {t("fields.biopsiesFooter")}
         </p>
       </div>
 
       {/* ── BIOPSIAS ──────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Biopsias" />
-        <p className="text-[13px] text-muted-foreground mb-3">Previsión de biopsias a partir de punciones programadas.</p>
+        <SectionHeader title={t("fields.biopsyTitle")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("fields.biopsyDescription")}</p>
         <div className="flex flex-col gap-0">
-          <FieldRow label="Tasa de conversión punción → biopsia" hint="Porcentaje de punciones que resultan en biopsia">
+          <FieldRow label={t("fields.conversionRate")} hint={t("fields.conversionRateHint")}>
             <div className="flex items-center gap-1.5">
               <Input
                 type="number" min={0} max={100} step={1}
@@ -723,7 +723,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               <span className="text-[13px] text-muted-foreground">%</span>
             </div>
           </FieldRow>
-          <FieldRow label="Distribución día 5 / día 6" hint="Distribución estimada entre día 5 y día 6 post-punción">
+          <FieldRow label={t("fields.d5d6Distribution")} hint={t("fields.d5d6DistributionHint")}>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
                 <span className="text-[11px] text-muted-foreground">D5</span>

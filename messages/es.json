@@ -674,7 +674,18 @@
       "firstDayMon": "Lunes (predeterminado)",
       "firstDaySun": "Domingo",
       "firstDaySat": "Sábado",
-      "adminHint": "Pon 0 para no requerir admin ese día"
+      "adminHint": "Pon 0 para no requerir admin ese día",
+      "proceduresTitle": "Procedimientos",
+      "proceduresDescription": "Previsión de procedimientos por día de la semana.",
+      "pickUps": "Punciones",
+      "biopsies": "Biopsias",
+      "biopsiesFooter": "Las biopsias se calculan automáticamente a partir de las punciones de 5 y 6 días antes (D5/D6), según la tasa de conversión y distribución configuradas a continuación.",
+      "biopsyTitle": "Biopsias",
+      "biopsyDescription": "Previsión de biopsias a partir de punciones programadas.",
+      "conversionRate": "Tasa de conversión punción → biopsia",
+      "conversionRateHint": "Porcentaje de punciones que resultan en biopsia",
+      "d5d6Distribution": "Distribución día 5 / día 6",
+      "d5d6DistributionHint": "Distribución estimada entre día 5 y día 6 post-punción"
     },
     "days": {
       "mon": "Lunes",
