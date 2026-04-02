@@ -482,7 +482,7 @@
     "kpiTraining": "In training",
     "kpiCoverage": "Task coverage",
     "kpiFullValidation": "Fully validated",
-    "kpiOptimalHeadcount": "Optimal headcount",
+    "kpiOptimalHeadcount": "Minimum headcount",
     "bulk": {
       "addSkill": "Add task",
       "removeSkill": "Remove task",
