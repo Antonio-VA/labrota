@@ -324,8 +324,8 @@ export function runRotaEngineV2({
     return Math.max(1, base - holidayCount)
   }
 
-  if (holidayMode === "saturday_coverage" && holidayCount > 0) {
-    warnings.push(`[engine] Public holiday mode: saturday_coverage — ${holidayCount} holiday(s) this week. Weekly budgets reduced by ${holidayCount}.`)
+  if (holidayMode !== "weekday" && holidayCount > 0) {
+    warnings.push(`[engine] Public holiday mode: ${holidayMode} — ${holidayCount} holiday(s) this week.${reduceBudget ? ` Weekly budgets reduced by ${holidayCount}.` : ""}`)
   }
 
   // ── PHASE 1: Pre-plan minimum coverage for ALL 7 days ────────────────────
