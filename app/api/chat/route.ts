@@ -2,6 +2,8 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedOrgId } from "@/lib/auth-cache"
+import { getCachedOrgContext } from "@/lib/org-context-cache"
 import type { StaffRole, SkillName } from "@/lib/types/database"
 
 const SKILL_LABEL: Record<string, string> = {
@@ -19,6 +21,8 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json()
 
   const supabase = await createClient()
+  const orgId = await getCachedOrgId()
+  const ctx = orgId ? await getCachedOrgContext(orgId) : null
 
   const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
 You help managers understand the rota, staff availability, coverage, and lab configuration.
@@ -184,15 +188,14 @@ Guidelines:
         description: "Get all active staff members with roles, skills, working patterns, days per week, and preferred shift.",
         inputSchema: z.object({}),
         execute: async () => {
-          const { data } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name, role, onboarding_status, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, staff_skills(skill, level)")
-            .neq("onboarding_status", "inactive")
-            .order("last_name") as {
-              data: { id: string; first_name: string; last_name: string; role: StaffRole; onboarding_status: string; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; staff_skills: { skill: SkillName; level: string }[] }[] | null
-            }
-
-          return (data ?? []).map((s) => ({
+          const staffList = (ctx?.staff ?? []).filter((s) => s.onboarding_status !== "inactive")
+            .sort((a, b) => a.last_name.localeCompare(b.last_name))
+          const skillsByStaff: Record<string, { skill: string; level: string }[]> = {}
+          for (const ss of ctx?.staffSkills ?? []) {
+            if (!skillsByStaff[ss.staff_id]) skillsByStaff[ss.staff_id] = []
+            skillsByStaff[ss.staff_id].push({ skill: ss.skill, level: ss.level })
+          }
+          return staffList.map((s) => ({
             name: `${s.first_name} ${s.last_name}`,
             role: s.role,
             status: s.onboarding_status,
@@ -201,7 +204,7 @@ Guidelines:
             preferredDays: s.preferred_days,
             preferredShift: s.preferred_shift,
             startDate: s.start_date,
-            skills: s.staff_skills.map((sk) => ({
+            skills: (skillsByStaff[s.id] ?? []).map((sk) => ({
               name: SKILL_LABEL[sk.skill] ?? sk.skill,
               level: sk.level,
             })),
@@ -326,14 +329,8 @@ Guidelines:
         description: "Get lab configuration: coverage minimums, shift types, rotation mode, biopsy settings, and punctions per day.",
         inputSchema: z.object({}),
         execute: async () => {
-          const [configRes, shiftTypesRes] = await Promise.all([
-            supabase.from("lab_config").select("min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology, punctions_by_day, shift_rotation, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, coverage_by_day, shift_coverage_by_day, task_coverage_by_day").single(),
-            supabase.from("shift_types").select("code, name_es, start_time, end_time, sort_order, active, active_days").order("sort_order"),
-          ])
-
-          const config = configRes.data as Record<string, unknown> | null
-          const shifts = (shiftTypesRes.data ?? []) as { code: string; name_es: string; start_time: string; end_time: string; sort_order: number; active: boolean; active_days: string[] }[]
-
+          const config = ctx?.labConfig as Record<string, unknown> | null
+          const shifts = ctx?.shiftTypes ?? []
           return {
             coverage: config ? {
               labWeekday: config.min_lab_coverage,
@@ -341,10 +338,7 @@ Guidelines:
               andrologyWeekday: config.min_andrology_coverage,
               andrologyWeekend: config.min_weekend_andrology,
             } : null,
-            punctions: config ? {
-              monday: config.punctions_mon, tuesday: config.punctions_tue, wednesday: config.punctions_wed,
-              thursday: config.punctions_thu, friday: config.punctions_fri, saturday: config.punctions_sat, sunday: config.punctions_sun,
-            } : null,
+            punctions: config?.punctions_by_day ?? null,
             shiftRotation: config?.shift_rotation ?? "stable",
             biopsyConfig: config ? {
               conversionRate: config.biopsy_conversion_rate,
@@ -366,22 +360,16 @@ Guidelines:
         description: "Get all techniques/tasks, who can perform them, and their configuration.",
         inputSchema: z.object({}),
         execute: async () => {
-          const [tecnicasRes, staffSkillsRes] = await Promise.all([
-            supabase.from("tecnicas").select("codigo, nombre_es, department, color, required_skill, typical_shifts, activa").order("orden"),
-            supabase.from("staff_skills").select("skill, level, staff(first_name, last_name)").order("skill"),
-          ])
-
-          const tecnicas = (tecnicasRes.data ?? []) as { codigo: string; nombre_es: string; department: string; color: string; required_skill: string | null; typical_shifts: string[]; activa: boolean }[]
-          const staffSkills = (staffSkillsRes.data ?? []) as { skill: string; level: string; staff: { first_name: string; last_name: string } | null }[]
-
-          // Group staff by skill
+          const tecnicas = ctx?.tecnicas ?? []
+          const staffNameMap = Object.fromEntries((ctx?.staff ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`]))
+          // Group staff by skill using cached data
           const staffBySkill: Record<string, { name: string; level: string }[]> = {}
-          for (const ss of staffSkills) {
-            if (!ss.staff) continue
+          for (const ss of ctx?.staffSkills ?? []) {
+            const name = staffNameMap[ss.staff_id]
+            if (!name) continue
             if (!staffBySkill[ss.skill]) staffBySkill[ss.skill] = []
-            staffBySkill[ss.skill].push({ name: `${ss.staff.first_name} ${ss.staff.last_name}`, level: ss.level })
+            staffBySkill[ss.skill].push({ name, level: ss.level })
           }
-
           return tecnicas.map((t) => ({
             code: t.codigo,
             name: t.nombre_es,
@@ -398,15 +386,9 @@ Guidelines:
         description: "Get all departments and sub-departments.",
         inputSchema: z.object({}),
         execute: async () => {
-          const { data } = await supabase
-            .from("departments")
-            .select("id, code, name, abbreviation, colour, parent_id, is_default, sort_order")
-            .order("sort_order") as { data: { id: string; code: string; name: string; abbreviation: string; colour: string; parent_id: string | null; is_default: boolean; sort_order: number }[] | null }
-
-          const departments = data ?? []
+          const departments = ctx?.departments ?? []
           const roots = departments.filter((d) => !d.parent_id)
           const subs = departments.filter((d) => d.parent_id)
-
           return roots.map((root) => ({
             code: root.code,
             name: root.name,

@@ -2087,33 +2087,37 @@ function PersonGrid({
   const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [])
 
   // Build assignment lookup: staffId → date → assignment
-  const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of localDays) {
-    for (const a of day.assignments) {
-      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
-      assignMap[a.staff_id][day.date] = a
+  const assignMap = useMemo(() => {
+    const map: Record<string, Record<string, Assignment>> = {}
+    for (const day of localDays) {
+      for (const a of day.assignments) {
+        if (!map[a.staff_id]) map[a.staff_id] = {}
+        map[a.staff_id][day.date] = a
+      }
     }
-  }
+    return map
+  }, [localDays])
 
   // Shift highlighting — hover a shift to highlight all same-shift cells
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
-  // Active staff sorted by role then first name
-  const activeStaff = staffList
-    .filter((s) => s.onboarding_status !== "inactive")
-    .sort((a, b) => {
-      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-      return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
-    })
-
-  // Group by role
-  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
-  for (const s of activeStaff) {
-    const last = roleGroups[roleGroups.length - 1]
-    if (last && last.role === s.role) last.members.push(s)
-    else roleGroups.push({ role: s.role, members: [s] })
-  }
+  // Active staff sorted by role then first name + role grouping
+  const { activeStaff, roleGroups } = useMemo(() => {
+    const active = staffList
+      .filter((s) => s.onboarding_status !== "inactive")
+      .sort((a, b) => {
+        const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+        return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+      })
+    const groups: { role: string; members: StaffWithSkills[] }[] = []
+    for (const s of active) {
+      const last = groups[groups.length - 1]
+      if (last && last.role === s.role) last.members.push(s)
+      else groups.push({ role: s.role, members: [s] })
+    }
+    return { activeStaff: active, roleGroups: groups }
+  }, [staffList])
 
   const days = localDays
 

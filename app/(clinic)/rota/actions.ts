@@ -97,11 +97,24 @@ export interface RotaWeekData {
 import Holidays from "date-holidays"
 import { REGION_TO_LIB_STATE } from "@/lib/regional-config"
 
+// Module-level cache: one Holidays instance per country:region combo.
+// Constructing a new Holidays object parses the full country dataset (~5-15ms);
+// reusing the same instance reduces each subsequent call to a cheap array filter.
+const _hdInstances: Record<string, Holidays> = {}
+function _getHdInstance(country: string, libState?: string): Holidays {
+  const key = `${country}:${libState ?? ""}`
+  if (!_hdInstances[key]) {
+    const hd = libState ? new Holidays(country, libState) : new Holidays(country)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(hd as any).setLanguages(["en"])
+    _hdInstances[key] = hd
+  }
+  return _hdInstances[key]
+}
+
 function getPublicHolidays(year: number, country = "ES", region?: string | null): Record<string, string> {
   const libState = region ? REGION_TO_LIB_STATE[country]?.[region] : undefined
-  const hd = libState ? new Holidays(country, libState) : new Holidays(country)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(hd as any).setLanguages(["en"])
+  const hd = _getHdInstance(country, libState)
   const holidays = hd.getHolidays(year)
   const result: Record<string, string> = {}
   for (const h of holidays) {
@@ -2250,6 +2263,7 @@ export interface RotaMonthSummary {
 
 export async function getRotaMonthSummary(monthStart: string, weekStartOverride?: string): Promise<RotaMonthSummary> {
   const supabase = await createClient()
+  const orgId = await getCachedOrgId()
 
   let gridDates: string[]
 
@@ -2281,39 +2295,31 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   }
 
-  const orgRes = await (supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>)
-  const rotaDisplayMode = orgRes.data?.rota_display_mode ?? "by_shift"
-
-  const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes, tecnicasRes] = await Promise.all([
+  const [ctx, assignmentsRes, leavesRes, rotasRes] = await Promise.all([
+    getCachedOrgContext(orgId!),
     supabase
       .from("rota_assignments")
       .select("date, staff_id, shift_type, staff:staff_id(first_name, last_name, role)")
       .gte("date", gridDates[0])
       .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
     supabase
-      .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
-    supabase
       .from("leaves")
       .select("staff_id, start_date, end_date")
       .lte("start_date", gridDates[gridDates.length - 1])
       .gte("end_date", gridDates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
-    supabase.from("lab_config").select("punctions_by_day, country, region").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null } | null }>,
     supabase
       .from("rotas")
       .select("week_start, status, engine_warnings")
       .gte("week_start", gridDates[0])
       .lte("week_start", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { week_start: string; status: string; engine_warnings: string[] | null }[] | null }>,
-    supabase
-      .from("staff")
-      .select("id, first_name, last_name, role, days_per_week")
-      .neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; days_per_week: number }[] | null }>,
-    supabase
-      .from("tecnicas")
-      .select("codigo, required_skill, typical_shifts")
-      .eq("activa", true) as unknown as Promise<{ data: { codigo: string; required_skill: string | null; typical_shifts: string[] | null }[] | null }>,
   ])
+
+  const rotaDisplayMode = ctx.orgDisplayMode
+  const activeStaffData = ctx.staff.filter((s) => s.onboarding_status !== "inactive")
+  const skillsData = ctx.staffSkills
+  const labConfigData = ctx.labConfig as Record<string, unknown> | null
+  const tecnicasData = ctx.tecnicas.filter((t) => t.activa)
 
   // Assignment data
   const byDate: Record<string, { staff_id: string; role: string; first_name: string; last_name: string; shift_type: string }[]> = {}
@@ -2324,7 +2330,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
   // Staff totals for month taskbar
   const staffTotals: RotaMonthSummary["staffTotals"] = {}
-  const staffLookup = Object.fromEntries((staffRes.data ?? []).map((s) => [s.id, s]))
+  const staffLookup = Object.fromEntries(activeStaffData.map((s) => [s.id, s]))
   const currentMonthPrefix = monthStart.slice(0, 7)
   for (const a of assignmentsRes.data ?? []) {
     if (!a.date.startsWith(currentMonthPrefix)) continue
@@ -2342,13 +2348,13 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
   // Skills — only certified count for coverage warnings
   const staffSkillMap: Record<string, string[]> = {}
-  for (const ss of skillsRes.data ?? []) {
+  for (const ss of skillsData) {
     if (ss.level !== "certified") continue
     if (!staffSkillMap[ss.staff_id]) staffSkillMap[ss.staff_id] = []
     staffSkillMap[ss.staff_id].push(ss.skill)
   }
-  const allOrgSkills = [...new Set((skillsRes.data ?? []).filter((ss) => ss.level === "certified").map((ss) => ss.skill))]
-  const tecnicasForGap = (tecnicasRes.data ?? []).filter((t) => t.required_skill && (t.typical_shifts?.length ?? 0) > 0)
+  const allOrgSkills = [...new Set(skillsData.filter((ss) => ss.level === "certified").map((ss) => ss.skill))]
+  const tecnicasForGap = tecnicasData.filter((t) => t.required_skill && (t.typical_shifts?.length ?? 0) > 0)
 
   // Leave map: date → count
   const leaveByDate: Record<string, number> = {}
@@ -2362,12 +2368,12 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   }
 
   // Punctions config
-  const puncByDay = labConfigRes.data?.punctions_by_day ?? {}
+  const puncByDay = (labConfigData?.punctions_by_day as Record<string, number> | null) ?? {}
 
   // Public holidays
   const years = [...new Set(gridDates.map((d) => parseInt(d.slice(0, 4))))]
-  const monthCountry = (labConfigRes.data as { country?: string } | null)?.country || "ES"
-  const monthRegion = (labConfigRes.data as { region?: string } | null)?.region || null
+  const monthCountry = (labConfigData?.country as string | null) || "ES"
+  const monthRegion = (labConfigData?.region as string | null) || null
   const holidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, monthCountry, monthRegion)))
 
   // Week statuses
@@ -2415,13 +2421,13 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
-    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "saturday"
+    const monthHolidayMode = (labConfigData?.public_holiday_mode as string | undefined) ?? "saturday"
     const isHolidayReducedCoverage = monthHolidayMode !== "weekday" && !!holidays[date] && !isWeekend
     const effectiveWeekend = isWeekend || isHolidayReducedCoverage
     const labCount = entries.filter((e) => e.role === "lab").length
     const andrologyCount = entries.filter((e) => e.role === "andrology").length
     // Coverage warning: check if below minimums
-    const lc = labConfigRes.data as Record<string, number> | null
+    const lc = labConfigData as Record<string, number> | null
     const hasCoverageWarning = staffIds.length > 0 && lc ? (
       labCount < (effectiveWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
       andrologyCount < (effectiveWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
@@ -2461,15 +2467,13 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   })
 
-  const ratioConfigRes = await supabase.from("lab_config").select("ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct").maybeSingle()
-  const ratioOptimal = (ratioConfigRes.data as { ratio_optimal?: number } | null)?.ratio_optimal ?? 1.0
-  const ratioMinimum = (ratioConfigRes.data as { ratio_minimum?: number } | null)?.ratio_minimum ?? 0.75
-  const firstDayOfWeek = (ratioConfigRes.data as { first_day_of_week?: number } | null)?.first_day_of_week ?? 0
-
-  const timeFormat = (ratioConfigRes.data as { time_format?: string } | null)?.time_format ?? "24h"
-  const biopsyConversionRate = (ratioConfigRes.data as { biopsy_conversion_rate?: number } | null)?.biopsy_conversion_rate ?? 0.5
-  const biopsyDay5Pct = (ratioConfigRes.data as { biopsy_day5_pct?: number } | null)?.biopsy_day5_pct ?? 0.5
-  const biopsyDay6Pct = (ratioConfigRes.data as { biopsy_day6_pct?: number } | null)?.biopsy_day6_pct ?? 0.5
+  const ratioOptimal = (labConfigData?.ratio_optimal as number | undefined) ?? 1.0
+  const ratioMinimum = (labConfigData?.ratio_minimum as number | undefined) ?? 0.75
+  const firstDayOfWeek = (labConfigData?.first_day_of_week as number | undefined) ?? 0
+  const timeFormat = (labConfigData?.time_format as string | undefined) ?? "24h"
+  const biopsyConversionRate = (labConfigData?.biopsy_conversion_rate as number | undefined) ?? 0.5
+  const biopsyDay5Pct = (labConfigData?.biopsy_day5_pct as number | undefined) ?? 0.5
+  const biopsyDay6Pct = (labConfigData?.biopsy_day6_pct as number | undefined) ?? 0.5
   return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum, firstDayOfWeek, timeFormat, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct, rotaDisplayMode, taskConflictThreshold: 3, enableTaskInShift: false }
 }
 
