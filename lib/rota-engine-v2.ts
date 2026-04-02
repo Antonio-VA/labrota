@@ -299,7 +299,7 @@ export function runRotaEngineV2({
   const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
 
   // ── Public holiday handling ──────────────────────────────────────────────
-  const holidayMode = labConfig.public_holiday_mode ?? "weekday"
+  const holidayMode = labConfig.public_holiday_mode ?? "saturday"
   const allDates = getWeekDates(weekStart)
   const holidaysThisWeek = allDates.filter((d) => publicHolidays[d])
   const holidayCount = holidaysThisWeek.length

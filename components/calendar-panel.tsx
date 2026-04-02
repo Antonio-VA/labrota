@@ -1563,13 +1563,8 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
       if (deptFilter && !deptFilter.has(a.staff.role)) continue
       // In by_task mode, only count assignments that have a function_label (task assignments)
       if (isByTask && !a.function_label) continue
-      if (!staffMap[a.staff_id]) {
-        staffMap[a.staff_id] = {
-          first: a.staff.first_name, last: a.staff.last_name, role: a.staff.role,
-          count: 0, daysPerWeek: 5,
-        }
-        staffDaySeen[a.staff_id] = new Set()
-      }
+      // Skip assignments from inactive/deactivated staff not in active list
+      if (!staffMap[a.staff_id]) continue
       if (isByTask) {
         // Count unique days, not individual task assignments
         if (!staffDaySeen[a.staff_id].has(day.date)) {

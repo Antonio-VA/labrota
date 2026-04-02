@@ -427,7 +427,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
-    const holidayModeForWarning = labConfig?.public_holiday_mode ?? "weekday"
+    const holidayModeForWarning = labConfig?.public_holiday_mode ?? "saturday"
     const rawDayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
     const holidayDayMap: Record<string, string> = { weekday: rawDayCodeForWarning, saturday: "sat", sunday: "sun" }
     const dayCodeForWarning = (publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? (holidayDayMap[holidayModeForWarning] ?? rawDayCodeForWarning) : rawDayCodeForWarning
@@ -2392,7 +2392,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
-    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "weekday"
+    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "saturday"
     const isHolidayReducedCoverage = monthHolidayMode !== "weekday" && !!holidays[date] && !isWeekend
     const effectiveWeekend = isWeekend || isHolidayReducedCoverage
     const labCount = entries.filter((e) => e.role === "lab").length

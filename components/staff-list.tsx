@@ -1284,7 +1284,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       {/* KPI summary band */}
       {staff.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             {/* Active headcount */}
             <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
               <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiActive")}</p>
@@ -1365,19 +1365,24 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-3">
-            {[
-              { label: t("kpiTraining"), value: kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length },
-              { label: t("kpiCoverage"), value: `${kpiCoveredCount}/${kpiAllCodes.length}` },
-              { label: t("kpiFullValidation"), value: kpiFullyValidated },
-            ].map((kpi) => (
-              <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-4 py-3">
-                <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
-                <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
-              </div>
-            ))}
+            {/* Training */}
+            <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiTraining")}</p>
+              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiActiveStaff.filter((s) => s.staff_skills.some((sk) => sk.level === "training")).length}</p>
+            </div>
+
+            {/* Full Validation */}
+            <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiFullValidation")}</p>
+              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiFullyValidated}</p>
+            </div>
+
+            {/* Task Coverage */}
+            <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiCoverage")}</p>
+              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiCoveredCount}/{kpiAllCodes.length}</p>
+            </div>
           </div>
         </div>
       )}
