@@ -143,7 +143,7 @@ Guidelines:
               .select("date, shift_type, staff(role)")
               .gte("date", weekStart)
               .lte("date", endDate),
-            supabase.from("lab_config").select("*").single(),
+            supabase.from("lab_config").select("min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology").single(),
             supabase.from("shift_types").select("code, name_es, start_time, end_time, active_days").order("sort_order"),
           ])
 
@@ -327,7 +327,7 @@ Guidelines:
         inputSchema: z.object({}),
         execute: async () => {
           const [configRes, shiftTypesRes] = await Promise.all([
-            supabase.from("lab_config").select("*").single(),
+            supabase.from("lab_config").select("min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology, punctions_by_day, shift_rotation, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, coverage_by_day, shift_coverage_by_day, task_coverage_by_day").single(),
             supabase.from("shift_types").select("code, name_es, start_time, end_time, sort_order, active, active_days").order("sort_order"),
           ])
 

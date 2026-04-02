@@ -76,22 +76,26 @@ async function captureRotas(admin: ReturnType<typeof createAdminClient>, orgId: 
 
   if (!rotas?.length) return []
 
-  const result: BackupRota[] = []
-  for (const rota of rotas) {
-    const { data: assignments } = await admin
-      .from("rota_assignments")
-      .select("*")
-      .eq("rota_id", rota.id) as unknown as { data: unknown[] | null }
+  const rotaIds = rotas.map((r) => r.id)
+  const { data: allAssignments } = await admin
+    .from("rota_assignments")
+    .select("*")
+    .in("rota_id", rotaIds) as unknown as { data: ({ rota_id: string } & Record<string, unknown>)[] | null }
 
-    result.push({
-      weekStart: rota.week_start,
-      status: rota.status as "draft" | "published",
-      assignments: assignments ?? [],
-      lastModifiedAt: rota.updated_at,
-      lastModifiedBy: null,
-    })
+  const byRotaId = new Map<string, unknown[]>()
+  for (const a of allAssignments ?? []) {
+    const arr = byRotaId.get(a.rota_id) ?? []
+    arr.push(a)
+    byRotaId.set(a.rota_id, arr)
   }
-  return result
+
+  return rotas.map((rota) => ({
+    weekStart: rota.week_start,
+    status: rota.status as "draft" | "published",
+    assignments: byRotaId.get(rota.id) ?? [],
+    lastModifiedAt: rota.updated_at,
+    lastModifiedBy: null,
+  }))
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
