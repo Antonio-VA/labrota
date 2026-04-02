@@ -1177,7 +1177,7 @@ function StaffProfilePanel({
           <div className="flex-1 min-w-0">
             {staff ? (
               <>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
                   {(() => {
                     const deptTecs = (weekData?.tecnicas ?? []).filter((tc) => tc.activa && tc.department.split(",").includes(staff.role))
@@ -1190,6 +1190,23 @@ function StaffProfilePanel({
                       </Tooltip>
                     ) : null
                   })()}
+                  {(staff as any).contract_type === "part_time" && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
+                  )}
+                  {(staff as any).contract_type === "intern" && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
+                  )}
+                  {(() => {
+                    const end = (staff as any).onboarding_end_date as string | null
+                    const today = new Date().toISOString().split("T")[0]
+                    if (end && today <= end) return (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
+                    )
+                    return null
+                  })()}
+                  {(staff as any).prefers_guardia === true && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">G</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
@@ -3169,6 +3186,7 @@ function ShiftGrid({
               isOverride={activeAssignment.is_manual_override}
               functionLabel={activeAssignment.function_label}
               borderColor={ROLE_BORDER[activeAssignment.staff.role]}
+              readOnly
               departments={data?.departments ?? []}
               tecnica={activeAssignment.function_label
                 ? (data?.tecnicas ?? []).find((t) => t.codigo === activeAssignment.function_label) ?? null
@@ -3183,6 +3201,7 @@ function ShiftGrid({
               role={activeOffStaff.role}
               isOverride={false}
               functionLabel={null}
+              readOnly
               borderColor={ROLE_BORDER[activeOffStaff.role]}
             />
           </div>
@@ -4414,6 +4433,7 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
                 {isFavorite
                   ? (locale === "es" ? "Vista favorita actual" : "Current favorite view")
                   : (locale === "es" ? "Guardar vista favorita" : "Save favorite view")}
+                {isFavorite && <Check className="size-4 text-primary ml-auto" />}
               </button>
             </>
           )}
@@ -5247,6 +5267,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 return isFav ? [{
                   label: locale === "es" ? "Vista favorita" : "Favorite view",
                   icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
+                  active: true,
                   onClick: () => {},
                   dividerBefore: true,
                 }] : [{

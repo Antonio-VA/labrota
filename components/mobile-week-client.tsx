@@ -325,7 +325,7 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
               {onToggleDeptColor && (
                 <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
                   <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
-                  {locale === "es" ? "Colores personal" : "Staff colours"}
+                  {locale === "es" ? "Colores personal" : "Staff colors"}
                   {deptColor && <Check className="size-4 text-primary ml-auto" />}
                 </button>
               )}
@@ -346,7 +346,7 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
               <div className="h-px bg-border mx-3 my-0.5" />
               <button onClick={() => { onSaveFavourite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
                 <Star className={cn("size-4", isFavourite ? "fill-amber-400 text-amber-400" : "")} />
-                {locale === "es" ? "Guardar vista fav." : "Save as favourite"}
+                {locale === "es" ? "Guardar vista fav." : "Save as favorite"}
                 {isFavourite && <Check className="size-4 text-primary ml-auto" />}
               </button>
             </>
@@ -596,7 +596,7 @@ export function MobileWeekClient() {
     const fav = { weekViewMode, mobileDeptColor }
     setWeekFavourite(fav)
     localStorage.setItem("labrota_week_favourite", JSON.stringify(fav))
-    toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favourite")
+    toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favorite")
   }
 
   useEffect(() => {

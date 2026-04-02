@@ -859,6 +859,33 @@ function StaffTable({
                       <TooltipContent side="right">Todas las técnicas validadas</TooltipContent>
                     </Tooltip>
                   )}
+                  {(member as any).contract_type === "part_time" && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
+                  )}
+                  {(member as any).contract_type === "intern" && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
+                  )}
+                  {(() => {
+                    const end = (member as any).onboarding_end_date as string | null
+                    const today = new Date().toISOString().split("T")[0]
+                    if (end && today <= end) return (
+                      <Tooltip>
+                        <TooltipTrigger render={
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 cursor-default">ONBOARDING</span>
+                        } />
+                        <TooltipContent side="right">En periodo de incorporación hasta {end}</TooltipContent>
+                      </Tooltip>
+                    )
+                    return null
+                  })()}
+                  {(member as any).prefers_guardia === true && (
+                    <Tooltip>
+                      <TooltipTrigger render={
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0 cursor-default">G</span>
+                      } />
+                      <TooltipContent side="right">Voluntario/a de guardia de fin de semana</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
                 {member.email && (
                   <p className="text-[13px] text-muted-foreground truncate">{member.email}</p>

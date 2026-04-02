@@ -226,7 +226,7 @@ function UserTableRow({ user, orgId, staff }: { user: UserRow; orgId: string; st
         <form
           action={removeOrgUser.bind(null, user.id, orgId)}
           onSubmit={(e) => {
-            if (!confirm(`Remove ${user.email} from this organisation?`)) e.preventDefault()
+            if (!confirm(`Remove ${user.email} from this organization?`)) e.preventDefault()
           }}
         >
           <button

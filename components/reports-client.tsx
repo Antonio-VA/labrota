@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { Users, BarChart3, FileDown, FileSpreadsheet, ArrowLeft, Loader2 } from "lucide-react"
 import {
-  generateStaffReport, generateTechReport,
-  type StaffReportData, type TechReportData,
+  generateStaffReport, generateTechReport, generateExtraDaysReport, generateLeaveReport,
+  type StaffReportData, type TechReportData, type ExtraDaysData, type LeaveReportData,
 } from "@/app/(clinic)/reports/actions"
+import { CalendarDays, ClipboardList } from "lucide-react"
 
 // ── Period presets ────────────────────────────────────────────────────────────
 
@@ -294,9 +295,179 @@ function TechReportView({ data, onBack }: { data: TechReportData; onBack: () => 
   )
 }
 
+// ── Month Selector (for Extra Days report — past months only) ───────────────
+
+function MonthSelector({ onGenerate, onCancel }: {
+  onGenerate: (month: string) => void
+  onCancel: () => void
+}) {
+  const t = useTranslations("reports")
+  const tc = useTranslations("common")
+  const today = new Date()
+  // Default to last month
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const defaultMonth = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`
+  const [month, setMonth] = useState(defaultMonth)
+
+  // Max allowed: month before current
+  const maxMonth = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`
+
+  return (
+    <div className="rounded-lg border border-border bg-background p-5 max-w-md">
+      <p className="text-[14px] font-medium mb-4">{t("selectMonth")}</p>
+      <div className="flex flex-col gap-3 mb-4">
+        <Input type="month" value={month} max={maxMonth} onChange={(e) => setMonth(e.target.value)} />
+        <p className="text-[11px] text-muted-foreground">{t("onlyPastMonths")}</p>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={() => month && onGenerate(month)}>{tc("generate")}</Button>
+        <Button variant="ghost" onClick={onCancel}>{tc("cancel")}</Button>
+      </div>
+    </div>
+  )
+}
+
+// ── Extra Days Report View ──────────────────────────────────────────────────
+
+function ExtraDaysReportView({ data, onBack }: { data: ExtraDaysData; onBack: () => void }) {
+  const t = useTranslations("reports")
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="size-4" /> {t("back")}
+        </button>
+      </div>
+
+      <div>
+        <h2 className="text-[18px] font-medium">{t("extraDays")}</h2>
+        <p className="text-[13px] text-muted-foreground">{data.orgName} · {data.periodLabel}</p>
+      </div>
+
+      <div className="flex gap-4 text-[13px] text-muted-foreground">
+        <span>{t("staffWithExtra")}: <strong className="text-foreground">{data.totalStaffWithExtra}</strong></span>
+        <span>{t("totalExtraDays")}: <strong className="text-foreground">{data.totalExtraDays}</strong></span>
+      </div>
+
+      {data.rows.length === 0 ? (
+        <div className="rounded-lg border border-border bg-background px-5 py-8 text-center">
+          <p className="text-[14px] text-muted-foreground">{t("noExtraDays")}</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("staff")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("department")}</th>
+                <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("expected")}</th>
+                <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("extra")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("totalDays")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <tr key={r.staffId} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {r.color && <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />}
+                      {r.firstName} {r.lastName}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">{r.department}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{r.daysPerWeek}d/sem</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">+{r.totalExtra}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {r.weeks.map((w) => (
+                        <span key={w.weekStart} className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                          {w.weekStart.slice(5)} ({w.assigned}/{r.daysPerWeek})
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground italic">{t("extraDaysFooter")}</p>
+    </div>
+  )
+}
+
+// ── Leave Report View ───────────────────────────────────────────────────────
+
+function LeaveReportView({ data, onBack }: { data: LeaveReportData; onBack: () => void }) {
+  const t = useTranslations("reports")
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="size-4" /> {t("back")}
+        </button>
+      </div>
+
+      <div>
+        <h2 className="text-[18px] font-medium">{t("confirmedLeaves")}</h2>
+        <p className="text-[13px] text-muted-foreground">{data.orgName} · {data.periodLabel}</p>
+      </div>
+
+      <div className="flex gap-4 text-[13px] text-muted-foreground">
+        <span>{t("confirmedLeaves")}: <strong className="text-foreground">{data.totalLeaves}</strong></span>
+        <span>{t("leaveDays")}: <strong className="text-foreground">{data.totalDays}</strong></span>
+      </div>
+
+      {data.rows.length === 0 ? (
+        <div className="rounded-lg border border-border bg-background px-5 py-8 text-center">
+          <p className="text-[14px] text-muted-foreground">{t("noLeaves")}</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("staff")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("department")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("leaveType")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("leaveStart")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("leaveEnd")}</th>
+                <th className="text-right px-3 py-2 font-medium text-muted-foreground">{t("leaveDays")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <tr key={r.leaveId} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {r.color && <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />}
+                      {r.staffName}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">{r.department}</td>
+                  <td className="px-3 py-2">{t(`leaveTypes.${r.type}` as any)}</td>
+                  <td className="px-3 py-2 tabular-nums">{r.startDate}</td>
+                  <td className="px-3 py-2 tabular-nums">{r.endDate}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{r.days}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground italic">{t("leavesFooter")}</p>
+    </div>
+  )
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-type View = "cards" | "period_staff" | "period_tech" | "staff_report" | "tech_report"
+type View = "cards" | "period_staff" | "period_tech" | "period_leaves" | "month_extra" | "staff_report" | "tech_report" | "extra_report" | "leave_report"
 
 export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: string; orgName: string }) {
   const t = useTranslations("reports")
@@ -304,6 +475,8 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
   const [isPending, startTransition] = useTransition()
   const [staffData, setStaffData] = useState<StaffReportData | null>(null)
   const [techData, setTechData] = useState<TechReportData | null>(null)
+  const [extraData, setExtraData] = useState<ExtraDaysData | null>(null)
+  const [leaveData, setLeaveData] = useState<LeaveReportData | null>(null)
 
   function handleGenerateStaff(from: string, to: string) {
     startTransition(async () => {
@@ -320,6 +493,24 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
       if ("error" in result) { toast.error(result.error); return }
       setTechData(result)
       setView("tech_report")
+    })
+  }
+
+  function handleGenerateExtra(month: string) {
+    startTransition(async () => {
+      const result = await generateExtraDaysReport(month)
+      if ("error" in result) { toast.error(result.error); return }
+      setExtraData(result)
+      setView("extra_report")
+    })
+  }
+
+  function handleGenerateLeaves(from: string, to: string) {
+    startTransition(async () => {
+      const result = await generateLeaveReport(from, to)
+      if ("error" in result) { toast.error(result.error); return }
+      setLeaveData(result)
+      setView("leave_report")
     })
   }
 
@@ -340,12 +531,28 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
     return <TechReportView data={techData} onBack={() => setView("cards")} />
   }
 
+  if (view === "extra_report" && extraData) {
+    return <ExtraDaysReportView data={extraData} onBack={() => setView("cards")} />
+  }
+
+  if (view === "leave_report" && leaveData) {
+    return <LeaveReportView data={leaveData} onBack={() => setView("cards")} />
+  }
+
   if (view === "period_staff") {
     return <PeriodSelector onGenerate={handleGenerateStaff} onCancel={() => setView("cards")} />
   }
 
   if (view === "period_tech") {
     return <PeriodSelector onGenerate={handleGenerateTech} onCancel={() => setView("cards")} />
+  }
+
+  if (view === "month_extra") {
+    return <MonthSelector onGenerate={handleGenerateExtra} onCancel={() => setView("cards")} />
+  }
+
+  if (view === "period_leaves") {
+    return <PeriodSelector onGenerate={handleGenerateLeaves} onCancel={() => setView("cards")} />
   }
 
   // Cards view
@@ -384,6 +591,36 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
           </div>
         </div>
         <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_tech")} disabled={!isByTask}>
+          {t("generateReport")}
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-background p-5 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <CalendarDays className="size-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-[14px] font-medium">{t("extraDays")}</p>
+            <p className="text-[12px] text-muted-foreground">{t("extraDaysDescription")}</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="self-start" onClick={() => setView("month_extra")}>
+          {t("generateReport")}
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-background p-5 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <ClipboardList className="size-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-[14px] font-medium">{t("confirmedLeaves")}</p>
+            <p className="text-[12px] text-muted-foreground">{t("confirmedLeavesDescription")}</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_leaves")}>
           {t("generateReport")}
         </Button>
       </div>

@@ -7,7 +7,7 @@ export function RemoveUserButton({ userId, orgId, email }: { userId: string; org
     <form
       action={removeOrgUser.bind(null, userId, orgId)}
       onSubmit={(e) => {
-        if (!confirm(`Remove ${email} from this organisation?`)) e.preventDefault()
+        if (!confirm(`Remove ${email} from this organization?`)) e.preventDefault()
       }}
     >
       <button
