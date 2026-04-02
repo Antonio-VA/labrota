@@ -330,8 +330,12 @@ export function runRotaEngine({
   const weekdayHolidayCount = holidaysThisWeek.filter((d) => !isWeekend(d)).length
   function getEffectiveBudget(s: StaffWithSkills): number {
     const base = s.days_per_week ?? 5
-    if (!reduceBudget || weekdayHolidayCount === 0) return base
-    return Math.max(1, base - weekdayHolidayCount)
+    // Reduce budget by leave days this week
+    const leaveDays = leaveThisWeek[s.id] ?? 0
+    const afterLeave = leaveDays > 0 ? Math.max(0, base - leaveDays) : base
+    // Reduce budget by public holidays (weekday only)
+    if (!reduceBudget || weekdayHolidayCount === 0) return afterLeave
+    return Math.max(0, afterLeave - weekdayHolidayCount)
   }
 
   if (holidayMode !== "weekday" && holidayCount > 0) {
@@ -795,7 +799,7 @@ export function runRotaEngine({
           const s = assigned.find((a) => a.id === id)
           if (!s) continue
           const used = weeklyShiftCount[id] ?? 0
-          const cap = s.days_per_week ?? 5
+          const cap = getEffectiveBudget(s)
           if (used >= cap) {
             actualRemovals.add(id) // already at cap, safe to remove
           } else {
@@ -824,7 +828,7 @@ export function runRotaEngine({
           if (assignedIds.has(s.id) || s.role !== role) return false
           if (!isAvailable(s)) return false
           const used = weeklyShiftCount[s.id] ?? 0
-          return used < (s.days_per_week ?? 5)
+          return used < getEffectiveBudget(s)
         }).sort((a, b) => (weeklyShiftCount[a.id] ?? 0) - (weeklyShiftCount[b.id] ?? 0))
         for (const s of pool) {
           if (filledWeight >= needed) break
@@ -1596,7 +1600,7 @@ export function runRotaEngine({
             !(assignedByDate[date] ?? new Set()).has(s.id) &&
             !leaveMap[s.id]?.has(date) &&
             s.onboarding_status === "active" &&
-            (weeklyShiftCount[s.id] ?? 0) < (s.days_per_week ?? 5) &&
+            (weeklyShiftCount[s.id] ?? 0) < getEffectiveBudget(s) &&
             s.staff_skills.some((sk) => sk.skill === techCode)
           )
           if (unassigned.length > 0) {
@@ -1689,13 +1693,13 @@ export function runRotaEngine({
     const underTarget = staff.filter((s) => {
       if (s.onboarding_status === "inactive") return false
       const used = weeklyShiftCount[s.id] ?? 0
-      const target = s.days_per_week ?? 5
+      const target = getEffectiveBudget(s)
       return used < target
     })
 
     for (const s of underTarget) {
       const used = weeklyShiftCount[s.id] ?? 0
-      const target = s.days_per_week ?? 5
+      const target = getEffectiveBudget(s)
       const needed = target - used
 
       // Find days this person could be added to (not already assigned, available)
@@ -2212,7 +2216,7 @@ export function runRotaEngine({
             if (s.onboarding_status === "inactive") return false
             if (s.start_date > date || (s.end_date && s.end_date < date)) return false
             if (leaveMap[s.id]?.has(date)) return false
-            if ((weeklyShiftCount[s.id] ?? 0) >= (s.days_per_week ?? 5)) return false
+            if ((weeklyShiftCount[s.id] ?? 0) >= getEffectiveBudget(s)) return false
             const skills = staffSkillMap[s.id] ?? {
               certified: new Set(s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)),
               training: new Set(s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)),

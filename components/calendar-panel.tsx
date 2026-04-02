@@ -1572,12 +1572,24 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
 
+  // Count leave days per staff this week to reduce their budget
+  const leaveDaysPerStaff: Record<string, number> = {}
+  if (data.onLeaveByDate) {
+    for (const date in data.onLeaveByDate) {
+      for (const staffId of data.onLeaveByDate[date]) {
+        leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
+      }
+    }
+  }
+
   // Seed all active staff so 0-assignment members appear too
   for (const s of staffList) {
     if (deptFilter && !deptFilter.has(s.role)) continue
+    const base = s.days_per_week ?? 5
+    const leaveDays = leaveDaysPerStaff[s.id] ?? 0
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: s.days_per_week ?? 5,
+      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays),
     }
     staffDaySeen[s.id] = new Set()
   }
