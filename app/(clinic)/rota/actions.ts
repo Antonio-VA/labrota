@@ -427,9 +427,10 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Technique-shift gap warnings (by_shift only)
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
-    const holidayModeForWarning = labConfig?.public_holiday_mode ?? "normal"
+    const holidayModeForWarning = labConfig?.public_holiday_mode ?? "weekday"
     const rawDayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
-    const dayCodeForWarning = (holidayModeForWarning === "saturday_coverage" && publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? "sat" : rawDayCodeForWarning
+    const holidayDayMap: Record<string, string> = { weekday: rawDayCodeForWarning, saturday: "sat", sunday: "sun" }
+    const dayCodeForWarning = (publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? (holidayDayMap[holidayModeForWarning] ?? rawDayCodeForWarning) : rawDayCodeForWarning
     const activeDayShifts = new Set(
       shiftTypesData.filter((st) => st.active !== false && (!st.active_days || st.active_days.length === 0 || (st.active_days as string[]).includes(dayCodeForWarning)))
         .map((st) => st.code)
@@ -2390,9 +2391,9 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
-    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "normal"
-    const isHolidaySatCoverage = monthHolidayMode === "saturday_coverage" && !!holidays[date] && !isWeekend
-    const effectiveWeekend = isWeekend || isHolidaySatCoverage
+    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "weekday"
+    const isHolidayReducedCoverage = monthHolidayMode !== "weekday" && !!holidays[date] && !isWeekend
+    const effectiveWeekend = isWeekend || isHolidayReducedCoverage
     const labCount = entries.filter((e) => e.role === "lab").length
     const andrologyCount = entries.filter((e) => e.role === "andrology").length
     // Coverage warning: check if below minimums

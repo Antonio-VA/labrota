@@ -165,7 +165,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
-    public_holiday_mode:   config.public_holiday_mode ?? "normal",
+    public_holiday_mode:   config.public_holiday_mode ?? "weekday",
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -297,8 +297,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         <p className="text-[13px] text-muted-foreground mb-3">{t("holidayModeDescription")}</p>
         <div className="flex flex-col gap-1 pb-4">
           {([
-            { value: "normal", label: t("holidayModeNormal"), hint: t("holidayModeNormalHint") },
-            { value: "saturday_coverage", label: t("holidayModeSaturday"), hint: t("holidayModeSaturdayHint") },
+            { value: "weekday", label: t("holidayModeWeekday"), hint: t("holidayModeWeekdayHint") },
+            { value: "saturday", label: t("holidayModeSaturday"), hint: t("holidayModeSaturdayHint") },
+            { value: "sunday", label: t("holidayModeSunday"), hint: t("holidayModeSundayHint") },
           ] as const).map((opt) => (
             <label
               key={opt.value}

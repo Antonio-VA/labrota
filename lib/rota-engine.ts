@@ -288,21 +288,22 @@ export function runRotaEngine({
   const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
 
   // ── Public holiday handling ──────────────────────────────────────────────
-  const holidayMode = labConfig.public_holiday_mode ?? "normal"
+  const holidayMode = labConfig.public_holiday_mode ?? "weekday"
   const allDates = getWeekDates(weekStart)
   const holidaysThisWeek = allDates.filter((d) => publicHolidays[d])
   const holidayCount = holidaysThisWeek.length
 
-  // When saturday_coverage mode: use Saturday coverage for holidays + reduce weekly budget
+  // Map holiday coverage mode to the day code used for coverage lookups
+  const HOLIDAY_DAY_CODE: Record<string, WorkingDay> = { weekday: "wed", saturday: "sat", sunday: "sun" }
   function getEffectiveDayCode(date: string): WorkingDay {
-    if (holidayMode === "saturday_coverage" && publicHolidays[date] && !isWeekend(date)) {
-      return "sat" // Treat weekday holidays as Saturday for coverage purposes
+    if (publicHolidays[date] && !isWeekend(date) && holidayMode !== "weekday") {
+      return HOLIDAY_DAY_CODE[holidayMode] ?? getDayCode(date)
     }
     return getDayCode(date)
   }
 
   function isEffectiveWeekend(date: string): boolean {
-    if (holidayMode === "saturday_coverage" && publicHolidays[date]) return true
+    if (publicHolidays[date] && holidayMode !== "weekday") return true
     return isWeekend(date)
   }
 

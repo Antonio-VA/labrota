@@ -231,7 +231,7 @@ export interface LabConfig {
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
   enable_notes:             boolean
   days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day"  // default "prefer_weekend"
-  public_holiday_mode:      "normal" | "saturday_coverage"  // default "normal"
+  public_holiday_mode:      "weekday" | "saturday" | "sunday"  // default "weekday" — which day's coverage to use on holidays
   public_holiday_reduce_budget: boolean  // default true — reduce weekly budget by 1 per holiday
   annual_leave_days:        number  // default 20 — annual holiday allowance per employee
   shift_name_am_es:         string
@@ -295,7 +295,7 @@ export type LabConfigUpdate = {
   shift_full_start?:         string
   shift_full_end?:           string
   days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
-  public_holiday_mode?:      "normal" | "saturday_coverage"
+  public_holiday_mode?:      "weekday" | "saturday" | "sunday"
   public_holiday_reduce_budget?: boolean
   annual_leave_days?:        number
   task_coverage_enabled?:    boolean
