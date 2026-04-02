@@ -420,7 +420,9 @@
       "daysPerWeek": "Días por semana",
       "startDate": "Fecha de incorporación",
       "endDate": "Fecha de baja",
-      "onboardingStatus": "Estado de incorporación",
+      "onboardingStatus": "Estado",
+      "contractType": "Tipo de contrato",
+      "onboardingPeriod": "Periodo de incorporación",
       "notes": "Notas internas",
       "preferredShift": "Turno preferido",
       "preferredShiftNone": "Sin preferencia",
@@ -431,6 +433,16 @@
       "onboarding": "En formación",
       "inactive": "Inactivo"
     },
+    "contractType": {
+      "full_time": "Jornada completa",
+      "part_time": "A tiempo parcial",
+      "intern": "Becario/a"
+    },
+    "onboardingWeeks": {
+      "none": "Sin periodo de incorporación",
+      "weeks": "semanas"
+    },
+    "onboardingWeeksHint": "Durante este periodo el empleado está asignado pero no cuenta para los mínimos de cobertura.",
     "workingDays": {
       "mon": "Lun",
       "tue": "Mar",

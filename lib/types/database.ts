@@ -20,6 +20,7 @@ export interface Department {
   created_at:      string
 }
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
+export type ContractType      = 'full_time' | 'part_time' | 'intern'
 export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
 export type LeaveType         = 'annual' | 'sick' | 'personal' | 'training' | 'maternity' | 'other'
@@ -97,8 +98,10 @@ export interface Staff {
   avoid_days:        WorkingPattern | null
   contracted_hours:  number
   days_per_week:     number
-  onboarding_status: OnboardingStatus
-  preferred_shift:   ShiftType | null
+  onboarding_status:    OnboardingStatus
+  contract_type:        ContractType
+  onboarding_end_date:  string | null   // ISO date — person doesn't count toward minimums until after this date
+  preferred_shift:      ShiftType | null
   avoid_shifts:      string[] | null
   start_date:        string
   end_date:          string | null
@@ -235,6 +238,8 @@ export interface LabConfig {
   public_holiday_reduce_budget: boolean  // default true — reduce weekly budget by 1 per holiday
   annual_leave_days:        number  // default 20 — annual holiday allowance per employee
   default_days_per_week:    number  // default 5 — default working days per week for new staff + headcount calc
+  part_time_weight:         number  // default 0.5 — coverage fraction for part-time staff
+  intern_weight:            number  // default 0.5 — coverage fraction for intern staff
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -299,6 +304,8 @@ export type LabConfigUpdate = {
   public_holiday_mode?:      "weekday" | "saturday" | "sunday"
   public_holiday_reduce_budget?: boolean
   annual_leave_days?:        number
+  part_time_weight?:         number
+  intern_weight?:            number
   task_coverage_enabled?:    boolean
   task_coverage_by_day?:     Record<string, Record<string, number>> | null
   shift_coverage_enabled?:   boolean

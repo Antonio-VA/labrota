@@ -307,6 +307,8 @@ export default async function OrgDetailPage({
             initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
             initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
             initialReduceBudgetOnHolidays={(labConfigRes.data as { public_holiday_reduce_budget?: boolean } | null)?.public_holiday_reduce_budget ?? true}
+            initialPartTimeWeight={(labConfigRes.data as { part_time_weight?: number } | null)?.part_time_weight ?? 0.5}
+            initialInternWeight={(labConfigRes.data as { intern_weight?: number } | null)?.intern_weight ?? 0.5}
           />
         }
         usuarios={

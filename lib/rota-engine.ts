@@ -307,6 +307,20 @@ export function runRotaEngine({
     return isWeekend(date)
   }
 
+  // ── Contract type / onboarding coverage weights ──────────────────────────
+  // Returns the fraction this person contributes toward coverage minimums on a given date.
+  // 0 = onboarding period (assigned but doesn't count), 0.5 = part-time/intern, 1 = full-time
+  const partTimeWeight = (labConfig as any).part_time_weight as number | undefined ?? 0.5
+  const internWeight   = (labConfig as any).intern_weight   as number | undefined ?? 0.5
+  function coverageWeight(s: StaffWithSkills, date: string): number {
+    const onboardingEnd = (s as any).onboarding_end_date as string | null | undefined
+    if (onboardingEnd && date <= onboardingEnd) return 0
+    const ct = (s as any).contract_type as string | undefined ?? "full_time"
+    if (ct === "part_time") return partTimeWeight
+    if (ct === "intern")    return internWeight
+    return 1
+  }
+
   // Adjusted budget: reduce days_per_week by number of weekday holidays only
   // (weekend holidays don't consume a "work slot" since weekends are already potential off-days)
   const reduceBudget = labConfig.public_holiday_reduce_budget ?? true
@@ -386,8 +400,12 @@ export function runRotaEngine({
         return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
       })
 
-      for (let i = 0; i < Math.min(required, eligible.length); i++) {
-        minCoverageReserved[date].add(eligible[i].id)
+      // Fill until weighted sum of reserved staff reaches the requirement
+      let weightedSum = 0
+      for (const s of eligible) {
+        if (weightedSum >= required) break
+        minCoverageReserved[date].add(s.id)
+        weightedSum += coverageWeight(s, date)
       }
     }
   }
@@ -508,12 +526,18 @@ export function runRotaEngine({
     let assignedAndrology = staff.filter((s) => assignedSet.has(s.id) && s.role === "andrology")
     let assignedAdmin = staff.filter((s) => assignedSet.has(s.id) && s.role === "admin")
 
-    // Warn if minimum still not met
-    if (assignedLab.length < labRequired) {
-      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${assignedLab.length} embriología (mínimo ${labRequired})`)
+    // Weighted coverage totals (onboarding=0, part-time/intern=fraction, full-time=1)
+    const weightedLab  = assignedLab.reduce((sum, s) => sum + coverageWeight(s, date), 0)
+    const weightedAndo = assignedAndrology.reduce((sum, s) => sum + coverageWeight(s, date), 0)
+
+    // Warn if weighted minimum not met
+    if (weightedLab < labRequired) {
+      const actual = assignedLab.length
+      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${actual} embriología (peso ${weightedLab.toFixed(1)}/${labRequired})`)
     }
-    if (assignedAndrology.length < andrologyRequired) {
-      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${assignedAndrology.length} andrología (mínimo ${andrologyRequired})`)
+    if (weightedAndo < andrologyRequired) {
+      const actual = assignedAndrology.length
+      warnings.push(`${date}: COBERTURA INSUFICIENTE — ${actual} andrología (peso ${weightedAndo.toFixed(1)}/${andrologyRequired})`)
     }
 
     let assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
@@ -775,13 +799,15 @@ export function runRotaEngine({
       }
     }
 
-    // 6b. Backfill: if rules removed staff below minimum coverage, add replacements
-    // (from staff who still have budget and weren't already assigned today)
-    if (assignedLab.length < labRequired || assignedAndrology.length < andrologyRequired) {
+    // 6b. Backfill: if rules removed staff below weighted minimum coverage, add replacements
+    const postRuleWeightedLab  = assignedLab.reduce((s, m) => s + coverageWeight(m, date), 0)
+    const postRuleWeightedAndo = assignedAndrology.reduce((s, m) => s + coverageWeight(m, date), 0)
+    if (postRuleWeightedLab < labRequired || postRuleWeightedAndo < andrologyRequired) {
       const assignedIds = new Set(assigned.map((s) => s.id))
-      const backfillRole = (role: string, current: number, needed: number) => {
+      const backfillRole = (role: string, currentWeight: number, needed: number) => {
         const additions: StaffWithSkills[] = []
-        if (current >= needed) return additions
+        if (currentWeight >= needed) return additions
+        let filledWeight = currentWeight
         const pool = staff.filter((s) => {
           if (assignedIds.has(s.id) || s.role !== role) return false
           if (!isAvailable(s)) return false
@@ -789,15 +815,16 @@ export function runRotaEngine({
           return used < (s.days_per_week ?? 5)
         }).sort((a, b) => (weeklyShiftCount[a.id] ?? 0) - (weeklyShiftCount[b.id] ?? 0))
         for (const s of pool) {
-          if (current + additions.length >= needed) break
+          if (filledWeight >= needed) break
           additions.push(s)
           assignedIds.add(s.id)
+          filledWeight += coverageWeight(s, date)
         }
         return additions
       }
-      const labAdded = backfillRole("lab", assignedLab.length, labRequired)
+      const labAdded = backfillRole("lab", postRuleWeightedLab, labRequired)
       assignedLab = [...assignedLab, ...labAdded]
-      const androAdded = backfillRole("andrology", assignedAndrology.length, andrologyRequired)
+      const androAdded = backfillRole("andrology", postRuleWeightedAndo, andrologyRequired)
       assignedAndrology = [...assignedAndrology, ...androAdded]
       assigned = [...assignedLab, ...assignedAndrology, ...assignedAdmin]
     }
@@ -1604,17 +1631,18 @@ export function runRotaEngine({
       assigned = assigned.filter((s) => !overBudget.has(s.id))
     }
 
-    // Final shift coverage check — after ALL distribution and swap passes
+    // Final shift coverage check — after ALL distribution and swap passes (weighted)
     if (shiftCoverageEnabled && shiftCoverageByDay) {
       const finalPlan = days[days.length - 1]
       const finalByShift: Record<string, { lab: number; andrology: number; admin: number }> = {}
       for (const a of finalPlan.assignments) {
         const s = staff.find((st) => st.id === a.staff_id)
         if (!s) continue
+        const w = coverageWeight(s, date)
         if (!finalByShift[a.shift_type]) finalByShift[a.shift_type] = { lab: 0, andrology: 0, admin: 0 }
-        if (s.role === "lab") finalByShift[a.shift_type].lab++
-        else if (s.role === "andrology") finalByShift[a.shift_type].andrology++
-        else finalByShift[a.shift_type].admin++
+        if (s.role === "lab") finalByShift[a.shift_type].lab += w
+        else if (s.role === "andrology") finalByShift[a.shift_type].andrology += w
+        else finalByShift[a.shift_type].admin += w
       }
       const dayShiftsFinal = activeShiftTypes
         .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
@@ -1622,9 +1650,9 @@ export function runRotaEngine({
       for (const sc of dayShiftsFinal) {
         const req = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
         const got = finalByShift[sc] ?? { lab: 0, andrology: 0, admin: 0 }
-        if (got.lab < req.lab) warnings.push(`${date}: ${sc} — lab insuficiente: ${got.lab}/${req.lab}`)
-        if (got.andrology < req.andrology) warnings.push(`${date}: ${sc} — andrología insuficiente: ${got.andrology}/${req.andrology}`)
-        if (got.admin < req.admin) warnings.push(`${date}: ${sc} — admin insuficiente: ${got.admin}/${req.admin}`)
+        if (got.lab < req.lab) warnings.push(`${date}: ${sc} — lab insuficiente: ${got.lab.toFixed(1)}/${req.lab}`)
+        if (got.andrology < req.andrology) warnings.push(`${date}: ${sc} — andrología insuficiente: ${got.andrology.toFixed(1)}/${req.andrology}`)
+        if (got.admin < req.admin) warnings.push(`${date}: ${sc} — admin insuficiente: ${got.admin.toFixed(1)}/${req.admin}`)
       }
     }
 

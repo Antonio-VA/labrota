@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { logAuditEvent } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
-import type { StaffRole, OnboardingStatus, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
+import type { StaffRole, OnboardingStatus, ContractType, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -44,9 +44,10 @@ function parseFormData(formData: FormData) {
       avoid_days:        ALL_DAYS.filter(d => formData.get(`avoid_${d}`) === "on"),
       contracted_hours:  37,   // kept in DB but not shown in UI
       days_per_week:     Math.min(7, Math.max(1, parseInt(formData.get("days_per_week") as string, 10) || 5)),
-      onboarding_status: formData.get("onboarding_status") as OnboardingStatus,
-      start_date:        formData.get("start_date") as string,
-      end_date:          ((formData.get("end_date") as string) || "").trim() || null,
+      onboarding_status:   formData.get("onboarding_status") as OnboardingStatus,
+      contract_type:       (formData.get("contract_type") as ContractType) || "full_time",
+      start_date:          formData.get("start_date") as string,
+      end_date:            ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
       preferred_shift:   ((formData.get("preferred_shifts") as string) || (formData.get("preferred_shift") as string) || "") || null as ShiftType | null,
       avoid_shifts:      ((formData.get("avoid_shifts") as string) || "").split(",").filter(Boolean),
@@ -57,19 +58,28 @@ function parseFormData(formData: FormData) {
 }
 
 
+function computeOnboardingEndDate(startDate: string, weeks: number): string | null {
+  if (!weeks || weeks <= 0) return null
+  const d = new Date(startDate + "T12:00:00")
+  d.setDate(d.getDate() + weeks * 7)
+  return d.toISOString().split("T")[0]
+}
+
 export async function createStaff(_prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const { staff, skills } = parseFormData(formData)
+  const onboardingWeeks = parseInt(formData.get("onboarding_weeks") as string, 10) || 0
+  const onboardingEndDate = computeOnboardingEndDate(staff.start_date, onboardingWeeks)
 
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
   const { data: newStaff, error } = await supabase
     .from("staff")
-    .insert({ ...staff, organisation_id: orgId } as never)
+    .insert({ ...staff, organisation_id: orgId, onboarding_end_date: onboardingEndDate } as never)
     .select("id")
     .single()
 
@@ -148,13 +158,15 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { staff, skills } = parseFormData(formData)
+  const onboardingWeeks = parseInt(formData.get("onboarding_weeks") as string, 10) || 0
+  const onboardingEndDate = computeOnboardingEndDate(staff.start_date, onboardingWeeks)
 
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
   const { error: updateError } = await supabase
     .from("staff")
-    .update(staff as never)
+    .update({ ...staff, onboarding_end_date: onboardingEndDate } as never)
     .eq("id", id)
     .eq("organisation_id", orgId)
 

@@ -295,15 +295,27 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
     supabase
       .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string }[] | null }>,
+      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }[] | null }>,
     supabase
       .from("staff_skills")
       .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
   ])
 
   // Build a staff lookup map so we don't depend on a join
-  const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string }> = {}
+  const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }> = {}
   for (const s of staffRes.data ?? []) staffLookup[s.id] = s
+
+  // Coverage weight helper for live warnings
+  const lcPartTimeW = (labConfig as any)?.part_time_weight as number | undefined ?? 0.5
+  const lcInternW   = (labConfig as any)?.intern_weight   as number | undefined ?? 0.5
+  function liveCoverageWeight(staffId: string, date: string): number {
+    const s = staffLookup[staffId]
+    if (!s) return 1
+    if (s.onboarding_end_date && date <= s.onboarding_end_date) return 0
+    if (s.contract_type === "part_time") return lcPartTimeW
+    if (s.contract_type === "intern")    return lcInternW
+    return 1
+  }
 
   // If newer columns missing, retry with minimal select
   let rawAssignments: RawAssignment[] = []
@@ -530,14 +542,16 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         for (const a of day.assignments) {
           if (a.shift_type !== sc) continue
           const role = a.staff.role
-          if (role === "lab") lab++
-          else if (role === "andrology") andro++
-          else adm++
+          const w = liveCoverageWeight(a.staff_id, day.date)
+          if (role === "lab") lab += w
+          else if (role === "andrology") andro += w
+          else adm += w
         }
+        const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1)
         const msgs: string[] = []
-        if (lab < req.lab) msgs.push(`lab ${locale === "es" ? "insuficiente" : "insufficient"}: ${lab}/${req.lab}`)
-        if (andro < req.andrology) msgs.push(`${locale === "es" ? "andrología insuficiente" : "andrology insufficient"}: ${andro}/${req.andrology}`)
-        if (adm < req.admin) msgs.push(`admin ${locale === "es" ? "insuficiente" : "insufficient"}: ${adm}/${req.admin}`)
+        if (lab < req.lab) msgs.push(`lab ${locale === "es" ? "insuficiente" : "insufficient"}: ${fmt(lab)}/${req.lab}`)
+        if (andro < req.andrology) msgs.push(`${locale === "es" ? "andrología insuficiente" : "andrology insufficient"}: ${fmt(andro)}/${req.andrology}`)
+        if (adm < req.admin) msgs.push(`admin ${locale === "es" ? "insuficiente" : "insufficient"}: ${fmt(adm)}/${req.admin}`)
         for (const msg of msgs) {
           day.warnings.push({ category: "coverage", message: `${sc} — ${msg}` })
         }

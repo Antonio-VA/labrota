@@ -414,13 +414,38 @@ export function StaffForm({
           <Field label={t("fields.onboardingStatus")} required>
             <Select name="onboarding_status" defaultValue={staff?.onboarding_status ?? "active"} disabled={isPending}>
               <option value="active">{t("onboardingStatus.active")}</option>
-              <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
               <option value="inactive">{t("onboardingStatus.inactive")}</option>
+            </Select>
+          </Field>
+          <Field label={t("fields.contractType")} required>
+            <Select name="contract_type" defaultValue={(staff as any)?.contract_type ?? "full_time"} disabled={isPending}>
+              <option value="full_time">{t("contractType.full_time")}</option>
+              <option value="part_time">{t("contractType.part_time")}</option>
+              <option value="intern">{t("contractType.intern")}</option>
             </Select>
           </Field>
         </div>
         <Field label={t("fields.startDate")} required>
           <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
+        </Field>
+        <Field label={t("fields.onboardingPeriod")}>
+          <div className="flex items-center gap-2">
+            <Select name="onboarding_weeks" defaultValue={(() => {
+              const end = (staff as any)?.onboarding_end_date as string | null
+              if (!end || !staff?.start_date) return "0"
+              const ms = new Date(end).getTime() - new Date(staff.start_date).getTime()
+              const weeks = Math.round(ms / (7 * 86400000))
+              return weeks > 0 ? String(weeks) : "0"
+            })()} disabled={isPending}>
+              <option value="0">{t("onboardingWeeks.none")}</option>
+              <option value="2">2 {t("onboardingWeeks.weeks")}</option>
+              <option value="4">4 {t("onboardingWeeks.weeks")}</option>
+              <option value="6">6 {t("onboardingWeeks.weeks")}</option>
+              <option value="8">8 {t("onboardingWeeks.weeks")}</option>
+              <option value="12">12 {t("onboardingWeeks.weeks")}</option>
+            </Select>
+          </div>
+          <p className="text-[11px] text-muted-foreground/70 mt-1">{t("onboardingWeeksHint")}</p>
         </Field>
         <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
       </Section>

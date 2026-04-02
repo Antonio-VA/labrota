@@ -421,6 +421,8 @@
       "startDate": "Start date",
       "endDate": "End date",
       "onboardingStatus": "Status",
+      "contractType": "Contract type",
+      "onboardingPeriod": "Onboarding period",
       "notes": "Internal notes",
       "preferredShift": "Preferred shift",
       "preferredShiftNone": "No preference",
@@ -431,6 +433,16 @@
       "onboarding": "Onboarding",
       "inactive": "Inactive"
     },
+    "contractType": {
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "intern": "Intern"
+    },
+    "onboardingWeeks": {
+      "none": "No onboarding period",
+      "weeks": "weeks"
+    },
+    "onboardingWeeksHint": "During this period the staff member is scheduled but does not count toward coverage minimums.",
     "workingDays": {
       "mon": "Mon",
       "tue": "Tue",

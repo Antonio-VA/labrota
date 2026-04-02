@@ -1438,8 +1438,30 @@ function StaffProfilePanel({
                 </div>
                 <div>
                   <p className="text-muted-foreground">{t("daysPerWeek")}</p>
-                  <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
+                    {(staff as any).contract_type === "part_time" && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">{locale === "es" ? "A tiempo parcial" : "Part-time"}</span>
+                    )}
+                    {(staff as any).contract_type === "intern" && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">{locale === "es" ? "Becario" : "Intern"}</span>
+                    )}
+                  </div>
                 </div>
+                {(() => {
+                  const end = (staff as any).onboarding_end_date as string | null
+                  const today = new Date().toISOString().split("T")[0]
+                  if (!end) return null
+                  return (
+                    <div>
+                      <p className="text-muted-foreground">{locale === "es" ? "Periodo de incorporación" : "Onboarding until"}</p>
+                      <p className={`text-[12px] font-medium ${today <= end ? "text-amber-600" : "text-muted-foreground"}`}>
+                        {formatDateWithYear(end, locale)}
+                        {today <= end ? ` (${locale === "es" ? "activo" : "active"})` : ` (${locale === "es" ? "completado" : "done"})`}
+                      </p>
+                    </div>
+                  )
+                })()}
                 <div>
                   <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
                   <p className="text-foreground font-medium">{(staff.working_pattern ?? []).map((d) => DAY_ES_2[d] ?? d).join(", ")}</p>
