@@ -2,6 +2,7 @@
 
 import { useState, useRef, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -10,14 +11,7 @@ import { Upload, X, AlertTriangle, FileUp } from "lucide-react"
 import { parseLeaveFile, type ParsedLeaveEntry, type StaffRecord } from "@/lib/parse-leave-file"
 import { createLeave } from "@/app/(clinic)/leaves/actions"
 
-const LEAVE_TYPES = [
-  { value: "annual", label: "Vacaciones" },
-  { value: "sick", label: "Baja médica" },
-  { value: "personal", label: "Asuntos propios" },
-  { value: "training", label: "Formación" },
-  { value: "maternity", label: "Maternidad/Paternidad" },
-  { value: "other", label: "Otros" },
-]
+const LEAVE_TYPE_KEYS = ["annual", "sick", "personal", "training", "maternity", "other"] as const
 
 export function LeaveFileImport({
   staff,
@@ -27,6 +21,8 @@ export function LeaveFileImport({
   onClose: () => void
 }) {
   const router = useRouter()
+  const t = useTranslations("leaveImport")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState<"upload" | "review">("upload")
   const [entries, setEntries] = useState<ParsedLeaveEntry[]>([])
@@ -57,7 +53,7 @@ export function LeaveFileImport({
       setEntries(result.entries)
       setStep("review")
     } catch {
-      setError("No se pudo leer el archivo. Por favor comprueba que no está protegido con contraseña.")
+      setError(t("fileReadError"))
     }
 
     e.target.value = ""
@@ -90,8 +86,8 @@ export function LeaveFileImport({
         if (result && "error" in result) { skipped++} else { saved++ }
       }
 
-      if (saved > 0) toast.success(`${saved} ausencias guardadas`)
-      if (skipped > 0) toast.warning(`${skipped} entradas omitidas`)
+      if (saved > 0) toast.success(t("leavesSaved", { count: saved }))
+      if (skipped > 0) toast.warning(t("entriesSkipped", { count: skipped }))
       router.refresh()
       onClose()
     })
@@ -106,8 +102,8 @@ export function LeaveFileImport({
       <div className="flex flex-col items-center gap-4 py-8">
         <FileUp className="size-10 text-muted-foreground" />
         <div className="text-center">
-          <p className="text-[15px] font-medium">Añadir ausencias desde archivo</p>
-          <p className="text-[13px] text-muted-foreground mt-1">PDF, Word o Excel con información de ausencias</p>
+          <p className="text-[15px] font-medium">{t("title")}</p>
+          <p className="text-[13px] text-muted-foreground mt-1">{t("description")}</p>
         </div>
         <input
           ref={fileRef}
@@ -118,7 +114,7 @@ export function LeaveFileImport({
         />
         <Button onClick={() => fileRef.current?.click()}>
           <Upload className="size-4" />
-          Seleccionar archivo
+          {t("selectFile")}
         </Button>
         {error && (
           <div className="flex items-center gap-2 text-[13px] text-destructive max-w-sm text-center">
@@ -126,7 +122,7 @@ export function LeaveFileImport({
             {error}
           </div>
         )}
-        <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
+        <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
       </div>
     )
   }
@@ -134,23 +130,23 @@ export function LeaveFileImport({
   // ── Review step ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[15px] font-medium">Ausencias detectadas</p>
+      <p className="text-[15px] font-medium">{t("detectedTitle")}</p>
 
       {entries.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-8 text-center">
-          <p className="text-[14px] text-muted-foreground">No se detectaron ausencias en el archivo.</p>
-          <p className="text-[12px] text-muted-foreground mt-1">Puedes añadir entradas manualmente.</p>
+          <p className="text-[14px] text-muted-foreground">{t("noLeavesDetected")}</p>
+          <p className="text-[12px] text-muted-foreground mt-1">{t("addManually")}</p>
         </div>
       ) : (
         <div className="rounded-lg border border-border overflow-hidden">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-muted border-b border-border">
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Personal</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Desde</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hasta</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Tipo</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Notas</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("staffColumn")}</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("fromColumn")}</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("toColumn")}</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("typeColumn")}</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("notesColumn")}</th>
                 <th className="w-8" />
               </tr>
             </thead>
@@ -174,7 +170,7 @@ export function LeaveFileImport({
                           }}
                           className="h-7 w-full rounded border border-amber-300 bg-transparent px-2 text-[12px]"
                         >
-                          <option value="">{entry.rawStaff} (sin coincidencia)</option>
+                          <option value="">{t("noMatch", { name: entry.rawStaff })}</option>
                           {staff.map((s) => (
                             <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
                           ))}
@@ -203,8 +199,8 @@ export function LeaveFileImport({
                         onChange={(e) => updateEntry(entry.id, { type: e.target.value })}
                         className="h-7 rounded border border-input bg-transparent px-2 text-[12px]"
                       >
-                        {LEAVE_TYPES.map((lt) => (
-                          <option key={lt.value} value={lt.value}>{lt.label}</option>
+                        {LEAVE_TYPE_KEYS.map((key) => (
+                          <option key={key} value={key}>{t(key)}</option>
                         ))}
                       </select>
                     </td>
@@ -230,18 +226,18 @@ export function LeaveFileImport({
 
       {/* Summary */}
       <p className="text-[12px] text-muted-foreground">
-        {entries.length} ausencias detectadas
-        {unmatchedCount > 0 && ` · ${unmatchedCount} sin confirmar personal`}
-        {incompleteDates > 0 && ` · ${incompleteDates} con fechas incompletas`}
+        {t("detectedCount", { count: entries.length })}
+        {unmatchedCount > 0 && ` · ${t("unconfirmedStaff", { count: unmatchedCount })}`}
+        {incompleteDates > 0 && ` · ${t("incompleteDates", { count: incompleteDates })}`}
       </p>
 
       {/* Actions */}
       <div className="flex gap-2">
         <Button onClick={handleConfirm} disabled={isPending || entries.length === 0}>
-          {isPending ? "Guardando…" : "Confirmar"}
+          {isPending ? tc("saving") : tc("confirm")}
         </Button>
         <Button variant="ghost" onClick={onClose} disabled={isPending}>
-          Cancelar
+          {tc("cancel")}
         </Button>
       </div>
     </div>

@@ -305,7 +305,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </p>
           {isByShift && (
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-muted-foreground">Por turno</span>
+              <span className="text-[12px] text-muted-foreground">{t("fields.byShiftToggle")}</span>
               <button
                 type="button"
                 onClick={handleToggleCoverage}
@@ -329,7 +329,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-muted border-b border-border">
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Departamento</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">{t("fields.departmentColumn")}</th>
                   {DAY_KEYS.map((day) => (
                     <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>
                       {t(`days.${day}`).slice(0, 3)}
@@ -339,7 +339,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               </thead>
               <tbody>
                 {(["lab", "andrology", "admin"] as const).map((role, rIdx) => {
-                  const label = role === "lab" ? "Embriología" : role === "andrology" ? "Andrología" : "Administración"
+                  const label = role === "lab" ? t("fields.embryology") : role === "andrology" ? t("fields.andrology") : t("fields.administration")
                   return (
                     <tr key={role} className={cn("border-b border-border/50", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
                       <td className="px-3 py-1.5 font-medium text-[13px]">{label}</td>
@@ -373,7 +373,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-muted border-b border-border">
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Turno</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">{t("fields.shiftColumn")}</th>
                   {DAY_KEYS.map((day) => (
                     <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>{t(`days.${day}`).slice(0, 3)}</th>
                   ))}
@@ -382,8 +382,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               <tbody>
                 {shiftTypes.filter((st) => st.active !== false).map((st) => {
                   const ROLES = [
-                    { key: "lab" as const, label: "Embr.", color: "var(--role-lab)" },
-                    { key: "andrology" as const, label: "Andr.", color: "var(--role-andrology)" },
+                    { key: "lab" as const, label: t("fields.embrAbbr"), color: "var(--role-lab)" },
+                    { key: "andrology" as const, label: t("fields.andrAbbr"), color: "var(--role-andrology)" },
                     { key: "admin" as const, label: "Admin", color: "var(--role-admin)" },
                   ]
                   return (
@@ -445,8 +445,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
 
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
           {isByShift && shiftCoverageEnabled
-            ? "Define cuántas personas de cada departamento necesitas por turno y día. Dejar en blanco para no requerir un departamento en un día concreto."
-            : "El generador no producirá una rota que no cumpla estos mínimos. Pon 0 para no requerir un departamento en un día concreto."}
+            ? t("fields.coverageShiftFooter")
+            : t("fields.coverageDeptFooter")}
         </p>
       </div>
 
@@ -454,7 +454,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       {rotaDisplayMode === "by_task" && (
         <div className="rounded-lg border border-border bg-background overflow-hidden">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
-            <span className="text-[13px] font-medium">Definir cobertura mínima por tarea (opcional)</span>
+            <span className="text-[13px] font-medium">{t("fields.taskCoverageOptional")}</span>
             <button
               type="button"
               onClick={handleToggleCoverage}
@@ -472,7 +472,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           {!taskCoverageEnabled ? (
             <div className="px-5 py-4">
               <p className="text-[13px] text-muted-foreground">
-                El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea.
+                {t("fields.taskCoverageDisabledHint")}
               </p>
             </div>
           ) : (
@@ -480,7 +480,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-muted border-b border-border">
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">Tarea</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">{t("fields.taskColumn")}</th>
                     {DAY_KEYS.map((day) => (
                       <th key={day} className="px-1 py-2 text-center font-medium text-muted-foreground w-[52px]">{t(`days.${day}`).slice(0, 3)}</th>
                     ))}
@@ -490,7 +490,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                   {(() => {
                     const rootDepts = departments.length > 0
                       ? departments.filter((d) => !d.parent_id)
-                      : [{ id: "lab", code: "lab", name: "Embriología" }, { id: "andrology", code: "andrology", name: "Andrología" }]
+                      : [{ id: "lab", code: "lab", name: t("fields.embryology") }, { id: "andrology", code: "andrology", name: t("fields.andrology") }]
                     const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
                     return rootDepts.map((dept) => {
                       const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
@@ -528,7 +528,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                             : "border-input bg-background text-muted-foreground/40",
                                           "focus:border-ring focus:ring-1 focus:ring-ring/50"
                                         )} />
-                                      {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">máx. {deptMin}</p>}
+                                      {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">{t("fields.maxAbbr")} {deptMin}</p>}
                                     </div>
                                   </td>
                                 )

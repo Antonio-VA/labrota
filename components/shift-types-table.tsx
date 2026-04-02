@@ -10,7 +10,7 @@ import type { ShiftTypeDefinition } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
 const ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
-const DAY_LABELS: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
+const DAY_LABEL_KEYS: Record<string, string> = { mon: "dayMon", tue: "dayTue", wed: "dayWed", thu: "dayThu", fri: "dayFri", sat: "daySat", sun: "daySun" }
 
 interface ShiftRow {
   id: string           // local id (may be DB id or temp)
@@ -239,7 +239,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                   disabled={isPending}
                   className="text-[13px]"
                   maxLength={30}
-                  placeholder="Mañana"
+                  placeholder={t("namePlaceholder")}
                 />
 
                 {/* Day toggles — inline */}
@@ -264,7 +264,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                             : "bg-transparent text-muted-foreground/40 border-border hover:border-primary/40"
                         )}
                       >
-                        {DAY_LABELS[day]}
+                        {t(DAY_LABEL_KEYS[day])}
                       </button>
                     )
                   })}

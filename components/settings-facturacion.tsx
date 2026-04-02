@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations, useLocale } from "next-intl"
 import { Lock } from "lucide-react"
 
 export function SettingsFacturacion({
@@ -11,30 +12,34 @@ export function SettingsFacturacion({
   billingEnd: string | null
   billingFee: number | null
 }) {
+  const t = useTranslations("billing")
+  const locale = useLocale()
+
   const fmt = (d: string | null) => {
     if (!d) return "—"
-    try { return new Date(d + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) } catch { return d }
+    const dateFmt = locale === "es" ? "es-ES" : "en-US"
+    try { return new Date(d + "T12:00:00").toLocaleDateString(dateFmt, { day: "numeric", month: "short", year: "numeric" }) } catch { return d }
   }
 
   return (
     <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex flex-col gap-0.5">
-          <span className="text-[12px] font-medium text-muted-foreground">Inicio</span>
+          <span className="text-[12px] font-medium text-muted-foreground">{t("start")}</span>
           <span className="text-[14px] font-medium">{fmt(billingStart)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[12px] font-medium text-muted-foreground">Renovación</span>
+          <span className="text-[12px] font-medium text-muted-foreground">{t("renewal")}</span>
           <span className="text-[14px] font-medium">{fmt(billingEnd)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[12px] font-medium text-muted-foreground">Cuota anual</span>
-          <span className="text-[14px] font-medium">{billingFee && billingFee > 0 ? `${billingFee.toLocaleString("es-ES")} €` : <span className="text-emerald-600">Prueba gratuita</span>}</span>
+          <span className="text-[12px] font-medium text-muted-foreground">{t("annualFee")}</span>
+          <span className="text-[14px] font-medium">{billingFee && billingFee > 0 ? `${billingFee.toLocaleString(locale === "es" ? "es-ES" : "en-US")} €` : <span className="text-emerald-600">{t("freeTrial")}</span>}</span>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
         <Lock className="size-3" />
-        La facturación es gestionada por LabRota. Contacta con soporte para cualquier cambio.
+        {t("managedByLabRota")}
       </p>
     </div>
   )

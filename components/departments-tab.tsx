@@ -97,6 +97,7 @@ const GRID_COLS = "24px 28px minmax(140px,1fr) 80px 56px 36px"
 function SortableRow({ dept, onChange, onDelete, disabled, even }: {
   dept: Draft; onChange: (d: Draft) => void; onDelete: () => void; disabled: boolean; even?: boolean
 }) {
+  const t = useTranslations("departments")
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: dept.sortId })
@@ -137,7 +138,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, even }: {
         value={dept.name}
         onChange={(e) => onChange({ ...dept, name: e.target.value, name_en: e.target.value })}
         disabled={disabled}
-        placeholder="Embriología"
+        placeholder={t("namePlaceholder")}
         className="bg-transparent text-[13px] font-medium outline-none border-b border-transparent focus:border-primary px-1 h-7 w-full"
       />
 
