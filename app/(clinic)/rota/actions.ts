@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedOrgId } from "@/lib/auth-cache"
+import { getCachedOrgContext } from "@/lib/org-context-cache"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { runTaskEngine } from "@/lib/task-engine"
@@ -137,27 +139,24 @@ const DOW_TO_KEY: Record<number, keyof import("@/lib/types/database").PunctionsB
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const cookieStore = await cookies()
   const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
+  const orgId = await getCachedOrgId()
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record, lab config, approved leaves, shift types, técnicas, and rules in parallel.
-  const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
+  // Fetch static org context (cached) alongside the week-specific live queries.
+  const [ctx, rotaResultFull, leavesResult] = await Promise.all([
+    getCachedOrgContext(orgId!),
     supabase
       .from("rotas")
       .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
       .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null; error: { message: string } | null }>,
-    supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
       .select("staff_id, start_date, end_date, type")
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string; type: string }[] | null }>,
-    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
-    supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
-    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
-    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
   ])
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
@@ -172,12 +171,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   const rotaData  = rotaResult.data
-  const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
-  const allFetchedRules = ((rulesRes.data ?? []) as { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[])
-    .filter((r) => !r.expires_at || r.expires_at > weekStart)
+  const labConfig = ctx.labConfig
+  const allFetchedRules = ctx.rules.filter((r) => !r.expires_at || r.expires_at > weekStart)
   const tecDayRules = allFetchedRules.filter((r) => r.type === "restriccion_dia_tecnica")
   const supervisorRules = allFetchedRules.filter((r) => r.type === "supervisor_requerido")
-  const tecnicas  = (tecnicasRes.data ?? []) as Tecnica[]
+  const tecnicas  = ctx.tecnicas
 
   // Build training map: date → staff_id → tecnica code
   // Only for supervisor rules with a training technique, respecting active days
@@ -199,28 +197,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Fetch org display mode + engine config in parallel
-  const [{ data: orgModeRow }, { data: orgEngineRow }] = await Promise.all([
-    supabase
-      .from("organisations")
-      .select("rota_display_mode")
-      .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>,
-    supabase
-      .from("organisations")
-      .select("ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
-      .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: { ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }>,
-  ])
-  const orgDisplayMode = orgModeRow?.rota_display_mode ?? "by_shift"
-  const engineConfig: import("@/lib/types/database").EngineConfig = {
-    aiOptimalVersion:     orgEngineRow?.ai_optimal_version     ?? "v2",
-    hybridEnabled:        orgEngineRow?.engine_hybrid_enabled  ?? true,
-    reasoningEnabled:     orgEngineRow?.engine_reasoning_enabled ?? false,
-    taskOptimalVersion:   orgEngineRow?.task_optimal_version   ?? "v1",
-    taskHybridEnabled:    orgEngineRow?.task_hybrid_enabled    ?? false,
-    taskReasoningEnabled: orgEngineRow?.task_reasoning_enabled ?? false,
-  }
+  const orgDisplayMode = ctx.orgDisplayMode
+  const engineConfig   = ctx.engineConfig
 
   const rota = rotaData
     ? {
@@ -247,7 +225,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   // Build shift times from shift_types table
-  const shiftTypesData = shiftTypesRes.data ?? []
+  const shiftTypesData = ctx.shiftTypes
   const shiftTimes: ShiftTimes | null = shiftTypesData.length > 0
     ? Object.fromEntries(shiftTypesData.map((st) => [st.code, { start: st.start_time, end: st.end_time }]))
     : null
@@ -274,7 +252,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
 
   if (!rota) {
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null, engineConfig }
+    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: ctx.departments, ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning: null, engineConfig }
   }
 
   // Fetch assignments + all org staff in parallel so we can enrich assignments without
@@ -288,23 +266,15 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
 
-  const [assignmentsRes, staffRes, skillsRes] = await Promise.all([
-    // Try full column set; fallback handled below
-    supabase
-      .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team")
-      .eq("rota_id", rota.id) as unknown as Promise<{ data: RawAssignment[] | null; error: { message: string } | null }>,
-    supabase
-      .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }[] | null }>,
-    supabase
-      .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
-  ])
+  // Assignments are week-specific (live); staff + skills come from the org context cache.
+  const assignmentsRes = await supabase
+    .from("rota_assignments")
+    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team")
+    .eq("rota_id", rota.id) as unknown as { data: RawAssignment[] | null; error: { message: string } | null }
 
   // Build a staff lookup map so we don't depend on a join
   const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }> = {}
-  for (const s of staffRes.data ?? []) staffLookup[s.id] = s
+  for (const s of ctx.staff) staffLookup[s.id] = s
 
   // Coverage weight helper for live warnings
   const lcPartTimeW = (labConfig as any)?.part_time_weight as number | undefined ?? 0.5
@@ -335,7 +305,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     staff: staffLookup[a.staff_id] ?? null,
   }))
 
-  const skillsData = skillsRes.data
+  const skillsData = ctx.staffSkills
 
   const staffSkillMap: Record<string, SkillName[]> = {}
   for (const ss of skillsData ?? []) {
@@ -595,7 +565,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     if (reasoningEntry) aiReasoning = reasoningEntry.replace("[ai-reasoning] ", "")
   }
 
-  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning, engineConfig }
+  return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: ctx.departments, ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, trainingByStaff, aiReasoning, engineConfig }
 }
 
 // ── generateRota ──────────────────────────────────────────────────────────────

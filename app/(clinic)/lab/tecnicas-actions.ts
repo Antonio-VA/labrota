@@ -1,9 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type { Tecnica } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
+import { orgStaticTag } from "@/lib/org-context-cache"
 
 export async function getTecnicas(): Promise<Tecnica[]> {
   const supabase = await createClient()
@@ -40,6 +41,7 @@ export async function saveTecnica(
       .eq("id", tecnica.id)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
+    revalidateTag(orgStaticTag(orgId))
     revalidatePath("/lab")
     return { id: tecnica.id }
   }
@@ -63,6 +65,7 @@ export async function saveTecnica(
     .single()
 
   if (error || !data) return { error: error?.message ?? "Failed to create técnica." }
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return { id: (data as { id: string }).id }
 }
@@ -79,6 +82,7 @@ export async function deleteTecnica(id: string): Promise<{ error?: string }> {
   if (tec) {
     await supabase.from("staff_skills").delete().eq("skill", tec.codigo).eq("organisation_id", tec.organisation_id)
   }
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   revalidatePath("/staff")
   return {}
@@ -93,6 +97,7 @@ export async function reorderTecnicas(orderedIds: string[]): Promise<{ error?: s
       supabase.from("tecnicas").update({ orden: i } as never).eq("id", id).eq("organisation_id", orgId)
     )
   )
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return {}
 }
@@ -144,6 +149,7 @@ export async function bulkSaveTecnicas(
     }
   }
 
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   revalidatePath("/staff")
   return { ids: resultIds }
@@ -189,6 +195,7 @@ export async function seedDefaultTecnicas(): Promise<{ seeded: boolean; error?: 
     .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })) as never)
 
   if (error) return { seeded: false, error: error.message }
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath("/lab")
   return { seeded: true }
 }

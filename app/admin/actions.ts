@@ -1,11 +1,12 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { generateSlug } from "@/lib/utils"
+import { orgStaticTag } from "@/lib/org-context-cache"
 
 // ── Guard: ensure caller is super admin ───────────────────────────────────────
 async function assertSuperAdmin() {
@@ -403,6 +404,7 @@ export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by
     .eq("id", orgId)
 
   if (error) return { error: error.message }
+  revalidateTag(orgStaticTag(orgId))
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
 }

@@ -1,9 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { logAuditEvent } from "@/lib/audit"
+import { orgStaticTag } from "@/lib/org-context-cache"
 import type { LabConfigUpdate } from "@/lib/types/database"
 
 export async function updateLabConfig(data: LabConfigUpdate) {
@@ -50,6 +51,7 @@ export async function updateLabConfig(data: LabConfigUpdate) {
     changes: data as Record<string, unknown>,
   })
 
+  revalidateTag(orgStaticTag(profile.organisation_id))
   revalidatePath("/lab")
   return { success: true }
 }
