@@ -8,25 +8,26 @@ import { createAdminClient } from "@/lib/supabase/admin"
  */
 export async function requireEditor() {
   const supabase = await createClient()
+  const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organisation_id")
-    .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
+  // Fetch profile + membership in parallel instead of sequentially
+  const [{ data: profile }, { data: memberships }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("organisation_id")
+      .eq("id", user.id)
+      .single() as unknown as Promise<{ data: { organisation_id: string | null } | null }>,
+    admin
+      .from("organisation_members")
+      .select("organisation_id, role")
+      .eq("user_id", user.id) as unknown as Promise<{ data: Array<{ organisation_id: string; role: string }> | null }>,
+  ])
 
   if (!profile?.organisation_id) return
 
-  const admin = createAdminClient()
-  const { data: membership } = await admin
-    .from("organisation_members")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("organisation_id", profile.organisation_id)
-    .single() as { data: { role: string } | null }
-
+  const membership = memberships?.find((m) => m.organisation_id === profile.organisation_id)
   if (membership?.role === "viewer") {
     redirect("/")
   }
