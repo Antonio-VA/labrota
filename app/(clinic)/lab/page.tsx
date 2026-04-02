@@ -62,7 +62,7 @@ export default async function LabConfigPage() {
                 ? "bg-purple-50 border-purple-200 text-purple-700"
                 : "bg-blue-50 border-blue-200 text-blue-700"
             )}>
-              {rotaDisplayMode === "by_task" ? "Por tarea" : "Por turno"}
+              {rotaDisplayMode === "by_task" ? t("modeByTask") : t("modeByShift")}
             </span>
           </div>
 

@@ -697,6 +697,8 @@
     "daysOffPreferWeekendHint": "Days off preferably fall on weekends, but staff can be assigned if needed.",
     "daysOffAnyDay": "Any day",
     "daysOffAnyDayHint": "Days off are distributed evenly across all days of the week.",
+    "modeByShift": "By shift",
+    "modeByTask": "By task",
     "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated.",
     "rules": {

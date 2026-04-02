@@ -697,6 +697,8 @@
     "daysOffPreferWeekendHint": "Se intenta que los días libres caigan en fin de semana, pero se puede asignar si es necesario.",
     "daysOffAnyDay": "Cualquier día",
     "daysOffAnyDayHint": "Los días libres se distribuyen por igual entre todos los días de la semana.",
+    "modeByShift": "Por turno",
+    "modeByTask": "Por tarea",
     "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada.",
     "rules": {
