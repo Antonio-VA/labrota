@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
+import { getAuthUser } from "@/lib/auth-cache"
 import { revalidatePath } from "next/cache"
 
 export interface StepCompletion {
@@ -67,21 +68,21 @@ export async function getStepCompletions(): Promise<Record<string, StepCompletio
  * Only records first completion — won't overwrite existing timestamps.
  */
 export async function syncStepCompletions(): Promise<void> {
-  const supabase = await createClient()
-  const orgId = await getOrgId()
+  const [orgId, user] = await Promise.all([getOrgId(), getAuthUser()])
   if (!orgId) return
-
-  const { data: { user } } = await supabase.auth.getUser()
   const userId = user?.id ?? null
 
-  // Fetch current counts
-  const [deptRes, shiftRes, tecRes, staffRes, rotaRes, configRes] = await Promise.all([
+  const supabase = await createClient()
+
+  // Fetch current counts + existing steps in parallel
+  const [deptRes, shiftRes, tecRes, staffRes, rotaRes, configRes, existingRes] = await Promise.all([
     supabase.from("departments").select("id", { count: "exact", head: true }),
     supabase.from("shift_types").select("id", { count: "exact", head: true }),
     supabase.from("tecnicas").select("id", { count: "exact", head: true }),
     supabase.from("staff").select("id", { count: "exact", head: true }).neq("onboarding_status", "inactive"),
     supabase.from("rotas").select("id", { count: "exact", head: true }),
     supabase.from("lab_config").select("country").maybeSingle() as unknown as Promise<{ data: { country?: string } | null }>,
+    supabase.from("implementation_steps").select("step_key").eq("organisation_id", orgId) as unknown as Promise<{ data: { step_key: string }[] | null }>,
   ])
 
   const currentState: Record<string, boolean> = {
@@ -94,23 +95,15 @@ export async function syncStepCompletions(): Promise<void> {
     generate_rota: (rotaRes.count ?? 0) > 0,
   }
 
-  // Get existing completions
-  const { data: existing } = await supabase
-    .from("implementation_steps")
-    .select("step_key")
-    .eq("organisation_id", orgId) as unknown as { data: { step_key: string }[] | null }
+  const existingKeys = new Set((existingRes.data ?? []).map((s) => s.step_key))
 
-  const existingKeys = new Set((existing ?? []).map((s) => s.step_key))
+  // Batch insert newly completed steps
+  const newSteps = STEP_KEYS
+    .filter((key) => currentState[key] && !existingKeys.has(key))
+    .map((key) => ({ organisation_id: orgId, step_key: key, completed_by: userId }))
 
-  // Insert newly completed steps
-  for (const key of STEP_KEYS) {
-    if (currentState[key] && !existingKeys.has(key)) {
-      await supabase.from("implementation_steps").insert({
-        organisation_id: orgId,
-        step_key: key,
-        completed_by: userId,
-      } as never)
-    }
+  if (newSteps.length > 0) {
+    await supabase.from("implementation_steps").insert(newSteps as never[])
   }
 }
 

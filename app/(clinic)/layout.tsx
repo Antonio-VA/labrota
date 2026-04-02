@@ -2,6 +2,7 @@ export const maxDuration = 120 // Allow up to 2min for AI rota generation
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getAuthUser } from "@/lib/auth-cache"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ClinicTopBar } from "@/components/clinic-top-bar"
 import { MobileHeader } from "@/components/mobile-header"
@@ -14,7 +15,7 @@ export default async function ClinicLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   let orgName: string | null = null
   let orgLogoUrl: string | null = null

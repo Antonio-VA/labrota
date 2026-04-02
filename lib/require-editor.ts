@@ -1,33 +1,27 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getAuthUser, getCachedOrgId } from "@/lib/auth-cache"
 
 /**
  * Call at the top of any server page that requires edit access.
  * Redirects viewers to the calendar.
+ * Uses cached auth helpers to avoid redundant queries.
  */
 export async function requireEditor() {
-  const supabase = await createClient()
-  const admin = createAdminClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-
-  // Fetch profile + membership in parallel instead of sequentially
-  const [{ data: profile }, { data: memberships }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("organisation_id")
-      .eq("id", user.id)
-      .single() as unknown as Promise<{ data: { organisation_id: string | null } | null }>,
-    admin
-      .from("organisation_members")
-      .select("organisation_id, role")
-      .eq("user_id", user.id) as unknown as Promise<{ data: Array<{ organisation_id: string; role: string }> | null }>,
+  const [user, orgId] = await Promise.all([
+    getAuthUser(),
+    getCachedOrgId(),
   ])
+  if (!user || !orgId) return
 
-  if (!profile?.organisation_id) return
+  const admin = createAdminClient()
+  const { data: membership } = await admin
+    .from("organisation_members")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("organisation_id", orgId)
+    .single() as { data: { role: string } | null }
 
-  const membership = memberships?.find((m) => m.organisation_id === profile.organisation_id)
   if (membership?.role === "viewer") {
     redirect("/")
   }

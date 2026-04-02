@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
+import { getAuthUser } from "@/lib/auth-cache"
 import { logAuditEvent } from "@/lib/audit"
 
 async function requireOrgAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, orgId] = await Promise.all([
+    getAuthUser(),
+    getOrgId(),
+  ])
   if (!user) throw new Error("Not authenticated")
-
-  const orgId = await getOrgId()
   if (!orgId) throw new Error("No organisation")
 
   const admin = createAdminClient()
@@ -267,17 +268,18 @@ export interface OrgSettings {
 export async function getOrgSettings(): Promise<OrgSettings | null> {
   const { orgId, admin } = await requireOrgAdmin()
 
-  const { data: org } = await admin
-    .from("organisations")
-    .select("name, logo_url, rota_display_mode, billing_start, billing_end, billing_fee")
-    .eq("id", orgId)
-    .single() as { data: { name: string; logo_url: string | null; rota_display_mode?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }
-
-  const { data: config } = await admin
-    .from("lab_config")
-    .select("country, region, enable_leave_requests, enable_notes, enable_task_in_shift")
-    .eq("organisation_id", orgId)
-    .maybeSingle() as { data: { country: string; region: string; enable_leave_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }
+  const [{ data: org }, { data: config }] = await Promise.all([
+    admin
+      .from("organisations")
+      .select("name, logo_url, rota_display_mode, billing_start, billing_end, billing_fee")
+      .eq("id", orgId)
+      .single() as unknown as Promise<{ data: { name: string; logo_url: string | null; rota_display_mode?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }>,
+    admin
+      .from("lab_config")
+      .select("country, region, enable_leave_requests, enable_notes, enable_task_in_shift")
+      .eq("organisation_id", orgId)
+      .maybeSingle() as unknown as Promise<{ data: { country: string; region: string; enable_leave_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }>,
+  ])
 
   if (!org) return null
   return {
