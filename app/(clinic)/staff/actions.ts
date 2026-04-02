@@ -114,7 +114,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
         } else {
           const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
             data: { full_name: fullName },
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://labrota.app"}/auth/callback`,
+            redirectTo: "https://www.labrota.app/auth/callback",
           })
           if (inviteError) { console.error("Invite failed:", inviteError.message); return }
           userId = invited.user.id
