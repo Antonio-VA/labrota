@@ -86,9 +86,10 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
   // Run audit + invite after response so the redirect is instant
   const inviteViewer = formData.get("invite_viewer") === "on"
+  // Capture user info before after() runs (session may be unavailable after response)
+  const { data: { user: auUser } } = await supabase.auth.getUser()
   after(async () => {
     // Audit
-    const { data: { user: auUser } } = await supabase.auth.getUser()
     logAuditEvent({
       orgId, userId: auUser?.id, userEmail: auUser?.email,
       action: "staff_created", entityType: "staff", entityId: newStaffId,
