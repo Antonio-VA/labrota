@@ -140,8 +140,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fetch rota record, lab config, approved leaves, shift types, técnicas, and rules in parallel.
-  const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes] = await Promise.all([
+  // Fetch rota record, lab config, approved leaves, shift types, técnicas, rules, and org config in parallel.
+  const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, { data: orgRow }] = await Promise.all([
     supabase
       .from("rotas")
       .select("id, status, published_at, published_by, punctions_override, engine_warnings")
@@ -158,6 +158,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
     supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
+    supabase
+      .from("organisations")
+      .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string; ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }>,
   ])
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
@@ -199,27 +204,15 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Fetch org display mode + engine config in parallel
-  const [{ data: orgModeRow }, { data: orgEngineRow }] = await Promise.all([
-    supabase
-      .from("organisations")
-      .select("rota_display_mode")
-      .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>,
-    supabase
-      .from("organisations")
-      .select("ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
-      .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: { ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }>,
-  ])
-  const orgDisplayMode = orgModeRow?.rota_display_mode ?? "by_shift"
+  // Org config was fetched in the main parallel batch above
+  const orgDisplayMode = orgRow?.rota_display_mode ?? "by_shift"
   const engineConfig: import("@/lib/types/database").EngineConfig = {
-    aiOptimalVersion:     orgEngineRow?.ai_optimal_version     ?? "v2",
-    hybridEnabled:        orgEngineRow?.engine_hybrid_enabled  ?? true,
-    reasoningEnabled:     orgEngineRow?.engine_reasoning_enabled ?? false,
-    taskOptimalVersion:   orgEngineRow?.task_optimal_version   ?? "v1",
-    taskHybridEnabled:    orgEngineRow?.task_hybrid_enabled    ?? false,
-    taskReasoningEnabled: orgEngineRow?.task_reasoning_enabled ?? false,
+    aiOptimalVersion:     orgRow?.ai_optimal_version     ?? "v2",
+    hybridEnabled:        orgRow?.engine_hybrid_enabled  ?? true,
+    reasoningEnabled:     orgRow?.engine_reasoning_enabled ?? false,
+    taskOptimalVersion:   orgRow?.task_optimal_version   ?? "v1",
+    taskHybridEnabled:    orgRow?.task_hybrid_enabled    ?? false,
+    taskReasoningEnabled: orgRow?.task_reasoning_enabled ?? false,
   }
 
   const rota = rotaData
