@@ -35,7 +35,7 @@ export function LabPageTabs({
   const content: Record<TabKey, React.ReactNode> = { cobertura, reglas, generador, plantillas, tecnicas, departamentos, turnos, carga }
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full overflow-hidden">
       {/* Tab bar */}
       <div className="flex border-b border-border">
         {TAB_KEYS.map((key) => (
@@ -56,7 +56,7 @@ export function LabPageTabs({
       </div>
 
       {/* Tab content — all pre-rendered, inactive hidden */}
-      <div className="w-full overflow-x-hidden">
+      <div className="w-full">
         {TAB_KEYS.map((key) => (
           <div key={key} className={key !== active ? "hidden" : undefined}>
             {content[key]}
