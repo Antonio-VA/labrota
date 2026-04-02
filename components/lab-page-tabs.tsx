@@ -35,7 +35,7 @@ export function LabPageTabs({
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Tab bar */}
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border overflow-x-auto">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
@@ -53,8 +53,8 @@ export function LabPageTabs({
         ))}
       </div>
 
-      {/* Tab content — fixed width container, all pre-rendered */}
-      <div className="w-full">
+      {/* Tab content — all pre-rendered, inactive hidden */}
+      <div className="w-full overflow-x-hidden">
         {TAB_KEYS.map((key) => (
           <div key={key} className={key !== active ? "hidden" : undefined}>
             {content[key]}
