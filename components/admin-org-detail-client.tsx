@@ -34,6 +34,7 @@ export function AdminOrgDetailClient({
   initialTaskReasoningEnabled = false,
   initialDailyHybridLimit = 10,
   initialAnnualLeaveDays = 20,
+  initialDefaultDaysPerWeek = 5,
   initialReduceBudgetOnHolidays = true,
   implementationStatus,
   section = "all",
@@ -60,6 +61,7 @@ export function AdminOrgDetailClient({
   initialTaskReasoningEnabled?: boolean
   initialDailyHybridLimit?: number
   initialAnnualLeaveDays?: number
+  initialDefaultDaysPerWeek?: number
   initialReduceBudgetOnHolidays?: boolean
   implementationStatus?: {
     hasRegion: boolean
@@ -89,6 +91,7 @@ export function AdminOrgDetailClient({
   const [taskReasoningEnabled, setTaskReasoningEnabled] = useState(initialTaskReasoningEnabled)
   const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
   const [annualLeaveDays, setAnnualLeaveDays] = useState(initialAnnualLeaveDays)
+  const [defaultDaysPerWeek, setDefaultDaysPerWeek] = useState(initialDefaultDaysPerWeek)
   const [reduceBudgetOnHolidays, setReduceBudgetOnHolidays] = useState(initialReduceBudgetOnHolidays)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
@@ -152,7 +155,7 @@ export function AdminOrgDetailClient({
         const r = await toggleOrgTaskInShift(orgId, enableTaskInShift)
         if (r.error) { toast.error(r.error); hasError = true }
       }
-      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays, reduceBudgetOnHolidays)
+      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays, reduceBudgetOnHolidays, defaultDaysPerWeek)
       if (r2.error) { toast.error(r2.error); hasError = true }
       const r4 = await updateOrgEngineConfig(orgId, {
         ai_optimal_version: aiOptimalVersion,
@@ -707,6 +710,25 @@ export function AdminOrgDetailClient({
               className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
             />
             <span className="text-[12px] text-muted-foreground">días por persona al año</span>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-background px-5 py-4">
+          <div className="flex items-center gap-3">
+            <label className="text-[13px] text-muted-foreground shrink-0">Días por semana (por defecto)</label>
+            <input
+              type="number"
+              min={1}
+              max={7}
+              value={defaultDaysPerWeek}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 1 && v <= 7) setDefaultDaysPerWeek(v)
+              }}
+              disabled={isPending}
+              className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+            />
+            <span className="text-[12px] text-muted-foreground">días/semana para nuevos empleados</span>
           </div>
         </div>
 
