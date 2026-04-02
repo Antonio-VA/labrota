@@ -459,6 +459,9 @@
       "training": "En formación"
     },
     "inviteViewerLabel": "Enviar invitación como visor — recibirá un email para crear su cuenta con acceso de solo lectura al calendario",
+    "wizardStep1": "Datos",
+    "wizardStep2": "Disponibilidad",
+    "wizardStep3": "Habilidades",
     "inviteFailed": "Miembro creado pero la invitación falló: {error}",
     "staffCreationFailed": "No se pudo crear el miembro del equipo.",
     "onlyInactiveDelete": "Solo se pueden borrar definitivamente miembros inactivos.",

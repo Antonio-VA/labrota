@@ -459,6 +459,9 @@
       "training": "In training"
     },
     "inviteViewerLabel": "Send viewer invitation — they will receive an email to create their account with read-only calendar access",
+    "wizardStep1": "Details",
+    "wizardStep2": "Availability",
+    "wizardStep3": "Skills",
     "inviteFailed": "Staff created but invite failed: {error}",
     "staffCreationFailed": "Failed to create staff member.",
     "onlyInactiveDelete": "Only inactive members can be permanently deleted.",

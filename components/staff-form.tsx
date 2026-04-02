@@ -303,27 +303,61 @@ export function StaffForm({
     })
   }
 
-  const [tab, setTab] = useState<"datos" | "disponibilidad" | "tareas">("datos")
+  const STEPS = ["datos", "disponibilidad", "tareas"] as const
+  type Step = typeof STEPS[number]
+  const [tab, setTab] = useState<Step>("datos")
+  const stepIndex = STEPS.indexOf(tab)
+  const isWizard = mode === "create"
+  const stepLabels = {
+    datos: t("wizardStep1"),
+    disponibilidad: t("wizardStep2"),
+    tareas: t("wizardStep3"),
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
 
-      {/* Tabs */}
-      <div className="flex gap-0 border-b border-border -mb-2">
-        {(["datos", "disponibilidad", "tareas"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors",
-              tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {t === "datos" ? "Datos" : t === "disponibilidad" ? "Disponibilidad" : "Habilidades"}
-          </button>
-        ))}
-      </div>
+      {/* Wizard stepper (create) or tabs (edit) */}
+      {isWizard ? (
+        <div className="flex items-center gap-2 -mb-2">
+          {STEPS.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              {i > 0 && <div className={cn("h-px w-6", i <= stepIndex ? "bg-primary" : "bg-border")} />}
+              <button
+                type="button"
+                onClick={() => i <= stepIndex && setTab(s)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors",
+                  i === stepIndex
+                    ? "bg-primary text-primary-foreground"
+                    : i < stepIndex
+                    ? "bg-primary/10 text-primary cursor-pointer"
+                    : "bg-muted text-muted-foreground cursor-default"
+                )}
+              >
+                <span className="size-5 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-semibold">{i + 1}</span>
+                {stepLabels[s]}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex gap-0 border-b border-border -mb-2">
+          {STEPS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setTab(s)}
+              className={cn(
+                "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors",
+                tab === s ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {stepLabels[s]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* === TAB: Datos === */}
       <div className={cn("flex flex-col gap-6", tab !== "datos" && "hidden")}>
@@ -619,56 +653,57 @@ export function StaffForm({
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button type="submit" disabled={isPending}>
-            {isPending
-              ? tc("saving")
-              : mode === "create"
-              ? tc("create")
-              : tc("save")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
-            render={<Link href="/staff" />}
-          >
-            {tc("cancel")}
-          </Button>
-        </div>
-
-        {mode === "edit" && !confirmDelete && (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending || isDeleting}
-            onClick={() => setConfirmDelete(true)}
-          >
-            {tc("delete")}
-          </Button>
-        )}
-
-        {mode === "edit" && confirmDelete && (
+        {isWizard ? (
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-muted-foreground">
-              {t("deleteConfirmDescription")}
-            </span>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={isDeleting}
-              onClick={handleDelete}
-            >
-              {isDeleting ? "…" : tc("confirm")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmDelete(false)}
-            >
-              {tc("cancel")}
-            </Button>
+            {stepIndex > 0 && (
+              <Button type="button" variant="outline" onClick={() => setTab(STEPS[stepIndex - 1])} disabled={isPending}>
+                {tc("back")}
+              </Button>
+            )}
+            {stepIndex === 0 && (
+              <Button type="button" variant="outline" disabled={isPending} render={<Link href="/staff" />}>
+                {tc("cancel")}
+              </Button>
+            )}
+            {stepIndex < STEPS.length - 1 ? (
+              <Button type="button" onClick={() => setTab(STEPS[stepIndex + 1])} disabled={isPending}>
+                {tc("next")}
+              </Button>
+            ) : (
+              <Button type="submit" disabled={isPending}>
+                {isPending ? tc("saving") : tc("create")}
+              </Button>
+            )}
           </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Button type="submit" disabled={isPending}>
+                {isPending ? tc("saving") : tc("save")}
+              </Button>
+              <Button type="button" variant="outline" disabled={isPending} render={<Link href="/staff" />}>
+                {tc("cancel")}
+              </Button>
+            </div>
+
+            {!confirmDelete && (
+              <Button type="button" variant="destructive" disabled={isPending || isDeleting} onClick={() => setConfirmDelete(true)}>
+                {tc("delete")}
+              </Button>
+            )}
+
+            {confirmDelete && (
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-muted-foreground">{t("deleteConfirmDescription")}</span>
+                <Button type="button" variant="destructive" disabled={isDeleting} onClick={handleDelete}>
+                  {isDeleting ? "…" : tc("confirm")}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
+                  {tc("cancel")}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </form>
