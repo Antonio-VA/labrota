@@ -18,11 +18,12 @@ export default async function EditStaffPage({
   const supabase = await createClient()
   const t = await getTranslations("staff")
 
-  const [staffRes, tecnicasRes, deptRes, shiftTypesRes] = await Promise.all([
+  const [staffRes, tecnicasRes, deptRes, shiftTypesRes, labConfigRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").eq("id", id).single() as unknown as Promise<{ data: StaffWithSkills | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("departments").select("*").order("sort_order"),
     supabase.from("shift_types").select("*").order("sort_order"),
+    supabase.from("lab_config").select("days_off_preference").single(),
   ])
 
   if (!staffRes.data) notFound()
@@ -31,6 +32,7 @@ export default async function EditStaffPage({
   const tecnicas    = (tecnicasRes.data ?? []) as Tecnica[]
   const departments = (deptRes.data ?? []) as Department[]
   const shiftTypes  = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
+  const guardiaMode = (labConfigRes.data as { days_off_preference?: string } | null)?.days_off_preference === "guardia"
 
   return (
     <>
@@ -46,7 +48,7 @@ export default async function EditStaffPage({
                 {staff.first_name} {staff.last_name}
               </p>
             </div>
-            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} />
+            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} guardiaMode={guardiaMode} />
           </div>
         </MobileGate>
       </div>

@@ -13,12 +13,13 @@ export default async function NewStaffPage() {
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("departments").select("*").order("sort_order"),
     supabase.from("shift_types").select("*").order("sort_order"),
-    supabase.from("lab_config").select("default_days_per_week").single(),
+    supabase.from("lab_config").select("default_days_per_week, days_off_preference").single(),
   ])
   const tecnicas = (tecRes.data ?? []) as Tecnica[]
   const departments = (deptRes.data ?? []) as Department[]
   const shiftTypes = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
   const defaultDaysPerWeek = (labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5
+  const guardiaMode = (labConfigRes.data as { days_off_preference?: string } | null)?.days_off_preference === "guardia"
 
   return (
     <>
@@ -28,7 +29,7 @@ export default async function NewStaffPage() {
             <div>
               <h1 className="text-[18px] font-medium">{t("addStaff")}</h1>
             </div>
-            <StaffForm mode="create" tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} defaultDaysPerWeek={defaultDaysPerWeek} />
+            <StaffForm mode="create" tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} defaultDaysPerWeek={defaultDaysPerWeek} guardiaMode={guardiaMode} />
           </div>
         </MobileGate>
       </div>

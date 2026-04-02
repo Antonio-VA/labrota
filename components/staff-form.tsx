@@ -254,6 +254,7 @@ export function StaffForm({
   departments: deptsProp,
   shiftTypes = [],
   defaultDaysPerWeek = 5,
+  guardiaMode = false,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
@@ -261,6 +262,7 @@ export function StaffForm({
   departments?: import("@/lib/types/database").Department[]
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
   defaultDaysPerWeek?: number
+  guardiaMode?: boolean
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -520,49 +522,7 @@ export function StaffForm({
         />
       </Section>
 
-      <Section label={t("fields.preferredShift")}>
-        <p className="text-[12px] text-muted-foreground mb-2">
-          {t("daysPreferredHint3")}
-        </p>
-        <div className="flex gap-2 flex-wrap">
-          {shiftTypes.filter((st) => st.active !== false).map((st) => {
-            const isPref = preferredShifts.includes(st.code)
-            const isAvoid = avoidShifts.includes(st.code)
-            return (
-              <button
-                key={st.code}
-                type="button"
-                onClick={() => cycleShiftPreference(st.code)}
-                disabled={isPending}
-                title={`${st.name_es} (${st.start_time}–${st.end_time})`}
-                className={cn(
-                  "h-8 min-w-[48px] px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
-                  isPref
-                    ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]"
-                    : isAvoid
-                    ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {st.code}
-              </button>
-            )
-          })}
-        </div>
-        <p className="text-[12px] text-muted-foreground mt-1.5">
-          {preferredShifts.length > 0 || avoidShifts.length > 0 ? (
-            <>
-              {preferredShifts.length > 0 && <>{t("prefersLabel")} {preferredShifts.join(", ")}</>}
-              {preferredShifts.length > 0 && avoidShifts.length > 0 && " — "}
-              {avoidShifts.length > 0 && <>{t("avoidsLabel")} {avoidShifts.join(", ")}</>}
-            </>
-          ) : t("fields.preferredShiftNone")}
-        </p>
-        <input type="hidden" name="preferred_shifts" value={preferredShifts.join(",")} />
-        <input type="hidden" name="avoid_shifts" value={avoidShifts.join(",")} />
-      </Section>
-
-      {/* Días disponibles (hard constraint) */}
+      {/* Available days (hard constraint) */}
       <Section label={t("daysAvailable")}>
         <p className="text-[12px] text-muted-foreground mb-2">
           {t("daysAvailableHint")}
@@ -595,7 +555,7 @@ export function StaffForm({
         )}
       </Section>
 
-      {/* Preferencias de día (3-state: neutral / prefers / avoids) */}
+      {/* Day preferences (3-state: neutral / prefers / avoids) */}
       {selectedDays.length > 0 && (
         <Section label={t("daysPreferred")}>
           <p className="text-[12px] text-muted-foreground mb-2">
@@ -650,21 +610,67 @@ export function StaffForm({
         </Section>
       )}
 
-      <Section label={t("prefersGuardia")}>
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            name="prefers_guardia"
-            value="on"
-            defaultChecked={(staff as any)?.prefers_guardia === true}
-            disabled={isPending}
-            className="mt-0.5 size-4 rounded border-border accent-primary"
-          />
-          <span className="text-[13px] text-muted-foreground leading-tight">
-            {t("prefersGuardiaHint")}
-          </span>
-        </label>
+      {/* Preferred shifts */}
+      <Section label={t("fields.preferredShift")}>
+        <p className="text-[12px] text-muted-foreground mb-2">
+          {t("daysPreferredHint3")}
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {shiftTypes.filter((st) => st.active !== false).map((st) => {
+            const isPref = preferredShifts.includes(st.code)
+            const isAvoid = avoidShifts.includes(st.code)
+            return (
+              <button
+                key={st.code}
+                type="button"
+                onClick={() => cycleShiftPreference(st.code)}
+                disabled={isPending}
+                title={`${st.name_es} (${st.start_time}–${st.end_time})`}
+                className={cn(
+                  "h-8 min-w-[48px] px-3 rounded-[8px] border text-[13px] font-medium transition-colors disabled:opacity-50",
+                  isPref
+                    ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]"
+                    : isAvoid
+                    ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {st.code}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[12px] text-muted-foreground mt-1.5">
+          {preferredShifts.length > 0 || avoidShifts.length > 0 ? (
+            <>
+              {preferredShifts.length > 0 && <>{t("prefersLabel")} {preferredShifts.join(", ")}</>}
+              {preferredShifts.length > 0 && avoidShifts.length > 0 && " — "}
+              {avoidShifts.length > 0 && <>{t("avoidsLabel")} {avoidShifts.join(", ")}</>}
+            </>
+          ) : t("fields.preferredShiftNone")}
+        </p>
+        <input type="hidden" name="preferred_shifts" value={preferredShifts.join(",")} />
+        <input type="hidden" name="avoid_shifts" value={avoidShifts.join(",")} />
       </Section>
+
+      {/* Weekend on-call volunteer — only shown when guardia mode is active */}
+      {guardiaMode && (
+        <Section label={t("prefersGuardia")}>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              name="prefers_guardia"
+              value="on"
+              defaultChecked={(staff as any)?.prefers_guardia === true}
+              disabled={isPending}
+              className="mt-0.5 size-4 rounded border-border accent-primary"
+            />
+            <span className="text-[13px] text-muted-foreground leading-tight">
+              {t("prefersGuardiaHint")}
+            </span>
+          </label>
+        </Section>
+      )}
 
       </div>
 
