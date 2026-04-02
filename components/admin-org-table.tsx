@@ -132,7 +132,7 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
                   className="size-4 rounded accent-primary cursor-pointer"
                 />
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Organisation</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Organization</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Staff</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Rotas</th>

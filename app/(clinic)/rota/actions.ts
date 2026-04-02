@@ -199,20 +199,20 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Fetch org display mode first — isolated so engine config columns missing in DB can't break it
-  const { data: orgModeRow } = await supabase
-    .from("organisations")
-    .select("rota_display_mode")
-    .limit(1)
-    .maybeSingle() as { data: { rota_display_mode?: string } | null }
+  // Fetch org display mode + engine config in parallel
+  const [{ data: orgModeRow }, { data: orgEngineRow }] = await Promise.all([
+    supabase
+      .from("organisations")
+      .select("rota_display_mode")
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>,
+    supabase
+      .from("organisations")
+      .select("ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }>,
+  ])
   const orgDisplayMode = orgModeRow?.rota_display_mode ?? "by_shift"
-
-  // Fetch engine config separately — if columns don't exist yet (migration pending), fall back gracefully
-  const { data: orgEngineRow } = await supabase
-    .from("organisations")
-    .select("ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
-    .limit(1)
-    .maybeSingle() as { data: { ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }
   const engineConfig: import("@/lib/types/database").EngineConfig = {
     aiOptimalVersion:     orgEngineRow?.ai_optimal_version     ?? "v2",
     hybridEnabled:        orgEngineRow?.engine_hybrid_enabled  ?? true,

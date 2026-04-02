@@ -276,6 +276,206 @@ export async function generateTechReport(from: string, to: string): Promise<Tech
   }
 }
 
+// ── Report 3: Extra Days Worked ─────────────────────────────────────────────
+
+export interface ExtraDaysRow {
+  staffId: string
+  firstName: string
+  lastName: string
+  department: string
+  color: string
+  daysPerWeek: number
+  totalExtra: number
+  weeks: { weekStart: string; assigned: number; extra: number }[]
+}
+
+export interface ExtraDaysData {
+  orgName: string
+  periodLabel: string
+  month: string
+  totalStaffWithExtra: number
+  totalExtraDays: number
+  rows: ExtraDaysRow[]
+}
+
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const dow = d.getDay()
+  d.setDate(d.getDate() - ((dow + 6) % 7))
+  return d
+}
+
+export async function generateExtraDaysReport(month: string): Promise<ExtraDaysData | { error: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  // Validate: must be a past month
+  const today = new Date()
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+  if (month >= currentMonth) return { error: "Solo se pueden generar informes de meses pasados." }
+
+  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
+  const orgName = (org as { name: string } | null)?.name ?? ""
+
+  const [year, mon] = month.split("-").map(Number)
+  const firstDay = new Date(year, mon - 1, 1)
+  const lastDay = new Date(year, mon, 0)
+  const from = firstDay.toISOString().split("T")[0]
+  const to = lastDay.toISOString().split("T")[0]
+
+  // Fetch staff
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("id, first_name, last_name, role, color, days_per_week")
+    .eq("organisation_id", orgId)
+    .neq("onboarding_status", "inactive") as { data: { id: string; first_name: string; last_name: string; role: string; color: string; days_per_week: number }[] | null }
+  const staff = staffData ?? []
+
+  // Fetch assignments
+  const { data: assignments } = await supabase
+    .from("rota_assignments")
+    .select("staff_id, date")
+    .eq("organisation_id", orgId)
+    .gte("date", from)
+    .lte("date", to) as { data: { staff_id: string; date: string }[] | null }
+
+  // Group assignments by staff → week → unique dates
+  const staffIds = new Set(staff.map((s) => s.id))
+  const byStaffWeek: Record<string, Record<string, Set<string>>> = {} // staffId → weekStart → set of dates
+
+  for (const a of assignments ?? []) {
+    if (!staffIds.has(a.staff_id)) continue
+    const weekStart = getMonday(new Date(a.date + "T12:00:00")).toISOString().split("T")[0]
+    if (!byStaffWeek[a.staff_id]) byStaffWeek[a.staff_id] = {}
+    if (!byStaffWeek[a.staff_id][weekStart]) byStaffWeek[a.staff_id][weekStart] = new Set()
+    byStaffWeek[a.staff_id][weekStart].add(a.date)
+  }
+
+  // Build rows — only staff with at least one extra day
+  const rows: ExtraDaysRow[] = []
+  for (const s of staff) {
+    const weekMap = byStaffWeek[s.id]
+    if (!weekMap) continue
+    const target = s.days_per_week ?? 5
+    const weeks: { weekStart: string; assigned: number; extra: number }[] = []
+    let totalExtra = 0
+    for (const [weekStart, dates] of Object.entries(weekMap)) {
+      const assigned = dates.size
+      if (assigned > target) {
+        const extra = assigned - target
+        weeks.push({ weekStart, assigned, extra })
+        totalExtra += extra
+      }
+    }
+    if (weeks.length > 0) {
+      weeks.sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+      rows.push({
+        staffId: s.id,
+        firstName: s.first_name,
+        lastName: s.last_name,
+        department: s.role,
+        color: s.color,
+        daysPerWeek: target,
+        totalExtra,
+        weeks,
+      })
+    }
+  }
+
+  rows.sort((a, b) => b.totalExtra - a.totalExtra)
+
+  const monthLabel = firstDay.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+
+  return {
+    orgName,
+    periodLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+    month,
+    totalStaffWithExtra: rows.length,
+    totalExtraDays: rows.reduce((s, r) => s + r.totalExtra, 0),
+    rows,
+  }
+}
+
+// ── Report 4: Confirmed Leaves ──────────────────────────────────────────────
+
+export interface LeaveReportRow {
+  leaveId: string
+  staffName: string
+  department: string
+  color: string
+  type: string
+  startDate: string
+  endDate: string
+  days: number
+  notes: string | null
+}
+
+export interface LeaveReportData {
+  orgName: string
+  periodLabel: string
+  from: string
+  to: string
+  totalLeaves: number
+  totalDays: number
+  rows: LeaveReportRow[]
+}
+
+export async function generateLeaveReport(from: string, to: string): Promise<LeaveReportData | { error: string }> {
+  const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
+  const orgName = (org as { name: string } | null)?.name ?? ""
+
+  // Fetch approved leaves overlapping the range
+  const { data: leaves } = await supabase
+    .from("leaves")
+    .select("id, staff_id, type, start_date, end_date, notes")
+    .eq("organisation_id", orgId)
+    .eq("status", "approved")
+    .lte("start_date", to)
+    .gte("end_date", from)
+    .order("start_date") as { data: { id: string; staff_id: string; type: string; start_date: string; end_date: string; notes: string | null }[] | null }
+
+  // Fetch staff lookup
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("id, first_name, last_name, role, color")
+    .eq("organisation_id", orgId) as { data: { id: string; first_name: string; last_name: string; role: string; color: string }[] | null }
+
+  const staffMap = new Map((staffData ?? []).map((s) => [s.id, s]))
+
+  const rows: LeaveReportRow[] = (leaves ?? []).map((l) => {
+    const s = staffMap.get(l.staff_id)
+    const start = new Date(l.start_date + "T12:00:00")
+    const end = new Date(l.end_date + "T12:00:00")
+    const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+    return {
+      leaveId: l.id,
+      staffName: s ? `${s.first_name} ${s.last_name}` : "—",
+      department: s?.role ?? "",
+      color: s?.color ?? "",
+      type: l.type,
+      startDate: l.start_date,
+      endDate: l.end_date,
+      days,
+      notes: l.notes,
+    }
+  })
+
+  return {
+    orgName,
+    periodLabel: `${formatDateES(from)} – ${formatDateES(to)}`,
+    from,
+    to,
+    totalLeaves: rows.length,
+    totalDays: rows.reduce((s, r) => s + r.days, 0),
+    rows,
+  }
+}
+
 function formatDateES(iso: string): string {
   const d = new Date(iso + "T12:00:00")
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })

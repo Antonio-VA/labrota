@@ -871,7 +871,7 @@ function StaffTable({
                     if (end && today <= end) return (
                       <Tooltip>
                         <TooltipTrigger render={
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 cursor-default">OB</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 cursor-default">ONBOARDING</span>
                         } />
                         <TooltipContent side="right">En periodo de incorporación hasta {end}</TooltipContent>
                       </Tooltip>

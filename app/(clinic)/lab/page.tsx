@@ -20,7 +20,7 @@ export default async function LabConfigPage() {
   const supabase = await createClient()
   const t = await getTranslations("lab")
 
-  const [configRes, rulesRes, staffRes, shiftTypesRes, tecnicasRes, templatesRes, departmentsRes] = await Promise.all([
+  const [configRes, rulesRes, staffRes, shiftTypesRes, tecnicasRes, templatesRes, departmentsRes, noteTemplates, rotaDisplayMode] = await Promise.all([
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("*").order("created_at"),
     supabase.from("staff").select("id, first_name, last_name, role, contract_type").neq("onboarding_status", "inactive").order("first_name"),
@@ -28,20 +28,11 @@ export default async function LabConfigPage() {
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("rota_templates").select("*").order("created_at", { ascending: false }),
     supabase.from("departments").select("*").order("sort_order"),
+    getNoteTemplates(),
+    // Fetch org display mode — single query via RLS (org scoped)
+    supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle()
+      .then(({ data }) => (data as { rota_display_mode?: string } | null)?.rota_display_mode ?? "by_shift"),
   ])
-
-  // Fetch org display mode
-  const { data: { user } } = await supabase.auth.getUser()
-  let rotaDisplayMode = "by_shift"
-  if (user) {
-    const { data: profile } = await supabase.from("profiles").select("organisation_id").eq("id", user.id).single() as { data: { organisation_id: string | null } | null }
-    if (profile?.organisation_id) {
-      const { data: org } = await supabase.from("organisations").select("rota_display_mode").eq("id", profile.organisation_id).single() as { data: { rota_display_mode?: string } | null }
-      rotaDisplayMode = org?.rota_display_mode ?? "by_shift"
-    }
-  }
-
-  const noteTemplates = await getNoteTemplates()
   const config     = configRes.data as LabConfig | null
   const rules      = (rulesRes.data ?? []) as RotaRule[]
   const staff      = (staffRes.data ?? []) as (Pick<Staff, "id" | "first_name" | "last_name" | "role"> & { contract_type?: string })[]
