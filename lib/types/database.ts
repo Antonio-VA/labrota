@@ -233,6 +233,7 @@ export interface LabConfig {
   days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day"  // default "prefer_weekend"
   public_holiday_mode:      "normal" | "saturday_coverage"  // default "normal"
   public_holiday_reduce_budget: boolean  // default false — reduce weekly budget by 1 per holiday
+  annual_leave_days:        number  // default 20 — annual holiday allowance per employee
   shift_name_am_es:         string
   shift_name_pm_es:         string
   shift_name_full_es:       string
@@ -296,6 +297,7 @@ export type LabConfigUpdate = {
   days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
   public_holiday_mode?:      "normal" | "saturday_coverage"
   public_holiday_reduce_budget?: boolean
+  annual_leave_days?:        number
   task_coverage_enabled?:    boolean
   task_coverage_by_day?:     Record<string, Record<string, number>> | null
   shift_coverage_enabled?:   boolean

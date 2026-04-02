@@ -447,6 +447,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
     return 0
   }
 
+  const annualLeaveDays = lc.annual_leave_days as number ?? 20
   const weekdays = ["mon", "tue", "wed", "thu", "fri"]
   const weekendDays = ["sat", "sun"]
   const allDepts = [...departments.filter((d) => d.code !== "admin"), ...departments.filter((d) => d.code === "admin")]
@@ -473,8 +474,8 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
     const avgDaysPerWeek = currentStaff.length > 0
       ? currentStaff.reduce((sum, s) => sum + s.days_per_week, 0) / currentStaff.length
       : 5
-    // Each person provides: (avg_days_per_week × 52) - 20 holiday days
-    const effectiveDaysPerYear = (avgDaysPerWeek * 52) - 20
+    // Each person provides: (avg_days_per_week × 52) - annual leave days
+    const effectiveDaysPerYear = (avgDaysPerWeek * 52) - annualLeaveDays
 
     const optimal = Math.ceil(totalPersonDays / effectiveDaysPerYear)
     grandTotal += optimal
@@ -496,7 +497,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
       headcount: d.headcount,
       explanation: d.explanation,
     })),
-    explanation: `Calculated from ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums. Each person provides (days_per_week × 52) − 20 holiday days of effective work per year.`,
+    explanation: `Calculated from ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums. Each person provides (days_per_week × 52) − ${annualLeaveDays} holiday days of effective work per year.`,
     calculatedAt: new Date().toISOString(),
   }
 

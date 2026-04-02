@@ -687,6 +687,8 @@
     "holidayModeSaturdayHint": "Los festivos entre semana usan la cobertura del sábado y se reduce en 1 día el presupuesto semanal de cada persona por cada festivo.",
     "holidayReduceBudget": "Reducir presupuesto semanal",
     "holidayReduceBudgetHint": "Reduce en 1 día el presupuesto semanal de cada persona por cada festivo de la semana.",
+    "annualLeaveDays": "Vacaciones anuales",
+    "annualLeaveDaysHint": "días por persona al año",
     "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada.",
     "rules": {

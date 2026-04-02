@@ -687,6 +687,8 @@
     "holidayModeSaturdayHint": "Weekday bank holidays use Saturday coverage levels and each person's weekly budget is reduced by 1 per holiday.",
     "holidayReduceBudget": "Reduce weekly budget",
     "holidayReduceBudgetHint": "Reduces each person's weekly budget by 1 day for each bank holiday in the week.",
+    "annualLeaveDays": "Annual leave",
+    "annualLeaveDaysHint": "days per person per year",
     "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated.",
     "rules": {
