@@ -2305,12 +2305,13 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   const currentMonthPrefix = monthStart.slice(0, 7)
   for (const a of assignmentsRes.data ?? []) {
     if (!a.date.startsWith(currentMonthPrefix)) continue
+    if (!staffLookup[a.staff_id]) continue // skip inactive staff
     if (!staffTotals[a.staff_id]) {
-      const s = staffLookup[a.staff_id] ?? a.staff
+      const s = staffLookup[a.staff_id]
       staffTotals[a.staff_id] = {
-        first: s?.first_name ?? "?", last: s?.last_name ?? "?",
-        role: s?.role ?? "lab", count: 0,
-        daysPerWeek: staffLookup[a.staff_id]?.days_per_week ?? 5,
+        first: s.first_name, last: s.last_name,
+        role: s.role, count: 0,
+        daysPerWeek: s.days_per_week ?? 5,
       }
     }
     staffTotals[a.staff_id].count++
