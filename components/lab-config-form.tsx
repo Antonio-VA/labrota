@@ -258,13 +258,13 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
       {(section === "all" || section === "parametros") && <>
       {/* ── DÍAS LIBRES ─────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-background px-5">
-        <SectionHeader title="Días libres" />
-        <p className="text-[13px] text-muted-foreground mb-3">Determina cuándo se asignan los días libres del personal.</p>
+        <SectionHeader title={t("daysOffTitle")} />
+        <p className="text-[13px] text-muted-foreground mb-3">{t("daysOffDescription")}</p>
         <div className="flex flex-col gap-1 pb-4">
           {([
-            { value: "always_weekend", label: "Siempre fin de semana", hint: "Los días libres son siempre sábado y domingo. Solo se asigna personal de guardia." },
-            { value: "prefer_weekend", label: "Preferiblemente fin de semana", hint: "Se intenta que los días libres caigan en fin de semana, pero se puede asignar si es necesario." },
-            { value: "any_day", label: "Cualquier día", hint: "Los días libres se distribuyen por igual entre todos los días de la semana." },
+            { value: "always_weekend", label: t("daysOffAlwaysWeekend"), hint: t("daysOffAlwaysWeekendHint") },
+            { value: "prefer_weekend", label: t("daysOffPreferWeekend"), hint: t("daysOffPreferWeekendHint") },
+            { value: "any_day", label: t("daysOffAnyDay"), hint: t("daysOffAnyDayHint") },
           ] as const).map((opt) => (
             <label
               key={opt.value}
