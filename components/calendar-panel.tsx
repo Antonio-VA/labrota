@@ -959,8 +959,8 @@ function ProfileSkillsSection({
   // All available skill codes from active tecnicas
   const allSkills = useMemo(() => {
     const fromTecnicas = tecnicas
-      .filter((tc) => tc.required_skill && tc.activa)
-      .map((tc) => tc.required_skill!)
+      .filter((tc) => tc.activa)
+      .map((tc) => tc.codigo)
     return [...new Set(fromTecnicas)]
   }, [tecnicas])
 
@@ -1013,9 +1013,9 @@ function ProfileSkillsSection({
     onChanged?.()
   }
 
-  // Tecnica code map for display
+  // Tecnica code map: codigo is already the display code
   const codeMap = useMemo(() =>
-    Object.fromEntries(tecnicas.filter((tc) => tc.required_skill).map((tc) => [tc.required_skill!, tc.codigo]))
+    Object.fromEntries(tecnicas.map((tc) => [tc.codigo, tc.codigo]))
   , [tecnicas])
 
   return (
@@ -1404,6 +1404,10 @@ function StaffProfilePanel({
                 <div>
                   <p className="text-muted-foreground">{t("seniority")}</p>
                   <p className="text-foreground font-medium">{tenureLabel}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{t("daysPerWeek")}</p>
+                  <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
