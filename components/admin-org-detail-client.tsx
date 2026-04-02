@@ -35,9 +35,6 @@ export function AdminOrgDetailClient({
   initialDailyHybridLimit = 10,
   initialAnnualLeaveDays = 20,
   initialDefaultDaysPerWeek = 5,
-  initialReduceBudgetOnHolidays = true,
-  initialPartTimeWeight = 0.5,
-  initialInternWeight = 0.5,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -64,9 +61,6 @@ export function AdminOrgDetailClient({
   initialDailyHybridLimit?: number
   initialAnnualLeaveDays?: number
   initialDefaultDaysPerWeek?: number
-  initialReduceBudgetOnHolidays?: boolean
-  initialPartTimeWeight?: number
-  initialInternWeight?: number
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -96,9 +90,6 @@ export function AdminOrgDetailClient({
   const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
   const [annualLeaveDays, setAnnualLeaveDays] = useState(initialAnnualLeaveDays)
   const [defaultDaysPerWeek, setDefaultDaysPerWeek] = useState(initialDefaultDaysPerWeek)
-  const [reduceBudgetOnHolidays, setReduceBudgetOnHolidays] = useState(initialReduceBudgetOnHolidays)
-  const [partTimeWeight, setPartTimeWeight] = useState(initialPartTimeWeight)
-  const [internWeight, setInternWeight] = useState(initialInternWeight)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -161,7 +152,7 @@ export function AdminOrgDetailClient({
         const r = await toggleOrgTaskInShift(orgId, enableTaskInShift)
         if (r.error) { toast.error(r.error); hasError = true }
       }
-      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays, reduceBudgetOnHolidays, defaultDaysPerWeek, partTimeWeight, internWeight)
+      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays, undefined, defaultDaysPerWeek)
       if (r2.error) { toast.error(r2.error); hasError = true }
       const r4 = await updateOrgEngineConfig(orgId, {
         ai_optimal_version: aiOptimalVersion,
@@ -736,55 +727,6 @@ export function AdminOrgDetailClient({
               className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
             />
             <span className="text-[12px] text-muted-foreground">días/semana para nuevos empleados</span>
-          </div>
-          <div className="px-5 py-3 flex items-center gap-3 border-b border-border/50">
-            <label className="text-[13px] text-muted-foreground shrink-0">Peso a tiempo parcial</label>
-            <input
-              type="number"
-              min={0.1}
-              max={1}
-              step={0.1}
-              value={partTimeWeight}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v >= 0.1 && v <= 1) setPartTimeWeight(Math.round(v * 10) / 10)
-              }}
-              disabled={isPending}
-              className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
-            />
-            <span className="text-[12px] text-muted-foreground">fracción de cobertura (0.1–1.0)</span>
-          </div>
-          <div className="px-5 py-3 flex items-center gap-3 border-b border-border/50">
-            <label className="text-[13px] text-muted-foreground shrink-0">Peso becario/intern</label>
-            <input
-              type="number"
-              min={0.1}
-              max={1}
-              step={0.1}
-              value={internWeight}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v >= 0.1 && v <= 1) setInternWeight(Math.round(v * 10) / 10)
-              }}
-              disabled={isPending}
-              className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
-            />
-            <span className="text-[12px] text-muted-foreground">fracción de cobertura (0.1–1.0)</span>
-          </div>
-          <div className="px-5 py-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={reduceBudgetOnHolidays}
-                onChange={(e) => setReduceBudgetOnHolidays(e.target.checked)}
-                disabled={isPending}
-                className="accent-primary"
-              />
-              <div>
-                <span className="text-[13px] font-medium">Reducir presupuesto en festivos</span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Reduce en 1 día el presupuesto semanal de cada persona por cada festivo de la semana.</p>
-              </div>
-            </label>
           </div>
         </div>
       </div>

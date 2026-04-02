@@ -438,11 +438,15 @@
       "part_time": "A tiempo parcial",
       "intern": "Becario/a"
     },
-    "onboardingWeeks": {
-      "none": "Sin periodo de incorporación",
-      "weeks": "semanas"
+    "contractTypeHint": {
+      "part_time": "Cuenta como 0,5 personas en los cálculos de cobertura. El peso exacto se configura en el panel de administración.",
+      "intern": "Cuenta como 0,5 personas en los cálculos de cobertura. El peso exacto se configura en el panel de administración."
     },
-    "onboardingWeeksHint": "Durante este periodo el empleado está asignado pero no cuenta para los mínimos de cobertura.",
+    "onboardingEndDateHint": "Durante este periodo el empleado está asignado pero no cuenta para los mínimos de cobertura. La fecha final se ajusta automáticamente al domingo de la semana.",
+    "addOnboardingPeriod": "Añadir periodo de incorporación",
+    "removeOnboardingPeriod": "Quitar periodo de incorporación",
+    "prefersGuardia": "Voluntario/a de guardia de fin de semana",
+    "prefersGuardiaHint": "Este empleado se ofrece a hacer guardias de fin de semana adicionales cuando el modo guardia está activo.",
     "workingDays": {
       "mon": "Lun",
       "tue": "Mar",
@@ -632,6 +636,7 @@
     "savedAutomatically": "Los cambios se guardan automáticamente",
     "sections": {
       "coverage": "Cobertura mínima",
+      "coverageBehaviour": "Comportamiento de cobertura",
       "weekdays": "Días laborables",
       "weekends": "Fines de semana",
       "staffing": "Ratio de personal",
@@ -715,6 +720,13 @@
     "daysOffPreferWeekendHint": "Se intenta que los días libres caigan en fin de semana, pero se puede asignar si es necesario.",
     "daysOffAnyDay": "Cualquier día",
     "daysOffAnyDayHint": "Los días libres se distribuyen por igual entre todos los días de la semana.",
+    "daysOffGuardia": "Guardias alternas",
+    "daysOffGuardiaHint": "El personal trabaja de lunes a viernes. Los fines de semana son guardias adicionales asignadas de forma rotativa entre el personal voluntario.",
+    "guardiaParamsTitle": "Parámetros de guardia",
+    "guardiaMinWeeks": "Mínimo de semanas entre guardias",
+    "guardiaMinWeeksUnit": "semanas",
+    "guardiaMaxMonth": "Máximo de guardias por mes",
+    "guardiaMaxMonthUnit": "(0 = sin límite)",
     "defaultDaysPerWeekTitle": "Días por semana (por defecto)",
     "defaultDaysPerWeekDescription": "Días laborables por defecto para nuevos empleados y cálculo de plantilla mínima.",
     "defaultDaysPerWeekUnit": "días/semana",
@@ -722,6 +734,13 @@
     "modeByTask": "Por tarea",
     "noRegion": "Sin seleccionar",
     "updateSuccess": "Configuración del laboratorio actualizada.",
+    "holidayReduceShiftsLabel": "Reducir turnos disponibles en festivos",
+    "holidayReduceShiftsHint": "Reduce en 1 día los turnos disponibles de cada persona por cada festivo de la semana.",
+    "partTimeWeightLabel": "Peso de empleados a tiempo parcial",
+    "partTimeWeightHint": "Fracción que cuenta cada empleado a tiempo parcial en los mínimos de cobertura.",
+    "internWeightLabel": "Peso de becarios",
+    "internWeightHint": "Fracción que cuenta cada becario en los mínimos de cobertura.",
+    "coverageWeightFraction": "fracción (0.1–1.0)",
     "rules": {
       "title": "Reglas de planificación",
       "subtitle": "Las reglas duras son restricciones absolutas. Las suaves generan avisos pero no bloquean.",

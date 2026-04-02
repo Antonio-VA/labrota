@@ -23,7 +23,7 @@ export default async function LabConfigPage() {
   const [configRes, rulesRes, staffRes, shiftTypesRes, tecnicasRes, templatesRes, departmentsRes] = await Promise.all([
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("*").order("created_at"),
-    supabase.from("staff").select("id, first_name, last_name, role").neq("onboarding_status", "inactive").order("first_name"),
+    supabase.from("staff").select("id, first_name, last_name, role, contract_type").neq("onboarding_status", "inactive").order("first_name"),
     supabase.from("shift_types").select("*").order("sort_order"),
     supabase.from("tecnicas").select("*").order("orden").order("created_at"),
     supabase.from("rota_templates").select("*").order("created_at", { ascending: false }),
@@ -44,7 +44,9 @@ export default async function LabConfigPage() {
   const noteTemplates = await getNoteTemplates()
   const config     = configRes.data as LabConfig | null
   const rules      = (rulesRes.data ?? []) as RotaRule[]
-  const staff      = (staffRes.data ?? []) as Pick<Staff, "id" | "first_name" | "last_name" | "role">[]
+  const staff      = (staffRes.data ?? []) as (Pick<Staff, "id" | "first_name" | "last_name" | "role"> & { contract_type?: string })[]
+  const hasPartTime = staff.some((s) => s.contract_type === "part_time")
+  const hasIntern   = staff.some((s) => s.contract_type === "intern")
   const shiftTypes = (shiftTypesRes.data ?? []) as ShiftTypeDefinition[]
   const tecnicas   = (tecnicasRes.data ?? []) as Tecnica[]
   const templates    = (templatesRes.data ?? []) as RotaTemplate[]
@@ -69,7 +71,7 @@ export default async function LabConfigPage() {
           <LabPageTabs
             cobertura={
               config ? (
-                <LabConfigForm config={config} section="cobertura" rotaDisplayMode={rotaDisplayMode} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} />
+                <LabConfigForm config={config} section="cobertura" rotaDisplayMode={rotaDisplayMode} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} hasPartTime={hasPartTime} hasIntern={hasIntern} />
               ) : (
                 <p className="text-[14px] text-muted-foreground">
                   Lab configuration not found. Please contact your administrator.

@@ -285,7 +285,10 @@ export function runRotaEngine({
   }
 
   // Days-off preference: controls when staff get their off days
-  const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
+  const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | "guardia" | undefined ?? "prefer_weekend"
+  const guardiaMode = daysOffPref === "guardia"
+  const guardiaMinWeeks  = (labConfig as any).guardia_min_weeks_between as number | undefined ?? 2
+  const guardiaMaxMonth  = (labConfig as any).guardia_max_per_month     as number | undefined ?? 2
 
   // ── Public holiday handling ──────────────────────────────────────────────
   const holidayMode = labConfig.public_holiday_mode ?? "saturday"
@@ -344,6 +347,9 @@ export function runRotaEngine({
     const dayCode = getDayCode(date)
     const effectiveDayCode = getEffectiveDayCode(date)
     const wknd = isEffectiveWeekend(date)
+
+    // Guardia mode: weekends are handled in Phase 2c — skip Phase 1 reservation
+    if (guardiaMode && wknd) continue
 
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[effectiveDayCode] ?? 0
     const dynamicLabMin = (labConfig.staffing_ratio > 0 && punctionsForDay > 0) ? Math.ceil(punctionsForDay / labConfig.staffing_ratio) : 0
@@ -415,6 +421,12 @@ export function runRotaEngine({
     const dayCode = getDayCode(date)
     const effectiveDayCode = getEffectiveDayCode(date)
     const weekend = isEffectiveWeekend(date)
+
+    // Guardia mode: weekends assigned separately in Phase 2c
+    if (guardiaMode && weekend) {
+      days.push({ date, assignments: [], skillGaps: [] })
+      continue
+    }
 
     // Coverage requirements — use effective day code (Saturday for holidays when enabled)
     const punctionsForDay = punctionsOverride?.[date] ?? labConfig.punctions_by_day?.[effectiveDayCode] ?? 0
@@ -1735,6 +1747,132 @@ export function runRotaEngine({
         added++
         warnings.push(`[engine] ${dayPlan.date}: ${s.first_name} ${s.last_name} added by under-target backfill (${used + added}/${target})`)
       }
+    }
+  }
+
+  // ── PHASE 2c: Guardia assignment (weekend on-call, guardia mode only) ───────
+  // Weekends were skipped in Phase 2. Now assign the minimum required coverage
+  // by rotating staff fairly — honouring prefers_guardia, min weeks between, and
+  // max per month caps. Guardia shifts do NOT count against days_per_week budget.
+  if (guardiaMode) {
+    const guardiaMinDays = guardiaMinWeeks * 7
+    const weekendDates = allDates.filter((d) => isEffectiveWeekend(d))
+
+    for (const date of weekendDates) {
+      const dayCode = getDayCode(date)
+      const effectiveDayCode = getEffectiveDayCode(date)
+      const dateMonth = date.slice(0, 7)
+      const dayPlan = days.find((d) => d.date === date)
+      if (!dayPlan) continue
+
+      // Coverage requirements for this day
+      let labRequired = 0, andrologyRequired = 0, adminRequired = 0
+      if (shiftCoverageEnabled && shiftCoverageByDay) {
+        const dayShifts = activeShiftTypes
+          .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(effectiveDayCode))
+          .map((st) => st.code)
+        for (const sc of dayShifts) {
+          const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[effectiveDayCode])
+          labRequired       += cov.lab
+          andrologyRequired += cov.andrology
+          adminRequired     += cov.admin
+        }
+      } else {
+        const dayCov = labConfig.coverage_by_day?.[effectiveDayCode]
+        labRequired       = dayCov?.lab       ?? labConfig.min_lab_coverage ?? 0
+        andrologyRequired = dayCov?.andrology ?? labConfig.min_andrology_coverage ?? 0
+        adminRequired     = dayCov?.admin     ?? 0
+      }
+
+      // Helper: how many guardias has this person done in recentAssignments this month?
+      function guardiaCountMonth(staffId: string): number {
+        return recentAssignments.filter((a) =>
+          a.staff_id === staffId &&
+          isWeekend(a.date) &&
+          a.date.slice(0, 7) === dateMonth
+        ).length +
+        days.filter((d) => isWeekend(d.date) && d.date.slice(0, 7) === dateMonth && d.assignments.some((a) => a.staff_id === staffId)).length
+      }
+
+      // Helper: how many days since last guardia for this person?
+      function daysSinceLastGuardia(staffId: string): number {
+        const recentWknd = [...recentAssignments, ...days.flatMap((d) => d.assignments.map((a) => ({ staff_id: a.staff_id, date: d.date })))]
+          .filter((a) => a.staff_id === staffId && isWeekend(a.date) && a.date < date)
+          .sort((a, b) => b.date.localeCompare(a.date))[0]
+        if (!recentWknd) return 9999
+        const diffMs = new Date(date + "T12:00:00").getTime() - new Date(recentWknd.date + "T12:00:00").getTime()
+        return Math.round(diffMs / 86400000)
+      }
+
+      // Sort eligible staff for guardia: prefers first, fewest this month, longest since last, workload
+      function eligibleForGuardia(role: string, needed: number): StaffWithSkills[] {
+        if (needed <= 0) return []
+        const available = staff.filter((s) => {
+          if (s.onboarding_status === "inactive" || s.role !== role) return false
+          if (s.start_date > date || (s.end_date && s.end_date < date)) return false
+          if (leaveMap[s.id]?.has(date)) return false
+          if (s.working_pattern?.length && !s.working_pattern.includes(dayCode)) return false
+          // Already assigned this day (shouldn't happen but guard anyway)
+          if (dayPlan!.assignments.some((a) => a.staff_id === s.id)) return false
+          // Respect min weeks between guardias
+          if (daysSinceLastGuardia(s.id) < guardiaMinDays) return false
+          // Respect max per month cap
+          if (guardiaMaxMonth > 0 && guardiaCountMonth(s.id) >= guardiaMaxMonth) return false
+          return true
+        }).sort((a, b) => {
+          // 1. Volunteers first
+          const aPref = (a as any).prefers_guardia ? 0 : 1
+          const bPref = (b as any).prefers_guardia ? 0 : 1
+          if (aPref !== bPref) return aPref - bPref
+          // 2. Fewest guardias this month
+          const aMon = guardiaCountMonth(a.id)
+          const bMon = guardiaCountMonth(b.id)
+          if (aMon !== bMon) return aMon - bMon
+          // 3. Longest since last guardia
+          const aDays = daysSinceLastGuardia(a.id)
+          const bDays = daysSinceLastGuardia(b.id)
+          if (aDays !== bDays) return bDays - aDays // more days = higher priority
+          // 4. Lightest regular workload
+          return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+        })
+
+        // Take enough to reach weighted coverage requirement
+        const picks: StaffWithSkills[] = []
+        let weightedSum = 0
+        for (const s of available) {
+          if (weightedSum >= needed) break
+          picks.push(s)
+          weightedSum += coverageWeight(s, date)
+        }
+        return picks
+      }
+
+      const guardiaLab   = eligibleForGuardia("lab",       labRequired)
+      const guardiaAndro = eligibleForGuardia("andrology",  andrologyRequired)
+      const guardiaAdmin = eligibleForGuardia("admin",      adminRequired)
+      const guardiaAll   = [...guardiaLab, ...guardiaAndro, ...guardiaAdmin]
+
+      if (guardiaAll.length === 0) {
+        warnings.push(`${date}: no hay personal disponible para guardia`)
+        continue
+      }
+
+      // Determine shift for each guardia person — pick the active weekend shift
+      const weekendShiftCodes = activeShiftTypes
+        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((st) => st.code)
+      const defaultGuardiaShift = (weekendShiftCodes[0] ?? "T1") as ShiftType
+
+      for (const s of guardiaAll) {
+        const explicitPref = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+        const shift = (explicitPref.find((ps) => weekendShiftCodes.includes(ps)) ?? defaultGuardiaShift) as ShiftType
+        dayPlan.assignments.push({ staff_id: s.id, shift_type: shift })
+        // Guardia does NOT count against weekly budget — workloadScore only
+        workloadScore[s.id] = (workloadScore[s.id] ?? 0) + 1
+      }
+
+      warnings.push(`[engine] ${date}: guardia — ${guardiaAll.map((s) => `${s.first_name} ${s.last_name[0]}.`).join(", ")}`)
     }
   }
 

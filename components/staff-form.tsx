@@ -183,6 +183,69 @@ function EndDateField({ initialValue, disabled, label }: { initialValue: string 
   )
 }
 
+// ── Onboarding period date picker (collapsed by default) ──────────────────────
+
+function nextSunday(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00")
+  const dow = d.getDay() // 0 = Sunday
+  if (dow !== 0) d.setDate(d.getDate() + (7 - dow))
+  return d.toISOString().split("T")[0]
+}
+
+function OnboardingPeriodField({ initialValue, disabled }: { initialValue: string | null; disabled: boolean }) {
+  const t = useTranslations("staff")
+  const [show, setShow] = useState(!!initialValue)
+  const [value, setValue] = useState(initialValue ?? "")
+
+  if (!show) {
+    return (
+      <>
+        <input type="hidden" name="onboarding_end_date" value="" />
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setShow(true)}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <Plus className="size-3.5" />
+          {t("addOnboardingPeriod")}
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-end gap-2">
+        <div className="flex flex-col gap-1.5 flex-1">
+          <span className="text-[14px] font-medium">{t("fields.onboardingPeriod")}</span>
+          <Input
+            name="onboarding_end_date"
+            type="date"
+            value={value}
+            onChange={(e) => {
+              if (e.target.value) setValue(nextSunday(e.target.value))
+              else setValue("")
+            }}
+            disabled={disabled}
+            className="rounded-[8px]"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => { setShow(false); setValue("") }}
+          className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 shrink-0 mb-0.5"
+          title={t("removeOnboardingPeriod")}
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <p className="text-[11px] text-muted-foreground/70">{t("onboardingEndDateHint")}</p>
+    </div>
+  )
+}
+
 // ── Main form ─────────────────────────────────────────────────────────────────
 export function StaffForm({
   mode,
@@ -221,6 +284,7 @@ export function StaffForm({
     staff?.avoid_shifts ?? []
   )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
+  const [contractType, setContractType] = useState<string>((staff as any)?.contract_type ?? "full_time")
   const [selectedColor, setSelectedColor] = useState<string>(
     staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
   )
@@ -418,35 +482,23 @@ export function StaffForm({
             </Select>
           </Field>
           <Field label={t("fields.contractType")} required>
-            <Select name="contract_type" defaultValue={(staff as any)?.contract_type ?? "full_time"} disabled={isPending}>
+            <Select name="contract_type" defaultValue={contractType} disabled={isPending} onChange={setContractType}>
               <option value="full_time">{t("contractType.full_time")}</option>
               <option value="part_time">{t("contractType.part_time")}</option>
               <option value="intern">{t("contractType.intern")}</option>
             </Select>
+            {(contractType === "part_time" || contractType === "intern") && (
+              <p className="text-[11px] text-muted-foreground/70 mt-1">{t(`contractTypeHint.${contractType}`)}</p>
+            )}
           </Field>
         </div>
         <Field label={t("fields.startDate")} required>
           <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
         </Field>
-        <Field label={t("fields.onboardingPeriod")}>
-          <div className="flex items-center gap-2">
-            <Select name="onboarding_weeks" defaultValue={(() => {
-              const end = (staff as any)?.onboarding_end_date as string | null
-              if (!end || !staff?.start_date) return "0"
-              const ms = new Date(end).getTime() - new Date(staff.start_date).getTime()
-              const weeks = Math.round(ms / (7 * 86400000))
-              return weeks > 0 ? String(weeks) : "0"
-            })()} disabled={isPending}>
-              <option value="0">{t("onboardingWeeks.none")}</option>
-              <option value="2">2 {t("onboardingWeeks.weeks")}</option>
-              <option value="4">4 {t("onboardingWeeks.weeks")}</option>
-              <option value="6">6 {t("onboardingWeeks.weeks")}</option>
-              <option value="8">8 {t("onboardingWeeks.weeks")}</option>
-              <option value="12">12 {t("onboardingWeeks.weeks")}</option>
-            </Select>
-          </div>
-          <p className="text-[11px] text-muted-foreground/70 mt-1">{t("onboardingWeeksHint")}</p>
-        </Field>
+        <OnboardingPeriodField
+          initialValue={(staff as any)?.onboarding_end_date ?? null}
+          disabled={isPending}
+        />
         <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
       </Section>
 
@@ -597,6 +649,22 @@ export function StaffForm({
           )}
         </Section>
       )}
+
+      <Section label={t("prefersGuardia")}>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="prefers_guardia"
+            value="on"
+            defaultChecked={(staff as any)?.prefers_guardia === true}
+            disabled={isPending}
+            className="mt-0.5 size-4 rounded border-border accent-primary"
+          />
+          <span className="text-[13px] text-muted-foreground leading-tight">
+            {t("prefersGuardiaHint")}
+          </span>
+        </label>
+      </Section>
 
       </div>
 

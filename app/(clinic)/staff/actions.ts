@@ -46,6 +46,7 @@ function parseFormData(formData: FormData) {
       days_per_week:     Math.min(7, Math.max(1, parseInt(formData.get("days_per_week") as string, 10) || 5)),
       onboarding_status:   formData.get("onboarding_status") as OnboardingStatus,
       contract_type:       (formData.get("contract_type") as ContractType) || "full_time",
+      prefers_guardia:     formData.get("prefers_guardia") === "on",
       start_date:          formData.get("start_date") as string,
       end_date:            ((formData.get("end_date") as string) || "").trim() || null,
       notes:             ((formData.get("notes")    as string) || "").trim() || null,
@@ -71,8 +72,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   if (!orgId) return { error: "No organisation found." }
 
   const { staff, skills } = parseFormData(formData)
-  const onboardingWeeks = parseInt(formData.get("onboarding_weeks") as string, 10) || 0
-  const onboardingEndDate = computeOnboardingEndDate(staff.start_date, onboardingWeeks)
+  const onboardingEndDate = ((formData.get("onboarding_end_date") as string) || "").trim() || null
 
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
@@ -158,8 +158,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { staff, skills } = parseFormData(formData)
-  const onboardingWeeks = parseInt(formData.get("onboarding_weeks") as string, 10) || 0
-  const onboardingEndDate = computeOnboardingEndDate(staff.start_date, onboardingWeeks)
+  const onboardingEndDate = ((formData.get("onboarding_end_date") as string) || "").trim() || null
 
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }

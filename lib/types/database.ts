@@ -101,6 +101,7 @@ export interface Staff {
   onboarding_status:    OnboardingStatus
   contract_type:        ContractType
   onboarding_end_date:  string | null   // ISO date — person doesn't count toward minimums until after this date
+  prefers_guardia:      boolean         // opts in to weekend guardia duty
   preferred_shift:      ShiftType | null
   avoid_shifts:      string[] | null
   start_date:        string
@@ -233,7 +234,9 @@ export interface LabConfig {
   enable_leave_requests:    boolean
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
   enable_notes:             boolean
-  days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day"  // default "prefer_weekend"
+  days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day" | "guardia"  // default "prefer_weekend"
+  guardia_min_weeks_between: number  // default 2 — min full weeks between two guardias for same person
+  guardia_max_per_month:     number  // default 2 — hard cap per person per calendar month (0 = no cap)
   public_holiday_mode:      "weekday" | "saturday" | "sunday"  // default "saturday" — which day's coverage to use on holidays
   public_holiday_reduce_budget: boolean  // default true — reduce weekly budget by 1 per holiday
   annual_leave_days:        number  // default 20 — annual holiday allowance per employee
@@ -300,7 +303,9 @@ export type LabConfigUpdate = {
   shift_pm_end?:             string
   shift_full_start?:         string
   shift_full_end?:           string
-  days_off_preference?:      "always_weekend" | "prefer_weekend" | "any_day"
+  days_off_preference?:       "always_weekend" | "prefer_weekend" | "any_day" | "guardia"
+  guardia_min_weeks_between?: number
+  guardia_max_per_month?:     number
   public_holiday_mode?:      "weekday" | "saturday" | "sunday"
   public_holiday_reduce_budget?: boolean
   annual_leave_days?:        number

@@ -1551,7 +1551,8 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
 
   const days = liveDays ?? data.days
   const isByTask = data.rotaDisplayMode === "by_task"
-  const staffMap: Record<string, { first: string; last: string; role: string; count: number; daysPerWeek: number }> = {}
+  const isGuardiaMode = data.daysOffPreference === "guardia"
+  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
 
   // Seed all active staff so 0-assignment members appear too
@@ -1559,12 +1560,14 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     if (deptFilter && !deptFilter.has(s.role)) continue
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, daysPerWeek: s.days_per_week ?? 5,
+      count: 0, guardiaCount: 0, daysPerWeek: s.days_per_week ?? 5,
     }
     staffDaySeen[s.id] = new Set()
   }
 
   for (const day of days) {
+    const dow = new Date(day.date + "T12:00:00").getDay()
+    const isWeekend = dow === 0 || dow === 6
     for (const a of day.assignments) {
       if (deptFilter && !deptFilter.has(a.staff.role)) continue
       // In by_task mode, only count assignments that have a function_label (task assignments)
@@ -1575,10 +1578,12 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
         // Count unique days, not individual task assignments
         if (!staffDaySeen[a.staff_id].has(day.date)) {
           staffDaySeen[a.staff_id].add(day.date)
-          staffMap[a.staff_id].count++
+          if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
+          else staffMap[a.staff_id].count++
         }
       } else {
-        staffMap[a.staff_id].count++
+        if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
+        else staffMap[a.staff_id].count++
       }
     }
   }
@@ -1625,10 +1630,10 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
   const overflow = visibleCount !== null ? entries.slice(visibleCount) : []
 
-  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; daysPerWeek: number }) {
+  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }) {
     const over  = s.count > s.daysPerWeek
     const under = s.count < s.daysPerWeek
-    const color = s.count === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
+    const color = s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
     const isHov = hoveredStaffId === id
     const staffColor = staffColorLookup[id]
     return (
@@ -1645,10 +1650,13 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
+            {s.guardiaCount > 0 && (
+              <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
+            )}
           </button>
         } />
         <TooltipContent side="top">
-          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}
+          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}{s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}
         </TooltipContent>
       </Tooltip>
     )

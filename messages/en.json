@@ -433,16 +433,20 @@
       "onboarding": "Onboarding",
       "inactive": "Inactive"
     },
+    "contractTypeHint": {
+      "part_time": "Counts as 0.5 staff in coverage calculations. The exact weight is configurable in the admin panel.",
+      "intern": "Counts as 0.5 staff in coverage calculations. The exact weight is configurable in the admin panel."
+    },
     "contractType": {
       "full_time": "Full-time",
       "part_time": "Part-time",
       "intern": "Intern"
     },
-    "onboardingWeeks": {
-      "none": "No onboarding period",
-      "weeks": "weeks"
-    },
-    "onboardingWeeksHint": "During this period the staff member is scheduled but does not count toward coverage minimums.",
+    "onboardingEndDateHint": "During this period the staff member is scheduled but does not count toward coverage minimums. The end date is automatically adjusted to the Sunday of that week.",
+    "addOnboardingPeriod": "Add onboarding period",
+    "removeOnboardingPeriod": "Remove onboarding period",
+    "prefersGuardia": "Weekend on-call volunteer",
+    "prefersGuardiaHint": "This staff member volunteers for additional weekend on-call shifts when on-call mode is active.",
     "workingDays": {
       "mon": "Mon",
       "tue": "Tue",
@@ -632,6 +636,7 @@
     "savedAutomatically": "Changes are saved automatically",
     "sections": {
       "coverage": "Minimum coverage",
+      "coverageBehaviour": "Coverage behaviour",
       "weekdays": "Weekdays",
       "weekends": "Weekends",
       "staffing": "Staffing ratio",
@@ -715,6 +720,13 @@
     "daysOffPreferWeekendHint": "Days off preferably fall on weekends, but staff can be assigned if needed.",
     "daysOffAnyDay": "Any day",
     "daysOffAnyDayHint": "Days off are distributed evenly across all days of the week.",
+    "daysOffGuardia": "Weekend on-call",
+    "daysOffGuardiaHint": "Staff work Monday–Friday. Weekends are additional on-call shifts assigned on a rotating basis among volunteer staff.",
+    "guardiaParamsTitle": "On-call parameters",
+    "guardiaMinWeeks": "Minimum weeks between on-call shifts",
+    "guardiaMinWeeksUnit": "weeks",
+    "guardiaMaxMonth": "Maximum on-call shifts per month",
+    "guardiaMaxMonthUnit": "(0 = no limit)",
     "defaultDaysPerWeekTitle": "Days per week (default)",
     "defaultDaysPerWeekDescription": "Default working days per week for new staff and minimum headcount calculation.",
     "defaultDaysPerWeekUnit": "days/week",
@@ -722,6 +734,13 @@
     "modeByTask": "By task",
     "noRegion": "Not selected",
     "updateSuccess": "Lab configuration updated.",
+    "holidayReduceShiftsLabel": "Reduce available shifts on public holidays",
+    "holidayReduceShiftsHint": "Reduces each person's available shifts by 1 day for each public holiday in the week.",
+    "partTimeWeightLabel": "Part-time staff coverage weight",
+    "partTimeWeightHint": "Fraction that each part-time staff member counts toward coverage minimums.",
+    "internWeightLabel": "Intern coverage weight",
+    "internWeightHint": "Fraction that each intern counts toward coverage minimums.",
+    "coverageWeightFraction": "fraction (0.1–1.0)",
     "rules": {
       "title": "Scheduling rules",
       "subtitle": "Hard rules are absolute constraints. Soft rules generate warnings but do not block.",

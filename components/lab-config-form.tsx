@@ -48,7 +48,7 @@ const DEFAULT_COVERAGE: CoverageByDay = {
   sun: { lab: 0, andrology: 0, admin: 0 },
 }
 
-export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation }: { config: LabConfig; section?: "all" | "cobertura" | "parametros" | "workload"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string }) {
+export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation, hasPartTime = false, hasIntern = false }: { config: LabConfig; section?: "all" | "cobertura" | "parametros" | "workload"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string; hasPartTime?: boolean; hasIntern?: boolean }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
   const [coveragePending,   startCoverageTransition] = useTransition()
@@ -164,8 +164,13 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
-    days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
-    public_holiday_mode:   config.public_holiday_mode ?? "saturday",
+    days_off_preference:        (config as any).days_off_preference ?? "prefer_weekend",
+    guardia_min_weeks_between:  (config as any).guardia_min_weeks_between ?? 2,
+    guardia_max_per_month:      (config as any).guardia_max_per_month ?? 2,
+    public_holiday_mode:        config.public_holiday_mode ?? "saturday",
+    public_holiday_reduce_budget: (config as any).public_holiday_reduce_budget ?? true,
+    part_time_weight:           (config as any).part_time_weight ?? 0.5,
+    intern_weight:              (config as any).intern_weight ?? 0.5,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -237,8 +242,13 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
         shift_coverage_enabled: shiftCoverageEnabled,
         shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
-        days_off_preference:    values.days_off_preference,
-        public_holiday_mode:    values.public_holiday_mode,
+        days_off_preference:       values.days_off_preference,
+        guardia_min_weeks_between: values.guardia_min_weeks_between,
+        guardia_max_per_month:     values.guardia_max_per_month,
+        public_holiday_mode:       values.public_holiday_mode,
+        public_holiday_reduce_budget: values.public_holiday_reduce_budget,
+        part_time_weight:          hasPartTime ? values.part_time_weight : undefined,
+        intern_weight:             hasIntern   ? values.intern_weight    : undefined,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -264,6 +274,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             { value: "always_weekend", label: t("daysOffAlwaysWeekend"), hint: t("daysOffAlwaysWeekendHint") },
             { value: "prefer_weekend", label: t("daysOffPreferWeekend"), hint: t("daysOffPreferWeekendHint") },
             { value: "any_day", label: t("daysOffAnyDay"), hint: t("daysOffAnyDayHint") },
+            { value: "guardia", label: t("daysOffGuardia"), hint: t("daysOffGuardiaHint") },
           ] as const).map((opt) => (
             <label
               key={opt.value}
@@ -284,12 +295,47 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 className="mt-0.5 accent-primary"
               />
               <div>
-                <span className="text-[13px] font-medium">{opt.label}</span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
+                <span className="text-[14px] font-medium">{opt.label}</span>
+                <p className="text-[12px] text-muted-foreground mt-0.5">{opt.hint}</p>
               </div>
             </label>
           ))}
         </div>
+
+        {/* Guardia params — only visible when guardia mode is active */}
+        {values.days_off_preference === "guardia" && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 mb-4 flex flex-col gap-3">
+            <p className="text-[12px] font-medium text-primary">{t("guardiaParamsTitle")}</p>
+            <div className="flex items-center gap-3">
+              <label className="text-[13px] text-muted-foreground w-48 shrink-0">{t("guardiaMinWeeks")}</label>
+              <input
+                type="number" min={1} max={8} step={1}
+                value={values.guardia_min_weeks_between}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 1 && v <= 8) setValues((p) => ({ ...p, guardia_min_weeks_between: v }))
+                }}
+                disabled={isPending}
+                className="w-16 h-8 rounded-lg border border-input bg-background px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+              />
+              <span className="text-[12px] text-muted-foreground">{t("guardiaMinWeeksUnit")}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-[13px] text-muted-foreground w-48 shrink-0">{t("guardiaMaxMonth")}</label>
+              <input
+                type="number" min={0} max={8} step={1}
+                value={values.guardia_max_per_month}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (!isNaN(v) && v >= 0 && v <= 8) setValues((p) => ({ ...p, guardia_max_per_month: v }))
+                }}
+                disabled={isPending}
+                className="w-16 h-8 rounded-lg border border-input bg-background px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+              />
+              <span className="text-[12px] text-muted-foreground">{t("guardiaMaxMonthUnit")}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
@@ -575,8 +621,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 className="mt-0.5 accent-primary"
               />
               <div>
-                <span className="text-[13px] font-medium">{opt.label}</span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{opt.hint}</p>
+                <span className="text-[14px] font-medium">{opt.label}</span>
+                <p className="text-[12px] text-muted-foreground mt-0.5">{opt.hint}</p>
               </div>
             </label>
           ))}
@@ -770,6 +816,59 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
             </div>
           </FieldRow>
         </div>
+      </div>
+
+      {/* Coverage behaviour */}
+      <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
+        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("sections.coverageBehaviour")}</p>
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={values.public_holiday_reduce_budget}
+            onChange={(e) => setValues((p) => ({ ...p, public_holiday_reduce_budget: e.target.checked }))}
+            disabled={isPending}
+            className="mt-0.5 size-4 accent-primary"
+          />
+          <div>
+            <span className="text-[14px] font-medium">{t("holidayReduceShiftsLabel")}</span>
+            <p className="text-[12px] text-muted-foreground mt-0.5">{t("holidayReduceShiftsHint")}</p>
+          </div>
+        </label>
+
+        {hasPartTime && (
+          <div className="flex items-center gap-3">
+            <label className="text-[14px] font-medium w-56 shrink-0">{t("partTimeWeightLabel")}</label>
+            <input
+              type="number" min={0.1} max={1} step={0.1}
+              value={values.part_time_weight}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0.1 && v <= 1) setValues((p) => ({ ...p, part_time_weight: Math.round(v * 10) / 10 })) }}
+              disabled={isPending}
+              className="w-16 h-8 rounded-lg border border-input bg-background px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+            />
+            <span className="text-[12px] text-muted-foreground">{t("coverageWeightFraction")}</span>
+          </div>
+        )}
+        {hasPartTime && (
+          <p className="text-[11px] text-muted-foreground/70 -mt-2">{t("partTimeWeightHint")}</p>
+        )}
+
+        {hasIntern && (
+          <div className="flex items-center gap-3">
+            <label className="text-[14px] font-medium w-56 shrink-0">{t("internWeightLabel")}</label>
+            <input
+              type="number" min={0.1} max={1} step={0.1}
+              value={values.intern_weight}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0.1 && v <= 1) setValues((p) => ({ ...p, intern_weight: Math.round(v * 10) / 10 })) }}
+              disabled={isPending}
+              className="w-16 h-8 rounded-lg border border-input bg-background px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+            />
+            <span className="text-[12px] text-muted-foreground">{t("coverageWeightFraction")}</span>
+          </div>
+        )}
+        {hasIntern && (
+          <p className="text-[11px] text-muted-foreground/70 -mt-2">{t("internWeightHint")}</p>
+        )}
       </div>
 
       </>}
