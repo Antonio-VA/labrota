@@ -4411,7 +4411,7 @@ function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSe
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight, isFavorite, onSaveFavorite }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void; isFavorite?: boolean; onSaveFavorite?: () => void }) {
+function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight, isFavorite, hasFavorite, onSaveFavorite, onGoToFavorite }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void; isFavorite?: boolean; hasFavorite?: boolean; onSaveFavorite?: () => void; onGoToFavorite?: () => void }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -4469,18 +4469,23 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
               )}
             </>
           )}
-          {onSaveFavorite && (
+          {!isFavorite && (hasFavorite && onGoToFavorite ? (
+            <>
+              <div className="h-px bg-border mx-3 my-1" />
+              <button onClick={() => { onGoToFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                <Star className="size-4.5 shrink-0 text-amber-400 fill-amber-400" />
+                {t("goToFavoriteView")}
+              </button>
+            </>
+          ) : onSaveFavorite ? (
             <>
               <div className="h-px bg-border mx-3 my-1" />
               <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className={cn("size-4.5 shrink-0", isFavorite ? "text-amber-400 fill-amber-400" : "")} />
-                {isFavorite
-                  ? (locale === "es" ? "Vista favorita actual" : "Current favorite view")
-                  : (locale === "es" ? "Guardar vista favorita" : "Save favorite view")}
-                {isFavorite && <Check className="size-4 text-primary ml-auto" />}
+                <Star className="size-4.5 shrink-0" />
+                {t("saveFavoriteView")}
               </button>
             </>
-          )}
+          ) : null)}
         </div>
       )}
     </div>
@@ -5308,14 +5313,23 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   && favoriteView.compact === compact
                   && favoriteView.colorChips === colorChips
                   && favoriteView.highlightEnabled === highlightHover
-                return isFav ? [{
-                  label: locale === "es" ? "Vista favorita" : "Favorite view",
+                // When on favorite → nothing shown. When not on favorite → go to or save.
+                if (isFav) return []
+                if (favoriteView) return [{
+                  label: t("goToFavoriteView"),
                   icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
-                  active: true,
-                  onClick: () => {},
                   dividerBefore: true,
-                }] : [{
-                  label: locale === "es" ? "Guardar vista favorita" : "Save favorite view",
+                  onClick: () => {
+                    setView(favoriteView.view as ViewMode)
+                    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+                    setDaysAsRows(favoriteView.daysAsRows)
+                    setCompact(favoriteView.compact)
+                    setColorChips(favoriteView.colorChips)
+                    setHighlightHover(favoriteView.highlightEnabled)
+                  },
+                }]
+                return [{
+                  label: t("saveFavoriteView"),
                   icon: <Star className="size-3.5" />,
                   dividerBefore: true,
                   onClick: () => {
@@ -5323,7 +5337,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     setFavoriteView(fav)
                     localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
                     saveUserPreferences({ favoriteView: fav })
-                    toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
+                    toast.success(t("favoriteViewSaved"))
                   },
                 }]
               })(),
@@ -5776,13 +5790,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   deptColor={mobileDeptColor}
                   onToggleDeptColor={toggleMobileDeptColor}
                   isFavorite={!!(mobileFavoriteView && mobileFavoriteView.viewMode === mobileViewMode && mobileFavoriteView.compact === mobileCompact && mobileFavoriteView.deptColor === mobileDeptColor)}
+                  hasFavorite={!!mobileFavoriteView}
                   onSaveFavorite={() => {
                     const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
                     setMobileFavoriteView(fav)
                     localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(fav))
                     saveUserPreferences({ mobileFavoriteView: fav })
-                    toast.success(locale === "es" ? "Vista favorita guardada" : "Favorite view saved")
+                    toast.success(t("favoriteViewSaved"))
                   }}
+                  onGoToFavorite={mobileFavoriteView ? () => {
+                    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
+                    setMobileCompact(mobileFavoriteView.compact)
+                    setMobileDeptColor(mobileFavoriteView.deptColor)
+                  } : undefined}
                 />
               )}
             </div>

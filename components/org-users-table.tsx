@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition, useRef, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { UserPlus, Link2, Link2Off, MoreHorizontal, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,8 @@ export function OrgUsersTable({
 }) {
   const t = useTranslations("orgUsers")
   const tc = useTranslations("common")
+  const locale = useLocale()
+  const dateFmt = locale === "es" ? "es-ES" : "en-US"
   const [users, setUsers] = useState(initialUsers)
   const [isPending, startTransition] = useTransition()
   const [showInvite, setShowInvite] = useState(false)
@@ -70,7 +72,7 @@ export function OrgUsersTable({
 
   function handleRemove(userId: string) {
     setMenuOpenId(null)
-    if (!confirm("¿Eliminar este usuario de la organización?")) return
+    if (!confirm(t("removeConfirm"))) return
     startTransition(async () => {
       const result = await removeOrgMember(userId)
       if (result.error) { toast.error(result.error); return }
@@ -91,15 +93,15 @@ export function OrgUsersTable({
 
   function fmtLogin(d: string | null) {
     if (!d) return "—"
-    return new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " · " +
-      new Date(d).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    return new Date(d).toLocaleDateString(dateFmt, { day: "numeric", month: "short" }) + " · " +
+      new Date(d).toLocaleTimeString(dateFmt, { hour: "2-digit", minute: "2-digit" })
   }
 
   return (
     <div className="flex flex-col gap-3">
       {/* Header with invite button */}
       <div className="flex items-center justify-between">
-        <span className="text-[12px] text-muted-foreground">{users.length} usuario{users.length !== 1 ? "s" : ""}</span>
+        <span className="text-[12px] text-muted-foreground">{t("userCount", { count: users.length })}</span>
         <Button size="sm" onClick={() => setShowInvite(true)}>
           <UserPlus className="size-3.5" />
           {t("inviteUser")}
@@ -133,7 +135,7 @@ export function OrgUsersTable({
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("userColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("roleColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("linkedStaff")}</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">Último acceso</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("lastLogin")}</th>
               <th className="px-3 py-2 w-10" />
             </tr>
           </thead>
@@ -206,7 +208,7 @@ export function OrgUsersTable({
                             className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-destructive hover:bg-accent transition-colors"
                           >
                             <Trash2 className="size-3.5" />
-                            Eliminar
+                            {t("remove")}
                           </button>
                         </div>
                       )}

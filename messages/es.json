@@ -374,7 +374,10 @@
     "published": "Publicado",
     "copyAssignments": "{count} asignaciones copiadas",
     "copy": "Copiar",
-    "shareImage": "Compartir imagen"
+    "shareImage": "Compartir imagen",
+    "saveFavoriteView": "Guardar vista favorita",
+    "goToFavoriteView": "Ir a vista favorita",
+    "favoriteViewSaved": "Vista favorita guardada"
   },
   "staff": {
     "title": "Equipo",
@@ -685,7 +688,28 @@
       "conversionRate": "Tasa de conversión punción → biopsia",
       "conversionRateHint": "Porcentaje de punciones que resultan en biopsia",
       "d5d6Distribution": "Distribución día 5 / día 6",
-      "d5d6DistributionHint": "Distribución estimada entre día 5 y día 6 post-punción"
+      "d5d6DistributionHint": "Distribución estimada entre día 5 y día 6 post-punción",
+      "byShiftToggle": "Por turno",
+      "shiftColumn": "Turno",
+      "departmentColumn": "Departamento",
+      "embrAbbr": "Embr.",
+      "andrAbbr": "Andr.",
+      "coverageShiftFooter": "Define cuántas personas de cada departamento necesitas por turno y día. Dejar en blanco para no requerir un departamento en un día concreto.",
+      "coverageDeptFooter": "El generador no producirá una rota que no cumpla estos mínimos. Pon 0 para no requerir un departamento en un día concreto.",
+      "disableShiftCoverageConfirm": "¿Desactivar cobertura por turno? Los valores guardados se conservarán pero no se aplicarán.",
+      "disableTaskCoverageConfirm": "¿Desactivar cobertura por tarea? Los valores guardados se conservarán pero no se aplicarán.",
+      "taskCoverageOverflow": "Algunas tareas superan el mínimo del departamento. Ajusta los valores marcados antes de guardar.",
+      "taskCoverageOptional": "Definir cobertura mínima por tarea (opcional)",
+      "taskCoverageDisabledHint": "El generador usará los mínimos por departamento para todas las tareas. Activa esta opción solo si necesitas excepciones específicas por tarea.",
+      "maxAbbr": "máx.",
+      "departmentsTitle": "Departamentos",
+      "templatesTitle": "Plantillas",
+      "tasksTitle": "Tareas",
+      "embryology": "Embriología",
+      "andrology": "Andrología",
+      "administration": "Administración",
+      "taskColumn": "Tarea",
+      "taskCoverageFooter": "Define la cobertura mínima por tarea y día. Dejar en blanco para no requerir cobertura de una tarea en un día concreto."
     },
     "days": {
       "mon": "Lunes",
@@ -929,7 +953,87 @@
     "spanish": "Español",
     "english": "English",
     "organisation": "Organización",
-    "profile": "Mi perfil"
+    "profile": "Mi perfil",
+    "pageTitle": "Administración",
+    "orgNotFound": "No se encontró la organización."
+  },
+  "features": {
+    "scheduleMode": "Modo de horario",
+    "byShiftDescription": "Por turno — el personal se asigna a turnos",
+    "byTaskDescription": "Por tarea — el personal se asigna a procedimientos",
+    "byTask": "Por tarea",
+    "byShift": "Por turno",
+    "contactSupport": "Contacta con soporte para cambiar el modo de horario.",
+    "leaveRequests": "Solicitud de ausencias",
+    "leaveRequestsDescription": "Permite al personal solicitar vacaciones y ausencias desde la app",
+    "scheduleNotes": "Notas en el horario",
+    "scheduleNotesDescription": "Añade notas diarias al pie del horario (instrucciones, recordatorios)",
+    "taskInShift": "Asignación de tareas en horario por turno",
+    "taskInShiftDescription": "Permite asignar tareas o subdepartamentos a cada persona dentro de su turno. Actívalo solo si tu laboratorio necesita este nivel de detalle."
+  },
+  "billing": {
+    "start": "Inicio",
+    "renewal": "Renovación",
+    "annualFee": "Cuota anual",
+    "freeTrial": "Prueba gratuita",
+    "managedByLabRota": "La facturación es gestionada por LabRota. Contacta con soporte para cualquier cambio."
+  },
+  "implementation": {
+    "importHistorical": "Importar guardias históricas",
+    "importHistoricalDoneDesc": "Importa archivos de guardias para actualizar equipo, turnos o reglas. Se creará una copia de seguridad automática antes de aplicar cambios.",
+    "importHistoricalSetupDesc": "Configura tu laboratorio automáticamente a partir de archivos de guardias anteriores.",
+    "importFuture": "Importar guardias futuras",
+    "importFutureDesc": "Sube un archivo con guardias ya planificadas para cargarlas directamente al calendario.",
+    "completed": "Implementación completada",
+    "restart": "Re-iniciar implementación",
+    "stepsCompleted": "{completed}/{total} pasos completados",
+    "createOrg": "Crear organización",
+    "createOrgDesc": "Organización registrada",
+    "configureRegion": "Configurar región",
+    "configureRegionDesc": "País y región configurados",
+    "addDepartments": "Añadir departamentos",
+    "departmentCount": "{count, plural, one {# departamento} other {# departamentos}}",
+    "addShifts": "Añadir turnos",
+    "shiftCount": "{count, plural, one {# turno} other {# turnos}}",
+    "addTasks": "Añadir tareas",
+    "taskCount": "{count, plural, one {# tarea} other {# tareas}}",
+    "addStaff": "Añadir equipo",
+    "staffCount": "{count, plural, one {# persona activa} other {# personas activas}}",
+    "generateFirstRota": "Generar primera rota",
+    "rotaCount": "{count, plural, one {# horario} other {# horarios}}",
+    "noRotasYet": "Aún sin horarios",
+    "completedAt": "Completado el {date}",
+    "completedBy": "por {name}",
+    "restartConfirmTitle": "¿Re-iniciar implementación?",
+    "restartConfirmDescription": "Esta acción eliminará todos los datos: horarios, equipo, departamentos, turnos, tareas, reglas y configuración regional. Solo se conservará la organización. Esta acción no se puede deshacer.",
+    "restartSuccess": "Implementación reiniciada",
+    "restarting": "Reiniciando…"
+  },
+  "leaveImport": {
+    "title": "Añadir ausencias desde archivo",
+    "description": "PDF, Word o Excel con información de ausencias",
+    "selectFile": "Seleccionar archivo",
+    "fileReadError": "No se pudo leer el archivo. Por favor comprueba que no está protegido con contraseña.",
+    "detectedTitle": "Ausencias detectadas",
+    "noLeavesDetected": "No se detectaron ausencias en el archivo.",
+    "addManually": "Puedes añadir entradas manualmente.",
+    "staffColumn": "Personal",
+    "fromColumn": "Desde",
+    "toColumn": "Hasta",
+    "typeColumn": "Tipo",
+    "notesColumn": "Notas",
+    "noMatch": "{name} (sin coincidencia)",
+    "detectedCount": "{count} ausencias detectadas",
+    "unconfirmedStaff": "{count} sin confirmar personal",
+    "incompleteDates": "{count} con fechas incompletas",
+    "leavesSaved": "{count} ausencias guardadas",
+    "entriesSkipped": "{count} entradas omitidas",
+    "annual": "Vacaciones",
+    "sick": "Baja médica",
+    "personal": "Asuntos propios",
+    "training": "Formación",
+    "maternity": "Maternidad/Paternidad",
+    "other": "Otros"
   },
   "agent": {
     "title": "Agente IA",
@@ -1046,7 +1150,15 @@
     "startBeforeEnd": "La hora de inicio debe ser anterior a la de fin",
     "deleteShiftConfirm": "Este turno tiene {count} asignaciones activas. Eliminar afectará a las guardias existentes. ¿Continuar?",
     "confirmDelete": "Sí, eliminar",
-    "deleteShiftLabel": "Eliminar turno"
+    "deleteShiftLabel": "Eliminar turno",
+    "dayMon": "Lu",
+    "dayTue": "Ma",
+    "dayWed": "Mi",
+    "dayThu": "Ju",
+    "dayFri": "Vi",
+    "daySat": "Sá",
+    "daySun": "Do",
+    "namePlaceholder": "Mañana"
   },
   "plantillas": {
     "noTemplates": "Sin plantillas",
@@ -1060,7 +1172,8 @@
   "notes": {
     "weeklyNotes": "Notas semanales",
     "defaultNotesDescription": "Notas predeterminadas que aparecen cada semana. Se pueden descartar individualmente por semana.",
-    "newNotePlaceholder": "Nueva nota predeterminada..."
+    "newNotePlaceholder": "Nueva nota predeterminada...",
+    "notesDisabled": "Las notas están desactivadas. Actívalas en Administración → Funcionalidades."
   },
   "shiftRotation": {
     "title": "Rotación de turnos",
@@ -1085,7 +1198,15 @@
   "turnos": {
     "shiftTypes": "Tipos de turno",
     "changesSaved": "Cambios guardados",
-    "saveError": "Error al guardar turnos"
+    "saveError": "Error al guardar turnos",
+    "dayMon": "Lu",
+    "dayTue": "Ma",
+    "dayWed": "Mi",
+    "dayThu": "Ju",
+    "dayFri": "Vi",
+    "daySat": "Sá",
+    "daySun": "Do",
+    "namePlaceholder": "Mañana"
   },
   "audit": {
     "allActions": "Todas las acciones",
@@ -1110,7 +1231,14 @@
     "userRemoved": "Usuario eliminado",
     "weekSummary": "Semana {weekStart} · {count} asignaciones · {method}",
     "schedulePublished": "Horario publicado",
-    "configuration": "Configuración"
+    "configuration": "Configuración",
+    "allUsers": "Todos los usuarios",
+    "records": "{count} registros · Página {page} de {total}",
+    "userLabel": "Usuario",
+    "typeLabel": "Tipo",
+    "summaryLabel": "Resumen",
+    "metadata": "Metadatos",
+    "changes": "Cambios"
   },
   "orgSettings": {
     "nameUpdated": "Nombre actualizado",
@@ -1146,7 +1274,11 @@
     "unlinked": "Sin vincular",
     "nameOptional": "Nombre (opcional)",
     "invite": "Invitar",
-    "removeUser": "Eliminar usuario"
+    "removeUser": "Eliminar usuario",
+    "lastLogin": "Último acceso",
+    "userCount": "{count, plural, one {# usuario} other {# usuarios}}",
+    "removeConfirm": "¿Eliminar este usuario de la organización?",
+    "remove": "Eliminar"
   },
   "userMenu": {
     "preferences": "Preferencias",

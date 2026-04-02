@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations, useLocale } from "next-intl"
 import Link from "next/link"
 import { CheckCircle2, Circle, AlertTriangle, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,10 @@ export function SettingsImplementation({
   }
 }) {
   const router = useRouter()
+  const t = useTranslations("implementation")
+  const tc = useTranslations("common")
+  const locale = useLocale()
+  const dateFmt = locale === "es" ? "es-ES" : "en-US"
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [isResetting, startReset] = useTransition()
 
@@ -34,19 +39,19 @@ export function SettingsImplementation({
     const d = new Date(iso)
     const now = new Date()
     const sameYear = d.getFullYear() === now.getFullYear()
-    const date = d.toLocaleDateString("es-ES", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
-    const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    const date = d.toLocaleDateString(dateFmt, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
+    const time = d.toLocaleTimeString(dateFmt, { hour: "2-digit", minute: "2-digit" })
     return `${date} · ${time}`
   }
 
   const steps = [
-    { key: "create_org", label: "Crear organización", desc: "Organización registrada", done: true },
-    { key: "configure_region", label: "Configurar región", desc: "País y región configurados", done: status.hasRegion },
-    { key: "add_departments", label: "Añadir departamentos", desc: `${status.departmentCount} departamento${status.departmentCount !== 1 ? "s" : ""}`, done: status.departmentCount > 0 },
-    { key: "add_shifts", label: "Añadir turnos", desc: `${status.shiftCount} turno${status.shiftCount !== 1 ? "s" : ""}`, done: status.shiftCount > 0 },
-    { key: "add_tasks", label: "Añadir tareas", desc: `${status.taskCount} tarea${status.taskCount !== 1 ? "s" : ""}`, done: status.taskCount > 0 },
-    { key: "add_staff", label: "Añadir equipo", desc: `${status.staffCount} persona${status.staffCount !== 1 ? "s" : ""} activa${status.staffCount !== 1 ? "s" : ""}`, done: status.staffCount > 0 },
-    { key: "generate_rota", label: "Generar primera rota", desc: status.hasRota ? `${status.rotaCount} horario${status.rotaCount !== 1 ? "s" : ""}` : "Aún sin horarios", done: status.hasRota },
+    { key: "create_org", label: t("createOrg"), desc: t("createOrgDesc"), done: true },
+    { key: "configure_region", label: t("configureRegion"), desc: t("configureRegionDesc"), done: status.hasRegion },
+    { key: "add_departments", label: t("addDepartments"), desc: t("departmentCount", { count: status.departmentCount }), done: status.departmentCount > 0 },
+    { key: "add_shifts", label: t("addShifts"), desc: t("shiftCount", { count: status.shiftCount }), done: status.shiftCount > 0 },
+    { key: "add_tasks", label: t("addTasks"), desc: t("taskCount", { count: status.taskCount }), done: status.taskCount > 0 },
+    { key: "add_staff", label: t("addStaff"), desc: t("staffCount", { count: status.staffCount }), done: status.staffCount > 0 },
+    { key: "generate_rota", label: t("generateFirstRota"), desc: status.hasRota ? t("rotaCount", { count: status.rotaCount }) : t("noRotasYet"), done: status.hasRota },
   ]
   const allDone = steps.every((s) => s.done)
   const completedCount = steps.filter((s) => s.done).length
@@ -60,11 +65,11 @@ export function SettingsImplementation({
       >
         <Upload className="size-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium">Importar guardias históricas</p>
+          <p className="text-[13px] font-medium">{t("importHistorical")}</p>
           <p className="text-[11px] text-muted-foreground">
             {allDone
-              ? "Importa archivos de guardias para actualizar equipo, turnos o reglas. Se creará una copia de seguridad automática antes de aplicar cambios."
-              : "Configura tu laboratorio automáticamente a partir de archivos de guardias anteriores."}
+              ? t("importHistoricalDoneDesc")
+              : t("importHistoricalSetupDesc")}
           </p>
         </div>
       </Link>
@@ -75,9 +80,9 @@ export function SettingsImplementation({
       >
         <Upload className="size-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium">Importar guardias futuras</p>
+          <p className="text-[13px] font-medium">{t("importFuture")}</p>
           <p className="text-[11px] text-muted-foreground">
-            Sube un archivo con guardias ya planificadas para cargarlas directamente al calendario.
+            {t("importFutureDesc")}
           </p>
         </div>
       </Link>
@@ -87,19 +92,19 @@ export function SettingsImplementation({
           <div className="px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-5 text-emerald-500" />
-              <span className="text-[14px] font-medium text-emerald-600">Implementación completada</span>
+              <span className="text-[14px] font-medium text-emerald-600">{t("completed")}</span>
             </div>
             <button
               onClick={() => setResetModalOpen(true)}
               className="text-[12px] text-muted-foreground hover:text-destructive transition-colors"
             >
-              Re-iniciar implementación
+              {t("restart")}
             </button>
           </div>
         ) : (
           <>
             <div className="px-4 py-2.5 border-b border-border bg-muted/30">
-              <span className="text-[12px] text-muted-foreground">{completedCount}/{steps.length} pasos completados</span>
+              <span className="text-[12px] text-muted-foreground">{t("stepsCompleted", { completed: completedCount, total: steps.length })}</span>
             </div>
             <div className="divide-y divide-border/50">
               {steps.map((step, i) => {
@@ -116,8 +121,8 @@ export function SettingsImplementation({
                       <p className="text-[11px] text-muted-foreground">{step.desc}</p>
                       {step.done && completion && (
                         <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                          Completado el {fmtTimestamp(completion.completed_at)}
-                          {completion.completed_by_name && ` por ${completion.completed_by_name}`}
+                          {t("completedAt", { date: fmtTimestamp(completion.completed_at) })}
+                          {completion.completed_by_name && ` ${t("completedBy", { name: completion.completed_by_name })}`}
                         </p>
                       )}
                     </div>
@@ -138,14 +143,14 @@ export function SettingsImplementation({
             <div className="flex items-start gap-3">
               <AlertTriangle className="size-5 text-destructive mt-0.5 shrink-0" />
               <div>
-                <p className="text-[15px] font-medium">¿Re-iniciar implementación?</p>
+                <p className="text-[15px] font-medium">{t("restartConfirmTitle")}</p>
                 <p className="text-[13px] text-muted-foreground mt-1.5">
-                  Esta acción eliminará todos los datos: horarios, equipo, departamentos, turnos, tareas, reglas y configuración regional. Solo se conservará la organización. Esta acción no se puede deshacer.
+                  {t("restartConfirmDescription")}
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setResetModalOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" size="sm" onClick={() => setResetModalOpen(false)}>{tc("cancel")}</Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -154,11 +159,11 @@ export function SettingsImplementation({
                   startReset(async () => {
                     const result = await resetImplementation()
                     if (result.error) toast.error(result.error)
-                    else { toast.success("Implementación reiniciada"); setResetModalOpen(false); router.refresh() }
+                    else { toast.success(t("restartSuccess")); setResetModalOpen(false); router.refresh() }
                   })
                 }}
               >
-                {isResetting ? "Reiniciando…" : "Re-iniciar"}
+                {isResetting ? t("restarting") : t("restart")}
               </Button>
             </div>
           </div>

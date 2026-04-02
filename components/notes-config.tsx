@@ -134,7 +134,7 @@ export function NotesConfig({
         </>
       ) : (
         <p className="text-[13px] text-muted-foreground">
-          Las notas están desactivadas. Actívalas en Administración → Funcionalidades.
+          {t("notesDisabled")}
         </p>
       )}
     </div>

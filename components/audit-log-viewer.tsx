@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -66,6 +66,8 @@ function summarize(entry: AuditLogEntry, t: ReturnType<typeof useTranslations<"a
 export function AuditLogViewer() {
   const t = useTranslations("audit")
   const tc = useTranslations("common")
+  const locale = useLocale()
+  const dateFmt = locale === "es" ? "es-ES" : "en-US"
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState("")
@@ -116,7 +118,7 @@ export function AuditLogViewer() {
           onChange={(e) => setUserFilter(e.target.value)}
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-[12px] outline-none max-w-[180px]"
         >
-          <option value="">Todos los usuarios</option>
+          <option value="">{t("allUsers")}</option>
           {uniqueUsers.map((u) => (
             <option key={u} value={u}>{u}</option>
           ))}
@@ -148,7 +150,7 @@ export function AuditLogViewer() {
                 onClick={() => setDetail(log)}
               >
                 <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">
-                  {new Date(log.created_at).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(log.created_at).toLocaleString(dateFmt, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </td>
                 <td className="px-3 py-2 truncate max-w-[150px]">{log.user_email ?? "—"}</td>
                 <td className="px-3 py-2">
@@ -167,7 +169,7 @@ export function AuditLogViewer() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-[12px] text-muted-foreground">
-            {filtered.length} registros · Página {page + 1} de {totalPages}
+            {t("records", { count: filtered.length, page: page + 1, total: totalPages })}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -199,7 +201,7 @@ export function AuditLogViewer() {
                   {ACTION_LABEL_KEYS[detail.action] ? t(ACTION_LABEL_KEYS[detail.action]) : detail.action}
                 </span>
                 <span className="text-[12px] text-muted-foreground tabular-nums">
-                  {new Date(detail.created_at).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  {new Date(detail.created_at).toLocaleString(dateFmt, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </span>
               </div>
               <button onClick={() => setDetail(null)} className="text-muted-foreground hover:text-foreground">
@@ -209,22 +211,22 @@ export function AuditLogViewer() {
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Usuario</span>
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">{t("userLabel")}</span>
                 <span className="text-[13px] font-medium">{detail.user_email ?? "—"}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Tipo</span>
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">{t("typeLabel")}</span>
                 <span className="text-[13px]">{detail.entity_type ?? "—"}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-muted-foreground w-16 shrink-0">Resumen</span>
+                <span className="text-[12px] text-muted-foreground w-16 shrink-0">{t("summaryLabel")}</span>
                 <span className="text-[13px]">{summarize(detail, t)}</span>
               </div>
             </div>
 
             {detail.metadata && Object.keys(detail.metadata).length > 0 && (
               <div className="flex flex-col gap-1">
-                <p className="text-[12px] font-medium text-muted-foreground">Metadatos</p>
+                <p className="text-[12px] font-medium text-muted-foreground">{t("metadata")}</p>
                 <pre className="text-[11px] bg-muted rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(detail.metadata, null, 2)}
                 </pre>
@@ -233,7 +235,7 @@ export function AuditLogViewer() {
 
             {detail.changes && Object.keys(detail.changes).length > 0 && (
               <div className="flex flex-col gap-1">
-                <p className="text-[12px] font-medium text-muted-foreground">Cambios</p>
+                <p className="text-[12px] font-medium text-muted-foreground">{t("changes")}</p>
                 <pre className="text-[11px] bg-muted rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(detail.changes, null, 2)}
                 </pre>

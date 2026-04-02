@@ -10,10 +10,12 @@ import { SettingsImplementation } from "@/components/settings-implementation"
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
 import { createClient } from "@/lib/supabase/server"
+import { getTranslations } from "next-intl/server"
 import type { Staff } from "@/lib/types/database"
 
 export default async function SettingsPage() {
   await requireEditor()
+  const t = await getTranslations("settings")
 
   const orgId = await getOrgId()
   let users: OrgUser[] = []
@@ -58,7 +60,7 @@ export default async function SettingsPage() {
       <MobileGate>
         <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
           <div>
-            <h1 className="text-[18px] font-medium">Administración</h1>
+            <h1 className="text-[18px] font-medium">{t("pageTitle")}</h1>
           </div>
 
           <SettingsTabs
@@ -68,7 +70,7 @@ export default async function SettingsPage() {
                   <OrgSettingsForm settings={orgSettings} orgId={orgId!} />
                 </div>
               ) : (
-                <p className="text-[14px] text-muted-foreground">No se encontró la organización.</p>
+                <p className="text-[14px] text-muted-foreground">{t("orgNotFound")}</p>
               )
             }
             funcionalidades={

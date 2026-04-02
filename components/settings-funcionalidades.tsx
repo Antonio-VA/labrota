@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { toggleLeaveRequests } from "@/app/(clinic)/settings/actions"
@@ -46,6 +47,7 @@ export function SettingsFuncionalidades({
   enableNotes: boolean
   enableTaskInShift: boolean
 }) {
+  const t = useTranslations("features")
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
   const [notes, setNotes] = useState(enableNotes)
   const [taskInShift, setTaskInShift] = useState(enableTaskInShift)
@@ -56,27 +58,27 @@ export function SettingsFuncionalidades({
       {/* Display mode — read only */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[14px] font-medium">Modo de horario</p>
+          <p className="text-[14px] font-medium">{t("scheduleMode")}</p>
           <p className="text-[12px] text-muted-foreground">
             {displayMode === "by_shift"
-              ? "Por turno — el personal se asigna a turnos"
-              : "Por tarea — el personal se asigna a procedimientos"}
+              ? t("byShiftDescription")
+              : t("byTaskDescription")}
           </p>
         </div>
         <span className={cn(
           "px-3 py-1 rounded-md text-[13px] font-medium",
           displayMode === "by_task" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"
         )}>
-          {displayMode === "by_task" ? "Por tarea" : "Por turno"}
+          {displayMode === "by_task" ? t("byTask") : t("byShift")}
         </span>
       </div>
-      <p className="text-[11px] text-muted-foreground -mt-2">Contacta con soporte para cambiar el modo de horario.</p>
+      <p className="text-[11px] text-muted-foreground -mt-2">{t("contactSupport")}</p>
 
       <div className="h-px bg-border" />
 
       <FeatureToggle
-        label="Solicitud de ausencias"
-        description="Permite al personal solicitar vacaciones y ausencias desde la app"
+        label={t("leaveRequests")}
+        description={t("leaveRequestsDescription")}
         enabled={leaveRequests}
         disabled={isPending}
         onToggle={() => {
@@ -92,8 +94,8 @@ export function SettingsFuncionalidades({
       <div className="h-px bg-border" />
 
       <FeatureToggle
-        label="Notas en el horario"
-        description="Añade notas diarias al pie del horario (instrucciones, recordatorios)"
+        label={t("scheduleNotes")}
+        description={t("scheduleNotesDescription")}
         enabled={notes}
         disabled={isPending}
         onToggle={() => {
@@ -110,8 +112,8 @@ export function SettingsFuncionalidades({
         <div className="h-px bg-border" />
 
         <FeatureToggle
-          label="Asignación de tareas en horario por turno"
-          description="Permite asignar tareas o subdepartamentos a cada persona dentro de su turno. Actívalo solo si tu laboratorio necesita este nivel de detalle."
+          label={t("taskInShift")}
+          description={t("taskInShiftDescription")}
           enabled={taskInShift}
           disabled={isPending}
           onToggle={() => {
