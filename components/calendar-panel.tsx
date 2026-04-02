@@ -4497,7 +4497,7 @@ function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, com
   )
 }
 
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -4505,7 +4505,7 @@ export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }
   )
 }
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?: number; chatOpen?: boolean }) {
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -4704,7 +4704,23 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Fetch week data
   const fetchVersionRef = useRef(0)
+  const initialDataUsed = useRef(false)
   const fetchWeek = useCallback((ws: string) => {
+    // On first call, if the server pre-fetched this exact week, use it directly
+    // (avoids a network round-trip on initial load for new sessions viewing today's week)
+    if (!initialDataUsed.current && initialData?.weekStart === ws) {
+      initialDataUsed.current = true
+      setInitialLoaded(true)
+      setWeekData(initialData)
+      setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
+      setLoadingWeek(false)
+      const offset = (n: number) => {
+        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
+      }
+      prefetchRotaWeek(offset(-7)).catch(() => {})
+      prefetchRotaWeek(offset(7)).catch(() => {})
+      return
+    }
     const version = ++fetchVersionRef.current
     aiReasoningRef.current = null // clear client-side reasoning on week change
     reasoningSourceRef.current = null
@@ -4733,7 +4749,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
-  }, [])
+  }, [initialData])
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
   const fetchWeekSilent = useCallback((ws: string) => {
