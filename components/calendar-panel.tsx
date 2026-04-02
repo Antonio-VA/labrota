@@ -953,10 +953,10 @@ function ProfileSkillsSection({
 }) {
   const t = useTranslations("schedule")
   const ts = useTranslations("skills")
-  const [busy, setBusy] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
+  const locale = useLocale()
+  const [saving, setSaving] = useState(false)
 
-  // All available skill codes from tecnicas
+  // All available skill codes from active tecnicas
   const allSkills = useMemo(() => {
     const fromTecnicas = tecnicas
       .filter((tc) => tc.required_skill && tc.activa)
@@ -964,119 +964,107 @@ function ProfileSkillsSection({
     return [...new Set(fromTecnicas)]
   }, [tecnicas])
 
-  const assignedSkills = new Set(staffSkills.map((s) => s.skill))
-  const unassignedSkills = allSkills.filter((s) => !assignedSkills.has(s))
+  // Build initial state: skill → level ("off" | "training" | "certified")
+  const initialLevels = useMemo(() => {
+    const map: Record<string, "off" | "training" | "certified"> = {}
+    for (const s of allSkills) map[s] = "off"
+    for (const sk of staffSkills) {
+      if (allSkills.includes(sk.skill)) map[sk.skill] = sk.level as "training" | "certified"
+    }
+    return map
+  }, [allSkills, staffSkills])
 
-  async function handleAdd(skill: string, level: "certified" | "training") {
-    setBusy(skill)
-    const result = await bulkAddSkill([staffId], skill, level)
-    setBusy(null)
-    if (result.error) toast.error(result.error)
-    else { setShowAdd(false); onChanged?.() }
+  const [levels, setLevels] = useState(initialLevels)
+
+  // Reset local state when staff changes
+  useEffect(() => { setLevels(initialLevels) }, [initialLevels])
+
+  // Track dirty state
+  const isDirty = useMemo(() => {
+    return allSkills.some((s) => levels[s] !== initialLevels[s])
+  }, [allSkills, levels, initialLevels])
+
+  function cycleLevel(skill: string) {
+    if (!canEdit) return
+    setLevels((prev) => {
+      const current = prev[skill] ?? "off"
+      const next = current === "off" ? "training" : current === "training" ? "certified" : "off"
+      return { ...prev, [skill]: next }
+    })
   }
 
-  async function handleRemove(skill: string) {
-    setBusy(skill)
-    const result = await bulkRemoveSkill([staffId], skill)
-    setBusy(null)
-    if (result.error) toast.error(result.error)
-    else onChanged?.()
+  async function handleSave() {
+    setSaving(true)
+    // Compute diffs
+    for (const skill of allSkills) {
+      const was = initialLevels[skill]
+      const now = levels[skill]
+      if (was === now) continue
+      // Remove old assignment if it existed
+      if (was !== "off") {
+        await bulkRemoveSkill([staffId], skill)
+      }
+      // Add new assignment if not off
+      if (now !== "off") {
+        await bulkAddSkill([staffId], skill, now)
+      }
+    }
+    setSaving(false)
+    onChanged?.()
   }
 
-  async function handleToggleLevel(skill: string, currentLevel: string) {
-    const newLevel = currentLevel === "certified" ? "training" : "certified"
-    setBusy(skill)
-    // Remove then re-add with new level
-    await bulkRemoveSkill([staffId], skill)
-    const result = await bulkAddSkill([staffId], skill, newLevel as "certified" | "training")
-    setBusy(null)
-    if (result.error) toast.error(result.error)
-    else onChanged?.()
-  }
+  // Tecnica code map for display
+  const codeMap = useMemo(() =>
+    Object.fromEntries(tecnicas.filter((tc) => tc.required_skill).map((tc) => [tc.required_skill!, tc.codigo]))
+  , [tecnicas])
 
   return (
     <div className="px-5 py-3 border-b border-border">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{ts("title")}</p>
-        {canEdit && unassignedSkills.length > 0 && (
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="text-[11px] text-primary hover:underline"
-          >
-            {showAdd ? t("cancel") : `+ ${ts("addSkill")}`}
-          </button>
-        )}
-      </div>
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{ts("title")}</p>
 
-      {/* Add skill dropdown */}
-      {showAdd && (
-        <div className="flex flex-col gap-1 mb-3 p-2 rounded-lg border border-border bg-muted/30">
-          {unassignedSkills.map((skill) => (
-            <div key={skill} className="flex items-center justify-between">
-              <span className="text-[12px] text-foreground">{skillLabel(skill)}</span>
-              <div className="flex gap-1">
-                <button
-                  disabled={busy === skill}
-                  onClick={() => handleAdd(skill, "certified")}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                >
-                  {t("certified")}
-                </button>
-                <button
-                  disabled={busy === skill}
-                  onClick={() => handleAdd(skill, "training")}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 disabled:opacity-50"
-                >
-                  {t("inTraining")}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Current skills */}
-      {staffSkills.length === 0 && !showAdd ? (
+      {allSkills.length === 0 ? (
         <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {staffSkills.map((sk) => (
-            <span
-              key={sk.id}
-              className={cn(
-                "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium group",
-                sk.level === "certified"
-                  ? "bg-blue-50 border-blue-200 text-blue-700"
-                  : "bg-amber-50 border-amber-200 text-amber-600",
-                canEdit && "cursor-pointer hover:shadow-sm",
-                busy === sk.skill && "opacity-50"
-              )}
-            >
-              {sk.level === "training" && <Hourglass className="size-2.5 text-amber-500 shrink-0" />}
-              {canEdit ? (
-                <button
-                  disabled={busy === sk.skill}
-                  onClick={() => handleToggleLevel(sk.skill, sk.level)}
-                  className="cursor-pointer"
-                  title={sk.level === "certified" ? t("clickToSetTraining") : t("clickToSetCertified")}
-                >
-                  {skillLabel(sk.skill)}
-                </button>
-              ) : (
-                skillLabel(sk.skill)
-              )}
-              {canEdit && (
-                <button
-                  disabled={busy === sk.skill}
-                  onClick={(e) => { e.stopPropagation(); handleRemove(sk.skill) }}
-                  className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="size-2.5" />
-                </button>
-              )}
-            </span>
-          ))}
+          {allSkills.map((skill) => {
+            const level = levels[skill] ?? "off"
+            const code = codeMap[skill] ?? skill
+            const changed = level !== initialLevels[skill]
+            return (
+              <button
+                key={skill}
+                type="button"
+                disabled={saving || !canEdit}
+                onClick={() => cycleLevel(skill)}
+                title={canEdit ? (locale === "es"
+                  ? `${skillLabel(skill)} — clic para cambiar (${level === "off" ? "desactivado" : level === "training" ? "en formación" : "certificado"})`
+                  : `${skillLabel(skill)} — click to cycle (${level})`) : skillLabel(skill)}
+                className={cn(
+                  "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors",
+                  level === "certified" && "bg-blue-50 border-blue-200 text-blue-700",
+                  level === "training" && "bg-amber-50 border-amber-200 text-amber-600",
+                  level === "off" && "bg-muted/50 border-border text-muted-foreground/60",
+                  canEdit && "cursor-pointer hover:shadow-sm",
+                  changed && "ring-1 ring-primary/30",
+                  saving && "opacity-50"
+                )}
+              >
+                {level === "training" && <Hourglass className="size-2.5 shrink-0" />}
+                {code}
+              </button>
+            )
+          })}
         </div>
+      )}
+
+      {isDirty && (
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="mt-2 text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
+        >
+          {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
+        </button>
       )}
     </div>
   )
@@ -1290,45 +1278,6 @@ function StaffProfilePanel({
               </div>
             )}
           </div>
-
-          {/* Availability — days per week */}
-          {staff && userRole !== "viewer" && (
-            <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("availability")}</p>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    const current = staff.days_per_week ?? 5
-                    if (current <= 1) return
-                    const newVal = current - 1
-                    await bulkUpdateStaffField([{ id: staff.id, field: "days_per_week", value: newVal }])
-                    onRefreshWeek?.()
-                  }}
-                  disabled={loading || (staff.days_per_week ?? 5) <= 1}
-                  className="size-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Minus className="size-3.5" />
-                </button>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[22px] font-semibold tabular-nums leading-none">{staff.days_per_week ?? 5}</span>
-                  <span className="text-[13px] text-muted-foreground">{t("daysPerWeek")}</span>
-                </div>
-                <button
-                  onClick={async () => {
-                    const current = staff.days_per_week ?? 5
-                    if (current >= 7) return
-                    const newVal = current + 1
-                    await bulkUpdateStaffField([{ id: staff.id, field: "days_per_week", value: newVal }])
-                    onRefreshWeek?.()
-                  }}
-                  disabled={loading || (staff.days_per_week ?? 5) >= 7}
-                  className="size-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Plus className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Capacidades (skills) — editable */}
           {staff && (
