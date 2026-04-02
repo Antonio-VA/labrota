@@ -505,7 +505,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
       headcount: d.headcount,
       explanation: d.explanation,
     })),
-    explanation: `Calculated from ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums. Each person provides (days_per_week × 52) − ${annualLeaveDays} annual leave days of effective work per year.`,
+    explanation: `Minimum fully trained staff needed to meet ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums year-round. Assumes all staff are certified. Each person provides (days_per_week × 52) − ${annualLeaveDays} annual leave days of effective work per year.`,
     calculatedAt: new Date().toISOString(),
   }
 
