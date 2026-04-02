@@ -307,12 +307,14 @@ export function runRotaEngine({
     return isWeekend(date)
   }
 
-  // Adjusted budget: reduce days_per_week by number of weekday holidays
+  // Adjusted budget: reduce days_per_week by number of weekday holidays only
+  // (weekend holidays don't consume a "work slot" since weekends are already potential off-days)
   const reduceBudget = labConfig.public_holiday_reduce_budget ?? true
+  const weekdayHolidayCount = holidaysThisWeek.filter((d) => !isWeekend(d)).length
   function getEffectiveBudget(s: StaffWithSkills): number {
     const base = s.days_per_week ?? 5
-    if (!reduceBudget || holidayCount === 0) return base
-    return Math.max(1, base - holidayCount)
+    if (!reduceBudget || weekdayHolidayCount === 0) return base
+    return Math.max(1, base - weekdayHolidayCount)
   }
 
   if (holidayMode !== "weekday" && holidayCount > 0) {
@@ -1636,6 +1638,75 @@ export function runRotaEngine({
     for (const a of dayPlanFinal.assignments) {
       if (!weekShiftHistory[a.staff_id]) weekShiftHistory[a.staff_id] = new Set()
       weekShiftHistory[a.staff_id].add(a.shift_type)
+    }
+  }
+
+  // ── PHASE 2b: Under-target backfill ──────────────────────────────────────
+  // After all days are planned, some staff may still be below their days_per_week
+  // target (due to conservative hasBudget, holiday budget reduction, weekend
+  // exclusion, or scheduling rules). This pass adds them to available days.
+  {
+    const underTarget = staff.filter((s) => {
+      if (s.onboarding_status === "inactive") return false
+      const used = weeklyShiftCount[s.id] ?? 0
+      const target = s.days_per_week ?? 5
+      return used < target
+    })
+
+    for (const s of underTarget) {
+      const used = weeklyShiftCount[s.id] ?? 0
+      const target = s.days_per_week ?? 5
+      const needed = target - used
+
+      // Find days this person could be added to (not already assigned, available)
+      const candidateDays = days.filter((dayPlan) => {
+        // Already assigned this day?
+        if (dayPlan.assignments.some((a) => a.staff_id === s.id)) return false
+        // On leave?
+        if (leaveMap[s.id]?.has(dayPlan.date)) return false
+        // Not yet started or already ended?
+        if (s.start_date > dayPlan.date) return false
+        if (s.end_date && s.end_date < dayPlan.date) return false
+        return true
+      }).sort((a, b) => {
+        // Prefer days with fewer total assignments (balance workload)
+        return a.assignments.length - b.assignments.length
+      })
+
+      let added = 0
+      for (const dayPlan of candidateDays) {
+        if (added >= needed) break
+        const dayCode = getDayCode(dayPlan.date)
+
+        // Determine shift: pick the shift with fewest staff that day, or round-robin
+        const dayShiftCodes = activeShiftTypes
+          .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode))
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((st) => st.code)
+        const fallbackShifts = dayShiftCodes.length > 0 ? dayShiftCodes : (shiftCodes.length > 0 ? shiftCodes : ["T1"])
+
+        // Pick shift with fewest people
+        const shiftCount: Record<string, number> = {}
+        for (const sc of fallbackShifts) shiftCount[sc] = 0
+        for (const a of dayPlan.assignments) {
+          if (shiftCount[a.shift_type] !== undefined) shiftCount[a.shift_type]++
+        }
+
+        // Check staff's preferred shift first
+        const explicitPrefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
+        let bestShift = explicitPrefShifts.find((ps) => fallbackShifts.includes(ps))
+        if (!bestShift) {
+          bestShift = fallbackShifts.reduce((best, sc) =>
+            (shiftCount[sc] ?? 0) < (shiftCount[best] ?? 0) ? sc : best
+          , fallbackShifts[0])
+        }
+
+        dayPlan.assignments.push({ staff_id: s.id, shift_type: bestShift as ShiftType })
+        weeklyShiftCount[s.id] = (weeklyShiftCount[s.id] ?? 0) + 1
+        workloadScore[s.id] = (workloadScore[s.id] ?? 0) + 1
+        added++
+        warnings.push(`[engine] ${dayPlan.date}: ${s.first_name} ${s.last_name} added by under-target backfill (${used + added}/${target})`)
+      }
     }
   }
 
