@@ -505,8 +505,47 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Parse engine warnings and add as per-day rule avisos
-  // Engine warnings follow the format "2026-03-16: message"
+  // Live coverage warnings — computed from current assignments, not stale engine_warnings
+  const shiftCovEnabled = labConfig?.shift_coverage_enabled ?? false
+  const shiftCovByDay = labConfig?.shift_coverage_by_day as ShiftCoverageByDay | null
+  if (shiftCovEnabled && shiftCovByDay) {
+    const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+    for (const day of Object.values(dayMap)) {
+      if (day.assignments.length === 0) continue
+      const rawDc = DAY_NAMES[new Date(day.date + "T12:00:00").getDay()]
+      const holidayMode = labConfig?.public_holiday_mode ?? "saturday"
+      const isHoliday = !!publicHolidays[day.date] && rawDc !== "sat" && rawDc !== "sun"
+      const holidayDcMap: Record<string, string> = { weekday: rawDc, saturday: "sat", sunday: "sun" }
+      const dc = isHoliday ? (holidayDcMap[holidayMode] ?? rawDc) : rawDc
+      const dayShiftCodes = shiftTypesData
+        .filter((st) => st.active !== false && (!st.active_days || (st.active_days as string[]).length === 0 || (st.active_days as string[]).includes(dc)))
+        .map((st) => st.code)
+      for (const sc of dayShiftCodes) {
+        const rawCov = shiftCovByDay[sc]?.[dc]
+        if (rawCov == null) continue
+        const req: { lab: number; andrology: number; admin: number } =
+          typeof rawCov === "number" ? { lab: rawCov, andrology: 0, admin: 0 } : rawCov as { lab: number; andrology: number; admin: number }
+        if (req.lab === 0 && req.andrology === 0 && req.admin === 0) continue
+        let lab = 0, andro = 0, adm = 0
+        for (const a of day.assignments) {
+          if (a.shift_type !== sc) continue
+          const role = a.staff.role
+          if (role === "lab") lab++
+          else if (role === "andrology") andro++
+          else adm++
+        }
+        const msgs: string[] = []
+        if (lab < req.lab) msgs.push(`lab ${locale === "es" ? "insuficiente" : "insufficient"}: ${lab}/${req.lab}`)
+        if (andro < req.andrology) msgs.push(`${locale === "es" ? "andrología insuficiente" : "andrology insufficient"}: ${andro}/${req.andrology}`)
+        if (adm < req.admin) msgs.push(`admin ${locale === "es" ? "insuficiente" : "insufficient"}: ${adm}/${req.admin}`)
+        for (const msg of msgs) {
+          day.warnings.push({ category: "coverage", message: `${sc} — ${msg}` })
+        }
+      }
+    }
+  }
+
+  // Parse engine warnings — skip coverage warnings (computed live above)
   const engineWarningsRaw = (rotaData as any)?.engine_warnings as string[] | null
   if (engineWarningsRaw && Array.isArray(engineWarningsRaw)) {
     for (const w of engineWarningsRaw) {
@@ -515,13 +554,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const [, date, message] = match
         const day = dayMap[date]
         if (day) {
-          // Determine category: coverage warnings vs rule warnings
+          // Skip coverage warnings — they are now computed live from current assignments
           const isCoverage = message.includes("COBERTURA INSUFICIENTE") || message.includes("insuficiente:")
-          const category = isCoverage ? "coverage" as const : "rule" as const
-          // Avoid duplicating warnings already computed post-hoc
-          const isDuplicate = day.warnings.some((dw) => dw.category === category && dw.message === message)
+          if (isCoverage) continue
+          const isDuplicate = day.warnings.some((dw) => dw.category === "rule" && dw.message === message)
           if (!isDuplicate) {
-            day.warnings.push({ category, message })
+            day.warnings.push({ category: "rule", message })
           }
         }
       }

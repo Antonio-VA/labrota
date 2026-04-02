@@ -694,8 +694,12 @@ export function AdminOrgDetailClient({
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-background px-5 py-4">
-          <div className="flex items-center gap-3">
+        {/* HR subsection */}
+        <div className="rounded-lg border border-border bg-background overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">HR</p>
+          </div>
+          <div className="px-5 py-3 flex items-center gap-3 border-b border-border/50">
             <label className="text-[13px] text-muted-foreground shrink-0">Vacaciones anuales</label>
             <input
               type="number"
@@ -711,10 +715,7 @@ export function AdminOrgDetailClient({
             />
             <span className="text-[12px] text-muted-foreground">días por persona al año</span>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-background px-5 py-4">
-          <div className="flex items-center gap-3">
+          <div className="px-5 py-3 flex items-center gap-3 border-b border-border/50">
             <label className="text-[13px] text-muted-foreground shrink-0">Días por semana (por defecto)</label>
             <input
               type="number"
@@ -730,22 +731,21 @@ export function AdminOrgDetailClient({
             />
             <span className="text-[12px] text-muted-foreground">días/semana para nuevos empleados</span>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-background px-5 py-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={reduceBudgetOnHolidays}
-              onChange={(e) => setReduceBudgetOnHolidays(e.target.checked)}
-              disabled={isPending}
-              className="accent-primary"
-            />
-            <div>
-              <span className="text-[13px] font-medium">Reducir presupuesto en festivos</span>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Reduce en 1 día el presupuesto semanal de cada persona por cada festivo de la semana.</p>
-            </div>
-          </label>
+          <div className="px-5 py-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reduceBudgetOnHolidays}
+                onChange={(e) => setReduceBudgetOnHolidays(e.target.checked)}
+                disabled={isPending}
+                className="accent-primary"
+              />
+              <div>
+                <span className="text-[13px] font-medium">Reducir presupuesto en festivos</span>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Reduce en 1 día el presupuesto semanal de cada persona por cada festivo de la semana.</p>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
 
