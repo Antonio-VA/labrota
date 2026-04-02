@@ -3,10 +3,6 @@ import createNextIntlPlugin from "next-intl/plugin"
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
 
-const nextConfig: NextConfig = {
-  experimental: {
-    reactCompiler: true,
-  },
-}
+const nextConfig: NextConfig = {}
 
 export default withNextIntl(nextConfig)
