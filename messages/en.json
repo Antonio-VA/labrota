@@ -458,6 +458,7 @@
       "certifiedShort": "Certified",
       "training": "In training"
     },
+    "skillCycleHint": "Click to cycle: off → training → certified",
     "inviteViewerLabel": "Send viewer invitation — they will receive an email to create their account with read-only calendar access",
     "wizardStep1": "Details",
     "wizardStep2": "Availability",

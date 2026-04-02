@@ -942,7 +942,7 @@ function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, 
 // ── Inline skills editor for profile panel ──────────────────────────────────
 
 function ProfileSkillsSection({
-  staffId, staffSkills, tecnicas, skillLabel, canEdit, onChanged,
+  staffId, staffSkills, tecnicas, skillLabel, canEdit, onChanged, dirtyRef,
 }: {
   staffId: string
   staffSkills: { id: string; skill: string; level: string }[]
@@ -950,6 +950,7 @@ function ProfileSkillsSection({
   skillLabel: (code: string) => string
   canEdit: boolean
   onChanged?: () => void
+  dirtyRef?: React.MutableRefObject<boolean>
 }) {
   const t = useTranslations("schedule")
   const ts = useTranslations("skills")
@@ -983,6 +984,9 @@ function ProfileSkillsSection({
   const isDirty = useMemo(() => {
     return allSkills.some((s) => levels[s] !== initialLevels[s])
   }, [allSkills, levels, initialLevels])
+
+  // Expose dirty state to parent for close warning
+  useEffect(() => { if (dirtyRef) dirtyRef.current = isDirty }, [isDirty, dirtyRef])
 
   function cycleLevel(skill: string) {
     if (!canEdit) return
@@ -1057,14 +1061,29 @@ function ProfileSkillsSection({
         </div>
       )}
 
+      {canEdit && allSkills.length > 0 && (
+        <p className="mt-1.5 text-[10px] text-muted-foreground/70 italic">
+          {locale === "es" ? "Clic para alternar: desactivado → formación → certificado" : "Click to cycle: off → training → certified"}
+        </p>
+      )}
+
       {isDirty && (
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="mt-2 text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
-        >
-          {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
-        </button>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
+          >
+            {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
+          </button>
+          <button
+            onClick={() => setLevels(initialLevels)}
+            disabled={saving}
+            className="text-[12px] font-medium text-muted-foreground hover:underline disabled:opacity-50"
+          >
+            {locale === "es" ? "Cancelar" : "Cancel"}
+          </button>
+        </div>
       )}
     </div>
   )
@@ -1092,6 +1111,17 @@ function StaffProfilePanel({
   const [loading, setLoading] = useState(false)
   const [showAdjWeeks, setShowAdjWeeks] = useState(false)
   const [showLeaveForm, setShowLeaveForm] = useState(false)
+  const skillsDirtyRef = useRef(false)
+
+  const handleClose = useCallback(() => {
+    if (skillsDirtyRef.current) {
+      const msg = locale === "es"
+        ? "Tienes cambios sin guardar en las tareas. ¿Salir sin guardar?"
+        : "You have unsaved skill changes. Leave without saving?"
+      if (!window.confirm(msg)) return
+    }
+    onClose()
+  }, [onClose, locale])
 
   const weekStart = weekData?.weekStart ?? null
   useEffect(() => {
@@ -1127,7 +1157,7 @@ function StaffProfilePanel({
   return (
     <>
       {/* Overlay */}
-      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+      {open && <div className="fixed inset-0 z-40" onClick={handleClose} />}
 
       {/* Side panel — 400px */}
       <div className={cn(
@@ -1171,7 +1201,7 @@ function StaffProfilePanel({
               <div className="shimmer-bar h-4 w-32 rounded" />
             )}
           </div>
-          <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted shrink-0">
+          <button onClick={handleClose} className="size-7 flex items-center justify-center rounded hover:bg-muted shrink-0">
             <X className="size-4 text-muted-foreground" />
           </button>
         </div>
@@ -1287,6 +1317,7 @@ function StaffProfilePanel({
               tecnicas={weekData?.tecnicas ?? []}
               skillLabel={skillLabel}
               canEdit={userRole !== "viewer"}
+              dirtyRef={skillsDirtyRef}
               onChanged={() => {
                 // Refresh the staff list so chips update everywhere
                 onRefreshWeek?.()

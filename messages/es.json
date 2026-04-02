@@ -458,6 +458,7 @@
       "certifiedShort": "Certificado",
       "training": "En formación"
     },
+    "skillCycleHint": "Clic para alternar: desactivado → formación → certificado",
     "inviteViewerLabel": "Enviar invitación como visor — recibirá un email para crear su cuenta con acceso de solo lectura al calendario",
     "wizardStep1": "Datos",
     "wizardStep2": "Disponibilidad",

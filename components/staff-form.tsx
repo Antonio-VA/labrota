@@ -206,7 +206,7 @@ export function StaffForm({
   const [state, formAction, isPending] = useActionState(action, null)
 
   const [selectedDays, setSelectedDays] = useState<WorkingDay[]>(
-    staff?.working_pattern ?? ["mon", "tue", "wed", "thu", "fri"]
+    staff?.working_pattern ?? ALL_DAYS
   )
   const [preferredDays, setPreferredDays] = useState<WorkingDay[]>(
     staff?.preferred_days ?? []
@@ -580,7 +580,7 @@ export function StaffForm({
 
       {/* Capacidades */}
       <Section label={t("sections.capabilities")}>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {capacidades.map(({ skill, label }) => {
             const level = skillLevels[skill] ?? 'off'
             return (
@@ -589,9 +589,8 @@ export function StaffForm({
                 type="button"
                 onClick={() => cycleSkill(skill)}
                 disabled={isPending}
-                style={{ width: 180, height: 56, borderRadius: 8 }}
                 className={cn(
-                  "flex items-center justify-between px-3 border text-left transition-colors disabled:opacity-50 shrink-0",
+                  "flex items-center justify-between h-14 px-3 rounded-lg border text-left transition-colors disabled:opacity-50",
                   level === 'certified' && "bg-blue-50 border-blue-400",
                   level === 'training'  && "bg-amber-50 border-amber-300",
                   level === 'off'       && "bg-background border-border hover:bg-muted"
@@ -626,6 +625,9 @@ export function StaffForm({
             )
           })}
         </div>
+        <p className="text-[11px] text-muted-foreground/70 italic mt-2">
+          {t("skillCycleHint")}
+        </p>
         {/* Hidden inputs for form submission */}
         {capacidades.map(({ skill }) =>
           skillLevels[skill] && skillLevels[skill] !== 'off' ? (
