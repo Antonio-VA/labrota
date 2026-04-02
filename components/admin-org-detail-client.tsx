@@ -33,6 +33,7 @@ export function AdminOrgDetailClient({
   initialTaskHybridEnabled = false,
   initialTaskReasoningEnabled = false,
   initialDailyHybridLimit = 10,
+  initialAnnualLeaveDays = 20,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -57,6 +58,7 @@ export function AdminOrgDetailClient({
   initialTaskHybridEnabled?: boolean
   initialTaskReasoningEnabled?: boolean
   initialDailyHybridLimit?: number
+  initialAnnualLeaveDays?: number
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -84,6 +86,7 @@ export function AdminOrgDetailClient({
   const [taskHybridEnabled, setTaskHybridEnabled] = useState(initialTaskHybridEnabled)
   const [taskReasoningEnabled, setTaskReasoningEnabled] = useState(initialTaskReasoningEnabled)
   const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
+  const [annualLeaveDays, setAnnualLeaveDays] = useState(initialAnnualLeaveDays)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -146,7 +149,7 @@ export function AdminOrgDetailClient({
         const r = await toggleOrgTaskInShift(orgId, enableTaskInShift)
         if (r.error) { toast.error(r.error); hasError = true }
       }
-      const r2 = await updateOrgRegional(orgId, country, region)
+      const r2 = await updateOrgRegional(orgId, country, region, annualLeaveDays)
       if (r2.error) { toast.error(r2.error); hasError = true }
       const r4 = await updateOrgEngineConfig(orgId, {
         ai_optimal_version: aiOptimalVersion,
@@ -682,6 +685,25 @@ export function AdminOrgDetailClient({
                 </select>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-background px-5 py-4">
+          <div className="flex items-center gap-3">
+            <label className="text-[13px] text-muted-foreground shrink-0">Vacaciones anuales</label>
+            <input
+              type="number"
+              min={0}
+              max={60}
+              value={annualLeaveDays}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 0 && v <= 60) setAnnualLeaveDays(v)
+              }}
+              disabled={isPending}
+              className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+            />
+            <span className="text-[12px] text-muted-foreground">días por persona al año</span>
           </div>
         </div>
       </div>

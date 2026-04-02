@@ -355,7 +355,7 @@ export async function createOrgUser(formData: FormData) {
 }
 
 // ── updateOrgRegional ──────────────────────────────────────────────────────
-export async function updateOrgRegional(orgId: string, country: string, region: string) {
+export async function updateOrgRegional(orgId: string, country: string, region: string, annualLeaveDays?: number) {
   await assertSuperAdmin()
 
   const admin = createAdminClient()
@@ -367,15 +367,19 @@ export async function updateOrgRegional(orgId: string, country: string, region: 
     .eq("organisation_id", orgId)
     .maybeSingle()
 
+  const payload: Record<string, unknown> = { country, region, autonomous_community: region || null }
+  if (annualLeaveDays !== undefined) payload.annual_leave_days = annualLeaveDays
+
   if (!existing) {
+    payload.organisation_id = orgId
     const { error } = await admin
       .from("lab_config")
-      .insert({ organisation_id: orgId, country, region, autonomous_community: region || null } as never)
+      .insert(payload as never)
     if (error) return { error: error.message }
   } else {
     const { error } = await admin
       .from("lab_config")
-      .update({ country, region, autonomous_community: region || null } as never)
+      .update(payload as never)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
   }

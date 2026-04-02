@@ -167,7 +167,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     days_off_preference:   (config as any).days_off_preference ?? "prefer_weekend",
     public_holiday_mode:   config.public_holiday_mode ?? "normal",
     public_holiday_reduce_budget: config.public_holiday_reduce_budget ?? false,
-    annual_leave_days: config.annual_leave_days ?? 20,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -242,7 +241,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         days_off_preference:    values.days_off_preference,
         public_holiday_mode:    values.public_holiday_mode,
         public_holiday_reduce_budget: values.public_holiday_reduce_budget,
-        annual_leave_days: values.annual_leave_days,
       } as any)
       if (result.error) {
         setErrorMsg(result.error)
@@ -347,24 +345,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
               <span className="text-[13px] font-medium">{t("holidayReduceBudget")}</span>
               <p className="text-[11px] text-muted-foreground mt-0.5">{t("holidayReduceBudgetHint")}</p>
             </div>
-          </label>
-        </div>
-        <div className="border-t border-border pt-3 pb-4">
-          <label className="flex items-center gap-3">
-            <span className="text-[13px] font-medium">{t("annualLeaveDays")}</span>
-            <input
-              type="number"
-              min={0}
-              max={60}
-              value={values.annual_leave_days}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10)
-                if (!isNaN(v) && v >= 0 && v <= 60) setValues((p) => ({ ...p, annual_leave_days: v }))
-              }}
-              disabled={isPending}
-              className="w-16 rounded-md border border-border bg-background px-2 py-1 text-[14px] text-center"
-            />
-            <span className="text-[12px] text-muted-foreground">{t("annualLeaveDaysHint")}</span>
           </label>
         </div>
       </div>
