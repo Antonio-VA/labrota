@@ -224,7 +224,14 @@ function TaskCell({
   function openSelector() {
     if (isPublished) return
     const rect = cellRef.current?.getBoundingClientRect()
-    if (rect) setPopupPos({ top: rect.bottom + 4, left: rect.left })
+    if (rect) {
+      const popupH = 260
+      const popupW = 224
+      const spaceBelow = window.innerHeight - rect.bottom - 4
+      const top = spaceBelow >= popupH ? rect.bottom + 4 : Math.max(4, rect.top - popupH - 4)
+      const left = Math.min(rect.left, window.innerWidth - popupW - 8)
+      setPopupPos({ top, left })
+    }
     setSelectorOpen(true)
   }
 
@@ -237,7 +244,6 @@ function TaskCell({
         const hasConflict = conflictStaffIds.has(a.staff_id)
         const isHovered = hoveredStaffId === a.staff_id
         const staffColor = staffColorMap[a.staff_id]
-        const borderLeft = colorBorders ? (staffColor || "#94A3B8") : "#CBD5E1"
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
@@ -246,18 +252,19 @@ function TaskCell({
                 onMouseLeave={() => setHovered(null)}
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
-                  onLeave ? "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                  onLeave ? "bg-muted text-muted-foreground opacity-60" :
                   hasConflict ? "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
                   "bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
                 )}
                 style={{
-                  borderLeft: `2px solid ${borderLeft}`,
+                  ...(colorBorders ? { borderLeft: `3px solid ${staffColor || "#94A3B8"}` } : {}),
                   borderRadius: 4,
-                  ...(isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
+                  ...(!onLeave && isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
                 }}
               >
                 {`${a.staff.first_name[0]}${a.staff.last_name[0]}`}
-                {!isPublished && (
+                {onLeave && <X className="size-2 opacity-50" />}
+                {!isPublished && !onLeave && (
                   <button onClick={(e) => { e.stopPropagation(); onRemove(a.id) }} className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity">
                     <X className="size-2.5" />
                   </button>
@@ -289,7 +296,7 @@ function TaskCell({
       {!isPublished && (
         <div
           onClick={() => openSelector()}
-          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity rounded hover:bg-muted/50"
+          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity"
         >
           <Plus className="size-3 text-muted-foreground" />
         </div>
@@ -372,11 +379,18 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
 
   const { hoveredStaffId, setHovered } = useStaffHover()
 
+  const isSatOff = new Date(date + "T12:00:00").getDay() === 6
+
   return (
     <div
       ref={cellRef}
-      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/40 min-h-[36px] group/off"
-      style={new Date(date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
+      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start min-h-[36px] group/off"
+      style={{
+        backgroundColor: "#ffffff",
+        backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
+        backgroundSize: "10px 10px",
+        ...(isSatOff ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : {}),
+      }}
     >
       {onLeave.map((s) => {
         const isHovered = hoveredStaffId === s.id

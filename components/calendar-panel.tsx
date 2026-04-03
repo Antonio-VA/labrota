@@ -1570,13 +1570,16 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const days = liveDays ?? data.days
   const isByTask = data.rotaDisplayMode === "by_task"
   const isGuardiaMode = data.daysOffPreference === "guardia"
-  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }> = {}
+  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
 
-  // Count leave days per staff this week to reduce their budget
+  // Count leave days per staff — only within the current view's dates to avoid over-counting
+  // long leaves that extend beyond this week
+  const weekDateSet = new Set(days.map((d) => d.date))
   const leaveDaysPerStaff: Record<string, number> = {}
   if (data.onLeaveByDate) {
     for (const date in data.onLeaveByDate) {
+      if (!weekDateSet.has(date)) continue // only count days actually in this view
       for (const staffId of data.onLeaveByDate[date]) {
         leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
       }
@@ -1590,7 +1593,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     const leaveDays = leaveDaysPerStaff[s.id] ?? 0
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays),
+      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays), leaveDays,
     }
     staffDaySeen[s.id] = new Set()
   }
@@ -1660,10 +1663,11 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
   const overflow = visibleCount !== null ? entries.slice(visibleCount) : []
 
-  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }) {
-    const over  = s.count > s.daysPerWeek
-    const under = s.count < s.daysPerWeek
-    const color = s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
+  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number }) {
+    const isOnLeaveAllWeek = s.leaveDays > 0 && s.daysPerWeek === 0
+    const over  = !isOnLeaveAllWeek && s.count > s.daysPerWeek
+    const under = !isOnLeaveAllWeek && s.count < s.daysPerWeek
+    const color = isOnLeaveAllWeek ? "text-muted-foreground/50" : s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
     const isHov = hoveredStaffId === id
     const staffColor = staffColorLookup[id]
     return (
@@ -1674,19 +1678,25 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onClick={() => onPillClick?.(id)}
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
-            style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color, isOnLeaveAllWeek && "line-through")}
+            style={!isOnLeaveAllWeek && isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
-            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
-            <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
-            <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
-            {s.guardiaCount > 0 && (
-              <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
+            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isOnLeaveAllWeek ? "currentColor" : isHov ? "#1e293b" : staffColor }} />}
+            <span className="font-medium">{s.first[0]}{s.last[0]}</span>
+            {isOnLeaveAllWeek ? (
+              <Plane className="size-2.5 shrink-0" />
+            ) : (
+              <>
+                {" "}<span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
+                {s.guardiaCount > 0 && (
+                  <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
+                )}
+              </>
             )}
           </button>
         } />
         <TooltipContent side="top">
-          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}{s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}
+          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} {isOnLeaveAllWeek ? "· De baja esta semana" : `· ${s.count}/${s.daysPerWeek} ${t("shifts")}${s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}`}
         </TooltipContent>
       </Tooltip>
     )
@@ -5340,7 +5350,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
                   && favoriteView.compact === compact
                   && favoriteView.colorChips === colorChips
                   && favoriteView.highlightEnabled === highlightHover
-                // When on favorite → nothing shown. When not on favorite → go to or save.
+                const saveFavItem = {
+                  label: t("saveFavoriteView"),
+                  icon: <Star className="size-3.5" />,
+                  onClick: () => {
+                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+                    setFavoriteView(fav)
+                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+                    saveUserPreferences({ favoriteView: fav })
+                    toast.success(t("favoriteViewSaved"))
+                  },
+                }
+                // When on favorite → nothing shown. When not on favorite → show go-to (if exists) + save.
                 if (isFav) return []
                 if (favoriteView) return [{
                   label: t("goToFavoriteView"),
@@ -5354,19 +5375,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
                     setColorChips(favoriteView.colorChips)
                     setHighlightHover(favoriteView.highlightEnabled)
                   },
-                }]
-                return [{
-                  label: t("saveFavoriteView"),
-                  icon: <Star className="size-3.5" />,
-                  dividerBefore: true,
-                  onClick: () => {
-                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-                    setFavoriteView(fav)
-                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ favoriteView: fav })
-                    toast.success(t("favoriteViewSaved"))
-                  },
-                }]
+                }, saveFavItem]
+                return [{ ...saveFavItem, dividerBefore: true }]
               })(),
               // ── History ──
               ...(view === "week" && hasAssignments ? [{
@@ -5539,7 +5549,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
                   shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
                   compact={compact}
                   colorBorders={colorChips}
-                  showPuncBiopsy={false}
+                  showPuncBiopsy={!compact}
                   onDateClick={handleMonthDayClick}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
