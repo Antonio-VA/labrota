@@ -225,10 +225,8 @@ function TaskCell({
     if (isPublished) return
     const rect = cellRef.current?.getBoundingClientRect()
     if (rect) {
-      const popupH = 260
       const popupW = 224
-      const spaceBelow = window.innerHeight - rect.bottom - 4
-      const top = spaceBelow >= popupH ? rect.bottom + 4 : Math.max(4, rect.top - popupH - 4)
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 60)
       const left = Math.min(rect.left, window.innerWidth - popupW - 8)
       setPopupPos({ top, left })
     }
