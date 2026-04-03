@@ -412,7 +412,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               onMouseLeave={() => setHovered(null)}
               onClick={() => onChipClick?.(s.id)}
               className={cn(
-                "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 transition-colors duration-150",
+                "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 transition-colors duration-150",
                 onChipClick && "cursor-pointer"
               )}
             >

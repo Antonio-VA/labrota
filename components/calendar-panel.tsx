@@ -1570,18 +1570,23 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const days = liveDays ?? data.days
   const isByTask = data.rotaDisplayMode === "by_task"
   const isGuardiaMode = data.daysOffPreference === "guardia"
-  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number }> = {}
+  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number; leaveType: string | null }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
 
   // Count leave days per staff — only within the current view's dates to avoid over-counting
   // long leaves that extend beyond this week
   const weekDateSet = new Set(days.map((d) => d.date))
   const leaveDaysPerStaff: Record<string, number> = {}
+  const leaveTypePerStaff: Record<string, string> = {}
   if (data.onLeaveByDate) {
     for (const date in data.onLeaveByDate) {
       if (!weekDateSet.has(date)) continue // only count days actually in this view
       for (const staffId of data.onLeaveByDate[date]) {
         leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
+        // Capture first leave type seen for this staff member
+        if (!leaveTypePerStaff[staffId] && data.onLeaveTypeByDate?.[date]?.[staffId]) {
+          leaveTypePerStaff[staffId] = data.onLeaveTypeByDate[date][staffId]
+        }
       }
     }
   }
@@ -1593,7 +1598,8 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
     const leaveDays = leaveDaysPerStaff[s.id] ?? 0
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays), leaveDays,
+      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays),
+      leaveDays, leaveType: leaveTypePerStaff[s.id] ?? null,
     }
     staffDaySeen[s.id] = new Set()
   }
@@ -1663,13 +1669,14 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
   const overflow = visibleCount !== null ? entries.slice(visibleCount) : []
 
-  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number }) {
-    const isOnLeaveAllWeek = s.leaveDays > 0 && s.daysPerWeek === 0
-    const over  = !isOnLeaveAllWeek && s.count > s.daysPerWeek
-    const under = !isOnLeaveAllWeek && s.count < s.daysPerWeek
-    const color = isOnLeaveAllWeek ? "text-muted-foreground/50" : s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
+  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number; leaveDays: number; leaveType: string | null }) {
+    const hasLeave = s.leaveDays > 0
+    const over  = s.count > s.daysPerWeek
+    const under = s.count < s.daysPerWeek
+    const color = s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
     const isHov = hoveredStaffId === id
     const staffColor = staffColorLookup[id]
+    const LeaveIcon = hasLeave ? (LEAVE_ICON_MAP[s.leaveType ?? "other"] ?? LEAVE_ICON_MAP.other) : null
     return (
       <Tooltip key={id}>
         <TooltipTrigger render={
@@ -1678,25 +1685,20 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onClick={() => onPillClick?.(id)}
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color, isOnLeaveAllWeek && "line-through")}
-            style={!isOnLeaveAllWeek && isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
+            style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
           >
-            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isOnLeaveAllWeek ? "currentColor" : isHov ? "#1e293b" : staffColor }} />}
+            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>
-            {isOnLeaveAllWeek ? (
-              <Plane className="size-2.5 shrink-0" />
-            ) : (
-              <>
-                {" "}<span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
-                {s.guardiaCount > 0 && (
-                  <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
-                )}
-              </>
+            {" "}<span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
+            {s.guardiaCount > 0 && (
+              <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
             )}
+            {LeaveIcon && <LeaveIcon className="size-2.5 shrink-0 text-amber-500" />}
           </button>
         } />
         <TooltipContent side="top">
-          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} {isOnLeaveAllWeek ? "· De baja esta semana" : `· ${s.count}/${s.daysPerWeek} ${t("shifts")}${s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}`}
+          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}{s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}{hasLeave ? ` · ${s.leaveDays}d baja` : ""}
         </TooltipContent>
       </Tooltip>
     )
