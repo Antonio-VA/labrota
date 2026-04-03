@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Briefcase } from "lucide-react"
+import { AlertTriangle, Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -19,10 +19,15 @@ function resolveStaffColor(color: string): string {
   return COLOR_HEX[color] ?? "#94A3B8"
 }
 
-const TECNICA_DOT_COLOR: Record<string, string> = {
+// Maps color name OR hex to a display hex
+const TECNICA_NAMED_COLOR: Record<string, string> = {
   amber: "#F59E0B", blue: "#3B82F6", green: "#10B981",
   purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6",
   slate: "#64748B", red: "#EF4444",
+}
+function resolveTecnicaColor(color: string): string {
+  if (color.startsWith("#")) return color
+  return TECNICA_NAMED_COLOR[color] ?? "#3B82F6"
 }
 
 interface TransposedTaskGridProps {
@@ -59,7 +64,7 @@ export function TransposedTaskGrid({
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
   // Grid: day label + técnica columns + OFF column
-  const gridCols = `100px repeat(${tecnicas.length}, minmax(80px, 1fr)) minmax(80px, 1fr)`
+  const gridCols = `100px repeat(${tecnicas.length}, minmax(80px, 1fr)) minmax(90px, 1fr)`
 
   return (
     <div className="overflow-auto flex-1 rounded-lg border border-border">
@@ -67,9 +72,9 @@ export function TransposedTaskGrid({
         {/* Header row: corner + técnica columns + OFF */}
         <div className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2" />
         {tecnicas.map((tec) => {
-          const dotColor = TECNICA_DOT_COLOR[tec.color] ?? TECNICA_DOT_COLOR.blue
+          const dotColor = resolveTecnicaColor(tec.color)
           return (
-            <div key={tec.id} className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
+            <div key={tec.id} className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2 text-center">
               <div className="flex items-center justify-center gap-1.5">
                 <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                 <span className="text-[12px] font-semibold" style={{ color: dotColor }}>{tec.codigo}</span>
@@ -92,19 +97,16 @@ export function TransposedTaskGrid({
           const isWeekend = dow === 0 || dow === 6
           const holiday = publicHolidays[day.date]
           const leaveIds = new Set(onLeaveByDate[day.date] ?? [])
-
-          // Coverage status for left border color
           const hasWarnings = day.warnings.length > 0
-          const hasAssignments = day.assignments.length > 0
-          const coverageColor = !hasAssignments ? "#D4D4D8" : hasWarnings ? "#F59E0B" : "#10B981"
 
           // Off staff: not assigned AND not on leave
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const offStaff = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id) && visibleStaffIds.has(s.id))
+          const leaveStaff = staffList.filter((s) => leaveIds.has(s.id) && visibleStaffIds.has(s.id))
 
           return (
             <>
-              {/* Row header: day */}
+              {/* Row header: day — no coverage border, bigger text */}
               <div
                 key={`header-${day.date}`}
                 onClick={() => onDateClick?.(day.date)}
@@ -113,17 +115,16 @@ export function TransposedTaskGrid({
                   onDateClick && "cursor-pointer hover:bg-muted/80",
                   holiday && "bg-amber-50/60"
                 )}
-                style={{
-                  borderLeft: `3px solid ${coverageColor}`,
-                  ...(isSat ? { borderTop: "1px dashed var(--border)" } : {}),
-                }}
+                style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
               >
                 {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-[11px] text-muted-foreground uppercase font-medium leading-none">{wday}</span>
                   <span className={cn(
-                    "font-semibold leading-none",
-                    isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
+                    "font-bold leading-none",
+                    isToday
+                      ? "size-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[16px]"
+                      : "text-[22px] text-foreground"
                   )}>
                     {dayNum}
                   </span>
@@ -146,7 +147,7 @@ export function TransposedTaskGrid({
                   <div
                     key={`${day.date}-${tec.codigo}`}
                     className={cn(
-                      "border-b border-border px-1 py-1 flex flex-wrap gap-0.5 content-start",
+                      "border-b border-r border-border px-1 py-1 flex flex-wrap gap-0.5 content-start",
                       isSat && "border-t border-dashed",
                       isWeekend && "bg-muted/30",
                       assignments.length > 0 ? "bg-background" : "",
@@ -155,7 +156,7 @@ export function TransposedTaskGrid({
                     onClick={() => !isPublished && onCellClick?.(day.date, tec.codigo)}
                   >
                     {assignments.map((a) => {
-                      const sColor = staffColorMap[a.staff_id]
+                      const sColor = colorChips ? staffColorMap[a.staff_id] : undefined
                       const isHov = hoveredStaffId === a.staff_id
                       return (
                         <Tooltip key={a.id}>
@@ -166,10 +167,12 @@ export function TransposedTaskGrid({
                                 compact ? "text-[9px] px-1 py-0.5 min-h-[20px]" : "text-[10px] px-1.5 py-0.5 min-h-[24px]"
                               )}
                               style={{
-                                border: `1px solid ${sColor}40`,
-                                borderLeft: `3px solid ${sColor}`,
+                                ...(sColor ? {
+                                  border: `1px solid ${sColor}40`,
+                                  borderLeft: `3px solid ${sColor}`,
+                                } : { border: "1px solid var(--border)" }),
                                 borderRadius: 4,
-                                ...(isHov ? { backgroundColor: `${sColor}20` } : {}),
+                                ...(isHov && sColor ? { backgroundColor: `${sColor}20` } : {}),
                               }}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}
@@ -200,38 +203,52 @@ export function TransposedTaskGrid({
                 )
               })}
 
-              {/* OFF column */}
+              {/* OFF column — dotted background, initials chips */}
               <div
                 key={`off-${day.date}`}
-                className={cn("border-b border-border p-1 flex flex-col gap-0.5 bg-muted/20", isSat && "border-t border-dashed")}
+                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start", isSat && "border-t border-dashed")}
+                style={{
+                  backgroundColor: "#ffffff",
+                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
+                  backgroundSize: "10px 10px",
+                }}
               >
-                {[...leaveIds].map((sid) => {
-                  const s = staffList.find((st) => st.id === sid)
-                  if (!s) return null
-                  return (
-                    <div key={sid} className={cn("flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}>
-                      <Briefcase className="size-2.5 text-amber-500 shrink-0" />
-                      <span className="truncate text-amber-700">{s.first_name} {s.last_name[0]}.</span>
-                    </div>
-                  )
-                })}
-                {offStaff.slice(0, compact ? 3 : 5).map((s) => {
+                {leaveStaff.map((s) => {
                   const isHov = hoveredStaffId === s.id
                   return (
-                    <div
-                      key={s.id}
-                      className={cn("flex items-center gap-1 rounded border border-border/50 px-1.5 text-muted-foreground transition-colors duration-100", compact ? "py-0 text-[10px]" : "py-0.5 text-[11px]")}
-                      onMouseEnter={() => setHovered(s.id)}
-                      onMouseLeave={() => setHovered(null)}
-                      style={isHov && staffColorMap[s.id] ? { backgroundColor: `${staffColorMap[s.id]}30`, color: "#1e293b" } : undefined}
-                    >
-                      <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
-                    </div>
+                    <Tooltip key={s.id}>
+                      <TooltipTrigger render={
+                        <span
+                          className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground opacity-60 transition-colors duration-100"
+                          onMouseEnter={() => setHovered(s.id)}
+                          onMouseLeave={() => setHovered(null)}
+                        >
+                          {s.first_name[0]}{s.last_name[0]}
+                          <Plane className="size-2.5" />
+                        </span>
+                      } />
+                      <TooltipContent side="left">{s.first_name} {s.last_name} · De baja</TooltipContent>
+                    </Tooltip>
                   )
                 })}
-                {offStaff.length > (compact ? 3 : 5) && (
-                  <span className="text-[9px] text-muted-foreground/50 self-center">+{offStaff.length - (compact ? 3 : 5)}</span>
-                )}
+                {offStaff.map((s) => {
+                  const isHov = hoveredStaffId === s.id
+                  return (
+                    <Tooltip key={s.id}>
+                      <TooltipTrigger render={
+                        <span
+                          className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-100"
+                          onMouseEnter={() => setHovered(s.id)}
+                          onMouseLeave={() => setHovered(null)}
+                          style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
+                        >
+                          {s.first_name[0]}{s.last_name[0]}
+                        </span>
+                      } />
+                      <TooltipContent side="left">{s.first_name} {s.last_name} · Sin asignar</TooltipContent>
+                    </Tooltip>
+                  )
+                })}
               </div>
             </>
           )
