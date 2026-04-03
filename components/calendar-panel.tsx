@@ -112,6 +112,9 @@ const ROLE_DOT: Record<string, string> = {
 }
 const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
 
+// Leave type → icon map (used in ShiftBudgetBar and PersonGrid)
+const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
+
 // Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
 const TECNICA_PILL: Record<string, string> = {
   amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
@@ -3620,8 +3623,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
     }
     return { deptColorMap: colors, deptLabelMap: labels }
   }, [departments])
-  // Leave type icons
-  const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
   // Staff → department colour map
   const staffColorMap = useMemo(() => {
     const m: Record<string, string> = {}
