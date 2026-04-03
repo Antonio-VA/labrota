@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { X, Plus, Users, AlertTriangle } from "lucide-react"
+import { X, Plus, Users, AlertTriangle, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -194,6 +194,7 @@ function TaskCell({
   compact = false,
   staffColorMap,
   colorBorders = true,
+  onChipClick,
 }: {
   tecnica: Tecnica
   date: string
@@ -214,6 +215,7 @@ function TaskCell({
   compact?: boolean
   staffColorMap: Record<string, string>
   colorBorders?: boolean
+  onChipClick?: (staffId: string) => void
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -248,8 +250,10 @@ function TaskCell({
               <span
                 onMouseEnter={() => setHovered(a.staff_id)}
                 onMouseLeave={() => setHovered(null)}
+                onClick={() => onChipClick?.(a.staff_id)}
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
+                  onChipClick && "cursor-pointer",
                   onLeave ? "bg-muted text-muted-foreground opacity-60" :
                   hasConflict ? "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
                   "bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
@@ -333,13 +337,20 @@ function TaskCell({
 
 // ── OFF cell ─────────────────────────────────────────────────────────────────
 
-function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap }: {
+const LEAVE_ICON_MAP: Record<string, typeof Plane> = {
+  annual: Plane, sick: Cross, personal: User,
+  training: GraduationCap, maternity: Baby, other: CalendarX,
+}
+
+function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap, leaveTypeByStaff, onChipClick }: {
   date: string; day: RotaDay
   unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
   staffList: StaffWithSkills[]; assignedIds: Set<string>
   isPublished: boolean
   onMakeOff: (staffId: string) => Promise<void>
   staffColorMap: Record<string, string>
+  leaveTypeByStaff?: Record<string, string>
+  onChipClick?: (staffId: string) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState<Set<string>>(new Set())
@@ -391,17 +402,22 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
       }}
     >
       {onLeave.map((s) => {
-        const isHovered = hoveredStaffId === s.id
+        const leaveType = leaveTypeByStaff?.[s.id] ?? "other"
+        const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
         return (
         <Tooltip key={s.id}>
           <TooltipTrigger render={
             <span
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
-              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 transition-colors duration-150"
-              style={isHovered && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
+              onClick={() => onChipClick?.(s.id)}
+              className={cn(
+                "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 transition-colors duration-150",
+                onChipClick && "cursor-pointer"
+              )}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
+              <LeaveIcon className="size-2.5" />
             </span>
           } />
           <TooltipContent side="right">{s.first_name} {s.last_name} · De baja</TooltipContent>
@@ -416,7 +432,11 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
             <span
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
-              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150"
+              onClick={() => onChipClick?.(s.id)}
+              className={cn(
+                "inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150",
+                onChipClick && "cursor-pointer"
+              )}
               style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
@@ -513,14 +533,21 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
   useEffect(() => { setDraft(String(value)) }, [value])
   useEffect(() => { setBiopsyDraft(String(biopsyForecast)) }, [biopsyForecast])
 
+  // Outside-click saves and closes (re-runs when draft values change to avoid stale closure)
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (popRef.current && !popRef.current.contains(e.target as Node)) setOpen(false)
+      if (popRef.current && !popRef.current.contains(e.target as Node)) {
+        const n = parseInt(draft, 10)
+        if (!isNaN(n) && n >= 0) onChange?.(date, n === defaultValue ? null : n)
+        const nb = parseInt(biopsyDraft, 10)
+        if (!isNaN(nb) && nb >= 0 && nb !== biopsyForecast) onBiopsyChange?.(date, nb)
+        setOpen(false)
+      }
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
-  }, [open])
+  }, [open, draft, biopsyDraft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function save() {
     const n = parseInt(draft, 10)
@@ -579,16 +606,11 @@ function PuncBiopsyEdit({ date, value, defaultValue, isOverride, biopsyForecast,
               className="w-12 text-[12px] text-center border border-input rounded px-1 py-0.5 outline-none focus:border-primary bg-background"
             />
           </div>
-          <div className="flex gap-1">
-            <button onClick={save} className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity">
-              Guardar
+          {isOverride && (
+            <button onClick={() => { onChange?.(date, null); setOpen(false) }} className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors self-end">
+              Reset
             </button>
-            {isOverride && (
-              <button onClick={() => { onChange?.(date, null); setOpen(false) }} className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
-                Reset
-              </button>
-            )}
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -617,6 +639,7 @@ export function TaskGrid({
   colorBorders = true,
   showPuncBiopsy = true,
   onDateClick,
+  onChipClick,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -637,6 +660,7 @@ export function TaskGrid({
   colorBorders?: boolean
   showPuncBiopsy?: boolean
   onDateClick?: (date: string) => void
+  onChipClick?: (staffId: string) => void
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -954,6 +978,7 @@ export function TaskGrid({
                     compact={compact}
                     staffColorMap={staffColorMap}
                     colorBorders={colorBorders}
+                    onChipClick={onChipClick}
                   />
                 </div>
               )
@@ -992,6 +1017,8 @@ export function TaskGrid({
                 debouncedRefresh()
               }}
               staffColorMap={staffColorMap}
+              leaveTypeByStaff={data.onLeaveTypeByDate?.[day.date]}
+              onChipClick={onChipClick}
             />
           )
         })}

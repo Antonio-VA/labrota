@@ -5551,6 +5551,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
                   colorBorders={colorChips}
                   showPuncBiopsy={!compact}
                   onDateClick={handleMonthDayClick}
+                  onChipClick={openProfile}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex-1 flex items-start justify-center pt-[18vh]">
