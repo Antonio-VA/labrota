@@ -436,14 +436,19 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
   const departments = deptRes.data ?? []
   const staffList = staffRes.data ?? []
 
-  // Build coverage context per department
-  // When shift_coverage_enabled, sum across shifts per dept per day
+  const rotaMode = lc.rota_display_mode as string ?? "by_shift"
+  const isByTask = rotaMode === "by_task"
+
   const shiftCoverageEnabled = lc.shift_coverage_enabled as boolean | undefined ?? false
   const shiftCoverageByDay = lc.shift_coverage_by_day as Record<string, Record<string, Record<string, number>>> | null
   const coverageByDay = lc.coverage_by_day as Record<string, Record<string, number>> | null
 
-  // Get per-day per-dept total: sum across shifts when shift coverage is active
+  // For by-task orgs: use coverage_by_day (Cobertura mínima per day per dept)
+  // For by-shift orgs: sum across shifts per dept per day, fall back to coverage_by_day then legacy
   function getDeptCoverageForDay(day: string, deptCode: string): number {
+    if (isByTask) {
+      return coverageByDay?.[day]?.[deptCode] ?? 0
+    }
     if (shiftCoverageEnabled && shiftCoverageByDay) {
       let total = 0
       for (const shiftCode of Object.keys(shiftCoverageByDay)) {
@@ -452,9 +457,9 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
       return total
     }
     if (coverageByDay) {
-      return (coverageByDay[day] as Record<string, number> | undefined)?.[deptCode] ?? 0
+      return coverageByDay[day]?.[deptCode] ?? 0
     }
-    // Fallback to legacy flat fields
+    // Legacy flat fields fallback
     if (deptCode === "lab") {
       const isWe = day === "sat" || day === "sun"
       return isWe ? (lc.min_weekend_lab_coverage as number ?? 0) : (lc.min_lab_coverage as number ?? 0)
@@ -510,7 +515,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
       headcount: d.headcount,
       explanation: d.explanation,
     })),
-    explanation: `Minimum fully trained staff needed to meet ${shiftCoverageEnabled ? "per-shift" : "department-level"} coverage minimums year-round. Assumes all staff are certified. Each person provides (${defaultDaysPerWeek} days/week × 52) − ${annualLeaveDays} holiday days = ${Math.round(effectiveDaysPerYear)} effective days/year.`,
+    explanation: `Minimum fully trained staff needed to meet ${isByTask ? "daily dept" : shiftCoverageEnabled ? "per-shift" : "dept-level"} coverage minimums year-round. Assumes all staff are certified. Each person provides (${defaultDaysPerWeek} days/week × 52) − ${annualLeaveDays} holiday days = ${Math.round(effectiveDaysPerYear)} effective days/year.`,
     calculatedAt: new Date().toISOString(),
   }
 
