@@ -26,6 +26,8 @@ export default function LoginPage() {
     const queryError = searchParams.get("error")
     if (queryError === "otp_expired") {
       setErrorMessage(t("linkExpired"))
+    } else if (queryError === "no_access") {
+      setErrorMessage(t("noAccess"))
     } else if (queryError) {
       setErrorMessage(t("sessionExpired"))
     }

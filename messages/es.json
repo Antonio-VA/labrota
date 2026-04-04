@@ -102,6 +102,7 @@
     "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
     "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "linkExpired": "Tu código de acceso ha caducado. Solicita uno nuevo.",
+    "noAccess": "Esta cuenta no tiene acceso a ninguna clínica. Contacta con tu administrador."
     "otpExpired": "Este código ha caducado. Pulsa 'Usar otro correo' y solicita uno nuevo.",
     "otpDisabled": "La verificación por código no está habilitada. Contacta con tu administrador.",
     "verifyError": "No se pudo verificar el código. Revísalo e inténtalo de nuevo.",

@@ -102,6 +102,7 @@
     "invalidCredentials": "Incorrect email or password.",
     "sessionExpired": "Your session has expired. Please sign in again.",
     "linkExpired": "Your access code has expired. Please request a new one.",
+    "noAccess": "This account does not have access to any clinic. Please contact your administrator."
     "otpExpired": "This code has expired. Tap 'Use another email' and request a new one.",
     "otpDisabled": "Code verification is not enabled. Please contact your administrator.",
     "verifyError": "Could not verify the code. Please check it and try again.",

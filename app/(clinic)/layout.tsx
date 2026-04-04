@@ -1,5 +1,6 @@
 export const maxDuration = 120 // Allow up to 2min for AI rota generation
 
+import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getAuthUser } from "@/lib/auth-cache"
@@ -113,6 +114,11 @@ export default async function ClinicLayout({
     }
 
     if (round2.length > 0) await Promise.all(round2)
+
+    // Guard: authenticated user with no org membership cannot access the clinic app
+    if (!activeOrgId || !memberships?.length) {
+      redirect("/login?error=no_access")
+    }
   }
 
   return (
