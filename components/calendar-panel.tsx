@@ -73,134 +73,12 @@ import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type ViewMode      = "week" | "month"
-type CalendarLayout = "shift" | "person"
-type Assignment    = RotaDay["assignments"][0]
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL, DEFAULT_DEPT_ORDER } from "@/lib/department-colors"
-
-type DeptMaps = { border: Record<string, string>; label: Record<string, string>; order: Record<string, number> }
-
-const DEFAULT_DEPT_MAPS: DeptMaps = {
-  border: DEFAULT_DEPT_BORDER,
-  label:  DEFAULT_DEPT_LABEL,
-  order:  DEFAULT_DEPT_ORDER,
-}
-
-function buildDeptMaps(departments: import("@/lib/types/database").Department[]): DeptMaps {
-  if (!departments || departments.length === 0) return DEFAULT_DEPT_MAPS
-  return {
-    border: Object.fromEntries(departments.map((d) => [d.code, d.colour])),
-    label:  Object.fromEntries(departments.map((d) => [d.code, d.name])),
-    order:  Object.fromEntries(departments.map((d) => [d.code, d.sort_order])),
-  }
-}
-
-// Top-level fallbacks for components that don't have access to weekData
-const ROLE_ORDER: Record<string, number> = DEFAULT_DEPT_MAPS.order
-const ROLE_LABEL: Record<string, string> = DEFAULT_DEPT_MAPS.label
-const ROLE_BORDER: Record<string, string> = DEFAULT_DEPT_MAPS.border
-
-// Kept for month grid role dots (tiny preview)
-const ROLE_DOT: Record<string, string> = {
-  lab: "bg-blue-400", andrology: "bg-emerald-400", admin: "bg-slate-400",
-}
-const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
+import type { ViewMode, CalendarLayout, Assignment, DeptMaps, MenuItem } from "./calendar-panel/types"
+import { DEFAULT_DEPT_MAPS, ROLE_ORDER, ROLE_LABEL, ROLE_BORDER, ROLE_DOT, SHIFT_ORDER, TECNICA_PILL, COVERAGE_SKILLS, LEGACY_SKILL_NAMES, TODAY, DAY_ES_2, WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER, DOW_HEADERS_EN, DOW_HEADERS_ES } from "./calendar-panel/constants"
+import { buildDeptMaps, sortAssignments, addDays, addMonths, getMonthStart, formatToolbarLabel, rotateArray, makeSkillLabel, parseHybridInsights, buildStrategyCards, type GenerationStrategy, type StrategyCardMeta } from "./calendar-panel/utils"
 
 // Leave type → icon map (used in ShiftBudgetBar and PersonGrid)
 const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
-
-// Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
-const TECNICA_PILL: Record<string, string> = {
-  amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
-  blue:   "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
-  green:  "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400",
-  purple: "bg-purple-500/10 border-purple-500/30 text-muted-foreground",
-  coral:  "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
-  teal:   "bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400",
-  slate:  "bg-muted border-border text-muted-foreground",
-  red:    "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
-}
-
-function sortAssignments<T extends { staff: { role: string }; shift_type: string }>(arr: T[]): T[] {
-  return [...arr].sort((a, b) => {
-    const rd = (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
-    if (rd !== 0) return rd
-    return (SHIFT_ORDER[a.shift_type] ?? 9) - (SHIFT_ORDER[b.shift_type] ?? 9)
-  })
-}
-
-const TODAY = new Date().toISOString().split("T")[0]
-
-// ── Skill display — look up técnica name, fallback to code ───────────────────
-const LEGACY_SKILL_NAMES: Record<string, string> = {
-  biopsy: "Biopsia", icsi: "ICSI", egg_collection: "Recogida de óvulos",
-  embryo_transfer: "Transferencia embrionaria", denudation: "Denudación",
-  semen_analysis: "Análisis seminal", sperm_prep: "Preparación espermática",
-  sperm_freezing: "Congelación de esperma",
-}
-function makeSkillLabel(tecnicas: Tecnica[]) {
-  const codeMap = Object.fromEntries(tecnicas.map((t) => [t.codigo, t.nombre_es]))
-  return (code: string) => codeMap[code] ?? LEGACY_SKILL_NAMES[code] ?? code
-}
-
-// ── The 5 skills shown in coverage row ────────────────────────────────────────
-
-const COVERAGE_SKILLS = [
-  { key: "biopsy",          label: "B"  },
-  { key: "icsi",            label: "I"  },
-  { key: "egg_collection",  label: "RO" },
-  { key: "embryo_transfer", label: "TE" },
-  { key: "denudation",      label: "D"  },
-]
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function addDays(isoDate: string, n: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
-}
-
-function addMonths(isoDate: string, n: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString().split("T")[0]
-}
-
-function getMonthStart(isoDate: string): string {
-  return isoDate.slice(0, 7) + "-01"
-}
-
-function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: string, locale: string): string {
-  if (view === "month") {
-    const start = new Date(weekStart + "T12:00:00")
-    const end = new Date(weekStart + "T12:00:00")
-    end.setDate(start.getDate() + 27)
-    // Compact: "23 mar – 19 abr 2026"
-    const sDay = start.getDate()
-    const eDay = end.getDate()
-    const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
-    const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
-    const yr = end.getFullYear()
-    return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
-  }
-  // week — compact: "23–29 mar 2026"
-  const start = new Date(weekStart + "T12:00:00")
-  const end = new Date(weekStart + "T12:00:00")
-  end.setDate(start.getDate() + 6)
-  const sDay = start.getDate()
-  const eDay = end.getDate()
-  const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
-  const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
-  const yr = end.getFullYear()
-  return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
-}
 
 // ── Week jump picker ─────────────────────────────────────────────────────────
 
@@ -727,8 +605,6 @@ function DayStatsInput({ date, value, defaultValue, isOverride, onChange, onBiop
 
 // ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
 
-type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean; active?: boolean; sectionLabel?: string }
-
 function OverflowMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -858,8 +734,6 @@ function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId: strin
     </div>
   )
 }
-
-const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
 function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, simplified, isOff }: {
   assignment: Assignment
@@ -1791,15 +1665,6 @@ function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
 }
 
 // ── Skill gap pill ────────────────────────────────────────────────────────────
-
-const WARNING_CATEGORY_KEY: Record<string, string> = {
-  coverage: "warningCoverage",
-  skill_gap: "warningSkillGap",
-  technique_shift_gap: "warningTechniqueShiftGap",
-  rule: "warningRule",
-  budget: "warningBudget",
-}
-const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, technique_shift_gap: 2, budget: 3, rule: 4 }
 
 /** Click-to-open popover for per-day warnings in column headers. */
 function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
@@ -3277,18 +3142,6 @@ function ShiftGrid({
 
 // ── Month view ────────────────────────────────────────────────────────────────
 
-
-const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
-
-/** Rotate an array by `offset` positions (e.g. offset=6 moves Sun to front) */
-function rotateArray<T>(arr: T[], offset: number): T[] {
-  if (offset === 0) return arr
-  const n = arr.length
-  const o = ((offset % n) + n) % n
-  return [...arr.slice(o), ...arr.slice(0, o)]
-}
-
 function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
   summary: RotaMonthSummary | null
   loading: boolean
@@ -3914,65 +3767,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "ai_hybrid" | "manual"
-
-type StrategyCardMeta = { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string; speed?: "fast" | "slow" }
-
-function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib/types/database").EngineConfig | undefined): StrategyCardMeta[] {
-  const isByTask = rotaDisplayMode === "by_task"
-  const cards: StrategyCardMeta[] = []
-
-  // 1. Templates
-  cards.push({
-    key: "flexible_template", icon: <Bookmark className="size-5" />,
-    titleKey: "templateApply", descKey: "templateApplyDesc",
-    badge: "TPL", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-  })
-
-  // 2. Blank week
-  cards.push({
-    key: "manual", icon: <Grid3X3 className="size-5" />,
-    titleKey: "blankWeek", descKey: "blankWeekDesc",
-    badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
-  })
-
-  if (isByTask) {
-    // 3. Task-based optimal (always shown for by_task orgs)
-    cards.push({
-      key: "ai_optimal", icon: <Sparkles className="size-5" />,
-      titleKey: "taskOptimal", descKey: "taskOptimalDesc",
-      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    })
-  } else {
-    // 3. Shift-based optimal
-    cards.push({
-      key: "ai_optimal", icon: <Sparkles className="size-5" />,
-      titleKey: "aiOptimal", descKey: "aiOptimalDesc",
-      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-      speed: "fast",
-    })
-    // 4. Hybrid (if enabled for org, default true)
-    if (engineConfig?.hybridEnabled ?? true) {
-      cards.push({
-        key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
-        titleKey: "aiHybrid", descKey: "aiHybridDesc",
-        badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-        speed: "slow",
-      })
-    }
-    // 5. Claude reasoning (if enabled for org, default false)
-    if (engineConfig?.reasoningEnabled ?? false) {
-      cards.push({
-        key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
-        titleKey: "aiReasoning", descKey: "aiReasoningDesc",
-        badge: "CLAUDE", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      })
-    }
-  }
-
-  return cards
-}
-
 function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate, rotaDisplayMode, engineConfig }: {
   open: boolean; weekStart: string; weekLabel: string
   onClose: () => void
@@ -4110,34 +3904,6 @@ function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenera
 }
 
 // ── AI Reasoning modal ───────────────────────────────────────────────────────
-
-function parseHybridInsights(text: string): { assessment: string; issues: string[] } | null {
-  // The format is: assessment text (first paragraph) + optional "Remaining issues:" bullet list
-  const issuesMatch = text.match(/Remaining issues?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
-
-  // Extract assessment: everything before "Remaining issues:" (or the whole text if no issues section)
-  const assessmentRaw = issuesMatch
-    ? text.slice(0, text.search(/Remaining issues?:/i)).trim()
-    : text.trim()
-
-  if (!assessmentRaw && !issuesMatch) return null
-
-  const parseBullets = (block: string) =>
-    block.split('\n')
-      .map(l => l
-        .replace(/^[•\-*]\s*/, '')
-        .replace(/\([0-9a-f]{7,10}\)/gi, '') // strip internal IDs like (7ce46b5d)
-        .trim()
-      )
-      .filter(Boolean)
-
-  const rawIssues = issuesMatch ? parseBullets(issuesMatch[1]) : []
-
-  return {
-    assessment: assessmentRaw,
-    issues: rawIssues,
-  }
-}
 
 function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
   open: boolean; reasoning: string; onClose: () => void; variant?: "claude" | "hybrid"
