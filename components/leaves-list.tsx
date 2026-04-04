@@ -666,11 +666,14 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
     next30Days += daysBetween(clampStart, clampEnd)
   }
 
+  // Pendientes de revisión
+  const pendingCount = leaves.filter((l) => l.status === "pending").length
+
   const cards = [
     { label: t("absentToday"), value: absentToday },
     { label: t("thisWeek"), value: thisWeekDays },
     { label: t("upcomingLeaves"), value: upcoming },
-    { label: t("next30Days"), value: next30Days },
+    { label: t("pendingReview"), value: pendingCount },
   ]
 
   return (

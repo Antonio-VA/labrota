@@ -279,21 +279,13 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments = true
     <div className="flex flex-col gap-2">
       {departments.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-[14px] text-muted-foreground mb-3">{t("noDepartments")}</p>
-          <Button type="button" variant="outline" size="sm" onClick={handleSeed} disabled={isPending}>
-            {t("loadDefaults")}
-          </Button>
+          <p className="text-[14px] text-muted-foreground">{t("noDepartments")}</p>
         </div>
       )}
 
       {/* Table header */}
       {departments.length > 0 && (
         <>
-          <div className="flex justify-end">
-            <Button type="button" variant="ghost" size="sm" onClick={handleSeed} disabled={isPending} className="text-[12px] text-muted-foreground">
-              {t("loadDefaultsShort")}
-            </Button>
-          </div>
           <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border gap-x-2" style={{ gridTemplateColumns: GRID_COLS }}>
             <span />
             <span />

@@ -50,7 +50,11 @@ export default function DemoLoginPage() {
     })
 
     if (error) {
-      setErrorMessage(t("invalidCredentials"))
+      if (error.code === "over_email_send_rate_limit") {
+        setErrorMessage(t("rateLimited"))
+      } else {
+        setErrorMessage(t("invalidCredentials"))
+      }
       setState("error")
     } else {
       router.push("/")

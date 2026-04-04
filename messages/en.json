@@ -615,6 +615,7 @@
     "thisWeek": "This week",
     "upcomingLeaves": "Upcoming leaves",
     "next30Days": "Next 30 days",
+    "pendingReview": "Pending review",
     "hideHistory": "Hide history",
     "showHistory": "Show history ({count})",
     "hideCancelled": "Hide cancelled & rejected",

@@ -102,10 +102,10 @@ export function AccountPanel({ open, onClose, user }: {
 
   return (
     <>
-      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+      {open && <div className="fixed inset-0 z-[60]" onClick={onClose} />}
 
       <div className={cn(
-        "fixed right-0 top-0 bottom-0 z-50 bg-background text-foreground border-l border-border shadow-xl",
+        "fixed right-0 top-0 bottom-0 z-[70] bg-background text-foreground border-l border-border shadow-xl",
         "flex flex-col transition-transform duration-200 ease-out w-[360px]",
         open ? "translate-x-0" : "translate-x-full",
       )}>
