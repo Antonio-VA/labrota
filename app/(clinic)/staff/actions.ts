@@ -423,9 +423,10 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
 
-  // Fetch lab config + departments + active staff summary
-  const [labConfigRes, deptRes, staffRes] = await Promise.all([
+  // Fetch lab config + org mode + departments + active staff summary
+  const [labConfigRes, orgRes, deptRes, staffRes] = await Promise.all([
     supabase.from("lab_config").select("*").single() as unknown as Promise<{ data: Record<string, unknown> | null }>,
+    supabase.from("organisations").select("rota_display_mode").eq("id", orgId).single() as unknown as Promise<{ data: { rota_display_mode: string } | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: { code: string; name: string }[] | null }>,
     supabase.from("staff").select("id, role, days_per_week").neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; role: string; days_per_week: number }[] | null }>,
   ])
@@ -436,7 +437,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
   const departments = deptRes.data ?? []
   const staffList = staffRes.data ?? []
 
-  const isByTask = lc.rota_display_mode === "by_task"
+  const isByTask = (orgRes.data?.rota_display_mode ?? "by_shift") === "by_task"
 
   const shiftCoverageEnabled = lc.shift_coverage_enabled as boolean | undefined ?? false
   const shiftCoverageByDay = lc.shift_coverage_by_day as Record<string, Record<string, Record<string, number>>> | null
