@@ -58,12 +58,11 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave, isB
               disabled={isPending}
               onClick={() => handleChange(opt.key)}
               className={cn(
-                "flex items-start gap-3 rounded-lg p-3 text-left transition-all duration-200",
+                "flex items-start gap-3 rounded-lg border p-3 text-left transition-all duration-200",
                 selected
-                  ? "bg-primary/5"
-                  : "hover:bg-muted/50"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-muted/50"
               )}
-              style={{ border: `2px solid ${selected ? "var(--primary)" : "var(--border)"}` }}
             >
               <Icon className={cn("size-4 mt-0.5 shrink-0", selected ? "text-primary" : "text-muted-foreground")} />
               <div>
