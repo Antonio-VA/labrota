@@ -449,7 +449,7 @@ function LeaveReportView({ data, onBack }: { data: LeaveReportData; onBack: () =
                     </span>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{r.department}</td>
-                  <td className="px-3 py-2">{t(`leaveTypes.${r.type}` as any)}</td>
+                  <td className="px-3 py-2">{t(`leaveTypes.${r.type}` as Parameters<typeof t>[0])}</td>
                   <td className="px-3 py-2 tabular-nums">{r.startDate}</td>
                   <td className="px-3 py-2 tabular-nums">{r.endDate}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.days}</td>

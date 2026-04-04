@@ -98,8 +98,7 @@ import { REGION_TO_LIB_STATE } from "@/lib/regional-config"
 function getPublicHolidays(year: number, country = "ES", region?: string | null): Record<string, string> {
   const libState = region ? REGION_TO_LIB_STATE[country]?.[region] : undefined
   const hd = libState ? new Holidays(country, libState) : new Holidays(country)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(hd as any).setLanguages(["en"])
+  ;(hd as unknown as { setLanguages(langs: string[]): void }).setLanguages(["en"])
   const holidays = hd.getHolidays(year)
   const result: Record<string, string> = {}
   for (const h of holidays) {
@@ -307,8 +306,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   for (const s of staffRes.data ?? []) staffLookup[s.id] = s
 
   // Coverage weight helper for live warnings
-  const lcPartTimeW = (labConfig as any)?.part_time_weight as number | undefined ?? 0.5
-  const lcInternW   = (labConfig as any)?.intern_weight   as number | undefined ?? 0.5
+  const lcPartTimeW = (labConfig as { part_time_weight?: number } | null)?.part_time_weight ?? 0.5
+  const lcInternW   = (labConfig as { intern_weight?: number } | null)?.intern_weight   ?? 0.5
   function liveCoverageWeight(staffId: string, date: string): number {
     const s = staffLookup[staffId]
     if (!s) return 1
@@ -561,7 +560,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   // Parse engine warnings — skip coverage warnings (computed live above)
-  const engineWarningsRaw = (rotaData as any)?.engine_warnings as string[] | null
+  const engineWarningsRaw = (rotaData as { engine_warnings?: string[] | null }).engine_warnings ?? null
   if (engineWarningsRaw && Array.isArray(engineWarningsRaw)) {
     for (const w of engineWarningsRaw) {
       const match = w.match(/^(\d{4}-\d{2}-\d{2}):\s*(.+)$/)

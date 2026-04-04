@@ -164,13 +164,13 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     biopsy_day5_pct:       config.biopsy_day5_pct ?? 0.5,
     biopsy_day6_pct:       config.biopsy_day6_pct ?? 0.5,
     task_conflict_threshold: config.task_conflict_threshold ?? 3,
-    days_off_preference:        (config as any).days_off_preference ?? "prefer_weekend",
-    guardia_min_weeks_between:  (config as any).guardia_min_weeks_between ?? 2,
-    guardia_max_per_month:      (config as any).guardia_max_per_month ?? 2,
+    days_off_preference:        config.days_off_preference ?? "prefer_weekend",
+    guardia_min_weeks_between:  config.guardia_min_weeks_between ?? 2,
+    guardia_max_per_month:      config.guardia_max_per_month ?? 2,
     public_holiday_mode:        config.public_holiday_mode ?? "saturday",
-    public_holiday_reduce_budget: (config as any).public_holiday_reduce_budget ?? true,
-    part_time_weight:           (config as any).part_time_weight ?? 0.5,
-    intern_weight:              (config as any).intern_weight ?? 0.5,
+    public_holiday_reduce_budget: config.public_holiday_reduce_budget ?? true,
+    part_time_weight:           config.part_time_weight ?? 0.5,
+    intern_weight:              config.intern_weight ?? 0.5,
   })
 
   function setPunction(day: keyof PunctionsByDay, raw: string) {
@@ -249,7 +249,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         public_holiday_reduce_budget: values.public_holiday_reduce_budget,
         part_time_weight:          hasPartTime ? values.part_time_weight : undefined,
         intern_weight:             hasIntern   ? values.intern_weight    : undefined,
-      } as any)
+      })
       if (result.error) {
         setErrorMsg(result.error)
         setStatus("error")

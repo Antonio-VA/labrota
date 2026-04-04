@@ -291,6 +291,9 @@ export type LabConfigUpdate = {
   task_conflict_threshold?:  number
   shift_rotation?:           "stable" | "weekly" | "daily"
   enable_notes?:             boolean
+  enable_task_in_shift?:     boolean
+  enable_leave_requests?:    boolean
+  default_days_per_week?:    number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
   shift_name_full_es?:       string

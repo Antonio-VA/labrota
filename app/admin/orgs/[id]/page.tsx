@@ -278,14 +278,14 @@ export default async function OrgDetailPage({
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
             initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
             initialEnableTaskInShift={(labConfigRes.data as { enable_task_in_shift?: boolean } | null)?.enable_task_in_shift ?? false}
-            initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
-            initialAiOptimalVersion={(org as any).ai_optimal_version ?? "v2"}
-            initialEngineHybridEnabled={(org as any).engine_hybrid_enabled ?? true}
-            initialEngineReasoningEnabled={(org as any).engine_reasoning_enabled ?? false}
-            initialTaskOptimalVersion={(org as any).task_optimal_version ?? "v1"}
-            initialTaskHybridEnabled={(org as any).task_hybrid_enabled ?? false}
-            initialTaskReasoningEnabled={(org as any).task_reasoning_enabled ?? false}
-            initialDailyHybridLimit={(org as any).daily_hybrid_limit ?? 10}
+            initialBilling={{ start: (org as { billing_start?: string | null }).billing_start ?? null, end: (org as { billing_end?: string | null }).billing_end ?? null, fee: (org as { billing_fee?: number | null }).billing_fee ?? null }}
+            initialAiOptimalVersion={(org as { ai_optimal_version?: string }).ai_optimal_version ?? "v2"}
+            initialEngineHybridEnabled={(org as { engine_hybrid_enabled?: boolean }).engine_hybrid_enabled ?? true}
+            initialEngineReasoningEnabled={(org as { engine_reasoning_enabled?: boolean }).engine_reasoning_enabled ?? false}
+            initialTaskOptimalVersion={(org as { task_optimal_version?: string }).task_optimal_version ?? "v1"}
+            initialTaskHybridEnabled={(org as { task_hybrid_enabled?: boolean }).task_hybrid_enabled ?? false}
+            initialTaskReasoningEnabled={(org as { task_reasoning_enabled?: boolean }).task_reasoning_enabled ?? false}
+            initialDailyHybridLimit={(org as { daily_hybrid_limit?: number }).daily_hybrid_limit ?? 10}
           />
         }
         facturacion={
@@ -293,7 +293,7 @@ export default async function OrgDetailPage({
             orgId={id} userRows={userRows} section="facturacion"
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
-            initialBilling={{ start: (org as any).billing_start ?? null, end: (org as any).billing_end ?? null, fee: (org as any).billing_fee ?? null }}
+            initialBilling={{ start: (org as { billing_start?: string | null }).billing_start ?? null, end: (org as { billing_end?: string | null }).billing_end ?? null, fee: (org as { billing_fee?: number | null }).billing_fee ?? null }}
           />
         }
         configuracion={
@@ -322,7 +322,7 @@ export default async function OrgDetailPage({
             initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             implementationStatus={{
-              hasRegion: !!(labConfigRes.data as any)?.country,
+              hasRegion: !!(labConfigRes.data as { country?: string } | null)?.country,
               departmentCount: deptRes.count ?? 0,
               shiftCount: shiftRes.count ?? 0,
               taskCount: tecnicaRes.count ?? 0,

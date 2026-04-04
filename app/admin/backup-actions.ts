@@ -62,14 +62,14 @@ async function captureConfig(admin: ReturnType<typeof createAdminClient>, orgId:
     shifts: shifts.data ?? [],
     tasks: tasks.data ?? [],
     rules: rules.data ?? [],
-    coverageMinimums: (config.data as any)?.coverage_by_day ?? null,
+    coverageMinimums: (config.data as { coverage_by_day?: unknown } | null)?.coverage_by_day ?? null,
     teamMembers: staff.data ?? [],
     preferences: {
-      task_coverage_enabled: (config.data as any)?.task_coverage_enabled,
-      task_coverage_by_day: (config.data as any)?.task_coverage_by_day,
-      shift_coverage_enabled: (config.data as any)?.shift_coverage_enabled,
-      shift_coverage_by_day: (config.data as any)?.shift_coverage_by_day,
-      shift_rotation: (config.data as any)?.shift_rotation,
+      task_coverage_enabled: (config.data as { task_coverage_enabled?: boolean } | null)?.task_coverage_enabled,
+      task_coverage_by_day: (config.data as { task_coverage_by_day?: unknown } | null)?.task_coverage_by_day,
+      shift_coverage_enabled: (config.data as { shift_coverage_enabled?: boolean } | null)?.shift_coverage_enabled,
+      shift_coverage_by_day: (config.data as { shift_coverage_by_day?: unknown } | null)?.shift_coverage_by_day,
+      shift_rotation: (config.data as { shift_rotation?: unknown } | null)?.shift_rotation,
     },
     tenantSettings: config.data ?? {},
   }
@@ -159,7 +159,7 @@ export async function getBackups(orgId: string): Promise<BackupEntry[]> {
     .select("id, organisation_id, created_at, created_by, type, label, config, rotas")
     .eq("organisation_id", orgId)
     .order("created_at", { ascending: false })
-    .limit(100) as unknown as { data: any[] | null }
+    .limit(100) as unknown as { data: { id: string; organisation_id: string; created_at: string; created_by: string | null; type: "auto" | "manual"; label: string | null; config: BackupConfig; rotas: BackupRota[] }[] | null }
 
   if (!data?.length) return []
 
@@ -243,39 +243,39 @@ export async function restoreBackup(
     await admin.from("rota_rules").delete().eq("organisation_id", orgId)
 
     // Restore departments
-    for (const d of backup.config.departments as any[]) {
+    for (const d of backup.config.departments as Record<string, unknown>[]) {
       const { id: _, created_at: __, ...rest } = d
       await admin.from("departments").insert({ ...rest, organisation_id: orgId } as never)
     }
     // Restore shifts
-    for (const s of backup.config.shifts as any[]) {
+    for (const s of backup.config.shifts as Record<string, unknown>[]) {
       const { id: _, created_at: __, ...rest } = s
       await admin.from("shift_types").insert({ ...rest, organisation_id: orgId } as never)
     }
     // Restore tasks
-    for (const t of backup.config.tasks as any[]) {
+    for (const t of backup.config.tasks as Record<string, unknown>[]) {
       const { id: _, created_at: __, ...rest } = t
       await admin.from("tecnicas").insert({ ...rest, organisation_id: orgId } as never)
     }
     // Restore rules
-    for (const r of backup.config.rules as any[]) {
+    for (const r of backup.config.rules as Record<string, unknown>[]) {
       const { id: _, created_at: __, updated_at: ___, ...rest } = r
       await admin.from("rota_rules").insert({ ...rest, organisation_id: orgId } as never)
     }
     // Restore staff + skills
-    for (const s of backup.config.teamMembers as any[]) {
+    for (const s of backup.config.teamMembers as Record<string, unknown>[]) {
       const { id: oldId, staff_skills: skills, created_at: __, updated_at: ___, ...rest } = s
       const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: orgId } as never).select("id").single()
-      if (ns && skills?.length) {
-        for (const sk of skills) {
+      if (ns && (skills as unknown[] | undefined)?.length) {
+        for (const sk of skills as Record<string, unknown>[]) {
           const { id: _, staff_id: __, ...skRest } = sk
-          await admin.from("staff_skills").insert({ ...skRest, staff_id: (ns as any).id, organisation_id: orgId } as never)
+          await admin.from("staff_skills").insert({ ...skRest, staff_id: (ns as { id: string }).id, organisation_id: orgId } as never)
         }
       }
     }
     // Restore lab_config settings
     if (backup.config.tenantSettings) {
-      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...cfgRest } = backup.config.tenantSettings as any
+      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...cfgRest } = backup.config.tenantSettings as Record<string, unknown>
       await admin.from("lab_config").update(cfgRest as never).eq("organisation_id", orgId)
     }
   }
@@ -298,7 +298,7 @@ export async function restoreBackup(
 
       if (newRota && rota.assignments.length > 0) {
         // Insert assignments in chunks
-        const assignments = (rota.assignments as any[]).map((a) => ({
+        const assignments = (rota.assignments as Record<string, unknown>[]).map((a) => ({
           ...a,
           id: undefined,
           rota_id: newRota.id,

@@ -225,7 +225,7 @@ function SortableRow({
       <DeptMultiSelect
         departments={departments.length > 0 ? departments.filter((d) => !d.parent_id) : [{ id: "lab", code: "lab", name: "Embriología" } as Department, { id: "andrology", code: "andrology", name: "Andrología" } as Department]}
         selected={tecnica.department.split(",").filter(Boolean)}
-        onChange={(codes) => onChange({ ...tecnica, department: codes.join(",") as any })}
+        onChange={(codes) => onChange({ ...tecnica, department: codes.join(",") })}
         disabled={disabled}
       />
 
@@ -324,7 +324,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         sortId,
         nombre_es: "", nombre_en: "", codigo: "",
         color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
-        department: dept as any, typical_shifts: [], avoid_shifts: [], activa: true,
+        department: dept, typical_shifts: [], avoid_shifts: [], activa: true,
         orden: prev.length,
       },
     ])

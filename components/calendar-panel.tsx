@@ -1190,21 +1190,21 @@ function StaffProfilePanel({
                       </Tooltip>
                     ) : null
                   })()}
-                  {(staff as any).contract_type === "part_time" && (
+                  {staff.contract_type === "part_time" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
                   )}
-                  {(staff as any).contract_type === "intern" && (
+                  {staff.contract_type === "intern" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
                   )}
                   {(() => {
-                    const end = (staff as any).onboarding_end_date as string | null
+                    const end = staff.onboarding_end_date
                     const today = new Date().toISOString().split("T")[0]
                     if (end && today <= end) return (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
                     )
                     return null
                   })()}
-                  {(staff as any).prefers_guardia === true && (
+                  {staff.prefers_guardia === true && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">G</span>
                   )}
                 </div>
@@ -1457,16 +1457,16 @@ function StaffProfilePanel({
                   <p className="text-muted-foreground">{t("daysPerWeek")}</p>
                   <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                     <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
-                    {(staff as any).contract_type === "part_time" && (
+                    {staff.contract_type === "part_time" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">{locale === "es" ? "A tiempo parcial" : "Part-time"}</span>
                     )}
-                    {(staff as any).contract_type === "intern" && (
+                    {staff.contract_type === "intern" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">{locale === "es" ? "Becario" : "Intern"}</span>
                     )}
                   </div>
                 </div>
                 {(() => {
-                  const end = (staff as any).onboarding_end_date as string | null
+                  const end = staff.onboarding_end_date
                   const today = new Date().toISOString().split("T")[0]
                   if (!end) return null
                   return (
@@ -2306,7 +2306,7 @@ function PersonGrid({
                           <span className="text-[12px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
                         ) : !isPublished ? (
                           <PersonShiftSelector
-                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                             shiftTimes={shiftTimes}
                             shiftTypes={data?.shiftTypes ?? []}
                             isPublished={false}
@@ -2320,7 +2320,7 @@ function PersonGrid({
                                 // Refresh local state
                                 setLocalDays((prev) => prev.map((d) => d.date !== day.date ? d : {
                                   ...d,
-                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
                                 }))
                               }
                             }}
@@ -2547,7 +2547,7 @@ function TransposedPersonGrid({
                       <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
                     ) : !isPublished ? (
                       <PersonShiftSelector
-                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                         shiftTimes={shiftTimes}
                         shiftTypes={data?.shiftTypes ?? []}
                         isPublished={false}
@@ -2560,7 +2560,7 @@ function TransposedPersonGrid({
                           else {
                             setLocalDays((prev) => prev.map((dd) => dd.date !== day.date ? dd : {
                               ...dd,
-                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
                             }))
                           }
                         }}

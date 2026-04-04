@@ -508,7 +508,7 @@ export async function copyOrganisation(
   const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + `-${Date.now().toString(36)}`
   const { data: newOrg, error: createErr } = await admin
     .from("organisations")
-    .insert({ name: newName, slug, is_active: true, rota_display_mode: (source as any).rota_display_mode ?? "by_shift" } as never)
+    .insert({ name: newName, slug, is_active: true, rota_display_mode: (source as { rota_display_mode?: string }).rota_display_mode ?? "by_shift" } as never)
     .select("id").single()
   if (createErr) return { error: createErr.message }
   const newOrgId = (newOrg as { id: string }).id
@@ -517,7 +517,7 @@ export async function copyOrganisation(
   if (options.config !== false) {
     const { data: cfg } = await admin.from("lab_config").select("*").eq("organisation_id", sourceOrgId).maybeSingle()
     if (cfg) {
-      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = cfg as any
+      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = cfg as Record<string, unknown>
       await admin.from("lab_config").insert({ ...rest, organisation_id: newOrgId } as never)
     } else {
       await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
@@ -533,7 +533,7 @@ export async function copyOrganisation(
     copyTasks.push((async () => {
       const { data } = await admin.from("departments").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
       if (data?.length) {
-        const rows = (data as any[]).map((d) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = d; return { ...rest, organisation_id: newOrgId } })
+        const rows = (data as Record<string, unknown>[]).map((d) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = d; return { ...rest, organisation_id: newOrgId } })
         await admin.from("departments").insert(rows as never)
       }
     })())
@@ -542,7 +542,7 @@ export async function copyOrganisation(
     copyTasks.push((async () => {
       const { data } = await admin.from("shift_types").select("*").eq("organisation_id", sourceOrgId).order("sort_order")
       if (data?.length) {
-        const rows = (data as any[]).map((s) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = s; return { ...rest, organisation_id: newOrgId } })
+        const rows = (data as Record<string, unknown>[]).map((s) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = s; return { ...rest, organisation_id: newOrgId } })
         await admin.from("shift_types").insert(rows as never)
       }
     })())
@@ -551,7 +551,7 @@ export async function copyOrganisation(
     copyTasks.push((async () => {
       const { data } = await admin.from("tecnicas").select("*").eq("organisation_id", sourceOrgId).order("orden")
       if (data?.length) {
-        const rows = (data as any[]).map((t) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = t; return { ...rest, organisation_id: newOrgId } })
+        const rows = (data as Record<string, unknown>[]).map((t) => { const { id: _, organisation_id: __, created_at: ___, ...rest } = t; return { ...rest, organisation_id: newOrgId } })
         await admin.from("tecnicas").insert(rows as never)
       }
     })())
@@ -560,7 +560,7 @@ export async function copyOrganisation(
     copyTasks.push((async () => {
       const { data } = await admin.from("rota_rules").select("*").eq("organisation_id", sourceOrgId)
       if (data?.length) {
-        const rows = (data as any[]).map((r) => { const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r; return { ...rest, organisation_id: newOrgId, staff_ids: [] } })
+        const rows = (data as Record<string, unknown>[]).map((r) => { const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r; return { ...rest, organisation_id: newOrgId, staff_ids: [] } })
         await admin.from("rota_rules").insert(rows as never)
       }
     })())
@@ -569,7 +569,7 @@ export async function copyOrganisation(
     copyTasks.push((async () => {
       const { data } = await admin.from("organisation_members").select("*").eq("organisation_id", sourceOrgId)
       if (data?.length) {
-        const rows = (data as any[]).map((m) => { const { organisation_id: _, ...rest } = m; return { ...rest, organisation_id: newOrgId } })
+        const rows = (data as Record<string, unknown>[]).map((m) => { const { organisation_id: _, ...rest } = m; return { ...rest, organisation_id: newOrgId } })
         await admin.from("organisation_members").upsert(rows as never, { onConflict: "organisation_id,user_id" })
       }
     })())
@@ -582,13 +582,13 @@ export async function copyOrganisation(
   const staffIdMap = new Map<string, string>()
   if (options.staff) {
     const { data } = await admin.from("staff").select("*, staff_skills(*)").eq("organisation_id", sourceOrgId)
-    for (const s of (data ?? []) as any[]) {
+    for (const s of (data ?? []) as Record<string, unknown>[]) {
       const { id: oldId, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: skills, ...rest } = s
       const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: newOrgId } as never).select("id").single()
       if (ns) {
-        staffIdMap.set(oldId, (ns as any).id)
-        if (skills?.length) {
-          const skillRows = skills.map((sk: any) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as any).id, organisation_id: newOrgId } })
+        staffIdMap.set(oldId as string, (ns as { id: string }).id)
+        if ((skills as unknown[] | undefined)?.length) {
+          const skillRows = (skills as Record<string, unknown>[]).map((sk) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as { id: string }).id, organisation_id: newOrgId } })
           await admin.from("staff_skills").insert(skillRows as never)
         }
       }
@@ -598,20 +598,20 @@ export async function copyOrganisation(
   // Copy rotas and assignments (requires staff mapping)
   if (options.rotas) {
     const { data: rotas } = await admin.from("rotas").select("*").eq("organisation_id", sourceOrgId).order("week_start")
-    for (const r of (rotas ?? []) as any[]) {
-      const oldRotaId = r.id
+    for (const r of (rotas ?? []) as Record<string, unknown>[]) {
+      const oldRotaId = r.id as string
       const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rotaRest } = r
       const { data: newRota } = await admin.from("rotas").insert({ ...rotaRest, organisation_id: newOrgId } as never).select("id").single()
       if (newRota) {
-        const newRotaId = (newRota as any).id
+        const newRotaId = (newRota as { id: string }).id
         const { data: assignments } = await admin.from("rota_assignments").select("*").eq("rota_id", oldRotaId)
         if (assignments?.length) {
-          const assignmentRows = (assignments as any[])
+          const assignmentRows = (assignments as Record<string, unknown>[])
             .map((a) => {
               const { id: _, organisation_id: __, rota_id: ___, created_at: ____, updated_at: _____, ...aRest } = a
-              const newStaffId = staffIdMap.get(a.staff_id)
+              const newStaffId = staffIdMap.get(a.staff_id as string)
               if (!newStaffId) return null
-              const newTraineeId = a.trainee_staff_id ? staffIdMap.get(a.trainee_staff_id) ?? null : null
+              const newTraineeId = a.trainee_staff_id ? staffIdMap.get(a.trainee_staff_id as string) ?? null : null
               return { ...aRest, rota_id: newRotaId, organisation_id: newOrgId, staff_id: newStaffId, trainee_staff_id: newTraineeId }
             })
             .filter(Boolean)

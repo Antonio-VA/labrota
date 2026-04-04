@@ -51,14 +51,14 @@ function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string; locale
 
   useEffect(() => {
     if (!open) return
-    function h(e: MouseEvent | TouchEvent) {
+    function h(e: Event) {
       if (dropRef.current?.contains(e.target as Node)) return
       if (btnRef.current?.contains(e.target as Node)) return
       setOpen(false)
     }
     document.addEventListener("mousedown", h)
-    document.addEventListener("touchstart", h as any)
-    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h as any) }
+    document.addEventListener("touchstart", h)
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h) }
   }, [open])
 
   const weeks = useMemo(() => {
@@ -262,14 +262,14 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
 
   useEffect(() => {
     if (!open) return
-    function h(e: MouseEvent) {
+    function h(e: Event) {
       if (dropRef.current?.contains(e.target as Node)) return
       if (btnRef.current?.contains(e.target as Node)) return
       setOpen(false)
     }
     document.addEventListener("mousedown", h)
-    document.addEventListener("touchstart", h as any)
-    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h as any) }
+    document.addEventListener("touchstart", h)
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h) }
   }, [open])
 
   return (

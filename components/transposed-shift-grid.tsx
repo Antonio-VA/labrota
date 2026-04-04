@@ -354,7 +354,7 @@ export function TransposedShiftGrid({
                       {!isActive ? null : dayShifts.map((a) => {
                         const isHov = hoveredStaffId === a.staff_id
                         const sColor = staffColorMap[a.staff_id]
-                        const taskDisabled = data?.rotaDisplayMode === "by_shift" && !(data as any)?.enableTaskInShift
+                        const taskDisabled = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
                         const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
                         const tec = (!taskDisabled && cleanFn) ? tecnicas.find((tc) => tc.codigo === cleanFn) : null
                         const pillColor = tec ? TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue : null

@@ -120,7 +120,7 @@ export function SettingsFuncionalidades({
             const val = !taskInShift
             setTaskInShift(val)
             startTransition(async () => {
-              const result = await updateLabConfig({ enable_task_in_shift: val } as any)
+              const result = await updateLabConfig({ enable_task_in_shift: val })
               if (result.error) { toast.error(result.error); setTaskInShift(!val) }
             })
           }}

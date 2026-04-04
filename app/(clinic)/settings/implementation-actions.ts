@@ -87,7 +87,7 @@ export async function syncStepCompletions(): Promise<void> {
 
   const currentState: Record<string, boolean> = {
     create_org: true,
-    configure_region: !!(configRes.data as any)?.country,
+    configure_region: !!(configRes.data as { country?: string } | null)?.country,
     add_departments: (deptRes.count ?? 0) > 0,
     add_shifts: (shiftRes.count ?? 0) > 0,
     add_tasks: (tecRes.count ?? 0) > 0,
