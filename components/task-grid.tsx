@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { X, Plus, Users, AlertTriangle } from "lucide-react"
+import { X, Plus, Users, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -194,6 +194,7 @@ function TaskCell({
   compact = false,
   staffColorMap,
   colorBorders = true,
+  onChipClick,
 }: {
   tecnica: Tecnica
   date: string
@@ -214,6 +215,7 @@ function TaskCell({
   compact?: boolean
   staffColorMap: Record<string, string>
   colorBorders?: boolean
+  onChipClick?: (staffId: string) => void
 }) {
   const [selectorOpen, setSelectorOpen] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -224,7 +226,11 @@ function TaskCell({
   function openSelector() {
     if (isPublished) return
     const rect = cellRef.current?.getBoundingClientRect()
-    if (rect) setPopupPos({ top: rect.bottom + 4, left: rect.left })
+    if (rect) {
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 60)
+      const left = Math.min(rect.left, window.innerWidth - 232)
+      setPopupPos({ top, left })
+    }
     setSelectorOpen(true)
   }
 
@@ -237,21 +243,22 @@ function TaskCell({
         const hasConflict = conflictStaffIds.has(a.staff_id)
         const isHovered = hoveredStaffId === a.staff_id
         const staffColor = staffColorMap[a.staff_id]
-        const borderLeft = colorBorders ? (staffColor || "#94A3B8") : "#CBD5E1"
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
               <span
                 onMouseEnter={() => setHovered(a.staff_id)}
                 onMouseLeave={() => setHovered(null)}
+                onClick={() => onChipClick?.(a.staff_id)}
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
-                  onLeave ? "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                  onChipClick && "cursor-pointer",
+                  onLeave ? "bg-muted text-muted-foreground opacity-60" :
                   hasConflict ? "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                  "bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
+                  "bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 )}
                 style={{
-                  borderLeft: `2px solid ${borderLeft}`,
+                  ...(colorBorders ? { borderLeft: `3px solid ${staffColor || "#94A3B8"}` } : {}),
                   borderRadius: 4,
                   ...(isHovered && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
                 }}
@@ -328,13 +335,24 @@ function TaskCell({
 
 // ── OFF cell ─────────────────────────────────────────────────────────────────
 
-function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap }: {
+const LEAVE_ICON_MAP: Record<string, React.ElementType> = {
+  annual: Plane,
+  sick: Cross,
+  personal: User,
+  training: GraduationCap,
+  maternity: Baby,
+  other: CalendarX,
+}
+
+function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap, leaveTypeByStaff, onChipClick }: {
   date: string; day: RotaDay
   unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
   staffList: StaffWithSkills[]; assignedIds: Set<string>
   isPublished: boolean
   onMakeOff: (staffId: string) => Promise<void>
   staffColorMap: Record<string, string>
+  leaveTypeByStaff?: Record<string, string>
+  onChipClick?: (staffId: string) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState<Set<string>>(new Set())
@@ -372,23 +390,33 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
 
   const { hoveredStaffId, setHovered } = useStaffHover()
 
+  const isSat = new Date(date + "T12:00:00").getDay() === 6
+
   return (
     <div
       ref={cellRef}
-      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start bg-muted/40 min-h-[36px] group/off"
-      style={new Date(date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
+      className="border-r last:border-r-0 border-border p-1 flex flex-wrap gap-0.5 items-start content-start min-h-[36px] group/off"
+      style={{
+        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+        backgroundSize: "8px 8px",
+        ...(isSat ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : {}),
+      }}
     >
       {onLeave.map((s) => {
         const isHovered = hoveredStaffId === s.id
+        const leaveType = leaveTypeByStaff?.[s.id] ?? "other"
+        const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
         return (
         <Tooltip key={s.id}>
           <TooltipTrigger render={
             <span
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
-              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 transition-colors duration-150"
+              onClick={() => onChipClick?.(s.id)}
+              className={cn("inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 transition-colors duration-150", onChipClick && "cursor-pointer")}
               style={isHovered && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
+              <LeaveIcon className="size-2.5" />
               {`${s.first_name[0]}${s.last_name[0]}`}
             </span>
           } />
@@ -404,7 +432,8 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
             <span
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
-              className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150"
+              onClick={() => onChipClick?.(s.id)}
+              className={cn("inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150 bg-background/80", onChipClick && "cursor-pointer")}
               style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
@@ -605,6 +634,7 @@ export function TaskGrid({
   colorBorders = true,
   showPuncBiopsy = true,
   onDateClick,
+  onChipClick,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -625,6 +655,7 @@ export function TaskGrid({
   colorBorders?: boolean
   showPuncBiopsy?: boolean
   onDateClick?: (date: string) => void
+  onChipClick?: (staffId: string) => void
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -942,6 +973,7 @@ export function TaskGrid({
                     compact={compact}
                     staffColorMap={staffColorMap}
                     colorBorders={colorBorders}
+                    onChipClick={onChipClick}
                   />
                 </div>
               )
@@ -956,9 +988,9 @@ export function TaskGrid({
         {days.map((day) => {
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const leaveIds = leaveByDate[day.date] ?? new Set<string>()
-          const isSat = new Date(day.date + "T12:00:00").getDay() === 6
           const unassigned = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
           const onLeave = staffList.filter((s) => leaveIds.has(s.id))
+          const leaveTypeByStaff = data.onLeaveTypeByDate?.[day.date] ?? {}
 
           return (
             <OffCell
@@ -980,6 +1012,8 @@ export function TaskGrid({
                 debouncedRefresh()
               }}
               staffColorMap={staffColorMap}
+              leaveTypeByStaff={leaveTypeByStaff}
+              onChipClick={onChipClick}
             />
           )
         })}

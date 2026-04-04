@@ -5516,8 +5516,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
                   compact={compact}
                   colorBorders={colorChips}
-                  showPuncBiopsy={false}
+                  showPuncBiopsy={!compact}
                   onDateClick={handleMonthDayClick}
+                  onChipClick={openProfile}
                 />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex-1 flex items-start justify-center pt-[18vh]">
