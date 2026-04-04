@@ -251,7 +251,7 @@ function TaskCell({
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => onChipClick?.(a.staff_id)}
                 className={cn(
-                  "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 py-0.5 text-[10px] font-semibold group/chip transition-colors duration-150",
+                  "inline-flex items-center gap-0.5 rounded pl-2 pr-1.5 py-1 text-[11px] font-semibold group/chip transition-colors duration-150",
                   onChipClick && "cursor-pointer",
                   onLeave ? "bg-muted text-muted-foreground opacity-60" :
                   hasConflict ? "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
@@ -296,7 +296,7 @@ function TaskCell({
       {!isPublished && (
         <div
           onClick={() => openSelector()}
-          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity rounded hover:bg-muted/50"
+          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity"
         >
           <Plus className="size-3 text-muted-foreground" />
         </div>
@@ -377,7 +377,13 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
   function openPicker() {
     if (isPublished) return
     const rect = cellRef.current?.getBoundingClientRect()
-    if (rect) setPopupPos({ top: rect.top - 4, left: rect.left })
+    if (rect) {
+      const popupH = 260
+      const popupW = 224
+      const top = Math.max(8, Math.min(rect.top - 4, window.innerHeight - popupH - 8))
+      const left = Math.min(rect.left, window.innerWidth - popupW - 8)
+      setPopupPos({ top, left })
+    }
     setPickerOpen(true)
   }
 
@@ -413,7 +419,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
               onClick={() => onChipClick?.(s.id)}
-              className={cn("inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 transition-colors duration-150", onChipClick && "cursor-pointer")}
+              className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-1 text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 transition-colors duration-150", onChipClick && "cursor-pointer")}
               style={isHovered && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               <LeaveIcon className="size-2.5" />
@@ -433,7 +439,7 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
               onMouseEnter={() => setHovered(s.id)}
               onMouseLeave={() => setHovered(null)}
               onClick={() => onChipClick?.(s.id)}
-              className={cn("inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-150 bg-background/80", onChipClick && "cursor-pointer")}
+              className={cn("inline-flex items-center rounded px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors duration-150 bg-background/80", onChipClick && "cursor-pointer")}
               style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
             >
               {`${s.first_name[0]}${s.last_name[0]}`}
@@ -446,14 +452,14 @@ function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPub
       {!isPublished && (
         <div
           onClick={openPicker}
-          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/off:opacity-100 transition-opacity rounded hover:bg-muted/50"
+          className="flex-1 min-w-[20px] h-full flex items-center justify-center cursor-pointer opacity-0 group-hover/off:opacity-100 transition-opacity"
         >
           <Plus className="size-3 text-muted-foreground" />
         </div>
       )}
 
       {pickerOpen && popupPos && createPortal(
-        <div ref={popRef} style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200, transform: "translateY(-100%)" }}>
+        <div ref={popRef} style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200 }}>
           <div className="bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden">
             <div className="px-3 py-2 border-b border-border">
               <span className="text-[11px] font-medium text-muted-foreground">Marcar OFF para este día</span>

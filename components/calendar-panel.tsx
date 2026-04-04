@@ -1587,11 +1587,10 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   // Seed all active staff so 0-assignment members appear too
   for (const s of staffList) {
     if (deptFilter && !deptFilter.has(s.role)) continue
-    const base = s.days_per_week ?? 5
     const leaveDays = leaveDaysPerStaff[s.id] ?? 0
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, base - leaveDays),
+      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, days.length - leaveDays),
     }
     staffDaySeen[s.id] = new Set()
   }
@@ -1653,7 +1652,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const staffColorLookup = useMemo(() => {
     const deptColors: Record<string, string> = {}
     for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
-    return Object.fromEntries(staffList.map((s) => [s.id, deptColors[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"]))
+    return Object.fromEntries(staffList.map((s) => [s.id, s.color || deptColors[s.role] || DEFAULT_DEPT_MAPS.border[s.role] || "#94A3B8"]))
   }, [data.departments, staffList])
 
   if (entries.length === 0) return null
