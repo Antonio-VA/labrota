@@ -4559,6 +4559,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
+  // Cached display mode — survives between week fetches so the correct shimmer shows
+  const [cachedDisplayMode, setCachedDisplayMode] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    return localStorage.getItem("labrota:displayMode")
+  })
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
   const [initialLoaded, setInitialLoaded] = useState(false)
   const [loadingMonth, setLoadingMonth] = useState(false)
@@ -4718,6 +4723,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
+      // Cache display mode so correct shimmer shows on next load/org switch
+      if (d.rotaDisplayMode) {
+        setCachedDisplayMode(d.rotaDisplayMode)
+        localStorage.setItem("labrota:displayMode", d.rotaDisplayMode)
+      }
       setLoadingWeek(false)
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
@@ -5427,7 +5437,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
                 <div className="absolute inset-0 z-10 bg-background">
-                  {weekData?.rotaDisplayMode === "by_task" ? (
+                  {(weekData?.rotaDisplayMode ?? cachedDisplayMode) === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
                   ) : calendarLayout === "person" ? (
                     <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
