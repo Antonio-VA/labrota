@@ -7,6 +7,7 @@ import Link from "next/link"
 import { CheckCircle2, Circle, AlertTriangle, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { formatDate, formatDateWithYear } from "@/lib/format-date"
 import { toast } from "sonner"
 import { resetImplementation } from "@/app/(clinic)/settings/actions"
 
@@ -32,6 +33,7 @@ export function SettingsImplementation({
   const tc = useTranslations("common")
   const locale = useLocale()
   const dateFmt = locale === "es" ? "es-ES" : "en-US"
+  const loc = locale as "es" | "en"
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [isResetting, startReset] = useTransition()
 
@@ -39,7 +41,7 @@ export function SettingsImplementation({
     const d = new Date(iso)
     const now = new Date()
     const sameYear = d.getFullYear() === now.getFullYear()
-    const date = d.toLocaleDateString(dateFmt, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
+    const date = sameYear ? formatDate(d, loc) : formatDateWithYear(d, loc)
     const time = d.toLocaleTimeString(dateFmt, { hour: "2-digit", minute: "2-digit" })
     return `${date} · ${time}`
   }

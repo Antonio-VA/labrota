@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
+import { formatDateWithYear } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -385,7 +386,7 @@ export async function generateExtraDaysReport(month: string): Promise<ExtraDaysD
 
   rows.sort((a, b) => b.totalExtra - a.totalExtra)
 
-  const monthLabel = firstDay.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+  const monthLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(firstDay)
 
   return {
     orgName,
@@ -477,6 +478,5 @@ export async function generateLeaveReport(from: string, to: string): Promise<Lea
 }
 
 function formatDateES(iso: string): string {
-  const d = new Date(iso + "T12:00:00")
-  return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+  return formatDateWithYear(iso + "T12:00:00", "es")
 }

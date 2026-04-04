@@ -1369,7 +1369,9 @@
     "unauthorizedDescription": "You don't have permission to perform this action.",
     "networkError": "Connection error. Please check your internet connection.",
     "sessionExpired": "Your session has expired. Please sign in again.",
-    "constraintViolation": "Cannot meet {constraint} on {date} — {reason}."
+    "constraintViolation": "Cannot meet {constraint} on {date} — {reason}.",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again"
   },
   "import": {
     "uploadTitle": "Import historical rota",

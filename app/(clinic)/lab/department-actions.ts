@@ -13,6 +13,8 @@ export async function saveDepartments(
   deleteIds: string[] = []
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
@@ -63,6 +65,8 @@ export async function saveDepartments(
 
 export async function seedDefaultDepartments(): Promise<{ seeded: boolean; error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { seeded: false, error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { seeded: false, error: "No organisation found." }
 

@@ -17,9 +17,11 @@ export async function getShiftTypes(): Promise<ShiftTypeDefinition[]> {
 export async function saveShiftTypes(
   types: Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>[]
 ): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
-  const supabase = await createClient()
 
   if (types.length > 0) {
     const rows = types.map((t, i) => ({

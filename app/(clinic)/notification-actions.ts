@@ -90,8 +90,8 @@ export async function notifyLeaveImpact(params: {
     organisation_id: params.orgId,
     user_id: userId,
     type: "leave_impact",
-    title: "Ausencia afecta guardia publicada",
-    message: `${params.staffName} tiene ausencia del ${params.startDate} al ${params.endDate}. Sus turnos han sido eliminados de ${overlapping.length} guardia${overlapping.length > 1 ? "s" : ""}.`,
+    title: "Leave impacts published rota",
+    message: `${params.staffName} has leave from ${params.startDate} to ${params.endDate}. Their shifts have been removed from ${overlapping.length} rota${overlapping.length > 1 ? "s" : ""}.`,
     data: {
       staffName: params.staffName,
       startDate: params.startDate,
@@ -133,7 +133,7 @@ export async function notifyShiftChange(params: {
       organisation_id: params.orgId,
       user_id: profile.id,
       type: "shift_change",
-      title: "Tu turno ha cambiado",
+      title: "Your shift has changed",
       message: params.message,
       data: { date: params.date, staffId: params.staffId },
     } as never)

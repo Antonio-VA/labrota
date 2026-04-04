@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
+import { formatDate, formatDateWithYear } from "@/lib/format-date"
 
 function parseLeaveForm(formData: FormData) {
   return {
@@ -292,10 +293,7 @@ async function sendLeaveRequestEmail(params: {
   const days = Math.round((new Date(params.endDate + "T12:00:00").getTime() - new Date(params.startDate + "T12:00:00").getTime()) / 86400000) + 1
 
   // Format dates nicely
-  const fmtDate = (d: string) => {
-    const date = new Date(d + "T12:00:00")
-    return date.toLocaleDateString(isEs ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
-  }
+  const fmtDate = (d: string) => formatDateWithYear(d + "T12:00:00", params.locale)
 
   // Build warning section
   let warningHtml = ""
@@ -632,7 +630,7 @@ async function sendLeaveCancellationEmail(params: {
     maternity: { es: "Maternidad/Paternidad", en: "Maternity/Paternity" }, other: { es: "Otros", en: "Other" },
   }
   const typeLabel = typeLabels[params.type]?.[params.locale] ?? params.type
-  const fmtDate = (d: string) => new Date(d + "T12:00:00").toLocaleDateString(isEs ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short" })
+  const fmtDate = (d: string) => formatDate(d + "T12:00:00", params.locale)
 
   const statusNote = params.wasApproved
     ? (isEs ? "Esta ausencia ya estaba aprobada. Revisa el horario si es necesario." : "This leave was already approved. Review the schedule if needed.")
@@ -740,7 +738,7 @@ export async function notifyLeaveDecision(params: {
     maternity: { es: "Maternidad/Paternidad", en: "Maternity/Paternity" }, other: { es: "Otros", en: "Other" },
   }
   const typeLabel = typeLabels[leave.type]?.[locale] ?? leave.type
-  const fmtDate = (d: string) => new Date(d + "T12:00:00").toLocaleDateString(isEs ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+  const fmtDate = (d: string) => formatDateWithYear(d + "T12:00:00", locale)
   const days = Math.round((new Date(leave.end_date + "T12:00:00").getTime() - new Date(leave.start_date + "T12:00:00").getTime()) / 86400000) + 1
 
   const isApproved = params.decision === "approved"

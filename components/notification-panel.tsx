@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, X, Check, AlertTriangle, CalendarDays } from "lucide-react"
+import { useLocale } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -19,6 +21,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 }
 
 export function NotificationBell({ large }: { large?: boolean } = {}) {
+  const locale = useLocale() as "es" | "en"
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -158,7 +161,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
                     <p className={cn("text-[13px] leading-tight", !n.read && "font-medium")}>{n.title}</p>
                     <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      {new Date(n.created_at).toLocaleDateString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {formatDate(n.created_at, locale) + " · " + new Date(n.created_at).toLocaleTimeString(locale === "es" ? "es-ES" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                   {!n.read && (

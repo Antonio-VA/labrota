@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl"
 import { Lock } from "lucide-react"
+import { formatDateWithYear } from "@/lib/format-date"
 
 export function SettingsFacturacion({
   billingStart,
@@ -17,8 +18,7 @@ export function SettingsFacturacion({
 
   const fmt = (d: string | null) => {
     if (!d) return "—"
-    const dateFmt = locale === "es" ? "es-ES" : "en-US"
-    try { return new Date(d + "T12:00:00").toLocaleDateString(dateFmt, { day: "numeric", month: "short", year: "numeric" }) } catch { return d }
+    try { return formatDateWithYear(d + "T12:00:00", locale as "es" | "en") } catch { return d }
   }
 
   return (

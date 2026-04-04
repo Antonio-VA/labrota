@@ -64,7 +64,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
 
   const file = formData.get("avatar") as File
   if (!file || file.size === 0) return { error: "No file provided." }
-  if (file.size > 2 * 1024 * 1024) return { error: "Máximo 2MB." }
+  if (file.size > 2 * 1024 * 1024) return { error: "File exceeds 2MB limit." }
 
   const ext = file.name.split(".").pop() ?? "jpg"
   const path = `avatars/${user.id}.${ext}`

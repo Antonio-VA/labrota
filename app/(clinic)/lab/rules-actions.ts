@@ -8,9 +8,11 @@ import { getOrgId } from "@/lib/get-org-id"
 export async function createRule(
   data: Omit<RotaRuleInsert, "organisation_id">
 ): Promise<{ error?: string; rule?: import("@/lib/types/database").RotaRule }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
-  const supabase = await createClient()
   const { data: rule, error } = await supabase
     .from("rota_rules")
     .insert({ ...data, organisation_id: orgId } as never)
@@ -27,6 +29,8 @@ export async function updateRule(
   data: RotaRuleUpdate
 ): Promise<{ error?: string; rule?: import("@/lib/types/database").RotaRule }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const { data: rule, error } = await supabase
     .from("rota_rules")
     .update(data as never)
@@ -41,6 +45,8 @@ export async function updateRule(
 
 export async function deleteRule(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const { error } = await supabase
     .from("rota_rules")
     .delete()
@@ -55,6 +61,8 @@ export async function toggleRule(
   enabled: boolean
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const { error } = await supabase
     .from("rota_rules")
     .update({ enabled } as never)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition, useEffect, useMemo } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { toast } from "sonner"
 import { PlusIcon, Pencil, Trash2, ShieldAlert, ShieldCheck, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
   toggleRule,
 } from "@/app/(clinic)/lab/rules-actions"
 import { cn } from "@/lib/utils"
+import { formatDateWithYear } from "@/lib/format-date"
 import type { RotaRule, RotaRuleType, RotaRuleInsert, Staff, Tecnica, ShiftTypeDefinition } from "@/lib/types/database"
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
@@ -971,6 +972,7 @@ export function RulesSection({
   rotaDisplayMode?: string
 }) {
   const t = useTranslations("lab.rules")
+  const locale = useLocale() as "es" | "en"
   const allowedTypes = useMemo(() => new Set(
     RULE_TYPES.filter((rt) => {
       const mode = RULE_MODE[rt]
@@ -1036,8 +1038,7 @@ export function RulesSection({
   const [showExpired, setShowExpired] = useState(false)
 
   function formatExpiry(iso: string) {
-    const d = new Date(iso)
-    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    return formatDateWithYear(iso, locale)
   }
 
   const dayLabelMap: Record<string, string> = { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom" }

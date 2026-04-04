@@ -1369,7 +1369,9 @@
     "unauthorizedDescription": "No tienes permiso para realizar esta acción.",
     "networkError": "Error de conexión. Comprueba tu conexión a internet.",
     "sessionExpired": "Tu sesión ha caducado. Por favor, vuelve a iniciar sesión.",
-    "constraintViolation": "No se puede cumplir {constraint} el {date} — {reason}."
+    "constraintViolation": "No se puede cumplir {constraint} el {date} — {reason}.",
+    "somethingWentWrong": "Algo salió mal",
+    "tryAgain": "Intentar de nuevo"
   },
   "import": {
     "uploadTitle": "Importar guardia histórica",

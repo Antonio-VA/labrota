@@ -19,6 +19,8 @@ export async function saveTecnica(
   tecnica: Partial<Tecnica> & { nombre_es: string; nombre_en: string; codigo: string; color: string }
 ): Promise<{ id: string } | { error: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
@@ -69,6 +71,8 @@ export async function saveTecnica(
 
 export async function deleteTecnica(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
   // Get the code before deleting so we can clean up staff_skills
@@ -86,6 +90,8 @@ export async function deleteTecnica(id: string): Promise<{ error?: string }> {
 
 export async function reorderTecnicas(orderedIds: string[]): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" }
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
   await Promise.all(

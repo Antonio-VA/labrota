@@ -91,7 +91,7 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
   const cleanEmail = email.trim().toLowerCase()
 
   if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-    return { error: "Email inválido" }
+    return { error: "Invalid email address." }
   }
 
   // Check if auth user already exists via profiles table
@@ -112,7 +112,7 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
       .eq("organisation_id", orgId)
       .eq("user_id", userId)
       .maybeSingle()
-    if (existing) return { error: "Este usuario ya es miembro de la organización" }
+    if (existing) return { error: "This user is already a member of the organisation." }
   } else {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
       data: { full_name: displayName || undefined },
@@ -162,7 +162,7 @@ export async function updateUserRole(targetUserId: string, newRole: string): Pro
   const { user, orgId, admin } = await requireOrgAdmin()
 
   // Can't change own role
-  if (targetUserId === user.id) return { error: "No puedes cambiar tu propio rol" }
+  if (targetUserId === user.id) return { error: "You cannot change your own role." }
 
   const { error } = await admin
     .from("organisation_members")
@@ -189,7 +189,7 @@ export async function updateUserRole(targetUserId: string, newRole: string): Pro
 export async function removeOrgMember(targetUserId: string): Promise<{ error?: string }> {
   const { user, orgId, admin } = await requireOrgAdmin()
 
-  if (targetUserId === user.id) return { error: "No puedes eliminarte a ti mismo" }
+  if (targetUserId === user.id) return { error: "You cannot remove yourself." }
 
   const { error } = await admin
     .from("organisation_members")

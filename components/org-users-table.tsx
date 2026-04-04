@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/format-date"
 import {
   inviteOrgUser,
   updateUserRole,
@@ -93,7 +94,7 @@ export function OrgUsersTable({
 
   function fmtLogin(d: string | null) {
     if (!d) return "—"
-    return new Date(d).toLocaleDateString(dateFmt, { day: "numeric", month: "short" }) + " · " +
+    return formatDate(d, locale as "es" | "en") + " · " +
       new Date(d).toLocaleTimeString(dateFmt, { hour: "2-digit", minute: "2-digit" })
   }
 

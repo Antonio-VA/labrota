@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, RotateCcw, X, AlertTriangle, Archive } from "lucide-react"
+import { useLocale } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { toast } from "sonner"
 import {
   getBackups,
@@ -16,6 +18,7 @@ import {
 } from "@/app/admin/backup-actions"
 
 export function AdminBackups({ orgId }: { orgId: string }) {
+  const locale = useLocale() as "es" | "en"
   const router = useRouter()
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,8 +41,8 @@ export function AdminBackups({ orgId }: { orgId: string }) {
 
   function fmt(iso: string) {
     const d = new Date(iso)
-    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " · " +
-      d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    return formatDate(d, locale) + " · " +
+      d.toLocaleTimeString(locale === "es" ? "es-ES" : "en-US", { hour: "2-digit", minute: "2-digit" })
   }
 
   return (

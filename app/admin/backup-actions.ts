@@ -2,6 +2,15 @@
 
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
+
+async function assertSuperAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.app_metadata?.role !== "super_admin") {
+    throw new Error("Unauthorised")
+  }
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +110,7 @@ export async function createBackup(
   type: "auto" | "manual",
   label?: string
 ): Promise<{ error?: string; id?: string }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
 
   // For auto backups, enforce max 30 per tenant
@@ -142,6 +152,7 @@ export async function createBackup(
 }
 
 export async function getBackups(orgId: string): Promise<BackupEntry[]> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const { data } = await admin
     .from("backups")
@@ -197,6 +208,7 @@ export async function getBackups(orgId: string): Promise<BackupEntry[]> {
 }
 
 export async function deleteBackup(backupId: string, orgId: string): Promise<{ error?: string }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const { error } = await admin.from("backups").delete().eq("id", backupId).eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -209,6 +221,7 @@ export async function restoreBackup(
   orgId: string,
   options: { config: boolean; rotas: boolean; includeDrafts: boolean }
 ): Promise<{ error?: string }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
 
   const { data: backup } = await admin
@@ -308,6 +321,7 @@ export async function restoreBackup(
  * Nightly cleanup: retention tiers + auto backup purge
  */
 export async function runBackupCleanup(orgId: string): Promise<{ error?: string; cleaned: number }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   let cleaned = 0
 

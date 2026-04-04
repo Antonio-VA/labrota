@@ -30,11 +30,11 @@ export async function sendSupportMessage(subject: string, message: string): Prom
     if (!res.ok) {
       const body = await res.text()
       console.error("Support email failed:", body)
-      return { error: "Error enviando el mensaje. Inténtalo de nuevo." }
+      return { error: "Failed to send message. Please try again." }
     }
     return {}
   } catch (e) {
     console.error("Support email error:", e)
-    return { error: "Error enviando el mensaje." }
+    return { error: "Failed to send message." }
   }
 }

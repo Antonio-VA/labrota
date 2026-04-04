@@ -7,6 +7,7 @@ import { useLocale } from "next-intl"
 import {
   CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays,
 } from "lucide-react"
+import { formatDate } from "@/lib/format-date"
 import { LeaveFileImport } from "@/components/leave-file-import"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -157,8 +158,7 @@ function DateRangePicker({
 
   const fmtDisplay = (iso: string | null) => {
     if (!iso) return "—"
-    const d = new Date(iso + "T12:00:00")
-    return d.toLocaleDateString(locale, { day: "numeric", month: "short" })
+    return formatDate(iso + "T12:00:00", locale as "es" | "en")
   }
 
   return (
