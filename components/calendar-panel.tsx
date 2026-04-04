@@ -1572,10 +1572,12 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
   const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }> = {}
   const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
 
-  // Count leave days per staff this week to reduce their budget
+  // Count leave days per staff — only within the current week
+  const weekDates = new Set(days.map(d => d.date))
   const leaveDaysPerStaff: Record<string, number> = {}
   if (data.onLeaveByDate) {
     for (const date in data.onLeaveByDate) {
+      if (!weekDates.has(date)) continue
       for (const staffId of data.onLeaveByDate[date]) {
         leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
       }
@@ -1674,9 +1676,11 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
             className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
-            style={isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : undefined}
+            style={{
+              ...(colorChips && staffColor ? { borderLeft: `3px solid ${staffColor}`, borderRadius: 4 } : {}),
+              ...(isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
+            }}
           >
-            {colorChips && staffColor && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isHov ? "#1e293b" : staffColor }} />}
             <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
             <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
             {s.guardiaCount > 0 && (
