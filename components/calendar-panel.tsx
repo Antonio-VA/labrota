@@ -3023,43 +3023,73 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // Fetch week data
   const fetchVersionRef = useRef(0)
   const initialDataUsed = useRef(false)
+  const weekCache = useRef<Map<string, RotaWeekData>>(new Map())
+
+  function weekOffset(ws: string, days: number): string {
+    const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + days); return dt.toISOString().split("T")[0]
+  }
+
+  function prefetchAdjacent(ws: string) {
+    const prev = weekOffset(ws, -7)
+    const next = weekOffset(ws, 7)
+    if (!weekCache.current.has(prev)) {
+      getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+    }
+    if (!weekCache.current.has(next)) {
+      getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
+    }
+  }
+
   const fetchWeek = useCallback((ws: string) => {
     // On first call, if the server pre-fetched this exact week, use it directly
     // (avoids a network round-trip on initial load for new sessions viewing today's week)
     if (!initialDataUsed.current && initialData?.weekStart === ws) {
       initialDataUsed.current = true
+      weekCache.current.set(ws, initialData)
       setInitialLoaded(true)
       setWeekData(initialData)
       setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
       setLoadingWeek(false)
-      const offset = (n: number) => {
-        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
-      }
-      getRotaWeek(offset(-7)).catch(() => {})
-      getRotaWeek(offset(7)).catch(() => {})
+      prefetchAdjacent(ws)
       return
     }
+
+    // Cache hit — show instantly, then silently refresh in background
+    const cached = weekCache.current.get(ws)
+    if (cached) {
+      setInitialLoaded(true)
+      setWeekData(cached)
+      setPunctionsOverrideLocal(cached.rota?.punctions_override ?? {})
+      setLoadingWeek(false)
+      setLiveDays(null)
+      setError(null)
+      aiReasoningRef.current = null
+      reasoningSourceRef.current = null
+      setActiveStrategy(null)
+      getRotaWeek(ws).then((d) => {
+        weekCache.current.set(ws, d)
+        setWeekData(d)
+        setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
+        prefetchAdjacent(ws)
+      }).catch(() => {})
+      return
+    }
+
     const version = ++fetchVersionRef.current
-    aiReasoningRef.current = null // clear client-side reasoning on week change
+    aiReasoningRef.current = null
     reasoningSourceRef.current = null
     setActiveStrategy(null)
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
-    // Don't clear weekData — keep showing previous data as background while loading
-    // This prevents the empty flash between shimmer and content
     getRotaWeek(ws).then((d) => {
       if (fetchVersionRef.current !== version) return
+      weekCache.current.set(ws, d)
       setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
       setLoadingWeek(false)
-      // Warm cache for adjacent weeks so navigation is instant
-      const offset = (n: number) => {
-        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
-      }
-      getRotaWeek(offset(-7)).catch(() => {})
-      getRotaWeek(offset(7)).catch(() => {})
+      prefetchAdjacent(ws)
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
       setInitialLoaded(true)
@@ -3072,6 +3102,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
   const fetchWeekSilent = useCallback((ws: string) => {
     getRotaWeek(ws).then((d) => {
+      weekCache.current.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
     }).catch(() => {/* ignore — grid stays as-is */})
