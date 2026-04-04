@@ -110,10 +110,12 @@ export async function syncStepCompletions(): Promise<void> {
 /**
  * Clear all step completions (used on re-iniciar).
  */
-export async function clearStepCompletions(): Promise<void> {
+export async function clearStepCompletions(): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
-  if (!orgId) return
-  await supabase.from("implementation_steps").delete().eq("organisation_id", orgId)
+  if (!orgId) return { error: "Not authenticated." }
+  const { error } = await supabase.from("implementation_steps").delete().eq("organisation_id", orgId)
+  if (error) return { error: error.message }
   revalidatePath("/settings")
+  return {}
 }

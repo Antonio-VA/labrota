@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     .from("leaves")
     .update({ reviewed_at: new Date().toISOString() } as never)
     .eq("id", leaveId)
-    .then(() => {})
+    
 
   // If approved, remove conflicting rota assignments
   if (action === "approve") {

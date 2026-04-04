@@ -24,23 +24,27 @@ export async function getUnreadCount(): Promise<number> {
   return count ?? 0
 }
 
-export async function markAsRead(notificationId: string): Promise<void> {
+export async function markAsRead(notificationId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  await supabase
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true } as never)
     .eq("id", notificationId)
+  if (error) return { error: error.message }
+  return {}
 }
 
-export async function markAllAsRead(): Promise<void> {
+export async function markAllAsRead(): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  await supabase
+  if (!user) return { error: "Not authenticated." }
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true } as never)
     .eq("user_id", user.id)
     .eq("read", false)
+  if (error) return { error: error.message }
+  return {}
 }
 
 /**

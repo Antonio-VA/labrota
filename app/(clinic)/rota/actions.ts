@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { ONE_DAY_MS, RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { runTaskEngine } from "@/lib/task-engine"
@@ -610,7 +611,7 @@ export async function generateRota(
 
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
   const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
 
   // Fetch all required data in parallel
@@ -670,7 +671,7 @@ export async function generateRota(
   const rotaId = (rotaRow as { id: string }).id
 
   // Best-effort: set generation_type (column may not exist yet)
-  await supabase.from("rotas").update({ generation_type: generationType } as never).eq("id", rotaId).then(() => {})
+  await supabase.from("rotas").update({ generation_type: generationType } as never).eq("id", rotaId)
 
   // Determine which staff+date combos have manual overrides (to preserve individually)
   const overrideKeys = new Set<string>() // "staffId:date"
@@ -885,7 +886,7 @@ export async function generateRota(
   // Filter out internal [engine] logs — only keep user-facing warnings
   const userWarnings = engineWarnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
   // Always update (even to clear) so stale warnings from previous generation are removed
-  await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId).then(() => {})
+  await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
 
   // Audit log
   const { data: { user: auditUser } } = await supabase.auth.getUser()
@@ -922,7 +923,7 @@ export async function generateRotaWithAI(
 
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
   const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
 
   // Fetch all data (same as generateRota)
@@ -981,7 +982,7 @@ export async function generateRotaWithAI(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  await supabase.from("rotas").update({ generation_type: "ai_reasoning" } as never).eq("id", rotaId).then(() => {})
+  await supabase.from("rotas").update({ generation_type: "ai_reasoning" } as never).eq("id", rotaId)
 
   // Handle overrides
   const overrideKeys = new Set<string>()
@@ -1248,7 +1249,7 @@ export async function getHybridUsage(): Promise<{ used: number; limit: number; r
   if (!orgId) return { used: 0, limit: 10, remaining: 10 }
 
   const today = new Date().toISOString().split("T")[0]
-  const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + 86_400_000).toISOString().split("T")[0]
+  const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + ONE_DAY_MS).toISOString().split("T")[0]
 
   const [orgRes, usageRes] = await Promise.all([
     supabase.from("organisations").select("daily_hybrid_limit").eq("id", orgId).single(),
@@ -1288,7 +1289,7 @@ export async function generateRotaHybrid(
 
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
   const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
 
   // ── 1. Fetch all data ──────────────────────────────────────────────────────
@@ -1343,7 +1344,7 @@ export async function generateRotaHybrid(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId).then(() => {})
+  await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId)
 
   const overrideKeys = new Set<string>()
   let overrideAssignments: { staff_id: string; date: string; shift_type: string }[] = []
@@ -1734,7 +1735,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     // Save engine warnings
     const userWarnings = engineResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
-    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId).then(() => {})
+    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
 
     // Log usage for quota tracking (fallback still counts as a hybrid attempt)
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
@@ -1919,7 +1920,7 @@ export async function regenerateDay(
 
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
 
   // Fetch data (same as full generate)
   const [staffRes, leavesRes, recentRes, configRes, rulesRes, shiftRes, tecRes] = await Promise.all([
@@ -2751,7 +2752,7 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   if (!rotaRow) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
-  await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id).then(() => {})
+  await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id)
 
   await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
   revalidatePath("/")
@@ -2827,7 +2828,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   if (!rota) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
-  await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" } as never).eq("id", rota.id).then(() => {})
+  await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" } as never).eq("id", rota.id)
 
   // Fetch leaves for this week
   const { data: leaves } = await supabase

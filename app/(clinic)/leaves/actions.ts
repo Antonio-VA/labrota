@@ -139,12 +139,14 @@ export async function quickCreateLeave(params: {
   return {}
 }
 
-export async function deleteLeave(id: string) {
+export async function deleteLeave(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { error: "Not authenticated." }
-  await supabase.from("leaves").delete().eq("id", id).eq("organisation_id", orgId)
+  const { error } = await supabase.from("leaves").delete().eq("id", id).eq("organisation_id", orgId)
+  if (error) return { error: error.message }
   revalidatePath("/leaves")
+  return {}
 }
 
 /** Employee submits a leave request (status = pending). */
@@ -483,7 +485,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
-    .then(() => {})
+    
 
   // Auto-remove conflicting rota assignments
   await supabase
@@ -524,7 +526,7 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
     .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
-    .then(() => {})
+    
 
   // Notify the staff member about the decision
   notifyLeaveDecision({ leaveId, orgId, decision: "rejected" }).catch(() => {})
@@ -569,7 +571,7 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
       .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
       .eq("id", leaveId)
       .eq("organisation_id", orgId)
-      .then(() => {})
+      
   }
 
   if (error) return { error: error.message }
