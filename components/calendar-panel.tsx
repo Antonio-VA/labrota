@@ -47,7 +47,6 @@ import {
   copyPreviousWeek,
   generateRotaHybrid,
   getHybridUsage,
-  prefetchRotaWeek,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
