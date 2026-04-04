@@ -5465,6 +5465,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TaskPersonGrid
                   data={weekData}
                   staffList={filteredStaffList}
+                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -5478,6 +5479,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TransposedTaskGrid
                   data={weekData}
                   staffList={filteredStaffList}
+                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -5578,6 +5580,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TransposedShiftGrid
                   data={weekData}
                   staffList={filteredStaffList}
+                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}

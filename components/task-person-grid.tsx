@@ -40,15 +40,59 @@ interface TaskPersonGridProps {
   onLeaveByDate: Record<string, string[]>
   compact?: boolean
   colorChips?: boolean
+  loading?: boolean
   onChipClick?: (staff_id: string) => void
   onDateClick?: (date: string) => void
 }
 
 export function TaskPersonGrid({
   data, staffList, locale, isPublished, publicHolidays, onLeaveByDate,
-  compact, colorChips = true, onChipClick, onDateClick,
+  compact, colorChips = true, loading, onChipClick, onDateClick,
 }: TaskPersonGridProps) {
   const t = useTranslations("schedule")
+  const tc = useTranslations("common")
+
+  // Loading skeleton — staff as rows, days as columns
+  if (loading) {
+    const skelStaff = 8
+    const skelGridCols = `80px repeat(${skelStaff}, minmax(${compact ? "48px" : "60px"}, 1fr))`
+    return (
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
+        <div className="rounded-lg border border-border overflow-auto w-full">
+          <div style={{ display: "grid", gridTemplateColumns: skelGridCols, minWidth: skelStaff * (compact ? 53 : 65) + 80 }}>
+            {/* Header: corner + staff name shimmers */}
+            <div className="border-b border-r border-border bg-muted" style={{ minHeight: 48 }} />
+            {Array.from({ length: skelStaff }).map((_, i) => (
+              <div key={i} className="border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1 gap-1">
+                <div className="shimmer-bar h-2.5 w-10" />
+                <div className="shimmer-bar h-2 w-4" />
+              </div>
+            ))}
+
+            {/* Day rows */}
+            {Array.from({ length: 7 }).map((_, row) => (
+              <Fragment key={row}>
+                <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2">
+                  <div className="shimmer-bar h-2.5 w-5" />
+                  <div className="shimmer-bar w-5 h-5 rounded-full" />
+                </div>
+                {Array.from({ length: skelStaff }).map((_, col) => (
+                  <div key={col} className={`border-b border-r last:border-r-0 border-border flex items-center justify-center ${compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1"} ${row >= 5 ? "opacity-50" : ""}`}>
+                    <div className="shimmer-bar h-4 w-full rounded" />
+                  </div>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-1">
+          <span className="generating-label text-[13px] text-muted-foreground">
+            {tc("loading")}
+          </span>
+        </div>
+      </div>
+    )
+  }
   const { hoveredStaffId, setHovered } = useStaffHover()
   const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
 

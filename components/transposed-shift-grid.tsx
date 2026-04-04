@@ -38,6 +38,7 @@ interface TransposedShiftGridProps {
   compact?: boolean
   colorChips?: boolean
   timeFormat?: string
+  loading?: boolean
   onCellClick?: (date: string) => void
   onChipClick?: (assignment: { staff_id: string }, date: string) => void
   onRefresh?: () => void
@@ -65,9 +66,59 @@ function DroppableCell({ id, children, className, style }: { id: string; childre
 
 export function TransposedShiftGrid({
   data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
-  compact, colorChips = true, timeFormat = "24h", onCellClick, onChipClick, onRefresh,
+  compact, colorChips = true, timeFormat = "24h", loading, onCellClick, onChipClick, onRefresh,
 }: TransposedShiftGridProps) {
   const t = useTranslations("schedule")
+  const tc = useTranslations("common")
+
+  // Loading skeleton — days as rows, shift codes as columns
+  if (loading) {
+    const skelShifts = 4
+    const skelGridCols = `120px repeat(${skelShifts}, 1fr) minmax(80px, 1fr)`
+    return (
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
+        <div className="overflow-auto flex-1 rounded-lg border border-border">
+          <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: skelGridCols }}>
+            {/* Header row */}
+            <div className="sticky top-0 z-10 border-b border-r border-border bg-muted h-[48px]" />
+            {Array.from({ length: skelShifts }).map((_, i) => (
+              <div key={i} className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex flex-col items-center gap-1">
+                <div className="shimmer-bar h-3 w-8" />
+                <div className="shimmer-bar h-2.5 w-14 rounded" />
+              </div>
+            ))}
+            <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex items-center justify-center">
+              <div className="shimmer-bar h-3 w-8" />
+            </div>
+
+            {/* Day rows */}
+            {Array.from({ length: 7 }).map((_, row) => (
+              <>
+                <div key={`h-${row}`} className="border-b border-r border-border bg-muted px-2 py-2 flex items-center justify-end gap-1.5 sticky left-0 z-10">
+                  <div className="shimmer-bar h-2.5 w-6" />
+                  <div className="shimmer-bar w-6 h-6 rounded-full" />
+                </div>
+                {Array.from({ length: skelShifts }).map((_, col) => (
+                  <div key={col} className={`border-b border-l border-border p-1 min-h-[48px] flex flex-col gap-0.5 ${row >= 5 ? "opacity-50" : ""}`}>
+                    <div className="shimmer-bar h-5 w-full rounded" />
+                    <div className="shimmer-bar h-5 w-3/4 rounded" />
+                  </div>
+                ))}
+                <div key={`off-${row}`} className={`border-b border-l border-border p-1 min-h-[48px] ${row >= 5 ? "opacity-50" : ""}`}>
+                  <div className="shimmer-bar h-5 w-full rounded" />
+                </div>
+              </>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-1">
+          <span className="generating-label text-[13px] text-muted-foreground">
+            {tc("loading")}
+          </span>
+        </div>
+      </div>
+    )
+  }
   const { hoveredStaffId, setHovered } = useStaffHover()
   const [activeId, setActiveId] = useState<string | null>(null)
 
