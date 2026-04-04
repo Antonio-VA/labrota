@@ -1677,7 +1677,7 @@ function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, dep
             onMouseLeave={() => setHovered(null)}
             className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
             style={{
-              ...(colorChips && staffColor ? { borderLeft: `3px solid ${staffColor}`, borderRadius: 4 } : {}),
+              ...(colorChips && staffColor ? { borderLeft: `3px solid ${staffColor}` } : {}),
               ...(isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
             }}
           >

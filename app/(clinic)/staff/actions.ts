@@ -436,8 +436,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
   const departments = deptRes.data ?? []
   const staffList = staffRes.data ?? []
 
-  const rotaMode = lc.rota_display_mode as string ?? "by_shift"
-  const isByTask = rotaMode === "by_task"
+  const isByTask = lc.rota_display_mode === "by_task"
 
   const shiftCoverageEnabled = lc.shift_coverage_enabled as boolean | undefined ?? false
   const shiftCoverageByDay = lc.shift_coverage_by_day as Record<string, Record<string, Record<string, number>>> | null
