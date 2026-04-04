@@ -47,6 +47,7 @@ import {
   copyPreviousWeek,
   generateRotaHybrid,
   getHybridUsage,
+  prefetchRotaWeek,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
@@ -72,704 +73,22 @@ import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
+import type { ViewMode, CalendarLayout, Assignment, DeptMaps, MenuItem } from "./calendar-panel/types"
+import { DEFAULT_DEPT_MAPS, ROLE_ORDER, ROLE_LABEL, ROLE_BORDER, ROLE_DOT, SHIFT_ORDER, TECNICA_PILL, COVERAGE_SKILLS, LEGACY_SKILL_NAMES, TODAY, DAY_ES_2, WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER, DOW_HEADERS_EN, DOW_HEADERS_ES } from "./calendar-panel/constants"
+import { buildDeptMaps, sortAssignments, addDays, addMonths, getMonthStart, formatToolbarLabel, rotateArray, makeSkillLabel, parseHybridInsights, buildStrategyCards, type GenerationStrategy, type StrategyCardMeta } from "./calendar-panel/utils"
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { ShiftBudgetBar, MonthBudgetBar, LEAVE_ICON_MAP } from "./calendar-panel/budget-bars"
 
-type ViewMode      = "week" | "month"
-type CalendarLayout = "shift" | "person"
-type Assignment    = RotaDay["assignments"][0]
+import { WeekJumpButton } from "./calendar-panel/week-jump-button"
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+import { StaffChip, ShiftBadge, type ShiftBadgeProps } from "./calendar-panel/shift-badge"
 
-import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL, DEFAULT_DEPT_ORDER } from "@/lib/department-colors"
+import { AssignmentPopover, DEPT_FOR_ROLE } from "./calendar-panel/assignment-popover"
 
-type DeptMaps = { border: Record<string, string>; label: Record<string, string>; order: Record<string, number> }
-
-const DEFAULT_DEPT_MAPS: DeptMaps = {
-  border: DEFAULT_DEPT_BORDER,
-  label:  DEFAULT_DEPT_LABEL,
-  order:  DEFAULT_DEPT_ORDER,
-}
-
-function buildDeptMaps(departments: import("@/lib/types/database").Department[]): DeptMaps {
-  if (!departments || departments.length === 0) return DEFAULT_DEPT_MAPS
-  return {
-    border: Object.fromEntries(departments.map((d) => [d.code, d.colour])),
-    label:  Object.fromEntries(departments.map((d) => [d.code, d.name])),
-    order:  Object.fromEntries(departments.map((d) => [d.code, d.sort_order])),
-  }
-}
-
-// Top-level fallbacks for components that don't have access to weekData
-const ROLE_ORDER: Record<string, number> = DEFAULT_DEPT_MAPS.order
-const ROLE_LABEL: Record<string, string> = DEFAULT_DEPT_MAPS.label
-const ROLE_BORDER: Record<string, string> = DEFAULT_DEPT_MAPS.border
-
-// Kept for month grid role dots (tiny preview)
-const ROLE_DOT: Record<string, string> = {
-  lab: "bg-blue-400", andrology: "bg-emerald-400", admin: "bg-slate-400",
-}
-const SHIFT_ORDER: Record<string, number> = { am: 0, pm: 1, full: 2 }
-
-// Técnica pill color classes keyed by color name (matches tecnicas-tab.tsx)
-const TECNICA_PILL: Record<string, string> = {
-  amber:  "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
-  blue:   "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
-  green:  "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400",
-  purple: "bg-purple-500/10 border-purple-500/30 text-muted-foreground",
-  coral:  "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
-  teal:   "bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400",
-  slate:  "bg-muted border-border text-muted-foreground",
-  red:    "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
-}
-
-function sortAssignments<T extends { staff: { role: string }; shift_type: string }>(arr: T[]): T[] {
-  return [...arr].sort((a, b) => {
-    const rd = (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
-    if (rd !== 0) return rd
-    return (SHIFT_ORDER[a.shift_type] ?? 9) - (SHIFT_ORDER[b.shift_type] ?? 9)
-  })
-}
-
-const TODAY = new Date().toISOString().split("T")[0]
-
-// ── Skill display — look up técnica name, fallback to code ───────────────────
-const LEGACY_SKILL_NAMES: Record<string, string> = {
-  biopsy: "Biopsia", icsi: "ICSI", egg_collection: "Recogida de óvulos",
-  embryo_transfer: "Transferencia embrionaria", denudation: "Denudación",
-  semen_analysis: "Análisis seminal", sperm_prep: "Preparación espermática",
-  sperm_freezing: "Congelación de esperma",
-}
-function makeSkillLabel(tecnicas: Tecnica[]) {
-  const codeMap = Object.fromEntries(tecnicas.map((t) => [t.codigo, t.nombre_es]))
-  return (code: string) => codeMap[code] ?? LEGACY_SKILL_NAMES[code] ?? code
-}
-
-// ── The 5 skills shown in coverage row ────────────────────────────────────────
-
-const COVERAGE_SKILLS = [
-  { key: "biopsy",          label: "B"  },
-  { key: "icsi",            label: "I"  },
-  { key: "egg_collection",  label: "RO" },
-  { key: "embryo_transfer", label: "TE" },
-  { key: "denudation",      label: "D"  },
-]
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function addDays(isoDate: string, n: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
-}
-
-function addMonths(isoDate: string, n: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString().split("T")[0]
-}
-
-function getMonthStart(isoDate: string): string {
-  return isoDate.slice(0, 7) + "-01"
-}
-
-function formatToolbarLabel(view: ViewMode, currentDate: string, weekStart: string, locale: string): string {
-  if (view === "month") {
-    const start = new Date(weekStart + "T12:00:00")
-    const end = new Date(weekStart + "T12:00:00")
-    end.setDate(start.getDate() + 27)
-    // Compact: "23 mar – 19 abr 2026"
-    const sDay = start.getDate()
-    const eDay = end.getDate()
-    const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
-    const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
-    const yr = end.getFullYear()
-    return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
-  }
-  // week — compact: "23–29 mar 2026"
-  const start = new Date(weekStart + "T12:00:00")
-  const end = new Date(weekStart + "T12:00:00")
-  end.setDate(start.getDate() + 6)
-  const sDay = start.getDate()
-  const eDay = end.getDate()
-  const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(start)
-  const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(end)
-  const yr = end.getFullYear()
-  return sMon === eMon ? `${sDay}–${eDay} ${sMon} ${yr}` : `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
-}
-
-// ── Week jump picker ─────────────────────────────────────────────────────────
-
-function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
-  currentDate: string; weekStart: string; view: ViewMode; locale: string
-  onSelect: (date: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [open])
-
-  // Build periods: when view=month show 4-week blocks, otherwise individual weeks
-  // 4 past + current + 8 future = 13 entries
-  const weeks = useMemo(() => {
-    const step = view === "month" ? 28 : 7
-    const result: { monday: string; label: string; isCurrent: boolean }[] = []
-    for (let i = -4; i <= 8; i++) {
-      const monday = addDays(weekStart, i * step)
-      const end = addDays(monday, step - 1)
-      const mDate = new Date(monday + "T12:00:00")
-      const eDate = new Date(end + "T12:00:00")
-      const sMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(mDate)
-      const eMon = new Intl.DateTimeFormat(locale, { month: "short" }).format(eDate)
-      const label = sMon === eMon
-        ? `${mDate.getDate()}–${eDate.getDate()} ${sMon}`
-        : `${mDate.getDate()} ${sMon} – ${eDate.getDate()} ${eMon}`
-      result.push({ monday, label, isCurrent: i === 0 })
-    }
-    return result
-  }, [weekStart, locale, view])
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="text-[14px] font-medium capitalize hover:bg-accent/50 px-2 py-1 rounded-md transition-colors flex items-center gap-1.5"
-      >
-        {formatToolbarLabel(view, currentDate, weekStart, locale)}
-        <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[200px] max-h-[320px] overflow-y-auto">
-          {weeks.map((w) => {
-            const todayMonday = getMondayOfWeek(new Date(TODAY + "T12:00:00"))
-            const step = view === "month" ? 28 : 7
-            const isThisWeek = view === "month"
-              ? todayMonday >= w.monday && todayMonday < addDays(w.monday, step)
-              : w.monday === todayMonday
-            return (
-              <button
-                key={w.monday}
-                onClick={() => { onSelect(w.monday); setOpen(false) }}
-                className={cn(
-                  "w-full text-left px-3 py-1.5 text-[13px] capitalize hover:bg-accent transition-colors flex items-center justify-between gap-3",
-                  w.isCurrent && "bg-accent font-medium",
-                )}
-              >
-                <span>{w.label}</span>
-                {isThisWeek && <span className="text-[11px] text-muted-foreground">{locale === "es" ? "hoy" : "today"}</span>}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Staff chip (Vista por persona) ────────────────────────────────────────────
-
-function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
-  first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
-  notes?: string | null; shiftTime?: string
-  onClick?: (e: React.MouseEvent) => void
-  isDragging?: boolean
-  onDragStart?: (e: React.DragEvent) => void
-  onDragEnd?: (e: React.DragEvent) => void
-}) {
-  return (
-    <div
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
-      className={cn(
-        "flex flex-col py-1 text-[12px] select-none bg-background text-foreground border border-border",
-        onClick && "cursor-pointer hover:bg-muted/50 active:opacity-80",
-        onDragStart && "cursor-grab",
-        isDragging && "opacity-40",
-      )}
-      style={{ borderLeft: `3px solid ${ROLE_BORDER[role] ?? "#94A3B8"}`, borderRadius: 4, paddingLeft: 6, paddingRight: 8 }}
-    >
-      {shiftTime && (
-        <span className="text-[10px] text-muted-foreground font-medium leading-none mb-0.5">{shiftTime}</span>
-      )}
-      <div className="flex items-center gap-1.5">
-        <span className="truncate font-medium">{first} {last[0]}.</span>
-        {hasTrainee && (
-          <span className="ml-0.5 text-[9px] bg-primary/10 text-primary rounded px-1 font-semibold shrink-0">S</span>
-        )}
-      </div>
-      {notes && (
-        <span className="text-[10px] italic text-muted-foreground leading-none mt-0.5 truncate">{notes}</span>
-      )}
-    </div>
-  )
-}
-
-// ── Shift badge (Vista por turno — compact inline pill) ───────────────────────
-
-type ShiftBadgeProps = {
-  first: string; last: string; role: string; isOverride: boolean; readOnly?: boolean
-  functionLabel?: string | null
-  tecnica?: Tecnica | null
-  compact?: boolean
-  borderColor?: string
-  isTrainingTecnica?: boolean
-  colorChips?: boolean
-  staffId?: string
-  staffColor?: string
-  departments?: import("@/lib/types/database").Department[]
-  trainingTecCode?: string | null
-}
-
-function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [], trainingTecCode }: ShiftBadgeProps) {
-  const { hoveredStaffId, setHovered } = useStaffHover()
-  const [pillHovered, setPillHovered] = useState(false)
-  // Resolve department code to abbreviation for pill display
-  const deptMatch = functionLabel ? departments.find((d) => d.code === functionLabel) : null
-  const pillLabel = tecnica ? tecnica.codigo : (deptMatch ? deptMatch.abbreviation : (functionLabel ?? null))
-  const pillColor = !colorChips
-    ? "bg-slate-100 border-border text-muted-foreground"
-    : tecnica
-    ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
-    : deptMatch
-    ? null // use inline style for dept color
-    : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-muted border-border text-muted-foreground"
-    : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
-    : null
-  const deptPillStyle = deptMatch ? { backgroundColor: `${deptMatch.colour}15`, borderColor: `${deptMatch.colour}40`, color: deptMatch.colour } : undefined
-  const crossHovered = !!(staffId && hoveredStaffId === staffId && staffColor)
-  const showPill = pillHovered || crossHovered
-
-  return (
-    <div
-      className={cn(
-        "group flex items-center gap-1.5 rounded border font-medium w-full text-foreground transition-all duration-100",
-        compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
-        showPill ? "border-border bg-background" : "border-transparent bg-transparent",
-      )}
-      style={{
-        borderLeft: colorChips
-          ? `3px solid ${staffColor ?? borderColor ?? DEFAULT_DEPT_MAPS.border[role] ?? "#94A3B8"}`
-          : undefined,
-        borderRadius: 4,
-        ...(crossHovered ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
-      }}
-      onMouseEnter={() => { setPillHovered(true); staffId && setHovered(staffId) }}
-      onMouseLeave={() => { setPillHovered(false); staffId && setHovered(null) }}
-    >
-      <span className="truncate">{first} {last[0]}.</span>
-      {trainingTecCode && (
-        <span className={cn("inline-flex items-center gap-0.5 shrink-0 text-amber-600", compact ? "text-[8px]" : "text-[9px]", !pillLabel && "ml-auto")}>
-          <Hourglass className="size-2" />
-          {trainingTecCode}
-        </span>
-      )}
-      {pillLabel && (pillColor || deptPillStyle) ? (
-        <span
-          className={cn("font-semibold px-1 py-0.5 rounded border ml-auto shrink-0 inline-flex items-center gap-0.5", compact ? "text-[8px]" : "text-[9px]", pillColor)}
-          style={deptPillStyle}
-        >
-          {isTrainingTecnica && <Hourglass className="size-2 text-amber-500" />}
-          {pillLabel}
-        </span>
-      ) : !readOnly ? (
-        <span className="text-[9px] font-medium text-muted-foreground/40 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-          + Task
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
-// Maps department to role for técnica filtering
-const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "andrology" }
-
-// ── Assignment popover (función + técnica in one) ─────────────────────────────
-
-function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, disabled, children }: {
-  assignment: { id: string; staff: { role: string }; function_label: string | null }
-  staffSkills: { skill: string; level: string }[]
-  tecnicas: Tecnica[]
-  departments?: import("@/lib/types/database").Department[]
-  onFunctionSave: (id: string, label: string | null) => void
-  isPublished: boolean
-  disabled?: boolean
-  children: React.ReactNode
-}) {
-  // When disabled, just render children without any popover
-  if (disabled) return <>{children}</>
-
-  const t = useTranslations("schedule")
-  const tStaff = useTranslations("staff")
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const popupRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean }>({ top: 0, left: 0, flipUp: false })
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (triggerRef.current?.contains(e.target as Node)) return
-      if (popupRef.current?.contains(e.target as Node)) return
-      setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  // Calculate position when opening
-  useEffect(() => {
-    if (!open || !triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    const popupHeight = 200 // approximate
-    const spaceBelow = window.innerHeight - rect.bottom
-    const flipUp = spaceBelow < popupHeight && rect.top > popupHeight
-    setPos({
-      top: flipUp ? rect.top - 4 : rect.bottom + 4,
-      left: rect.left,
-      flipUp,
-    })
-  }, [open])
-
-  const currentLabel = assignment.function_label ?? null
-  const staffSkillCodes = new Set(staffSkills.map((s) => s.skill))
-  const staffDept = DEPT_FOR_ROLE[assignment.staff.role]
-
-  const availableTecnicas = tecnicas.filter((t) =>
-    t.activa && t.department.split(",").includes(staffDept) && staffSkillCodes.has(t.codigo)
-  )
-
-  // Sub-departments for the staff member's role department
-  const roleDept = departments.find((d) => d.parent_id == null && d.code === assignment.staff.role)
-  const roleSubDepts = roleDept ? departments.filter((d) => d.parent_id === roleDept.id) : []
-
-  if ((availableTecnicas.length === 0 && roleSubDepts.length === 0) || isPublished) return <>{children}</>
-
-  return (
-    <div ref={triggerRef}>
-      <div onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }} className="cursor-pointer">
-        {children}
-      </div>
-      {open && createPortal(
-        <div
-          ref={popupRef}
-          className="fixed z-[100] bg-background border border-border rounded-lg shadow-xl py-1.5 w-52"
-          style={{
-            left: pos.left,
-            ...(pos.flipUp
-              ? { bottom: window.innerHeight - pos.top }
-              : { top: pos.top }),
-          }}
-        >
-          <p className="text-[11px] font-semibold px-2.5 mb-1">{t("editAssignment")}</p>
-          {/* Sub-departments for staff's role */}
-          {roleSubDepts.length > 0 && (
-            <>
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{tStaff("fields.role")}</p>
-              <div className="flex flex-col">
-                {roleSubDepts.map((dept) => {
-                  const isActive = currentLabel === dept.code
-                  return (
-                    <button
-                      key={dept.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onFunctionSave(assignment.id, isActive ? null : dept.code)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                        isActive ? "bg-accent" : "hover:bg-muted"
-                      )}
-                    >
-                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
-                      <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{dept.name}</span>
-                      {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-          {/* Tareas section — techniques the staff member is qualified for */}
-          {availableTecnicas.length > 0 && (
-            <>
-              <div className="h-px bg-border mx-2 my-1" />
-              <p className="text-[10px] text-muted-foreground font-medium mb-1 px-2.5">{t("tasks")}</p>
-              <div className="flex flex-col">
-                {availableTecnicas.map((tec) => {
-                  const isActive = currentLabel === tec.codigo
-                  const isTraining = staffSkills.find((s) => s.skill === tec.codigo)?.level === "training"
-                  const pillColor = TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue
-                  return (
-                    <button
-                      key={tec.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onFunctionSave(assignment.id, isActive ? null : tec.codigo)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        "flex items-center gap-2 w-full px-2.5 py-1.5 text-left transition-colors",
-                        isActive ? "bg-accent" : "hover:bg-muted"
-                      )}
-                    >
-                      <span className={cn(
-                        "text-[10px] font-semibold py-0.5 rounded border shrink-0 w-9 text-center inline-flex items-center justify-center",
-                        pillColor,
-                        isActive && "ring-1 ring-offset-1 ring-current"
-                      )}>
-                        {isTraining && <Hourglass className="size-2 text-amber-500 inline mr-0.5" />}
-                        {tec.codigo}
-                      </span>
-                      <span className={cn("text-[12px] truncate", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tec.nombre_es}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-// ── Day stats (punciones + biopsy forecast) ──────────────────────────────────
-
-function DayStatsInput({ date, value, defaultValue, isOverride, onChange, onBiopsyChange, disabled, biopsyForecast, biopsyTooltip, compact }: {
-  date: string; value: number; defaultValue: number; isOverride: boolean
-  onChange: (date: string, value: number | null) => void
-  onBiopsyChange?: (date: string, value: number) => void
-  disabled: boolean
-  biopsyForecast: number; biopsyTooltip: string
-  compact?: boolean
-}) {
-  const t = useTranslations("schedule")
-  const locale = useLocale()
-  const [open, setOpen]   = useState(false)
-  const [draft, setDraft] = useState(String(value))
-  const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
-  const popRef            = useRef<HTMLDivElement>(null)
-
-  useEffect(() => { setDraft(String(value)) }, [value])
-  useEffect(() => { setBiopsyDraft(String(biopsyForecast)) }, [biopsyForecast])
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (popRef.current && !popRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  function save() {
-    const n = parseInt(draft, 10)
-    if (!isNaN(n) && n >= 0) onChange(date, n === defaultValue ? null : n)
-    else setDraft(String(value))
-  }
-
-  // Autosave punctions when draft changes (debounced)
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (!open) return
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = setTimeout(() => {
-      const n = parseInt(draft, 10)
-      if (!isNaN(n) && n >= 0 && n !== value) {
-        onChange(date, n === defaultValue ? null : n)
-      }
-    }, 600)
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current) }
-  }, [draft, open]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Autosave biopsies when biopsyDraft changes (debounced)
-  const biopsySaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (!open || !onBiopsyChange) return
-    if (biopsySaveTimeoutRef.current) clearTimeout(biopsySaveTimeoutRef.current)
-    biopsySaveTimeoutRef.current = setTimeout(() => {
-      const n = parseInt(biopsyDraft, 10)
-      if (!isNaN(n) && n >= 0 && n !== biopsyForecast) {
-        onBiopsyChange(date, n)
-      }
-    }, 600)
-    return () => { if (biopsySaveTimeoutRef.current) clearTimeout(biopsySaveTimeoutRef.current) }
-  }, [biopsyDraft, open]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function reset() {
-    onChange(date, null)
-    setOpen(false)
-  }
-
-  const pLabel = `PU:${value}`
-  const bLabel = biopsyForecast > 0 ? `B:${biopsyForecast}` : "B:0"
-  const puncLabel = "PU"
-
-  if (disabled) {
-    return (
-      <Tooltip>
-        <TooltipTrigger render={
-          compact ? (
-            <span className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground cursor-default">
-              <span className={isOverride ? "text-primary" : "text-foreground/70"}>{pLabel}</span>
-              <span className="text-foreground/70">{bLabel}</span>
-            </span>
-          ) : (
-            <span className="flex items-center gap-3 cursor-default">
-              <span className="flex flex-col items-start gap-0.5">
-                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
-                <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground/70")}>{value}</span>
-              </span>
-              <span className="flex flex-col items-start gap-0.5">
-                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
-                <span className="text-[13px] font-semibold tabular-nums text-foreground/70">{biopsyForecast}</span>
-              </span>
-            </span>
-          )
-        } />
-        <TooltipContent side="bottom">
-          {biopsyForecast > 0 ? biopsyTooltip : t("punctionsLabel", { count: value })}
-        </TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return (
-    <div ref={popRef} className="relative">
-      <Tooltip>
-        <TooltipTrigger render={
-          compact ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-              className="flex items-center gap-1 text-[11px] font-medium tabular-nums rounded px-1 py-0.5 transition-colors hover:bg-muted cursor-pointer"
-            >
-              <span className={isOverride ? "text-primary" : "text-muted-foreground"}>{pLabel}</span>
-              <span className="text-muted-foreground">{bLabel}</span>
-            </button>
-          ) : (
-            <button
-              onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setOpen((o) => !o) }}
-              className="flex items-center gap-3 rounded px-1.5 py-1 transition-colors hover:bg-muted cursor-pointer"
-            >
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">{puncLabel}</span>
-                <span className={cn("text-[13px] font-semibold tabular-nums", isOverride ? "text-primary" : "text-foreground")}>{value}</span>
-              </div>
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-medium">Bio</span>
-                <span className="text-[13px] font-semibold tabular-nums text-foreground">{biopsyForecast}</span>
-              </div>
-            </button>
-          )
-        } />
-        {!open && (
-          <TooltipContent side="bottom">
-            {t("clickToEdit")}{isOverride ? ` · Default: ${defaultValue}` : ""}
-          </TooltipContent>
-        )}
-      </Tooltip>
-
-      {open && (
-        <div
-          className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2.5 w-36 flex flex-col gap-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center">
-            <span className="text-[11px] text-muted-foreground text-right">{t("punctions")}</span>
-            <input
-              autoFocus
-              type="number"
-              min={0}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); setDraft(String(value)) } }}
-              className="w-14 text-[12px] text-center border border-input rounded px-1 py-1 outline-none focus:border-primary bg-background"
-            />
-            <span className="text-[11px] text-muted-foreground text-right">{t("biopsies")}</span>
-            <input
-              type="number"
-              min={0}
-              value={biopsyDraft}
-              onChange={(e) => setBiopsyDraft(e.target.value)}
-              className="w-14 text-[12px] text-center border border-input rounded px-1 py-1 outline-none focus:border-primary bg-background"
-            />
-          </div>
-          {isOverride && (
-            <button
-              onClick={reset}
-              className="text-[11px] text-muted-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Overflow menu (toolbar ···) ────────────────────────────────────────────────
-
-type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; disabled?: boolean; dividerBefore?: boolean; destructive?: boolean; active?: boolean; sectionLabel?: string }
-
-function OverflowMenu({ items }: { items: MenuItem[] }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  if (items.length === 0) return null
-
-  return (
-    <div ref={ref} className="relative">
-      <Button variant="outline" size="icon-sm" onClick={() => setOpen((o) => !o)} aria-label="More options">
-        <MoreHorizontal className="size-4" />
-      </Button>
-      {open && (
-        <div className="absolute right-0 top-9 z-50 w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
-          {items.map((item) => (
-            <Fragment key={item.label}>
-              {item.dividerBefore && <div className="h-px bg-border my-1" />}
-              {item.sectionLabel && <p className="px-4 pt-1.5 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{item.sectionLabel}</p>}
-              <button
-                onClick={() => { item.onClick(); if (!item.active && item.active !== false) setOpen(false) }}
-                disabled={item.disabled}
-                className={cn(
-                  "flex items-center gap-2 w-full px-4 py-2 text-[14px] text-left transition-colors duration-75 disabled:opacity-50",
-                  item.destructive ? "text-destructive hover:bg-destructive/10" : "hover:bg-accent"
-                )}
-              >
-                {item.icon}
-                <span className="flex-1">{item.label}</span>
-                {item.active && <CheckCircle2 className="size-3.5 text-primary shrink-0" />}
-              </button>
-            </Fragment>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+import { DayStatsInput } from "./calendar-panel/day-stats-input"
+import { OverflowMenu } from "./calendar-panel/overflow-menu"
+import { DepartmentFilterDropdown } from "./calendar-panel/department-filter"
+import { MobileOverflow } from "./calendar-panel/mobile-overflow"
 
 // ── Staff profile panel ───────────────────────────────────────────────────────
 
@@ -854,8 +173,6 @@ function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId: strin
     </div>
   )
 }
-
-const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 
 function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, simplified, isOff }: {
   assignment: Assignment
@@ -1190,21 +507,21 @@ function StaffProfilePanel({
                       </Tooltip>
                     ) : null
                   })()}
-                  {staff.contract_type === "part_time" && (
+                  {(staff as any).contract_type === "part_time" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
                   )}
-                  {staff.contract_type === "intern" && (
+                  {(staff as any).contract_type === "intern" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
                   )}
                   {(() => {
-                    const end = staff.onboarding_end_date
+                    const end = (staff as any).onboarding_end_date as string | null
                     const today = new Date().toISOString().split("T")[0]
                     if (end && today <= end) return (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
                     )
                     return null
                   })()}
-                  {staff.prefers_guardia === true && (
+                  {(staff as any).prefers_guardia === true && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">G</span>
                   )}
                 </div>
@@ -1457,16 +774,16 @@ function StaffProfilePanel({
                   <p className="text-muted-foreground">{t("daysPerWeek")}</p>
                   <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                     <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
-                    {staff.contract_type === "part_time" && (
+                    {(staff as any).contract_type === "part_time" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">{locale === "es" ? "A tiempo parcial" : "Part-time"}</span>
                     )}
-                    {staff.contract_type === "intern" && (
+                    {(staff as any).contract_type === "intern" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">{locale === "es" ? "Becario" : "Intern"}</span>
                     )}
                   </div>
                 </div>
                 {(() => {
-                  const end = staff.onboarding_end_date
+                  const end = (staff as any).onboarding_end_date as string | null
                   const today = new Date().toISOString().split("T")[0]
                   if (!end) return null
                   return (
@@ -1553,401 +870,7 @@ function StaffProfilePanel({
   )
 }
 
-// ── Shift budget bar ───────────────────────────────────────────────────────────
-
-function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, deptFilter, colorChips = true }: {
-  data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
-  liveDays?: RotaDay[] | null; deptFilter?: Set<string>; colorChips?: boolean
-}) {
-  const t = useTranslations("schedule")
-  const ROLE_LABEL = buildDeptMaps(data.departments ?? []).label
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [visibleCount, setVisibleCount] = useState<number | null>(null)
-  const [overflowOpen, setOverflowOpen] = useState(false)
-  const overflowRef = useRef<HTMLDivElement>(null)
-
-  const days = liveDays ?? data.days
-  const isByTask = data.rotaDisplayMode === "by_task"
-  const isGuardiaMode = data.daysOffPreference === "guardia"
-  const staffMap: Record<string, { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }> = {}
-  const staffDaySeen: Record<string, Set<string>> = {} // staff_id → set of dates (for by_task dedup)
-
-  // Count leave days per staff — only within the current week
-  const weekDates = new Set(days.map(d => d.date))
-  const leaveDaysPerStaff: Record<string, number> = {}
-  if (data.onLeaveByDate) {
-    for (const date in data.onLeaveByDate) {
-      if (!weekDates.has(date)) continue
-      for (const staffId of data.onLeaveByDate[date]) {
-        leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
-      }
-    }
-  }
-
-  // Seed all active staff so 0-assignment members appear too
-  for (const s of staffList) {
-    if (deptFilter && !deptFilter.has(s.role)) continue
-    const leaveDays = leaveDaysPerStaff[s.id] ?? 0
-    staffMap[s.id] = {
-      first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, days.length - leaveDays),
-    }
-    staffDaySeen[s.id] = new Set()
-  }
-
-  for (const day of days) {
-    const dow = new Date(day.date + "T12:00:00").getDay()
-    const isWeekend = dow === 0 || dow === 6
-    for (const a of day.assignments) {
-      if (deptFilter && !deptFilter.has(a.staff.role)) continue
-      // In by_task mode, only count assignments that have a function_label (task assignments)
-      if (isByTask && !a.function_label) continue
-      // Skip assignments from inactive/deactivated staff not in active list
-      if (!staffMap[a.staff_id]) continue
-      if (isByTask) {
-        // Count unique days, not individual task assignments
-        if (!staffDaySeen[a.staff_id].has(day.date)) {
-          staffDaySeen[a.staff_id].add(day.date)
-          if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
-          else staffMap[a.staff_id].count++
-        }
-      } else {
-        if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
-        else staffMap[a.staff_id].count++
-      }
-    }
-  }
-
-  const entries = Object.entries(staffMap).sort((a, b) =>
-    a[1].first.localeCompare(b[1].first) || a[1].last.localeCompare(b[1].last)
-  )
-
-  // Measure overflow after render
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const items = el.querySelectorAll<HTMLElement>("[data-pill]")
-    if (items.length === 0) { setVisibleCount(null); return }
-    const containerRight = el.getBoundingClientRect().right
-    let count = 0
-    for (const item of items) {
-      if (item.getBoundingClientRect().right <= containerRight - 80) count++
-      else break
-    }
-    setVisibleCount(count < items.length ? count : null)
-  }, [entries.length])
-
-  // Close overflow on outside click
-  useEffect(() => {
-    if (!overflowOpen) return
-    function handler(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) setOverflowOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [overflowOpen])
-
-  const { hoveredStaffId, setHovered } = useStaffHover()
-  // Staff → department colour for pills
-  const staffColorLookup = useMemo(() => {
-    const deptColors: Record<string, string> = {}
-    for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
-    return Object.fromEntries(staffList.map((s) => [s.id, s.color || deptColors[s.role] || DEFAULT_DEPT_MAPS.border[s.role] || "#94A3B8"]))
-  }, [data.departments, staffList])
-
-  if (entries.length === 0) return null
-
-  const shown    = visibleCount !== null ? entries.slice(0, visibleCount) : entries
-  const overflow = visibleCount !== null ? entries.slice(visibleCount) : []
-
-  function renderPill(id: string, s: { first: string; last: string; role: string; count: number; guardiaCount: number; daysPerWeek: number }) {
-    const over  = s.count > s.daysPerWeek
-    const under = s.count < s.daysPerWeek
-    const color = s.count === 0 && s.guardiaCount === 0 ? "text-muted-foreground" : over ? "text-red-600" : under ? "text-amber-600" : "text-muted-foreground"
-    const isHov = hoveredStaffId === id
-    const staffColor = staffColorLookup[id]
-    return (
-      <Tooltip key={id}>
-        <TooltipTrigger render={
-          <button
-            data-pill
-            onClick={() => onPillClick?.(id)}
-            onMouseEnter={() => setHovered(id)}
-            onMouseLeave={() => setHovered(null)}
-            className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors duration-150 cursor-pointer hover:bg-accent flex items-center gap-1", color)}
-            style={{
-              ...(colorChips && staffColor ? { borderLeft: `3px solid ${staffColor}` } : {}),
-              ...(isHov && staffColor ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
-            }}
-          >
-            <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
-            <span className="font-normal tabular-nums">{s.count}/{s.daysPerWeek}</span>
-            {s.guardiaCount > 0 && (
-              <span className="font-normal tabular-nums text-violet-600">+{s.guardiaCount}G</span>
-            )}
-          </button>
-        } />
-        <TooltipContent side="top">
-          {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{s.daysPerWeek} {t("shifts")}{s.guardiaCount > 0 ? ` +${s.guardiaCount} guardia` : ""}
-        </TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return (
-    <div
-      className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-1"
-    >
-      {/* Left: label + pills */}
-      <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
-      <div ref={containerRef} className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
-        {shown.map(([id, s], i) => (
-          <Fragment key={id}>
-            {i > 0 && <span className="text-muted-foreground/40 text-[10px] select-none">·</span>}
-            {renderPill(id, s)}
-          </Fragment>
-        ))}
-      </div>
-      {overflow.length > 0 && (
-        <div ref={overflowRef} className="relative shrink-0">
-          <button
-            onClick={() => setOverflowOpen((o) => !o)}
-            className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer ml-1"
-          >
-            {t("moreStaff", { count: overflow.length })}
-          </button>
-          {overflowOpen && (
-            <div className="absolute bottom-full right-0 mb-2 z-50 w-60 rounded-lg border border-border bg-background shadow-lg py-2 px-1">
-              <div className="flex flex-wrap gap-0.5">
-                {overflow.map(([id, s]) => renderPill(id, s))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
-  summary: RotaMonthSummary; monthLabel: string; onPillClick?: (staffId: string) => void
-}) {
-  const t = useTranslations("schedule")
-  const entries = Object.entries(summary.staffTotals).sort((a, b) => {
-    return a[1].first.localeCompare(b[1].first) || a[1].last.localeCompare(b[1].last)
-  })
-
-  if (entries.length === 0) return null
-
-  // Monthly expected: days_per_week × actual weeks in grid
-  const weeksInMonth = summary.days.length / 7
-
-  return (
-    <div
-      className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-1"
-    >
-      <span className="text-[12px] text-muted-foreground font-medium shrink-0 mr-1">{t("shiftBudget")}:</span>
-      <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
-        {entries.map(([id, s], i) => {
-          const expected = Math.round(s.daysPerWeek * weeksInMonth)
-          const over = s.count > expected
-          const color = s.count === 0 ? "text-muted-foreground" : over ? "text-amber-600" : "text-muted-foreground"
-          return (
-            <Fragment key={id}>
-              {i > 0 && <span className="text-muted-foreground/40 text-[10px] select-none">·</span>}
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={() => onPillClick?.(id)}
-                    className={cn("px-1.5 py-0.5 rounded text-[12px] transition-colors cursor-pointer hover:bg-accent", color)}
-                  >
-                    <span className="font-medium">{s.first[0]}{s.last[0]}</span>{" "}
-                    <span className="font-normal tabular-nums">{s.count}/{expected}</span>
-                  </button>
-                } />
-                <TooltipContent side="top">
-                  {s.first} {s.last} · {ROLE_LABEL[s.role] ?? s.role} · {s.count}/{expected} {t("shiftsPerMonth")}
-                </TooltipContent>
-              </Tooltip>
-            </Fragment>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ── Skill gap pill ────────────────────────────────────────────────────────────
-
-const WARNING_CATEGORY_KEY: Record<string, string> = {
-  coverage: "warningCoverage",
-  skill_gap: "warningSkillGap",
-  technique_shift_gap: "warningTechniqueShiftGap",
-  rule: "warningRule",
-  budget: "warningBudget",
-}
-const WARNING_CATEGORY_ORDER: Record<string, number> = { coverage: 0, skill_gap: 1, technique_shift_gap: 2, budget: 3, rule: 4 }
-
-/** Click-to-open popover for per-day warnings in column headers. */
-function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
-  const t = useTranslations("schedule")
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  // Group by category
-  const groups: Record<string, string[]> = {}
-  for (const w of warnings) {
-    if (!groups[w.category]) groups[w.category] = []
-    groups[w.category].push(w.message)
-  }
-  const sortedCategories = Object.keys(groups).sort(
-    (a, b) => (WARNING_CATEGORY_ORDER[a] ?? 9) - (WARNING_CATEGORY_ORDER[b] ?? 9)
-  )
-
-  return (
-    <div ref={ref} className="absolute top-[6px] right-[6px] z-10">
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
-        className="cursor-pointer"
-      >
-        <AlertTriangle className="size-[14px] text-amber-500" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-background shadow-lg py-2 px-3">
-          {sortedCategories.map((cat) => (
-            <div key={cat} className="mb-2 last:mb-0">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
-                {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
-              </p>
-              {groups[cat].map((msg, i) => (
-                <p key={i} className="text-[11px] text-muted-foreground">· {msg}</p>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Toolbar pill summarising all warnings for the week. Click to expand. */
-function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffWithSkills[] }) {
-  const t = useTranslations("schedule")
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const locale = useLocale()
-
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [open])
-
-  // Collect all warnings grouped by category, then by day
-  const byCategory: Record<string, { day: string; messages: string[] }[]> = {}
-  for (const day of days) {
-    if (day.warnings.length === 0) continue
-    const dayLabel = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric" }).format(
-      new Date(day.date + "T12:00:00")
-    )
-    for (const w of day.warnings) {
-      if (!byCategory[w.category]) byCategory[w.category] = []
-      const existing = byCategory[w.category].find((e) => e.day === dayLabel)
-      if (existing) existing.messages.push(w.message)
-      else byCategory[w.category].push({ day: dayLabel, messages: [w.message] })
-    }
-  }
-
-  // Compute shift budget warnings (over/under for the week)
-  if (staffList && staffList.length > 0) {
-    const shiftCounts: Record<string, number> = {}
-    for (const day of days) {
-      for (const a of day.assignments) {
-        shiftCounts[a.staff_id] = (shiftCounts[a.staff_id] ?? 0) + 1
-      }
-    }
-    const budgetWarnings: string[] = []
-    for (const s of staffList) {
-      const count = shiftCounts[s.id] ?? 0
-      const expected = s.days_per_week ?? 5
-      if (count > expected) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (+${count - expected})`)
-      else if (count < expected && count > 0) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (${count - expected})`)
-    }
-    if (budgetWarnings.length > 0) {
-      if (!byCategory["budget"]) byCategory["budget"] = []
-      byCategory["budget"].push({ day: t("weekView"), messages: budgetWarnings })
-    }
-  }
-
-  const sortedCategories = Object.keys(byCategory).sort(
-    (a, b) => (WARNING_CATEGORY_ORDER[a] ?? 9) - (WARNING_CATEGORY_ORDER[b] ?? 9)
-  )
-
-  const totalIssues = Object.values(byCategory).reduce((sum, arr) => sum + arr.reduce((s, e) => s + e.messages.length, 0), 0)
-
-  if (totalIssues === 0) {
-    return (
-      <Tooltip>
-        <TooltipTrigger render={
-          <span className="cursor-default">
-            <Check className="size-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
-          </span>
-        } />
-        <TooltipContent side="bottom">{t("noWarnings")}</TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 h-7 px-1.5 rounded-md text-amber-500 dark:text-amber-400 text-[12px] font-semibold hover:bg-amber-500/10 transition-colors shrink-0"
-      >
-        <AlertTriangle className="size-4 shrink-0" />
-        <span className="tabular-nums">{totalIssues}</span>
-      </button>
-
-      {open && (() => {
-        const uniqueDays = new Set<string>()
-        for (const arr of Object.values(byCategory)) for (const e of arr) uniqueDays.add(e.day)
-        const singleDay = uniqueDays.size === 1
-        return (
-          <div className="absolute right-0 top-full mt-1 z-[200] w-[min(320px,90vw)] rounded-lg border border-border bg-background shadow-lg py-2.5 max-h-[50vh] overflow-y-auto">
-            {singleDay && <p className="px-3 pb-1.5 text-[13px] font-medium capitalize">{[...uniqueDays][0]}</p>}
-            {sortedCategories.map((cat) => (
-              <div key={cat} className="px-3 py-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  {WARNING_CATEGORY_KEY[cat] ? t(WARNING_CATEGORY_KEY[cat]) : cat}
-                </p>
-                {byCategory[cat].map(({ day, messages }) => (
-                  <div key={day} className="mb-2 last:mb-0">
-                    {!singleDay && <p className="text-[13px] font-medium capitalize">{day}</p>}
-                    {messages.map((msg, mi) => (
-                      <p key={mi} className="text-[12px] text-muted-foreground pl-2 leading-relaxed">· {msg}</p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )
-      })()}
-    </div>
-  )
-}
+import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
 
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
@@ -2090,33 +1013,37 @@ function PersonGrid({
   const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [])
 
   // Build assignment lookup: staffId → date → assignment
-  const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of localDays) {
-    for (const a of day.assignments) {
-      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
-      assignMap[a.staff_id][day.date] = a
+  const assignMap = useMemo(() => {
+    const map: Record<string, Record<string, Assignment>> = {}
+    for (const day of localDays) {
+      for (const a of day.assignments) {
+        if (!map[a.staff_id]) map[a.staff_id] = {}
+        map[a.staff_id][day.date] = a
+      }
     }
-  }
+    return map
+  }, [localDays])
 
   // Shift highlighting — hover a shift to highlight all same-shift cells
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
-  // Active staff sorted by role then first name
-  const activeStaff = staffList
-    .filter((s) => s.onboarding_status !== "inactive")
-    .sort((a, b) => {
-      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-      return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
-    })
-
-  // Group by role
-  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
-  for (const s of activeStaff) {
-    const last = roleGroups[roleGroups.length - 1]
-    if (last && last.role === s.role) last.members.push(s)
-    else roleGroups.push({ role: s.role, members: [s] })
-  }
+  // Active staff sorted by role then first name + role grouping
+  const { activeStaff, roleGroups } = useMemo(() => {
+    const active = staffList
+      .filter((s) => s.onboarding_status !== "inactive")
+      .sort((a, b) => {
+        const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+        return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+      })
+    const groups: { role: string; members: StaffWithSkills[] }[] = []
+    for (const s of active) {
+      const last = groups[groups.length - 1]
+      if (last && last.role === s.role) last.members.push(s)
+      else groups.push({ role: s.role, members: [s] })
+    }
+    return { activeStaff: active, roleGroups: groups }
+  }, [staffList])
 
   const days = localDays
 
@@ -2305,7 +1232,7 @@ function PersonGrid({
                           <span className="text-[12px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
                         ) : !isPublished ? (
                           <PersonShiftSelector
-                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                             shiftTimes={shiftTimes}
                             shiftTypes={data?.shiftTypes ?? []}
                             isPublished={false}
@@ -2319,7 +1246,7 @@ function PersonGrid({
                                 // Refresh local state
                                 setLocalDays((prev) => prev.map((d) => d.date !== day.date ? d : {
                                   ...d,
-                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
                                 }))
                               }
                             }}
@@ -2546,7 +1473,7 @@ function TransposedPersonGrid({
                       <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
                     ) : !isPublished ? (
                       <PersonShiftSelector
-                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                         shiftTimes={shiftTimes}
                         shiftTypes={data?.shiftTypes ?? []}
                         isPublished={false}
@@ -2559,7 +1486,7 @@ function TransposedPersonGrid({
                           else {
                             setLocalDays((prev) => prev.map((dd) => dd.date !== day.date ? dd : {
                               ...dd,
-                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role }, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
                             }))
                           }
                         }}
@@ -3260,18 +2187,6 @@ function ShiftGrid({
 
 // ── Month view ────────────────────────────────────────────────────────────────
 
-
-const DOW_HEADERS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-const DOW_HEADERS_ES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
-
-/** Rotate an array by `offset` positions (e.g. offset=6 moves Sun to front) */
-function rotateArray<T>(arr: T[], offset: number): T[] {
-  if (offset === 0) return arr
-  const n = arr.length
-  const o = ((offset % n) + n) % n
-  return [...arr.slice(o), ...arr.slice(0, o)]
-}
-
 function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
   summary: RotaMonthSummary | null
   loading: boolean
@@ -3606,8 +2521,6 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
     }
     return { deptColorMap: colors, deptLabelMap: labels }
   }, [departments])
-  // Leave type icons
-  const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
   // Staff → department colour map
   const staffColorMap = useMemo(() => {
     const m: Record<string, string> = {}
@@ -3899,603 +2812,11 @@ function DayView({ day, loading, locale, departments = [], punctions, biopsyFore
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-type GenerationStrategy = "flexible_template" | "ai_optimal" | "ai_optimal_v2" | "ai_reasoning" | "ai_hybrid" | "manual"
-
-type StrategyCardMeta = { key: GenerationStrategy; icon: React.ReactNode; titleKey: string; descKey: string; badge: string; badgeColor: string; speed?: "fast" | "slow" }
-
-function buildStrategyCards(rotaDisplayMode: string, engineConfig: import("@/lib/types/database").EngineConfig | undefined): StrategyCardMeta[] {
-  const isByTask = rotaDisplayMode === "by_task"
-  const cards: StrategyCardMeta[] = []
-
-  // 1. Templates
-  cards.push({
-    key: "flexible_template", icon: <Bookmark className="size-5" />,
-    titleKey: "templateApply", descKey: "templateApplyDesc",
-    badge: "TPL", badgeColor: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-  })
-
-  // 2. Blank week
-  cards.push({
-    key: "manual", icon: <Grid3X3 className="size-5" />,
-    titleKey: "blankWeek", descKey: "blankWeekDesc",
-    badge: "MANUAL", badgeColor: "bg-muted text-muted-foreground border-border",
-  })
-
-  if (isByTask) {
-    // 3. Task-based optimal (always shown for by_task orgs)
-    cards.push({
-      key: "ai_optimal", icon: <Sparkles className="size-5" />,
-      titleKey: "taskOptimal", descKey: "taskOptimalDesc",
-      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    })
-  } else {
-    // 3. Shift-based optimal
-    cards.push({
-      key: "ai_optimal", icon: <Sparkles className="size-5" />,
-      titleKey: "aiOptimal", descKey: "aiOptimalDesc",
-      badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-      speed: "fast",
-    })
-    // 4. Hybrid (if enabled for org, default true)
-    if (engineConfig?.hybridEnabled ?? true) {
-      cards.push({
-        key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
-        titleKey: "aiHybrid", descKey: "aiHybridDesc",
-        badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-        speed: "slow",
-      })
-    }
-    // 5. Claude reasoning (if enabled for org, default false)
-    if (engineConfig?.reasoningEnabled ?? false) {
-      cards.push({
-        key: "ai_reasoning", icon: <BrainCircuit className="size-5" />,
-        titleKey: "aiReasoning", descKey: "aiReasoningDesc",
-        badge: "CLAUDE", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      })
-    }
-  }
-
-  return cards
-}
-
-function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate, rotaDisplayMode, engineConfig }: {
-  open: boolean; weekStart: string; weekLabel: string
-  onClose: () => void
-  onGenerate: (strategy: GenerationStrategy, templateId?: string) => void
-  rotaDisplayMode: string
-  engineConfig?: import("@/lib/types/database").EngineConfig
-}) {
-  const t = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const locale = useLocale()
-  const [selected, setSelected] = useState<GenerationStrategy | null>(null)
-  const [templates, setTemplates] = useState<RotaTemplate[]>([])
-  const [loadingTpl, setLoadingTpl] = useState(false)
-  const [selectedTplId, setSelectedTplId] = useState<string | null>(null)
-  const [hybridQuota, setHybridQuota] = useState<{ used: number; limit: number; remaining: number } | null>(null)
-
-  useEffect(() => {
-    if (!open) { setSelected(null); setSelectedTplId(null); return }
-    setLoadingTpl(true)
-    getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
-    getHybridUsage().then(setHybridQuota)
-  }, [open])
-
-  if (!open) return null
-
-  const needsTemplate = selected === "flexible_template"
-  const hybridExhausted = hybridQuota !== null && hybridQuota.remaining <= 0
-  const canGenerate = selected && (!needsTemplate || selectedTplId) && !(selected === "ai_hybrid" && hybridExhausted)
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[520px] max-h-[85vh] flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[15px] font-medium">{t("generateScheduleFor", { week: weekLabel })}</p>
-        </div>
-
-        {/* Strategy cards — 2×2 grid */}
-        <div className="p-4 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            {buildStrategyCards(rotaDisplayMode, engineConfig).map((card) => (
-              <button
-                key={card.key}
-                type="button"
-                onClick={() => { setSelected(card.key); setSelectedTplId(null) }}
-                className={cn(
-                  "relative flex flex-col items-start gap-2 rounded-lg p-3.5 text-left transition-all",
-                  selected === card.key
-                    ? "bg-primary/10"
-                    : "hover:bg-muted"
-                )}
-                style={{ border: `2px solid ${selected === card.key ? "var(--primary)" : "var(--border)"}` }}
-              >
-                <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
-                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{t(card.titleKey)}</p>
-                <p className="text-[12px] text-muted-foreground leading-snug">{t(card.descKey)}</p>
-                {card.speed && (
-                  <span className={cn(
-                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-                    card.speed === "fast"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                  )}>
-                    {card.speed === "fast"
-                      ? (locale === "es" ? "Rápido" : "Fast")
-                      : (locale === "es" ? "Más lento" : "Slower")}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Template selector — shown when a template strategy is selected */}
-          {needsTemplate && (
-            <div className="mt-4">
-              {loadingTpl ? (
-                <div className="shimmer-bar h-10 w-full rounded-lg" />
-              ) : templates.length === 0 ? (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                  <p className="text-[13px] text-amber-600 dark:text-amber-400">{t("noTemplatesSaved")}</p>
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400 mt-0.5">
-                    {t("noTemplatesSavedHint")}
-                  </p>
-                </div>
-              ) : (
-                <select
-                  value={selectedTplId ?? ""}
-                  onChange={(e) => setSelectedTplId(e.target.value || null)}
-                  className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background"
-                >
-                  <option value="">{t("selectTemplate")}</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.assignments.length} asignaciones)
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border shrink-0 flex flex-col gap-2">
-          {/* Hybrid quota warning */}
-          {hybridQuota !== null && selected === "ai_hybrid" && hybridQuota.remaining <= 3 && (
-            <div className={cn(
-              "rounded-lg px-3 py-2 text-[12px] flex items-center gap-2",
-              hybridQuota.remaining === 0
-                ? "bg-destructive/10 text-destructive"
-                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-            )}>
-              <span className="shrink-0">⚡</span>
-              {hybridQuota.remaining === 0
-                ? (locale === "es" ? `Límite diario alcanzado (${hybridQuota.limit}/día). Vuelve mañana.` : `Daily limit reached (${hybridQuota.limit}/day). Try again tomorrow.`)
-                : (locale === "es" ? `${hybridQuota.remaining} generación${hybridQuota.remaining !== 1 ? "es" : ""} híbrida${hybridQuota.remaining !== 1 ? "s" : ""} restante${hybridQuota.remaining !== 1 ? "s" : ""} hoy` : `${hybridQuota.remaining} hybrid generation${hybridQuota.remaining !== 1 ? "s" : ""} left today`)
-              }
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
-            <Button
-              size="sm"
-              disabled={!canGenerate}
-              onClick={() => { if (selected) onGenerate(selected, selectedTplId ?? undefined) }}
-            >
-              {tc("generate")}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── AI Reasoning modal ───────────────────────────────────────────────────────
-
-function parseHybridInsights(text: string): { assessment: string; issues: string[] } | null {
-  // The format is: assessment text (first paragraph) + optional "Remaining issues:" bullet list
-  const issuesMatch = text.match(/Remaining issues?:\s*\n((?:[•\-*][^\n]+\n?)+)/i)
-
-  // Extract assessment: everything before "Remaining issues:" (or the whole text if no issues section)
-  const assessmentRaw = issuesMatch
-    ? text.slice(0, text.search(/Remaining issues?:/i)).trim()
-    : text.trim()
-
-  if (!assessmentRaw && !issuesMatch) return null
-
-  const parseBullets = (block: string) =>
-    block.split('\n')
-      .map(l => l
-        .replace(/^[•\-*]\s*/, '')
-        .replace(/\([0-9a-f]{7,10}\)/gi, '') // strip internal IDs like (7ce46b5d)
-        .trim()
-      )
-      .filter(Boolean)
-
-  const rawIssues = issuesMatch ? parseBullets(issuesMatch[1]) : []
-
-  return {
-    assessment: assessmentRaw,
-    issues: rawIssues,
-  }
-}
-
-function AIReasoningModal({ open, reasoning, onClose, variant = "claude" }: {
-  open: boolean; reasoning: string; onClose: () => void; variant?: "claude" | "hybrid"
-}) {
-  const t = useTranslations("schedule")
-
-  if (!open) return null
-
-  // Always try to parse — hybrid format is self-identifying (contains "Changes:" / "Remaining issues:")
-  const parsed = parseHybridInsights(reasoning)
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[560px] max-w-[90vw] max-h-[80vh] flex flex-col">
-        <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BrainCircuit className={cn("size-4", variant === "hybrid" ? "text-purple-600" : "text-amber-600")} />
-            <p className="text-[15px] font-medium">{variant === "hybrid" ? t("hybridReasoningTitle") : t("aiReasoningTitle")}</p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {parsed ? (
-            <div className="flex flex-col gap-5">
-              {/* General assessment */}
-              {parsed.assessment && (
-                <p className="text-[13px] leading-relaxed text-foreground/80">{parsed.assessment}</p>
-              )}
-
-              {/* Remaining issues */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <div className={cn("size-2 rounded-full", parsed.issues.length === 0 ? "bg-emerald-500" : "bg-amber-500")} />
-                  <p className="text-[13px] font-medium text-foreground">{t("hybridRemainingIssues")}</p>
-                </div>
-                {parsed.issues.length === 0 ? (
-                  <p className="text-[13px] text-muted-foreground pl-3.5">{t("hybridNoIssues")}</p>
-                ) : (
-                  <ul className="flex flex-col gap-2 pl-3.5">
-                    {parsed.issues.map((issue, i) => (
-                      <li key={i} className="text-[13px] text-foreground/80 leading-snug">{issue}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
-              {reasoning}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Save template modal ──────────────────────────────────────────────────────
-
-function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
-  open: boolean; weekStart: string; onClose: () => void; onSaved: () => void
-}) {
-  const t = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const [name, setName] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => { if (open) setName("") }, [open])
-
-  if (!open) return null
-
-  async function handleSave() {
-    if (!name.trim()) return
-    setSaving(true)
-    const result = await saveAsTemplate(weekStart, name.trim())
-    setSaving(false)
-    if (result.error) { toast.error(result.error); return }
-    toast.success(t("templateSaved"))
-    onSaved()
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[380px] p-5">
-        <p className="text-[14px] font-medium mb-3">{t("saveAsTemplate")}</p>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
-          placeholder={t("templateName")}
-          className="w-full rounded-lg border border-border px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-        />
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>{tc("cancel")}</Button>
-          <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>{t("save")}</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Apply template modal ─────────────────────────────────────────────────────
-
-function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
-  open: boolean; weekStart: string; onClose: () => void; onApplied: () => void
-}) {
-  const t = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const locale = useLocale() as "es" | "en"
-  const [templates, setTemplates] = useState<RotaTemplate[]>([])
-  const [loading, setLoading] = useState(false)
-  const [applying, setApplying] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!open) return
-    setLoading(true)
-    getTemplates().then((d) => { setTemplates(d); setLoading(false) })
-  }, [open])
-
-  if (!open) return null
-
-  async function handleApply(id: string) {
-    setApplying(id)
-    const result = await applyTemplate(id, weekStart)
-    setApplying(null)
-    if (result.error) { toast.error(result.error); return }
-    if (result.skipped && result.skipped.length > 0) {
-      toast.info(t("templateAppliedSkipped", { count: result.skipped.length }))
-    } else {
-      toast.success(t("templateApplied"))
-    }
-    onApplied()
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl border border-border shadow-xl w-[440px] max-h-[70vh] flex flex-col">
-        <div className="px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[14px] font-medium">{t("applyTemplate")}</p>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
-            <div className="flex flex-col gap-2">
-              {[0, 1, 2].map((i) => <div key={i} className="shimmer-bar h-16 w-full rounded-lg" />)}
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-[14px] font-medium text-muted-foreground">{t("noTemplates")}</p>
-              <p className="text-[13px] text-muted-foreground mt-1">{t("noTemplatesDescription")}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {templates.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  className="rounded-lg border border-border p-3 hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer flex items-center justify-between"
-                  onClick={() => handleApply(tpl.id)}
-                >
-                  <div>
-                    <p className="text-[13px] font-medium">{tpl.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {tpl.assignments.length} {t("assignments")} · {formatDate(tpl.created_at, locale)}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={applying === tpl.id}
-                    onClick={(e) => { e.stopPropagation(); handleApply(tpl.id) }}
-                  >
-                    {applying === tpl.id ? "…" : t("apply")}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="px-5 py-3 border-t border-border shrink-0 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Department filter ─────────────────────────────────────────────────────────
-
-
-function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAll, onSetOnly, deptLabels, deptColors, deptAbbr }: {
-  selected: Set<string>; allDepts: string[]
-  onToggle: (d: string) => void; onSetAll: () => void; onSetOnly: (d: string) => void
-  deptLabels: Record<string, string>; deptColors: Record<string, string>; deptAbbr: Record<string, string>
-}) {
-  const t = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const allSelected = selected.size === allDepts.length
-  const label = allSelected
-    ? tc("all")
-    : allDepts.filter((d) => selected.has(d)).map((d) => deptAbbr[d] ?? d).join(" · ")
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[12px] font-medium transition-colors shrink-0",
-          allSelected ? "text-muted-foreground hover:bg-muted" : "text-blue-700 bg-blue-50 hover:bg-blue-100"
-        )}
-      >
-        <Filter className="size-3 shrink-0" />
-        <span className="truncate max-w-[140px]">{label}</span>
-        {!allSelected && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSetAll() }}
-            className="ml-0.5 text-blue-400 hover:text-blue-600"
-          >
-            <X className="size-3" />
-          </button>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 min-w-[280px] rounded-lg border border-border bg-background shadow-lg py-1.5">
-          {/* Toggle all */}
-          <button
-            onClick={() => { allSelected ? setOpen(false) : onSetAll() }}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[12px] text-muted-foreground hover:bg-muted/50 transition-colors"
-          >
-            <span className={cn("size-3.5 rounded border flex items-center justify-center", allSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
-              {allSelected && <span className="text-[9px]">✓</span>}
-            </span>
-            {t("selectAll")}
-          </button>
-          <div className="h-px bg-border my-1" />
-          {allDepts.map((dept) => {
-            const checked = selected.has(dept)
-            return (
-              <button
-                key={dept}
-                onClick={() => onToggle(dept)}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[13px] hover:bg-muted/50 transition-colors"
-              >
-                <span className={cn("size-3.5 rounded border flex items-center justify-center", checked ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
-                  {checked && <span className="text-[9px]">✓</span>}
-                </span>
-                <span className="size-2 rounded-full shrink-0" style={{ background: deptColors[dept] }} />
-                <span className="font-medium">{deptLabels[dept] ?? dept}</span>
-              </button>
-            )
-          })}
-          {/* Quick shortcuts */}
-          <div className="h-px bg-border my-1" />
-          <div className="px-3 py-1 flex gap-1">
-            {allDepts.map((dept) => (
-              <button
-                key={dept}
-                onClick={() => { onSetOnly(dept); setOpen(false) }}
-                className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:bg-accent hover:text-blue-700 hover:border-blue-200 transition-colors"
-              >
-                {t("onlyDept", { dept: deptLabels[dept] })}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal } from "./calendar-panel/generation-modals"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPending, compact, onToggleCompact, deptColor, onToggleDeptColor, highlight, onToggleHighlight, isFavorite, hasFavorite, onSaveFavorite, onGoToFavorite }: { onGenerateWeek: () => void; onGenerateDay?: () => void; onShare?: () => void; isPending?: boolean; compact?: boolean; onToggleCompact?: () => void; deptColor?: boolean; onToggleDeptColor?: () => void; highlight?: boolean; onToggleHighlight?: () => void; isFavorite?: boolean; hasFavorite?: boolean; onSaveFavorite?: () => void; onGoToFavorite?: () => void }) {
-  const t = useTranslations("schedule")
-  const locale = useLocale()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
-  }, [open])
-  return (
-    <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
-        <MoreHorizontal className="size-5" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-11 z-[100] w-56 rounded-2xl border border-border bg-background shadow-lg overflow-hidden py-1.5">
-          <button onClick={() => { setOpen(false); onGenerateWeek() }} disabled={isPending} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
-            <Sparkles className="size-4.5 shrink-0" />
-            {locale === "es" ? "Generar semana" : "Generate week"}
-          </button>
-          {onGenerateDay && (
-            <button onClick={() => { setOpen(false); onGenerateDay() }} disabled={isPending} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors disabled:opacity-50">
-              <CalendarDays className="size-4.5 shrink-0" />
-              {locale === "es" ? "Regenerar día" : "Regenerate day"}
-            </button>
-          )}
-          {onShare && (
-            <button onClick={() => { setOpen(false); onShare() }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-              <Share className="size-4.5 shrink-0" />
-              {locale === "es" ? "Compartir imagen" : "Share image"}
-            </button>
-          )}
-          {onToggleCompact && (
-            <>
-              <div className="h-px bg-border mx-3 my-1" />
-              <button onClick={() => { onToggleCompact(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Rows3 className="size-4.5 shrink-0" />
-                {locale === "es" ? "Vista compacta" : "Compact view"}
-                {compact && <Check className="size-4 text-primary ml-auto" />}
-              </button>
-              {onToggleDeptColor && (
-                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                  <span className="size-4.5 rounded-sm shrink-0" style={{ borderLeft: "3px solid #3B82F6", borderTop: "3px solid #10B981", borderRight: "3px solid #64748B", borderBottom: "3px solid #F59E0B" }} />
-                  {locale === "es" ? "Colores departamento" : "Department colors"}
-                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
-                </button>
-              )}
-              {onToggleHighlight && (
-                <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                  <span className="size-4.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
-                  {locale === "es" ? "Resaltar" : "Highlights"}
-                  {highlight && <Check className="size-4 text-primary ml-auto" />}
-                </button>
-              )}
-            </>
-          )}
-          {!isFavorite && (hasFavorite && onGoToFavorite ? (
-            <>
-              <div className="h-px bg-border mx-3 my-1" />
-              <button onClick={() => { onGoToFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className="size-4.5 shrink-0 text-amber-400 fill-amber-400" />
-                {t("goToFavoriteView")}
-              </button>
-            </>
-          ) : onSaveFavorite ? (
-            <>
-              <div className="h-px bg-border mx-3 my-1" />
-              <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className="size-4.5 shrink-0" />
-                {t("saveFavoriteView")}
-              </button>
-            </>
-          ) : null)}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -4503,7 +2824,7 @@ export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean }
   )
 }
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?: number; chatOpen?: boolean }) {
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -4558,11 +2879,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
-  // Cached display mode — survives between week fetches so the correct shimmer shows
-  const [cachedDisplayMode, setCachedDisplayMode] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null
-    return localStorage.getItem("labrota:displayMode")
-  })
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
   const [initialLoaded, setInitialLoaded] = useState(false)
   const [loadingMonth, setLoadingMonth] = useState(false)
@@ -4707,7 +3023,23 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
 
   // Fetch week data
   const fetchVersionRef = useRef(0)
+  const initialDataUsed = useRef(false)
   const fetchWeek = useCallback((ws: string) => {
+    // On first call, if the server pre-fetched this exact week, use it directly
+    // (avoids a network round-trip on initial load for new sessions viewing today's week)
+    if (!initialDataUsed.current && initialData?.weekStart === ws) {
+      initialDataUsed.current = true
+      setInitialLoaded(true)
+      setWeekData(initialData)
+      setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
+      setLoadingWeek(false)
+      const offset = (n: number) => {
+        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
+      }
+      prefetchRotaWeek(offset(-7)).catch(() => {})
+      prefetchRotaWeek(offset(7)).catch(() => {})
+      return
+    }
     const version = ++fetchVersionRef.current
     aiReasoningRef.current = null // clear client-side reasoning on week change
     reasoningSourceRef.current = null
@@ -4722,12 +3054,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-      // Cache display mode so correct shimmer shows on next load/org switch
-      if (d.rotaDisplayMode) {
-        setCachedDisplayMode(d.rotaDisplayMode)
-        localStorage.setItem("labrota:displayMode", d.rotaDisplayMode)
-      }
       setLoadingWeek(false)
+      // Warm cache for adjacent weeks so navigation is instant
+      const offset = (n: number) => {
+        const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
+      }
+      prefetchRotaWeek(offset(-7)).catch(() => {})
+      prefetchRotaWeek(offset(7)).catch(() => {})
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
       setInitialLoaded(true)
@@ -4735,7 +3068,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
-  }, [])
+  }, [initialData])
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
   const fetchWeekSilent = useCallback((ws: string) => {
@@ -5326,7 +3659,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                   && favoriteView.compact === compact
                   && favoriteView.colorChips === colorChips
                   && favoriteView.highlightEnabled === highlightHover
-                // When on favorite → nothing shown. When not on favorite → go to or save.
+                const saveFavItem = {
+                  label: t("saveFavoriteView"),
+                  icon: <Star className="size-3.5" />,
+                  onClick: () => {
+                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+                    setFavoriteView(fav)
+                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+                    saveUserPreferences({ favoriteView: fav })
+                    toast.success(t("favoriteViewSaved"))
+                  },
+                }
+                // When on favorite → nothing shown. When not on favorite → show go-to (if exists) + save.
                 if (isFav) return []
                 if (favoriteView) return [{
                   label: t("goToFavoriteView"),
@@ -5340,19 +3684,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                     setColorChips(favoriteView.colorChips)
                     setHighlightHover(favoriteView.highlightEnabled)
                   },
-                }]
-                return [{
-                  label: t("saveFavoriteView"),
-                  icon: <Star className="size-3.5" />,
-                  dividerBefore: true,
-                  onClick: () => {
-                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-                    setFavoriteView(fav)
-                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ favoriteView: fav })
-                    toast.success(t("favoriteViewSaved"))
-                  },
-                }]
+                }, saveFavItem]
+                return [{ ...saveFavItem, dividerBefore: true }]
               })(),
               // ── History ──
               ...(view === "week" && hasAssignments ? [{
@@ -5436,7 +3769,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
                 <div className="absolute inset-0 z-10 bg-background">
-                  {(weekData?.rotaDisplayMode ?? cachedDisplayMode) === "by_task" ? (
+                  {weekData?.rotaDisplayMode === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
                   ) : calendarLayout === "person" ? (
                     <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
@@ -5474,7 +3807,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TaskPersonGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -5488,7 +3820,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TransposedTaskGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   publicHolidays={weekData?.publicHolidays ?? {}}
@@ -5589,7 +3920,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false }: { refreshKey?:
                 <TransposedShiftGrid
                   data={weekData}
                   staffList={filteredStaffList}
-                  loading={loadingWeek || !staffLoaded}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
