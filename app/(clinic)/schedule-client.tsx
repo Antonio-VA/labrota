@@ -1,8 +1,14 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { CalendarPanel } from "@/components/calendar-panel"
-import { ChatPanel } from "@/components/chat-panel"
+
+// Defer AI SDK + chat UI to a separate JS chunk — CalendarPanel hydrates first
+const ChatPanel = dynamic(
+  () => import("@/components/chat-panel").then((m) => m.ChatPanel),
+  { ssr: false, loading: () => null }
+)
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 
