@@ -2815,7 +2815,7 @@ import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemp
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[] }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -2823,7 +2823,7 @@ export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; 
   )
 }
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData }) {
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[] }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -3035,8 +3035,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
       const offset = (n: number) => {
         const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
       }
-      prefetchRotaWeek(offset(-7)).catch(() => {})
-      prefetchRotaWeek(offset(7)).catch(() => {})
+      getRotaWeek(offset(-7)).catch(() => {})
+      getRotaWeek(offset(7)).catch(() => {})
       return
     }
     const version = ++fetchVersionRef.current
@@ -3058,8 +3058,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
       const offset = (n: number) => {
         const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().split("T")[0]
       }
-      prefetchRotaWeek(offset(-7)).catch(() => {})
-      prefetchRotaWeek(offset(7)).catch(() => {})
+      getRotaWeek(offset(-7)).catch(() => {})
+      getRotaWeek(offset(7)).catch(() => {})
     }).catch((e: unknown) => {
       if (fetchVersionRef.current !== version) return
       setInitialLoaded(true)
@@ -3154,9 +3154,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
+  const initialStaffUsed = useRef(false)
   useEffect(() => {
+    if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
+      initialStaffUsed.current = true
+      setStaffList(initialStaff)
+      setStaffLoaded(true)
+      return
+    }
     getActiveStaff().then((s) => { setStaffList(s); setStaffLoaded(true) })
-  }, [refreshKey])
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
