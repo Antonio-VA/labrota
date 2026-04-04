@@ -217,6 +217,13 @@ ANTHROPIC_API_KEY=
 
 ---
 
+## Git
+
+- Always push directly to `main` (production branch)
+- Never push to feature branches unless explicitly asked
+
+---
+
 ## Build Order (remaining)
 
 | Step | Feature | Status |
