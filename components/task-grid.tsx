@@ -627,6 +627,7 @@ export function TaskGrid({
   locale,
   isPublished,
   onRefresh,
+  onAfterMutation,
   taskConflictThreshold,
   punctionsDefault = {},
   punctionsOverride = {},
@@ -648,6 +649,7 @@ export function TaskGrid({
   locale: string
   isPublished: boolean
   onRefresh: () => void
+  onAfterMutation?: (snapshot: RotaWeekData, inverse: () => Promise<{ error?: string }>, forward: () => Promise<{ error?: string }>) => void
   taskConflictThreshold: number
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
@@ -820,24 +822,47 @@ export function TaskGrid({
       weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo,
     })
     if (result.error) toast.error(result.error)
+    return result
   }
 
   async function removeSilent(assignmentId: string) {
     const result = await removeAssignment(assignmentId)
     if (result.error) toast.error(result.error)
+    return result
   }
 
   async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
+    const snapshot = data
     optimisticAdd(staffId, tecnicaCodigo, date)
-    assignSilent(staffId, tecnicaCodigo, date).then(debouncedRefresh)
+    const result = await assignSilent(staffId, tecnicaCodigo, date)
+    debouncedRefresh()
+    if (snapshot && result.id && !result.error) {
+      const newId = result.id
+      onAfterMutation?.(
+        snapshot,
+        () => removeAssignment(newId),
+        () => upsertAssignment({ weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo }),
+      )
+    }
   }
 
   async function handleRemove(assignmentId: string) {
+    const snapshot = data
+    const assignment = localDays.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
     optimisticRemove(assignmentId)
-    removeSilent(assignmentId).then(debouncedRefresh)
+    await removeSilent(assignmentId)
+    debouncedRefresh()
+    if (snapshot && assignment) {
+      onAfterMutation?.(
+        snapshot,
+        () => upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined }),
+        () => removeAssignment(assignmentId),
+      )
+    }
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
+    const snapshot = data
     // Optimistic: toggle locally immediately
     const key = `${tecnicaCodigo}:${date}`
     setLocalWholeTeam((prev) => ({ ...prev, [key]: !current }))
@@ -845,6 +870,13 @@ export function TaskGrid({
     const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
     if (result.error) toast.error(result.error)
     onRefresh()
+    if (snapshot && !result.error) {
+      onAfterMutation?.(
+        snapshot,
+        () => setWholeTeam(weekStart, tecnicaCodigo, date, current),
+        () => setWholeTeam(weekStart, tecnicaCodigo, date, !current),
+      )
+    }
   }
 
   return (

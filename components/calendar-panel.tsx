@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit, useUserRole } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit, Minus, Plus } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit, Minus, Plus, Undo2, Redo2 } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ import {
   setPunctionsOverride,
   moveAssignmentShift,
   removeAssignment,
+  deleteAssignment,
   regenerateDay,
   setFunctionLabel,
   setTecnica,
@@ -1573,7 +1574,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
-  onRefresh, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
+  onRefresh, onAfterMutation, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
 }: {
@@ -1593,6 +1594,7 @@ function ShiftGrid({
   onPunctionsChange: (date: string, value: number | null) => void
   onBiopsyChange?: (date: string, value: number) => void
   onRefresh: () => void
+  onAfterMutation?: (snapshot: RotaWeekData, inverse: () => Promise<{ error?: string }>, forward: () => Promise<{ error?: string }>) => void
   weekStart: string
   compact?: boolean
   colorChips?: boolean
@@ -1709,18 +1711,18 @@ function ShiftGrid({
       }
 
       try {
+        const snapshot = data
         const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
         if (result?.error) { toast.error(result.error); onRefresh(); return }
         const newId = result.id
-        toast.success(t("shiftAssigned"), {
-          action: newId ? {
-            label: t("undo"),
-            onClick: async () => {
-              await removeAssignment(newId)
-              onRefresh()
-            },
-          } : undefined,
-        })
+        toast.success(t("shiftAssigned"))
+        if (snapshot && newId) {
+          onAfterMutation?.(
+            snapshot,
+            () => deleteAssignment(newId),
+            () => upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift }),
+          )
+        }
       } catch {
         toast.error(t("assignmentError"))
         onRefresh()
@@ -1746,18 +1748,18 @@ function ShiftGrid({
       const oldShift = sourceAssignment.shift_type as ShiftType
       const oldDate  = sourceAssignment.date
       const oldStaff = sourceAssignment.staff_id
+      const snapshot = data
       try {
         const result = await removeAssignment(assignmentId)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success(t("shiftRemoved"), {
-          action: {
-            label: t("undo"),
-            onClick: async () => {
-              await upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift })
-              onRefresh()
-            },
-          },
-        })
+        toast.success(t("shiftRemoved"))
+        if (snapshot) {
+          onAfterMutation?.(
+            snapshot,
+            () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
+            () => removeAssignment(assignmentId),
+          )
+        }
         // No refresh — optimistic state is correct
       } catch {
         toast.error(t("removeError"))
@@ -1773,6 +1775,7 @@ function ShiftGrid({
       }
 
       const oldShift = sourceAssignment.shift_type
+      const snapshot = data
       // Optimistic: change shift_type immediately
       setLocalDays((prev) => prev.map((d) => ({
         ...d, assignments: d.assignments.map((a) =>
@@ -1782,17 +1785,15 @@ function ShiftGrid({
       try {
         const result = await moveAssignmentShift(assignmentId, destShift)
         if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success(t("shiftUpdated"), {
-          action: {
-            label: t("undo"),
-            onClick: async () => {
-              await moveAssignmentShift(assignmentId, oldShift)
-              onRefresh()
-            },
-          },
-        })
-        // Don't refresh — optimistic state is already correct and a refresh
-        // would briefly flash the old position while the server responds.
+        toast.success(t("shiftUpdated"))
+        if (snapshot) {
+          onAfterMutation?.(
+            snapshot,
+            () => moveAssignmentShift(assignmentId, oldShift),
+            () => moveAssignmentShift(assignmentId, destShift),
+          )
+        }
+        // Don't refresh — optimistic state is already correct
       } catch {
         toast.error(t("moveError"))
         onRefresh()
@@ -2876,6 +2877,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     })
   }
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
+
+  // ── Undo / Redo ────────────────────────────────────────────────────────────
+  type UndoEntry = {
+    snapshot: RotaWeekData
+    inverse: () => Promise<{ error?: string }>
+    forward: () => Promise<{ error?: string }>
+  }
+  const undoStack = useRef<UndoEntry[]>([])
+  const redoStack = useRef<UndoEntry[]>([])
+  const [undoLen, setUndoLen] = useState(0)
+  const [redoLen, setRedoLen] = useState(0)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
@@ -3107,6 +3119,68 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
     }).catch(() => {/* ignore — grid stays as-is */})
   }, [])
+
+  // ── Undo/Redo helpers ──────────────────────────────────────────────────────
+  function pushUndo(
+    snapshot: RotaWeekData,
+    inverse: () => Promise<{ error?: string }>,
+    forward: () => Promise<{ error?: string }>,
+  ) {
+    undoStack.current = [...undoStack.current.slice(-19), { snapshot, inverse, forward }]
+    redoStack.current = []
+    setUndoLen(undoStack.current.length)
+    setRedoLen(0)
+  }
+
+  async function handleUndo() {
+    const entry = undoStack.current.pop()
+    if (!entry) return
+    if (weekData) {
+      redoStack.current = [...redoStack.current, { snapshot: weekData, inverse: entry.inverse, forward: entry.forward }]
+      setRedoLen(redoStack.current.length)
+    }
+    setWeekData(entry.snapshot)
+    setUndoLen(undoStack.current.length)
+    const result = await entry.inverse()
+    if (result?.error) {
+      toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
+      fetchWeekSilent(weekStart)
+    }
+  }
+
+  async function handleRedo() {
+    const entry = redoStack.current.pop()
+    if (!entry) return
+    if (weekData) {
+      undoStack.current = [...undoStack.current.slice(-19), { snapshot: weekData, inverse: entry.inverse, forward: entry.forward }]
+      setUndoLen(undoStack.current.length)
+    }
+    setRedoLen(redoStack.current.length)
+    const result = await entry.forward()
+    if (result?.error) {
+      toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
+    }
+    fetchWeekSilent(weekStart)
+  }
+
+  // Clear stacks when navigating weeks
+  useEffect(() => {
+    undoStack.current = []
+    redoStack.current = []
+    setUndoLen(0)
+    setRedoLen(0)
+  }, [weekStart])
+
+  // Keyboard shortcuts — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo() }
+      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); handleRedo() }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }) // intentionally no deps — closures must see latest stack state
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
@@ -3544,8 +3618,36 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           )}
         </div>
 
-        {/* RIGHT: dept filter · warnings · generate · overflow ··· */}
+        {/* RIGHT: undo/redo · dept filter · warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
+          {view === "week" && canEdit && (undoLen > 0 || redoLen > 0) && (
+            <div className="flex items-center gap-0.5">
+              <Tooltip>
+                <TooltipTrigger render={
+                  <button
+                    onClick={handleUndo}
+                    disabled={undoLen === 0}
+                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Undo2 className="size-[14px]" />
+                  </button>
+                } />
+                <TooltipContent side="bottom">Undo (⌘Z)</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <button
+                    onClick={handleRedo}
+                    disabled={redoLen === 0}
+                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Redo2 className="size-[14px]" />
+                  </button>
+                } />
+                <TooltipContent side="bottom">Redo (⌘⇧Z)</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
           {view === "week" && hasAssignments && (
             <div className="hidden lg:block">
               <DepartmentFilterDropdown
@@ -3864,9 +3966,18 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   compact={compact}
                   colorChips={colorChips}
                   onRemoveAssignment={async (id) => {
+                    const snapshot = weekData
+                    const assignment = weekData?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === id)
                     const result = await removeAssignment(id)
-                    if (result.error) toast.error(result.error)
-                    else fetchWeekSilent(weekStart)
+                    if (result.error) { toast.error(result.error); return }
+                    fetchWeekSilent(weekStart)
+                    if (snapshot && assignment && canEdit) {
+                      pushUndo(
+                        snapshot,
+                        () => upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined }),
+                        () => removeAssignment(id),
+                      )
+                    }
                   }}
                   onCellClick={(date, tecCode) => {
                     setSheetDate(date)
@@ -3884,6 +3995,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
                   onRefresh={() => fetchWeekSilent(weekStart)}
+                  onAfterMutation={canEdit ? pushUndo : undefined}
                   taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
@@ -3987,6 +4099,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onPunctionsChange={handlePunctionsChange}
                   onBiopsyChange={handleBiopsyChange}
                   onRefresh={() => fetchWeekSilent(weekStart)}
+                  onAfterMutation={canEdit ? pushUndo : undefined}
                   weekStart={weekStart}
                   compact={compact}
                   colorChips={colorChips}
