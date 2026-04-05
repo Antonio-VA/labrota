@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
 
       // Determine destination
       let destination = next
-      if (type === "invite") destination = "/"
+      if (type === "invite" && destination === "/") destination = "/"
       if (type === "recovery" || next === "/reset-password") destination = "/reset-password"
 
       // OTP flow: token_hash + type

@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
-import { Mail, AlertCircle, CheckCircle2, KeyRound, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Lock, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 export default function LoginPage() {
   const t = useTranslations("auth")
@@ -15,16 +16,22 @@ export default function LoginPage() {
   const router = useRouter()
 
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [otpCode, setOtpCode] = useState("")
-  const [step, setStep] = useState<"email" | "code">("email")
+  const [step, setStep] = useState<"email" | "password" | "code">("email")
+  const [authMethod, setAuthMethod] = useState<"otp" | "password">("password")
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const otpRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   // Detect errors from query params or hash fragment on mount
   useEffect(() => {
     const queryError = searchParams.get("error")
-    if (queryError === "otp_expired") {
+    const queryMessage = searchParams.get("message")
+    if (queryMessage === "reset_success") {
+      // Don't show error — password was reset successfully
+    } else if (queryError === "otp_expired") {
       setErrorMessage(t("linkExpired"))
     } else if (queryError === "no_access") {
       setErrorMessage(t("noAccess"))
@@ -47,9 +54,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (step === "code") otpRef.current?.focus()
+    if (step === "password") passwordRef.current?.focus()
   }, [step])
 
-  async function handleSendCode(e: React.FormEvent) {
+  // Step 1: Email → determine auth method
+  async function handleContinue(e: React.FormEvent) {
     e.preventDefault()
 
     if (!email.trim() || !email.includes("@")) {
@@ -57,6 +66,74 @@ export default function LoginPage() {
       return
     }
 
+    setLoading(true)
+    setErrorMessage("")
+
+    try {
+      // Look up org auth method
+      const res = await fetch(`/api/auth-method?email=${encodeURIComponent(email.trim().toLowerCase())}`)
+      const { method } = await res.json() as { method: "otp" | "password" }
+      setAuthMethod(method)
+
+      if (method === "otp") {
+        // Send OTP immediately
+        const supabase = createClient()
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        })
+
+        setLoading(false)
+        if (error) {
+          if (error.code === "over_email_send_rate_limit") {
+            setErrorMessage(t("rateLimited"))
+          } else {
+            setErrorMessage(t("sendError"))
+          }
+        } else {
+          setOtpCode("")
+          setStep("code")
+        }
+      } else {
+        // Password org — show password field
+        setLoading(false)
+        setPassword("")
+        setStep("password")
+      }
+    } catch {
+      setLoading(false)
+      setErrorMessage(t("sendError"))
+    }
+  }
+
+  // Password sign-in
+  async function handlePasswordSignIn(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (!password) {
+      setErrorMessage(t("invalidCredentials"))
+      return
+    }
+
+    setLoading(true)
+    setErrorMessage("")
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
+    if (error) {
+      setLoading(false)
+      setErrorMessage(t("invalidCredentials"))
+    } else {
+      router.replace("/")
+    }
+  }
+
+  // Send OTP as fallback from password step
+  async function handleSendCodeInstead() {
     setLoading(true)
     setErrorMessage("")
     const supabase = createClient()
@@ -74,12 +151,12 @@ export default function LoginPage() {
         setErrorMessage(t("sendError"))
       }
     } else {
-      setErrorMessage("")
       setOtpCode("")
       setStep("code")
     }
   }
 
+  // Verify OTP code
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault()
 
@@ -113,6 +190,34 @@ export default function LoginPage() {
     }
   }
 
+  // Resend OTP code
+  async function handleResendCode() {
+    setLoading(true)
+    setErrorMessage("")
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
+
+    setLoading(false)
+    if (error) {
+      if (error.code === "over_email_send_rate_limit") {
+        setErrorMessage(t("rateLimited"))
+      } else {
+        setErrorMessage(t("sendError"))
+      }
+    }
+  }
+
+  function goBack() {
+    setStep("email")
+    setPassword("")
+    setOtpCode("")
+    setErrorMessage("")
+  }
+
   return (
     <div className="min-h-screen bg-muted flex items-start justify-center pt-[20vh] px-4">
 
@@ -141,8 +246,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {step === "email" ? (
-          <form onSubmit={handleSendCode} className="flex flex-col gap-4">
+        {/* ── Step 1: Email ── */}
+        {step === "email" && (
+          <form onSubmit={handleContinue} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="email" className="text-[13px] text-muted-foreground font-medium">
                 {t("emailLabel")}
@@ -162,15 +268,79 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full h-10" disabled={loading}>
               {loading ? (
-                <><Loader2 className="size-4 animate-spin" />{t("sendCode")}…</>
+                <><Loader2 className="size-4 animate-spin" />{t("continueButton")}…</>
               ) : (
-                <><Mail className="size-4" />{t("sendCode")}</>
+                <><ArrowRight className="size-4" />{t("continueButton")}</>
               )}
             </Button>
           </form>
-        ) : (
+        )}
+
+        {/* ── Step 2a: Password ── */}
+        {step === "password" && (
+          <div className="flex flex-col gap-4">
+            {/* Show email as context */}
+            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <span className="text-[13px] text-muted-foreground truncate">{email}</span>
+              <button
+                type="button"
+                onClick={goBack}
+                className="text-[12px] text-primary hover:underline shrink-0 ml-auto"
+              >
+                {t("useAnotherEmail")}
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="password" className="text-[13px] text-muted-foreground font-medium">
+                  {t("passwordLabel")}
+                </label>
+                <Input
+                  ref={passwordRef}
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setErrorMessage("") }}
+                  disabled={loading}
+                  required
+                  className="h-10"
+                />
+              </div>
+
+              <Button type="submit" className="w-full h-10" disabled={loading || !password}>
+                {loading ? (
+                  <><Loader2 className="size-4 animate-spin" />{t("signingIn")}</>
+                ) : (
+                  <><Lock className="size-4" />{t("signInWithPassword")}</>
+                )}
+              </Button>
+            </form>
+
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSendCodeInstead}
+                disabled={loading}
+                className="text-[12px] text-primary hover:underline disabled:opacity-50"
+              >
+                {t("sendCodeInstead")}
+              </button>
+              <Link
+                href={`/forgot-password`}
+                className="text-[12px] text-muted-foreground hover:underline"
+              >
+                {t("forgotPassword")}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2b: OTP Code ── */}
+        {step === "code" && (
           <div className="flex flex-col gap-5">
-            {/* Success message — click link or enter code */}
+            {/* Success message */}
             <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
               <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
               <div className="text-left">
@@ -216,13 +386,23 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <button
-              type="button"
-              onClick={() => { setStep("email"); setOtpCode(""); setErrorMessage("") }}
-              className="text-[12px] text-primary hover:underline text-center"
-            >
-              {t("useAnotherEmail")}
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading}
+                className="text-[12px] text-primary hover:underline disabled:opacity-50"
+              >
+                {t("resendLink")}
+              </button>
+              <button
+                type="button"
+                onClick={goBack}
+                className="text-[12px] text-muted-foreground hover:underline"
+              >
+                {t("useAnotherEmail")}
+              </button>
+            </div>
           </div>
         )}
       </div>

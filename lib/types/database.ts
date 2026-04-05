@@ -74,6 +74,7 @@ export interface Organisation {
   task_hybrid_enabled:      boolean
   task_reasoning_enabled:   boolean
   daily_hybrid_limit:       number
+  auth_method:              'otp' | 'password'
   created_at:               string
 }
 

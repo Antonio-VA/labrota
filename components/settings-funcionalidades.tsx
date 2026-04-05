@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { toggleLeaveRequests } from "@/app/(clinic)/settings/actions"
+import { toggleLeaveRequests, updateAuthMethod } from "@/app/(clinic)/settings/actions"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 
 function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
@@ -41,16 +41,19 @@ export function SettingsFuncionalidades({
   enableLeaveRequests,
   enableNotes,
   enableTaskInShift,
+  authMethod: initialAuthMethod,
 }: {
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean
   enableNotes: boolean
   enableTaskInShift: boolean
+  authMethod: "otp" | "password"
 }) {
   const t = useTranslations("features")
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
   const [notes, setNotes] = useState(enableNotes)
   const [taskInShift, setTaskInShift] = useState(enableTaskInShift)
+  const [authMethod, setAuthMethod] = useState(initialAuthMethod)
   const [isPending, startTransition] = useTransition()
 
   return (
@@ -126,6 +129,52 @@ export function SettingsFuncionalidades({
           }}
         />
       </>)}
+
+      <div className="h-px bg-border" />
+
+      {/* Auth method */}
+      <div>
+        <p className="text-[14px] font-medium">{t("authMethod")}</p>
+        <p className="text-[12px] text-muted-foreground mb-3">{t("authMethodDescription")}</p>
+        <div className="flex flex-col gap-2">
+          {(["password", "otp"] as const).map((method) => (
+            <label
+              key={method}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors",
+                authMethod === method
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-muted/50",
+                isPending && "opacity-50 pointer-events-none"
+              )}
+            >
+              <input
+                type="radio"
+                name="authMethod"
+                value={method}
+                checked={authMethod === method}
+                onChange={() => {
+                  const prev = authMethod
+                  setAuthMethod(method)
+                  startTransition(async () => {
+                    const result = await updateAuthMethod(method)
+                    if (result.error) { toast.error(result.error); setAuthMethod(prev) }
+                  })
+                }}
+                className="mt-0.5 accent-primary"
+              />
+              <div>
+                <p className="text-[13px] font-medium">
+                  {method === "password" ? t("authMethodPassword") : t("authMethodOtp")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {method === "password" ? t("authMethodPasswordHint") : t("authMethodOtpHint")}
+                </p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

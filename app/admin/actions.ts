@@ -305,10 +305,20 @@ export async function createOrgUser(formData: FormData) {
   if (existingUser) {
     userId = existingUser.id
   } else {
+    // Determine redirect based on org auth method
+    const { data: orgData } = await admin
+      .from("organisations")
+      .select("auth_method")
+      .eq("id", orgId)
+      .single() as { data: { auth_method: string } | null }
+    const redirectTo = orgData?.auth_method === "password"
+      ? "https://www.labrota.app/auth/callback?next=/set-password"
+      : "https://www.labrota.app/auth/callback"
+
     // New user — invite them
     const { data, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName || undefined, app_role: appRole },
-      redirectTo: "https://www.labrota.app/auth/callback",
+      redirectTo,
     })
     if (createError) return { error: createError.message }
     userId = data.user.id

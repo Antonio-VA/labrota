@@ -111,6 +111,10 @@
     "unauthorized": "No tienes permiso para acceder a esta página.",
     "welcome": "Bienvenido a LabRota",
     "subtitle": "Gestión de horarios para laboratorios de FIV",
+    "continueButton": "Continuar",
+    "signingIn": "Iniciando sesión...",
+    "signInWithPassword": "Iniciar sesión",
+    "sendCodeInstead": "Enviar un código",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "sendResetLink": "Enviar enlace de restablecimiento",
     "checkResetEmail": "Revisa tu correo",
@@ -971,7 +975,13 @@
     "scheduleNotes": "Notas en el horario",
     "scheduleNotesDescription": "Añade notas diarias al pie del horario (instrucciones, recordatorios)",
     "taskInShift": "Asignación de tareas en horario por turno",
-    "taskInShiftDescription": "Permite asignar tareas o subdepartamentos a cada persona dentro de su turno. Actívalo solo si tu laboratorio necesita este nivel de detalle."
+    "taskInShiftDescription": "Permite asignar tareas o subdepartamentos a cada persona dentro de su turno. Actívalo solo si tu laboratorio necesita este nivel de detalle.",
+    "authMethod": "Método de acceso",
+    "authMethodDescription": "Elige cómo inician sesión los usuarios de esta organización.",
+    "authMethodOtp": "Código de acceso (OTP)",
+    "authMethodPassword": "Contraseña",
+    "authMethodOtpHint": "Se envía un código de 6 dígitos al correo del usuario cada vez que inicia sesión.",
+    "authMethodPasswordHint": "Los usuarios inician sesión con contraseña. Códigos disponibles como alternativa."
   },
   "billing": {
     "start": "Inicio",

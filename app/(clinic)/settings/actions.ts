@@ -114,9 +114,19 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
       .maybeSingle()
     if (existing) return { error: "This user is already a member of the organisation." }
   } else {
+    // Determine redirect based on org auth method
+    const { data: orgData } = await admin
+      .from("organisations")
+      .select("auth_method")
+      .eq("id", orgId)
+      .single() as { data: { auth_method: string } | null }
+    const redirectTo = orgData?.auth_method === "password"
+      ? "https://www.labrota.app/auth/callback?next=/set-password"
+      : "https://www.labrota.app/auth/callback"
+
     const { data, error } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
       data: { full_name: displayName || undefined },
-      redirectTo: "https://www.labrota.app/auth/callback",
+      redirectTo,
     })
     if (error) return { error: error.message }
     userId = data.user.id
@@ -260,6 +270,7 @@ export interface OrgSettings {
   enableNotes: boolean
   enableTaskInShift: boolean
   displayMode: "by_shift" | "by_task"
+  authMethod: "otp" | "password"
   billingStart: string | null
   billingEnd: string | null
   billingFee: number | null
@@ -271,9 +282,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
   const [{ data: org }, { data: config }] = await Promise.all([
     admin
       .from("organisations")
-      .select("name, logo_url, rota_display_mode, billing_start, billing_end, billing_fee")
+      .select("name, logo_url, rota_display_mode, auth_method, billing_start, billing_end, billing_fee")
       .eq("id", orgId)
-      .single() as unknown as Promise<{ data: { name: string; logo_url: string | null; rota_display_mode?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }>,
+      .single() as unknown as Promise<{ data: { name: string; logo_url: string | null; rota_display_mode?: string; auth_method?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }>,
     admin
       .from("lab_config")
       .select("country, region, enable_leave_requests, enable_notes, enable_task_in_shift")
@@ -291,6 +302,7 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     enableNotes: config?.enable_notes ?? true,
     enableTaskInShift: config?.enable_task_in_shift ?? false,
     displayMode: (org.rota_display_mode ?? "by_shift") as "by_shift" | "by_task",
+    authMethod: (org.auth_method ?? "password") as "otp" | "password",
     billingStart: org.billing_start ?? null,
     billingEnd: org.billing_end ?? null,
     billingFee: org.billing_fee ?? null,
@@ -346,6 +358,17 @@ export async function updateOrgRegional(country: string, region: string): Promis
 
   revalidatePath("/settings")
   revalidatePath("/")
+  return {}
+}
+
+export async function updateAuthMethod(method: "otp" | "password"): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("organisations")
+    .update({ auth_method: method } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
   return {}
 }
 
