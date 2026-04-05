@@ -138,15 +138,12 @@ const content = {
     footer: {
       tagline: "Smart scheduling for IVF laboratories.",
       product: "Product",
-      company: "Company",
       legal: "Legal",
+      contact: "Contact",
       links: {
         features: "Features",
         pricing: "Pricing",
         login: "Log in",
-        about: "About",
-        blog: "Blog",
-        contact: "Contact",
         privacy: "Privacy Policy",
         terms: "Terms of Service",
         gdpr: "GDPR",
@@ -266,18 +263,15 @@ const content = {
     footer: {
       tagline: "Horarios inteligentes para laboratorios IVF.",
       product: "Producto",
-      company: "Empresa",
       legal: "Legal",
+      contact: "Contacto",
       links: {
         features: "Funciones",
         pricing: "Precios",
         login: "Iniciar sesión",
-        about: "Nosotros",
-        blog: "Blog",
-        contact: "Contacto",
         privacy: "Política de Privacidad",
         terms: "Términos de Servicio",
-        gdpr: "GDPR",
+        gdpr: "RGPD",
       },
       copy: "© 2026 LabRota. Todos los derechos reservados.",
     },
@@ -289,7 +283,7 @@ type Lang = keyof typeof content
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
 const featureIcons = [Calendar, ShieldCheck, Eye, BarChart3, CalendarOff, Sparkles]
-const painIcons = [AlertTriangle, Clock, UserX]
+
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
@@ -303,71 +297,179 @@ function Logo() {
 
 // ─── Product mockup ───────────────────────────────────────────────────────────
 
+const DAYS = [
+  { abbr: "LUN", num: 13, pu: 6, b: 6 },
+  { abbr: "MAR", num: 14, pu: 6, b: 6 },
+  { abbr: "MIÉ", num: 15, pu: 6, b: 5 },
+  { abbr: "JUE", num: 16, pu: 6, b: 3 },
+  { abbr: "VIE", num: 17, pu: 4, b: 1 },
+  { abbr: "SÁB", num: 18, pu: 2, b: 3, wknd: true },
+  { abbr: "DOM", num: 19, pu: 0, b: 6, wknd: true },
+] as const
+
+// cells: array of 7 (one per day), each is array of names; "yuki" = blue highlight
+const SHIFTS: { label: string; time: string; cells: (string[])[] }[] = [
+  {
+    label: "T1", time: "7:30\n15:30",
+    cells: [
+      ["Amira H.", "Carla R."],
+      ["Dina O.", "Sara P."],
+      ["Dina O.", "Sara P.", "Yuki T."],
+      ["Amira H.", "Mei C."],
+      ["Amira H.", "Dina O."],
+      ["Mei C."],
+      ["Amira H.", "Sara P."],
+    ],
+  },
+  {
+    label: "T2", time: "8:00\n16:00",
+    cells: [
+      ["Dina O.", "Fatima A.", "Priya S."],
+      ["Amira H.", "Fatima A.", "Priya S."],
+      ["Carla R.", "Fatima A.", "Priya S."],
+      ["Carla R.", "Fatima A.", "Priya S."],
+      ["Carla R.", "Fatima A.", "Priya S."],
+      ["Carla R.", "Priya S."],
+      ["Leila M.", "Fatima A."],
+    ],
+  },
+  {
+    label: "T4", time: "9:00\n17:00",
+    cells: [
+      ["Yuki T.", "Noor A."],
+      ["Noor A."],
+      ["Leila M.", "Noor A."],
+      ["Sara P.", "Noor A."],
+      ["Mei C.", "Noor A."],
+      ["Dina O.", "Noor A."],
+      [],
+    ],
+  },
+]
+
+const STAFF_COUNTS = [
+  { initials: "AH", n: 6 }, { initials: "CR", n: 6 }, { initials: "DO", n: 6 },
+  { initials: "FA", n: 6 }, { initials: "LM", n: 4 }, { initials: "MC", n: 5 },
+  { initials: "NA", n: 6 }, { initials: "PS", n: 5 }, { initials: "SP", n: 6 },
+  { initials: "YT", n: 6, active: true },
+]
+
+function Cell({ names }: { names: string[] }) {
+  return (
+    <div className="flex flex-col gap-[2px] min-h-[28px]">
+      {names.map(n => (
+        <span
+          key={n}
+          className={`rounded px-[4px] py-[1px] text-[8px] font-medium leading-tight ${
+            n === "Yuki T."
+              ? "bg-[#2563eb] text-white"
+              : "bg-white border border-[#ccddee] text-[#334155]"
+          }`}
+        >{n}</span>
+      ))}
+    </div>
+  )
+}
+
 function ProductMockup() {
   return (
-    <div className="rounded-2xl border border-[#ccddee] overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.14),0_4px_16px_rgba(27,79,138,0.08)]">
-      {/* Browser bar */}
-      <div className="bg-[#f8fafc] border-b border-[#ccddee] px-4 py-2.5 flex items-center gap-2">
-        <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-        <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-        <div className="flex-1 text-center text-[11px] text-[#64748b] font-medium bg-white border border-[#ccddee] rounded px-3 py-0.5 max-w-[200px] mx-auto">
-          app.labrota.app
-        </div>
+    <div className="rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.18),0_4px_16px_rgba(27,79,138,0.1)] border border-[#1e293b] flex text-left select-none" style={{ fontSize: 0 }}>
+
+      {/* ── Sidebar ── */}
+      <div className="bg-[#0f172a] w-[52px] flex-shrink-0 flex flex-col items-center py-2 gap-1">
+        {[
+          { icon: "▦", label: "Horarios", active: true },
+          { icon: "⚗", label: "Lab" },
+          { icon: "👥", label: "Equipo" },
+          { icon: "✈", label: "Ausencias" },
+          { icon: "▤", label: "Informes" },
+          { icon: "⚙", label: "Admin" },
+        ].map(item => (
+          <div key={item.label} className={`w-full flex flex-col items-center py-1.5 px-1 gap-0.5 cursor-pointer ${item.active ? "bg-[#1e3a5f]" : ""}`}>
+            <span className={`text-[11px] leading-none ${item.active ? "text-[#60a5fa]" : "text-[#475569]"}`}>{item.icon}</span>
+            <span className={`text-[6px] font-medium leading-none ${item.active ? "text-[#93c5fd]" : "text-[#475569]"}`}>{item.label}</span>
+          </div>
+        ))}
+        <div className="flex-1" />
+        <span className="text-[8px] text-[#1e293b] font-semibold pb-1">labrota</span>
       </div>
-      {/* Content */}
-      <div className="bg-white p-5">
-        {/* Header row */}
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-[15px] font-bold text-[#0f172a]">April 2026 — Week View</span>
-          <div className="flex gap-1">
-            {["Week", "Month", "Day"].map((v, i) => (
-              <button key={v} className={`px-3 py-1 rounded-md text-[11px] font-semibold ${i === 0 ? "bg-[#1b4f8a] text-white" : "bg-[#eff6ff] text-[#1b4f8a]"}`}>{v}</button>
+
+      {/* ── Main ── */}
+      <div className="flex flex-col flex-1 bg-white min-w-0">
+
+        {/* Toolbar */}
+        <div className="border-b border-[#e2e8f0] px-2 h-8 flex items-center gap-1.5 shrink-0 bg-white">
+          <span className="text-[8px] font-semibold text-[#0f172a]">IVF Clinic Abu Dhabi</span>
+          <span className="text-[7px] text-[#94a3b8]">▼</span>
+          <div className="w-px h-3 bg-[#e2e8f0] mx-0.5" />
+          <span className="text-[7px] text-[#64748b]">Hoy ◀ ▶</span>
+          <span className="text-[8px] font-medium text-[#0f172a]">13–19 Abr 2026</span>
+          <div className="flex-1" />
+          <span className="text-[7px] bg-[#eff6ff] text-[#1b4f8a] border border-[#dbeafe] rounded px-1 py-0.5 font-semibold">Semana</span>
+          <span className="text-[7px] text-[#64748b] border border-[#e2e8f0] rounded px-1 py-0.5">4 semanas</span>
+          <div className="w-px h-3 bg-[#e2e8f0] mx-0.5" />
+          <span className="text-[7px] bg-[#fef9c3] text-[#92400e] border border-[#fde68a] rounded px-1 py-0.5 font-bold">⚠ 5</span>
+          <span className="text-[7px] font-semibold text-white bg-[#1b4f8a] rounded px-1.5 py-0.5">Regenerar horario</span>
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 overflow-hidden">
+          {/* Column headers */}
+          <div className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+            <div />
+            {DAYS.map(d => (
+              <div key={d.num} className={`text-center py-1 border-l border-[#e2e8f0] ${d.wknd ? "bg-[#f8fafc]" : ""}`}>
+                <div className={`text-[7px] font-bold uppercase tracking-wide ${d.wknd ? "text-[#94a3b8]" : "text-[#64748b]"}`}>{d.abbr}</div>
+                <div className={`text-[10px] font-bold ${d.wknd ? "text-[#94a3b8]" : "text-[#0f172a]"}`}>{d.num}</div>
+                <div className="text-[6px] text-[#94a3b8]">PU:{d.pu} B:{d.b}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Shift rows */}
+          {SHIFTS.map(shift => (
+            <div key={shift.label} className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+              <div className="flex flex-col items-center justify-center py-1 border-r border-[#e2e8f0] bg-[#f8fafc]">
+                <span className="text-[8px] font-bold text-[#1b4f8a]">{shift.label}</span>
+                <span className="text-[6px] text-[#94a3b8] whitespace-pre-line text-center leading-tight">{shift.time}</span>
+              </div>
+              {shift.cells.map((names, di) => (
+                <div key={di} className={`p-[3px] border-l border-[#e2e8f0] ${DAYS[di].wknd ? "bg-[#f8fafc]" : ""}`}>
+                  <Cell names={names} />
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {/* OFF row */}
+          <div className="grid" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+            <div className="flex items-center justify-center py-1 border-r border-[#e2e8f0] bg-[#f8fafc]">
+              <span className="text-[8px] font-semibold text-[#94a3b8]">OFF</span>
+            </div>
+            {DAYS.map((d, i) => (
+              <div key={i} className={`p-[3px] border-l border-[#e2e8f0] ${d.wknd ? "bg-[#f8fafc]" : ""}`}>
+                <div className="flex flex-col gap-[2px]">
+                  {(i === 0 ? ["Hana K."] : i === 5 ? ["Amira H.", "Hana K.", "Leila M.", "Sara P.", "Fatima A."] : i === 6 ? ["Carla R.", "Dina O.", "Hana K."] : ["Hana K."]).map(n => (
+                    <span key={n} className="text-[7px] text-[#94a3b8] border border-dashed border-[#e2e8f0] rounded px-1 leading-tight">{n}</span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
-        {/* Grid */}
-        <div className="grid grid-cols-[72px_repeat(5,1fr)] gap-1 mb-1">
-          <div />
-          {["Mon 7", "Tue 8", "Wed 9", "Thu 10", "Fri 11"].map(d => (
-            <div key={d} className="text-[10px] font-semibold text-[#94a3b8] text-center py-1">{d}</div>
-          ))}
-        </div>
-        {[
-          { name: "Dr. López", role: "Senior Emb.", color: "#2563eb", shifts: ["am","pm","am","off","am"] },
-          { name: "J. Smith",  role: "Embryol.",    color: "#2563eb", shifts: ["pm","am","am","am","pm"] },
-          { name: "A. García", role: "Androlog.",   color: "#059669", shifts: ["am","am","off","pm","am"] },
-          { name: "L. Chen",   role: "Junior Emb.", color: "#2563eb", shifts: ["am","pm","pm","am","off"] },
-        ].map(row => (
-          <div key={row.name} className="grid grid-cols-[72px_repeat(5,1fr)] gap-1 mt-1">
-            <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-semibold text-[#0f172a]">{row.name}</span>
-              <span className="text-[9px] font-bold" style={{ color: row.color }}>{row.role}</span>
-            </div>
-            {row.shifts.map((s, i) => {
-              const styles = s === "off"
-                ? "bg-[#f1f5f9] text-[#94a3b8] border-[#e2e8f0]"
-                : s === "am"
-                ? "bg-[#eff6ff] text-[#1d4ed8] border-[#dbeafe]"
-                : "bg-[#f0fdf4] text-[#15803d] border-[#d1fae5]"
-              return (
-                <div key={i} className={`rounded-md border text-[10px] font-bold text-center py-1.5 ${styles}`}>
-                  {s.toUpperCase()}
-                </div>
-              )
-            })}
-          </div>
-        ))}
-        {/* Badges */}
-        <div className="flex gap-2 mt-4 flex-wrap">
-          {[
-            { label: "No Skill Gaps",  color: "bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]" },
-            { label: "✨ AI Generated", color: "bg-[#eff6ff] text-[#1b4f8a] border-[#dbeafe]" },
-          ].map(b => (
-            <span key={b.label} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[9px] font-bold ${b.color}`}>
-              {b.label !== "✨ AI Generated" && <Check className="w-2.5 h-2.5" />}
-              {b.label}
-            </span>
+
+        {/* Bottom bar */}
+        <div className="border-t border-[#e2e8f0] px-2 h-7 flex items-center gap-1.5 shrink-0 bg-[#f8fafc]">
+          <span className="text-[7px] text-[#94a3b8]">Turnos:</span>
+          {STAFF_COUNTS.map(s => (
+            <span
+              key={s.initials}
+              className={`text-[7px] font-semibold rounded px-1 py-0.5 ${
+                s.active
+                  ? "bg-[#2563eb] text-white"
+                  : "text-[#475569]"
+              }`}
+            >{s.initials} {s.n}/6</span>
           ))}
         </div>
       </div>
@@ -483,7 +585,7 @@ export default function MarketingPage() {
           {([
             { Icon: AlertTriangle, title: t.problem.p1title, body: t.problem.p1, iconBg: "bg-[#fef2f2]", iconColor: "text-[#ef4444]" },
             { Icon: Clock,         title: t.problem.p2title, body: t.problem.p2, iconBg: "bg-[#fffbeb]", iconColor: "text-[#d97706]" },
-            { Icon: FileWarning,   title: t.problem.p3title, body: t.problem.p3, iconBg: "bg-[#fef2f2]", iconColor: "text-[#ef4444]" },
+            { Icon: UserX,         title: t.problem.p3title, body: t.problem.p3, iconBg: "bg-[#fef2f2]", iconColor: "text-[#ef4444]" },
           ]).map(({ Icon, title, body, iconBg, iconColor }) => (
             <div key={title} className="rounded-xl border border-[#ccddee] bg-white p-7 hover:shadow-lg hover:shadow-[#1b4f8a]/08 hover:-translate-y-0.5 transition-all">
               <div className={`w-12 h-12 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center mb-5`}>
@@ -690,15 +792,18 @@ export default function MarketingPage() {
       {/* ── FOOTER ── */}
       <footer className="border-t border-[#eef2f7] py-14">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-10 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Logo />
               <p className="text-[13px] text-[#94a3b8] mt-3 leading-relaxed max-w-[220px]">{t.footer.tagline}</p>
+              <div className="mt-4">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-[#0f172a] mb-2">{t.footer.contact}</p>
+                <a href="mailto:info@labrota.app" className="text-[13px] text-[#64748b] hover:text-[#1b4f8a] transition-colors">info@labrota.app</a>
+              </div>
             </div>
             {([
               { heading: t.footer.product, links: [{ label: t.footer.links.features, href: "#features" }, { label: t.footer.links.pricing, href: "#pricing" }, { label: t.footer.links.login, href: "/login" }] },
-              { heading: t.footer.company, links: [{ label: t.footer.links.about, href: "#" }, { label: t.footer.links.blog, href: "#" }, { label: t.footer.links.contact, href: "#contact" }] },
-              { heading: t.footer.legal,   links: [{ label: t.footer.links.privacy, href: "#" }, { label: t.footer.links.terms, href: "#" }, { label: t.footer.links.gdpr, href: "#" }] },
+              { heading: t.footer.legal,   links: [{ label: t.footer.links.privacy, href: "/privacy" }, { label: t.footer.links.terms, href: "/terms" }, { label: t.footer.links.gdpr, href: "/gdpr" }] },
             ]).map(col => (
               <div key={col.heading}>
                 <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0f172a] mb-4">{col.heading}</h4>
