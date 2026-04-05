@@ -278,7 +278,6 @@ export default async function OrgDetailPage({
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
             initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
             initialEnableTaskInShift={(labConfigRes.data as { enable_task_in_shift?: boolean } | null)?.enable_task_in_shift ?? false}
-            initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
             initialBilling={{ start: (org as { billing_start?: string | null }).billing_start ?? null, end: (org as { billing_end?: string | null }).billing_end ?? null, fee: (org as { billing_fee?: number | null }).billing_fee ?? null }}
             initialAiOptimalVersion={(org as { ai_optimal_version?: string }).ai_optimal_version ?? "v2"}
             initialEngineHybridEnabled={(org as { engine_hybrid_enabled?: boolean }).engine_hybrid_enabled ?? true}
@@ -307,6 +306,7 @@ export default async function OrgDetailPage({
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
             initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
+            initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
           />
         }
         usuarios={

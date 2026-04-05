@@ -173,6 +173,10 @@ export function AdminOrgDetailClient({
         billing_fee: billing.fee,
       })
       if (r3.error) { toast.error(r3.error); hasError = true }
+      if (authMethod !== initialAuthMethod) {
+        const r5 = await updateOrgAuthMethod(orgId, authMethod)
+        if (r5.error) { toast.error(r5.error); hasError = true }
+      }
       if (!hasError) toast.success("Configuración guardada")
     })
   }
@@ -434,41 +438,6 @@ export function AdminOrgDetailClient({
           </>)}
 
           <div className="h-px bg-border" />
-
-          {/* Auth method */}
-          <div>
-            <p className="text-[14px] font-medium">Método de acceso</p>
-            <p className="text-[12px] text-muted-foreground mb-3">Cómo inician sesión los usuarios de esta organización.</p>
-            <div className="flex rounded-lg border border-input overflow-hidden">
-              {([
-                { key: "password" as const, label: "Contraseña" },
-                { key: "otp" as const, label: "Código (OTP)" },
-              ]).map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => {
-                    const prev = authMethod
-                    setAuthMethod(key)
-                    startTransition(async () => {
-                      const r = await updateOrgAuthMethod(orgId, key)
-                      if (r.error) { toast.error(r.error); setAuthMethod(prev) }
-                      else toast.success("Método de acceso actualizado")
-                    })
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
-                    authMethod === key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-transparent text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -767,6 +736,35 @@ export function AdminOrgDetailClient({
               className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
             />
             <span className="text-[12px] text-muted-foreground">días/semana para nuevos empleados</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MÉTODO DE ACCESO ──────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-lg border border-border bg-background px-5 py-4">
+          <p className="text-[14px] font-medium">Método de acceso</p>
+          <p className="text-[12px] text-muted-foreground mb-3">Cómo inician sesión los usuarios de esta organización.</p>
+          <div className="flex rounded-lg border border-input overflow-hidden w-fit">
+            {([
+              { key: "password" as const, label: "Contraseña" },
+              { key: "otp" as const, label: "Código (OTP)" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                disabled={isPending}
+                onClick={() => setAuthMethod(key)}
+                className={cn(
+                  "px-4 py-1.5 text-[13px] font-medium transition-colors",
+                  authMethod === key
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
