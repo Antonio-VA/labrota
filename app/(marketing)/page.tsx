@@ -297,86 +297,68 @@ function Logo() {
 
 // ─── Product mockup ───────────────────────────────────────────────────────────
 
-const DAYS = [
-  { abbr: "LUN", num: 13, pu: 6, b: 6, wknd: false },
-  { abbr: "MAR", num: 14, pu: 6, b: 6, wknd: false },
-  { abbr: "MIÉ", num: 15, pu: 6, b: 5, wknd: false },
-  { abbr: "JUE", num: 16, pu: 6, b: 3, wknd: false },
-  { abbr: "VIE", num: 17, pu: 4, b: 1, wknd: false },
-  { abbr: "SÁB", num: 18, pu: 2, b: 3, wknd: true },
-  { abbr: "DOM", num: 19, pu: 0, b: 6, wknd: true },
-] as const
+const MOCK_DAYS = [
+  { abbr: "LUN", num: 13 },
+  { abbr: "MAR", num: 14 },
+  { abbr: "MIÉ", num: 15 },
+  { abbr: "JUE", num: 16 },
+  { abbr: "VIE", num: 17 },
+]
 
-// cells: array of 7 (one per day), each is array of names; "yuki" = blue highlight
-const SHIFTS: { label: string; time: string; cells: (string[])[] }[] = [
+const MOCK_SHIFTS = [
   {
-    label: "T1", time: "7:30\n15:30",
+    label: "T1", time: "7:30 – 15:30",
     cells: [
       ["Amira H.", "Carla R."],
       ["Dina O.", "Sara P."],
       ["Dina O.", "Sara P.", "Yuki T."],
       ["Amira H.", "Mei C."],
       ["Amira H.", "Dina O."],
-      ["Mei C."],
-      ["Amira H.", "Sara P."],
     ],
   },
   {
-    label: "T2", time: "8:00\n16:00",
+    label: "T2", time: "8:00 – 16:00",
     cells: [
-      ["Dina O.", "Fatima A.", "Priya S."],
-      ["Amira H.", "Fatima A.", "Priya S."],
-      ["Carla R.", "Fatima A.", "Priya S."],
-      ["Carla R.", "Fatima A.", "Priya S."],
-      ["Carla R.", "Fatima A.", "Priya S."],
+      ["Fatima A.", "Priya S."],
+      ["Amira H.", "Fatima A."],
       ["Carla R.", "Priya S."],
-      ["Leila M.", "Fatima A."],
+      ["Carla R.", "Fatima A."],
+      ["Carla R.", "Priya S."],
     ],
   },
   {
-    label: "T4", time: "9:00\n17:00",
+    label: "T4", time: "9:00 – 17:00",
     cells: [
       ["Yuki T.", "Noor A."],
       ["Noor A."],
       ["Leila M.", "Noor A."],
       ["Sara P.", "Noor A."],
       ["Mei C.", "Noor A."],
-      ["Dina O.", "Noor A."],
-      [],
     ],
   },
 ]
 
-const STAFF_COUNTS = [
-  { initials: "AH", n: 6 }, { initials: "CR", n: 6 }, { initials: "DO", n: 6 },
-  { initials: "FA", n: 6 }, { initials: "LM", n: 4 }, { initials: "MC", n: 5 },
-  { initials: "NA", n: 6 }, { initials: "PS", n: 5 }, { initials: "SP", n: 6 },
-  { initials: "YT", n: 6, active: true },
+const MOCK_STAFF = [
+  { k: "AH" }, { k: "CR" }, { k: "DO" }, { k: "FA" },
+  { k: "LM" }, { k: "MC" }, { k: "NA" }, { k: "PS" },
+  { k: "SP" }, { k: "YT", active: true },
 ]
 
-function Cell({ names }: { names: string[] }) {
+function Chip({ name }: { name: string }) {
+  const blue = name === "Yuki T."
   return (
-    <div className="flex flex-col gap-[2px] min-h-[28px]">
-      {names.map(n => (
-        <span
-          key={n}
-          className={`rounded px-[4px] py-[1px] text-[8px] font-medium leading-tight ${
-            n === "Yuki T."
-              ? "bg-[#2563eb] text-white"
-              : "bg-white border border-[#ccddee] text-[#334155]"
-          }`}
-        >{n}</span>
-      ))}
-    </div>
+    <span className={`inline-block rounded-md px-2 py-1 text-[10px] font-medium leading-tight whitespace-nowrap ${
+      blue ? "bg-[#2563eb] text-white" : "bg-white border border-[#ccddee] text-[#334155]"
+    }`}>{name}</span>
   )
 }
 
 function ProductMockup() {
   return (
-    <div className="rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.18),0_4px_16px_rgba(27,79,138,0.1)] border border-[#1e293b] flex text-left select-none" style={{ fontSize: 0 }}>
+    <div className="rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.18),0_4px_16px_rgba(27,79,138,0.1)] border border-[#1e293b] flex text-left select-none bg-white">
 
       {/* ── Sidebar ── */}
-      <div className="bg-[#0f172a] w-[52px] flex-shrink-0 flex flex-col items-center py-2 gap-1">
+      <div className="bg-[#0f172a] w-[64px] flex-shrink-0 flex flex-col items-center pt-4 pb-3 gap-0.5">
         {[
           { icon: "▦", label: "Horarios", active: true },
           { icon: "⚗", label: "Lab" },
@@ -385,97 +367,77 @@ function ProductMockup() {
           { icon: "▤", label: "Informes" },
           { icon: "⚙", label: "Admin" },
         ].map(item => (
-          <div key={item.label} className={`w-full flex flex-col items-center py-1.5 px-1 gap-0.5 cursor-pointer ${item.active ? "bg-[#1e3a5f]" : ""}`}>
-            <span className={`text-[11px] leading-none ${item.active ? "text-[#60a5fa]" : "text-[#475569]"}`}>{item.icon}</span>
-            <span className={`text-[6px] font-medium leading-none ${item.active ? "text-[#93c5fd]" : "text-[#475569]"}`}>{item.label}</span>
+          <div key={item.label} className={`w-full flex flex-col items-center py-2 gap-1 ${item.active ? "bg-[#1e3a5f]" : ""}`}>
+            <span className={`text-[13px] leading-none ${item.active ? "text-[#60a5fa]" : "text-[#475569]"}`}>{item.icon}</span>
+            <span className={`text-[8px] font-medium leading-none ${item.active ? "text-[#93c5fd]" : "text-[#475569]"}`}>{item.label}</span>
           </div>
         ))}
         <div className="flex-1" />
-        <span className="text-[8px] text-[#1e293b] font-semibold pb-1">labrota</span>
+        <span className="text-[9px] text-[#1e3a5f] font-semibold">labrota</span>
       </div>
 
       {/* ── Main ── */}
-      <div className="flex flex-col flex-1 bg-white min-w-0">
+      <div className="flex flex-col flex-1 min-w-0">
 
         {/* Toolbar */}
-        <div className="border-b border-[#e2e8f0] px-2 h-8 flex items-center gap-1.5 shrink-0 bg-white">
-          <span className="text-[8px] font-semibold text-[#0f172a]">IVF Clinic Abu Dhabi</span>
-          <span className="text-[7px] text-[#94a3b8]">▼</span>
-          <div className="w-px h-3 bg-[#e2e8f0] mx-0.5" />
-          <span className="text-[7px] text-[#64748b]">Hoy ◀ ▶</span>
-          <span className="text-[8px] font-medium text-[#0f172a]">13–19 Abr 2026</span>
+        <div className="border-b border-[#e2e8f0] px-3 h-10 flex items-center gap-2 shrink-0 bg-white">
+          <span className="text-[10px] font-semibold text-[#0f172a]">IVF Clinic Abu Dhabi</span>
+          <span className="text-[9px] text-[#94a3b8]">▼</span>
+          <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
+          <span className="text-[9px] text-[#64748b]">◀ ▶</span>
+          <span className="text-[10px] font-semibold text-[#0f172a]">13 – 19 Abr 2026</span>
           <div className="flex-1" />
-          <span className="text-[7px] bg-[#eff6ff] text-[#1b4f8a] border border-[#dbeafe] rounded px-1 py-0.5 font-semibold">Semana</span>
-          <span className="text-[7px] text-[#64748b] border border-[#e2e8f0] rounded px-1 py-0.5">4 semanas</span>
-          <div className="w-px h-3 bg-[#e2e8f0] mx-0.5" />
-          <span className="text-[7px] bg-[#fef9c3] text-[#92400e] border border-[#fde68a] rounded px-1 py-0.5 font-bold">⚠ 5</span>
-          <span className="text-[7px] font-semibold text-white bg-[#1b4f8a] rounded px-1.5 py-0.5">Regenerar horario</span>
+          <span className="text-[9px] bg-[#eff6ff] text-[#1b4f8a] border border-[#dbeafe] rounded-md px-2 py-0.5 font-semibold">Semana</span>
+          <span className="text-[9px] bg-[#fef9c3] text-[#92400e] border border-[#fde68a] rounded-md px-1.5 py-0.5 font-bold">⚠ 5</span>
+          <span className="text-[9px] font-semibold text-white bg-[#1b4f8a] rounded-md px-2 py-1">Regenerar horario</span>
         </div>
 
         {/* Grid */}
         <div className="flex-1 overflow-hidden">
+
           {/* Column headers */}
-          <div className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+          <div className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "72px repeat(5, 1fr)" }}>
             <div />
-            {DAYS.map(d => (
-              <div key={d.num} className={`text-center py-1 border-l border-[#e2e8f0] ${d.wknd ? "bg-[#f8fafc]" : ""}`}>
-                <div className={`text-[7px] font-bold uppercase tracking-wide ${d.wknd ? "text-[#94a3b8]" : "text-[#64748b]"}`}>{d.abbr}</div>
-                <div className={`text-[10px] font-bold ${d.wknd ? "text-[#94a3b8]" : "text-[#0f172a]"}`}>{d.num}</div>
-                <div className="text-[6px] text-[#94a3b8]">PU:{d.pu} B:{d.b}</div>
+            {MOCK_DAYS.map(d => (
+              <div key={d.num} className="text-center py-2 border-l border-[#e2e8f0]">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-[#64748b]">{d.abbr}</div>
+                <div className="text-[16px] font-bold text-[#0f172a] leading-tight">{d.num}</div>
               </div>
             ))}
           </div>
 
           {/* Shift rows */}
-          {SHIFTS.map(shift => (
-            <div key={shift.label} className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
-              <div className="flex flex-col items-center justify-center py-1 border-r border-[#e2e8f0] bg-[#f8fafc]">
-                <span className="text-[8px] font-bold text-[#1b4f8a]">{shift.label}</span>
-                <span className="text-[6px] text-[#94a3b8] whitespace-pre-line text-center leading-tight">{shift.time}</span>
+          {MOCK_SHIFTS.map(shift => (
+            <div key={shift.label} className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "72px repeat(5, 1fr)" }}>
+              <div className="flex flex-col justify-center px-2 py-2 border-r border-[#e2e8f0] bg-[#f8fafc]">
+                <span className="text-[11px] font-bold text-[#1b4f8a]">{shift.label}</span>
+                <span className="text-[9px] text-[#94a3b8] leading-tight">{shift.time}</span>
               </div>
               {shift.cells.map((names, di) => (
-                <div key={di} className={`p-[3px] border-l border-[#e2e8f0] ${DAYS[di].wknd ? "bg-[#f8fafc]" : ""}`}>
-                  <Cell names={names} />
+                <div key={di} className="p-1.5 border-l border-[#e2e8f0] flex flex-col gap-1">
+                  {names.map(n => <Chip key={n} name={n} />)}
                 </div>
               ))}
             </div>
           ))}
-
-          {/* OFF row */}
-          <div className="grid" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
-            <div className="flex items-center justify-center py-1 border-r border-[#e2e8f0] bg-[#f8fafc]">
-              <span className="text-[8px] font-semibold text-[#94a3b8]">OFF</span>
-            </div>
-            {DAYS.map((d, i) => (
-              <div key={i} className={`p-[3px] border-l border-[#e2e8f0] ${d.wknd ? "bg-[#f8fafc]" : ""}`}>
-                <div className="flex flex-col gap-[2px]">
-                  {(i === 0 ? ["Hana K."] : i === 5 ? ["Amira H.", "Hana K.", "Leila M.", "Sara P.", "Fatima A."] : i === 6 ? ["Carla R.", "Dina O.", "Hana K."] : ["Hana K."]).map(n => (
-                    <span key={n} className="text-[7px] text-[#94a3b8] border border-dashed border-[#e2e8f0] rounded px-1 leading-tight">{n}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-[#e2e8f0] px-2 h-7 flex items-center gap-1.5 shrink-0 bg-[#f8fafc]">
-          <span className="text-[7px] text-[#94a3b8]">Turnos:</span>
-          {STAFF_COUNTS.map(s => (
-            <span
-              key={s.initials}
-              className={`text-[7px] font-semibold rounded px-1 py-0.5 ${
-                s.active
-                  ? "bg-[#2563eb] text-white"
-                  : "text-[#475569]"
-              }`}
-            >{s.initials} {s.n}/6</span>
-          ))}
+        <div className="border-t border-[#e2e8f0] px-3 h-8 flex items-center gap-2 shrink-0 bg-[#f8fafc]">
+          <span className="text-[9px] text-[#94a3b8] font-medium">Turnos</span>
+          <div className="flex gap-1.5 flex-wrap">
+            {MOCK_STAFF.map(s => (
+              <span key={s.k} className={`text-[9px] font-semibold rounded px-1.5 py-0.5 ${
+                s.active ? "bg-[#2563eb] text-white" : "text-[#64748b]"
+              }`}>{s.k} 6/6</span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   )
 }
+
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
