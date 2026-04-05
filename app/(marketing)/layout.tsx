@@ -26,5 +26,11 @@ export default function MarketingLayout({
 }) {
   // No sidebar, no auth — plain wrapper so the root layout still applies
   // (fonts, i18n provider, TooltipProvider, Toaster all come from app/layout.tsx)
-  return <>{children}</>
+  // globals.css sets `html, body { overflow: hidden; height: 100dvh }` for the
+  // app shell. Marketing pages need to scroll, so we create our own scroll root.
+  return (
+    <div style={{ height: "100dvh", overflowY: "auto" }}>
+      {children}
+    </div>
+  )
 }
