@@ -207,7 +207,7 @@ function TaskCell({
   onAssign: (staffId: string, tecnicaCodigo: string, date: string) => void
   onRemove: (assignmentId: string) => void
   onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<unknown>
-  onRemoveSilent: (assignmentId: string) => Promise<void>
+  onRemoveSilent: (assignmentId: string) => Promise<unknown>
   onOptimisticAdd: (staffId: string, functionLabel: string, date: string) => void
   onOptimisticRemove: (assignmentId: string) => void
   onToggleWholeTeam: (tecnicaCodigo: string, date: string, current: boolean) => void
