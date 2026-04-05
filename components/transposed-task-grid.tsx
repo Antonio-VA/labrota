@@ -76,12 +76,12 @@ export function TransposedTaskGrid({
                   <div className="shimmer-bar w-5 h-5 rounded-full" />
                 </div>
                 {Array.from({ length: skelTecnicas }).map((_, col) => (
-                  <div key={col} className={`border-b border-border px-1 py-1 min-h-[40px] flex flex-wrap gap-0.5 content-start ${row >= 5 ? "opacity-50" : ""}`}>
+                  <div key={col} className="border-b border-border px-1 py-1 min-h-[36px] flex flex-wrap gap-0.5 content-start">
                     <div className="shimmer-bar h-5 w-8 rounded" />
                     <div className="shimmer-bar h-5 w-8 rounded" />
                   </div>
                 ))}
-                <div key={`off-${row}`} className={`border-b border-border p-1 min-h-[40px] ${row >= 5 ? "opacity-50" : ""}`}>
+                <div key={`off-${row}`} className="border-b border-border p-1 min-h-[36px]">
                   <div className="shimmer-bar h-5 w-full rounded" />
                 </div>
               </>

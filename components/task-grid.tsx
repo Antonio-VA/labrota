@@ -729,7 +729,7 @@ export function TaskGrid({
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className={cn("border-b border-r last:border-r-0 border-border p-1 flex items-center", compact ? "min-h-[28px]" : "min-h-[36px]")}>
-                  {row < 4 && <div className={`shimmer-bar h-4 w-full rounded ${i >= 5 ? "opacity-50" : ""}`} />}
+                  {row < 4 && <div className="shimmer-bar h-4 w-full rounded" />}
                 </div>
               ))}
             </div>

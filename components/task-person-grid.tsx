@@ -77,7 +77,7 @@ export function TaskPersonGrid({
                   <div className="shimmer-bar w-5 h-5 rounded-full" />
                 </div>
                 {Array.from({ length: skelStaff }).map((_, col) => (
-                  <div key={col} className={`border-b border-r last:border-r-0 border-border flex items-center justify-center ${compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1"} ${row >= 5 ? "opacity-50" : ""}`}>
+                  <div key={col} className={`border-b border-r last:border-r-0 border-border flex items-center justify-center ${compact ? "min-h-[28px] px-0.5 py-0.5" : "min-h-[36px] px-1 py-1"}`}>
                     <div className="shimmer-bar h-4 w-full rounded" />
                   </div>
                 ))}

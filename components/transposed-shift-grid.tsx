@@ -99,12 +99,12 @@ export function TransposedShiftGrid({
                   <div className="shimmer-bar w-6 h-6 rounded-full" />
                 </div>
                 {Array.from({ length: skelShifts }).map((_, col) => (
-                  <div key={col} className={`border-b border-l border-border p-1 min-h-[48px] flex flex-col gap-0.5 ${row >= 5 ? "opacity-50" : ""}`}>
+                  <div key={col} className="border-b border-l border-border p-1 min-h-[48px] flex flex-col gap-0.5">
                     <div className="shimmer-bar h-5 w-full rounded" />
                     <div className="shimmer-bar h-5 w-3/4 rounded" />
                   </div>
                 ))}
-                <div key={`off-${row}`} className={`border-b border-l border-border p-1 min-h-[48px] ${row >= 5 ? "opacity-50" : ""}`}>
+                <div key={`off-${row}`} className="border-b border-l border-border p-1 min-h-[48px]">
                   <div className="shimmer-bar h-5 w-full rounded" />
                 </div>
               </>

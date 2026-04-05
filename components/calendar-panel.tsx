@@ -992,7 +992,7 @@ function PersonGrid({
                 </div>
                 {Array.from({ length: 7 }).map((_, j) => (
                   <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
-                    <div className={`shimmer-bar h-9 w-full rounded ${j >= 5 ? "opacity-50" : ""}`} />
+                    <div className="shimmer-bar h-9 w-full rounded" />
                   </div>
                 ))}
               </Fragment>
@@ -1824,8 +1824,8 @@ function ShiftGrid({
                 <div className="shimmer-bar h-3 w-8" />
               </div>
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="p-2 flex items-center justify-center min-h-[64px] bg-background">
-                  <div className={`shimmer-bar h-5 w-full rounded ${i >= 5 ? "opacity-50" : ""}`} />
+                <div key={i} className="p-2 flex items-center justify-center min-h-[36px] bg-background">
+                  <div className="shimmer-bar h-5 w-full rounded" />
                 </div>
               ))}
             </div>
