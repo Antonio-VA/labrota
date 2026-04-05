@@ -293,13 +293,11 @@ const painIcons = [AlertTriangle, Clock, UserX]
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-function Logo({ width = 120, height = 26 }: { width?: number; height?: number }) {
+function Logo() {
   return (
-    <svg viewBox="0 0 220 46" width={width} height={height} aria-label="LabRota">
-      <text x="0" y="36" fontFamily="Inter,Arial,sans-serif" fontSize="44" fontWeight="300" fill="#1B4F8A">lab</text>
-      <text x="63" y="36" fontFamily="Inter,Arial,sans-serif" fontSize="44" fontWeight="700" fill="#1B4F8A">rota</text>
-      <rect x="0" y="42" width="158" height="2.5" rx="1.2" fill="#2E86AB" />
-    </svg>
+    <span className="text-[22px] leading-none tracking-tight select-none" aria-label="LabRota">
+      <span className="font-light text-[#1B4F8A]">lab</span><span className="font-semibold text-[#1B4F8A]">rota</span>
+    </span>
   )
 }
 
@@ -694,7 +692,7 @@ export default function MarketingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <Logo width={110} height={24} />
+              <Logo />
               <p className="text-[13px] text-[#94a3b8] mt-3 leading-relaxed max-w-[220px]">{t.footer.tagline}</p>
             </div>
             {([
