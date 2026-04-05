@@ -42,6 +42,9 @@ const content = {
       sub: "Create, manage and optimise your fertility lab rotas with the only tool designed specifically for embryologists, andrologists and IVF lab managers.",
       cta1: "Request a Demo",
       cta2: "See how it works",
+      badge1: "Mobile app for staff",
+      badge2: "Desktop-optimised for managers",
+      badge3: "No training required",
     },
     social: null,
     problem: {
@@ -65,7 +68,7 @@ const content = {
       sub: "Built from the ground up for fertility labs — not a generic scheduling tool with a healthcare skin.",
       items: [
         { title: "AI-Powered Setup", body: "Share your existing spreadsheets or rotas. Our AI reads them, extracts your staff, shifts and procedure assignments, and configures your lab automatically — go live in one session." },
-        { title: "AI Smart Rotas", body: "Describe what you need in plain language and LabRota generates the optimal rota instantly — balancing workload, respecting leave, and avoiding skill gaps across every shift." },
+        { title: "AI Smart Rotas", body: "One click and LabRota's AI organises your entire shift schedule — balancing workload, respecting approved leave, and ensuring every procedure has the right certified staff assigned." },
         { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
         { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
@@ -77,7 +80,7 @@ const content = {
       title: "From setup to published rota in minutes",
       steps: [
         { title: "We import your existing rotas", body: "Send us your spreadsheets. Our AI extracts your staff, shift patterns and procedure certifications — your lab is pre-configured before your first login." },
-        { title: "Generate with AI", body: "Ask LabRota in plain language to build the rota — it balances workload, respects leave, avoids skill gaps and adapts to your lab's specific procedures automatically." },
+        { title: "Generate with AI", body: "Hit Generate. LabRota's AI analyses staff availability, certified competencies and approved leave across your whole team and builds the optimal rota automatically — in under 5 minutes." },
         { title: "Review & adjust", body: "Drag and drop to make tweaks. LabRota flags skill gaps and coverage shortfalls in real time as you edit." },
         { title: "Publish & notify", body: "Publish the rota with one click. Your team is instantly notified. Export to PDF for records." },
       ],
@@ -141,6 +144,9 @@ const content = {
       sub: "Crea, gestiona y optimiza las rotas de tu laboratorio de fertilidad con la única herramienta diseñada específicamente para embriólogos, andrólogos y responsables de lab IVF.",
       cta1: "Solicitar una Demo",
       cta2: "Ver cómo funciona",
+      badge1: "App móvil para el equipo",
+      badge2: "Optimizado en escritorio para managers",
+      badge3: "Sin formación previa",
     },
     social: null,
     problem: {
@@ -164,7 +170,7 @@ const content = {
       sub: "Construido desde cero para laboratorios de fertilidad — no es otra herramienta genérica de turnos con apariencia sanitaria.",
       items: [
         { title: "Configuración con IA", body: "Comparte tus hojas de cálculo o rotas actuales. Nuestra IA las lee, extrae tu equipo, turnos y asignaciones de procedimientos, y configura tu laboratorio automáticamente — en una sola sesión." },
-        { title: "Rotas Inteligentes con IA", body: "Describe lo que necesitas en lenguaje natural y LabRota genera la rota óptima al instante — equilibrando carga, respetando ausencias y evitando brechas de competencias en cada turno." },
+        { title: "Rotas Inteligentes con IA", body: "Un clic y la IA de LabRota organiza todo el horario de turnos — equilibrando carga, respetando ausencias aprobadas y asegurando que cada procedimiento tiene asignado el personal certificado correcto." },
         { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
@@ -176,7 +182,7 @@ const content = {
       title: "De la configuración a la rota publicada en minutos",
       steps: [
         { title: "Importamos tus rotas actuales", body: "Envíanos tus hojas de cálculo. Nuestra IA extrae tu equipo, patrones de turno y certificaciones de procedimientos — tu laboratorio queda preconfigurado antes de tu primer inicio de sesión." },
-        { title: "Genera con IA", body: "Pide a LabRota en lenguaje natural que construya la rota — equilibra la carga, respeta las ausencias, evita los skill gaps y se adapta automáticamente a los procedimientos de tu laboratorio." },
+        { title: "Genera con IA", body: "Pulsa Generar. La IA de LabRota analiza disponibilidad, competencias certificadas y ausencias aprobadas de todo el equipo y construye la rota óptima automáticamente — en menos de 5 minutos." },
         { title: "Revisa y ajusta", body: "Arrastra y suelta para hacer ajustes. LabRota señala brechas de competencias y problemas de cobertura en tiempo real mientras editas." },
         { title: "Publica y notifica", body: "Publica la rota con un clic. Tu equipo recibe la notificación al instante. Exporta a PDF para registros." },
       ],
@@ -252,135 +258,133 @@ const MOCK_DAYS = [
   { abbr: "MAR", num: 14 },
   { abbr: "MIÉ", num: 15 },
   { abbr: "JUE", num: 16 },
-  { abbr: "VIE", num: 17 },
 ]
 
-const MOCK_SHIFTS = [
+// highlight = blue chip
+const MOCK_SHIFTS: { label: string; time: string; cells: { name: string; hl?: boolean }[][] }[] = [
   {
-    label: "T1", time: "7:30 – 15:30",
+    label: "T1", time: "7:30–15:30",
     cells: [
-      ["Amira H.", "Carla R."],
-      ["Dina O.", "Sara P."],
-      ["Dina O.", "Sara P.", "Yuki T."],
-      ["Amira H.", "Mei C."],
-      ["Amira H.", "Dina O."],
+      [{ name: "Amira" }, { name: "Carla" }],
+      [{ name: "Dina" }, { name: "Sara" }],
+      [{ name: "Dina" }, { name: "Yuki", hl: true }],
+      [{ name: "Amira" }, { name: "Mei" }],
     ],
   },
   {
-    label: "T2", time: "8:00 – 16:00",
+    label: "T2", time: "8:00–16:00",
     cells: [
-      ["Fatima A.", "Priya S."],
-      ["Amira H.", "Fatima A."],
-      ["Carla R.", "Priya S."],
-      ["Carla R.", "Fatima A."],
-      ["Carla R.", "Priya S."],
+      [{ name: "Fatima" }, { name: "Priya" }],
+      [{ name: "Amira" }, { name: "Fatima" }],
+      [{ name: "Carla" }, { name: "Priya" }],
+      [{ name: "Carla" }, { name: "Fatima" }],
     ],
   },
   {
-    label: "T4", time: "9:00 – 17:00",
+    label: "T4", time: "9:00–17:00",
     cells: [
-      ["Yuki T.", "Noor A."],
-      ["Noor A."],
-      ["Leila M.", "Noor A."],
-      ["Sara P.", "Noor A."],
-      ["Mei C.", "Noor A."],
+      [{ name: "Yuki", hl: true }, { name: "Noor" }],
+      [{ name: "Noor" }],
+      [{ name: "Leila" }, { name: "Noor" }],
+      [{ name: "Sara" }, { name: "Noor" }],
     ],
   },
 ]
 
-const MOCK_STAFF = [
-  { k: "AH" }, { k: "CR" }, { k: "DO" }, { k: "FA" },
-  { k: "LM" }, { k: "MC" }, { k: "NA" }, { k: "PS" },
-  { k: "SP" }, { k: "YT", active: true },
-]
-
-function Chip({ name }: { name: string }) {
-  const blue = name === "Yuki T."
+function Chip({ name, hl }: { name: string; hl?: boolean }) {
   return (
-    <span className={`inline-block rounded-md px-2 py-1 text-[10px] font-medium leading-tight whitespace-nowrap ${
-      blue ? "bg-[#2563eb] text-white" : "bg-white border border-[#ccddee] text-[#334155]"
+    <span className={`inline-block rounded-md px-2 py-[3px] text-[11px] font-medium leading-tight whitespace-nowrap ${
+      hl ? "bg-[#2563eb] text-white" : "bg-white border border-[#ccddee] text-[#334155]"
     }`}>{name}</span>
   )
 }
 
 function ProductMockup() {
   return (
-    <div className="rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.18),0_4px_16px_rgba(27,79,138,0.1)] border border-[#1e293b] flex text-left select-none bg-white">
+    <div className="rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(27,79,138,0.18),0_4px_16px_rgba(27,79,138,0.1)] border border-[#e2e8f0] text-left select-none bg-white flex flex-col">
 
-      {/* ── Sidebar ── */}
-      <div className="bg-[#0f172a] w-[64px] flex-shrink-0 flex flex-col items-center pt-4 pb-3 gap-0.5">
-        {[
-          { icon: "▦", label: "Horarios", active: true },
-          { icon: "⚗", label: "Lab" },
-          { icon: "👥", label: "Equipo" },
-          { icon: "✈", label: "Ausencias" },
-          { icon: "▤", label: "Informes" },
-          { icon: "⚙", label: "Admin" },
-        ].map(item => (
-          <div key={item.label} className={`w-full flex flex-col items-center py-2 gap-1 ${item.active ? "bg-[#1e3a5f]" : ""}`}>
-            <span className={`text-[13px] leading-none ${item.active ? "text-[#60a5fa]" : "text-[#475569]"}`}>{item.icon}</span>
-            <span className={`text-[8px] font-medium leading-none ${item.active ? "text-[#93c5fd]" : "text-[#475569]"}`}>{item.label}</span>
-          </div>
-        ))}
-        <div className="flex-1" />
-        <span className="text-[9px] text-[#1e3a5f] font-semibold">labrota</span>
+      {/* ── Browser chrome ── */}
+      <div className="bg-[#f8fafc] border-b border-[#e2e8f0] h-9 flex items-center px-3 gap-2 flex-shrink-0">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#fca5a5]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#fcd34d]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#6ee7b7]" />
+        </div>
+        <div className="flex-1 mx-3 bg-white border border-[#e2e8f0] rounded-md h-5 flex items-center px-2">
+          <span className="text-[9px] text-[#94a3b8]">app.labrota.app</span>
+        </div>
       </div>
 
-      {/* ── Main ── */}
-      <div className="flex flex-col flex-1 min-w-0">
+      {/* ── App shell ── */}
+      <div className="flex flex-1 min-h-0">
 
-        {/* Toolbar */}
-        <div className="border-b border-[#e2e8f0] px-3 h-10 flex items-center gap-2 shrink-0 bg-white">
-          <span className="text-[10px] font-semibold text-[#0f172a]">IVF Clinic Abu Dhabi</span>
-          <span className="text-[9px] text-[#94a3b8]">▼</span>
-          <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
-          <span className="text-[9px] text-[#64748b]">◀ ▶</span>
-          <span className="text-[10px] font-semibold text-[#0f172a]">13 – 19 Abr 2026</span>
+        {/* Sidebar */}
+        <div className="bg-[#0f172a] w-[56px] flex-shrink-0 flex flex-col items-center pt-3 pb-3 gap-0.5">
+          {[
+            { icon: "▦", label: "Horarios", active: true },
+            { icon: "⚗", label: "Lab" },
+            { icon: "👥", label: "Equipo" },
+            { icon: "✈", label: "Ausencias" },
+            { icon: "▤", label: "Informes" },
+          ].map(item => (
+            <div key={item.label} className={`w-full flex flex-col items-center py-2 gap-[3px] ${item.active ? "bg-[#1e3a5f]" : ""}`}>
+              <span className={`text-[12px] leading-none ${item.active ? "text-[#60a5fa]" : "text-[#475569]"}`}>{item.icon}</span>
+              <span className={`text-[7px] font-medium leading-none ${item.active ? "text-[#93c5fd]" : "text-[#475569]"}`}>{item.label}</span>
+            </div>
+          ))}
           <div className="flex-1" />
-          <span className="text-[9px] bg-[#eff6ff] text-[#1b4f8a] border border-[#dbeafe] rounded-md px-2 py-0.5 font-semibold">Semana</span>
-          <span className="text-[9px] bg-[#fef9c3] text-[#92400e] border border-[#fde68a] rounded-md px-1.5 py-0.5 font-bold">⚠ 5</span>
-          <span className="text-[9px] font-semibold text-white bg-[#1b4f8a] rounded-md px-2 py-1">Regenerar horario</span>
+          <span className="text-[7px] text-[#334155] font-bold tracking-tight">lab<span className="text-[#3b82f6]">rota</span></span>
         </div>
 
-        {/* Grid */}
-        <div className="flex-1 overflow-hidden">
+        {/* Main */}
+        <div className="flex flex-col flex-1 min-w-0">
 
-          {/* Column headers */}
-          <div className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "72px repeat(5, 1fr)" }}>
-            <div />
-            {MOCK_DAYS.map(d => (
-              <div key={d.num} className="text-center py-2 border-l border-[#e2e8f0]">
-                <div className="text-[9px] font-bold uppercase tracking-wide text-[#64748b]">{d.abbr}</div>
-                <div className="text-[16px] font-bold text-[#0f172a] leading-tight">{d.num}</div>
-              </div>
-            ))}
+          {/* Toolbar */}
+          <div className="border-b border-[#e2e8f0] px-3 h-10 flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-semibold text-[#0f172a]">IVF Clinic Abu Dhabi</span>
+            <div className="flex-1" />
+            <span className="text-[9px] text-[#64748b]">13–16 Abr</span>
+            <span className="text-[9px] font-semibold text-white bg-[#1b4f8a] rounded px-2 py-0.5">Generar IA</span>
           </div>
 
-          {/* Shift rows */}
-          {MOCK_SHIFTS.map(shift => (
-            <div key={shift.label} className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "72px repeat(5, 1fr)" }}>
-              <div className="flex flex-col justify-center px-2 py-2 border-r border-[#e2e8f0] bg-[#f8fafc]">
-                <span className="text-[11px] font-bold text-[#1b4f8a]">{shift.label}</span>
-                <span className="text-[9px] text-[#94a3b8] leading-tight">{shift.time}</span>
-              </div>
-              {shift.cells.map((names, di) => (
-                <div key={di} className="p-1.5 border-l border-[#e2e8f0] flex flex-col gap-1">
-                  {names.map(n => <Chip key={n} name={n} />)}
+          {/* Grid */}
+          <div className="flex-1">
+
+            {/* Day headers */}
+            <div className="grid border-b border-[#e2e8f0] bg-[#f8fafc]" style={{ gridTemplateColumns: "60px repeat(4, 1fr)" }}>
+              <div />
+              {MOCK_DAYS.map(d => (
+                <div key={d.num} className="text-center py-2 border-l border-[#e2e8f0]">
+                  <div className="text-[8px] font-bold uppercase tracking-wide text-[#94a3b8]">{d.abbr}</div>
+                  <div className="text-[15px] font-bold text-[#0f172a] leading-tight">{d.num}</div>
                 </div>
               ))}
             </div>
-          ))}
-        </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-[#e2e8f0] px-3 h-8 flex items-center gap-2 shrink-0 bg-[#f8fafc]">
-          <span className="text-[9px] text-[#94a3b8] font-medium">Turnos</span>
-          <div className="flex gap-1.5 flex-wrap">
-            {MOCK_STAFF.map(s => (
-              <span key={s.k} className={`text-[9px] font-semibold rounded px-1.5 py-0.5 ${
-                s.active ? "bg-[#2563eb] text-white" : "text-[#64748b]"
-              }`}>{s.k} 6/6</span>
+            {/* Shift rows */}
+            {MOCK_SHIFTS.map(shift => (
+              <div key={shift.label} className="grid border-b border-[#e2e8f0]" style={{ gridTemplateColumns: "60px repeat(4, 1fr)" }}>
+                <div className="flex flex-col justify-center px-2 py-2 border-r border-[#e2e8f0] bg-[#f8fafc]">
+                  <span className="text-[11px] font-bold text-[#1b4f8a]">{shift.label}</span>
+                  <span className="text-[8px] text-[#94a3b8] leading-tight">{shift.time}</span>
+                </div>
+                {shift.cells.map((staff, di) => (
+                  <div key={di} className="p-2 border-l border-[#e2e8f0] flex flex-col gap-1">
+                    {staff.map(s => <Chip key={s.name} name={s.name} hl={s.hl} />)}
+                  </div>
+                ))}
+              </div>
             ))}
+          </div>
+
+          {/* AI footer */}
+          <div className="border-t border-[#e2e8f0] px-3 h-8 flex items-center gap-2 bg-[#eff6ff]">
+            <span className="text-[10px]">✨</span>
+            <span className="text-[9px] font-semibold text-[#1b4f8a]">Rota generated by AI</span>
+            <span className="text-[9px] text-[#94a3b8]">·</span>
+            <span className="text-[9px] text-[#16a34a] font-semibold">0 skill gaps</span>
+            <div className="flex-1" />
+            <span className="text-[9px] text-[#94a3b8]">in 4s</span>
           </div>
         </div>
       </div>
@@ -470,6 +474,13 @@ export default function MarketingPage() {
             <Link href="#how" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1b4f8a] bg-[#eff6ff] border border-[#dbeafe] px-7 py-3.5 rounded-xl hover:bg-[#dbeafe] hover:-translate-y-0.5 transition-all">
               <Play className="w-4 h-4" /> {t.hero.cta2}
             </Link>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 mt-5">
+            {[t.hero.badge1, t.hero.badge2, t.hero.badge3].map(b => (
+              <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
+                <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}
+              </span>
+            ))}
           </div>
         </div>
         <div className="order-first md:order-last">
@@ -660,37 +671,24 @@ export default function MarketingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-[#eef2f7] py-14">
+      <footer className="border-t border-[#eef2f7] py-10">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-10 mb-12">
-            <div className="col-span-2 md:col-span-1">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
               <Logo />
-              <p className="text-[13px] text-[#94a3b8] mt-3 leading-relaxed max-w-[220px]">{t.footer.tagline}</p>
-              <div className="mt-4">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-[#0f172a] mb-2">{t.footer.contact}</p>
-                <a href="mailto:info@labrota.app" className="text-[13px] text-[#64748b] hover:text-[#1b4f8a] transition-colors">info@labrota.app</a>
-              </div>
+              <p className="text-[13px] text-[#94a3b8] mt-2">{t.footer.tagline}</p>
+              <a href="mailto:info@labrota.app" className="text-[13px] text-[#64748b] hover:text-[#1b4f8a] transition-colors mt-1 inline-block">info@labrota.app</a>
             </div>
-            {([
-              { heading: t.footer.product, links: [{ label: t.footer.links.features, href: "#features" }, { label: t.footer.links.pricing, href: "#pricing" }, { label: t.footer.links.login, href: "/login" }] },
-              { heading: t.footer.legal,   links: [{ label: t.footer.links.privacy, href: "/privacy" }, { label: t.footer.links.terms, href: "/terms" }, { label: t.footer.links.gdpr, href: "/gdpr" }] },
-            ]).map(col => (
-              <div key={col.heading}>
-                <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0f172a] mb-4">{col.heading}</h4>
-                <div className="flex flex-col gap-2.5">
-                  {col.links.map(l => (
-                    <Link key={l.label} href={l.href} className="text-[13px] text-[#64748b] hover:text-[#1b4f8a] transition-colors">{l.label}</Link>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <Link href="/privacy" className="text-[13px] text-[#94a3b8] hover:text-[#1b4f8a] transition-colors">{t.footer.links.privacy}</Link>
+              <Link href="/terms" className="text-[13px] text-[#94a3b8] hover:text-[#1b4f8a] transition-colors">{t.footer.links.terms}</Link>
+              <Link href="/gdpr" className="text-[13px] text-[#94a3b8] hover:text-[#1b4f8a] transition-colors">{t.footer.links.gdpr}</Link>
+              <button onClick={switchLang} className="flex items-center gap-1.5 text-[12px] text-[#94a3b8] border border-[#e2e8f0] rounded-md px-3 py-1.5 hover:text-[#1b4f8a] hover:border-[#dbeafe] transition-colors">
+                <Globe className="w-3.5 h-3.5" /> {lang === "en" ? "Español" : "English"}
+              </button>
+            </div>
           </div>
-          <div className="border-t border-[#eef2f7] pt-7 flex flex-wrap justify-between items-center gap-3">
-            <p className="text-[12px] text-[#94a3b8]">{t.footer.copy}</p>
-            <button onClick={switchLang} className="flex items-center gap-1.5 text-[12px] text-[#94a3b8] border border-[#e2e8f0] rounded-md px-3 py-1.5 hover:text-[#1b4f8a] hover:border-[#dbeafe] transition-colors">
-              <Globe className="w-3.5 h-3.5" /> {lang === "en" ? "Español" : "English"}
-            </button>
-          </div>
+          <p className="text-[12px] text-[#94a3b8] mt-8">{t.footer.copy}</p>
         </div>
       </footer>
     </div>
