@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
-import { AlertCircle, CheckCircle2, KeyRound, Loader2, Lock, ArrowRight } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound, Loader2, Lock, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 export default function LoginPage() {
@@ -235,7 +235,18 @@ export default function LoginPage() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm flex flex-col gap-6">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm flex flex-col gap-6 relative">
+
+        {/* Back button — password & code steps */}
+        {step !== "email" && (
+          <button
+            type="button"
+            onClick={goBack}
+            className="absolute top-4 left-4 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+        )}
 
         {/* Logo */}
         <div className="flex flex-col items-center">
@@ -288,16 +299,7 @@ export default function LoginPage() {
         {step === "password" && (
           <div className="flex flex-col gap-4">
             {/* Show email as context */}
-            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <span className="text-[13px] text-muted-foreground truncate">{email}</span>
-              <button
-                type="button"
-                onClick={goBack}
-                className="text-[12px] text-primary hover:underline shrink-0 ml-auto"
-              >
-                {t("useAnotherEmail")}
-              </button>
-            </div>
+            <p className="text-[13px] text-muted-foreground text-center truncate">{email}</p>
 
             <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -402,13 +404,6 @@ export default function LoginPage() {
                 className="text-[12px] text-primary hover:underline disabled:opacity-50"
               >
                 {t("resendLink")}
-              </button>
-              <button
-                type="button"
-                onClick={goBack}
-                className="text-[12px] text-muted-foreground hover:underline"
-              >
-                {t("useAnotherEmail")}
               </button>
             </div>
           </div>
