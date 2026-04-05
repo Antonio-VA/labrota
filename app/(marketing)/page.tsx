@@ -298,11 +298,11 @@ function Logo() {
 // ─── Product mockup ───────────────────────────────────────────────────────────
 
 const DAYS = [
-  { abbr: "LUN", num: 13, pu: 6, b: 6 },
-  { abbr: "MAR", num: 14, pu: 6, b: 6 },
-  { abbr: "MIÉ", num: 15, pu: 6, b: 5 },
-  { abbr: "JUE", num: 16, pu: 6, b: 3 },
-  { abbr: "VIE", num: 17, pu: 4, b: 1 },
+  { abbr: "LUN", num: 13, pu: 6, b: 6, wknd: false },
+  { abbr: "MAR", num: 14, pu: 6, b: 6, wknd: false },
+  { abbr: "MIÉ", num: 15, pu: 6, b: 5, wknd: false },
+  { abbr: "JUE", num: 16, pu: 6, b: 3, wknd: false },
+  { abbr: "VIE", num: 17, pu: 4, b: 1, wknd: false },
   { abbr: "SÁB", num: 18, pu: 2, b: 3, wknd: true },
   { abbr: "DOM", num: 19, pu: 0, b: 6, wknd: true },
 ] as const
