@@ -45,7 +45,7 @@ const content = {
     problem: {
       badge: "The Problem",
       title: "Spreadsheets weren't designed for IVF lab scheduling",
-      sub: "Lab managers spend hours every week juggling availability, competencies and compliance — with a constant risk of human error.",
+      sub: "Lab managers spend hours every week juggling availability, competencies and last-minute changes — with a constant risk of human error.",
       p1title: "Error-prone coverage",
       p1: "Manual rota creation leads to skill-gap failures that risk critical IVF procedures and patient outcomes.",
       p2title: "Hours wasted every week",
@@ -56,14 +56,14 @@ const content = {
     solution: {
       badge: "The Solution",
       title: "LabRota automates the complexity away",
-      sub: "Purpose-built for IVF laboratories — LabRota understands embryologist competencies, regulatory requirements, and the critical nature of every single shift.",
+      sub: "Purpose-built for IVF laboratories — LabRota understands embryologist competencies, técnica coverage, and the critical nature of every single shift.",
     },
     features: {
       title: "Everything your IVF lab needs",
       sub: "Built from the ground up for fertility labs — not a generic scheduling tool with a healthcare skin.",
       items: [
-        { title: "Intelligent Scheduling", body: "Auto-generate rotas based on staff availability, certified competencies and workload — fair, compliant and conflict-free, in minutes." },
-        { title: "Built-in Compliance", body: "Automated HFEA staffing checks, full audit trails and real-time regulatory alerts — always inspection-ready." },
+        { title: "Intelligent Scheduling", body: "Auto-generate rotas based on staff availability, certified competencies and workload — fair, balanced and conflict-free, in minutes." },
+        { title: "Competency Enforcement", body: "LabRota knows which técnicas each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
         { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Workforce Analytics", body: "Track hours, workload distribution and staffing trends to make evidence-based decisions and plan ahead." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
@@ -86,8 +86,7 @@ const content = {
     testimonials: {
       title: "What lab professionals say",
       items: [
-        { quote: "LabRota replaced our spreadsheets overnight. We now build fully compliant rotas in minutes instead of spending hours every Monday morning.", name: "Dr. María López", role: "Lab Director — IVF Madrid" },
-        { quote: "Finally a tool that actually understands embryologist competencies and HFEA requirements. The compliance checks alone make it worth every penny.", name: "James Whitfield", role: "Senior Embryologist — London Fertility Clinic" },
+        { quote: "LabRota replaced our spreadsheets overnight. We now build rotas in minutes instead of spending hours every Monday morning.", name: "Dr. María López", role: "Lab Director — IVF Madrid" },
         { quote: "The AI assistant suggested a rota that covered all our skill gaps — something I'd have almost certainly missed managing it manually.", name: "Dr. Ana García", role: "Lab Manager — Barcelona IVF Centre" },
       ],
     },
@@ -110,12 +109,12 @@ const content = {
         },
         {
           name: "Professional",
-          desc: "For labs needing compliance & AI",
+          desc: "For labs that want AI-powered scheduling",
           monthly: "199",
           annual: "159",
           unit: "/lab/month",
           badge: "Most Popular",
-          features: ["Unlimited staff", "Everything in Starter", "HFEA compliance checks", "AI scheduling assistant", "Advanced analytics & PDF export", "Full audit trail", "Priority support"],
+          features: ["Unlimited staff", "Everything in Starter", "Skill gap detection", "AI scheduling assistant", "Advanced analytics & PDF export", "Priority support"],
           cta: "Start Free Trial",
           featured: true,
         },
@@ -133,7 +132,7 @@ const content = {
     },
     cta: {
       title: "Ready to simplify your lab scheduling?",
-      sub: "Join IVF laboratories that have replaced spreadsheets with smart, compliant rotas. Book a 30-minute demo — no commitment required.",
+      sub: "Join IVF laboratories that have replaced spreadsheets with smart, AI-powered rotas. Book a 30-minute demo — no commitment required.",
       btn: "Request a Demo",
     },
     footer: {
@@ -185,14 +184,14 @@ const content = {
     solution: {
       badge: "La Solución",
       title: "LabRota automatiza la complejidad",
-      sub: "Diseñado exclusivamente para laboratorios IVF — LabRota entiende las competencias de embriólogos, los requisitos regulatorios y la naturaleza crítica de cada turno.",
+      sub: "Diseñado exclusivamente para laboratorios IVF — LabRota entiende las competencias de embriólogos, la cobertura de técnicas y la naturaleza crítica de cada turno.",
     },
     features: {
       title: "Todo lo que tu laboratorio IVF necesita",
       sub: "Construido desde cero para laboratorios de fertilidad — no es otra herramienta genérica de turnos con apariencia sanitaria.",
       items: [
-        { title: "Scheduling Inteligente", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, conforme y sin conflictos, en minutos." },
-        { title: "Compliance Integrado", body: "Verificaciones automáticas de personal HFEA, trazabilidad completa y alertas regulatorias en tiempo real — siempre listo para inspecciones." },
+        { title: "Scheduling Inteligente", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, equilibrada y sin conflictos, en minutos." },
+        { title: "Control de Competencias", body: "LabRota sabe qué técnicas domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Analytics de Workforce", body: "Monitoriza horas, distribución de carga y tendencias de personal para tomar decisiones basadas en datos y planificar con antelación." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
@@ -215,8 +214,7 @@ const content = {
     testimonials: {
       title: "Lo que dicen los profesionales",
       items: [
-        { quote: "LabRota sustituyó nuestras hojas de cálculo de la noche a la mañana. Ahora creamos rotas totalmente conformes en minutos en lugar de pasar horas cada lunes.", name: "Dra. María López", role: "Directora de Laboratorio — IVF Madrid" },
-        { quote: "Por fin una herramienta que realmente entiende las competencias de los embriólogos y los requisitos HFEA. Solo las verificaciones de compliance ya merecen la pena.", name: "James Whitfield", role: "Embriólogo Senior — London Fertility Clinic" },
+        { quote: "LabRota sustituyó nuestras hojas de cálculo de la noche a la mañana. Ahora creamos rotas en minutos en lugar de pasar horas cada lunes.", name: "Dra. María López", role: "Directora de Laboratorio — IVF Madrid" },
         { quote: "El asistente IA sugirió una rota que cubría todos nuestros skill gaps — algo que casi con seguridad habría pasado por alto gestionándolo manualmente.", name: "Dra. Ana García", role: "Lab Manager — Barcelona IVF Centre" },
       ],
     },
@@ -239,12 +237,12 @@ const content = {
         },
         {
           name: "Professional",
-          desc: "Para labs que necesitan compliance e IA",
+          desc: "Para labs que quieren scheduling con IA",
           monthly: "199",
           annual: "159",
           unit: "/lab/mes",
           badge: "Más Popular",
-          features: ["Empleados ilimitados", "Todo lo de Starter", "Verificaciones HFEA", "Asistente IA de scheduling", "Analytics avanzados y exportación PDF", "Registro de auditoría completo", "Soporte prioritario"],
+          features: ["Empleados ilimitados", "Todo lo de Starter", "Detección de brechas de competencias", "Asistente IA de scheduling", "Analytics avanzados y exportación PDF", "Soporte prioritario"],
           cta: "Prueba Gratuita",
           featured: true,
         },
@@ -262,7 +260,7 @@ const content = {
     },
     cta: {
       title: "¿Listo para simplificar la planificación de tu laboratorio?",
-      sub: "Únete a los laboratorios IVF que han sustituido las hojas de cálculo por rotas inteligentes y conformes. Reserva una demo de 30 minutos — sin compromiso.",
+      sub: "Únete a los laboratorios IVF que han sustituido las hojas de cálculo por rotas inteligentes con IA. Reserva una demo de 30 minutos — sin compromiso.",
       btn: "Solicitar una Demo",
     },
     footer: {
@@ -365,7 +363,6 @@ function ProductMockup() {
         {/* Badges */}
         <div className="flex gap-2 mt-4 flex-wrap">
           {[
-            { label: "HFEA Compliant", color: "bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]" },
             { label: "No Skill Gaps",  color: "bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]" },
             { label: "✨ AI Generated", color: "bg-[#eff6ff] text-[#1b4f8a] border-[#dbeafe]" },
           ].map(b => (
