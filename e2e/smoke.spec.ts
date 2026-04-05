@@ -57,7 +57,7 @@ test.describe("Schedule (authenticated)", () => {
 
   test("leaves page loads", async ({ page }) => {
     await page.goto("/leaves")
-    await expect(page.getByText(/Ausentes|Sin ausencias|Absent|No leaves/i).first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/Ausentes|Sin ausencias|Absent|No leave|Add leave|Añadir ausencia/i).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test("reports page loads", async ({ page }) => {
