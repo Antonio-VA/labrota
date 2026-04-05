@@ -115,17 +115,17 @@ export function AppSidebar() {
   const viewerStaffId = useViewerStaffId()
 
   const navItems = canEdit ? [
-    { key: "schedule", icon: CalendarDays, href: "/schedule" },
+    { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "lab",      icon: FlaskConical, href: "/lab" },
     { key: "staff",    icon: Users,        href: "/staff" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
     { key: "reports",  icon: BarChart3,    href: "/reports" },
     { key: "settings", icon: Settings,     href: "/settings" },
   ] as const : viewerStaffId ? [
-    { key: "schedule", icon: CalendarDays, href: "/schedule" },
+    { key: "schedule", icon: CalendarDays, href: "/" },
     { key: "leaves",   icon: Briefcase,        href: "/leaves" },
   ] as const : [
-    { key: "schedule", icon: CalendarDays, href: "/schedule" },
+    { key: "schedule", icon: CalendarDays, href: "/" },
   ] as const
 
   return (
@@ -134,8 +134,8 @@ export function AppSidebar() {
         {/* Nav items */}
         <div className="flex flex-col gap-1 py-3 flex-1">
           {navItems.map((item) => {
-            const isActive = item.href === "/schedule"
-              ? pathname === "/schedule"
+            const isActive = item.href === "/"
+              ? pathname === "/"
               : pathname.startsWith(item.href)
             return (
               <NavItem

@@ -10,7 +10,7 @@ import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
 type NavItem = { key: string; icon: React.ElementType; href: string }
 
 const BASE_ITEMS: NavItem[] = [
-  { key: "day",  icon: CalendarDays,  href: "/schedule" },
+  { key: "day",  icon: CalendarDays,  href: "/" },
   { key: "week", icon: CalendarRange, href: "/mobile-week" },
 ]
 
@@ -74,7 +74,7 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
-          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : pathname.startsWith(item.href)
+          const routeActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
             <button

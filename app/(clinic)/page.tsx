@@ -1,8 +1,20 @@
-import { redirect } from "next/navigation"
+import { getRotaWeek, getActiveStaff } from "@/app/(clinic)/rota/actions"
+import { getMondayOfWeek } from "@/lib/rota-engine"
+import { ScheduleClient } from "./schedule-client"
 
-// The schedule page has moved to /schedule.
-// Authenticated users landing on / are redirected there by middleware,
-// but this redirect acts as a fallback in case they get through.
-export default function RootRedirect() {
-  redirect("/schedule")
+export default async function SchedulePage() {
+  const weekStart = getMondayOfWeek()
+
+  // Fetch initial data on the server — eliminates client-side waterfall
+  const [initialData, initialStaff] = await Promise.all([
+    getRotaWeek(weekStart).catch(() => undefined),
+    getActiveStaff().catch(() => undefined),
+  ])
+
+  return (
+    <ScheduleClient
+      initialData={initialData}
+      initialStaff={initialStaff}
+    />
+  )
 }
