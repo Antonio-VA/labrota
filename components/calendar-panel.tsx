@@ -3112,8 +3112,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }, [initialData])
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
+  // lastFetchId lets us discard results from fetches that were superseded (e.g. by Undo)
+  const lastFetchId = useRef(0)
   const fetchWeekSilent = useCallback((ws: string) => {
+    const id = ++lastFetchId.current
     getRotaWeek(ws).then((d) => {
+      if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
       weekCache.current.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -3139,13 +3143,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       redoStack.current = [...redoStack.current, { snapshot: weekData, inverse: entry.inverse, forward: entry.forward }]
       setRedoLen(redoStack.current.length)
     }
+    // Bump lastFetchId so any pending debounced refresh is discarded
+    lastFetchId.current++
     setWeekData(entry.snapshot)
     setUndoLen(undoStack.current.length)
     const result = await entry.inverse()
     if (result?.error) {
       toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
-      fetchWeekSilent(weekStart)
     }
+    // Always re-fetch after inverse to get authoritative server state
+    fetchWeekSilent(weekStart)
   }
 
   async function handleRedo() {
