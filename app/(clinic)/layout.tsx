@@ -1,5 +1,6 @@
 export const maxDuration = 120 // Allow up to 2min for AI rota generation
 
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -41,16 +42,27 @@ export default async function ClinicLayout({
         .eq("user_id", user.id) as unknown as Promise<{ data: Array<{ organisation_id: string; role: string; linked_staff_id: string | null }> | null }>,
     ])
 
-    activeOrgId = profile?.organisation_id ?? null
     defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
 
-    // Auto-switch to default org only if no active org is set (first login)
-    if (defaultOrgId && !activeOrgId) {
-      const isMember = memberships?.some((m) => m.organisation_id === defaultOrgId)
-      if (isMember) {
-        await admin.from("profiles").update({ organisation_id: defaultOrgId } as never).eq("id", user.id)
-        activeOrgId = defaultOrgId
-      }
+    // Priority: cookie (device-local) > DB profile > default org
+    // Cookie prevents cross-device org mixing — each device remembers its own active org
+    const cookieStore = await cookies()
+    const cookieOrgId = cookieStore.get("labrota_active_org")?.value ?? null
+
+    if (cookieOrgId && memberships?.some((m) => m.organisation_id === cookieOrgId)) {
+      // Cookie org is valid — use it (even if DB says something different from another device)
+      activeOrgId = cookieOrgId
+    } else if (profile?.organisation_id && memberships?.some((m) => m.organisation_id === profile.organisation_id)) {
+      // Fall back to DB profile org
+      activeOrgId = profile.organisation_id
+    } else if (defaultOrgId && memberships?.some((m) => m.organisation_id === defaultOrgId)) {
+      // Fall back to default org (first login)
+      activeOrgId = defaultOrgId
+    } else if (memberships?.length) {
+      // Last resort: first membership
+      activeOrgId = memberships[0].organisation_id
+    } else {
+      activeOrgId = null
     }
 
     // Get role for active org
