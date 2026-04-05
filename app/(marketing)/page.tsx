@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   Wand2,
+  GripVertical,
 } from "lucide-react"
 
 // ─── i18n content ────────────────────────────────────────────────────────────
@@ -64,11 +65,11 @@ const content = {
       sub: "Built from the ground up for fertility labs — not a generic scheduling tool with a healthcare skin.",
       items: [
         { title: "AI-Powered Setup", body: "Share your existing spreadsheets or rotas. Our AI reads them, extracts your staff, shifts and procedure assignments, and configures your lab automatically — go live in one session." },
-        { title: "Intelligent Scheduling", body: "Auto-generate rotas based on staff availability, certified competencies and workload — fair, balanced and conflict-free, in minutes." },
+        { title: "AI Smart Rotas", body: "Describe what you need in plain language and LabRota generates the optimal rota instantly — balancing workload, respecting leave, and avoiding skill gaps across every shift." },
         { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
         { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
-        { title: "AI Scheduling Assistant", body: "Describe what you need in plain language. Our AI agent builds the optimal rota for you — accounting for every constraint." },
+        { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
       ],
     },
     how: {
@@ -169,11 +170,11 @@ const content = {
       sub: "Construido desde cero para laboratorios de fertilidad — no es otra herramienta genérica de turnos con apariencia sanitaria.",
       items: [
         { title: "Configuración con IA", body: "Comparte tus hojas de cálculo o rotas actuales. Nuestra IA las lee, extrae tu equipo, turnos y asignaciones de procedimientos, y configura tu laboratorio automáticamente — en una sola sesión." },
-        { title: "Horarios Inteligentes", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, equilibrada y sin conflictos, en minutos." },
+        { title: "Rotas Inteligentes con IA", body: "Describe lo que necesitas en lenguaje natural y LabRota genera la rota óptima al instante — equilibrando carga, respetando ausencias y evitando brechas de competencias en cada turno." },
         { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
-        { title: "Asistente IA de Horarios", body: "Describe lo que necesitas en lenguaje natural. Nuestro agente IA construye la rota óptima teniendo en cuenta cada restricción." },
+        { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
       ],
     },
     how: {
@@ -243,7 +244,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, Sparkles]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertical]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
