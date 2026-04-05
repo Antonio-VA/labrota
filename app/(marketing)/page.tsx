@@ -21,6 +21,7 @@ import {
   Globe,
   Menu,
   X,
+  Wand2,
 } from "lucide-react"
 
 // ─── i18n content ────────────────────────────────────────────────────────────
@@ -56,16 +57,16 @@ const content = {
     solution: {
       badge: "The Solution",
       title: "LabRota automates the complexity away",
-      sub: "Purpose-built for IVF laboratories — LabRota understands embryologist competencies, técnica coverage, and the critical nature of every single shift.",
+      sub: "Purpose-built for IVF laboratories — LabRota understands embryologist competencies, procedure coverage, and the critical nature of every single shift.",
     },
     features: {
       title: "Everything your IVF lab needs",
       sub: "Built from the ground up for fertility labs — not a generic scheduling tool with a healthcare skin.",
       items: [
+        { title: "AI-Powered Setup", body: "Share your existing spreadsheets or rotas. Our AI reads them, extracts your staff, shifts and procedure assignments, and configures your lab automatically — go live in one session." },
         { title: "Intelligent Scheduling", body: "Auto-generate rotas based on staff availability, certified competencies and workload — fair, balanced and conflict-free, in minutes." },
-        { title: "Competency Enforcement", body: "LabRota knows which técnicas each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
+        { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
         { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
-        { title: "Workforce Analytics", body: "Track hours, workload distribution and staffing trends to make evidence-based decisions and plan ahead." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
         { title: "AI Scheduling Assistant", body: "Describe what you need in plain language. Our AI agent builds the optimal rota for you — accounting for every constraint." },
       ],
@@ -74,8 +75,8 @@ const content = {
       badge: "How it works",
       title: "From setup to published rota in minutes",
       steps: [
-        { title: "Configure your lab", body: "Add your staff, their competencies (embryologist, andrologist, senior, junior), certified técnicas and availability preferences." },
-        { title: "Generate with AI", body: "Ask LabRota in plain language to build the rota — it balances workload, respects leave, avoids skill gaps and adapts to your lab's specific técnicas automatically." },
+        { title: "We import your existing rotas", body: "Send us your spreadsheets. Our AI extracts your staff, shift patterns and procedure certifications — your lab is pre-configured before your first login." },
+        { title: "Generate with AI", body: "Ask LabRota in plain language to build the rota — it balances workload, respects leave, avoids skill gaps and adapts to your lab's specific procedures automatically." },
         { title: "Review & adjust", body: "Drag and drop to make tweaks. LabRota flags skill gaps and coverage shortfalls in real time as you edit." },
         { title: "Publish & notify", body: "Publish the rota with one click. Your team is instantly notified. Export to PDF for records." },
       ],
@@ -181,16 +182,16 @@ const content = {
     solution: {
       badge: "La Solución",
       title: "LabRota automatiza la complejidad",
-      sub: "Diseñado exclusivamente para laboratorios IVF — LabRota entiende las competencias de embriólogos, la cobertura de técnicas y la naturaleza crítica de cada turno.",
+      sub: "Diseñado exclusivamente para laboratorios IVF — LabRota entiende las competencias de embriólogos, la cobertura de procedimientos y la naturaleza crítica de cada turno.",
     },
     features: {
       title: "Todo lo que tu laboratorio IVF necesita",
       sub: "Construido desde cero para laboratorios de fertilidad — no es otra herramienta genérica de turnos con apariencia sanitaria.",
       items: [
+        { title: "Configuración con IA", body: "Comparte tus hojas de cálculo o rotas actuales. Nuestra IA las lee, extrae tu equipo, turnos y asignaciones de procedimientos, y configura tu laboratorio automáticamente — en una sola sesión." },
         { title: "Horarios Inteligentes", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, equilibrada y sin conflictos, en minutos." },
-        { title: "Control de Competencias", body: "LabRota sabe qué técnicas domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
+        { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
-        { title: "Analytics de Workforce", body: "Monitoriza horas, distribución de carga y tendencias de personal para tomar decisiones basadas en datos y planificar con antelación." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
         { title: "Asistente IA de Horarios", body: "Describe lo que necesitas en lenguaje natural. Nuestro agente IA construye la rota óptima teniendo en cuenta cada restricción." },
       ],
@@ -199,8 +200,8 @@ const content = {
       badge: "Cómo funciona",
       title: "De la configuración a la rota publicada en minutos",
       steps: [
-        { title: "Configura tu laboratorio", body: "Añade tu equipo, sus competencias (embriólogo, andrólogo, senior, junior), técnicas certificadas y preferencias de disponibilidad." },
-        { title: "Genera con IA", body: "Pide a LabRota en lenguaje natural que construya la rota — equilibra la carga, respeta las ausencias, evita los skill gaps y se adapta a las técnicas específicas de tu laboratorio." },
+        { title: "Importamos tus rotas actuales", body: "Envíanos tus hojas de cálculo. Nuestra IA extrae tu equipo, patrones de turno y certificaciones de procedimientos — tu laboratorio queda preconfigurado antes de tu primer inicio de sesión." },
+        { title: "Genera con IA", body: "Pide a LabRota en lenguaje natural que construya la rota — equilibra la carga, respeta las ausencias, evita los skill gaps y se adapta automáticamente a los procedimientos de tu laboratorio." },
         { title: "Revisa y ajusta", body: "Arrastra y suelta para hacer ajustes. LabRota señala brechas de competencias y problemas de cobertura en tiempo real mientras editas." },
         { title: "Publica y notifica", body: "Publica la rota con un clic. Tu equipo recibe la notificación al instante. Exporta a PDF para registros." },
       ],
@@ -282,7 +283,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Calendar, ShieldCheck, Eye, BarChart3, CalendarOff, Sparkles]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, Sparkles]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
