@@ -39,7 +39,7 @@ export function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAl
         )}
       >
         <Filter className="size-3 shrink-0" />
-        <span className="truncate max-w-[140px]">{label}</span>
+        {!allSelected && <span className="truncate max-w-[140px]">{label}</span>}
         {!allSelected && (
           <button
             onClick={(e) => { e.stopPropagation(); onSetAll() }}

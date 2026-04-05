@@ -15,13 +15,28 @@ const LEAVE_TYPE_LABEL: Record<string, string> = {
   training: "Formación", maternity: "Maternidad/Paternidad", other: "Otro",
 }
 
+const RULE_TYPE_LABEL: Record<string, string> = {
+  no_coincidir: "Cannot work together",
+  supervisor_requerido: "Supervisor required",
+  max_dias_consecutivos: "Max consecutive days",
+  distribucion_fines_semana: "Weekend distribution",
+  descanso_fin_de_semana: "Weekend rest",
+  no_misma_tarea: "No same task",
+  no_librar_mismo_dia: "Cannot have same day off",
+  restriccion_dia_tecnica: "Day/technique restriction",
+  asignacion_fija: "Fixed assignment",
+  tecnicas_juntas: "Techniques together",
+  tarea_multidepartamento: "Multi-department task",
+  equipo_completo: "Whole team",
+}
+
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json()
 
   const supabase = await createClient()
 
   const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
-You help managers understand the rota, staff availability, coverage, and lab configuration.
+You help admins understand the rota, staff availability, coverage, and lab configuration.
 
 Capabilities — you can do all of the following directly:
 
@@ -35,6 +50,7 @@ Read:
 - View techniques/tasks and who can perform them (getTechniques)
 - View departments and sub-departments (getDepartments)
 - View scheduling rules and constraints (getRules)
+- View the skill matrix — who has what skill at what level (getSkillMatrix)
 
 Write (all require user confirmation before executing):
 - Generate the rota for a week (proposeGenerateRota)
@@ -45,6 +61,17 @@ Write (all require user confirmation before executing):
 - Unlock a published rota back to draft (proposeUnlockRota)
 - Add leave for a staff member (proposeAddLeave)
 - Add a note/summary to a week (proposeAddNote)
+- Update a staff member's details (proposeUpdateStaff)
+- Add a skill to a staff member (proposeAddSkill)
+- Remove a skill from a staff member (proposeRemoveSkill)
+- Deactivate a staff member (proposeDeactivateStaff)
+- Update lab coverage requirements (proposeUpdateCoverage)
+- Create a scheduling rule (proposeCreateRule)
+- Enable or disable a scheduling rule (proposeToggleRule)
+- Delete a scheduling rule (proposeDeleteRule)
+- Approve a pending leave request (proposeApproveLeave)
+- Reject a pending leave request (proposeRejectLeave)
+- Cancel a leave (proposeCancelLeave)
 
 Never tell the user to go elsewhere for anything listed above. Use the tools and handle it.
 
@@ -295,16 +322,17 @@ Guidelines:
 
           let query = supabase
             .from("leaves")
-            .select("type, start_date, end_date, status, notes, staff(first_name, last_name)")
+            .select("id, type, start_date, end_date, status, notes, staff(first_name, last_name)")
             .lte("start_date", toDate)
             .gte("end_date", fromDate)
             .order("start_date")
 
           const { data } = await query as {
-            data: { type: string; start_date: string; end_date: string; status: string; notes: string | null; staff: { first_name: string; last_name: string } | null }[] | null
+            data: { id: string; type: string; start_date: string; end_date: string; status: string; notes: string | null; staff: { first_name: string; last_name: string } | null }[] | null
           }
 
           let leaves = (data ?? []).map((l) => ({
+            id: l.id,
             staff: l.staff ? `${l.staff.first_name} ${l.staff.last_name}` : "Unknown",
             type: LEAVE_TYPE_LABEL[l.type] ?? l.type,
             from: l.start_date,
@@ -635,6 +663,314 @@ Guidelines:
           action: "copyPreviousWeek",
           params: { weekStart },
           description: `Copy previous week's rota to week of ${weekStart}`,
+        }),
+      }),
+
+      // ── New read tools ──────────────────────────────────────────────────────────
+
+      getSkillMatrix: tool({
+        description: "Get a matrix of all staff and their skill levels. Useful for identifying skill gaps and training needs.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          const [staffRes, skillsRes] = await Promise.all([
+            supabase.from("staff").select("id, first_name, last_name, role").neq("onboarding_status", "inactive").order("last_name"),
+            supabase.from("staff_skills").select("staff_id, skill, level"),
+          ])
+
+          const staff = (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string }[]
+          const skills = (skillsRes.data ?? []) as { staff_id: string; skill: string; level: string }[]
+
+          const skillsByStaff: Record<string, Record<string, string>> = {}
+          const allSkills = new Set<string>()
+          for (const s of skills) {
+            if (!skillsByStaff[s.staff_id]) skillsByStaff[s.staff_id] = {}
+            skillsByStaff[s.staff_id][s.skill] = s.level
+            allSkills.add(s.skill)
+          }
+
+          return {
+            skills: Array.from(allSkills).sort().map((s) => SKILL_LABEL[s] ?? s),
+            staff: staff.map((s) => ({
+              name: `${s.first_name} ${s.last_name}`,
+              role: s.role,
+              skills: Object.fromEntries(
+                Array.from(allSkills).sort().map((sk) => [SKILL_LABEL[sk] ?? sk, skillsByStaff[s.id]?.[sk] ?? "none"])
+              ),
+            })),
+          }
+        },
+      }),
+
+      // ── New propose tools ───────────────────────────────────────────────────────
+
+      proposeUpdateStaff: tool({
+        description: "Propose updating a staff member's details (days per week, working pattern, preferred shift, notes, onboarding status). The user must confirm.",
+        inputSchema: z.object({
+          staffName: z.string().describe("Full or partial name of the staff member"),
+          daysPerWeek: z.number().optional().describe("Number of days per week (1-7)"),
+          workingPattern: z.array(z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"])).optional().describe("Days the staff member works"),
+          preferredShift: z.string().optional().describe("Preferred shift code (e.g. T1, T2)"),
+          notes: z.string().optional().describe("Notes about the staff member"),
+          onboardingStatus: z.enum(["active", "training", "certified", "inactive"]).optional(),
+        }),
+        execute: async ({ staffName, ...updates }) => {
+          const nameParts = staffName.trim().split(" ")
+          const { data: staffList } = await supabase
+            .from("staff")
+            .select("id, first_name, last_name")
+            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+            .neq("onboarding_status", "inactive")
+            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+
+          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
+          const staff = staffList[0]
+
+          const changes: Record<string, unknown> = {}
+          if (updates.daysPerWeek !== undefined) changes.days_per_week = updates.daysPerWeek
+          if (updates.workingPattern !== undefined) changes.working_pattern = updates.workingPattern
+          if (updates.preferredShift !== undefined) changes.preferred_shift = updates.preferredShift
+          if (updates.notes !== undefined) changes.notes = updates.notes
+          if (updates.onboardingStatus !== undefined) changes.onboarding_status = updates.onboardingStatus
+
+          if (Object.keys(changes).length === 0) return { error: "No changes specified." }
+
+          const desc = Object.entries(changes).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(", ")
+          return {
+            proposal: true,
+            action: "updateStaff",
+            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, changes },
+            description: `Update ${staff.first_name} ${staff.last_name}: ${desc}`,
+          }
+        },
+      }),
+
+      proposeAddSkill: tool({
+        description: "Propose adding a skill to a staff member. The user must confirm.",
+        inputSchema: z.object({
+          staffName: z.string().describe("Full or partial name of the staff member"),
+          skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
+          level: z.enum(["certified", "training"]).describe("Skill level"),
+        }),
+        execute: async ({ staffName, skill, level }) => {
+          const nameParts = staffName.trim().split(" ")
+          const { data: staffList } = await supabase
+            .from("staff")
+            .select("id, first_name, last_name")
+            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+            .neq("onboarding_status", "inactive")
+            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+
+          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
+          const staff = staffList[0]
+
+          return {
+            proposal: true,
+            action: "addSkill",
+            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill, level },
+            description: `Add ${SKILL_LABEL[skill] ?? skill} (${level}) to ${staff.first_name} ${staff.last_name}`,
+          }
+        },
+      }),
+
+      proposeRemoveSkill: tool({
+        description: "Propose removing a skill from a staff member. The user must confirm.",
+        inputSchema: z.object({
+          staffName: z.string().describe("Full or partial name of the staff member"),
+          skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
+        }),
+        execute: async ({ staffName, skill }) => {
+          const nameParts = staffName.trim().split(" ")
+          const { data: staffList } = await supabase
+            .from("staff")
+            .select("id, first_name, last_name")
+            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+            .neq("onboarding_status", "inactive")
+            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+
+          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
+          const staff = staffList[0]
+
+          return {
+            proposal: true,
+            action: "removeSkill",
+            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill },
+            description: `Remove ${SKILL_LABEL[skill] ?? skill} from ${staff.first_name} ${staff.last_name}`,
+          }
+        },
+      }),
+
+      proposeDeactivateStaff: tool({
+        description: "Propose deactivating a staff member (sets them as inactive with end date today). The user must confirm.",
+        inputSchema: z.object({
+          staffName: z.string().describe("Full or partial name of the staff member"),
+          reason: z.string().optional().describe("Reason for deactivation"),
+        }),
+        execute: async ({ staffName, reason }) => {
+          const nameParts = staffName.trim().split(" ")
+          const { data: staffList } = await supabase
+            .from("staff")
+            .select("id, first_name, last_name")
+            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
+            .neq("onboarding_status", "inactive")
+            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+
+          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
+          const staff = staffList[0]
+
+          return {
+            proposal: true,
+            action: "deactivateStaff",
+            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}` },
+            description: `Deactivate ${staff.first_name} ${staff.last_name}${reason ? ` (${reason})` : ""}`,
+          }
+        },
+      }),
+
+      proposeUpdateCoverage: tool({
+        description: "Propose updating lab coverage requirements (minimum staff per shift for weekdays and weekends). The user must confirm.",
+        inputSchema: z.object({
+          labWeekday: z.number().optional().describe("Minimum lab staff on weekdays"),
+          labWeekend: z.number().optional().describe("Minimum lab staff on weekends"),
+          andrologyWeekday: z.number().optional().describe("Minimum andrology staff on weekdays"),
+          andrologyWeekend: z.number().optional().describe("Minimum andrology staff on weekends"),
+        }),
+        execute: async ({ labWeekday, labWeekend, andrologyWeekday, andrologyWeekend }) => {
+          const changes: Record<string, number> = {}
+          if (labWeekday !== undefined) changes.min_lab_coverage = labWeekday
+          if (labWeekend !== undefined) changes.min_weekend_lab_coverage = labWeekend
+          if (andrologyWeekday !== undefined) changes.min_andrology_coverage = andrologyWeekday
+          if (andrologyWeekend !== undefined) changes.min_weekend_andrology = andrologyWeekend
+
+          if (Object.keys(changes).length === 0) return { error: "No changes specified." }
+
+          const desc = Object.entries(changes).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(", ")
+          return {
+            proposal: true,
+            action: "updateCoverage",
+            params: { changes },
+            description: `Update coverage: ${desc}`,
+          }
+        },
+      }),
+
+      proposeCreateRule: tool({
+        description: "Propose creating a new scheduling rule. The user must confirm.",
+        inputSchema: z.object({
+          type: z.enum([
+            "no_coincidir", "supervisor_requerido", "max_dias_consecutivos",
+            "distribucion_fines_semana", "descanso_fin_de_semana", "no_misma_tarea",
+            "no_librar_mismo_dia", "restriccion_dia_tecnica", "asignacion_fija",
+            "tecnicas_juntas", "tarea_multidepartamento", "equipo_completo",
+          ]).describe("Rule type"),
+          isHard: z.boolean().optional().describe("Whether this is a hard constraint (cannot be violated) or soft (preference). Defaults to true."),
+          notes: z.string().optional().describe("Description or notes for the rule"),
+          staffNames: z.array(z.string()).optional().describe("Staff member names this rule applies to (omit for all staff)"),
+          params: z.record(z.string(), z.unknown()).optional().describe("Rule-specific parameters"),
+        }),
+        execute: async ({ type, isHard, notes, staffNames, params: ruleParams }) => {
+          // Resolve staff IDs if names provided
+          let staffIds: string[] = []
+          if (staffNames?.length) {
+            for (const name of staffNames) {
+              const parts = name.trim().split(" ")
+              const { data } = await supabase
+                .from("staff")
+                .select("id, first_name, last_name")
+                .ilike("last_name", `%${parts[parts.length - 1]}%`)
+                .neq("onboarding_status", "inactive")
+                .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
+              if (data?.[0]) staffIds.push(data[0].id)
+            }
+          }
+
+          return {
+            proposal: true,
+            action: "createRule",
+            params: {
+              type,
+              is_hard: isHard ?? true,
+              enabled: true,
+              staff_ids: staffIds,
+              params: ruleParams ?? {},
+              notes: notes ?? null,
+              expires_at: null,
+            },
+            description: `Create rule: ${RULE_TYPE_LABEL[type] ?? type}${notes ? ` — ${notes}` : ""}`,
+          }
+        },
+      }),
+
+      proposeToggleRule: tool({
+        description: "Propose enabling or disabling an existing scheduling rule. Use getRules first to find the rule. The user must confirm.",
+        inputSchema: z.object({
+          ruleId: z.string().describe("ID of the rule to toggle"),
+          enabled: z.boolean().describe("Whether to enable (true) or disable (false) the rule"),
+          ruleDescription: z.string().optional().describe("Brief description of the rule for the confirmation card"),
+        }),
+        execute: async ({ ruleId, enabled, ruleDescription }) => ({
+          proposal: true,
+          action: "toggleRule",
+          params: { ruleId, enabled },
+          description: `${enabled ? "Enable" : "Disable"} rule${ruleDescription ? `: ${ruleDescription}` : ""}`,
+        }),
+      }),
+
+      proposeDeleteRule: tool({
+        description: "Propose deleting a scheduling rule. Use getRules first to find the rule. The user must confirm.",
+        inputSchema: z.object({
+          ruleId: z.string().describe("ID of the rule to delete"),
+          ruleDescription: z.string().optional().describe("Brief description of the rule for the confirmation card"),
+        }),
+        execute: async ({ ruleId, ruleDescription }) => ({
+          proposal: true,
+          action: "deleteRule",
+          params: { ruleId },
+          description: `Delete rule${ruleDescription ? `: ${ruleDescription}` : ""}`,
+        }),
+      }),
+
+      proposeApproveLeave: tool({
+        description: "Propose approving a pending leave request. Use getLeaves first to find the leave. The user must confirm.",
+        inputSchema: z.object({
+          leaveId: z.string().describe("ID of the leave to approve"),
+          staffName: z.string().describe("Staff member name for the confirmation card"),
+          dates: z.string().describe("Date range for the confirmation card"),
+        }),
+        execute: async ({ leaveId, staffName, dates }) => ({
+          proposal: true,
+          action: "approveLeave",
+          params: { leaveId },
+          description: `Approve leave for ${staffName}: ${dates}`,
+        }),
+      }),
+
+      proposeRejectLeave: tool({
+        description: "Propose rejecting a pending leave request. Use getLeaves first to find the leave. The user must confirm.",
+        inputSchema: z.object({
+          leaveId: z.string().describe("ID of the leave to reject"),
+          staffName: z.string().describe("Staff member name for the confirmation card"),
+          dates: z.string().describe("Date range for the confirmation card"),
+        }),
+        execute: async ({ leaveId, staffName, dates }) => ({
+          proposal: true,
+          action: "rejectLeave",
+          params: { leaveId },
+          description: `Reject leave for ${staffName}: ${dates}`,
+        }),
+      }),
+
+      proposeCancelLeave: tool({
+        description: "Propose cancelling an existing leave (approved or pending). Use getLeaves first to find the leave. The user must confirm.",
+        inputSchema: z.object({
+          leaveId: z.string().describe("ID of the leave to cancel"),
+          staffName: z.string().describe("Staff member name for the confirmation card"),
+          dates: z.string().describe("Date range for the confirmation card"),
+        }),
+        execute: async ({ leaveId, staffName, dates }) => ({
+          proposal: true,
+          action: "cancelLeave",
+          params: { leaveId },
+          description: `Cancel leave for ${staffName}: ${dates}`,
         }),
       }),
     },

@@ -2888,6 +2888,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // ── Undo / Redo ────────────────────────────────────────────────────────────
   type UndoEntry = {
     snapshot: RotaWeekData
+    forwardSnapshot?: RotaWeekData // snapshot to restore on redo (optimistic)
     inverse: () => Promise<{ error?: string }>
     forward: () => Promise<{ error?: string }>
   }
@@ -3164,8 +3165,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   async function handleUndo() {
     const entry = undoStack.current.pop()
     if (!entry) return
-    if (weekData) {
-      redoStack.current = [...redoStack.current, { snapshot: weekData, inverse: entry.inverse, forward: entry.forward }]
+    const currentData = weekData
+    if (currentData) {
+      // Store current state so redo can apply it optimistically
+      redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
       setRedoLen(redoStack.current.length)
     }
     // Bump lastFetchId so any pending debounced refresh is discarded
@@ -3183,8 +3186,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   async function handleRedo() {
     const entry = redoStack.current.pop()
     if (!entry) return
-    if (weekData) {
-      undoStack.current = [...undoStack.current.slice(-19), { snapshot: weekData, inverse: entry.inverse, forward: entry.forward }]
+    const currentData = weekData
+    // Apply optimistic forward snapshot immediately (like undo does)
+    if (entry.forwardSnapshot) {
+      lastFetchId.current++
+      setWeekData(entry.forwardSnapshot)
+    }
+    if (currentData) {
+      undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: entry.forwardSnapshot, inverse: entry.inverse, forward: entry.forward }]
       setUndoLen(undoStack.current.length)
     }
     setRedoLen(redoStack.current.length)

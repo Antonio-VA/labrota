@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LanguageToggle } from "@/components/language-toggle"
-import { Mail, AlertCircle, CheckCircle2, KeyRound } from "lucide-react"
+import { Mail, AlertCircle, CheckCircle2, KeyRound, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
   const t = useTranslations("auth")
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full h-10" disabled={loading}>
               {loading ? (
-                <><Mail className="size-4 animate-pulse" />{t("sendCode")}…</>
+                <><Loader2 className="size-4 animate-spin" />{t("sendCode")}…</>
               ) : (
                 <><Mail className="size-4" />{t("sendCode")}</>
               )}
@@ -209,7 +209,7 @@ export default function LoginPage() {
                 disabled={loading || otpCode.length < 6}
               >
                 {loading ? (
-                  <><KeyRound className="size-4 animate-pulse" />{t("verifyCode")}…</>
+                  <><Loader2 className="size-4 animate-spin" />{t("verifyCode")}…</>
                 ) : (
                   <><KeyRound className="size-4" />{t("verifyCode")}</>
                 )}

@@ -9,8 +9,11 @@ import { SendHorizonal, Bot, CheckCircle2, XCircle, ChevronRight, ChevronLeft } 
 import { useRef, useEffect, useState, useTransition } from "react"
 import ReactMarkdown from "react-markdown"
 import { generateRota, upsertAssignment, regenerateDay, publishRota, unlockRota, copyPreviousWeek } from "@/app/(clinic)/rota/actions"
-import { createLeave } from "@/app/(clinic)/leaves/actions"
+import { createLeave, approveLeave, rejectLeave, cancelLeave } from "@/app/(clinic)/leaves/actions"
 import { addWeekNote } from "@/app/(clinic)/notes-actions"
+import { bulkAddSkill, bulkRemoveSkill, bulkSoftDeleteStaff, bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
+import { updateLabConfig } from "@/app/(clinic)/lab/actions"
+import { createRule, toggleRule, deleteRule } from "@/app/(clinic)/lab/rules-actions"
 import { useRouter } from "next/navigation"
 
 const transport = new DefaultChatTransport({ api: "/api/chat" })
@@ -106,6 +109,93 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
             const result = await copyPreviousWeek(p.weekStart as string)
             if (result.error) { setError(result.error); break }
             ok = true; onRefresh?.()
+            break
+          }
+          case "updateStaff": {
+            const changes = p.changes as Record<string, unknown>
+            const updates = Object.entries(changes).map(([field, value]) => ({
+              id: p.staffId as string,
+              field,
+              value: value as string | number | string[],
+            }))
+            const result = await bulkUpdateStaffField(updates)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "addSkill": {
+            const result = await bulkAddSkill(
+              [p.staffId as string],
+              p.skill as Parameters<typeof bulkAddSkill>[1],
+              p.level as Parameters<typeof bulkAddSkill>[2],
+            )
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "removeSkill": {
+            const result = await bulkRemoveSkill(
+              [p.staffId as string],
+              p.skill as Parameters<typeof bulkRemoveSkill>[1],
+            )
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "deactivateStaff": {
+            const result = await bulkSoftDeleteStaff([p.staffId as string])
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "updateCoverage": {
+            const result = await updateLabConfig(p.changes as Parameters<typeof updateLabConfig>[0])
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "createRule": {
+            const result = await createRule({
+              type: p.type as string,
+              is_hard: p.is_hard as boolean,
+              enabled: p.enabled as boolean,
+              staff_ids: p.staff_ids as string[],
+              params: p.params as Record<string, unknown>,
+              notes: p.notes as string | null,
+              expires_at: p.expires_at as string | null,
+            } as Parameters<typeof createRule>[0])
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "toggleRule": {
+            const result = await toggleRule(p.ruleId as string, p.enabled as boolean)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "deleteRule": {
+            const result = await deleteRule(p.ruleId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "approveLeave": {
+            const result = await approveLeave(p.leaveId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "rejectLeave": {
+            const result = await rejectLeave(p.leaveId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true
+            break
+          }
+          case "cancelLeave": {
+            const result = await cancelLeave(p.leaveId as string)
+            if (result.error) { setError(result.error); break }
+            ok = true
             break
           }
           default:
@@ -322,9 +412,9 @@ export function ChatPanel({
         </div>
       </ScrollArea>
 
-      {/* Input — pinned to bottom, matches notes bar height */}
-      <div className="shrink-0 border-t bg-background px-3 py-2">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      {/* Input — pinned to bottom, aligned with notes bar */}
+      <div className="shrink-0 border-t bg-background px-3 py-3">
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
           <input
             ref={inputRef}
             value={input}
@@ -332,7 +422,7 @@ export function ChatPanel({
             placeholder={t("placeholder")}
             disabled={isLoading}
             className="
-              flex-1 h-9 px-3 rounded-md border border-input bg-background
+              flex-1 h-[52px] px-3 rounded-md border border-input bg-background
               text-[13px] text-foreground placeholder:text-muted-foreground/50
               outline-none transition-colors
               focus:border-primary focus:ring-2 focus:ring-primary/20
@@ -343,7 +433,7 @@ export function ChatPanel({
             type="submit"
             size="icon"
             disabled={isLoading || !input.trim()}
-            className="size-9 shrink-0 rounded-md"
+            className="size-[52px] shrink-0 rounded-md"
           >
             <SendHorizonal className="size-4" />
           </Button>

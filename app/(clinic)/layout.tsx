@@ -75,10 +75,11 @@ export default async function ClinicLayout({
     // ── Round 2: org details + multi-org list + viewer staff (all depend on activeOrgId) ──
     const round2: PromiseLike<unknown>[] = []
 
-    // Org name/logo
+    // Org name/logo — use admin client to avoid RLS mismatch when
+    // cookie-based activeOrgId differs from profiles.organisation_id
     if (activeOrgId) {
       round2.push(
-        supabase
+        admin
           .from("organisations")
           .select("name, logo_url, rota_display_mode")
           .eq("id", activeOrgId)
