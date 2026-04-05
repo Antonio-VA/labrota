@@ -2867,6 +2867,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     try { return JSON.parse(localStorage.getItem("labrota_mobile_favorite_view") ?? "null") } catch { return null }
   })
   const [currentDate, setCurrentDateState] = useState(() => {
+    // When SSR provides initialData, start on that week to avoid a mismatch
+    // that would discard the pre-fetched data and trigger a redundant client fetch
+    if (initialData?.weekStart) {
+      const firstDay = initialData.weekStart
+      return firstDay
+    }
     if (typeof window === "undefined") return TODAY
     return sessionStorage.getItem("labrota_current_date") || TODAY
   })
