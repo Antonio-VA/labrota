@@ -70,9 +70,17 @@ export default function LoginPage() {
     setErrorMessage("")
 
     try {
-      // Look up org auth method
-      const res = await fetch(`/api/auth-method?email=${encodeURIComponent(email.trim().toLowerCase())}`)
-      const { method } = await res.json() as { method: "otp" | "password" }
+      // Look up org auth method — default to password if API unreachable
+      let method: "otp" | "password" = "password"
+      try {
+        const res = await fetch(`/api/auth-method?email=${encodeURIComponent(email.trim().toLowerCase())}`)
+        if (res.ok) {
+          const data = await res.json() as { method: "otp" | "password" }
+          method = data.method
+        }
+      } catch {
+        // API not available — default to password
+      }
       setAuthMethod(method)
 
       if (method === "otp") {

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -25,6 +25,7 @@ export function AdminOrgDetailClient({
   initialLeaveRequests = false,
   initialEnableNotes = true,
   initialEnableTaskInShift = false,
+  initialAuthMethod = "password",
   initialBilling = { start: null, end: null, fee: null },
   initialAiOptimalVersion = "v2",
   initialEngineHybridEnabled = true,
@@ -51,6 +52,7 @@ export function AdminOrgDetailClient({
   initialLeaveRequests?: boolean
   initialEnableNotes?: boolean
   initialEnableTaskInShift?: boolean
+  initialAuthMethod?: "otp" | "password"
   initialBilling?: { start: string | null; end: string | null; fee: number | null }
   initialAiOptimalVersion?: string
   initialEngineHybridEnabled?: boolean
@@ -81,6 +83,7 @@ export function AdminOrgDetailClient({
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
+  const [authMethod, setAuthMethod] = useState(initialAuthMethod)
   const [aiOptimalVersion, setAiOptimalVersion] = useState(initialAiOptimalVersion)
   const [engineHybridEnabled, setEngineHybridEnabled] = useState(initialEngineHybridEnabled)
   const [engineReasoningEnabled, setEngineReasoningEnabled] = useState(initialEngineReasoningEnabled)
@@ -429,6 +432,43 @@ export function AdminOrgDetailClient({
             </button>
           </div>
           </>)}
+
+          <div className="h-px bg-border" />
+
+          {/* Auth method */}
+          <div>
+            <p className="text-[14px] font-medium">Método de acceso</p>
+            <p className="text-[12px] text-muted-foreground mb-3">Cómo inician sesión los usuarios de esta organización.</p>
+            <div className="flex rounded-lg border border-input overflow-hidden">
+              {([
+                { key: "password" as const, label: "Contraseña" },
+                { key: "otp" as const, label: "Código (OTP)" },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    const prev = authMethod
+                    setAuthMethod(key)
+                    startTransition(async () => {
+                      const r = await updateOrgAuthMethod(orgId, key)
+                      if (r.error) { toast.error(r.error); setAuthMethod(prev) }
+                      else toast.success("Método de acceso actualizado")
+                    })
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
+                    authMethod === key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-transparent text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

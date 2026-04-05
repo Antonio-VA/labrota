@@ -364,6 +364,19 @@ export async function createOrgUser(formData: FormData) {
   return { success: true }
 }
 
+// ── updateOrgAuthMethod ───────────────────────────────────────────────────
+export async function updateOrgAuthMethod(orgId: string, method: "otp" | "password") {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ auth_method: method } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 // ── updateOrgRegional ──────────────────────────────────────────────────────
 export async function updateOrgRegional(orgId: string, country: string, region: string, annualLeaveDays?: number, reduceBudgetOnHolidays?: boolean, defaultDaysPerWeek?: number, partTimeWeight?: number, internWeight?: number) {
   await assertSuperAdmin()
