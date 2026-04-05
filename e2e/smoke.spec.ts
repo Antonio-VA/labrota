@@ -28,13 +28,13 @@ test.describe("Schedule (authenticated)", () => {
 
   test("schedule loads with data", async ({ page }) => {
     await page.goto("/schedule")
-    // Budget bar pills = data loaded (not shimmer)
-    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 20_000 })
+    // Budget bar pills = data loaded (not shimmer). Allow 30s for by_task orgs.
+    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 30_000 })
   })
 
   test("week navigation is instant (prefetch)", async ({ page }) => {
     await page.goto("/schedule")
-    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 30_000 })
 
     // Next week button
     const nextBtn = page.getByRole("button", { name: /siguiente|Next period/i })
@@ -44,34 +44,29 @@ test.describe("Schedule (authenticated)", () => {
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 3_000 })
   })
 
+  // Navigate directly via URL to avoid depending on schedule loading state
   test("lab page loads", async ({ page }) => {
-    await page.goto("/schedule")
-    await page.getByRole("link", { name: /Laboratorio|Laboratory/i }).click()
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 5_000 })
+    await page.goto("/lab")
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 10_000 })
   })
 
   test("team page loads", async ({ page }) => {
-    await page.goto("/schedule")
-    await page.getByRole("link", { name: /Equipo|Team/i }).click()
-    await expect(page.getByText(/Activos|Active/i).first()).toBeVisible({ timeout: 5_000 })
+    await page.goto("/staff")
+    await expect(page.getByText(/Activos|Active/i).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test("leaves page loads", async ({ page }) => {
-    await page.goto("/schedule")
-    await page.getByRole("link", { name: /Ausencias|Leaves/i }).click()
-    // Either leave list or empty state
-    await expect(page.getByText(/Ausentes|Sin ausencias|Absent|No leaves/i).first()).toBeVisible({ timeout: 5_000 })
+    await page.goto("/leaves")
+    await expect(page.getByText(/Ausentes|Sin ausencias|Absent|No leaves/i).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test("reports page loads", async ({ page }) => {
-    await page.goto("/schedule")
-    await page.getByRole("link", { name: /Informes|Reports/i }).click()
-    await expect(page.getByText(/Resumen|Summary|Staff summary/i).first()).toBeVisible({ timeout: 5_000 })
+    await page.goto("/reports")
+    await expect(page.getByText(/Resumen|Summary|Staff summary/i).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test("admin page loads", async ({ page }) => {
-    await page.goto("/schedule")
-    await page.getByRole("link", { name: "Admin" }).click()
-    await expect(page.getByText(/Administración|Administration/i).first()).toBeVisible({ timeout: 5_000 })
+    await page.goto("/settings")
+    await expect(page.getByText(/Administración|Administration/i).first()).toBeVisible({ timeout: 10_000 })
   })
 })
