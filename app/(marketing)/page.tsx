@@ -190,12 +190,12 @@ const content = {
       title: "Todo lo que tu laboratorio IVF necesita",
       sub: "Construido desde cero para laboratorios de fertilidad — no es otra herramienta genérica de turnos con apariencia sanitaria.",
       items: [
-        { title: "Scheduling Inteligente", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, equilibrada y sin conflictos, en minutos." },
+        { title: "Horarios Inteligentes", body: "Genera rotas automáticamente según disponibilidad, competencias certificadas y carga de trabajo — justa, equilibrada y sin conflictos, en minutos." },
         { title: "Control de Competencias", body: "LabRota sabe qué técnicas domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Analytics de Workforce", body: "Monitoriza horas, distribución de carga y tendencias de personal para tomar decisiones basadas en datos y planificar con antelación." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
-        { title: "Asistente IA de Scheduling", body: "Describe lo que necesitas en lenguaje natural. Nuestro agente IA construye la rota óptima teniendo en cuenta cada restricción." },
+        { title: "Asistente IA de Horarios", body: "Describe lo que necesitas en lenguaje natural. Nuestro agente IA construye la rota óptima teniendo en cuenta cada restricción." },
       ],
     },
     how: {
@@ -237,12 +237,12 @@ const content = {
         },
         {
           name: "Professional",
-          desc: "Para labs que quieren scheduling con IA",
+          desc: "Para labs que quieren horarios con IA",
           monthly: "199",
           annual: "159",
           unit: "/lab/mes",
           badge: "Más Popular",
-          features: ["Empleados ilimitados", "Todo lo de Starter", "Detección de brechas de competencias", "Asistente IA de scheduling", "Analytics avanzados y exportación PDF", "Soporte prioritario"],
+          features: ["Empleados ilimitados", "Todo lo de Starter", "Detección de brechas de competencias", "Asistente IA de horarios", "Analytics avanzados y exportación PDF", "Soporte prioritario"],
           cta: "Prueba Gratuita",
           featured: true,
         },
@@ -264,7 +264,7 @@ const content = {
       btn: "Solicitar una Demo",
     },
     footer: {
-      tagline: "Scheduling inteligente para laboratorios IVF.",
+      tagline: "Horarios inteligentes para laboratorios IVF.",
       product: "Producto",
       company: "Empresa",
       legal: "Legal",
