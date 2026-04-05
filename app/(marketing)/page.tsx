@@ -14,7 +14,7 @@ import {
   Sparkles,
   AlertTriangle,
   Clock,
-  FileWarning,
+  UserX,
   Check,
   ArrowRight,
   Play,
@@ -41,7 +41,7 @@ const content = {
       cta1: "Request a Demo",
       cta2: "See how it works",
     },
-    social: { text: "Trusted by IVF laboratories across Europe" },
+    social: null,
     problem: {
       badge: "The Problem",
       title: "Spreadsheets weren't designed for IVF lab scheduling",
@@ -50,8 +50,8 @@ const content = {
       p1: "Manual rota creation leads to skill-gap failures that risk critical IVF procedures and patient outcomes.",
       p2title: "Hours wasted every week",
       p2: "Lab managers spend 3–5 hours per week building rotas — time that should go to science, not spreadsheets.",
-      p3title: "No compliance trail",
-      p3: "Spreadsheets can't enforce HFEA staffing requirements or maintain the audit trail needed for inspections.",
+      p3title: "Invisible competency gaps",
+      p3: "Spreadsheets can't tell you whether the person you've scheduled is actually certified for that IVF procedure — a silent but direct risk to patients.",
     },
     solution: {
       badge: "The Solution",
@@ -170,7 +170,7 @@ const content = {
       cta1: "Solicitar una Demo",
       cta2: "Ver cómo funciona",
     },
-    social: { text: "Laboratorios IVF de toda Europa confían en nosotros" },
+    social: null,
     problem: {
       badge: "El Problema",
       title: "Las hojas de cálculo no fueron diseñadas para planificar laboratorios IVF",
@@ -179,8 +179,8 @@ const content = {
       p1: "La creación manual de rotas genera fallos de cobertura que ponen en riesgo procedimientos IVF críticos y los resultados de los pacientes.",
       p2title: "Horas perdidas cada semana",
       p2: "Los responsables de lab dedican 3-5 horas semanales construyendo rotas — tiempo que debería ir a la ciencia, no a las hojas de cálculo.",
-      p3title: "Sin registro de cumplimiento",
-      p3: "Las hojas de cálculo no pueden verificar los requisitos HFEA ni mantener el registro de auditoría necesario para las inspecciones.",
+      p3title: "Brechas de competencias invisibles",
+      p3: "Las hojas de cálculo no pueden saber si la persona asignada está realmente certificada para esa técnica IVF — un riesgo silencioso pero directo para los pacientes.",
     },
     solution: {
       badge: "La Solución",
@@ -291,7 +291,7 @@ type Lang = keyof typeof content
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
 const featureIcons = [Calendar, ShieldCheck, Eye, BarChart3, CalendarOff, Sparkles]
-const painIcons = [AlertTriangle, Clock, FileWarning]
+const painIcons = [AlertTriangle, Clock, UserX]
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
@@ -476,17 +476,6 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      {/* ── SOCIAL PROOF ── */}
-      <div className="bg-[#f8fafc] border-y border-[#eef2f7] py-8">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <p className="text-[12px] font-semibold uppercase tracking-widest text-[#94a3b8] mb-5">{t.social.text}</p>
-          <div className="flex justify-center gap-12 flex-wrap opacity-40">
-            {["IVF Madrid", "London Fertility", "Barcelona IVF", "Nordic Fertility", "Paris Fertility"].map(name => (
-              <span key={name} className="text-[15px] font-bold text-[#64748b]">{name}</span>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* ── PROBLEM ── */}
       <section className="max-w-6xl mx-auto px-6 py-20">
@@ -700,19 +689,6 @@ export default function MarketingPage() {
           >
             {t.cta.btn} <ArrowRight className="w-4 h-4" />
           </a>
-          {/* Trust badges */}
-          <div className="flex justify-center gap-7 flex-wrap mt-12">
-            {[
-              { label: "GDPR Compliant" },
-              { label: "HFEA Ready" },
-              { label: "99.9% Uptime" },
-              { label: "SOC 2 Type II" },
-            ].map(b => (
-              <span key={b.label} className="flex items-center gap-1.5 text-[12px] font-medium text-white/40">
-                <ShieldCheck className="w-3.5 h-3.5" /> {b.label}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
