@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
     return rewriteResponse
   }
 
-  // Allow through unconditionally
+  // Allow through unconditionally (public routes)
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
@@ -91,13 +91,27 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── Marketing home (always public) ──────────────────────────────────────────
+  if (pathname === "/") {
+    // Authenticated clinic users → send straight to the app
+    if (user && !isSuperAdmin) {
+      return NextResponse.redirect(new URL("/schedule", request.url))
+    }
+    // Super admins → admin portal
+    if (user && isSuperAdmin) {
+      return NextResponse.redirect(new URL("/admin", request.url))
+    }
+    // Unauthenticated → show landing page
+    return supabaseResponse
+  }
+
   // ── /admin/* routes (direct access, e.g. localhost dev) ─────────────────
   if (pathname.startsWith("/admin")) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url))
     }
     if (!isSuperAdmin) {
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/schedule", request.url))
     }
     return supabaseResponse
   }
@@ -106,7 +120,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/login" || pathname === "/demo") {
     if (user) {
       if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/schedule", request.url))
     }
     return supabaseResponse
   }
