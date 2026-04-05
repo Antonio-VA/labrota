@@ -412,9 +412,9 @@ export function ChatPanel({
         </div>
       </ScrollArea>
 
-      {/* Input — pinned to bottom, aligned with notes bar */}
-      <div className="shrink-0 border-t bg-background px-3 py-3">
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      {/* Input — pinned to bottom */}
+      <div className="shrink-0 border-t bg-background px-3 py-2">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <input
             ref={inputRef}
             value={input}
@@ -422,7 +422,7 @@ export function ChatPanel({
             placeholder={t("placeholder")}
             disabled={isLoading}
             className="
-              flex-1 h-[52px] px-3 rounded-md border border-input bg-background
+              flex-1 h-9 px-3 rounded-md border border-input bg-background
               text-[13px] text-foreground placeholder:text-muted-foreground/50
               outline-none transition-colors
               focus:border-primary focus:ring-2 focus:ring-primary/20
@@ -433,7 +433,7 @@ export function ChatPanel({
             type="submit"
             size="icon"
             disabled={isLoading || !input.trim()}
-            className="size-[52px] shrink-0 rounded-md"
+            className="size-9 shrink-0 rounded-md"
           >
             <SendHorizonal className="size-4" />
           </Button>

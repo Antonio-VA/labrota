@@ -3571,7 +3571,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   )
 
   return (
-    <main className="flex flex-1 flex-col overflow-hidden">
+    <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
       {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
       <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
 
@@ -4661,10 +4661,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         onRestored={() => fetchWeek(weekStart)}
       />
 
-      {/* Week notes — desktop only */}
-      <div className="hidden md:block shrink-0" data-week-notes>
-        {view === "week" && <WeekNotes weekStart={weekStart} />}
-      </div>
+      {/* Week notes — desktop only, min-h ensures space is reserved during load */}
+      {view === "week" && (
+        <div className="hidden md:block shrink-0 min-h-[36px]" data-week-notes>
+          <WeekNotes weekStart={weekStart} />
+        </div>
+      )}
 
       {/* Bottom taskbar — desktop only, hidden for viewers */}
       <div className="hidden md:block shrink-0">
