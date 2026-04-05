@@ -1574,7 +1574,7 @@ function ShiftGrid({
   isPublished, isGenerating,
   shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
-  onRefresh, onAfterMutation, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
+  onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
 }: {
@@ -1595,6 +1595,8 @@ function ShiftGrid({
   onBiopsyChange?: (date: string, value: number) => void
   onRefresh: () => void
   onAfterMutation?: (snapshot: RotaWeekData, inverse: () => Promise<{ error?: string }>, forward: () => Promise<{ error?: string }>) => void
+  onCancelUndo?: () => void
+  onSaved?: () => void
   weekStart: string
   compact?: boolean
   colorChips?: boolean
@@ -1710,23 +1712,24 @@ function ShiftGrid({
         }))
       }
 
-      try {
+      {
         const snapshot = data
-        const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
-        if (result?.error) { toast.error(result.error); onRefresh(); return }
-        const newId = result.id
-        toast.success(t("shiftAssigned"))
-        if (snapshot && newId) {
+        const idCapture: { value: string | undefined } = { value: undefined }
+        if (snapshot) {
           onAfterMutation?.(
             snapshot,
-            () => deleteAssignment(newId),
+            () => idCapture.value ? deleteAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
             () => upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift }),
           )
         }
-      } catch {
-        toast.error(t("assignmentError"))
-        onRefresh()
-        return
+        try {
+          const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
+          if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
+          idCapture.value = result.id
+          onSaved?.()
+        } catch {
+          onCancelUndo?.(); toast.error(t("assignmentError")); onRefresh(); return
+        }
       }
       // No refresh — optimistic state is correct
       return
@@ -1749,21 +1752,20 @@ function ShiftGrid({
       const oldDate  = sourceAssignment.date
       const oldStaff = sourceAssignment.staff_id
       const snapshot = data
+      if (snapshot) {
+        onAfterMutation?.(
+          snapshot,
+          () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
+          () => removeAssignment(assignmentId),
+        )
+      }
       try {
         const result = await removeAssignment(assignmentId)
-        if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success(t("shiftRemoved"))
-        if (snapshot) {
-          onAfterMutation?.(
-            snapshot,
-            () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
-            () => removeAssignment(assignmentId),
-          )
-        }
+        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
+        onSaved?.()
         // No refresh — optimistic state is correct
       } catch {
-        toast.error(t("removeError"))
-        onRefresh()
+        onCancelUndo?.(); toast.error(t("removeError")); onRefresh()
       }
     } else {
       const destDate  = destZone.slice(-10)
@@ -1782,21 +1784,20 @@ function ShiftGrid({
           a.id === assignmentId ? { ...a, shift_type: destShift, is_manual_override: true } : a
         ),
       })))
+      if (snapshot) {
+        onAfterMutation?.(
+          snapshot,
+          () => moveAssignmentShift(assignmentId, oldShift),
+          () => moveAssignmentShift(assignmentId, destShift),
+        )
+      }
       try {
         const result = await moveAssignmentShift(assignmentId, destShift)
-        if (result?.error) { toast.error(result.error); onRefresh(); return }
-        toast.success(t("shiftUpdated"))
-        if (snapshot) {
-          onAfterMutation?.(
-            snapshot,
-            () => moveAssignmentShift(assignmentId, oldShift),
-            () => moveAssignmentShift(assignmentId, destShift),
-          )
-        }
+        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
+        onSaved?.()
         // Don't refresh — optimistic state is already correct
       } catch {
-        toast.error(t("moveError"))
-        onRefresh()
+        onCancelUndo?.(); toast.error(t("moveError")); onRefresh()
       }
     }
   }
@@ -2888,6 +2889,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const redoStack = useRef<UndoEntry[]>([])
   const [undoLen, setUndoLen] = useState(0)
   const [redoLen, setRedoLen] = useState(0)
+  const [showSaved, setShowSaved] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(true)
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
@@ -3125,6 +3128,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }, [])
 
   // ── Undo/Redo helpers ──────────────────────────────────────────────────────
+  function triggerSaved() {
+    setShowSaved(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setShowSaved(false), 2000)
+  }
+
+  function cancelLastUndo() {
+    undoStack.current.pop()
+    setUndoLen(undoStack.current.length)
+  }
+
   function pushUndo(
     snapshot: RotaWeekData,
     inverse: () => Promise<{ error?: string }>,
@@ -3625,10 +3639,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           )}
         </div>
 
-        {/* RIGHT: undo/redo · dept filter · warnings · generate · overflow ··· */}
+        {/* RIGHT: saved · undo/redo · dept filter · warnings · generate · overflow ··· */}
         <div className="flex items-center gap-2 shrink-0">
-          {view === "week" && canEdit && (undoLen > 0 || redoLen > 0) && (
+          {view === "week" && canEdit && (
             <div className="flex items-center gap-0.5">
+              <span className={cn(
+                "text-[12px] text-muted-foreground flex items-center gap-1 transition-opacity duration-700 select-none pr-1",
+                showSaved ? "opacity-100" : "opacity-0 pointer-events-none"
+              )}>
+                <Check className="size-3 text-emerald-500" />
+                {locale === "es" ? "Guardado" : "Saved"}
+              </span>
               <Tooltip>
                 <TooltipTrigger render={
                   <button
@@ -4003,6 +4024,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   isPublished={!!isPublished || !canEdit}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   onAfterMutation={canEdit ? pushUndo : undefined}
+                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
+                  onSaved={canEdit ? triggerSaved : undefined}
                   taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
@@ -4107,6 +4130,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onBiopsyChange={handleBiopsyChange}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                   onAfterMutation={canEdit ? pushUndo : undefined}
+                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
+                  onSaved={canEdit ? triggerSaved : undefined}
                   weekStart={weekStart}
                   compact={compact}
                   colorChips={colorChips}

@@ -628,6 +628,8 @@ export function TaskGrid({
   isPublished,
   onRefresh,
   onAfterMutation,
+  onCancelUndo,
+  onSaved,
   taskConflictThreshold,
   punctionsDefault = {},
   punctionsOverride = {},
@@ -650,6 +652,8 @@ export function TaskGrid({
   isPublished: boolean
   onRefresh: () => void
   onAfterMutation?: (snapshot: RotaWeekData, inverse: () => Promise<{ error?: string }>, forward: () => Promise<{ error?: string }>) => void
+  onCancelUndo?: () => void
+  onSaved?: () => void
   taskConflictThreshold: number
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
@@ -833,25 +837,26 @@ export function TaskGrid({
 
   async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
     const snapshot = data
+    const idCapture: { value: string | undefined } = { value: undefined }
     optimisticAdd(staffId, tecnicaCodigo, date)
-    const result = await assignSilent(staffId, tecnicaCodigo, date)
-    debouncedRefresh()
-    if (snapshot && result.id && !result.error) {
-      const newId = result.id
+    if (snapshot) {
       onAfterMutation?.(
         snapshot,
-        () => removeAssignment(newId),
+        () => idCapture.value ? removeAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
         () => upsertAssignment({ weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo }),
       )
     }
+    const result = await assignSilent(staffId, tecnicaCodigo, date)
+    if (result.error) { onCancelUndo?.(); return }
+    idCapture.value = result.id
+    onSaved?.()
+    debouncedRefresh()
   }
 
   async function handleRemove(assignmentId: string) {
     const snapshot = data
     const assignment = localDays.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
     optimisticRemove(assignmentId)
-    await removeSilent(assignmentId)
-    debouncedRefresh()
     if (snapshot && assignment) {
       onAfterMutation?.(
         snapshot,
@@ -859,24 +864,27 @@ export function TaskGrid({
         () => removeAssignment(assignmentId),
       )
     }
+    const result = await removeSilent(assignmentId)
+    if (result.error) { onCancelUndo?.(); return }
+    onSaved?.()
+    debouncedRefresh()
   }
 
   async function handleToggleWholeTeam(tecnicaCodigo: string, date: string, current: boolean) {
     const snapshot = data
-    // Optimistic: toggle locally immediately
     const key = `${tecnicaCodigo}:${date}`
     setLocalWholeTeam((prev) => ({ ...prev, [key]: !current }))
-    // Server sync
-    const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
-    if (result.error) toast.error(result.error)
-    onRefresh()
-    if (snapshot && !result.error) {
+    if (snapshot) {
       onAfterMutation?.(
         snapshot,
         () => setWholeTeam(weekStart, tecnicaCodigo, date, current),
         () => setWholeTeam(weekStart, tecnicaCodigo, date, !current),
       )
     }
+    const result = await setWholeTeam(weekStart, tecnicaCodigo, date, !current)
+    if (result.error) { toast.error(result.error); onCancelUndo?.(); return }
+    onSaved?.()
+    onRefresh()
   }
 
   return (
