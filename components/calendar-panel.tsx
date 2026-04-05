@@ -2072,14 +2072,8 @@ function ShiftGrid({
           </div>
         ))}
 
-        {/* Dashed divider before OFF row */}
-        <div className="h-px" style={{
-          backgroundImage: "repeating-linear-gradient(90deg, var(--border) 0, var(--border) 6px, transparent 6px, transparent 12px)",
-          backgroundSize: "12px 1px", backgroundRepeat: "repeat-x",
-        }} />
-
         {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted">
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted border-t border-border">
           <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2">
             <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>

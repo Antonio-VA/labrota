@@ -26,7 +26,9 @@ export function WeekNotes({ weekStart }: { weekStart: string }) {
     getWeekNotes(weekStart).then(setData)
   }, [weekStart])
 
-  if (!data || !data.enableNotes) return null
+  // Always render the container to prevent layout shift — show nothing inside until data loads
+  if (!data) return <div className="border-t border-border px-4 py-2 shrink-0 min-h-[36px]" />
+  if (!data.enableNotes) return null
 
   function handleAdd() {
     if (!newText.trim()) { setAdding(false); return }

@@ -2,7 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
-import type { StaffRole, SkillName } from "@/lib/types/database"
+import type { StaffRole, SkillName, PunctionsByDay } from "@/lib/types/database"
 
 const SKILL_LABEL: Record<string, string> = {
   icsi: "ICSI", iui: "IUI", vitrification: "Vitrification", thawing: "Thawing",
@@ -194,7 +194,7 @@ Guidelines:
             shiftTypes: shiftTypes.map((s) => ({ code: s.code, name: s.name_es, time: `${s.start_time}-${s.end_time}`, activeDays: s.active_days })),
             minimums: config ? {
               labWeekday: config.min_lab_coverage,
-              labWeekend: config.min_weekend_lab,
+              labWeekend: config.min_weekend_lab_coverage,
               andrologyWeekday: config.min_andrology_coverage,
               andrologyWeekend: config.min_weekend_andrology,
             } : null,
@@ -362,16 +362,17 @@ Guidelines:
           const config = configRes.data as Record<string, unknown> | null
           const shifts = (shiftTypesRes.data ?? []) as { code: string; name_es: string; start_time: string; end_time: string; sort_order: number; active: boolean; active_days: string[] }[]
 
+          const pbd = config?.punctions_by_day as PunctionsByDay | null | undefined
           return {
             coverage: config ? {
               labWeekday: config.min_lab_coverage,
-              labWeekend: config.min_weekend_lab,
+              labWeekend: config.min_weekend_lab_coverage,
               andrologyWeekday: config.min_andrology_coverage,
               andrologyWeekend: config.min_weekend_andrology,
             } : null,
-            punctions: config ? {
-              monday: config.punctions_mon, tuesday: config.punctions_tue, wednesday: config.punctions_wed,
-              thursday: config.punctions_thu, friday: config.punctions_fri, saturday: config.punctions_sat, sunday: config.punctions_sun,
+            punctions: pbd ? {
+              monday: pbd.mon, tuesday: pbd.tue, wednesday: pbd.wed,
+              thursday: pbd.thu, friday: pbd.fri, saturday: pbd.sat, sunday: pbd.sun,
             } : null,
             shiftRotation: config?.shift_rotation ?? "stable",
             biopsyConfig: config ? {

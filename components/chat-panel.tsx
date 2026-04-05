@@ -412,7 +412,7 @@ export function ChatPanel({
         </div>
       </ScrollArea>
 
-      {/* Input — pinned to bottom */}
+      {/* Input — aligned with notes row (budget bar spacer below pushes it up) */}
       <div className="shrink-0 border-t bg-background px-3 py-2">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <input
@@ -439,6 +439,8 @@ export function ChatPanel({
           </Button>
         </form>
       </div>
+      {/* Spacer — matches budget bar height so input aligns with notes row */}
+      <div className="shrink-0 h-12" />
     </>
   )
 
