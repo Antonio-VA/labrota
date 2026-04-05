@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/worktrees/
+.screenshots/
+.playwright-results/
+e2e/.auth/

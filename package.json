@@ -43,6 +43,7 @@
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/jspdf": "^1.3.3",
     "@types/node": "^20",
