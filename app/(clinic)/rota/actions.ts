@@ -2061,6 +2061,15 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   if (!orgId) return { error: "Not authenticated." }
   const { data: { user } } = await supabase.auth.getUser()
   const publisherName = (user?.user_metadata?.full_name as string) ?? user?.email ?? "—"
+
+  // Get the rota's week_start before publishing
+  const { data: rotaRow } = await supabase
+    .from("rotas")
+    .select("week_start")
+    .eq("id", rotaId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { week_start: string } | null }
+
   const { error } = await supabase
     .from("rotas")
     .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName } as never)
@@ -2069,7 +2078,39 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   if (error) return { error: error.message }
   if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
   revalidatePath("/")
+
+  // Fire-and-forget: send notification emails
+  if (rotaRow?.week_start) {
+    sendPublishNotifications(orgId, rotaRow.week_start, publisherName).catch((err) => {
+      console.error("[publishRota] notification error:", err)
+    })
+  }
+
   return {}
+}
+
+async function sendPublishNotifications(orgId: string, weekStart: string, publisherName: string) {
+  const { getEnabledRecipientEmails } = await import("@/app/(clinic)/notifications-actions")
+  const { sendRotaPublishEmails } = await import("@/lib/rota-email")
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+
+  const emails = await getEnabledRecipientEmails(orgId)
+  if (emails.length === 0) return
+
+  // Get org name and locale
+  const admin = createAdminClient()
+  const { data: org } = await admin.from("organisations").select("name").eq("id", orgId).single() as { data: { name: string } | null }
+  const orgName = org?.name ?? "LabRota"
+
+  // Fetch rota data
+  const data = await getRotaWeek(weekStart)
+
+  // Get locale from cookie (default es)
+  const { cookies } = await import("next/headers")
+  const cookieStore = await cookies()
+  const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
+
+  await sendRotaPublishEmails({ emails, data, orgName, publisherName, locale })
 }
 
 // ── unlockRota ────────────────────────────────────────────────────────────────

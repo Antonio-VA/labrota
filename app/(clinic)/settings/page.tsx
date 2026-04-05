@@ -7,9 +7,13 @@ import { SettingsTabs } from "@/components/settings-tabs"
 import { SettingsFuncionalidades } from "@/components/settings-funcionalidades"
 import { SettingsFacturacion } from "@/components/settings-facturacion"
 import { SettingsImplementation } from "@/components/settings-implementation"
+import { SettingsNotifications } from "@/components/settings-notifications"
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
+import { getPublishRecipients } from "@/app/(clinic)/notifications-actions"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { getAuthUser } from "@/lib/auth-cache"
 import { getTranslations } from "next-intl/server"
 import type { Staff } from "@/lib/types/database"
 
@@ -25,6 +29,8 @@ export default async function SettingsPage() {
   // Implementation counts + step completions
   let implStatus = { departmentCount: 0, shiftCount: 0, taskCount: 0, staffCount: 0, hasRota: false, rotaCount: 0, hasRegion: false }
   let stepCompletions: Record<string, StepCompletion> = {}
+  let isAdmin = false
+  let notificationRecipients: Awaited<ReturnType<typeof getPublishRecipients>> = []
 
   if (orgId) {
     const supabase = await createClient()
@@ -50,9 +56,27 @@ export default async function SettingsPage() {
       hasRegion: !!orgSettings?.country,
     }
 
+    // Check if user is admin
+    const authUser = await getAuthUser()
+    if (authUser) {
+      const adminClient = createAdminClient()
+      const { data: membership } = await adminClient
+        .from("organisation_members")
+        .select("role")
+        .eq("user_id", authUser.id)
+        .eq("organisation_id", orgId)
+        .single() as { data: { role: string } | null }
+      isAdmin = membership?.role === "admin"
+    }
+
     // Sync step completions (records newly completed steps) then fetch all
     await syncStepCompletions()
     stepCompletions = await getStepCompletions()
+
+    // Fetch notification recipients (admin only)
+    if (isAdmin) {
+      try { notificationRecipients = await getPublishRecipients() } catch { /* non-admin */ }
+    }
   }
 
   return (
@@ -97,6 +121,11 @@ export default async function SettingsPage() {
               <div className="rounded-lg border border-border bg-background px-5 py-4">
                 <OrgUsersTable initialUsers={users} staff={staff} />
               </div>
+            }
+            notificaciones={
+              isAdmin ? (
+                <SettingsNotifications initialRecipients={notificationRecipients} />
+              ) : undefined
             }
             implementacion={
               <SettingsImplementation status={implStatus} stepCompletions={stepCompletions} />

@@ -4,36 +4,41 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
-const TAB_KEYS = ["organizacion", "funcionalidades", "facturacion", "usuarios", "implementacion", "historial"] as const
-type TabKey = typeof TAB_KEYS[number]
+const BASE_TAB_KEYS = ["organizacion", "funcionalidades", "facturacion", "usuarios", "notificaciones", "implementacion", "historial"] as const
+type TabKey = typeof BASE_TAB_KEYS[number]
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
   organizacion:     "organisation",
   funcionalidades:  "features",
   facturacion:      "billing",
   usuarios:         "users",
+  notificaciones:   "notifications",
   implementacion:   "implementation",
   historial:        "history",
 }
 
 export function SettingsTabs({
-  organizacion, funcionalidades, facturacion, usuarios, implementacion, historial,
+  organizacion, funcionalidades, facturacion, usuarios, notificaciones, implementacion, historial,
 }: {
   organizacion:     React.ReactNode
   funcionalidades:  React.ReactNode
   facturacion:      React.ReactNode
   usuarios:         React.ReactNode
+  notificaciones?:  React.ReactNode
   implementacion:   React.ReactNode
   historial:        React.ReactNode
 }) {
   const t = useTranslations("settingsTabs")
   const [active, setActive] = useState<TabKey>("organizacion")
-  const content: Record<TabKey, React.ReactNode> = { organizacion, funcionalidades, facturacion, usuarios, implementacion, historial }
+  const content: Record<TabKey, React.ReactNode> = { organizacion, funcionalidades, facturacion, usuarios, notificaciones: notificaciones ?? null, implementacion, historial }
+
+  // Filter out tabs with no content (e.g. notificaciones for non-admins)
+  const tabKeys = BASE_TAB_KEYS.filter((key) => content[key] !== null)
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border -mb-2">
-        {TAB_KEYS.map((key) => (
+      <div className="flex border-b border-border -mb-2 overflow-x-auto">
+        {tabKeys.map((key) => (
           <button
             key={key}
             type="button"
@@ -50,7 +55,7 @@ export function SettingsTabs({
         ))}
       </div>
       <div className="w-full">
-        {TAB_KEYS.map((key) => (
+        {tabKeys.map((key) => (
           <div key={key} className={key !== active ? "hidden" : undefined}>
             {content[key]}
           </div>

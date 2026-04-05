@@ -146,7 +146,7 @@
     "regenerateRota": "Regenerate rota",
     "emptyWeekTitle": "No rota this week",
     "emptyWeekDesc": "The generator considers shifts, minimum coverage, team preferences and absences. Ready in seconds.",
-    "publishRota": "Publish rota",
+    "publishRota": "Publish & notify",
     "unlockRota": "Unlock rota",
     "exportPdf": "Export PDF",
     "rotaPublished": "Rota published successfully",
@@ -1316,8 +1316,22 @@
     "features": "Features",
     "billing": "Billing",
     "users": "Users",
+    "notifications": "Notifications",
     "implementation": "Implementation",
     "history": "History"
+  },
+  "notifications": {
+    "title": "Publish notifications",
+    "description": "Select who receives an email when a rota is published. Selected users and external emails will receive the full schedule by email.",
+    "orgUsers": "Organisation users",
+    "externalEmails": "External emails",
+    "noUsers": "No users in the organisation.",
+    "emailLabel": "Email",
+    "nameLabel": "Name",
+    "namePlaceholder": "Optional",
+    "addButton": "Add",
+    "emailAdded": "Email added",
+    "invalidEmail": "Invalid email"
   },
   "mobileEdit": {
     "editMode": "Edit mode",

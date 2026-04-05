@@ -372,6 +372,17 @@ export interface RotaTemplate {
   updated_at:      string
 }
 
+// ── Rota publish recipients ───────────────────────────────────────────────────
+export interface RotaPublishRecipient {
+  id:              string
+  organisation_id: string
+  user_id:         string | null
+  external_email:  string | null
+  external_name:   string | null
+  enabled:         boolean
+  created_at:      string
+}
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 export interface Notification {
   id:              string

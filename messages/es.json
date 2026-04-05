@@ -146,7 +146,7 @@
     "regenerateRota": "Regenerar horario",
     "emptyWeekTitle": "Semana sin horario",
     "emptyWeekDesc": "El generador tiene en cuenta turnos, coberturas mínimas, preferencias del equipo y ausencias. Listo en segundos.",
-    "publishRota": "Publicar horario",
+    "publishRota": "Publicar y notificar",
     "unlockRota": "Desbloquear horario",
     "exportPdf": "Exportar PDF",
     "rotaPublished": "Horario publicado correctamente",
@@ -1316,8 +1316,22 @@
     "features": "Funcionalidades",
     "billing": "Facturación",
     "users": "Usuarios",
+    "notifications": "Notificaciones",
     "implementation": "Implementación",
     "history": "Historial"
+  },
+  "notifications": {
+    "title": "Notificaciones de publicación",
+    "description": "Selecciona quién recibe un email cuando se publica un horario. Los usuarios seleccionados y los emails externos recibirán el horario completo por email.",
+    "orgUsers": "Usuarios de la organización",
+    "externalEmails": "Emails externos",
+    "noUsers": "No hay usuarios en la organización.",
+    "emailLabel": "Email",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Opcional",
+    "addButton": "Añadir",
+    "emailAdded": "Email añadido",
+    "invalidEmail": "Email no válido"
   },
   "mobileEdit": {
     "editMode": "Modo edicion",
