@@ -83,16 +83,24 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") ||
-    pathname === "/" ||
-    pathname === "/pricing" ||
-    pathname === "/about" ||
-    pathname === "/contact" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/set-password" ||
     pathname === "/demo"
   ) {
     return supabaseResponse
+  }
+
+  // Marketing pages: unauthenticated → show page; authenticated → send to app
+  if (
+    pathname === "/" ||
+    pathname === "/pricing" ||
+    pathname === "/about" ||
+    pathname === "/contact"
+  ) {
+    if (!user) return supabaseResponse
+    if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
+    // authenticated clinic users fall through to clinic handling below
   }
 
   // ── /admin/* routes (direct access, e.g. localhost dev) ─────────────────
