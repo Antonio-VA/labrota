@@ -431,11 +431,6 @@ export default function MarketingPage() {
                 {t.nav[key]}
               </a>
             ))}
-            <div className="w-px h-5 bg-[#ccddee] mx-1" />
-            <button onClick={switchLang} className="flex items-center gap-1.5 text-[13px] font-medium text-[#64748b] border border-[#ccddee] rounded-lg px-2.5 py-1.5 hover:text-[#1b4f8a] hover:border-[#dbeafe] hover:bg-[#eff6ff] transition-colors">
-              <Globe className="w-3.5 h-3.5" />
-              {lang === "en" ? "ES" : "EN"}
-            </button>
             <Link href="/login" className="text-[14px] font-medium text-[#1b4f8a] px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors">
               {t.nav.login}
             </Link>
@@ -459,9 +454,6 @@ export default function MarketingPage() {
               </a>
             ))}
             <div className="flex gap-2 pt-2">
-              <button onClick={switchLang} className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium text-[#64748b] border border-[#ccddee] rounded-lg py-2.5 hover:bg-[#f8fafc]">
-                <Globe className="w-3.5 h-3.5" /> {lang === "en" ? "Español" : "English"}
-              </button>
               <Link href="#contact" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-[14px] font-semibold text-white bg-[#1b4f8a] py-2.5 rounded-lg">
                 {t.nav.cta}
               </Link>
