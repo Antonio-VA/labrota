@@ -97,8 +97,9 @@ const content = {
       sub: "No per-employee fees. One flat price per laboratory.",
       monthly: "Monthly",
       annual: "Annual",
-      save: "Save 20%",
-      price: { monthly: "199", annual: "159", unit: "/lab/month" },
+      save: "Save 23%",
+      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/month" },
+      promo: "Launch offer",
       features: [
         "Unlimited staff",
         "AI-powered rota generation",
@@ -202,8 +203,9 @@ const content = {
       sub: "Sin coste por empleado. Un precio fijo por laboratorio.",
       monthly: "Mensual",
       annual: "Anual",
-      save: "Ahorra 20%",
-      price: { monthly: "199", annual: "159", unit: "/lab/mes" },
+      save: "Ahorra 23%",
+      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/mes" },
+      promo: "Oferta de lanzamiento",
       features: [
         "Empleados ilimitados",
         "Generación de rotas con IA",
@@ -643,17 +645,24 @@ export default function MarketingPage() {
         </div>
 
         <div className="flex justify-center">
-          <div className="w-full max-w-lg rounded-2xl bg-white border-2 border-[#1b4f8a] p-10 shadow-[0_8px_40px_rgba(27,79,138,0.12)]">
+          <div className="w-full max-w-lg rounded-2xl bg-white border-2 border-[#1b4f8a] p-10 shadow-[0_8px_40px_rgba(27,79,138,0.12)] relative">
+            {/* Promo badge */}
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#f59e0b] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap tracking-wide uppercase">
+              {t.pricing.promo}
+            </div>
             {/* Price */}
-            <div className="text-center mb-8">
-              <div className="flex items-end justify-center gap-1 mb-1">
+            <div className="text-center mb-8 pt-2">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <span className="text-[18px] text-[#94a3b8] line-through">€{t.pricing.price.was}</span>
+              </div>
+              <div className="flex items-end justify-center gap-1">
                 <span className="text-[24px] font-bold text-[#64748b] leading-[2]">€</span>
                 <span className="text-[64px] font-extrabold tracking-tight text-[#0f172a] leading-none">
                   {annual ? t.pricing.price.annual : t.pricing.price.monthly}
                 </span>
                 <span className="text-[14px] text-[#94a3b8] mb-3">{t.pricing.price.unit}</span>
               </div>
-              <p className="text-[13px] text-[#94a3b8]">{t.pricing.sub}</p>
+              <p className="text-[13px] text-[#94a3b8] mt-1">{t.pricing.sub}</p>
             </div>
             {/* Features */}
             <ul className="flex flex-col gap-3 mb-8">
