@@ -97,39 +97,19 @@ const content = {
       monthly: "Monthly",
       annual: "Annual",
       save: "Save 20%",
-      plans: [
-        {
-          name: "Starter",
-          desc: "For small labs getting started",
-          monthly: "99",
-          annual: "79",
-          unit: "/lab/month",
-          features: ["Up to 15 staff", "Rota generation", "Leave management", "Email notifications", "Basic reports"],
-          cta: "Start Free Trial",
-          featured: false,
-        },
-        {
-          name: "Professional",
-          desc: "For labs that want AI-powered scheduling",
-          monthly: "199",
-          annual: "159",
-          unit: "/lab/month",
-          badge: "Most Popular",
-          features: ["Unlimited staff", "Everything in Starter", "Skill gap detection", "AI scheduling assistant", "Advanced analytics & PDF export", "Priority support"],
-          cta: "Start Free Trial",
-          featured: true,
-        },
-        {
-          name: "Enterprise",
-          desc: "For multi-site clinics & hospitals",
-          monthly: "Custom",
-          annual: "Custom",
-          unit: "",
-          features: ["Multiple laboratories", "Everything in Professional", "SSO & advanced security", "Custom integrations", "Dedicated account manager", "99.9% SLA guarantee"],
-          cta: "Contact Sales",
-          featured: false,
-        },
+      price: { monthly: "199", annual: "159", unit: "/lab/month" },
+      features: [
+        "Unlimited staff",
+        "AI-powered rota generation",
+        "Competency enforcement & skill gap detection",
+        "AI scheduling assistant",
+        "Leave management",
+        "Real-time visibility & notifications",
+        "Advanced analytics & PDF export",
+        "AI-assisted lab setup from your existing rotas",
+        "Priority support",
       ],
+      cta: "Request a Demo",
     },
     cta: {
       title: "Ready to simplify your lab scheduling?",
@@ -222,39 +202,19 @@ const content = {
       monthly: "Mensual",
       annual: "Anual",
       save: "Ahorra 20%",
-      plans: [
-        {
-          name: "Starter",
-          desc: "Para laboratorios pequeños que empiezan",
-          monthly: "99",
-          annual: "79",
-          unit: "/lab/mes",
-          features: ["Hasta 15 empleados", "Generación de rotas", "Gestión de ausencias", "Notificaciones por email", "Informes básicos"],
-          cta: "Prueba Gratuita",
-          featured: false,
-        },
-        {
-          name: "Professional",
-          desc: "Para labs que quieren horarios con IA",
-          monthly: "199",
-          annual: "159",
-          unit: "/lab/mes",
-          badge: "Más Popular",
-          features: ["Empleados ilimitados", "Todo lo de Starter", "Detección de brechas de competencias", "Asistente IA de horarios", "Analytics avanzados y exportación PDF", "Soporte prioritario"],
-          cta: "Prueba Gratuita",
-          featured: true,
-        },
-        {
-          name: "Enterprise",
-          desc: "Para clínicas multi-sede y hospitales",
-          monthly: "A medida",
-          annual: "A medida",
-          unit: "",
-          features: ["Múltiples laboratorios", "Todo lo de Professional", "SSO y seguridad avanzada", "Integraciones personalizadas", "Account manager dedicado", "Garantía SLA 99.9%"],
-          cta: "Contactar Ventas",
-          featured: false,
-        },
+      price: { monthly: "199", annual: "159", unit: "/lab/mes" },
+      features: [
+        "Empleados ilimitados",
+        "Generación de rotas con IA",
+        "Control de competencias y detección de brechas",
+        "Asistente IA de horarios",
+        "Gestión de ausencias",
+        "Visibilidad en tiempo real y notificaciones",
+        "Analytics avanzados y exportación PDF",
+        "Configuración asistida por IA desde tus rotas actuales",
+        "Soporte prioritario",
       ],
+      cta: "Solicitar una Demo",
     },
     cta: {
       title: "¿Listo para simplificar la planificación de tu laboratorio?",
@@ -689,52 +649,35 @@ export default function MarketingPage() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 items-start">
-          {t.pricing.plans.map(plan => (
-            <div
-              key={plan.name}
-              className={`rounded-xl bg-white p-8 relative ${plan.featured ? "border-2 border-[#1b4f8a]" : "border border-[#ccddee]"}`}
-            >
-              {"badge" in plan && plan.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#1b4f8a] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap">
-                  {plan.badge}
-                </div>
-              )}
-              <div className="text-[20px] font-bold mb-1">{plan.name}</div>
-              <div className="text-[13px] text-[#94a3b8] mb-5">{plan.desc}</div>
-              <div className="mb-6">
-                {plan.monthly !== "Custom" && plan.monthly !== "A medida" ? (
-                  <>
-                    <span className="text-[24px] font-bold text-[#64748b] align-top leading-[1.7]">€</span>
-                    <span className="text-[48px] font-extrabold tracking-tight">
-                      {annual ? plan.annual : plan.monthly}
-                    </span>
-                    <span className="text-[13px] text-[#94a3b8] ml-1">{plan.unit}</span>
-                  </>
-                ) : (
-                  <span className="text-[30px] font-bold">{annual ? plan.annual : plan.monthly}</span>
-                )}
+        <div className="flex justify-center">
+          <div className="w-full max-w-lg rounded-2xl bg-white border-2 border-[#1b4f8a] p-10 shadow-[0_8px_40px_rgba(27,79,138,0.12)]">
+            {/* Price */}
+            <div className="text-center mb-8">
+              <div className="flex items-end justify-center gap-1 mb-1">
+                <span className="text-[24px] font-bold text-[#64748b] leading-[2]">€</span>
+                <span className="text-[64px] font-extrabold tracking-tight text-[#0f172a] leading-none">
+                  {annual ? t.pricing.price.annual : t.pricing.price.monthly}
+                </span>
+                <span className="text-[14px] text-[#94a3b8] mb-3">{t.pricing.price.unit}</span>
               </div>
-              <ul className="flex flex-col gap-2.5 mb-7">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-[14px] text-[#374151] leading-snug">
-                    <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="#contact"
-                className={`block text-center py-3 rounded-xl text-[14px] font-semibold transition-all ${
-                  plan.featured
-                    ? "bg-[#1b4f8a] text-white hover:bg-[#164070] hover:-translate-y-0.5 hover:shadow-md"
-                    : "bg-white text-[#1b4f8a] border-[1.5px] border-[#1b4f8a] hover:bg-[#eff6ff]"
-                }`}
-              >
-                {plan.cta}
-              </Link>
+              <p className="text-[13px] text-[#94a3b8]">{t.pricing.sub}</p>
             </div>
-          ))}
+            {/* Features */}
+            <ul className="flex flex-col gap-3 mb-8">
+              {t.pricing.features.map(f => (
+                <li key={f} className="flex items-start gap-2.5 text-[14px] text-[#374151] leading-snug">
+                  <Check className="w-4 h-4 text-[#16a34a] flex-shrink-0 mt-0.5" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="#contact"
+              className="block text-center py-3.5 rounded-xl text-[15px] font-semibold bg-[#1b4f8a] text-white hover:bg-[#164070] hover:-translate-y-0.5 hover:shadow-md transition-all"
+            >
+              {t.pricing.cta}
+            </Link>
+          </div>
         </div>
       </section>
 
