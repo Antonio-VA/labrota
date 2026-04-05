@@ -85,13 +85,6 @@ const content = {
       stat2: { value: "< 5 min", label: "to generate a full rota", sub: "with AI — from blank to done" },
       stat3: { value: "0", label: "skill gaps missed", sub: "AI catches them all" },
     },
-    testimonials: {
-      title: "What lab professionals say",
-      items: [
-        { quote: "LabRota replaced our spreadsheets overnight. We now build rotas in minutes instead of spending hours every Monday morning.", name: "Dr. María López", role: "Lab Director — IVF Madrid" },
-        { quote: "The AI assistant suggested a rota that covered all our skill gaps — something I'd have almost certainly missed managing it manually.", name: "Dr. Ana García", role: "Lab Manager — Barcelona IVF Centre" },
-      ],
-    },
     pricing: {
       title: "Simple, transparent pricing",
       sub: "No per-employee fees. One flat price per laboratory.",
@@ -190,13 +183,6 @@ const content = {
       stat1: { value: "70%", label: "menos tiempo construyendo rotas", sub: "prom. frente al flujo con hojas de cálculo" },
       stat2: { value: "< 5 min", label: "para generar una rota completa", sub: "con IA — de cero a publicada" },
       stat3: { value: "0", label: "skill gaps perdidos", sub: "la IA los detecta todos" },
-    },
-    testimonials: {
-      title: "Lo que dicen los profesionales",
-      items: [
-        { quote: "LabRota sustituyó nuestras hojas de cálculo de la noche a la mañana. Ahora creamos rotas en minutos en lugar de pasar horas cada lunes.", name: "Dra. María López", role: "Directora de Laboratorio — IVF Madrid" },
-        { quote: "El asistente IA sugirió una rota que cubría todos nuestros skill gaps — algo que casi con seguridad habría pasado por alto gestionándolo manualmente.", name: "Dra. Ana García", role: "Lab Manager — Barcelona IVF Centre" },
-      ],
     },
     pricing: {
       title: "Precios simples y transparentes",
@@ -590,30 +576,6 @@ export default function MarketingPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section className="bg-[#f8fafc] border-y border-[#eef2f7] py-20">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-[clamp(28px,3.5vw,38px)] font-bold tracking-tight text-center text-[#0f172a] mb-12">{t.testimonials.title}</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {t.testimonials.items.map(item => (
-              <div key={item.name} className="rounded-xl border border-[#ccddee] bg-white p-7 relative hover:shadow-md transition-shadow">
-                <div className="absolute top-5 right-5 text-[72px] leading-none text-[#1b4f8a] opacity-[0.06] font-serif select-none">"</div>
-                <p className="text-[14px] text-[#374151] leading-[1.75] italic mb-5">"{item.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#eff6ff] text-[#1b4f8a] flex items-center justify-center text-[16px] font-bold flex-shrink-0">
-                    {item.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-[14px] font-bold">{item.name}</div>
-                    <div className="text-[12px] text-[#94a3b8]">{item.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
