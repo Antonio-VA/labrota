@@ -209,6 +209,10 @@ Four report types:
 - Server components by default, `"use client"` only when needed
 - `error.tsx` and `loading.tsx` boundaries on all route groups
 - Prompt caching on AI chat system prompt
+- **SSR data fetching**: Schedule page fetches `getRotaWeek()` + `getActiveStaff()` on the server during initial render — no client-side waterfall
+- **Week prefetch (CRITICAL — do not remove)**: After loading any week, adjacent weeks (prev + next) are silently fetched in the background via `prefetchAdjacent()`. When the user navigates, the data is served instantly from `weekCache`. This is the reason week navigation feels instant. The cache also does a background refresh to ensure data is fresh.
+- **Parallel Supabase queries**: `getRotaWeek()` fetches all non-dependent data (rota, lab_config, leaves, shifts, tecnicas, departments, rules, org config, staff, skills) in a single `Promise.all` batch. Only assignments (which need `rota.id`) are fetched in a second await.
+- **Per-device org cookie**: Active org stored in `labrota_active_org` cookie (not just DB) to prevent cross-device org mixing
 
 ### Data
 - Multi-tenant: all tables scoped by `organisation_id`
