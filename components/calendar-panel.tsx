@@ -3039,6 +3039,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const fetchVersionRef = useRef(0)
   const initialDataUsed = useRef(false)
   const weekCache = useRef<Map<string, RotaWeekData>>(new Map())
+  // Stable ref so fetchWeek doesn't depend on initialData prop identity
+  // (avoids double-fetch when streaming causes initialData to change reference)
+  const initialDataRef = useRef<RotaWeekData | undefined>(initialData)
+  useEffect(() => { initialDataRef.current = initialData }, [initialData])
 
   function weekOffset(ws: string, days: number): string {
     const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + days); return dt.toISOString().split("T")[0]
@@ -3058,6 +3062,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const fetchWeek = useCallback((ws: string) => {
     // On first call, if the server pre-fetched this exact week, use it directly
     // (avoids a network round-trip on initial load for new sessions viewing today's week)
+    const initialData = initialDataRef.current
     if (!initialDataUsed.current && initialData?.weekStart === ws) {
       initialDataUsed.current = true
       weekCache.current.set(ws, initialData)
@@ -3112,7 +3117,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
-  }, [initialData])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps — reads initialData via ref to stay stable
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
   // lastFetchId lets us discard results from fetches that were superseded (e.g. by Undo)
