@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
     return rewriteResponse
   }
 
-  // Allow through unconditionally
+  // Allow through unconditionally (public routes)
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/_next") ||
@@ -91,19 +91,17 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Root: unauthenticated → login, authenticated clinic users → schedule (fall through)
+  // ── Marketing home (always public) ──────────────────────────────────────────
   if (pathname === "/") {
-    if (!user) return NextResponse.redirect(new URL("/login", request.url))
-    if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
-    // authenticated clinic users fall through to clinic handling below
-  }
-
-  // Static marketing pages — no app pages exist for these, just pass through
-  if (
-    pathname === "/pricing" ||
-    pathname === "/about" ||
-    pathname === "/contact"
-  ) {
+    // Authenticated clinic users → send straight to the app
+    if (user && !isSuperAdmin) {
+      return NextResponse.redirect(new URL("/schedule", request.url))
+    }
+    // Super admins → admin portal
+    if (user && isSuperAdmin) {
+      return NextResponse.redirect(new URL("/admin", request.url))
+    }
+    // Unauthenticated → show landing page
     return supabaseResponse
   }
 
@@ -113,7 +111,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url))
     }
     if (!isSuperAdmin) {
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/schedule", request.url))
     }
     return supabaseResponse
   }
@@ -122,7 +120,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/login" || pathname === "/demo") {
     if (user) {
       if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/schedule", request.url))
     }
     return supabaseResponse
   }
