@@ -91,16 +91,20 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Marketing pages: unauthenticated → show page; authenticated → send to app
+  // Root: unauthenticated → login, authenticated clinic users → schedule (fall through)
+  if (pathname === "/") {
+    if (!user) return NextResponse.redirect(new URL("/login", request.url))
+    if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
+    // authenticated clinic users fall through to clinic handling below
+  }
+
+  // Static marketing pages — no app pages exist for these, just pass through
   if (
-    pathname === "/" ||
     pathname === "/pricing" ||
     pathname === "/about" ||
     pathname === "/contact"
   ) {
-    if (!user) return supabaseResponse
-    if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
-    // authenticated clinic users fall through to clinic handling below
+    return supabaseResponse
   }
 
   // ── /admin/* routes (direct access, e.g. localhost dev) ─────────────────
