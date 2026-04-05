@@ -740,12 +740,14 @@ export function AdminOrgDetailClient({
         </div>
       </div>
 
-      {/* ── MÉTODO DE ACCESO ──────────────────────────────────────── */}
-      <div className="flex flex-col gap-3">
-        <div className="rounded-lg border border-border bg-background px-5 py-4">
-          <p className="text-[14px] font-medium">Método de acceso</p>
-          <p className="text-[12px] text-muted-foreground mb-3">Cómo inician sesión los usuarios de esta organización.</p>
-          <div className="flex rounded-lg border border-input overflow-hidden w-fit">
+      {/* Auth method subsection — matches HR style */}
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Método de acceso</p>
+        </div>
+        <div className="px-5 py-3 flex items-center gap-3">
+          <label className="text-[13px] text-muted-foreground shrink-0">Inicio de sesión</label>
+          <div className="flex rounded-lg border border-input overflow-hidden">
             {([
               { key: "password" as const, label: "Contraseña" },
               { key: "otp" as const, label: "Código (OTP)" },
