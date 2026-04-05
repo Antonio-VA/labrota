@@ -206,7 +206,7 @@ function TaskCell({
   isWholeTeamOverride?: boolean
   onAssign: (staffId: string, tecnicaCodigo: string, date: string) => void
   onRemove: (assignmentId: string) => void
-  onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<void>
+  onAssignSilent: (staffId: string, tecnicaCodigo: string, date: string) => Promise<unknown>
   onRemoveSilent: (assignmentId: string) => Promise<void>
   onOptimisticAdd: (staffId: string, functionLabel: string, date: string) => void
   onOptimisticRemove: (assignmentId: string) => void
