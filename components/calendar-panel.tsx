@@ -2098,6 +2098,7 @@ function ShiftGrid({
                 isPublished={isPublished}
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
+                  backgroundColor: "var(--color-card)",
                   backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)",
                   backgroundSize: "8px 8px",
                 }}
