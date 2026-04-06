@@ -115,13 +115,24 @@ export function buildRotaEmailHtml(params: {
       </tr>`
     }).join("")
 
+    // Shift time legend
+    const legendItems = shiftCodes
+      .filter((code) => shiftTimes[code])
+      .map((code) => {
+        const t = shiftTimes[code]
+        return `<span style="white-space:nowrap;"><strong style="color:#1b4f8a;">${code}</strong> ${formatTime(t.start, data.timeFormat)}–${formatTime(t.end, data.timeFormat)}</span>`
+      }).join(`<span style="color:#ccddee;margin:0 6px;">·</span>`)
+
     gridHtml = `<table style="min-width:500px;width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
       <thead><tr style="background:#f1f5fb;">
         <th style="padding:6px 8px;border-right:1px solid #ccddee;border-bottom:1px solid #ccddee;text-align:left;font-size:9px;font-weight:600;color:#64748b;"></th>
         ${dayHeaders}
       </tr></thead>
       <tbody>${personRows}</tbody>
-    </table>`
+    </table>
+    <div style="margin-top:8px;padding:6px 8px;font-size:11px;color:#64748b;line-height:1.6;">
+      ${legendItems}
+    </div>`
   } else if (data.rotaDisplayMode === "by_task") {
     // By task layout
     const tecnicas = (data.tecnicas ?? []).filter((t: { activa: boolean }) => t.activa).sort((a: { orden: number }, b: { orden: number }) => a.orden - b.orden)
