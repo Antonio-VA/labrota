@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, RotateCcw, X, AlertTriangle, Archive } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
-import { formatDate } from "@/lib/format-date"
+import { formatDateTime } from "@/lib/format-date"
 import { toast } from "sonner"
 import {
   getBackups,
@@ -42,9 +42,7 @@ export function AdminBackups({ orgId }: { orgId: string }) {
   const autoBackups = backups.filter((b) => b.type === "auto")
 
   function fmt(iso: string) {
-    const d = new Date(iso)
-    return formatDate(d, locale) + " · " +
-      d.toLocaleTimeString(locale === "es" ? "es-ES" : "en-US", { hour: "2-digit", minute: "2-digit" })
+    return formatDateTime(iso, locale)
   }
 
   return (

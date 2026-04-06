@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getWeekSnapshots, restoreWeekSnapshot, type RotaSnapshot, type SnapshotAssignment } from "@/lib/rota-snapshots"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 
 const DOW_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
@@ -70,10 +70,7 @@ export function RotaHistoryPanel({
   }
 
   function formatTime(iso: string) {
-    const d = new Date(iso)
-    return d.toLocaleString(locale === "es" ? "es-ES" : "en-GB", {
-      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-    })
+    return formatDateTime(iso, locale as "es" | "en")
   }
 
   if (!open) return null

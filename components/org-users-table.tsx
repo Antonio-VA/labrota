@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { formatDate } from "@/lib/format-date"
+import { formatDateTime } from "@/lib/format-date"
 import {
   inviteOrgUser,
   updateUserRole,
@@ -27,7 +27,7 @@ export function OrgUsersTable({
   const t = useTranslations("orgUsers")
   const tc = useTranslations("common")
   const locale = useLocale()
-  const dateFmt = locale === "es" ? "es-ES" : "en-US"
+  const dateFmt = locale as "es" | "en"
   const [users, setUsers] = useState(initialUsers)
   const [isPending, startTransition] = useTransition()
   const [showInvite, setShowInvite] = useState(false)
@@ -94,8 +94,7 @@ export function OrgUsersTable({
 
   function fmtLogin(d: string | null) {
     if (!d) return "—"
-    return formatDate(d, locale as "es" | "en") + " · " +
-      new Date(d).toLocaleTimeString(dateFmt, { hour: "2-digit", minute: "2-digit" })
+    return formatDateTime(d, dateFmt)
   }
 
   return (

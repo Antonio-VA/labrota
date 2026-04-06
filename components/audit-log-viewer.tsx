@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
+import { formatDateTime, formatDateTimeDetailed } from "@/lib/format-date"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
@@ -67,7 +68,7 @@ export function AuditLogViewer() {
   const t = useTranslations("audit")
   const tc = useTranslations("common")
   const locale = useLocale()
-  const dateFmt = locale === "es" ? "es-ES" : "en-US"
+  const dateFmt = locale as "es" | "en"
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState("")
@@ -150,7 +151,7 @@ export function AuditLogViewer() {
                 onClick={() => setDetail(log)}
               >
                 <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">
-                  {new Date(log.created_at).toLocaleString(dateFmt, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  {formatDateTime(log.created_at, dateFmt)}
                 </td>
                 <td className="px-3 py-2 truncate max-w-[150px]">{log.user_email ?? "—"}</td>
                 <td className="px-3 py-2">
@@ -201,7 +202,7 @@ export function AuditLogViewer() {
                   {ACTION_LABEL_KEYS[detail.action] ? t(ACTION_LABEL_KEYS[detail.action]) : detail.action}
                 </span>
                 <span className="text-[12px] text-muted-foreground tabular-nums">
-                  {new Date(detail.created_at).toLocaleString(dateFmt, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  {formatDateTimeDetailed(detail.created_at, dateFmt)}
                 </span>
               </div>
               <button onClick={() => setDetail(null)} className="text-muted-foreground hover:text-foreground">

@@ -2,7 +2,15 @@ import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import type { StaffReportData, TechReportData } from "@/app/(clinic)/reports/actions"
 
-const TIMESTAMP = () => new Date().toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })
+const TIMESTAMP = () => {
+  const locale = typeof document !== "undefined"
+    ? (document.cookie.match(/(?:^|; )locale=(\w+)/)?.[1] ?? "es")
+    : "es"
+  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(new Date())
+}
 
 export function exportStaffReportPdf(data: StaffReportData) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })

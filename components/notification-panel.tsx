@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, X, Check, AlertTriangle, CalendarDays } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
-import { formatDate } from "@/lib/format-date"
+import { formatDateTime } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -162,7 +162,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
                     <p className={cn("text-[13px] leading-tight", !n.read && "font-medium")}>{n.title}</p>
                     <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      {formatDate(n.created_at, locale) + " · " + new Date(n.created_at).toLocaleTimeString(locale === "es" ? "es-ES" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                      {formatDateTime(n.created_at, locale)}
                     </p>
                   </div>
                   {!n.read && (

@@ -37,6 +37,40 @@ export function formatDateWithYear(date: Date | string, locale: Locale): string 
 }
 
 /**
+ * 14:30  /  2:30 PM
+ */
+export function formatTime(date: Date | string, locale: Locale): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d)
+}
+
+/**
+ * lun 17 mar · 14:30  /  Mon 17 Mar · 2:30 PM
+ */
+export function formatDateTime(date: Date | string, locale: Locale): string {
+  return `${formatDate(date, locale)} · ${formatTime(date, locale)}`
+}
+
+/**
+ * 17 mar 2026 14:30:05  /  17 Mar 2026 2:30:05 PM
+ * Detailed variant with seconds — for audit logs.
+ */
+export function formatDateTimeDetailed(date: Date | string, locale: Locale): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(d)
+}
+
+/**
  * Date range: Mon 17 Mar – Wed 19 Mar 2026
  * Appends year only on the end date.
  */
