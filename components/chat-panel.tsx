@@ -360,7 +360,7 @@ export function ChatPanel({
 
           {messages.map((m) => {
             const textParts = m.parts.filter((p) => p.type === "text")
-            const toolParts = m.parts.filter((p) => p.type === "tool-invocation")
+            const toolParts = m.parts.filter((p) => (p as { state?: unknown }).state !== undefined && p.type !== "text")
 
             return (
               <div
@@ -399,32 +399,40 @@ export function ChatPanel({
 
                 {toolParts.map((p, i) => {
                   const tp = p as unknown as {
-                    type: "tool-invocation"
-                    toolName: string
+                    type: string
                     state: string
-                    result?: Proposal | { error: string }
+                    output?: Proposal | { error: string }
+                    errorText?: string
                   }
                   // Show loading indicator while tool is executing
-                  if (tp.state === "call" || tp.state === "partial-call") {
+                  if (tp.state === "input-streaming" || tp.state === "input-available") {
                     return (
                       <div key={i} className="rounded-lg bg-muted/50 border border-border px-3 py-2 text-[12px] text-muted-foreground animate-pulse">
                         {t("thinking")}
                       </div>
                     )
                   }
-                  if (tp.state !== "result") return null
-                  // Show error from tool result
-                  if (tp.result && "error" in tp.result && !("proposal" in tp.result)) {
+                  // Show error from tool
+                  if (tp.state === "output-error") {
                     return (
                       <div key={i} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive max-w-[95%]">
-                        {(tp.result as { error: string }).error}
+                        {tp.errorText ?? "Tool error"}
                       </div>
                     )
                   }
-                  if (!tp.result || !(tp.result as Proposal).proposal) return null
+                  if (tp.state !== "output-available") return null
+                  // Show error from tool result
+                  if (tp.output && "error" in tp.output && !("proposal" in tp.output)) {
+                    return (
+                      <div key={i} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive max-w-[95%]">
+                        {(tp.output as { error: string }).error}
+                      </div>
+                    )
+                  }
+                  if (!tp.output || !(tp.output as Proposal).proposal) return null
                   return (
                     <div key={i} className="w-full max-w-[95%]">
-                      <ProposalCard proposal={tp.result as Proposal} onRefresh={onRefresh} />
+                      <ProposalCard proposal={tp.output as Proposal} onRefresh={onRefresh} />
                     </div>
                   )
                 })}
