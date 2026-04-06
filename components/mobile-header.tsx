@@ -106,7 +106,7 @@ export function MobileHeader({
                       setSheetOpen(false)
                       startSwitch(async () => {
                         await switchOrgAction(org.id)
-                        window.location.reload()
+                        window.location.href = "/"
                       })
                     }}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"
