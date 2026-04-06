@@ -575,25 +575,22 @@ export function ReportsClient({ orgDisplayMode, orgName }: { orgDisplayMode: str
         </Button>
       </div>
 
-      <div className={cn(
-        "rounded-lg border border-border bg-background p-5 flex flex-col gap-3",
-        !isByTask && "opacity-50 pointer-events-none"
-      )}>
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="size-5 text-primary" />
+      {isByTask && (
+        <div className="rounded-lg border border-border bg-background p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="size-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[14px] font-medium">{t("taskCoverage")}</p>
+              <p className="text-[12px] text-muted-foreground">{t("taskCoverageDescription")}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[14px] font-medium">{t("taskCoverage")}</p>
-            <p className="text-[12px] text-muted-foreground">
-              {isByTask ? t("taskCoverageDescription") : t("taskCoverageDisabled")}
-            </p>
-          </div>
+          <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_tech")}>
+            {t("generateReport")}
+          </Button>
         </div>
-        <Button variant="outline" size="sm" className="self-start" onClick={() => setView("period_tech")} disabled={!isByTask}>
-          {t("generateReport")}
-        </Button>
-      </div>
+      )}
 
       <div className="rounded-lg border border-border bg-background p-5 flex flex-col gap-3">
         <div className="flex items-center gap-3">
