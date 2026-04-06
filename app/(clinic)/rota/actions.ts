@@ -1609,30 +1609,28 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       return true
     })
 
-    // L1 safety check: verify Claude didn't exceed days_per_week budget
+    // L1 safety check: cap each staff member to their days_per_week budget
+    // Instead of falling back entirely, trim excess assignments per-staff
     const budgetByStaff: Record<string, number> = {}
-    for (const a of deduped) {
-      budgetByStaff[a.staff_id] = (budgetByStaff[a.staff_id] ?? 0) + 1
-    }
-    let budgetViolation = false
+    const staffCaps: Record<string, number> = {}
     for (const s of allStaff) {
-      const aiDays = budgetByStaff[s.id] ?? 0
       const cap = s.days_per_week ?? 5
-      // Account for leave days this week — staff can't exceed cap minus leave days
       const leaveDays = weekDates.filter((d) => leaveByDate[d]?.includes(s.id)).length
-      const effectiveCap = Math.max(0, cap - leaveDays)
-      if (aiDays > effectiveCap) {
-        budgetViolation = true
-        break
-      }
+      staffCaps[s.id] = Math.max(0, cap - leaveDays)
     }
 
-    // If Claude broke L1, fall back to engine result
-    const finalAssignments = budgetViolation ? engineResult.days.flatMap((d) =>
-      d.assignments.map((a) => ({ staff_id: a.staff_id, date: d.date, shift_type: a.shift_type }))
-    ) : deduped
+    const budgetCapped: typeof deduped = []
+    for (const a of deduped) {
+      const count = budgetByStaff[a.staff_id] ?? 0
+      const cap = staffCaps[a.staff_id] ?? 5
+      if (count < cap) {
+        budgetCapped.push(a)
+        budgetByStaff[a.staff_id] = count + 1
+      }
+      // else: silently drop this assignment (over budget)
+    }
 
-    const budgetNote = budgetViolation ? " [Fallback: Claude's changes broke budget constraints — using engine v2 base rota.]" : ""
+    const finalAssignments = budgetCapped
 
     // Filter out overrides
     const toInsert = finalAssignments
@@ -1660,7 +1658,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     // Build reasoning summary — assessment + unresolved issues only (no changes list)
     const warningsStr = aiWarnings.length > 0 ? `\n\nRemaining issues:\n${aiWarnings.map((w) => `• ${w}`).join("\n")}` : ""
-    const fullReasoning = `${reasoning}${budgetNote}${warningsStr}`
+    const fullReasoning = `${reasoning}${warningsStr}`
 
     // Recalculate shift coverage warnings from FINAL assignments (not stale engine warnings)
     const finalCoverageWarnings: string[] = []
