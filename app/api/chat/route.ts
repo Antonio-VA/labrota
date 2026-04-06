@@ -111,7 +111,7 @@ Guidelines:
 - ${weekContext}
 ${pageContext ? `- ${pageContext}` : ""}
 - When analysing coverage, compare actual staff per shift against lab minimums.
-- IMPORTANT: Always use your read tools (getWeekRota, getWeekCoverage, etc.) to fetch actual data before answering questions about the rota. Never guess or assume what the rota contains.
+- IMPORTANT: Always use your read tools (getWeekRota, getWeekCoverage, etc.) to fetch actual data before answering questions about the rota. Never guess or assume what the rota contains. Even if you just proposed generating a rota and the user confirmed it, you MUST call getWeekRota or getWeekCoverage to see the actual results — your propose tools do not return rota data.
 - Dates in tool parameters use ISO format (YYYY-MM-DD), but when DISPLAYING dates to the user, always use a readable format like "Mon 4 May 2026" or "4–10 May 2026". Never show raw ISO dates in your text responses.
 - The current date is ${new Date().toISOString().split("T")[0]}.`
 
