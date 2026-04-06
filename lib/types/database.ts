@@ -75,6 +75,7 @@ export interface Organisation {
   task_reasoning_enabled:   boolean
   daily_hybrid_limit:       number
   auth_method:              'otp' | 'password'
+  rota_email_format:        'by_shift' | 'by_person'
   created_at:               string
 }
 

@@ -381,7 +381,7 @@
     "copyAssignments": "{count} assignments copied",
     "copy": "Copy",
     "shareImage": "Share image",
-    "saveFavoriteView": "Save as favorite view",
+    "saveFavoriteView": "Set favorite view",
     "goToFavoriteView": "Go to favorite view",
     "favoriteViewSaved": "Favorite view saved"
   },
@@ -1335,7 +1335,13 @@
     "emailAdded": "Email added",
     "invalidEmail": "Invalid email",
     "enableAll": "Enable all",
-    "disableAll": "Disable all"
+    "disableAll": "Disable all",
+    "emailFormat": "Email format",
+    "emailFormatDesc": "Choose how the rota is displayed in the notification email.",
+    "byShift": "By shift",
+    "byShiftDesc": "Rows are shifts, columns are days",
+    "byPerson": "By person",
+    "byPersonDesc": "Rows are staff, columns are days"
   },
   "mobileEdit": {
     "editMode": "Edit mode",
@@ -1366,7 +1372,7 @@
   },
   "assignmentSheet": {
     "offFree": "OFF · Not scheduled",
-    "libres": "Available",
+    "libres": "Off",
     "regenerateDay": "Regenerate day",
     "biopsyForecast": "Biopsy forecast",
     "dragHint": "Drag here or + Add",

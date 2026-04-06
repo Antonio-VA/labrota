@@ -985,12 +985,21 @@ export function AssignmentSheet({
               )
             })}
 
-            {/* Libres section */}
-            <DroppableOffSection className="transition-colors bg-muted/40">
-              <div className="px-4 pt-2.5 pb-1.5 border-t border-dashed border-border">
+            {/* Off section */}
+            <DroppableOffSection className="transition-colors">
+              <div
+                className="px-4 pt-2.5 pb-1.5 border-t border-border"
+              >
                 <span className="text-[12px] font-medium text-muted-foreground">{t("libres")}</span>
               </div>
-              <div className="px-3 flex flex-col gap-1 pb-3 min-h-[40px]">
+              <div
+                className="px-3 flex flex-col gap-1 pb-3 min-h-[40px]"
+                style={{
+                  backgroundColor: "#ffffff",
+                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
+                  backgroundSize: "10px 10px",
+                }}
+              >
                 {offStaff.map((s) => (
                   <DraggableOffChip
                     key={s.id}

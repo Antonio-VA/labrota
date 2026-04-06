@@ -1881,7 +1881,7 @@ function ShiftGrid({
 
         {/* Header row — uses headerDates (from weekStart) so dates update immediately on navigation */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
-          <div className="border-r border-border bg-muted" />
+          <div className="bg-muted" />
           {headerDates.map((dateStr) => {
             const day   = localDays.find((ld) => ld.date === dateStr)
             const d     = new Date(dateStr + "T12:00:00")
@@ -1980,7 +1980,7 @@ function ShiftGrid({
         {SHIFT_ROWS.map((shiftRow) => (
           <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             {/* Shift label — right-aligned, three-line: code / start / end */}
-            <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
+            <div className="flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
               <span className="text-[11px] leading-tight font-semibold text-foreground">{shiftRow}</span>
               <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
                 {shiftTypeMap[shiftRow]?.start_time ? formatTime(shiftTypeMap[shiftRow].start_time, timeFormat) : shiftRow}
@@ -2072,8 +2072,8 @@ function ShiftGrid({
         ))}
 
         {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted border-t border-border">
-          <div className="border-r border-border flex flex-col items-end justify-center px-2.5 py-2">
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted">
+          <div className="flex flex-col items-end justify-center px-2.5 py-2">
             <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
           {localDays.map((day) => {
@@ -3779,17 +3779,17 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 },
               }] : []),
               // ── Templates ──
-              ...(view === "week" && canEdit && hasAssignments && !isPublished ? [{
+              ...(view === "week" && canEdit && hasAssignments ? [{
                 label: t("saveAsTemplate"),
                 icon: <BookmarkPlus className="size-3.5" />,
                 onClick: () => setSaveTemplateOpen(true),
                 dividerBefore: true,
                 sectionLabel: locale === "es" ? "Plantillas" : "Templates",
-              }, {
+              }, ...(!isPublished ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),
-              }] : view === "week" && canEdit ? [{
+              }] : [])] : view === "week" && canEdit && !isPublished ? [{
                 label: t("applyTemplate"),
                 icon: <BookmarkCheck className="size-3.5" />,
                 onClick: () => setApplyTemplateOpen(true),

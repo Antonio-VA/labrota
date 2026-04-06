@@ -10,7 +10,7 @@ import { SettingsImplementation } from "@/components/settings-implementation"
 import { SettingsNotifications } from "@/components/settings-notifications"
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
-import { getPublishRecipients } from "@/app/(clinic)/notifications-actions"
+import { getPublishRecipients, getRotaEmailFormat } from "@/app/(clinic)/notifications-actions"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getAuthUser } from "@/lib/auth-cache"
@@ -31,6 +31,7 @@ export default async function SettingsPage() {
   let stepCompletions: Record<string, StepCompletion> = {}
   let isAdmin = false
   let notificationRecipients: Awaited<ReturnType<typeof getPublishRecipients>> = []
+  let emailFormat: "by_shift" | "by_person" = "by_shift"
 
   if (orgId) {
     const supabase = await createClient()
@@ -75,7 +76,11 @@ export default async function SettingsPage() {
 
     // Fetch notification recipients (admin only)
     if (isAdmin) {
-      try { notificationRecipients = await getPublishRecipients() } catch { /* non-admin */ }
+      try {
+        const [recipients, fmt] = await Promise.all([getPublishRecipients(), getRotaEmailFormat()])
+        notificationRecipients = recipients
+        emailFormat = fmt
+      } catch { /* non-admin */ }
     }
   }
 
@@ -123,7 +128,7 @@ export default async function SettingsPage() {
             }
             notificaciones={
               isAdmin ? (
-                <SettingsNotifications initialRecipients={notificationRecipients} />
+                <SettingsNotifications initialRecipients={notificationRecipients} initialEmailFormat={emailFormat} />
               ) : undefined
             }
             implementacion={

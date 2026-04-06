@@ -187,6 +187,32 @@ export async function toggleExternalRecipient(id: string, enabled: boolean): Pro
   return {}
 }
 
+/** Get the org's rota email format preference */
+export async function getRotaEmailFormat(): Promise<"by_shift" | "by_person"> {
+  const orgId = await getOrgId()
+  if (!orgId) return "by_shift"
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from("organisations")
+    .select("rota_email_format")
+    .eq("id", orgId)
+    .single() as { data: { rota_email_format?: string } | null }
+  return (data?.rota_email_format as "by_shift" | "by_person") ?? "by_shift"
+}
+
+/** Update the org's rota email format preference */
+export async function updateRotaEmailFormat(format: "by_shift" | "by_person"): Promise<{ error?: string }> {
+  const { orgId } = await requireOrgAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ rota_email_format: format } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  return {}
+}
+
 /** Check if any notification recipients are enabled for the current org */
 export async function hasEnabledRecipients(): Promise<boolean> {
   const orgId = await getOrgId()

@@ -12,8 +12,9 @@ export function buildRotaEmailHtml(params: {
   orgName: string
   publisherName: string
   locale: "es" | "en"
+  emailFormat?: "by_shift" | "by_person"
 }): { subject: string; html: string } {
-  const { data, orgName, publisherName, locale } = params
+  const { data, orgName, publisherName, locale, emailFormat = "by_shift" } = params
   const isEs = locale === "es"
 
   const weekEnd = new Date(data.weekStart + "T12:00:00")
@@ -43,7 +44,87 @@ export function buildRotaEmailHtml(params: {
 
   let gridHtml: string
 
-  if (data.rotaDisplayMode === "by_task") {
+  if (emailFormat === "by_person") {
+    // By person layout — rows are staff members, columns are days
+    // Collect all staff from assignments
+    const staffMap = new Map<string, { id: string; first_name: string; last_name: string; role: string }>()
+    for (const day of data.days) {
+      for (const a of day.assignments) {
+        if (!staffMap.has(a.staff_id)) staffMap.set(a.staff_id, a.staff)
+      }
+    }
+
+    // Group by role and sort
+    const roleOrder: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
+    const ROLE_LABELS: Record<string, Record<string, string>> = {
+      lab:       { es: "EMBRIOLOGÍA", en: "EMBRYOLOGY" },
+      andrology: { es: "ANDROLOGÍA", en: "ANDROLOGY" },
+      admin:     { es: "ADMINISTRACIÓN", en: "ADMINISTRATION" },
+    }
+    const staffList = Array.from(staffMap.values()).sort((a, b) => {
+      const ro = (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9)
+      if (ro !== 0) return ro
+      return a.first_name.localeCompare(b.first_name)
+    })
+
+    // Build staff-by-day lookup
+    const staffDayShift: Record<string, Record<string, string>> = {} // staffId -> date -> shiftCode
+    for (const day of data.days) {
+      for (const a of day.assignments) {
+        if (!staffDayShift[a.staff_id]) staffDayShift[a.staff_id] = {}
+        staffDayShift[a.staff_id][day.date] = a.shift_type
+      }
+    }
+
+    // On leave lookup
+    const onLeave = data.onLeaveByDate ?? {}
+
+    // Build rows grouped by role
+    let currentRole = ""
+    const personRows = staffList.map((s) => {
+      let roleHeader = ""
+      if (s.role !== currentRole) {
+        currentRole = s.role
+        const label = ROLE_LABELS[s.role]?.[locale] ?? s.role.toUpperCase()
+        roleHeader = `<tr>
+          <td colspan="${data.days.length + 1}" style="padding:6px 8px 3px;font-size:10px;font-weight:700;color:#64748b;background:#f8fafd;border-bottom:1px solid #ccddee;">
+            ${label}
+          </td>
+        </tr>`
+      }
+
+      const cells = data.days.map((day) => {
+        const shift = staffDayShift[s.id]?.[day.date]
+        const isOnLeave = (onLeave[day.date] ?? []).includes(s.id)
+        let content: string
+        if (isOnLeave) {
+          content = `<span style="color:#f59e0b;font-weight:600;font-size:10px;">L</span>`
+        } else if (shift) {
+          content = `<span style="color:#1b4f8a;font-weight:600;font-size:11px;">${shift}</span>`
+        } else {
+          content = `<span style="color:#94a3b8;font-size:10px;">OFF</span>`
+        }
+        return `<td style="padding:4px 2px;text-align:center;border-right:1px solid #ccddee;background:${day.isWeekend ? '#f8fafd' : '#fff'};">
+          ${content}
+        </td>`
+      }).join("")
+
+      return `${roleHeader}<tr style="border-bottom:1px solid #ccddee;">
+        <td style="padding:4px 8px;border-right:1px solid #ccddee;background:#fff;font-size:11px;font-weight:500;white-space:nowrap;">
+          ${s.first_name} ${s.last_name[0]}.
+        </td>
+        ${cells}
+      </tr>`
+    }).join("")
+
+    gridHtml = `<table style="min-width:500px;width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
+      <thead><tr style="background:#f1f5fb;">
+        <th style="padding:6px 8px;border-right:1px solid #ccddee;border-bottom:1px solid #ccddee;text-align:left;font-size:9px;font-weight:600;color:#64748b;"></th>
+        ${dayHeaders}
+      </tr></thead>
+      <tbody>${personRows}</tbody>
+    </table>`
+  } else if (data.rotaDisplayMode === "by_task") {
     // By task layout
     const tecnicas = (data.tecnicas ?? []).filter((t: { activa: boolean }) => t.activa).sort((a: { orden: number }, b: { orden: number }) => a.orden - b.orden)
     const taskHeaders = data.days.map((day) => {
@@ -196,6 +277,7 @@ export async function sendRotaPublishEmails(params: {
   orgName: string
   publisherName: string
   locale: "es" | "en"
+  emailFormat?: "by_shift" | "by_person"
 }) {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey || params.emails.length === 0) return

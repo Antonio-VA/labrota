@@ -2097,10 +2097,11 @@ async function sendPublishNotifications(orgId: string, weekStart: string, publis
   const emails = await getEnabledRecipientEmails(orgId)
   if (emails.length === 0) return
 
-  // Get org name and locale
+  // Get org name + email format preference
   const admin = createAdminClient()
-  const { data: org } = await admin.from("organisations").select("name").eq("id", orgId).single() as { data: { name: string } | null }
+  const { data: org } = await admin.from("organisations").select("name, rota_email_format").eq("id", orgId).single() as { data: { name: string; rota_email_format?: string } | null }
   const orgName = org?.name ?? "LabRota"
+  const emailFormat = (org?.rota_email_format as "by_shift" | "by_person") ?? "by_shift"
 
   // Fetch rota data
   const data = await getRotaWeek(weekStart)
@@ -2110,7 +2111,7 @@ async function sendPublishNotifications(orgId: string, weekStart: string, publis
   const cookieStore = await cookies()
   const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
 
-  await sendRotaPublishEmails({ emails, data, orgName, publisherName, locale })
+  await sendRotaPublishEmails({ emails, data, orgName, publisherName, locale, emailFormat })
 }
 
 // ── unlockRota ────────────────────────────────────────────────────────────────

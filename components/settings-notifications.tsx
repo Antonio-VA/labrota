@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, Mail, Check } from "lucide-react"
 import { toast } from "sonner"
+import { LayoutList, Users } from "lucide-react"
 import {
   toggleRecipient,
   addExternalRecipient,
   removeExternalRecipient,
   toggleExternalRecipient,
+  updateRotaEmailFormat,
   type RecipientRow,
 } from "@/app/(clinic)/notifications-actions"
 
@@ -50,11 +52,15 @@ function ToggleSwitch({ enabled, onToggle, disabled }: { enabled: boolean; onTog
 
 export function SettingsNotifications({
   initialRecipients,
+  initialEmailFormat = "by_shift",
 }: {
   initialRecipients: RecipientRow[]
+  initialEmailFormat?: "by_shift" | "by_person"
 }) {
   const t = useTranslations("notifications")
   const [recipients, setRecipients] = useState(initialRecipients)
+  const [emailFormat, setEmailFormat] = useState(initialEmailFormat)
+  const [savingFormat, setSavingFormat] = useState(false)
   const [newEmail, setNewEmail] = useState("")
   const [newName, setNewName] = useState("")
   const [addingEmail, setAddingEmail] = useState(false)
@@ -172,6 +178,49 @@ export function SettingsNotifications({
           <p className="text-[14px] font-medium">{t("title")}</p>
         </div>
         <p className="text-[13px] text-muted-foreground">{t("description")}</p>
+      </div>
+
+      {/* Email format */}
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("emailFormat")}</p>
+        </div>
+        <div className="px-5 py-3">
+          <p className="text-[12px] text-muted-foreground mb-3">{t("emailFormatDesc")}</p>
+          <div className="flex gap-3">
+            {(["by_shift", "by_person"] as const).map((fmt) => (
+              <button
+                key={fmt}
+                type="button"
+                disabled={savingFormat}
+                onClick={() => {
+                  if (fmt === emailFormat) return
+                  setEmailFormat(fmt)
+                  setSavingFormat(true)
+                  updateRotaEmailFormat(fmt)
+                    .then((r) => { if (r.error) { toast.error(r.error); setEmailFormat(emailFormat) } })
+                    .finally(() => setSavingFormat(false))
+                }}
+                className={cn(
+                  "flex-1 flex items-center gap-2.5 rounded-lg border px-4 py-3 transition-colors text-left",
+                  emailFormat === fmt
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border hover:border-muted-foreground/30",
+                  savingFormat && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {fmt === "by_shift"
+                  ? <LayoutList className="size-4 text-primary shrink-0" />
+                  : <Users className="size-4 text-primary shrink-0" />
+                }
+                <div>
+                  <p className={cn("text-[13px] font-medium", emailFormat === fmt && "text-primary")}>{t(fmt === "by_shift" ? "byShift" : "byPerson")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t(fmt === "by_shift" ? "byShiftDesc" : "byPersonDesc")}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Internal users */}

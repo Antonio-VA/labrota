@@ -381,7 +381,7 @@
     "copyAssignments": "{count} asignaciones copiadas",
     "copy": "Copiar",
     "shareImage": "Compartir imagen",
-    "saveFavoriteView": "Guardar vista favorita",
+    "saveFavoriteView": "Fijar vista favorita",
     "goToFavoriteView": "Ir a vista favorita",
     "favoriteViewSaved": "Vista favorita guardada"
   },
@@ -1335,7 +1335,13 @@
     "emailAdded": "Email añadido",
     "invalidEmail": "Email no válido",
     "enableAll": "Activar todos",
-    "disableAll": "Desactivar todos"
+    "disableAll": "Desactivar todos",
+    "emailFormat": "Formato del email",
+    "emailFormatDesc": "Elige cómo se muestra el horario en el email de notificación.",
+    "byShift": "Por turno",
+    "byShiftDesc": "Filas por turno, columnas por día",
+    "byPerson": "Por persona",
+    "byPersonDesc": "Filas por persona, columnas por día"
   },
   "mobileEdit": {
     "editMode": "Modo edicion",
@@ -1366,7 +1372,7 @@
   },
   "assignmentSheet": {
     "offFree": "OFF · Libres",
-    "libres": "Libres",
+    "libres": "Off",
     "regenerateDay": "Regenerar día",
     "biopsyForecast": "Biopsias previstas",
     "dragHint": "Arrastra aquí o + Añadir",
