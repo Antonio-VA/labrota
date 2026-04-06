@@ -2403,8 +2403,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           {Object.entries(day.shiftCounts ?? {})
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([shift, count]) => (
-                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/5 text-primary/80 border border-primary/15 tabular-nums">
-                                {shift} <span className="font-semibold text-foreground/80">{count}</span>
+                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/10 text-primary border border-primary/20 tabular-nums">
+                                {shift} <span className="font-semibold text-foreground">{count}</span>
                               </span>
                             ))}
                         </div>
