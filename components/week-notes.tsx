@@ -16,15 +16,21 @@ function truncate(s: string, max: number = 40): string {
   return s.length > max ? s.slice(0, max) + "…" : s
 }
 
-export function WeekNotes({ weekStart }: { weekStart: string }) {
-  const [data, setData] = useState<WeekNoteData | null>(null)
+export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekStart: string; initialData?: WeekNoteData }) {
+  const [data, setData] = useState<WeekNoteData | null>(initialDataProp ?? null)
+  const [loadedWeek, setLoadedWeek] = useState(initialDataProp ? weekStart : "")
   const [adding, setAdding] = useState(false)
   const [newText, setNewText] = useState("")
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    getWeekNotes(weekStart).then(setData)
-  }, [weekStart])
+    if (weekStart === loadedWeek) return // already have data for this week
+    setData(null)
+    getWeekNotes(weekStart).then((d) => {
+      setData(d)
+      setLoadedWeek(weekStart)
+    })
+  }, [weekStart, loadedWeek])
 
   // Always render the container to prevent layout shift — show nothing inside until data loads
   if (!data) return <div className="border-t border-border px-4 py-2 shrink-0 min-h-[36px]" />

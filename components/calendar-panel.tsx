@@ -2810,7 +2810,7 @@ import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemp
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -2818,7 +2818,7 @@ export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; 
   )
 }
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff, hasNotifications = false }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean }) {
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -4657,7 +4657,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       {/* Week notes — desktop only, min-h ensures space is reserved during load */}
       {view === "week" && (
         <div className="hidden md:block shrink-0 min-h-[36px]" data-week-notes>
-          <WeekNotes weekStart={weekStart} />
+          <WeekNotes weekStart={weekStart} initialData={initialNotes} />
         </div>
       )}
 

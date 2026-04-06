@@ -16,15 +16,18 @@ const ChatPanel = dynamic(
 )
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
+import type { WeekNoteData } from "@/app/(clinic)/notes-actions"
 
 export function ScheduleClient({
   initialData,
   initialStaff,
   hasNotifications = false,
+  initialNotes,
 }: {
   initialData?: RotaWeekData
   initialStaff?: StaffWithSkills[]
   hasNotifications?: boolean
+  initialNotes?: WeekNoteData
 }) {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
   const [chatCollapsed, setChatCollapsed] = useState(true)
@@ -51,6 +54,7 @@ export function ScheduleClient({
           initialData={initialData}
           initialStaff={initialStaff}
           hasNotifications={hasNotifications}
+          initialNotes={initialNotes}
         />
         <ChatPanel
           onRefresh={() => setCalendarRefreshKey((k) => k + 1)}
@@ -67,6 +71,7 @@ export function ScheduleClient({
             chatOpen={false}
             initialData={initialData}
             initialStaff={initialStaff}
+            initialNotes={initialNotes}
           />
         </div>
         <ChatPanel
