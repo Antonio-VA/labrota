@@ -329,7 +329,7 @@ export function ChatPanel({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, status])
 
   function toggleCollapse() {
     if (onToggleCollapsed) {
@@ -402,12 +402,29 @@ export function ChatPanel({
                     type: "tool-invocation"
                     toolName: string
                     state: string
-                    result?: Proposal
+                    result?: Proposal | { error: string }
                   }
-                  if (tp.state !== "result" || !tp.result?.proposal) return null
+                  // Show loading indicator while tool is executing
+                  if (tp.state === "call" || tp.state === "partial-call") {
+                    return (
+                      <div key={i} className="rounded-lg bg-muted/50 border border-border px-3 py-2 text-[12px] text-muted-foreground animate-pulse">
+                        {t("thinking")}
+                      </div>
+                    )
+                  }
+                  if (tp.state !== "result") return null
+                  // Show error from tool result
+                  if (tp.result && "error" in tp.result && !("proposal" in tp.result)) {
+                    return (
+                      <div key={i} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive max-w-[95%]">
+                        {(tp.result as { error: string }).error}
+                      </div>
+                    )
+                  }
+                  if (!tp.result || !(tp.result as Proposal).proposal) return null
                   return (
                     <div key={i} className="w-full max-w-[95%]">
-                      <ProposalCard proposal={tp.result} onRefresh={onRefresh} />
+                      <ProposalCard proposal={tp.result as Proposal} onRefresh={onRefresh} />
                     </div>
                   )
                 })}
