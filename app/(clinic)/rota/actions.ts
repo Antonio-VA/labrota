@@ -568,7 +568,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     }
   }
 
-  // Parse engine warnings — skip coverage warnings (computed live above)
+  // Parse engine warnings — only keep user-created rule violations (supervisor rules)
+  // Coverage and skill gap warnings are computed live above; engine scheduling
+  // decisions (avoid_shifts, budget overrides, etc.) are internal, not user-facing.
   const engineWarningsRaw = (rotaData as { engine_warnings?: string[] | null }).engine_warnings ?? null
   if (engineWarningsRaw && Array.isArray(engineWarningsRaw)) {
     for (const w of engineWarningsRaw) {
@@ -577,9 +579,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const [, date, message] = match
         const day = dayMap[date]
         if (day) {
-          // Skip coverage warnings — they are now computed live from current assignments
-          const isCoverage = message.includes("COBERTURA INSUFICIENTE") || message.includes("insuficiente:") || message.includes("insufficient") || message.includes("coverage")
-          if (isCoverage) continue
+          // Only show supervisor/training rule warnings — these are user-created rules
+          const isUserRule = message.includes("mismo turno") || message.includes("same shift") || message.includes("supervisor")
+          if (!isUserRule) continue
           const isDuplicate = day.warnings.some((dw) => dw.category === "rule" && dw.message === message)
           if (!isDuplicate) {
             day.warnings.push({ category: "rule", message })
