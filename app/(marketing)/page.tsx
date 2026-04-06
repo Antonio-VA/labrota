@@ -42,10 +42,9 @@ const content = {
       sub: "Create, manage and optimise your fertility lab rotas with the only tool designed specifically for embryologists, andrologists and IVF lab managers.",
       cta1: "Request a Demo",
       cta2: "See how it works",
-      badge1: "Mobile-optimised for staff",
-      badge2: "Desktop-optimised for managers",
-      badge3: "No training required",
-      badge4: "Auto implementation",
+      badge1: "Mobile optimised",
+      badge2: "Desktop optimised",
+      badge3: "Designed by embryologists",
     },
     social: null,
     problem: {
@@ -144,10 +143,9 @@ const content = {
       sub: "Crea, gestiona y optimiza las rotas de tu laboratorio de fertilidad con la única herramienta diseñada específicamente para embriólogos, andrólogos y responsables de lab IVF.",
       cta1: "Solicitar una Demo",
       cta2: "Ver cómo funciona",
-      badge1: "Web optimizada para móvil",
-      badge2: "Optimizado en escritorio para managers",
-      badge3: "Sin formación previa",
-      badge4: "Auto implementación",
+      badge1: "Optimizado para móvil",
+      badge2: "Optimizado para escritorio",
+      badge3: "Diseñado por embriólogos",
     },
     social: null,
     problem: {
@@ -476,8 +474,8 @@ export default function MarketingPage() {
               <Play className="w-4 h-4 shrink-0" /> {t.hero.cta2}
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-1.5 mt-5 max-w-md">
-            {[t.hero.badge1, t.hero.badge2, t.hero.badge3, t.hero.badge4].map(b => (
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-5">
+            {[t.hero.badge1, t.hero.badge2, t.hero.badge3].map(b => (
               <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
                 <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}
               </span>
