@@ -2111,7 +2111,7 @@ function ShiftGrid({
                     onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
                     onMouseEnter={() => setHovered(s.id)}
                     onMouseLeave={() => setHovered(null)}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-pointer transition-colors duration-150"
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border select-none cursor-pointer transition-colors duration-150"
                     style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
@@ -2128,7 +2128,7 @@ function ShiftGrid({
                       onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
                       onMouseEnter={() => setHovered(s.id)}
                       onMouseLeave={() => setHovered(null)}
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border cursor-pointer transition-colors duration-150"
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border cursor-pointer transition-colors duration-150"
                       style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
