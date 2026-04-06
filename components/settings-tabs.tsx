@@ -36,8 +36,8 @@ export function SettingsTabs({
   const tabKeys = BASE_TAB_KEYS.filter((key) => content[key] !== null)
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex flex-col gap-6 w-full overflow-hidden">
+      <div className="flex border-b border-border">
         {tabKeys.map((key) => (
           <button
             key={key}
