@@ -1179,8 +1179,8 @@ function PersonGrid({
                     return (
                       <div
                         key={day.date}
-                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-blue-100/50" : "bg-background")}
-                        style={isOffCell ? { backgroundColor: "#ffffff", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
+                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-primary/10" : "bg-background")}
+                        style={isOffCell ? { backgroundColor: "var(--card)", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
                         onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -1426,9 +1426,9 @@ function TransposedPersonGrid({
                     className={cn(
                       "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
                       compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
-                      isHovered ? "bg-blue-100/50" : "bg-background",
+                      isHovered ? "bg-primary/10" : "bg-background",
                     )}
-                    style={isOffCell ? { backgroundColor: "#ffffff", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
+                    style={isOffCell ? { backgroundColor: "var(--card)", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                   >
@@ -2098,9 +2098,9 @@ function ShiftGrid({
                 isPublished={isPublished}
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
-                  backgroundColor: "#ffffff",
-                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
-                  backgroundSize: "10px 10px",
+                  backgroundColor: "var(--card)",
+                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)",
+                  backgroundSize: "8px 8px",
                 }}
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
@@ -2129,7 +2129,7 @@ function ShiftGrid({
                       onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
                       onMouseEnter={() => setHovered(s.id)}
                       onMouseLeave={() => setHovered(null)}
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-background text-muted-foreground border border-border cursor-pointer transition-colors duration-150"
+                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border cursor-pointer transition-colors duration-150"
                       style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                     >
                       <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
