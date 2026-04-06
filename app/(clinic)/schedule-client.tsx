@@ -7,7 +7,12 @@ import { CalendarPanel } from "@/components/calendar-panel"
 // Defer AI SDK + chat UI to a separate JS chunk — CalendarPanel hydrates first
 const ChatPanel = dynamic(
   () => import("@/components/chat-panel").then((m) => m.ChatPanel),
-  { ssr: false, loading: () => null }
+  {
+    ssr: false,
+    loading: () => (
+      <aside className="hidden lg:flex flex-col border-l bg-background shrink-0 overflow-hidden h-full w-10" />
+    ),
+  }
 )
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"

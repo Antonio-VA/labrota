@@ -310,7 +310,7 @@ export function ChatPanel({
     setMounted(true)
   }, [controlledCollapsed])
   const bottomRef               = useRef<HTMLDivElement>(null)
-  const inputRef                = useRef<HTMLInputElement>(null)
+  const inputRef                = useRef<HTMLTextAreaElement>(null)
   const isLoading               = status === "submitted" || status === "streaming"
 
   useEffect(() => {
@@ -412,20 +412,27 @@ export function ChatPanel({
         </div>
       </ScrollArea>
 
-      {/* Input — aligned with notes row (budget bar spacer below pushes it up) */}
-      <div className="shrink-0 border-t bg-background px-3 py-2">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <input
+      {/* Input */}
+      <div className="shrink-0 border-t bg-background p-3">
+        <form onSubmit={handleSubmit} className="relative">
+          <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
             placeholder={t("placeholder")}
             disabled={isLoading}
+            rows={2}
             className="
-              flex-1 h-9 px-3 rounded-md border border-input bg-background
+              w-full resize-none rounded-xl border border-input bg-muted/30 px-3 py-2.5 pr-11
               text-[13px] text-foreground placeholder:text-muted-foreground/50
-              outline-none transition-colors
-              focus:border-primary focus:ring-2 focus:ring-primary/20
+              outline-none transition-colors leading-relaxed
+              focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background
               disabled:opacity-50 disabled:cursor-not-allowed
             "
           />
@@ -433,14 +440,12 @@ export function ChatPanel({
             type="submit"
             size="icon"
             disabled={isLoading || !input.trim()}
-            className="size-9 shrink-0 rounded-md"
+            className="absolute right-2 bottom-2 size-7 shrink-0 rounded-lg"
           >
-            <SendHorizonal className="size-4" />
+            <SendHorizonal className="size-3.5" />
           </Button>
         </form>
       </div>
-      {/* Spacer — matches budget bar height so input aligns with notes row */}
-      <div className="shrink-0 h-12" />
     </>
   )
 
