@@ -2,8 +2,6 @@ import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 
-const STAFF_BORDER_COLOR = "#94A3B8"
-
 /**
  * Build LabRota-branded HTML email with the week schedule inline.
  */
@@ -178,7 +176,7 @@ export function buildRotaEmailHtml(params: {
         }
 
         const namesHtml = dayAssignments.map((a) => {
-          return `<div style="padding:2px 5px 2px 6px;margin-bottom:2px;border-left:3px solid ${STAFF_BORDER_COLOR};border-radius:3px;font-size:11px;font-weight:500;">
+          return `<div style="padding:2px 4px;margin-bottom:1px;font-size:11px;font-weight:500;">
             ${a.staff.first_name} ${a.staff.last_name[0]}.
           </div>`
         }).join("")

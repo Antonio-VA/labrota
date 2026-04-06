@@ -2077,11 +2077,15 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   if (orgId) logAuditEvent({ orgId, userId: user?.id, userEmail: user?.email, action: "rota_published", entityType: "rota", entityId: rotaId })
+  // Capture locale before revalidation (cookies may not be available after)
+  const cookieStore = await cookies()
+  const notifLocale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
+
   revalidatePath("/")
 
   // Fire-and-forget: send notification emails
   if (rotaRow?.week_start) {
-    sendPublishNotifications(orgId, rotaRow.week_start, publisherName).catch((err) => {
+    sendPublishNotifications(orgId, rotaRow.week_start, publisherName, notifLocale).catch((err) => {
       console.error("[publishRota] notification error:", err)
     })
   }
@@ -2089,7 +2093,7 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   return {}
 }
 
-async function sendPublishNotifications(orgId: string, weekStart: string, publisherName: string) {
+async function sendPublishNotifications(orgId: string, weekStart: string, publisherName: string, locale: "es" | "en") {
   const { getEnabledRecipientEmails } = await import("@/app/(clinic)/notifications-actions")
   const { sendRotaPublishEmails } = await import("@/lib/rota-email")
   const { createAdminClient } = await import("@/lib/supabase/admin")
@@ -2103,13 +2107,8 @@ async function sendPublishNotifications(orgId: string, weekStart: string, publis
   const orgName = org?.name ?? "LabRota"
   const emailFormat = (org?.rota_email_format as "by_shift" | "by_person") ?? "by_shift"
 
-  // Fetch rota data
+  // Fetch rota data (uses RLS client via cookies — called while request is still alive)
   const data = await getRotaWeek(weekStart)
-
-  // Get locale from cookie (default es)
-  const { cookies } = await import("next/headers")
-  const cookieStore = await cookies()
-  const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
 
   await sendRotaPublishEmails({ emails, data, orgName, publisherName, locale, emailFormat })
 }
