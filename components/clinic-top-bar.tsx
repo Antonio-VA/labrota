@@ -89,7 +89,11 @@ export function ClinicTopBar({
                           localStorage.setItem("activeOrgId", org.id)
                           startSwitch(async () => {
                             await switchOrgAction(org.id)
-                            window.location.href = "/"
+                            // Clear stale calendar state so the new org loads fresh
+                            sessionStorage.removeItem("labrota_current_date")
+                            sessionStorage.removeItem("labrota_view")
+                            // Force full reload — cache-bust to prevent serving stale page
+                            window.location.href = "/?_=" + Date.now()
                           })
                         }}
                         className="flex-1 text-left truncate"
