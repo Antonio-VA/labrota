@@ -778,6 +778,8 @@ export function LeavesList({
   const [showCancelled, setShowCancelled] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
   const [, startCancelTransition] = useTransition()
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 15
 
   function handleCancel(leaveId: string) {
     toast(t("cancelConfirm"), {
@@ -829,8 +831,17 @@ export function LeavesList({
   const activeFiltered    = filtered.filter((l) => !inactiveStatuses.includes(l.status ?? "approved"))
   const cancelledFiltered = filtered.filter((l) => inactiveStatuses.includes(l.status ?? "approved"))
 
-  const filteredUpcoming = activeFiltered.filter((l) => l.end_date >= TODAY)
-  const filteredPast     = activeFiltered.filter((l) => l.end_date <  TODAY)
+  const filteredUpcoming = activeFiltered
+    .filter((l) => l.end_date >= TODAY)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
+  const filteredPast = activeFiltered
+    .filter((l) => l.end_date < TODAY)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+
+  // Pagination for upcoming leaves
+  const totalPages = Math.max(1, Math.ceil(filteredUpcoming.length / PAGE_SIZE))
+  const safePageUpcoming = Math.min(page, totalPages)
+  const paginatedUpcoming = filteredUpcoming.slice((safePageUpcoming - 1) * PAGE_SIZE, safePageUpcoming * PAGE_SIZE)
 
   function openCreate() {
     setEditing(null)
@@ -881,7 +892,7 @@ export function LeavesList({
       <div className="flex items-center justify-between gap-2 md:gap-3 mb-4 flex-wrap">
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as LeaveType | "all")}
+          onChange={(e) => { setTypeFilter(e.target.value as LeaveType | "all"); setPage(1) }}
           className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="all">{t("columns.type")}: —</option>
@@ -916,7 +927,25 @@ export function LeavesList({
 
       {/* Upcoming / active leaves */}
       {filteredUpcoming.length > 0 && (
-        <LeavesTable rows={filteredUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
+        <>
+          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[12px] text-muted-foreground">
+                {(safePageUpcoming - 1) * PAGE_SIZE + 1}–{Math.min(safePageUpcoming * PAGE_SIZE, filteredUpcoming.length)} {t("of")} {filteredUpcoming.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={safePageUpcoming <= 1} onClick={() => setPage((p) => p - 1)}>
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="text-[12px] text-muted-foreground px-2">{safePageUpcoming} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={safePageUpcoming >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {filteredUpcoming.length === 0 && filteredPast.length > 0 && (

@@ -622,6 +622,7 @@
     "upcomingLeaves": "Upcoming leaves",
     "thisMonth": "This month",
     "pendingReview": "Pending review",
+    "of": "of",
     "hideHistory": "Hide history",
     "showHistory": "Show history ({count})",
     "hideCancelled": "Hide cancelled & rejected",
