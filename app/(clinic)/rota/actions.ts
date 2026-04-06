@@ -1710,7 +1710,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       action: "rota_generated",
       entityType: "rota",
       entityId: rotaId,
-      metadata: { weekStart, method: "ai_hybrid", assignmentCount: toInsert.length, preserveOverrides, budgetFallback: budgetViolation },
+      metadata: { weekStart, method: "ai_hybrid", assignmentCount: toInsert.length, preserveOverrides },
     })
 
     // Log usage for quota tracking
