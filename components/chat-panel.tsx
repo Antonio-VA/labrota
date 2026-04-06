@@ -5,7 +5,7 @@ import { DefaultChatTransport } from "ai"
 import { useTranslations } from "next-intl"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { SendHorizonal, Bot, CheckCircle2, XCircle, X, ChevronLeft, Sparkles } from "lucide-react"
+import { SendHorizonal, CheckCircle2, XCircle, X, ChevronLeft, Sparkles } from "lucide-react"
 import { useRef, useEffect, useState, useTransition } from "react"
 import ReactMarkdown from "react-markdown"
 import { generateRota, upsertAssignment, regenerateDay, publishRota, unlockRota, copyPreviousWeek } from "@/app/(clinic)/rota/actions"
@@ -462,7 +462,7 @@ export function ChatPanel({
     return (
       <aside className="flex flex-col border-t bg-background flex-1 overflow-hidden min-h-0">
         <div className="flex items-center gap-2 border-b px-3 h-10 shrink-0">
-          <Bot className="size-4 text-primary shrink-0" />
+          <Sparkles className="size-4 text-primary shrink-0" />
           <span className="text-[13px] font-medium">{t("title")}</span>
         </div>
         {chatContent}
@@ -486,7 +486,7 @@ export function ChatPanel({
           title={t("title")}
         >
           <ChevronLeft className="size-4" />
-          <Bot className="size-4 text-primary" />
+          <Sparkles className="size-4 text-primary" />
         </button>
       )}
 
@@ -494,7 +494,7 @@ export function ChatPanel({
       {!collapsed && (
         <>
           <div className="flex items-center gap-2 border-b px-3 h-12 shrink-0">
-            <Bot className="size-4 text-primary shrink-0" />
+            <Sparkles className="size-4 text-primary shrink-0" />
             <span className="text-[14px] font-medium flex-1">{t("title")}</span>
             <button
               onClick={toggleCollapse}
