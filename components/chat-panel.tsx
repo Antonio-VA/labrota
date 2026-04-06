@@ -226,9 +226,9 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
 
   return (
     <div className={`rounded-lg border p-3 text-[13px] flex flex-col gap-2 ${
-      status === "done"      ? "border-emerald-200 bg-emerald-50" :
+      status === "done"      ? "border-emerald-500/30 bg-emerald-500/10" :
       status === "discarded" ? "border-border bg-muted/30 opacity-60" :
-                               "border-primary/20 bg-primary/5"
+                               "border-primary/30 bg-primary/10"
     }`}>
       <p className="font-medium text-[13px]">{t("confirmDraft")}</p>
       <p className="text-muted-foreground">{proposal.description}</p>
@@ -236,7 +236,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
       {error && <p className="text-destructive text-[12px]">{error}</p>}
 
       {status === "done" && (
-        <div className="flex items-center gap-1.5 text-emerald-600">
+        <div className="flex items-center gap-1.5 text-emerald-500">
           <CheckCircle2 className="size-3.5" />
           <span>{tc("success")}</span>
         </div>
