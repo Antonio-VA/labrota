@@ -52,9 +52,11 @@ function ToggleSwitch({ enabled, onToggle, disabled }: { enabled: boolean; onTog
 export function SettingsNotifications({
   initialRecipients,
   initialEmailFormat = "by_shift",
+  displayMode = "by_shift",
 }: {
   initialRecipients: RecipientRow[]
   initialEmailFormat?: "by_shift" | "by_person"
+  displayMode?: "by_shift" | "by_task"
 }) {
   const t = useTranslations("notifications")
   const [recipients, setRecipients] = useState(initialRecipients)
@@ -169,7 +171,7 @@ export function SettingsNotifications({
                 savingFormat && "opacity-50 cursor-not-allowed"
               )}
             >
-              {t(fmt === "by_shift" ? "byShift" : "byPerson")}
+              {fmt === "by_person" ? t("byPerson") : displayMode === "by_task" ? t("byTask") : t("byShift")}
             </button>
           ))}
         </div>

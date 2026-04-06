@@ -1340,6 +1340,8 @@
     "emailFormatDesc": "Choose how the rota is displayed in the notification email.",
     "byShift": "By shift",
     "byShiftDesc": "Rows are shifts, columns are days",
+    "byTask": "By task",
+    "byTaskDesc": "Rows are tasks, columns are days",
     "byPerson": "By person",
     "byPersonDesc": "Rows are staff, columns are days"
   },

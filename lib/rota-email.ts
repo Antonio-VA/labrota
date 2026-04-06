@@ -138,9 +138,11 @@ export function buildRotaEmailHtml(params: {
     const taskRows = tecnicas.map((t: { id: string; nombre_es: string; codigo: string }) => {
       const cells = data.days.map((day) => {
         const assigns = day.assignments.filter((a) => a.function_label === t.codigo)
-        const names = assigns.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
-        return `<td style="padding:4px;border-right:1px solid #ccddee;vertical-align:top;font-size:10px;background:${day.isWeekend ? '#f8fafd' : '#fff'};">
-          ${names.length === 0 ? '<span style="color:#cbd5e1;">—</span>' : names.join(" / ")}
+        const namesHtml = assigns.map((a) =>
+          `<div style="font-size:11px;font-weight:500;padding:1px 0;">${a.staff.first_name} ${a.staff.last_name[0]}.</div>`
+        ).join("")
+        return `<td style="padding:4px;border-right:1px solid #ccddee;vertical-align:top;background:${day.isWeekend ? '#f8fafd' : '#fff'};">
+          ${assigns.length === 0 ? '<span style="color:#cbd5e1;font-size:10px;">—</span>' : namesHtml}
         </td>`
       }).join("")
       return `<tr style="border-bottom:1px solid #ccddee;">

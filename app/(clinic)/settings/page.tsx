@@ -128,7 +128,7 @@ export default async function SettingsPage() {
             }
             notificaciones={
               isAdmin ? (
-                <SettingsNotifications initialRecipients={notificationRecipients} initialEmailFormat={emailFormat} />
+                <SettingsNotifications initialRecipients={notificationRecipients} initialEmailFormat={emailFormat} displayMode={orgSettings?.displayMode ?? "by_shift"} />
               ) : undefined
             }
             implementacion={

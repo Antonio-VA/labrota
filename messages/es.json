@@ -1340,6 +1340,8 @@
     "emailFormatDesc": "Elige cómo se muestra el horario en el email de notificación.",
     "byShift": "Por turno",
     "byShiftDesc": "Filas por turno, columnas por día",
+    "byTask": "Por tarea",
+    "byTaskDesc": "Filas por tarea, columnas por día",
     "byPerson": "Por persona",
     "byPersonDesc": "Filas por persona, columnas por día"
   },
