@@ -1333,7 +1333,9 @@
     "namePlaceholder": "Optional",
     "addButton": "Add",
     "emailAdded": "Email added",
-    "invalidEmail": "Invalid email"
+    "invalidEmail": "Invalid email",
+    "enableAll": "Enable all",
+    "disableAll": "Disable all"
   },
   "mobileEdit": {
     "editMode": "Edit mode",

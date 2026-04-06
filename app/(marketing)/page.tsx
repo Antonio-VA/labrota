@@ -481,7 +481,7 @@ export default function MarketingPage() {
             ))}
           </div>
         </div>
-        <div className="order-first md:order-last">
+        <div className="md:order-last">
           <ProductMockup />
         </div>
       </section>

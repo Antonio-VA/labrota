@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,7 +35,8 @@ function ToggleSwitch({ enabled, onToggle, disabled }: { enabled: boolean; onTog
         onClick={handleClick}
         className={cn(
           "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-          enabled ? "bg-primary" : "bg-muted-foreground/20"
+          enabled ? "bg-primary" : "bg-muted-foreground/20",
+          disabled && "opacity-50 cursor-not-allowed"
         )}
       >
         <span className={cn(
@@ -54,33 +55,65 @@ export function SettingsNotifications({
 }) {
   const t = useTranslations("notifications")
   const [recipients, setRecipients] = useState(initialRecipients)
-  const [isPending, startTransition] = useTransition()
   const [newEmail, setNewEmail] = useState("")
   const [newName, setNewName] = useState("")
+  const [addingEmail, setAddingEmail] = useState(false)
+  // Track which recipients are currently being toggled (by key)
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set())
+  // Track which recipients are being removed
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
 
   const internalRecipients = recipients.filter((r) => !r.isExternal)
   const externalRecipients = recipients.filter((r) => r.isExternal)
 
+  function recipientKey(r: RecipientRow) {
+    return r.isExternal ? `ext:${r.id}` : `int:${r.userId}`
+  }
+
   function handleToggle(r: RecipientRow) {
+    const key = recipientKey(r)
     const newEnabled = !r.enabled
+
+    // Optimistic update
     setRecipients((prev) => prev.map((p) =>
       (p.userId === r.userId && !r.isExternal) || (p.id === r.id && r.isExternal)
         ? { ...p, enabled: newEnabled }
         : p
     ))
-    startTransition(async () => {
-      const result = r.isExternal
-        ? await toggleExternalRecipient(r.id!, newEnabled)
-        : await toggleRecipient(r.userId!, newEnabled)
+
+    // Fire server call without blocking other toggles
+    setPendingKeys((prev) => new Set(prev).add(key))
+    const promise = r.isExternal
+      ? toggleExternalRecipient(r.id!, newEnabled)
+      : toggleRecipient(r.userId!, newEnabled)
+
+    promise.then((result) => {
       if (result.error) {
         toast.error(result.error)
+        // Rollback
         setRecipients((prev) => prev.map((p) =>
           (p.userId === r.userId && !r.isExternal) || (p.id === r.id && r.isExternal)
             ? { ...p, enabled: !newEnabled }
             : p
         ))
       }
+    }).finally(() => {
+      setPendingKeys((prev) => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
     })
+  }
+
+  function handleBulkToggle(group: "internal" | "external", enable: boolean) {
+    const targets = group === "internal" ? internalRecipients : externalRecipients
+    const toToggle = targets.filter((r) => r.enabled !== enable)
+    if (toToggle.length === 0) return
+
+    for (const r of toToggle) {
+      handleToggle(r)
+    }
   }
 
   function handleAdd() {
@@ -89,8 +122,8 @@ export function SettingsNotifications({
       toast.error(t("invalidEmail"))
       return
     }
-    startTransition(async () => {
-      const result = await addExternalRecipient(email, newName.trim())
+    setAddingEmail(true)
+    addExternalRecipient(email, newName.trim()).then((result) => {
       if (result.error) {
         toast.error(result.error)
         return
@@ -106,20 +139,29 @@ export function SettingsNotifications({
       setNewEmail("")
       setNewName("")
       toast.success(t("emailAdded"))
-    })
+    }).finally(() => setAddingEmail(false))
   }
 
   function handleRemove(r: RecipientRow) {
     if (!r.id) return
-    startTransition(async () => {
-      const result = await removeExternalRecipient(r.id!)
+    setRemovingIds((prev) => new Set(prev).add(r.id!))
+    removeExternalRecipient(r.id).then((result) => {
       if (result.error) {
         toast.error(result.error)
         return
       }
       setRecipients((prev) => prev.filter((p) => p.id !== r.id))
+    }).finally(() => {
+      setRemovingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(r.id!)
+        return next
+      })
     })
   }
+
+  const allInternalEnabled = internalRecipients.length > 0 && internalRecipients.every((r) => r.enabled)
+  const allExternalEnabled = externalRecipients.length > 0 && externalRecipients.every((r) => r.enabled)
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,14 +176,24 @@ export function SettingsNotifications({
 
       {/* Internal users */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("orgUsers")}</p>
+          {internalRecipients.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleBulkToggle("internal", !allInternalEnabled)}
+              className="text-[12px] text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              {allInternalEnabled ? t("disableAll") : t("enableAll")}
+            </button>
+          )}
         </div>
         {internalRecipients.length === 0 ? (
           <div className="px-5 py-6 text-center text-[13px] text-muted-foreground">{t("noUsers")}</div>
         ) : (
           internalRecipients.map((r, i) => {
             const hasName = r.name && r.name !== r.email
+            const key = recipientKey(r)
             return (
               <div
                 key={r.userId}
@@ -163,7 +215,7 @@ export function SettingsNotifications({
                 <ToggleSwitch
                   enabled={r.enabled}
                   onToggle={() => handleToggle(r)}
-                  disabled={isPending}
+                  disabled={pendingKeys.has(key)}
                 />
               </div>
             )
@@ -173,12 +225,22 @@ export function SettingsNotifications({
 
       {/* External emails */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("externalEmails")}</p>
+          {externalRecipients.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleBulkToggle("external", !allExternalEnabled)}
+              className="text-[12px] text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              {allExternalEnabled ? t("disableAll") : t("enableAll")}
+            </button>
+          )}
         </div>
 
         {externalRecipients.map((r) => {
           const hasName = r.name && r.name !== r.email
+          const key = recipientKey(r)
           return (
             <div
               key={r.id}
@@ -197,11 +259,11 @@ export function SettingsNotifications({
               <ToggleSwitch
                 enabled={r.enabled}
                 onToggle={() => handleToggle(r)}
-                disabled={isPending}
+                disabled={pendingKeys.has(key)}
               />
               <button
                 type="button"
-                disabled={isPending}
+                disabled={removingIds.has(r.id!)}
                 onClick={() => handleRemove(r)}
                 className="text-muted-foreground hover:text-destructive transition-colors"
               >
@@ -220,7 +282,7 @@ export function SettingsNotifications({
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="email@example.com"
-              disabled={isPending}
+              disabled={addingEmail}
               className="h-8 w-56 text-[13px]"
             />
           </div>
@@ -231,14 +293,14 @@ export function SettingsNotifications({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder={t("namePlaceholder")}
-              disabled={isPending}
+              disabled={addingEmail}
               className="h-8 w-40 text-[13px]"
               onKeyDown={(e) => { if (e.key === "Enter") handleAdd() }}
             />
           </div>
           <Button
             size="sm"
-            disabled={isPending || !newEmail.trim()}
+            disabled={addingEmail || !newEmail.trim()}
             onClick={handleAdd}
             className="h-8"
           >
