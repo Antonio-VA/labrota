@@ -1180,7 +1180,7 @@ function PersonGrid({
                       <div
                         key={day.date}
                         className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-primary/10" : "bg-background")}
-                        style={isOffCell ? { backgroundColor: "var(--card)", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
+                        style={isOffCell ? { backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
                         onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -1428,7 +1428,7 @@ function TransposedPersonGrid({
                       compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
                       isHovered ? "bg-primary/10" : "bg-background",
                     )}
-                    style={isOffCell ? { backgroundColor: "var(--card)", backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
+                    style={isOffCell ? { backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                   >
@@ -2098,8 +2098,7 @@ function ShiftGrid({
                 isPublished={isPublished}
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
-                  backgroundColor: "var(--card)",
-                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 0.5px, transparent 0.5px)",
+                  backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)",
                   backgroundSize: "8px 8px",
                 }}
               >
@@ -2112,7 +2111,7 @@ function ShiftGrid({
                     onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
                     onMouseEnter={() => setHovered(s.id)}
                     onMouseLeave={() => setHovered(null)}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-muted text-muted-foreground border border-border select-none cursor-pointer transition-colors duration-150"
+                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border select-none cursor-pointer transition-colors duration-150"
                     style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
                   >
                     <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
@@ -2404,8 +2403,8 @@ function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelec
                           {Object.entries(day.shiftCounts ?? {})
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([shift, count]) => (
-                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/5 text-primary/80 border border-primary/15 tabular-nums">
-                                {shift} <span className="font-semibold text-foreground/80">{count}</span>
+                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/10 text-primary border border-primary/20 tabular-nums">
+                                {shift} <span className="font-semibold text-foreground">{count}</span>
                               </span>
                             ))}
                         </div>

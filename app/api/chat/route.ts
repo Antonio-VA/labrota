@@ -31,9 +31,34 @@ const RULE_TYPE_LABEL: Record<string, string> = {
 }
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json()
+  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
 
   const supabase = await createClient()
+
+  // Page context — helps the AI understand what the user is looking at
+  const pageLabels: Record<string, string> = {
+    "/schedule": "Schedule (rota calendar)",
+    "/staff": "Team (staff management)",
+    "/leaves": "Leave management",
+    "/lab": "Lab configuration",
+    "/reports": "Reports",
+    "/settings": "Settings",
+  }
+  const pageContext = currentPage
+    ? `The user is currently on the ${pageLabels[currentPage] ?? currentPage} page. Prioritise tools and responses relevant to this context.`
+    : ""
+
+  // Compute viewed week end (Sunday) if weekStart provided
+  let viewingWeekEnd: string | undefined
+  if (viewingWeekStart) {
+    const d = new Date(viewingWeekStart + "T12:00:00")
+    d.setDate(d.getDate() + 6)
+    viewingWeekEnd = d.toISOString().split("T")[0]
+  }
+
+  const weekContext = viewingWeekStart
+    ? `The user is currently viewing the week ${viewingWeekStart} to ${viewingWeekEnd}. CRITICAL: When they say "this week", "the week in view", or ask about the rota/leaves/coverage without specifying a date, ALWAYS use weekStart=${viewingWeekStart} and date range ${viewingWeekStart} to ${viewingWeekEnd}. Do NOT use today's date — use the viewed week.`
+    : `If asked about a specific week and no week is mentioned, assume the current week.`
 
   const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
 You help admins understand the rota, staff availability, coverage, and lab configuration.
@@ -83,9 +108,12 @@ Guidelines:
 - CRITICAL: After calling a propose tool, tell the user "I've prepared this for you — please confirm using the button below." NEVER say "done", "created", "added", or "I've made the change". The action has NOT happened until the user clicks Apply.
 - If the propose tool returns an error field instead of a proposal, tell the user about the error.
 - When discussing skill gaps, name the missing skills clearly.
-- If asked about a specific week and no week is mentioned, assume the current week.
+- ${weekContext}
+${pageContext ? `- ${pageContext}` : ""}
 - When analysing coverage, compare actual staff per shift against lab minimums.
-- Dates are ISO format (YYYY-MM-DD). The current date is ${new Date().toISOString().split("T")[0]}.`
+- IMPORTANT: Always use your read tools (getWeekRota, getWeekCoverage, etc.) to fetch actual data before answering questions about the rota. Never guess or assume what the rota contains.
+- Dates in tool parameters use ISO format (YYYY-MM-DD), but when DISPLAYING dates to the user, always use a readable format like "Mon 4 May 2026" or "4–10 May 2026". Never show raw ISO dates in your text responses.
+- The current date is ${new Date().toISOString().split("T")[0]}.`
 
   try {
   const result = streamText({
@@ -310,10 +338,10 @@ Guidelines:
       }),
 
       getLeaves: tool({
-        description: "Get leaves for a time period. Can filter by staff name. Shows past, current, and future leaves.",
+        description: `Get leaves for a time period. Can filter by staff name. Shows past, current, and future leaves.${viewingWeekStart ? ` IMPORTANT: When checking leaves for "this week", use from=${viewingWeekStart} and to=${viewingWeekEnd}.` : ""}`,
         inputSchema: z.object({
-          from: z.string().optional().describe("Start date YYYY-MM-DD (defaults to today)"),
-          to: z.string().optional().describe("End date YYYY-MM-DD (defaults to 90 days from now)"),
+          from: z.string().optional().describe(`Start date YYYY-MM-DD${viewingWeekStart ? ` (use ${viewingWeekStart} for the viewed week)` : " (defaults to today)"}`),
+          to: z.string().optional().describe(`End date YYYY-MM-DD${viewingWeekEnd ? ` (use ${viewingWeekEnd} for the viewed week)` : " (defaults to 90 days from now)"}`),
           staffName: z.string().optional().describe("Filter by staff name (partial match)"),
         }),
         execute: async ({ from, to, staffName }) => {

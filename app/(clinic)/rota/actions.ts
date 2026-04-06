@@ -2459,7 +2459,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
   const days: MonthDaySummary[] = gridDates.map((date) => {
     const entries   = byDate[date] ?? []
-    const staffIds  = entries.map((e) => e.staff_id)
+    const staffIds  = [...new Set(entries.map((e) => e.staff_id))]
     const covered   = new Set(staffIds.flatMap((id) => staffSkillMap[id] ?? []))
     const daySkillGap = staffIds.length > 0 && allOrgSkills.some((sk) => !covered.has(sk))
     // Shift-level gap: check if each tecnica's required skill is covered within its typical shifts
@@ -2481,8 +2481,9 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "saturday"
     const isHolidayReducedCoverage = monthHolidayMode !== "weekday" && !!holidays[date] && !isWeekend
     const effectiveWeekend = isWeekend || isHolidayReducedCoverage
-    const labCount = entries.filter((e) => e.role === "lab").length
-    const andrologyCount = entries.filter((e) => e.role === "andrology").length
+    const uniqueEntries = [...new Map(entries.map((e) => [e.staff_id, e])).values()]
+    const labCount = uniqueEntries.filter((e) => e.role === "lab").length
+    const andrologyCount = uniqueEntries.filter((e) => e.role === "andrology").length
     // Coverage warning: check if below minimums
     const lc = labConfigRes.data as Record<string, number> | null
     const hasCoverageWarning = staffIds.length > 0 && lc ? (
@@ -2498,7 +2499,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       staffCount: staffIds.length,
       labCount,
       andrologyCount,
-      adminCount: entries.filter((e) => e.role === "admin").length,
+      adminCount: uniqueEntries.filter((e) => e.role === "admin").length,
       hasSkillGaps: hasSkillGaps || hasCoverageWarning || (engineWarningsByDate[date]?.length ?? 0) > 0,
       warningMessages: engineWarningsByDate[date] ?? [],
       isWeekend,
@@ -2508,7 +2509,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       holidayName: holidays[date] ?? null,
       staffRoles: entries.slice(0, 4).map((e) => e.role),
       shiftCounts,
-      staffInitials: [...entries]
+      staffInitials: [...new Map(entries.map((e) => [e.staff_id, e])).values()]
         .sort((a, b) => {
           const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
           const rd = (ro[a.role] ?? 9) - (ro[b.role] ?? 9)

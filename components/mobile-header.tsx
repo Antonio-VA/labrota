@@ -106,7 +106,9 @@ export function MobileHeader({
                       setSheetOpen(false)
                       startSwitch(async () => {
                         await switchOrgAction(org.id)
-                        window.location.reload()
+                        sessionStorage.removeItem("labrota_current_date")
+                        sessionStorage.removeItem("labrota_view")
+                        window.location.href = "/?_=" + Date.now()
                       })
                     }}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"

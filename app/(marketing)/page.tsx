@@ -42,9 +42,9 @@ const content = {
       sub: "Create, manage and optimise your fertility lab rotas with the only tool designed specifically for embryologists, andrologists and IVF lab managers.",
       cta1: "Request a Demo",
       cta2: "See how it works",
-      badge1: "Mobile-optimised for staff",
-      badge2: "Desktop-optimised for managers",
-      badge3: "No training required",
+      badge1: "Mobile & desktop optimised",
+      badge2: "No training required",
+      badge3: "Designed by embryologists",
       badge4: "Auto implementation",
     },
     social: null,
@@ -144,9 +144,9 @@ const content = {
       sub: "Crea, gestiona y optimiza las rotas de tu laboratorio de fertilidad con la única herramienta diseñada específicamente para embriólogos, andrólogos y responsables de lab IVF.",
       cta1: "Solicitar una Demo",
       cta2: "Ver cómo funciona",
-      badge1: "Web optimizada para móvil",
-      badge2: "Optimizado en escritorio para managers",
-      badge3: "Sin formación previa",
+      badge1: "Optimizado para móvil y escritorio",
+      badge2: "Sin formación previa",
+      badge3: "Diseñado por embriólogos",
       badge4: "Auto implementación",
     },
     social: null,
@@ -245,8 +245,9 @@ const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertic
 
 function Logo() {
   return (
-    <span className="text-[22px] leading-none tracking-tight select-none" aria-label="LabRota">
-      <span className="font-light text-[#1B4F8A]">lab</span><span className="font-semibold text-[#1B4F8A]">rota</span>
+    <span className="inline-flex items-center gap-1.5 text-[22px] leading-none tracking-tight select-none" aria-label="LabRota">
+      <img src="/brand/Logo.png" alt="" className="h-[18px] w-[18px]" />
+      <span><span className="font-normal text-[#1B4F8A]">lab</span><span className="font-bold text-[#1B4F8A]">rota</span></span>
     </span>
   )
 }
@@ -311,7 +312,7 @@ function ProductMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-[#6ee7b7]" />
         </div>
         <div className="flex-1 mx-3 bg-white border border-[#e2e8f0] rounded-md h-5 flex items-center px-2">
-          <span className="text-[9px] text-[#94a3b8]">app.labrota.app</span>
+          <span className="text-[9px] text-[#94a3b8]">www.labrota.app</span>
         </div>
       </div>
 
@@ -475,7 +476,7 @@ export default function MarketingPage() {
               <Play className="w-4 h-4 shrink-0" /> {t.hero.cta2}
             </Link>
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 mt-5">
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-5">
             {[t.hero.badge1, t.hero.badge2, t.hero.badge3, t.hero.badge4].map(b => (
               <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
                 <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}

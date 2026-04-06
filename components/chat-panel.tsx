@@ -16,7 +16,17 @@ import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import { createRule, toggleRule, deleteRule } from "@/app/(clinic)/lab/rules-actions"
 import { useRouter } from "next/navigation"
 
-const transport = new DefaultChatTransport({ api: "/api/chat" })
+const transport = new DefaultChatTransport({
+  api: "/api/chat",
+  body: () => ({
+    viewingWeekStart: typeof window !== "undefined"
+      ? sessionStorage.getItem("labrota_current_date") ?? undefined
+      : undefined,
+    currentPage: typeof window !== "undefined"
+      ? window.location.pathname
+      : undefined,
+  }),
+})
 
 // ── Proposal types ────────────────────────────────────────────────────────────
 
@@ -29,7 +39,7 @@ type Proposal = {
 
 // ── Proposal card ─────────────────────────────────────────────────────────────
 
-function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?: () => void }) {
+function ProposalCard({ proposal }: { proposal: Proposal }) {
   const t      = useTranslations("agent")
   const tc     = useTranslations("common")
   const router = useRouter()
@@ -52,8 +62,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
             const result = await generateRota(p.weekStart as string, false)
             if (result.error) { setError(result.error); break }
             if ((result.assignmentCount ?? 0) === 0) { setError("No assignments created. Check staff and lab config."); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "addLeave": {
             if (!p.staffId) { setError("Staff member not found."); break }
@@ -84,32 +93,27 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
               functionLabel: (p.functionLabel as string) ?? undefined,
             })
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "regenerateDay": {
             const result = await regenerateDay(p.weekStart as string, p.date as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "publishRota": {
             const result = await publishRota(p.rotaId as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "unlockRota": {
             const result = await unlockRota(p.rotaId as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "copyPreviousWeek": {
             const result = await copyPreviousWeek(p.weekStart as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "updateStaff": {
             const changes = p.changes as Record<string, unknown>
@@ -205,6 +209,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
         if (ok) {
           setStatus("done")
           router.refresh()
+          window.dispatchEvent(new CustomEvent("labrota:refresh"))
         } else if (!error) {
           setStatus("pending")
         } else {
@@ -219,9 +224,9 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
 
   return (
     <div className={`rounded-lg border p-3 text-[13px] flex flex-col gap-2 ${
-      status === "done"      ? "border-emerald-200 bg-emerald-50" :
+      status === "done"      ? "border-emerald-500/30 bg-emerald-500/10" :
       status === "discarded" ? "border-border bg-muted/30 opacity-60" :
-                               "border-primary/20 bg-primary/5"
+                               "border-primary/30 bg-primary/10"
     }`}>
       <p className="font-medium text-[13px]">{t("confirmDraft")}</p>
       <p className="text-muted-foreground">{proposal.description}</p>
@@ -229,7 +234,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
       {error && <p className="text-destructive text-[12px]">{error}</p>}
 
       {status === "done" && (
-        <div className="flex items-center gap-1.5 text-emerald-600">
+        <div className="flex items-center gap-1.5 text-emerald-500">
           <CheckCircle2 className="size-3.5" />
           <span>{tc("success")}</span>
         </div>
@@ -294,12 +299,10 @@ function ExamplePrompts({ onSend }: { onSend: (text: string) => void }) {
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function ChatPanel({
-  onRefresh,
   collapsed: controlledCollapsed,
   onToggleCollapsed,
   mobile = false,
 }: {
-  onRefresh?: () => void
   collapsed?: boolean
   onToggleCollapsed?: () => void
   mobile?: boolean
@@ -322,7 +325,7 @@ export function ChatPanel({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, status])
 
   function toggleCollapse() {
     if (onToggleCollapsed) {
@@ -353,7 +356,7 @@ export function ChatPanel({
 
           {messages.map((m) => {
             const textParts = m.parts.filter((p) => p.type === "text")
-            const toolParts = m.parts.filter((p) => p.type === "tool-invocation")
+            const toolParts = m.parts.filter((p) => (p as { state?: unknown }).state !== undefined && p.type !== "text")
 
             return (
               <div
@@ -392,15 +395,40 @@ export function ChatPanel({
 
                 {toolParts.map((p, i) => {
                   const tp = p as unknown as {
-                    type: "tool-invocation"
-                    toolName: string
+                    type: string
                     state: string
-                    result?: Proposal
+                    output?: Proposal | { error: string }
+                    errorText?: string
                   }
-                  if (tp.state !== "result" || !tp.result?.proposal) return null
+                  // Show loading indicator while tool is executing
+                  if (tp.state === "input-streaming" || tp.state === "input-available") {
+                    return (
+                      <div key={i} className="rounded-lg bg-muted/50 border border-border px-3 py-2 text-[12px] text-muted-foreground animate-pulse">
+                        {t("thinking")}
+                      </div>
+                    )
+                  }
+                  // Show error from tool
+                  if (tp.state === "output-error") {
+                    return (
+                      <div key={i} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive max-w-[95%]">
+                        {tp.errorText ?? "Tool error"}
+                      </div>
+                    )
+                  }
+                  if (tp.state !== "output-available") return null
+                  // Show error from tool result
+                  if (tp.output && "error" in tp.output && !("proposal" in tp.output)) {
+                    return (
+                      <div key={i} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive max-w-[95%]">
+                        {(tp.output as { error: string }).error}
+                      </div>
+                    )
+                  }
+                  if (!tp.output || !(tp.output as Proposal).proposal) return null
                   return (
                     <div key={i} className="w-full max-w-[95%]">
-                      <ProposalCard proposal={tp.result} onRefresh={onRefresh} />
+                      <ProposalCard proposal={tp.output as Proposal} />
                     </div>
                   )
                 })}

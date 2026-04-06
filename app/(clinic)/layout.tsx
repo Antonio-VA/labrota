@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { ClinicTopBar } from "@/components/clinic-top-bar"
 import { MobileHeader } from "@/components/mobile-header"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
+import { LayoutChatWrapper } from "@/components/layout-chat-wrapper"
 import { RoleProvider } from "@/lib/role-context"
 
 export default async function ClinicLayout({
@@ -159,7 +160,9 @@ export default async function ClinicLayout({
               activeOrgId={activeOrgId}
               defaultOrgId={defaultOrgId}
             />
-            {children}
+            <LayoutChatWrapper>
+              {children}
+            </LayoutChatWrapper>
           </div>
         </div>
         <MobileBottomNav />
