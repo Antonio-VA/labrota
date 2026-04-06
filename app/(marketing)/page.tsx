@@ -45,6 +45,7 @@ const content = {
       badge1: "Mobile-optimised for staff",
       badge2: "Desktop-optimised for managers",
       badge3: "No training required",
+      badge4: "Auto implementation",
     },
     social: null,
     problem: {
@@ -146,6 +147,7 @@ const content = {
       badge1: "Web optimizada para móvil",
       badge2: "Optimizado en escritorio para managers",
       badge3: "Sin formación previa",
+      badge4: "Auto implementación",
     },
     social: null,
     problem: {
@@ -465,16 +467,16 @@ export default function MarketingPage() {
           <p className="text-[18px] text-[#64748b] leading-relaxed mb-9 max-w-lg">
             {t.hero.sub}
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="#contact" className="inline-flex items-center gap-2 text-[15px] font-semibold text-white bg-[#1b4f8a] px-7 py-3.5 rounded-xl hover:bg-[#164070] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1b4f8a]/20 transition-all">
+          <div className="flex gap-2 sm:gap-3">
+            <Link href="#contact" className="inline-flex items-center gap-1.5 sm:gap-2 text-[13px] sm:text-[15px] font-semibold text-white bg-[#1b4f8a] px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl hover:bg-[#164070] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1b4f8a]/20 transition-all">
               {t.hero.cta1} <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link href="#how" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1b4f8a] bg-[#eff6ff] border border-[#dbeafe] px-7 py-3.5 rounded-xl hover:bg-[#dbeafe] hover:-translate-y-0.5 transition-all">
-              <Play className="w-4 h-4" /> {t.hero.cta2}
+            <Link href="#how" className="inline-flex items-center gap-1.5 sm:gap-2 text-[13px] sm:text-[15px] font-semibold text-[#1b4f8a] bg-[#eff6ff] border border-[#dbeafe] px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl hover:bg-[#dbeafe] hover:-translate-y-0.5 transition-all">
+              <Play className="w-4 h-4 shrink-0" /> {t.hero.cta2}
             </Link>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 mt-5">
-            {[t.hero.badge1, t.hero.badge2, t.hero.badge3].map(b => (
+            {[t.hero.badge1, t.hero.badge2, t.hero.badge3, t.hero.badge4].map(b => (
               <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
                 <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}
               </span>
