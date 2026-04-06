@@ -104,7 +104,6 @@ export default async function SettingsPage() {
                   enableLeaveRequests={orgSettings.enableLeaveRequests}
                   enableNotes={orgSettings.enableNotes}
                   enableTaskInShift={orgSettings.enableTaskInShift}
-                  authMethod={orgSettings.authMethod}
                 />
               ) : null
             }
