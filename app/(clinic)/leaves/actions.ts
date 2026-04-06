@@ -158,9 +158,22 @@ export async function requestLeave(params: {
   notes?: string
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated." }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
   if (params.endDate < params.startDate) return { error: "La fecha de fin debe ser posterior a la de inicio." }
+
+  // Verify the staffId belongs to the authenticated user
+  const { data: member } = await supabase
+    .from("organisation_members")
+    .select("linked_staff_id")
+    .eq("user_id", user.id)
+    .eq("organisation_id", orgId)
+    .single() as { data: { linked_staff_id: string | null } | null }
+  if (!member?.linked_staff_id || member.linked_staff_id !== params.staffId) {
+    return { error: "You can only request leave for yourself." }
+  }
 
   // Use admin client to bypass RLS — viewers don't have INSERT on leaves
   const admin = createAdminClient()

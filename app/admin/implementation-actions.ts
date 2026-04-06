@@ -2,7 +2,16 @@
 
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import { logAuditEvent } from "@/lib/audit"
+
+async function assertSuperAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.app_metadata?.role !== "super_admin") {
+    throw new Error("Unauthorised")
+  }
+}
 import { ES_SHIFTS, ES_TECNICAS, ES_DEPARTMENTS } from "@/lib/defaults/es"
 import { EN_SHIFTS, EN_TECNICAS, EN_DEPARTMENTS } from "@/lib/defaults/en"
 
@@ -20,6 +29,7 @@ export interface ImplementationStatus {
 }
 
 export async function getImplementationStatus(orgId: string): Promise<ImplementationStatus> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const [shiftsRes, tecnicasRes, deptsRes, rulesRes, configRes] = await Promise.all([
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", orgId),
@@ -38,6 +48,7 @@ export async function getImplementationStatus(orgId: string): Promise<Implementa
 }
 
 export async function loadDefaultShifts(orgId: string, lang: Lang, mode: LoadMode, userEmail?: string): Promise<{ error?: string; count?: number }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const defaults = lang === "es" ? ES_SHIFTS : EN_SHIFTS
 
@@ -77,6 +88,7 @@ export async function loadDefaultShifts(orgId: string, lang: Lang, mode: LoadMod
 }
 
 export async function loadDefaultTecnicas(orgId: string, lang: Lang, mode: LoadMode, userEmail?: string): Promise<{ error?: string; count?: number }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const defaults = lang === "es" ? ES_TECNICAS : EN_TECNICAS
 
@@ -115,6 +127,7 @@ export async function loadDefaultTecnicas(orgId: string, lang: Lang, mode: LoadM
 }
 
 export async function loadDefaultDepartments(orgId: string, lang: Lang, mode: LoadMode, userEmail?: string): Promise<{ error?: string; count?: number }> {
+  await assertSuperAdmin()
   const admin = createAdminClient()
   const defaults = lang === "es" ? ES_DEPARTMENTS : EN_DEPARTMENTS
 
@@ -152,6 +165,7 @@ export async function loadDefaultDepartments(orgId: string, lang: Lang, mode: Lo
 }
 
 export async function loadAllDefaults(orgId: string, lang: Lang, mode: LoadMode, userEmail?: string): Promise<{ error?: string }> {
+  await assertSuperAdmin()
   const r1 = await loadDefaultShifts(orgId, lang, mode, userEmail)
   if (r1.error) return { error: `Shifts: ${r1.error}` }
   const r2 = await loadDefaultTecnicas(orgId, lang, mode, userEmail)
