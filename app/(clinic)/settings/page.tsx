@@ -66,7 +66,7 @@ export default async function SettingsPage() {
         .eq("user_id", authUser.id)
         .eq("organisation_id", orgId)
         .single() as { data: { role: string } | null }
-      isAdmin = membership?.role === "admin"
+      isAdmin = membership?.role === "admin" || membership?.role === "manager"
     }
 
     // Sync step completions (records newly completed steps) then fetch all

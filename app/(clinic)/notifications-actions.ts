@@ -25,7 +25,7 @@ async function requireOrgAdmin() {
     .eq("user_id", user.id)
     .single() as { data: { role: string } | null }
 
-  if (!member || member.role !== "admin") throw new Error("Admin access required")
+  if (!member || (member.role !== "admin" && member.role !== "manager")) throw new Error("Admin access required")
 
   return { user, orgId, admin }
 }
