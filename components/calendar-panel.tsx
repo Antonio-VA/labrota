@@ -1180,7 +1180,7 @@ function PersonGrid({
                       <div
                         key={day.date}
                         className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-primary/10" : "bg-background")}
-                        style={isOffCell ? { backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
+                        style={isOffCell ? { backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
                         onMouseEnter={() => setHoveredShift(cellShift)}
                         onMouseLeave={() => setHoveredShift(null)}
                       >
@@ -1428,7 +1428,7 @@ function TransposedPersonGrid({
                       compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
                       isHovered ? "bg-primary/10" : "bg-background",
                     )}
-                    style={isOffCell ? { backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)", backgroundSize: "8px 8px" } : undefined}
+                    style={isOffCell ? { backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                   >
@@ -2099,8 +2099,8 @@ function ShiftGrid({
                 className="p-1.5 flex flex-col gap-1 border-l border-border"
                 style={{
                   backgroundColor: "var(--color-card)",
-                  backgroundImage: "radial-gradient(circle, var(--off-dot, rgba(100,130,170,0.06)) 0.5px, transparent 0.5px)",
-                  backgroundSize: "8px 8px",
+                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
+                  backgroundSize: "10px 10px",
                 }}
               >
                 {/* On leave — always first, not draggable, gray + airplane */}
