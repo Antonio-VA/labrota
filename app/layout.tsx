@@ -31,8 +31,11 @@ export const metadata: Metadata = {
     title: "LabRota",
   },
   icons: {
-    icon: "/brand/favicon.svg",
-    apple: "/brand/favicon.svg",
+    icon: [
+      { url: "/brand/16px white.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/32px white.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/brand/32px white.png",
   },
 }
 
