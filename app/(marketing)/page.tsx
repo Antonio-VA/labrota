@@ -245,9 +245,9 @@ const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertic
 
 function Logo() {
   return (
-    <span className="inline-flex items-center gap-1 text-[24px] leading-none tracking-tight select-none" aria-label="LabRota">
-      <img src="/brand/Logo.png" alt="" className="h-[28px] w-[28px]" />
-      <span className="font-normal text-[#1B4F8A]">lab</span><span className="font-semibold text-[#1B4F8A]">rota</span>
+    <span className="inline-flex items-center gap-1.5 text-[22px] leading-none tracking-[-0.01em] select-none" aria-label="LabRota">
+      <img src="/brand/Logo.png" alt="" className="h-[22px] w-[22px]" />
+      <span><span className="font-normal text-[#5a9fd4]">lab</span><span className="font-semibold text-[#1B4F8A]">rota</span></span>
     </span>
   )
 }
