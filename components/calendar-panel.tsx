@@ -1093,7 +1093,6 @@ function PersonGrid({
                   <TooltipContent side="bottom">{holiday}</TooltipContent>
                 </Tooltip>
               )}
-              {day.skillGaps.length > 0 && <AlertTriangle className="size-3 text-amber-500" />}
               {/* Punciones / Biopsias — same component as ShiftGrid (hidden in simplified mode) */}
               {!simplified && (() => {
                 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
