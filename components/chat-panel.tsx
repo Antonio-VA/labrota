@@ -16,7 +16,14 @@ import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import { createRule, toggleRule, deleteRule } from "@/app/(clinic)/lab/rules-actions"
 import { useRouter } from "next/navigation"
 
-const transport = new DefaultChatTransport({ api: "/api/chat" })
+const transport = new DefaultChatTransport({
+  api: "/api/chat",
+  body: () => ({
+    viewingWeekStart: typeof window !== "undefined"
+      ? sessionStorage.getItem("labrota_current_date") ?? undefined
+      : undefined,
+  }),
+})
 
 // ── Proposal types ────────────────────────────────────────────────────────────
 

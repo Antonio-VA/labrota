@@ -31,9 +31,13 @@ const RULE_TYPE_LABEL: Record<string, string> = {
 }
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json()
+  const { messages, viewingWeekStart }: { messages: UIMessage[]; viewingWeekStart?: string } = await req.json()
 
   const supabase = await createClient()
+
+  const weekContext = viewingWeekStart
+    ? `The user is currently viewing the week starting ${viewingWeekStart}. When they say "this week", "the week in view", or ask about the rota without specifying a date, use ${viewingWeekStart} as the weekStart.`
+    : `If asked about a specific week and no week is mentioned, assume the current week.`
 
   const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
 You help admins understand the rota, staff availability, coverage, and lab configuration.
@@ -83,8 +87,9 @@ Guidelines:
 - CRITICAL: After calling a propose tool, tell the user "I've prepared this for you — please confirm using the button below." NEVER say "done", "created", "added", or "I've made the change". The action has NOT happened until the user clicks Apply.
 - If the propose tool returns an error field instead of a proposal, tell the user about the error.
 - When discussing skill gaps, name the missing skills clearly.
-- If asked about a specific week and no week is mentioned, assume the current week.
+- ${weekContext}
 - When analysing coverage, compare actual staff per shift against lab minimums.
+- IMPORTANT: Always use your read tools (getWeekRota, getWeekCoverage, etc.) to fetch actual data before answering questions about the rota. Never guess or assume what the rota contains.
 - Dates are ISO format (YYYY-MM-DD). The current date is ${new Date().toISOString().split("T")[0]}.`
 
   try {
