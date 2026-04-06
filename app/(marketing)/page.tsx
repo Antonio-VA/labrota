@@ -45,6 +45,7 @@ const content = {
       badge1: "Mobile & desktop optimised",
       badge2: "No training required",
       badge3: "Designed by embryologists",
+      badge4: "Auto implementation",
     },
     social: null,
     problem: {
@@ -146,6 +147,7 @@ const content = {
       badge1: "Optimizado para móvil y escritorio",
       badge2: "Sin formación previa",
       badge3: "Diseñado por embriólogos",
+      badge4: "Auto implementación",
     },
     social: null,
     problem: {
@@ -475,7 +477,7 @@ export default function MarketingPage() {
             </Link>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-5">
-            {[t.hero.badge1, t.hero.badge2, t.hero.badge3].map(b => (
+            {[t.hero.badge1, t.hero.badge2, t.hero.badge3, t.hero.badge4].map(b => (
               <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
                 <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}
               </span>
