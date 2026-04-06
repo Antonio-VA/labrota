@@ -35,8 +35,16 @@ export async function POST(req: Request) {
 
   const supabase = await createClient()
 
+  // Compute viewed week end (Sunday) if weekStart provided
+  let viewingWeekEnd: string | undefined
+  if (viewingWeekStart) {
+    const d = new Date(viewingWeekStart + "T12:00:00")
+    d.setDate(d.getDate() + 6)
+    viewingWeekEnd = d.toISOString().split("T")[0]
+  }
+
   const weekContext = viewingWeekStart
-    ? `The user is currently viewing the week starting ${viewingWeekStart}. When they say "this week", "the week in view", or ask about the rota without specifying a date, use ${viewingWeekStart} as the weekStart.`
+    ? `The user is currently viewing the week ${viewingWeekStart} to ${viewingWeekEnd}. CRITICAL: When they say "this week", "the week in view", or ask about the rota/leaves/coverage without specifying a date, ALWAYS use weekStart=${viewingWeekStart} and date range ${viewingWeekStart} to ${viewingWeekEnd}. Do NOT use today's date — use the viewed week.`
     : `If asked about a specific week and no week is mentioned, assume the current week.`
 
   const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
@@ -315,10 +323,10 @@ Guidelines:
       }),
 
       getLeaves: tool({
-        description: "Get leaves for a time period. Can filter by staff name. Shows past, current, and future leaves.",
+        description: `Get leaves for a time period. Can filter by staff name. Shows past, current, and future leaves.${viewingWeekStart ? ` IMPORTANT: When checking leaves for "this week", use from=${viewingWeekStart} and to=${viewingWeekEnd}.` : ""}`,
         inputSchema: z.object({
-          from: z.string().optional().describe("Start date YYYY-MM-DD (defaults to today)"),
-          to: z.string().optional().describe("End date YYYY-MM-DD (defaults to 90 days from now)"),
+          from: z.string().optional().describe(`Start date YYYY-MM-DD${viewingWeekStart ? ` (use ${viewingWeekStart} for the viewed week)` : " (defaults to today)"}`),
+          to: z.string().optional().describe(`End date YYYY-MM-DD${viewingWeekEnd ? ` (use ${viewingWeekEnd} for the viewed week)` : " (defaults to 90 days from now)"}`),
           staffName: z.string().optional().describe("Filter by staff name (partial match)"),
         }),
         execute: async ({ from, to, staffName }) => {
