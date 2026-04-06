@@ -2,11 +2,7 @@ import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 
-const DEPT_COLORS: Record<string, string> = {
-  lab: "#2563EB",
-  andrology: "#059669",
-  admin: "#64748B",
-}
+const STAFF_BORDER_COLOR = "#94A3B8"
 
 /**
  * Build LabRota-branded HTML email with the week schedule inline.
@@ -74,7 +70,7 @@ export function buildRotaEmailHtml(params: {
       </tr>`
     }).join("")
 
-    gridHtml = `<table style="width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
+    gridHtml = `<table style="min-width:600px;width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
       <thead><tr style="background:#f1f5fb;">
         <th style="width:100px;padding:6px 4px;border-right:1px solid #ccddee;border-bottom:1px solid #ccddee;text-align:left;font-size:9px;font-weight:600;color:#64748b;">${isEs ? "Técnica" : "Task"}</th>
         ${taskHeaders}
@@ -93,10 +89,6 @@ export function buildRotaEmailHtml(params: {
       const cells = data.days.map((day) => {
         const dayAssignments = day.assignments
           .filter((a) => a.shift_type === shiftCode)
-          .sort((a, b) => {
-            const order: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-            return (order[a.staff.role] ?? 9) - (order[b.staff.role] ?? 9)
-          })
 
         if (dayAssignments.length === 0) {
           return `<td style="padding:4px;border-right:1px solid #ccddee;vertical-align:top;background:${day.isWeekend ? '#f8fafd' : '#fff'};">
@@ -105,8 +97,7 @@ export function buildRotaEmailHtml(params: {
         }
 
         const namesHtml = dayAssignments.map((a) => {
-          const borderColor = DEPT_COLORS[a.staff.role] ?? "#94A3B8"
-          return `<div style="padding:2px 5px 2px 6px;margin-bottom:2px;border-left:3px solid ${borderColor};border-radius:3px;font-size:11px;font-weight:500;">
+          return `<div style="padding:2px 5px 2px 6px;margin-bottom:2px;border-left:3px solid ${STAFF_BORDER_COLOR};border-radius:3px;font-size:11px;font-weight:500;">
             ${a.staff.first_name} ${a.staff.last_name[0]}.
           </div>`
         }).join("")
@@ -125,7 +116,7 @@ export function buildRotaEmailHtml(params: {
       </tr>`
     }).join("")
 
-    gridHtml = `<table style="width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
+    gridHtml = `<table style="min-width:600px;width:100%;border-collapse:collapse;border:1px solid #ccddee;" cellpadding="0" cellspacing="0">
       <thead><tr style="background:#f1f5fb;">
         <th style="width:70px;padding:6px 4px;border-right:1px solid #ccddee;border-bottom:1px solid #ccddee;"></th>
         ${dayHeaders}
@@ -170,7 +161,9 @@ export function buildRotaEmailHtml(params: {
       </p>
 
       <!-- Schedule grid -->
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       ${gridHtml}
+      </div>
 
       <p style="text-align:center;margin:24px 0 0;">
         <a href="${baseUrl}/schedule" style="display:inline-block;background:#1B4F8A;color:white;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;">
