@@ -189,6 +189,7 @@ html {
   --role-andrology: #34d399;
   --role-admin: #94a3b8;
 
+  --off-dot: rgba(148,163,184,0.08);
 }
 
 /* ── Body base — ensures dark bg before Tailwind loads ───────────────────────── */
