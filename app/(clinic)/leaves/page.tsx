@@ -3,6 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
 
+type OrgMember = { role: string; linked_staff_id: string | null }
+type LabConfigData = { enable_leave_requests: boolean }
+
 export default async function LeavesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,12 +30,12 @@ export default async function LeavesPage() {
           .select("role, linked_staff_id")
           .eq("user_id", user.id)
           .eq("organisation_id", profile.organisation_id)
-          .single() as unknown as Promise<{ data: { role: string; linked_staff_id: string | null } | null }>,
+          .single() as unknown as Promise<{ data: OrgMember | null }>,
         admin
           .from("lab_config")
           .select("enable_leave_requests")
           .eq("organisation_id", profile.organisation_id)
-          .maybeSingle() as unknown as Promise<{ data: { enable_leave_requests: boolean } | null }>,
+          .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
       ])
 
       enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false

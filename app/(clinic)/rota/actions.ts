@@ -25,6 +25,22 @@ import type {
   ShiftCoverageEntry,
 } from "@/lib/types/database"
 
+// ── Admin query result types (createAdminClient is untyped) ─────────────────
+
+type RotaRecord = {
+  id: string; status: string; published_at: string | null; published_by: string | null
+  punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null
+}
+type LeaveRow = { staff_id: string; start_date: string; end_date: string; type: string }
+type RuleRow = { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }
+type OrgConfig = {
+  rota_display_mode?: string; ai_optimal_version?: string; engine_hybrid_enabled?: boolean
+  engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean
+  task_reasoning_enabled?: boolean
+}
+type StaffRow = { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }
+type SkillRow = { staff_id: string; skill: string; level: string }
+
 // ── Shared types exported to client ──────────────────────────────────────────
 
 export interface RotaDayWarning {
@@ -146,29 +162,29 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .from("rotas")
       .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: { id: string; status: string; published_at: string | null; published_by: string | null; punctions_override?: Record<string, number> | null; engine_warnings?: string[] | null } | null; error: { message: string } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: RotaRecord | null; error: { message: string } | null }>,
     supabase.from("lab_config").select("*").maybeSingle(),
     supabase
       .from("leaves")
       .select("staff_id, start_date, end_date, type")
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
-      .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string; type: string }[] | null }>,
+      .eq("status", "approved") as unknown as Promise<{ data: LeaveRow[] | null }>,
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
-    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[] | null }>,
+    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: RuleRow[] | null }>,
     supabase
       .from("organisations")
       .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
       .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string; ai_optimal_version?: string; engine_hybrid_enabled?: boolean; engine_reasoning_enabled?: boolean; task_optimal_version?: string; task_hybrid_enabled?: boolean; task_reasoning_enabled?: boolean } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: OrgConfig | null }>,
     supabase
       .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }[] | null }>,
+      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: StaffRow[] | null }>,
     supabase
       .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
+      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null }>,
   ])
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
@@ -2355,7 +2371,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
     supabase
       .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: { staff_id: string; skill: string; level: string }[] | null }>,
+      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null }>,
     supabase
       .from("leaves")
       .select("staff_id, start_date, end_date")

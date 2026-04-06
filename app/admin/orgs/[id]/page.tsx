@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button"
 import { getLocale } from "next-intl/server"
 import { formatDateWithYear } from "@/lib/format-date"
 import type { Organisation } from "@/lib/types/database"
+
+type RotaListRow = { week_start: string; status: string; created_at: string }
+type RotaTypeRow = { generation_type: string | null }
 import { ArrowLeft, Users, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
@@ -41,8 +44,8 @@ export default async function OrgDetailPage({
     admin.from("rota_assignments").select("id", { count: "exact", head: true }).eq("organisation_id", id).limit(1),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "published"),
     admin.from("leaves").select("id", { count: "exact", head: true }).eq("organisation_id", id).eq("status", "approved"),
-    admin.from("rotas").select("week_start, status, created_at").eq("organisation_id", id).order("week_start", { ascending: false }).limit(8) as unknown as Promise<{ data: { week_start: string; status: string; created_at: string }[] | null }>,
-    admin.from("rotas").select("generation_type").eq("organisation_id", id) as unknown as Promise<{ data: { generation_type: string | null }[] | null }>,
+    admin.from("rotas").select("week_start, status, created_at").eq("organisation_id", id).order("week_start", { ascending: false }).limit(8) as unknown as Promise<{ data: RotaListRow[] | null }>,
+    admin.from("rotas").select("generation_type").eq("organisation_id", id) as unknown as Promise<{ data: RotaTypeRow[] | null }>,
   ])
 
   // Fetch staff for linking

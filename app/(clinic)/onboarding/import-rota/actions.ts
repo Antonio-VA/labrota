@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { getOrgId } from "@/lib/get-org-id"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,14 +41,6 @@ function getMondayOfWeek(dateStr: string): string {
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)
   return d.toISOString().split("T")[0]
-}
-
-async function getOrgId(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase.from("profiles").select("organisation_id").eq("id", user.id).single()
-  return (profile as { organisation_id: string } | null)?.organisation_id ?? null
 }
 
 // ── Import action ────────────────────────────────────────────────────────────
