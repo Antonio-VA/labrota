@@ -151,7 +151,7 @@ export default async function ClinicLayout({
       <RoleProvider role={userRole} staffId={viewerStaffId}>
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background lg:pb-0">
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background lg:pb-0 lg:rounded-t-xl">
             <MobileHeader
               orgName={orgName}
               orgLogoUrl={orgLogoUrl}
