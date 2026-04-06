@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
@@ -77,6 +78,8 @@ export function AdminOrgDetailClient({
   orgStaff?: { id: string; first_name: string; last_name: string; role: string }[]
 }) {
   const router = useRouter()
+  const t = useTranslations("adminOrg")
+  const tc = useTranslations("common")
   const [orgName, setOrgName] = useState(initialName)
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
@@ -118,7 +121,7 @@ export function AdminOrgDetailClient({
     startTransition(async () => {
       const result = await createOrgUser(fd)
       if (result && "error" in result) { toast.error(result.error as string); return }
-      toast.success("Usuario añadido")
+      toast.success(t("userAdded"))
       setAddModalOpen(false)
       setEmail("")
       setFullName("")
@@ -128,7 +131,7 @@ export function AdminOrgDetailClient({
 
   function handleSaveAll() {
     if (displayMode !== initialDisplayMode) {
-      if (!confirm("Cambiar el modo de horario puede afectar la visualización de los horarios existentes. ¿Deseas continuar?")) {
+      if (!confirm(t("confirmDisplayMode"))) {
         setDisplayMode(initialDisplayMode)
         return
       }
@@ -177,7 +180,7 @@ export function AdminOrgDetailClient({
         const r5 = await updateOrgAuthMethod(orgId, authMethod)
         if (r5.error) { toast.error(r5.error); hasError = true }
       }
-      if (!hasError) toast.success("Configuración guardada")
+      if (!hasError) toast.success(t("configSaved"))
     })
   }
 
@@ -187,13 +190,13 @@ export function AdminOrgDetailClient({
       {/* ── ESTADO DE IMPLEMENTACIÓN ─────────────────────────────────── */}
       {implementationStatus && (() => {
         const steps = [
-          { label: "Crear organización", desc: "Organización registrada en el sistema", done: true },
-          { label: "Configurar región", desc: "País y región configurados", done: implementationStatus.hasRegion },
+          { label: t("stepCreateOrg"), desc: t("stepCreateOrgDesc"), done: true },
+          { label: t("stepConfigRegion"), desc: t("stepConfigRegionDesc"), done: implementationStatus.hasRegion },
           { label: "Añadir departamentos", desc: `${implementationStatus.departmentCount} departamento${implementationStatus.departmentCount !== 1 ? "s" : ""}`, done: implementationStatus.departmentCount > 0 },
           { label: "Añadir turnos", desc: `${implementationStatus.shiftCount} turno${implementationStatus.shiftCount !== 1 ? "s" : ""}`, done: implementationStatus.shiftCount > 0 },
           { label: "Añadir tareas", desc: `${implementationStatus.taskCount} tarea${implementationStatus.taskCount !== 1 ? "s" : ""}`, done: implementationStatus.taskCount > 0 },
           { label: "Añadir equipo", desc: `${implementationStatus.staffCount} persona${implementationStatus.staffCount !== 1 ? "s" : ""} activa${implementationStatus.staffCount !== 1 ? "s" : ""}`, done: implementationStatus.staffCount > 0 },
-          { label: "Generar primera rota", desc: implementationStatus.hasRota ? `${implementationStatus.rotaCount} horario${implementationStatus.rotaCount !== 1 ? "s" : ""} generado${implementationStatus.rotaCount !== 1 ? "s" : ""}` : "Aún no se ha generado ningún horario", done: implementationStatus.hasRota },
+          { label: t("stepGenerateRota"), desc: implementationStatus.hasRota ? (implementationStatus.rotaCount !== 1 ? t("stepRotaGeneratedPlural", { count: implementationStatus.rotaCount }) : t("stepRotaGenerated", { count: implementationStatus.rotaCount })) : t("stepRotaNotGenerated"), done: implementationStatus.hasRota },
         ]
         const allDone = steps.every((s) => s.done)
         const completedCount = steps.filter((s) => s.done).length
@@ -304,14 +307,14 @@ export function AdminOrgDetailClient({
                   startReset(async () => {
                     const result = await resetOrgImplementation(orgId)
                     if (result.success) {
-                      toast.success("Implementación reiniciada")
+                      toast.success(t("implementationReset"))
                       setResetModalOpen(false)
                       router.refresh()
                     }
                   })
                 }}
               >
-                {isResetting ? "Reiniciando…" : "Re-iniciar"}
+                {isResetting ? t("resetting") : t("resetImplementation")}
               </Button>
             </div>
           </div>
@@ -329,15 +332,13 @@ export function AdminOrgDetailClient({
             <div>
               <p className="text-[14px] font-medium">Modo de horario</p>
               <p className="text-[12px] text-muted-foreground">
-                {displayMode === "by_shift"
-                  ? "Por turno — habitual en laboratorios pequeños (<10 personas)"
-                  : "Por tarea — habitual en laboratorios grandes (10+ personas)"}
+                {displayMode === "by_shift" ? t("byShiftDesc") : t("byTaskDesc")}
               </p>
             </div>
             <div className="flex rounded-lg border border-input overflow-hidden shrink-0">
               {([
-                { key: "by_shift" as const, label: "Por turno" },
-                { key: "by_task" as const, label: "Por tarea" },
+                { key: "by_shift" as const, label: t("byShift") },
+                { key: "by_task" as const, label: t("byTask") },
               ]).map(({ key, label }) => (
                 <button
                   key={key}
@@ -544,7 +545,7 @@ export function AdminOrgDetailClient({
 
       <div className="pt-3">
         <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
-          {isPending ? "Guardando…" : "Guardar cambios"}
+          {isPending ? tc("saving") : t("saveChanges")}
         </Button>
       </div>
 
@@ -601,7 +602,7 @@ export function AdminOrgDetailClient({
       </div>
       <div className="pt-3">
         <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
-          {isPending ? "Guardando…" : "Guardar cambios"}
+          {isPending ? tc("saving") : t("saveChanges")}
         </Button>
       </div>
 
@@ -774,7 +775,7 @@ export function AdminOrgDetailClient({
       {/* Save all */}
       <div className="pt-3">
         <Button onClick={handleSaveAll} disabled={isPending} size="lg" className="w-fit">
-          {isPending ? "Guardando…" : "Guardar cambios"}
+          {isPending ? tc("saving") : t("saveChanges")}
         </Button>
       </div>
 
@@ -819,7 +820,7 @@ export function AdminOrgDetailClient({
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-medium">Nombre completo</label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre Apellido" disabled={isPending} />
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("namePlaceholder")} disabled={isPending} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-medium">Rol</label>

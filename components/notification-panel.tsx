@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, X, Check, AlertTriangle, CalendarDays } from "lucide-react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 
 export function NotificationBell({ large }: { large?: boolean } = {}) {
   const locale = useLocale() as "es" | "en"
+  const t = useTranslations("notifications")
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -90,7 +91,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
       <button
         onClick={handleOpen}
         className={`relative ${large ? "size-11" : "size-10"} flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted transition-colors`}
-        title="Notificaciones"
+        title={t("title")}
       >
         <Bell className={large ? "size-6" : "size-5"} />
         {count > 0 && (
@@ -112,7 +113,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <Bell className="size-4 text-muted-foreground" />
-            <p className="text-[14px] font-medium">Notificaciones</p>
+            <p className="text-[14px] font-medium">{t("title")}</p>
             {count > 0 && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
                 {count}
@@ -125,7 +126,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
                 onClick={handleMarkAllRead}
                 className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors"
               >
-                Marcar todas leídas
+                {t("markAllRead")}
               </button>
             )}
             <button onClick={() => setOpen(false)} className="size-7 flex items-center justify-center rounded hover:bg-muted">
@@ -142,7 +143,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="size-8 opacity-20 mb-2" />
-              <p className="text-[13px]">Sin notificaciones</p>
+              <p className="text-[13px]">{t("empty")}</p>
             </div>
           ) : (
             <div className="flex flex-col">
