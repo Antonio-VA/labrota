@@ -311,7 +311,7 @@ function ProductMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-[#6ee7b7]" />
         </div>
         <div className="flex-1 mx-3 bg-white border border-[#e2e8f0] rounded-md h-5 flex items-center px-2">
-          <span className="text-[9px] text-[#94a3b8]">app.labrota.app</span>
+          <span className="text-[9px] text-[#94a3b8]">www.labrota.app</span>
         </div>
       </div>
 
@@ -475,7 +475,7 @@ export default function MarketingPage() {
               <Play className="w-4 h-4 shrink-0" /> {t.hero.cta2}
             </Link>
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 mt-5">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-1.5 mt-5 max-w-md">
             {[t.hero.badge1, t.hero.badge2, t.hero.badge3, t.hero.badge4].map(b => (
               <span key={b} className="flex items-center gap-1.5 text-[12px] text-[#64748b]">
                 <Check className="w-3.5 h-3.5 text-[#16a34a] flex-shrink-0" />{b}
