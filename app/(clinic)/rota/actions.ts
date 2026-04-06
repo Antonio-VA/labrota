@@ -578,7 +578,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
         const day = dayMap[date]
         if (day) {
           // Skip coverage warnings — they are now computed live from current assignments
-          const isCoverage = message.includes("COBERTURA INSUFICIENTE") || message.includes("insuficiente:")
+          const isCoverage = message.includes("COBERTURA INSUFICIENTE") || message.includes("insuficiente:") || message.includes("insufficient") || message.includes("coverage")
           if (isCoverage) continue
           const isDuplicate = day.warnings.some((dw) => dw.category === "rule" && dw.message === message)
           if (!isDuplicate) {
@@ -1697,7 +1697,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     }
 
     // Save warnings + reasoning (use recalculated coverage + Claude's own warnings, not stale engine ones)
-    const allWarnings = [...aiWarnings, ...finalCoverageWarnings, `[ai-reasoning] ${fullReasoning}`]
+    const allWarnings = [...aiWarnings, `[ai-reasoning] ${fullReasoning}`]
     const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId)
     if (warnError) console.error("Failed to save engine_warnings:", warnError.message)
 
