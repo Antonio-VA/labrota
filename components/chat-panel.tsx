@@ -5,7 +5,7 @@ import { DefaultChatTransport } from "ai"
 import { useTranslations } from "next-intl"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { SendHorizonal, Bot, CheckCircle2, XCircle, ChevronRight, ChevronLeft } from "lucide-react"
+import { SendHorizonal, Bot, CheckCircle2, XCircle, X, ChevronLeft, Sparkles } from "lucide-react"
 import { useRef, useEffect, useState, useTransition } from "react"
 import ReactMarkdown from "react-markdown"
 import { generateRota, upsertAssignment, regenerateDay, publishRota, unlockRota, copyPreviousWeek } from "@/app/(clinic)/rota/actions"
@@ -257,29 +257,36 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
 
 // ── Example prompts ───────────────────────────────────────────────────────────
 
-function ExamplePrompts({ onSelect }: { onSelect: (text: string) => void }) {
+function ExamplePrompts({ onSend }: { onSend: (text: string) => void }) {
   const t = useTranslations("agent")
 
   const examples = [
     t("examples.generate"),
+    t("examples.whoIsOff"),
     t("examples.coverage"),
-    t("examples.icsi"),
+    t("examples.copyWeek"),
+    t("examples.publish"),
   ]
 
   return (
-    <div className="flex flex-col gap-2 px-4 py-6">
-      <p className="text-center text-[12px] text-muted-foreground mb-2">
-        {t("placeholder").split("(")[0].trim()}
+    <div className="flex flex-col items-center gap-4 px-4 py-8">
+      <div className="flex items-center justify-center size-10 rounded-full bg-primary/10">
+        <Sparkles className="size-5 text-primary" />
+      </div>
+      <p className="text-center text-[12px] text-muted-foreground">
+        {t("promptHint")}
       </p>
-      {examples.map((ex) => (
-        <button
-          key={ex}
-          onClick={() => onSelect(ex)}
-          className="text-left text-[12px] px-3 py-2 rounded-lg border border-border bg-muted/30 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-        >
-          {ex}
-        </button>
-      ))}
+      <div className="flex flex-wrap gap-1.5 justify-center">
+        {examples.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => onSend(ex)}
+            className="text-[11px] px-2.5 py-1.5 rounded-full border border-border bg-background hover:bg-muted hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -341,7 +348,7 @@ export function ChatPanel({
       <ScrollArea className="flex-1 px-4">
         <div className="flex flex-col gap-3 py-4">
           {messages.length === 0 && (
-            <ExamplePrompts onSelect={(text) => setInput(text)} />
+            <ExamplePrompts onSend={(text) => sendMessage({ text })} />
           )}
 
           {messages.map((m) => {
@@ -412,38 +419,40 @@ export function ChatPanel({
         </div>
       </ScrollArea>
 
-      {/* Input */}
-      <div className="shrink-0 border-t bg-background p-3">
-        <form onSubmit={handleSubmit} className="relative">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmit(e)
-              }
-            }}
-            placeholder={t("placeholder")}
-            disabled={isLoading}
-            rows={2}
-            className="
-              w-full resize-none rounded-xl border border-input bg-muted/30 px-3 py-2.5 pr-11
-              text-[13px] text-foreground placeholder:text-muted-foreground/50
-              outline-none transition-colors leading-relaxed
-              focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !input.trim()}
-            className="absolute right-2 bottom-2 size-7 shrink-0 rounded-lg"
-          >
-            <SendHorizonal className="size-3.5" />
-          </Button>
+      {/* Input — Atlassian-inspired */}
+      <div className="shrink-0 border-t bg-background px-3 py-2.5">
+        <form onSubmit={handleSubmit}>
+          <div className="rounded-lg border border-input bg-muted/20 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-background transition-all">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+              placeholder={t("placeholder")}
+              disabled={isLoading}
+              rows={2}
+              className="
+                w-full resize-none bg-transparent px-3 pt-2.5 pb-1
+                text-[13px] text-foreground placeholder:text-muted-foreground/50
+                outline-none leading-relaxed
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            />
+            <div className="flex items-center justify-end px-2 pb-1.5">
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="flex items-center justify-center size-7 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <SendHorizonal className="size-3.5" />
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </>
@@ -485,15 +494,15 @@ export function ChatPanel({
       {!collapsed && (
         <>
           <div className="flex items-center gap-2 border-b px-3 h-12 shrink-0">
+            <Bot className="size-4 text-primary shrink-0" />
+            <span className="text-[14px] font-medium flex-1">{t("title")}</span>
             <button
               onClick={toggleCollapse}
               className="flex items-center justify-center size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              title="Ocultar panel"
+              title={t("collapse")}
             >
-              <ChevronRight className="size-4" />
+              <X className="size-4" />
             </button>
-            <Bot className="size-4 text-primary shrink-0" />
-            <span className="text-[14px] font-medium">{t("title")}</span>
           </div>
           {chatContent}
         </>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
+import { useTranslations } from "next-intl"
 import { Plus, Lock, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -17,6 +18,7 @@ function truncate(s: string, max: number = 40): string {
 }
 
 export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekStart: string; initialData?: WeekNoteData }) {
+  const t = useTranslations("notes")
   const [data, setData] = useState<WeekNoteData | null>(initialDataProp ?? null)
   const [loadedWeek, setLoadedWeek] = useState(initialDataProp ? weekStart : "")
   const [adding, setAdding] = useState(false)
@@ -56,7 +58,7 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
   }
 
   function handleDismissTemplate(templateId: string) {
-    if (!confirm("Esta es una nota predeterminada. Se eliminará solo de esta semana y reaparecerá la semana siguiente. ¿Continuar?")) return
+    if (!confirm(t("confirmDismiss"))) return
     startTransition(async () => {
       const result = await dismissTemplateNote(templateId, weekStart)
       if (result.error) { toast.error(result.error); return }
@@ -66,7 +68,7 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
 
   return (
     <div className="border-t border-border px-4 py-2 shrink-0 flex items-center gap-2 flex-wrap">
-      <span className="text-[11px] text-muted-foreground/60 font-medium shrink-0">notas</span>
+      <span className="text-[11px] text-muted-foreground/60 font-medium shrink-0">{t("label")}</span>
 
       {/* Template chips */}
       {data.templates.map((t) => (
@@ -107,7 +109,7 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAdding(false); setNewText("") } }}
           onBlur={handleAdd}
           disabled={isPending}
-          placeholder="Nueva nota..."
+          placeholder={t("inputPlaceholder")}
           className="text-[11px] bg-transparent border-b border-border outline-none px-1 py-0.5 w-40 text-foreground placeholder:text-muted-foreground/40"
         />
       ) : (
@@ -116,7 +118,7 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
           className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
         >
           <Plus className="size-3" />
-          Añadir...
+          {t("addNote")}
         </button>
       )}
     </div>

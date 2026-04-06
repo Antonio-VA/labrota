@@ -1064,8 +1064,13 @@
       "coverage": "¿Hay falta de cobertura esta semana?",
       "icsi": "¿Quién cubre ICSI el jueves?",
       "shifts": "¿Cuántos turnos ha hecho {name} esta semana?",
-      "print": "Imprime el horario de esta semana"
-    }
+      "print": "Imprime el horario de esta semana",
+      "publish": "Publica el horario de esta semana",
+      "copyWeek": "Copia el horario de la semana pasada",
+      "whoIsOff": "¿Quién tiene ausencia esta semana?",
+      "regenerateDay": "Regenera el lunes"
+    },
+    "promptHint": "Pregunta lo que necesites sobre el horario"
   },
   "pdf": {
     "title": "Exportar horario",
@@ -1186,7 +1191,11 @@
     "weeklyNotes": "Notas semanales",
     "defaultNotesDescription": "Notas predeterminadas que aparecen cada semana. Se pueden descartar individualmente por semana.",
     "newNotePlaceholder": "Nueva nota predeterminada...",
-    "notesDisabled": "Las notas están desactivadas. Actívalas en Administración → Funcionalidades."
+    "notesDisabled": "Las notas están desactivadas. Actívalas en Administración → Funcionalidades.",
+    "label": "notas",
+    "addNote": "Añadir...",
+    "inputPlaceholder": "Nueva nota...",
+    "confirmDismiss": "Esta es una nota predeterminada. Se eliminará solo de esta semana y reaparecerá la semana siguiente. ¿Continuar?"
   },
   "shiftRotation": {
     "title": "Rotación de turnos",

@@ -1064,8 +1064,13 @@
       "coverage": "Are we short on any skills this week?",
       "icsi": "Who covers ICSI on Thursday?",
       "shifts": "How many shifts has {name} done this week?",
-      "print": "Print this week's rota"
-    }
+      "print": "Print this week's rota",
+      "publish": "Publish this week's rota",
+      "copyWeek": "Copy last week's rota",
+      "whoIsOff": "Who is on leave this week?",
+      "regenerateDay": "Regenerate Monday"
+    },
+    "promptHint": "Ask anything about the rota"
   },
   "pdf": {
     "title": "Export rota",
@@ -1186,7 +1191,11 @@
     "weeklyNotes": "Weekly notes",
     "defaultNotesDescription": "Default notes that appear each week. They can be dismissed individually per week.",
     "newNotePlaceholder": "New default note...",
-    "notesDisabled": "Notes are disabled. Enable them in Administration → Features."
+    "notesDisabled": "Notes are disabled. Enable them in Administration → Features.",
+    "label": "notes",
+    "addNote": "Add...",
+    "inputPlaceholder": "New note...",
+    "confirmDismiss": "This is a default note. It will be removed only from this week and will reappear next week. Continue?"
   },
   "shiftRotation": {
     "title": "Shift rotation",
