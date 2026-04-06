@@ -37,7 +37,7 @@ export function SettingsTabs({
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex border-b border-border -mb-2 overflow-x-auto">
+      <div className="flex border-b border-border -mb-2 overflow-x-auto scrollbar-none">
         {tabKeys.map((key) => (
           <button
             key={key}
