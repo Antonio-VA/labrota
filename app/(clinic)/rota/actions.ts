@@ -169,23 +169,35 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .select("staff_id, start_date, end_date, type")
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
-      .eq("status", "approved") as unknown as Promise<{ data: LeaveRow[] | null }>,
-    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null }>,
-    supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null }>,
-    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null }>,
-    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: RuleRow[] | null }>,
+      .eq("status", "approved") as unknown as Promise<{ data: LeaveRow[] | null; error: { message: string } | null }>,
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null; error: { message: string } | null }>,
+    supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null; error: { message: string } | null }>,
+    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null; error: { message: string } | null }>,
+    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: RuleRow[] | null; error: { message: string } | null }>,
     supabase
       .from("organisations")
       .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
       .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: OrgConfig | null }>,
+      .maybeSingle() as unknown as Promise<{ data: OrgConfig | null; error: { message: string } | null }>,
     supabase
       .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: StaffRow[] | null }>,
+      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: StaffRow[] | null; error: { message: string } | null }>,
     supabase
       .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null }>,
+      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null; error: { message: string } | null }>,
   ])
+
+  // Check for critical query errors — throw so callers can catch
+  const criticalErrors = [
+    labConfigResult.error && `lab_config: ${labConfigResult.error.message}`,
+    leavesResult.error && `leaves: ${leavesResult.error.message}`,
+    shiftTypesRes.error && `shift_types: ${shiftTypesRes.error.message}`,
+    staffRes.error && `staff: ${staffRes.error.message}`,
+  ].filter(Boolean)
+  if (criticalErrors.length > 0) {
+    console.error("[getRotaWeek] Query errors:", criticalErrors.join("; "))
+    throw new Error(`Failed to load schedule data: ${criticalErrors.join("; ")}`)
+  }
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
   let rotaResult = rotaResultFull
@@ -1762,11 +1774,15 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
 export async function getActiveStaff(): Promise<StaffWithSkills[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("staff")
     .select("*, staff_skills(*)")
     .neq("onboarding_status", "inactive")
     .order("first_name")
+  if (error) {
+    console.error("[getActiveStaff] Query error:", error.message)
+    throw new Error(`Failed to load staff: ${error.message}`)
+  }
   return (data ?? []) as StaffWithSkills[]
 }
 

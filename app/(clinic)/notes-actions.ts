@@ -74,6 +74,16 @@ export async function getWeekNotes(weekStart: string): Promise<WeekNoteData> {
     supabase.from("lab_config").select("enable_notes").eq("organisation_id", orgId).maybeSingle(),
   ])
 
+  // Throw on query errors so schedule page .catch() can handle them
+  const noteErrors = [
+    templatesRes.error && `note_templates: ${templatesRes.error.message}`,
+    adHocRes.error && `week_notes: ${adHocRes.error.message}`,
+  ].filter(Boolean)
+  if (noteErrors.length > 0) {
+    console.error("[getWeekNotes] Query errors:", noteErrors.join("; "))
+    throw new Error(`Failed to load notes: ${noteErrors.join("; ")}`)
+  }
+
   const dismissedIds = new Set((dismissedRes.data ?? []).map((d: { note_template_id: string }) => d.note_template_id))
   const templates = ((templatesRes.data ?? []) as { id: string; text: string }[]).filter((t) => !dismissedIds.has(t.id))
   const adHocNotes = (adHocRes.data ?? []) as { id: string; text: string }[]

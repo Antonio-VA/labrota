@@ -218,11 +218,15 @@ export async function hasEnabledRecipients(): Promise<boolean> {
   const orgId = await getOrgId()
   if (!orgId) return false
   const supabase = await createClient()
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("rota_publish_recipients")
     .select("id", { count: "exact", head: true })
     .eq("organisation_id", orgId)
     .eq("enabled", true)
+  if (error) {
+    console.error("[hasEnabledRecipients] Query error:", error.message)
+    throw new Error(`Failed to check recipients: ${error.message}`)
+  }
   return (count ?? 0) > 0
 }
 
