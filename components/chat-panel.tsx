@@ -22,6 +22,9 @@ const transport = new DefaultChatTransport({
     viewingWeekStart: typeof window !== "undefined"
       ? sessionStorage.getItem("labrota_current_date") ?? undefined
       : undefined,
+    currentPage: typeof window !== "undefined"
+      ? window.location.pathname
+      : undefined,
   }),
 })
 
@@ -36,7 +39,7 @@ type Proposal = {
 
 // ── Proposal card ─────────────────────────────────────────────────────────────
 
-function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?: () => void }) {
+function ProposalCard({ proposal }: { proposal: Proposal }) {
   const t      = useTranslations("agent")
   const tc     = useTranslations("common")
   const router = useRouter()
@@ -59,8 +62,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
             const result = await generateRota(p.weekStart as string, false)
             if (result.error) { setError(result.error); break }
             if ((result.assignmentCount ?? 0) === 0) { setError("No assignments created. Check staff and lab config."); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "addLeave": {
             if (!p.staffId) { setError("Staff member not found."); break }
@@ -91,32 +93,27 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
               functionLabel: (p.functionLabel as string) ?? undefined,
             })
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "regenerateDay": {
             const result = await regenerateDay(p.weekStart as string, p.date as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "publishRota": {
             const result = await publishRota(p.rotaId as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "unlockRota": {
             const result = await unlockRota(p.rotaId as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "copyPreviousWeek": {
             const result = await copyPreviousWeek(p.weekStart as string)
             if (result.error) { setError(result.error); break }
-            ok = true; onRefresh?.()
-            break
+            ok = true;             break
           }
           case "updateStaff": {
             const changes = p.changes as Record<string, unknown>
@@ -212,6 +209,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: Proposal; onRefresh?:
         if (ok) {
           setStatus("done")
           router.refresh()
+          window.dispatchEvent(new CustomEvent("labrota:refresh"))
         } else if (!error) {
           setStatus("pending")
         } else {
@@ -301,12 +299,10 @@ function ExamplePrompts({ onSend }: { onSend: (text: string) => void }) {
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function ChatPanel({
-  onRefresh,
   collapsed: controlledCollapsed,
   onToggleCollapsed,
   mobile = false,
 }: {
-  onRefresh?: () => void
   collapsed?: boolean
   onToggleCollapsed?: () => void
   mobile?: boolean
@@ -432,7 +428,7 @@ export function ChatPanel({
                   if (!tp.output || !(tp.output as Proposal).proposal) return null
                   return (
                     <div key={i} className="w-full max-w-[95%]">
-                      <ProposalCard proposal={tp.output as Proposal} onRefresh={onRefresh} />
+                      <ProposalCard proposal={tp.output as Proposal} />
                     </div>
                   )
                 })}
