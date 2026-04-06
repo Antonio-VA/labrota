@@ -2811,7 +2811,7 @@ import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemp
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[] }) {
+export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -2819,7 +2819,7 @@ export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; 
   )
 }
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[] }) {
+function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff, hasNotifications = false }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -3728,7 +3728,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             <OverflowMenu items={[
               // ── Group 1: Actions (publish) ──
               ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
-                label: t("publishRota"),
+                label: hasNotifications ? t("publishRota") : t("publishOnly"),
                 icon: <Lock className="size-3.5" />,
                 onClick: handlePublish,
                 disabled: isPending,

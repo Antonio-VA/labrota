@@ -187,6 +187,19 @@ export async function toggleExternalRecipient(id: string, enabled: boolean): Pro
   return {}
 }
 
+/** Check if any notification recipients are enabled for the current org */
+export async function hasEnabledRecipients(): Promise<boolean> {
+  const orgId = await getOrgId()
+  if (!orgId) return false
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from("rota_publish_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", orgId)
+    .eq("enabled", true)
+  return (count ?? 0) > 0
+}
+
 /** Get all enabled recipient emails for a given org (used during publish) */
 export async function getEnabledRecipientEmails(orgId: string): Promise<string[]> {
   const admin = createAdminClient()

@@ -15,9 +15,11 @@ import type { StaffWithSkills } from "@/lib/types/database"
 export function ScheduleClient({
   initialData,
   initialStaff,
+  hasNotifications = false,
 }: {
   initialData?: RotaWeekData
   initialStaff?: StaffWithSkills[]
+  hasNotifications?: boolean
 }) {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
   const [chatCollapsed, setChatCollapsed] = useState(true)
@@ -43,6 +45,7 @@ export function ScheduleClient({
           chatOpen={!chatCollapsed}
           initialData={initialData}
           initialStaff={initialStaff}
+          hasNotifications={hasNotifications}
         />
         <ChatPanel
           onRefresh={() => setCalendarRefreshKey((k) => k + 1)}

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, Mail } from "lucide-react"
+import { Plus, Trash2, Mail, Check } from "lucide-react"
 import { toast } from "sonner"
 import {
   toggleRecipient,
@@ -14,6 +14,38 @@ import {
   toggleExternalRecipient,
   type RecipientRow,
 } from "@/app/(clinic)/notifications-actions"
+
+function ToggleSwitch({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: () => void; disabled: boolean }) {
+  const [showCheck, setShowCheck] = useState(false)
+
+  const handleClick = useCallback(() => {
+    onToggle()
+    setShowCheck(true)
+    setTimeout(() => setShowCheck(false), 1500)
+  }, [onToggle])
+
+  return (
+    <div className="flex items-center gap-2">
+      {showCheck && (
+        <Check className="size-3.5 text-emerald-500 animate-in fade-in duration-200" />
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={handleClick}
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+          enabled ? "bg-primary" : "bg-muted-foreground/20"
+        )}
+      >
+        <span className={cn(
+          "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+          enabled ? "translate-x-5" : "translate-x-0"
+        )} />
+      </button>
+    </div>
+  )
+}
 
 export function SettingsNotifications({
   initialRecipients,
@@ -64,7 +96,7 @@ export function SettingsNotifications({
         return
       }
       setRecipients((prev) => [...prev, {
-        id: crypto.randomUUID(), // temp id until refresh
+        id: crypto.randomUUID(),
         userId: null,
         email,
         name: newName.trim() || email,
@@ -108,34 +140,34 @@ export function SettingsNotifications({
         {internalRecipients.length === 0 ? (
           <div className="px-5 py-6 text-center text-[13px] text-muted-foreground">{t("noUsers")}</div>
         ) : (
-          internalRecipients.map((r, i) => (
-            <div
-              key={r.userId}
-              className={cn(
-                "px-5 py-3 flex items-center gap-3",
-                i < internalRecipients.length - 1 && "border-b border-border/50"
-              )}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium truncate">{r.name}</p>
-                <p className="text-[12px] text-muted-foreground truncate">{r.email}</p>
-              </div>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => handleToggle(r)}
+          internalRecipients.map((r, i) => {
+            const hasName = r.name && r.name !== r.email
+            return (
+              <div
+                key={r.userId}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  r.enabled ? "bg-primary" : "bg-muted-foreground/20"
+                  "px-5 py-3 flex items-center gap-3",
+                  i < internalRecipients.length - 1 && "border-b border-border/50"
                 )}
               >
-                <span className={cn(
-                  "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                  r.enabled ? "translate-x-5" : "translate-x-0"
-                )} />
-              </button>
-            </div>
-          ))
+                <div className="flex-1 min-w-0">
+                  {hasName ? (
+                    <>
+                      <p className="text-[13px] font-medium truncate">{r.name}</p>
+                      <p className="text-[12px] text-muted-foreground truncate">{r.email}</p>
+                    </>
+                  ) : (
+                    <p className="text-[13px] font-medium truncate">{r.email}</p>
+                  )}
+                </div>
+                <ToggleSwitch
+                  enabled={r.enabled}
+                  onToggle={() => handleToggle(r)}
+                  disabled={isPending}
+                />
+              </div>
+            )
+          })
         )}
       </div>
 
@@ -145,39 +177,39 @@ export function SettingsNotifications({
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">{t("externalEmails")}</p>
         </div>
 
-        {externalRecipients.map((r) => (
-          <div
-            key={r.id}
-            className="px-5 py-3 flex items-center gap-3 border-b border-border/50"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium truncate">{r.name}</p>
-              <p className="text-[12px] text-muted-foreground truncate">{r.email}</p>
+        {externalRecipients.map((r) => {
+          const hasName = r.name && r.name !== r.email
+          return (
+            <div
+              key={r.id}
+              className="px-5 py-3 flex items-center gap-3 border-b border-border/50"
+            >
+              <div className="flex-1 min-w-0">
+                {hasName ? (
+                  <>
+                    <p className="text-[13px] font-medium truncate">{r.name}</p>
+                    <p className="text-[12px] text-muted-foreground truncate">{r.email}</p>
+                  </>
+                ) : (
+                  <p className="text-[13px] font-medium truncate">{r.email}</p>
+                )}
+              </div>
+              <ToggleSwitch
+                enabled={r.enabled}
+                onToggle={() => handleToggle(r)}
+                disabled={isPending}
+              />
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => handleRemove(r)}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => handleToggle(r)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                r.enabled ? "bg-primary" : "bg-muted-foreground/20"
-              )}
-            >
-              <span className={cn(
-                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                r.enabled ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => handleRemove(r)}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        ))}
+          )
+        })}
 
         {/* Add form */}
         <div className="px-5 py-3 flex items-end gap-2 flex-wrap">
@@ -193,7 +225,7 @@ export function SettingsNotifications({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[12px] text-muted-foreground font-medium">{t("nameLabel")}</label>
+            <label className="text-[12px] text-muted-foreground font-medium">{t("fullNameLabel")}</label>
             <Input
               type="text"
               value={newName}
