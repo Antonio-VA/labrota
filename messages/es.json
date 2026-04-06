@@ -1418,7 +1418,11 @@
     "sessionExpired": "Tu sesión ha caducado. Por favor, vuelve a iniciar sesión.",
     "constraintViolation": "No se puede cumplir {constraint} el {date} — {reason}.",
     "somethingWentWrong": "Algo salió mal",
-    "tryAgain": "Intentar de nuevo"
+    "tryAgain": "Intentar de nuevo",
+    "staffDetail": "No se pudo cargar el perfil del empleado",
+    "staffNew": "No se pudo cargar el formulario de nuevo empleado",
+    "onboardingImport": "No se pudo cargar la importación de equipo",
+    "onboardingImportRota": "No se pudo cargar la importación de horarios"
   },
   "import": {
     "uploadTitle": "Importar guardia histórica",

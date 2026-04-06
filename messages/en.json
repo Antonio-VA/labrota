@@ -1418,7 +1418,11 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "constraintViolation": "Cannot meet {constraint} on {date} — {reason}.",
     "somethingWentWrong": "Something went wrong",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "staffDetail": "Failed to load staff profile",
+    "staffNew": "Failed to load new staff form",
+    "onboardingImport": "Failed to load team import",
+    "onboardingImportRota": "Failed to load rota import"
   },
   "import": {
     "uploadTitle": "Import historical rota",
