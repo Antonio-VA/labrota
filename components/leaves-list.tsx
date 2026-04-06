@@ -652,36 +652,39 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   const sevenDaysOut = new Date(todayDate)
   sevenDaysOut.setDate(todayDate.getDate() + 7)
   const sevenISO = sevenDaysOut.toISOString().split("T")[0]
-  const upcoming = leaves.filter((l) => l.start_date > TODAY && l.start_date <= sevenISO).length
+  const upcomingLeaves = leaves.filter((l) => l.start_date > TODAY && l.start_date <= sevenISO)
+  const upcomingNames = [...new Map(upcomingLeaves.map((l) => [l.staff_id, l.staff?.first_name ?? ""])).values()].filter(Boolean)
 
-  // Próximos 30 días — total absence days in next 30 days
-  const thirtyDaysOut = new Date(todayDate)
-  thirtyDaysOut.setDate(todayDate.getDate() + 30)
-  const thirtyISO = thirtyDaysOut.toISOString().split("T")[0]
-  let next30Days = 0
+  // This month — total absence days in current calendar month
+  const monthStart = `${TODAY.slice(0, 7)}-01`
+  const monthEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0)
+  const monthEndISO = monthEndDate.toISOString().split("T")[0]
+  let thisMonthDays = 0
   for (const l of leaves) {
-    if (l.end_date < TODAY || l.start_date > thirtyISO) continue
-    const clampStart = l.start_date < TODAY ? TODAY : l.start_date
-    const clampEnd = l.end_date > thirtyISO ? thirtyISO : l.end_date
-    next30Days += daysBetween(clampStart, clampEnd)
+    if (l.end_date < monthStart || l.start_date > monthEndISO) continue
+    const clampStart = l.start_date < monthStart ? monthStart : l.start_date
+    const clampEnd = l.end_date > monthEndISO ? monthEndISO : l.end_date
+    thisMonthDays += daysBetween(clampStart, clampEnd)
   }
 
   // Pendientes de revisión
   const pendingCount = leaves.filter((l) => l.status === "pending").length
 
-  const cards = [
+  const cards: { label: string; value: number | string; detail?: string }[] = [
     { label: t("absentToday"), value: absentToday },
-    { label: t("thisWeek"), value: thisWeekDays },
-    { label: t("upcomingLeaves"), value: upcoming },
+    { label: t("thisWeek"), value: `${thisWeekDays}d` },
+    { label: t("upcomingLeaves"), value: upcomingLeaves.length, detail: upcomingNames.length > 0 ? upcomingNames.slice(0, 3).join(", ") + (upcomingNames.length > 3 ? ` +${upcomingNames.length - 3}` : "") : undefined },
+    { label: t("thisMonth"), value: `${thisMonthDays}d` },
     { label: t("pendingReview"), value: pendingCount },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
       {cards.map((kpi) => (
         <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-3 md:px-4 py-2.5 md:py-3">
           <p className="text-[11px] md:text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
           <p className="text-[20px] md:text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpi.value}</p>
+          {kpi.detail && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{kpi.detail}</p>}
         </div>
       ))}
     </div>

@@ -620,7 +620,7 @@
     "absentToday": "Absent today",
     "thisWeek": "This week",
     "upcomingLeaves": "Upcoming leaves",
-    "next30Days": "Next 30 days",
+    "thisMonth": "This month",
     "pendingReview": "Pending review",
     "hideHistory": "Hide history",
     "showHistory": "Show history ({count})",
