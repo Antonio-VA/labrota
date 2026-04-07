@@ -99,12 +99,18 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             ok = true; break
           }
           case "publishRota": {
-            const result = await publishRota(p.weekStart as string)
+            const { getRotaWeek } = await import("@/app/(clinic)/rota/actions")
+            const weekData = await getRotaWeek(p.weekStart as string)
+            if (!weekData.rota?.id) { setError("No rota found for this week."); break }
+            const result = await publishRota(weekData.rota.id)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "unlockRota": {
-            const result = await unlockRota(p.weekStart as string)
+            const { getRotaWeek } = await import("@/app/(clinic)/rota/actions")
+            const weekData = await getRotaWeek(p.weekStart as string)
+            if (!weekData.rota?.id) { setError("No rota found for this week."); break }
+            const result = await unlockRota(weekData.rota.id)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
@@ -161,7 +167,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             ok = true; break
           }
           case "rejectLeave": {
-            const result = await rejectLeave(p.leaveId as string, p.reason as string | undefined)
+            const result = await rejectLeave(p.leaveId as string)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
