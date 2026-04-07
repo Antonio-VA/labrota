@@ -638,9 +638,9 @@ export default function MarketingPage() {
 
             {/* Slider */}
             <div className="mb-8 pt-2">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <span className="text-[14px] font-medium text-[#64748b]">{t.pricing.staffLabel}</span>
-                <span className="text-[22px] font-extrabold text-[#0f172a]">{staffCount}</span>
+                <span className="inline-flex items-center justify-center min-w-[44px] h-9 px-3 rounded-lg bg-[#1b4f8a] text-white text-[20px] font-extrabold tabular-nums">{staffCount}</span>
               </div>
               <input
                 type="range"
@@ -649,10 +649,12 @@ export default function MarketingPage() {
                 step={1}
                 value={staffCount}
                 onChange={e => setStaffCount(Number(e.target.value))}
-                className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                style={{ accentColor: "#1b4f8a" }}
+                className="w-full cursor-pointer appearance-none h-[6px] rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1b4f8a] [&::-webkit-slider-thumb]:shadow-[0_0_0_3px_rgba(27,79,138,0.2)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#1b4f8a] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #1b4f8a ${((staffCount - 5) / 25) * 100}%, #dbeafe ${((staffCount - 5) / 25) * 100}%)`,
+                }}
               />
-              <div className="flex justify-between mt-1">
+              <div className="flex justify-between mt-2">
                 <span className="text-[11px] text-[#94a3b8]">5</span>
                 <span className="text-[11px] text-[#94a3b8]">30</span>
               </div>
