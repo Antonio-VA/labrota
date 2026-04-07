@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getAuthUser, getCachedOrgId } from "@/lib/auth-cache"
 import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
 
@@ -7,63 +8,52 @@ type OrgMember = { role: string; linked_staff_id: string | null }
 type LabConfigData = { enable_leave_requests: boolean }
 
 export default async function LeavesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, orgId] = await Promise.all([getAuthUser(), getCachedOrgId()])
 
-  // Determine role and linked staff
   let userRole: "admin" | "manager" | "viewer" = "admin"
   let viewerStaffId: string | null = null
   let enableLeaveRequests = false
-  let orgId: string | null = null
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organisation_id")
-      .eq("id", user.id)
-      .single() as { data: { organisation_id: string | null } | null }
-    orgId = profile?.organisation_id ?? null
+  if (user && orgId) {
+    const admin = createAdminClient()
+    const [memberRes, labConfigRes] = await Promise.all([
+      admin
+        .from("organisation_members")
+        .select("role, linked_staff_id")
+        .eq("user_id", user.id)
+        .eq("organisation_id", orgId)
+        .single() as unknown as Promise<{ data: OrgMember | null }>,
+      admin
+        .from("lab_config")
+        .select("enable_leave_requests")
+        .eq("organisation_id", orgId)
+        .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
+    ])
 
-    if (orgId) {
-      const admin = createAdminClient()
-      const [memberRes, labConfigRes] = await Promise.all([
-        admin
-          .from("organisation_members")
-          .select("role, linked_staff_id")
-          .eq("user_id", user.id)
-          .eq("organisation_id", orgId)
-          .single() as unknown as Promise<{ data: OrgMember | null }>,
-        admin
-          .from("lab_config")
-          .select("enable_leave_requests")
-          .eq("organisation_id", orgId)
-          .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
-      ])
+    enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false
 
-      enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false
-
-      if (memberRes.data?.role === "viewer") {
-        userRole = "viewer"
-        // Use linked_staff_id from membership, fallback to email match
-        if (memberRes.data.linked_staff_id) {
-          viewerStaffId = memberRes.data.linked_staff_id
-        } else {
-          const { data: staffMatch } = await supabase
-            .from("staff")
-            .select("id")
-            .eq("email", user.email ?? "")
-            .maybeSingle() as { data: { id: string } | null }
-          viewerStaffId = staffMatch?.id ?? null
-        }
-      } else if (memberRes.data?.role === "manager") {
-        userRole = "manager"
+    if (memberRes.data?.role === "viewer") {
+      userRole = "viewer"
+      if (memberRes.data.linked_staff_id) {
+        viewerStaffId = memberRes.data.linked_staff_id
+      } else {
+        const supabase = await createClient()
+        const { data: staffMatch } = await supabase
+          .from("staff")
+          .select("id")
+          .eq("email", user.email ?? "")
+          .maybeSingle() as { data: { id: string } | null }
+        viewerStaffId = staffMatch?.id ?? null
       }
+    } else if (memberRes.data?.role === "manager") {
+      userRole = "manager"
     }
   }
 
   // Use admin client for viewers (RLS may block their reads)
-  const queryClient = userRole === "viewer" ? createAdminClient() : supabase
+  const queryClient = userRole === "viewer" ? createAdminClient() : await createClient()
 
+  // Fetch leaves + staff + reviewer data in parallel
   const [{ data: leavesData }, { data: staffData }] = await Promise.all([
     queryClient
       .from("leaves")
@@ -86,9 +76,17 @@ export default async function LeavesPage() {
   let reviewerMap: Record<string, string> = {}
   if (reviewerIds.length > 0 && orgId) {
     const adminClient = createAdminClient()
+    // Fetch profiles + member display names in parallel
     const [{ data: reviewerProfiles }, { data: memberNames }] = await Promise.all([
-      adminClient.from("profiles").select("id, full_name").in("id", reviewerIds) as unknown as Promise<{ data: Array<{ id: string; full_name: string | null }> | null }>,
-      adminClient.from("organisation_members").select("user_id, display_name").eq("organisation_id", orgId).in("user_id", reviewerIds) as unknown as Promise<{ data: Array<{ user_id: string; display_name: string | null }> | null }>,
+      adminClient
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", reviewerIds) as unknown as Promise<{ data: Array<{ id: string; full_name: string | null }> | null }>,
+      adminClient
+        .from("organisation_members")
+        .select("user_id, display_name")
+        .eq("organisation_id", orgId!)
+        .in("user_id", reviewerIds) as unknown as Promise<{ data: Array<{ user_id: string; display_name: string | null }> | null }>,
     ])
     const memberNameMap = Object.fromEntries((memberNames ?? []).map((m) => [m.user_id, m.display_name]))
     reviewerMap = Object.fromEntries(

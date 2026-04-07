@@ -2929,9 +2929,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [showSaved, setShowSaved] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
-  const [loadingWeek, setLoadingWeek]   = useState(true)
+  const [loadingWeek, setLoadingWeek]   = useState(!initialData)
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(false)
+  const [initialLoaded, setInitialLoaded] = useState(!!initialData)
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
@@ -3045,7 +3045,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
 
   // Local punctions override
-  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>({})
+  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(initialData?.rota?.punctions_override ?? {})
 
   // Handle biopsy override: back-calculate punction adjustments for D-5 and D-6
   // Formula: since d5Pct + d6Pct = 1, ΔP = ΔBiopsies / conversionRate
@@ -3280,7 +3280,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     })
   }, [])
 
-  useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
+  // Skip initial fetch if server-prefetched data was provided
+  const skipInitialFetch = useRef(!!initialData)
+  useEffect(() => {
+    if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
+    fetchWeek(weekStart)
+  }, [weekStart, fetchWeek])
 
   // Apply favorite view on first mount — only if no session-stored view exists
   const favAppliedRef = useRef(false)

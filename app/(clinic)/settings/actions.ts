@@ -61,20 +61,22 @@ export async function getOrgUsers(): Promise<OrgUser[]> {
   if (!members?.length) return []
 
   const userIds = members.map((m) => m.user_id)
-  const { data: profiles } = await admin
-    .from("profiles")
-    .select("id, email, full_name")
-    .in("id", userIds) as { data: Array<{ id: string; email: string; full_name: string | null }> | null }
+  const userIdSet = new Set(userIds)
+
+  // Fetch profiles + auth users in parallel (single listUsers call replaces N getUserById)
+  const [{ data: profiles }, { data: authData }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", userIds) as unknown as Promise<{ data: Array<{ id: string; email: string; full_name: string | null }> | null }>,
+    admin.auth.admin.listUsers({ perPage: 1000 }),
+  ])
 
   const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]))
-
-  // Get last login from auth — fetch only the org's users
   const authMap: Record<string, string | null> = {}
-  const authFetches = userIds.map(async (uid) => {
-    const { data } = await admin.auth.admin.getUserById(uid)
-    if (data?.user) authMap[uid] = data.user.last_sign_in_at ?? null
-  })
-  await Promise.all(authFetches)
+  for (const u of authData?.users ?? []) {
+    if (userIdSet.has(u.id)) authMap[u.id] = u.last_sign_in_at ?? null
+  }
 
   return members.map((m) => ({
     userId: m.user_id,
