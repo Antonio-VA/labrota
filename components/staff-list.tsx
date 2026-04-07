@@ -777,7 +777,7 @@ function StaffTable({
           ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
           onChange={() => onToggleAll(members.map((m) => m.id))}
           className="size-4 rounded border-border cursor-pointer accent-primary"
-          aria-label="Seleccionar todos"
+          aria-label={t("selectAll")}
         />
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
@@ -787,10 +787,10 @@ function StaffTable({
         {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
         {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
         {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
-        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Turnos</span>}
-        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
-        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
-        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
+        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>}
+        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>}
+        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>}
+        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>}
       </div>
 
       {/* Rows */}
@@ -1203,15 +1203,15 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     setVisibleCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
   }
   const ALL_COLUMNS: { key: ColKey; label: string }[] = [
-    { key: "role", label: "Departamento" },
-    { key: "email", label: "Email" },
-    { key: "capacidades", label: "Técnicas" },
-    { key: "training", label: "En formación" },
-    { key: "status", label: "Estado" },
-    { key: "shiftPrefs", label: "Preferencia turno" },
-    { key: "dayPrefs", label: "Preferencia días" },
-    { key: "daysPerWeek", label: "Días/semana" },
-    { key: "workingPattern", label: "Patrón trabajo" },
+    { key: "role", label: t("columnMenu.role") },
+    { key: "email", label: t("columnMenu.email") },
+    { key: "capacidades", label: t("columnMenu.capacidades") },
+    { key: "training", label: t("columnMenu.training") },
+    { key: "status", label: t("columnMenu.status") },
+    { key: "shiftPrefs", label: t("columnMenu.shiftPrefs") },
+    { key: "dayPrefs", label: t("columnMenu.dayPrefs") },
+    { key: "daysPerWeek", label: t("columnMenu.daysPerWeek") },
+    { key: "workingPattern", label: t("columnMenu.workingPattern") },
   ]
 
   // Inline edit mode
@@ -1240,7 +1240,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     startSaving(async () => {
       const result = await bulkUpdateStaffField(updates)
       if (result.error) toast.error(result.error)
-      else toast.success(`${result.updated} campos actualizados`)
+      else toast.success(t("bulk.fieldsUpdated", { count: result.updated }))
       setEditDirty(new Map())
       setEditMode(false)
     })

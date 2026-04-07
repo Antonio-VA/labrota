@@ -411,7 +411,23 @@
       "capacidades": "Tasks",
       "training": "In training",
       "shiftsThisWeek": "Shifts this week",
-      "status": "Status"
+      "status": "Status",
+      "shiftPrefs": "Shifts",
+      "dayPrefs": "Day pref.",
+      "daysPerWeek": "Days/wk",
+      "workingPattern": "Pattern"
+    },
+    "selectAll": "Select all",
+    "columnMenu": {
+      "role": "Department",
+      "email": "Email",
+      "capacidades": "Tasks",
+      "training": "In training",
+      "status": "Status",
+      "shiftPrefs": "Shift preference",
+      "dayPrefs": "Day preference",
+      "daysPerWeek": "Days/week",
+      "workingPattern": "Working pattern"
     },
     "roles": {
       "lab": "Lab",
@@ -527,7 +543,8 @@
       "skillRemoved": "{count} task(s) removed",
       "statusUpdated": "{count} status(es) updated",
       "deactivated": "{count} member(s) deactivated",
-      "hardDeleted": "{count} member(s) deleted"
+      "hardDeleted": "{count} member(s) deleted",
+      "fieldsUpdated": "{count} field(s) updated"
     },
     "deactivateModal": {
       "description": "They will be marked as inactive with today as the end date",

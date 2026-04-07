@@ -411,7 +411,23 @@
       "capacidades": "Tareas",
       "training": "En formación",
       "shiftsThisWeek": "Turnos esta semana",
-      "status": "Estado"
+      "status": "Estado",
+      "shiftPrefs": "Turnos",
+      "dayPrefs": "Días pref.",
+      "daysPerWeek": "Días/sem",
+      "workingPattern": "Patrón"
+    },
+    "selectAll": "Seleccionar todos",
+    "columnMenu": {
+      "role": "Departamento",
+      "email": "Email",
+      "capacidades": "Técnicas",
+      "training": "En formación",
+      "status": "Estado",
+      "shiftPrefs": "Preferencia turno",
+      "dayPrefs": "Preferencia días",
+      "daysPerWeek": "Días/semana",
+      "workingPattern": "Patrón trabajo"
     },
     "roles": {
       "lab": "Embriología",
@@ -527,7 +543,8 @@
       "skillRemoved": "{count} tarea(s) eliminada(s)",
       "statusUpdated": "{count} estado(s) actualizado(s)",
       "deactivated": "{count} miembro(s) desactivado(s)",
-      "hardDeleted": "{count} miembro(s) borrado(s)"
+      "hardDeleted": "{count} miembro(s) borrado(s)",
+      "fieldsUpdated": "{count} campo(s) actualizado(s)"
     },
     "deactivateModal": {
       "description": "Se marcarán como inactivos con fecha de fin hoy",
