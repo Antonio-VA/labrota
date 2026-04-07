@@ -181,13 +181,13 @@ export function MySchedule({
               // On leave
               if (day.isOnLeave) {
                 return (
-                  <div key={day.date} className={cn("rounded-lg border px-4 py-3", isPast ? "border-border/50 opacity-50" : "border-amber-200 bg-amber-50/50")}>
+                  <div key={day.date} className={cn("rounded-lg border px-4 py-3", isPast ? "border-border bg-muted/40" : "border-amber-200 bg-amber-50/50")}>
                     <div className="flex items-center gap-2">
-                      <CalendarDays className={cn("size-4 shrink-0", isPast ? "text-muted-foreground/40" : "text-amber-500")} />
-                      <span className={cn("text-[14px] font-medium", isPast ? "text-muted-foreground/60" : isToday ? "text-primary" : "")}>{formatDate(day.date, locale)}</span>
+                      <CalendarDays className={cn("size-4 shrink-0", isPast ? "text-muted-foreground" : "text-amber-500")} />
+                      <span className={cn("text-[14px] font-medium", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{formatDate(day.date, locale)}</span>
                       <div className="flex items-center gap-1.5 ml-auto">
-                        <Palmtree className={cn("size-3.5", isPast ? "text-muted-foreground/40" : "text-amber-500")} />
-                        <span className={cn("text-[12px] font-medium", isPast ? "text-muted-foreground/40" : "text-amber-600")}>{t("onLeave")}</span>
+                        <Palmtree className={cn("size-3.5", isPast ? "text-muted-foreground" : "text-amber-500")} />
+                        <span className={cn("text-[12px] font-medium", isPast ? "text-muted-foreground" : "text-amber-600")}>{t("onLeave")}</span>
                       </div>
                     </div>
                   </div>
@@ -197,16 +197,16 @@ export function MySchedule({
               // Has assignment
               if (assignment) {
                 return (
-                  <div key={day.date} className={cn("rounded-lg border px-4 py-3 relative", isPast ? "border-border/50 opacity-50" : "border-border")}>
+                  <div key={day.date} className={cn("rounded-lg border px-4 py-3 relative", isPast ? "border-border bg-muted/40" : "border-border")}>
                     <div className="flex items-center gap-2">
-                      <CalendarDays className={cn("size-4 shrink-0", isPast ? "text-muted-foreground/40" : "text-muted-foreground")} />
-                      <span className={cn("text-[14px] font-medium", isPast ? "text-muted-foreground/60" : isToday ? "text-primary" : "")}>{formatDate(day.date, locale)}</span>
+                      <CalendarDays className={cn("size-4 shrink-0", isPast ? "text-muted-foreground" : "text-muted-foreground")} />
+                      <span className={cn("text-[14px] font-medium", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{formatDate(day.date, locale)}</span>
                       <div className="flex items-center gap-1.5 ml-auto">
-                        <span className={cn("text-[12px] font-medium px-1.5 py-0.5 rounded", isPast ? "bg-muted/50 text-muted-foreground/50" : "bg-muted text-muted-foreground")}>
+                        <span className={cn("text-[12px] font-medium px-1.5 py-0.5 rounded", isPast ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
                           {assignment.shift_type}
                         </span>
                         {times && (
-                          <span className={cn("text-[12px] flex items-center gap-1", isPast ? "text-muted-foreground/40" : "text-muted-foreground")}>
+                          <span className={cn("text-[12px] flex items-center gap-1", isPast ? "text-muted-foreground" : "text-muted-foreground")}>
                             <Clock className="size-3" />
                             {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                           </span>
@@ -242,13 +242,13 @@ export function MySchedule({
                 )
               }
 
-              // Free day
+              // Free day — dashed border
               return (
-                <div key={day.date} className={cn("rounded-lg border px-4 py-3", isPast ? "border-border/30 opacity-40" : "border-border/50")}>
+                <div key={day.date} className={cn("rounded-lg border border-dashed px-4 py-3", isPast ? "border-border bg-muted/40" : "border-border")}>
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="size-4 text-muted-foreground/30 shrink-0" />
-                    <span className={cn("text-[14px]", isToday ? "font-medium text-primary" : "text-muted-foreground/50")}>{formatDate(day.date, locale)}</span>
-                    <span className="text-[12px] text-muted-foreground/40 ml-auto">{t("free")}</span>
+                    <CalendarDays className={cn("size-4 shrink-0", isPast ? "text-muted-foreground" : "text-muted-foreground/40")} />
+                    <span className={cn("text-[14px]", isToday ? "font-medium text-primary" : isPast ? "text-muted-foreground" : "text-muted-foreground/60")}>{formatDate(day.date, locale)}</span>
+                    <span className={cn("text-[12px] ml-auto", isPast ? "text-muted-foreground" : "text-muted-foreground/50")}>{t("free")}</span>
                   </div>
                 </div>
               )
