@@ -8,6 +8,7 @@ import { useLocale } from "next-intl"
 import { ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Sparkles, FileDown, AlertTriangle, CheckCircle2, Plane, Cross, User, GraduationCap, Baby, CalendarX, Check, X, Grid3X3, Users, Bookmark, BrainCircuit, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
+import { useCanEdit } from "@/lib/role-context"
 import { TapPopover } from "@/components/tap-popover"
 import { WeekNotes } from "@/components/week-notes"
 import { getRotaWeek, generateRota, getActiveStaff, getTemplates, applyTemplate, type RotaWeekData } from "@/app/(clinic)/rota/actions"
@@ -279,14 +280,18 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
       </button>
       {open && pos && createPortal(
         <div ref={dropRef} className="fixed z-[9999] w-52 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1" style={{ top: pos.top, right: pos.right }}>
-          <button
-            onClick={() => { setOpen(false); onGenerateWeek?.() }}
-            className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
-          >
-            <Sparkles className="size-4" />
-            {locale === "es" ? "Generar rota" : "Generate rota"}
-          </button>
-          <div className="h-px bg-border mx-3 my-0.5" />
+          {onGenerateWeek && (
+            <>
+              <button
+                onClick={() => { setOpen(false); onGenerateWeek() }}
+                className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
+              >
+                <Sparkles className="size-4" />
+                {locale === "es" ? "Generar rota" : "Generate rota"}
+              </button>
+              <div className="h-px bg-border mx-3 my-0.5" />
+            </>
+          )}
           <button
             onClick={() => {
               setOpen(false)
@@ -542,6 +547,7 @@ export function MobileWeekClient() {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
+  const canEdit = useCanEdit()
   const [weekStart, setWeekStart] = useState(() => getMondayOfWeek(new Date()))
   const [data, setData] = useState<RotaWeekData | null>(null)
   const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
@@ -707,7 +713,7 @@ export function MobileWeekClient() {
           onToggleHighlight={toggleHighlight}
           weekViewMode={weekViewMode}
           onToggleViewMode={() => setWeekViewMode((m) => m === "task" ? "person" : "task")}
-          onGenerateWeek={() => setGenerateModalOpen(true)}
+          onGenerateWeek={canEdit ? () => setGenerateModalOpen(true) : undefined}
           deptColor={mobileDeptColor}
           onToggleDeptColor={toggleMobileDeptColor}
           isFavourite={isFavourite}
