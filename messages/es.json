@@ -1529,5 +1529,31 @@
     "byTaskDesc": "Por tarea — habitual en laboratorios grandes (10+ personas)",
     "saveChanges": "Guardar cambios",
     "namePlaceholder": "Nombre Apellido"
+  },
+  "swaps": {
+    "requestSwap": "Solicitar cambio",
+    "swapShift": "Intercambiar turnos",
+    "dayOff": "Pedir día libre",
+    "selectType": "¿Qué te gustaría hacer?",
+    "selectCandidate": "Elige con quién intercambiar",
+    "selectCover": "Elige quién te cubre",
+    "confirm": "Confirmar solicitud",
+    "cancel": "Cancelar",
+    "submit": "Enviar solicitud",
+    "pendingManager": "Pendiente de aprobación",
+    "pendingTarget": "Esperando respuesta",
+    "approved": "Aprobado",
+    "rejected": "Rechazado",
+    "cancelled": "Cancelado",
+    "noCandidates": "No hay candidatos disponibles para este día",
+    "alreadyPending": "Ya tienes una solicitud pendiente para este turno",
+    "onlyPublished": "Los cambios solo están disponibles en horarios publicados",
+    "mySwaps": "Mis cambios",
+    "shiftOn": "Turno {shift} el {date}",
+    "off": "Libre",
+    "working": "Trabajando",
+    "coverageWarning": "Aviso de cobertura",
+    "enableSwapRequests": "Habilitar solicitudes de cambio de turno",
+    "enableSwapRequestsDesc": "Permitir que el personal solicite intercambios de turno en horarios publicados"
   }
 }

@@ -234,6 +234,7 @@ export interface LabConfig {
   shift_coverage_by_day:    ShiftCoverageByDay | null // shift_code → { day: { lab: N, andrology: N, admin: N } }
   shift_rotation:           "stable" | "weekly" | "daily"  // default "stable"
   enable_leave_requests:    boolean
+  enable_swap_requests:     boolean  // allow staff to request shift swaps on published rotas
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
   enable_notes:             boolean
   days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day" | "guardia"  // default "prefer_weekend"
@@ -261,11 +262,38 @@ export interface LabConfig {
   updated_at:               string
 }
 
+// ── Swap Requests ────────────────────────────────────────────────────────────
+
+export type SwapType   = 'shift_swap' | 'day_off'
+export type SwapStatus = 'pending_manager' | 'manager_approved' | 'pending_target' | 'approved' | 'rejected' | 'cancelled'
+
+export interface SwapRequest {
+  id:                      string
+  organisation_id:         string
+  rota_id:                 string
+  initiator_staff_id:      string
+  initiator_assignment_id: string
+  swap_type:               SwapType
+  target_staff_id:         string | null
+  target_assignment_id:    string | null
+  swap_date:               string
+  swap_shift_type:         string
+  status:                  SwapStatus
+  rejected_by:             string | null
+  rejection_reason:        string | null
+  manager_reviewed_at:     string | null
+  manager_reviewed_by:     string | null
+  target_responded_at:     string | null
+  created_at:              string
+  updated_at:              string
+}
+
 // ── Insert types (omit server-generated fields) ───────────────────────────────
 export type StaffInsert = Omit<Staff, 'id' | 'created_at' | 'updated_at'>
 export type LeaveInsert = Omit<Leave, 'id' | 'created_at' | 'updated_at'>
 export type RotaInsert  = Omit<Rota,  'id' | 'created_at' | 'updated_at'>
 export type RotaAssignmentInsert = Omit<RotaAssignment, 'id' | 'created_at' | 'updated_at'>
+export type SwapRequestInsert = Omit<SwapRequest, 'id' | 'created_at' | 'updated_at'>
 
 // ── Update types (all fields optional except id) ──────────────────────────────
 export type StaffUpdate  = Partial<StaffInsert>

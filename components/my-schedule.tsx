@@ -1,14 +1,25 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { CalendarDays, Clock, Palmtree } from "lucide-react"
+import { CalendarDays, Clock, Palmtree, ArrowLeftRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 import { WeeklyStrip } from "@/components/weekly-strip"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
+
+const SwapRequestDialog = dynamic(
+  () => import("@/components/swap-request-dialog").then(m => ({ default: m.SwapRequestDialog })),
+  { ssr: false }
+)
+
+const SwapRequestsList = dynamic(
+  () => import("@/components/swap-requests-list").then(m => ({ default: m.SwapRequestsList })),
+  { ssr: false }
+)
 
 interface MyScheduleProps {
   staffId: string
@@ -19,14 +30,21 @@ interface MyScheduleProps {
   locale: "es" | "en"
   timeFormat?: string
   initialDate?: string
+  swapEnabled?: boolean
+  rotaPublished?: boolean
 }
 
 export function MySchedule({
   staffId, days, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat, initialDate,
+  swapEnabled = false, rotaPublished = false,
 }: MyScheduleProps) {
   const t = useTranslations("mySchedule")
   const today = new Date().toISOString().split("T")[0]
   const [currentDate, setCurrentDate] = useState(initialDate ?? today)
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
+
+  const canSwap = swapEnabled && rotaPublished
 
   // Find viewer's assignments and leave status per day
   const myDays = days.map((day) => {
@@ -125,6 +143,18 @@ export function MySchedule({
                         <p className="text-[12px] text-muted-foreground mt-0.5">{a.function_label}</p>
                       )}
                     </div>
+                    {canSwap && (
+                      <button
+                        onClick={() => {
+                          setSwapAssignment({ id: a.id, shiftType: a.shift_type, date: currentDate })
+                          setSwapDialogOpen(true)
+                        }}
+                        className="shrink-0 size-8 rounded-lg border border-primary/20 flex items-center justify-center hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                        title={locale === "es" ? "Solicitar cambio" : "Request swap"}
+                      >
+                        <ArrowLeftRight className="size-3.5 text-primary" />
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -186,7 +216,24 @@ export function MySchedule({
             )
           })}
         </div>
+
+        {/* Swap requests list */}
+        {canSwap && (
+          <SwapRequestsList staffId={staffId} locale={locale} />
+        )}
       </div>
+
+      {canSwap && swapAssignment && (
+        <SwapRequestDialog
+          open={swapDialogOpen}
+          onOpenChange={setSwapDialogOpen}
+          assignmentId={swapAssignment.id}
+          shiftType={swapAssignment.shiftType}
+          date={swapAssignment.date}
+          dateLabel={formatDate(swapAssignment.date, locale)}
+          locale={locale}
+        />
+      )}
     </div>
   )
 }

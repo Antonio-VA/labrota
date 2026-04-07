@@ -67,6 +67,7 @@ import { TransposedTaskGrid } from "@/components/transposed-task-grid"
 import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
+const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -2984,9 +2985,24 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const filteredStaffList = allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role))
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
+  // Swap state for desktop viewers
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
+  const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
+
   function openProfile(staffId: string) {
     setProfileStaffId(staffId)
     setProfileOpen(true)
+  }
+
+  // For desktop viewers: intercept chip click on their own assignments to open swap dialog
+  function handleDesktopChipClick(assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) {
+    if (desktopSwapEnabled && assignment.staff_id === viewerStaffId && assignment.id && assignment.shift_type && date) {
+      setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date })
+      setSwapDialogOpen(true)
+    } else {
+      openProfile(assignment.staff_id)
+    }
   }
 
   // DnD state
@@ -4126,7 +4142,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   colorChips={colorChips}
                   timeFormat={weekData?.timeFormat}
                   onCellClick={(date) => { setSheetDate(date); setSheetOpen(true) }}
-                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
                   onRefresh={() => fetchWeekSilent(weekStart)}
                 />
               ) : calendarLayout === "shift" ? (
@@ -4172,7 +4188,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -4192,7 +4208,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -4237,6 +4253,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             locale={locale as "es" | "en"}
             timeFormat={weekData.timeFormat}
             initialDate={currentDate}
+            swapEnabled={weekData.enableSwapRequests}
+            rotaPublished={weekData.rota?.status === "published"}
           />
         )}
 
@@ -4730,6 +4748,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         onClose={() => setApplyTemplateOpen(false)}
         onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
       />
+
+      {/* Desktop viewer swap dialog */}
+      {desktopSwapEnabled && swapAssignment && (
+        <SwapRequestDialog
+          open={swapDialogOpen}
+          onOpenChange={setSwapDialogOpen}
+          assignmentId={swapAssignment.id}
+          shiftType={swapAssignment.shiftType}
+          date={swapAssignment.date}
+          dateLabel={formatDate(swapAssignment.date, locale as "es" | "en")}
+          locale={locale as "es" | "en"}
+        />
+      )}
     </main>
   )
 }

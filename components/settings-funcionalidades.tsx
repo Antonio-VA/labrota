@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { toggleLeaveRequests } from "@/app/(clinic)/settings/actions"
+import { toggleLeaveRequests, toggleSwapRequests } from "@/app/(clinic)/settings/actions"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 
 function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
@@ -40,17 +40,21 @@ function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
 export function SettingsFuncionalidades({
   displayMode,
   enableLeaveRequests,
+  enableSwapRequests = false,
   enableNotes,
   enableTaskInShift,
 }: {
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean
+  enableSwapRequests?: boolean
   enableNotes: boolean
   enableTaskInShift: boolean
   authMethod?: "otp" | "password"
 }) {
   const t = useTranslations("features")
+  const ts = useTranslations("swaps")
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
+  const [swapRequests, setSwapRequests] = useState(enableSwapRequests)
   const [notes, setNotes] = useState(enableNotes)
   const [taskInShift, setTaskInShift] = useState(enableTaskInShift)
   const [isPending, startTransition] = useTransition()
@@ -92,6 +96,25 @@ export function SettingsFuncionalidades({
           })
         }}
       />
+
+      {displayMode === "by_shift" && (<>
+        <div className="h-px bg-border" />
+
+        <FeatureToggle
+          label={ts("enableSwapRequests")}
+          description={ts("enableSwapRequestsDesc")}
+          enabled={swapRequests}
+          disabled={isPending}
+          onToggle={() => {
+            const val = !swapRequests
+            setSwapRequests(val)
+            startTransition(async () => {
+              const result = await toggleSwapRequests(val)
+              if (result.error) { toast.error(result.error); setSwapRequests(!val) }
+            })
+          }}
+        />
+      </>)}
 
       <div className="h-px bg-border" />
 
