@@ -64,7 +64,11 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
   }
 
   if (loading) return null
-  if (swaps.length === 0) return null
+
+  // Only show swaps for today or future dates
+  const today = new Date().toISOString().split("T")[0]
+  const futureSwaps = swaps.filter(s => s.swap_date >= today)
+  if (futureSwaps.length === 0) return null
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -81,7 +85,7 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{t("mySwaps")}</p>
-      {swaps.slice(0, 5).map(swap => {
+      {futureSwaps.slice(0, 5).map(swap => {
         const isInitiator = swap.initiator_staff_id === staffId
         const otherName = isInitiator ? swap.targetName : swap.initiatorName
         const canCancel = isInitiator && ["pending_manager", "manager_approved", "pending_target"].includes(swap.status)

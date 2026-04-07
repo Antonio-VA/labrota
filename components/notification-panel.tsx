@@ -14,6 +14,8 @@ import {
 } from "@/app/(clinic)/notification-actions"
 import type { Notification } from "@/lib/types/database"
 
+const SWAP_TYPES = new Set(["swap_request", "swap_pending_target", "swap_approved", "swap_rejected"])
+
 const TYPE_ICON: Record<string, React.ReactNode> = {
   leave_impact:        <AlertTriangle className="size-4 text-amber-500 shrink-0" />,
   info:                <CalendarDays className="size-4 text-primary shrink-0" />,
@@ -54,7 +56,10 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
   useEffect(() => {
     getUnreadCount().then(setCount)
     // Prefetch notifications in background so opening is instant
-    getNotifications().then(setNotifications)
+    getNotifications().then((all) => {
+      const filtered = all.filter(n => !SWAP_TYPES.has(n.type))
+      setNotifications(filtered)
+    })
     scheduleNext()
     return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
   }, [scheduleNext])
@@ -63,7 +68,10 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
     setOpen(true)
     if (notifications.length === 0) {
       setLoading(true)
-      getNotifications().then((n) => { setNotifications(n); setLoading(false) })
+      getNotifications().then((all) => {
+        setNotifications(all.filter(n => !SWAP_TYPES.has(n.type)))
+        setLoading(false)
+      })
     }
   }
 

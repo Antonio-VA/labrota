@@ -790,3 +790,71 @@ export async function hasPendingSwap(assignmentId: string): Promise<boolean> {
 
   return !!data
 }
+
+// ── Get all swap requests for the org (managers) ────────────────────────────
+
+export async function getOrgSwapRequests(): Promise<SwapRequestWithNames[]> {
+  const orgId = await getOrgId()
+  if (!orgId) return []
+
+  const admin = createAdminClient()
+
+  const { data: swaps } = await admin
+    .from("swap_requests")
+    .select("*")
+    .eq("organisation_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(30) as { data: SwapRequest[] | null }
+
+  if (!swaps || swaps.length === 0) return []
+
+  const staffIds = new Set<string>()
+  for (const s of swaps) {
+    staffIds.add(s.initiator_staff_id)
+    if (s.target_staff_id) staffIds.add(s.target_staff_id)
+  }
+
+  const { data: staffNames } = await admin
+    .from("staff")
+    .select("id, first_name, last_name")
+    .in("id", [...staffIds]) as { data: Array<{ id: string; first_name: string; last_name: string }> | null }
+
+  const nameMap = new Map((staffNames ?? []).map(s => [s.id, `${s.first_name} ${s.last_name}`]))
+
+  return swaps.map(s => ({
+    ...s,
+    initiatorName: nameMap.get(s.initiator_staff_id) ?? "Unknown",
+    targetName: s.target_staff_id ? nameMap.get(s.target_staff_id) ?? "Unknown" : null,
+  }))
+}
+
+// ── Get swap badge count ────────────────────────────────────────────────────
+
+export async function getSwapBadgeCount(role: "viewer" | "manager" | "admin", staffId?: string): Promise<number> {
+  const orgId = await getOrgId()
+  if (!orgId) return 0
+
+  const admin = createAdminClient()
+
+  if (role === "admin" || role === "manager") {
+    // Managers see count of pending_manager requests
+    const { count } = await admin
+      .from("swap_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organisation_id", orgId)
+      .eq("status", "pending_manager") as { count: number | null }
+    return count ?? 0
+  }
+
+  if (!staffId) return 0
+
+  // Staff see count of active (non-resolved) requests they're involved in
+  const { count } = await admin
+    .from("swap_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", orgId)
+    .or(`initiator_staff_id.eq.${staffId},target_staff_id.eq.${staffId}`)
+    .in("status", ["pending_manager", "manager_approved", "pending_target"]) as { count: number | null }
+
+  return count ?? 0
+}
