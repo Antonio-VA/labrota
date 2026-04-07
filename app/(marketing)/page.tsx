@@ -95,16 +95,16 @@ const content = {
       monthly: "Monthly",
       annual: "Annual",
       save: "Save 2 months",
-      staffLabel: "staff members",
-      perStaffMonthly: "/staff/month",
-      perStaffAnnual: "/staff/month, billed annually",
+      staffLabel: "Staff members",
+      perMonthUnit: "/month",
+      perAnnualUnit: "/month, billed annually",
+      perPersonRate: "€5 per staff member",
       promo: "Launch offer",
       features: [
         "AI-powered rota generation",
         "Shift swap requests",
         "Competency enforcement & skill gap detection",
         "Leave management",
-        "Real-time visibility & notifications",
         "PDF & XLS export",
         "AI-assisted lab setup from your existing rotas",
         "Priority support",
@@ -199,16 +199,16 @@ const content = {
       monthly: "Mensual",
       annual: "Anual",
       save: "Ahorra 2 meses",
-      staffLabel: "personas en el equipo",
-      perStaffMonthly: "/persona/mes",
-      perStaffAnnual: "/persona/mes, facturado anualmente",
+      staffLabel: "Personas en el equipo",
+      perMonthUnit: "/mes",
+      perAnnualUnit: "/mes, facturado anualmente",
+      perPersonRate: "€5 por persona",
       promo: "Oferta de lanzamiento",
       features: [
         "Generación de rotas con IA",
         "Solicitudes de cambio de turno",
         "Control de competencias y detección de brechas",
         "Gestión de ausencias",
-        "Visibilidad en tiempo real y notificaciones",
         "Exportación PDF y XLS",
         "Configuración asistida por IA desde tus rotas actuales",
         "Soporte prioritario",
@@ -659,19 +659,20 @@ export default function MarketingPage() {
 
             {/* Price */}
             <div className="text-center mb-8 bg-[#f8fafc] rounded-xl py-6 px-4">
+              <p className="text-[12px] font-semibold text-[#1b4f8a] uppercase tracking-wide mb-2">{t.pricing.perPersonRate}</p>
               <div className="flex items-end justify-center gap-1 mb-1">
                 <span className="text-[22px] font-bold text-[#64748b] leading-[1.8]">€</span>
                 <span className="text-[60px] font-extrabold tracking-tight text-[#0f172a] leading-none">
-                  {annual ? Math.round((staffCount * 50) / 12 * 10) / 10 : staffCount * 5}
+                  {annual ? Math.round(staffCount * 50 / 12) : staffCount * 5}
                 </span>
                 <span className="text-[13px] text-[#94a3b8] mb-3 leading-[1.3]">
-                  {annual ? t.pricing.perStaffAnnual : t.pricing.perStaffMonthly}
+                  {annual ? t.pricing.perAnnualUnit : t.pricing.perMonthUnit}
                 </span>
               </div>
               <p className="text-[13px] text-[#94a3b8] mt-2">
                 {annual
                   ? (lang === "es" ? `€${staffCount * 50}/año — 2 meses gratis` : `€${staffCount * 50}/year — 2 months free`)
-                  : (lang === "es" ? `€${staffCount * 5}/mes en total` : `€${staffCount * 5}/month total`)}
+                  : (lang === "es" ? `Total ${staffCount} × €5` : `Total ${staffCount} × €5`)}
               </p>
             </div>
 
