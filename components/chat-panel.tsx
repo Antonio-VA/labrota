@@ -290,7 +290,7 @@ export function ChatPanel({
   onToggle: () => void
 }) {
   const t = useTranslations("agent")
-  const { messages, sendMessage, status } = useChat({ transport })
+  const { messages, sendMessage, status } = useChat({ id: "labrota-chat", transport })
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)

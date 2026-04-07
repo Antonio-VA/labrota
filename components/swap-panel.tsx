@@ -17,62 +17,65 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-500 border-gray-200",
 }
 
+// Module-level cache to persist across navigations
+let _swapCache: { swaps: SwapRequestWithNames[]; count: number; ts: number } | null = null
+const CACHE_TTL = 30_000 // 30s
+
 export function SwapBell({ large }: { large?: boolean } = {}) {
   const locale = useLocale() as "es" | "en"
   const t = useTranslations("swaps")
   const canEdit = useCanEdit()
   const viewerStaffId = useViewerStaffId()
   const [open, setOpen] = useState(false)
-  const [count, setCount] = useState(0)
-  const [swaps, setSwaps] = useState<SwapRequestWithNames[]>([])
+  const [count, setCount] = useState(_swapCache?.count ?? 0)
+  const [swaps, setSwaps] = useState<SwapRequestWithNames[]>(_swapCache?.swaps ?? [])
   const [loading, setLoading] = useState(false)
   const [actioning, setActioning] = useState<Record<string, string>>({})
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasFetched = useRef(false)
 
   const role = canEdit ? "manager" : "viewer"
 
-  // Poll badge count
   const fetchCount = useCallback(async () => {
     const { getSwapBadgeCount } = await import("@/app/(clinic)/swaps/actions")
     const n = await getSwapBadgeCount(role as "viewer" | "manager" | "admin", viewerStaffId ?? undefined)
     setCount(n)
+    if (_swapCache) _swapCache.count = n
   }, [role, viewerStaffId])
 
-  useEffect(() => {
-    fetchCount()
-    intervalRef.current = setInterval(fetchCount, 30_000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [fetchCount])
-
-  // Prefetch swaps in background
-  useEffect(() => {
-    async function prefetch() {
-      if (canEdit) {
-        const { getOrgSwapRequests } = await import("@/app/(clinic)/swaps/actions")
-        const data = await getOrgSwapRequests()
-        setSwaps(data)
-      } else if (viewerStaffId) {
-        const { getMySwapRequests } = await import("@/app/(clinic)/swaps/actions")
-        const data = await getMySwapRequests(viewerStaffId)
-        setSwaps(data)
-      }
+  const fetchSwaps = useCallback(async () => {
+    let data: SwapRequestWithNames[] = []
+    if (canEdit) {
+      const { getOrgSwapRequests } = await import("@/app/(clinic)/swaps/actions")
+      data = await getOrgSwapRequests()
+    } else if (viewerStaffId) {
+      const { getMySwapRequests } = await import("@/app/(clinic)/swaps/actions")
+      data = await getMySwapRequests(viewerStaffId)
     }
-    prefetch()
-  }, [canEdit, viewerStaffId])
+    setSwaps(data)
+    _swapCache = { swaps: data, count, ts: Date.now() }
+  }, [canEdit, viewerStaffId, count])
+
+  useEffect(() => {
+    // Only fetch if cache is stale or empty
+    const cacheValid = _swapCache && (Date.now() - _swapCache.ts < CACHE_TTL)
+    if (!cacheValid && !hasFetched.current) {
+      hasFetched.current = true
+      fetchCount()
+      fetchSwaps()
+    }
+    intervalRef.current = setInterval(() => { fetchCount(); fetchSwaps() }, CACHE_TTL)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [fetchCount, fetchSwaps])
 
   async function handleOpen() {
     setOpen(true)
-    setLoading(true)
-    if (canEdit) {
-      const { getOrgSwapRequests } = await import("@/app/(clinic)/swaps/actions")
-      const data = await getOrgSwapRequests()
-      setSwaps(data)
-    } else if (viewerStaffId) {
-      const { getMySwapRequests } = await import("@/app/(clinic)/swaps/actions")
-      const data = await getMySwapRequests(viewerStaffId)
-      setSwaps(data)
+    // Only fetch if cache is stale
+    if (!_swapCache || Date.now() - _swapCache.ts > CACHE_TTL) {
+      setLoading(true)
+      await fetchSwaps()
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleAction(swapId: string, action: string, notifId: string) {
