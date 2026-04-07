@@ -8,9 +8,8 @@ import { setLocale } from "@/lib/locale-action"
 import {
   Calendar,
   ShieldCheck,
-  Eye,
   BarChart3,
-  CalendarOff,
+  Palmtree,
   Sparkles,
   AlertTriangle,
   Clock,
@@ -72,7 +71,6 @@ const content = {
         { title: "AI-Powered Setup", body: "Share your existing spreadsheets or rotas. Our AI reads them, extracts your staff, shifts and procedure assignments, and configures your lab automatically — go live in one session." },
         { title: "AI Smart Rotas", body: "One click and LabRota's AI organises your entire shift schedule — balancing workload, respecting approved leave, and ensuring every procedure has the right certified staff assigned." },
         { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
-        { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
         { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
         { title: "Shift Swap Requests", body: "Staff can request shift swaps directly from the app. Managers review and approve — coverage is maintained automatically and everyone is notified instantly." },
@@ -177,7 +175,6 @@ const content = {
         { title: "Configuración con IA", body: "Comparte tus hojas de cálculo o rotas actuales. Nuestra IA las lee, extrae tu equipo, turnos y asignaciones de procedimientos, y configura tu laboratorio automáticamente — en una sola sesión." },
         { title: "Rotas Inteligentes con IA", body: "Un clic y la IA de LabRota organiza todo el horario de turnos — equilibrando carga, respetando ausencias aprobadas y asegurando que cada procedimiento tiene asignado el personal certificado correcto." },
         { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
-        { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
         { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
         { title: "Cambios de Turno", body: "El equipo puede solicitar cambios de turno directamente desde la app. Los managers revisan y aprueban — la cobertura se mantiene automáticamente y todos reciben la notificación al instante." },
@@ -245,7 +242,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertical, ArrowLeftRight]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, GripVertical, ArrowLeftRight]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
