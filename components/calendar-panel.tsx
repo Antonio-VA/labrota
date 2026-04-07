@@ -976,36 +976,28 @@ function PersonGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="rounded-lg border border-border overflow-hidden w-full flex-1 flex flex-col">
-          <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-            <div className="h-[72px] border-b border-r border-border" />
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
-                <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-8 h-8 rounded-full" />
-                <div className="shimmer-bar h-2.5 w-12 rounded" />
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
+          <div className="h-[72px] border-b border-r border-border" />
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
+              <div className="shimmer-bar h-2.5 w-6" />
+              <div className="shimmer-bar w-8 h-8 rounded-full" />
+              <div className="shimmer-bar h-2.5 w-12 rounded" />
+            </div>
+          ))}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Fragment key={i}>
+              <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
+                <div className="shimmer-bar h-3 w-28" />
               </div>
-            ))}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Fragment key={i}>
-                <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
-                  <div className="shimmer-bar h-3 w-28" />
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
+                  <div className="shimmer-bar h-9 w-full rounded" />
                 </div>
-                {Array.from({ length: 7 }).map((_, j) => (
-                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
-                    <div className="shimmer-bar h-9 w-full rounded" />
-                  </div>
-                ))}
-              </Fragment>
-            ))}
-          </div>
-          <div className="flex-1" />
-          <div className="flex items-center justify-center py-3 border-t border-border">
-            <span className="generating-label text-[13px] text-muted-foreground">
-              {isGenerating ? tc("generating") : tc("loading")}
-            </span>
-          </div>
+              ))}
+            </Fragment>
+          ))}
         </div>
       </div>
     )
@@ -1809,39 +1801,31 @@ function ShiftGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="rounded-lg border border-border overflow-hidden w-full flex-1 flex flex-col">
-          {/* Header */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            <div className="border-r border-border h-[72px]" />
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* Header */}
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
+          <div className="border-r border-border h-[72px]" />
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1">
+              <div className="shimmer-bar h-2.5 w-6" />
+              <div className="shimmer-bar w-8 h-8 rounded-full" />
+              <div className="shimmer-bar h-2.5 w-12 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Rows — enough to cover up to 5 shifts + off */}
+        {Array.from({ length: 6 }).map((_, row) => (
+          <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
+            <div className="border-r border-border flex items-center justify-end px-2 py-3">
+              <div className="shimmer-bar h-3 w-8" />
+            </div>
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1">
-                <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-8 h-8 rounded-full" />
-                <div className="shimmer-bar h-2.5 w-12 rounded" />
+              <div key={i} className="p-2 flex items-center justify-center min-h-[36px] bg-background">
+                <div className="shimmer-bar h-5 w-full rounded" />
               </div>
             ))}
           </div>
-          {/* Rows — enough to cover up to 5 shifts + off */}
-          {Array.from({ length: 6 }).map((_, row) => (
-            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-              <div className="border-r border-border flex items-center justify-end px-2 py-3">
-                <div className="shimmer-bar h-3 w-8" />
-              </div>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="p-2 flex items-center justify-center min-h-[36px] bg-background">
-                  <div className="shimmer-bar h-5 w-full rounded" />
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="flex-1" />
-          <div className="flex items-center justify-center py-3 border-t border-border">
-            <span className="generating-label text-[13px] text-muted-foreground">
-              {isGenerating ? tc("generating") : tc("loading")}
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
     )
   }
@@ -4183,7 +4167,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
-                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
                   isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
