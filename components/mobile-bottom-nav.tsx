@@ -32,9 +32,9 @@ export function MobileBottomNav() {
   const showMyRota = !!viewerStaffId
   const navItems: NavItem[] = [
     ...(canEdit ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
+    ...(showLeaves ? [LEAVES_ITEM] : []),
     ...BASE_ITEMS,
     ...(showMyRota ? [MY_ROTA_ITEM] : []),
-    ...(showLeaves ? [LEAVES_ITEM] : []),
   ]
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
@@ -83,16 +83,15 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
+      <nav className="flex items-center gap-0 px-3 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
           if (item.key === "ai") {
-            // AI is a toggle, never "active"
             return (
               <button
                 key="ai"
                 onTouchStart={() => handleTap("ai", "")}
                 onClick={() => handleTap("ai", "")}
-                className="flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full text-muted-foreground"
+                className="flex flex-col items-center justify-center gap-1 flex-1 min-w-0 py-1.5 rounded-full text-muted-foreground"
               >
                 <Sparkles className="size-[26px]" strokeWidth={1.5} />
                 <span className="text-[11px] leading-none font-medium">AI</span>
@@ -110,7 +109,7 @@ export function MobileBottomNav() {
                 handleTap(item.key, item.href)
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full transition-none",
+                "flex flex-col items-center justify-center gap-1 flex-1 min-w-0 py-1.5 rounded-full transition-none",
                 isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
               )}
             >

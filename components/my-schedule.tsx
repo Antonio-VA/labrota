@@ -91,6 +91,13 @@ export function MySchedule({
   const tc = useTranslations("common")
   const today = new Date().toISOString().split("T")[0]
   const [currentDate, setCurrentDate] = useState(initialDate ?? today)
+
+  // Sync internal state when parent changes the week (via prev/next buttons)
+  useEffect(() => {
+    if (initialDate && initialDate !== currentDate) {
+      setCurrentDate(initialDate)
+    }
+  }, [initialDate]) // eslint-disable-line react-hooks/exhaustive-deps
   const [swapDialogOpen, setSwapDialogOpen] = useState(false)
   const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const [openMenuDate, setOpenMenuDate] = useState<string | null>(null)
@@ -180,7 +187,7 @@ export function MySchedule({
           >
             {weekOptions.map((opt) => (
               <option key={opt.monday} value={opt.monday}>
-                {opt.label}{opt.monday === todayMonday ? (locale === "es" ? " · esta semana" : " · this week") : ""}
+                {opt.label}
               </option>
             ))}
           </select>
