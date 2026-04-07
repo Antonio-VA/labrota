@@ -68,6 +68,7 @@ import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
+const ManagerSwapPanel = dynamic(() => import("@/components/manager-swap-panel").then((m) => ({ default: m.ManagerSwapPanel })), { ssr: false })
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -975,8 +976,8 @@ function PersonGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden w-full">
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="rounded-lg border border-border overflow-hidden w-full flex-1 flex flex-col">
           <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
             <div className="h-[72px] border-b border-r border-border" />
             {Array.from({ length: 7 }).map((_, i) => (
@@ -999,11 +1000,12 @@ function PersonGrid({
               </Fragment>
             ))}
           </div>
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? tc("generating") : tc("loading")}
-          </span>
+          <div className="flex-1" />
+          <div className="flex items-center justify-center py-3 border-t border-border">
+            <span className="generating-label text-[13px] text-muted-foreground">
+              {isGenerating ? tc("generating") : tc("loading")}
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -1807,8 +1809,8 @@ function ShiftGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden w-full">
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="rounded-lg border border-border overflow-hidden w-full flex-1 flex flex-col">
           {/* Header */}
           <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             <div className="border-r border-border h-[72px]" />
@@ -1822,7 +1824,7 @@ function ShiftGrid({
           </div>
           {/* Rows — enough to cover up to 5 shifts + off */}
           {Array.from({ length: 6 }).map((_, row) => (
-            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
+            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
               <div className="border-r border-border flex items-center justify-end px-2 py-3">
                 <div className="shimmer-bar h-3 w-8" />
               </div>
@@ -1833,11 +1835,12 @@ function ShiftGrid({
               ))}
             </div>
           ))}
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? tc("generating") : tc("loading")}
-          </span>
+          <div className="flex-1" />
+          <div className="flex items-center justify-center py-3 border-t border-border">
+            <span className="generating-label text-[13px] text-muted-foreground">
+              {isGenerating ? tc("generating") : tc("loading")}
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -2990,6 +2993,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
+  // Manager swap panel
+  const [managerSwapOpen, setManagerSwapOpen] = useState(false)
+  const [pendingSwapCount, setPendingSwapCount] = useState(0)
+  const managerSwapVisible = canEdit && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
+
   function openProfile(staffId: string) {
     setProfileStaffId(staffId)
     setProfileOpen(true)
@@ -3727,6 +3735,28 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
           )}
+          {managerSwapVisible && view === "week" && (
+            <Tooltip>
+              <TooltipTrigger render={
+                <button
+                  onClick={() => setManagerSwapOpen(true)}
+                  className="relative rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+                  aria-label={locale === "es" ? "Solicitudes de cambio" : "Swap requests"}
+                >
+                  <ArrowRightLeft className="size-[14px]" />
+                  {pendingSwapCount > 0 && (
+                    <span className="absolute -top-1 -right-1 size-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {pendingSwapCount}
+                    </span>
+                  )}
+                </button>
+              } />
+              <TooltipContent side="bottom">
+                {locale === "es" ? "Solicitudes de cambio" : "Swap requests"}
+                {pendingSwapCount > 0 && ` (${pendingSwapCount})`}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
             <Button
               variant="ghost"
@@ -3969,7 +3999,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
-                <div className="absolute inset-0 z-10 bg-background">
+                <div className="absolute inset-0 z-10 bg-background flex flex-col">
                   {weekData?.rotaDisplayMode === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
                   ) : calendarLayout === "person" ? (
@@ -4759,6 +4789,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           date={swapAssignment.date}
           dateLabel={formatDate(swapAssignment.date, locale as "es" | "en")}
           locale={locale as "es" | "en"}
+        />
+      )}
+
+      {/* Manager swap approval panel */}
+      {managerSwapVisible && (
+        <ManagerSwapPanel
+          open={managerSwapOpen}
+          onOpenChange={setManagerSwapOpen}
+          locale={locale as "es" | "en"}
+          onCountChange={setPendingSwapCount}
         />
       )}
     </main>

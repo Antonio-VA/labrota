@@ -709,31 +709,34 @@ export function TaskGrid({
 
   if (loading || !data) {
     return (
-      <div className="rounded-lg border border-border overflow-hidden bg-background">
-        <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, 1fr)` }}>
-          {/* Header shimmer */}
-          <div className="border-b border-r border-border bg-muted px-3 py-2">
-            <div className="shimmer-bar h-3 w-12 rounded" />
-          </div>
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-2 gap-1 bg-muted">
-              <div className="shimmer-bar h-2.5 w-6 rounded" />
-              <div className="shimmer-bar w-6 h-6 rounded-full" />
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="rounded-lg border border-border overflow-hidden bg-background flex-1 flex flex-col">
+          <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, 1fr)` }}>
+            {/* Header shimmer */}
+            <div className="border-b border-r border-border bg-muted px-3 py-2">
+              <div className="shimmer-bar h-3 w-12 rounded" />
             </div>
-          ))}
-          {/* Row shimmers (4 technique rows + OFF) */}
-          {Array.from({ length: 5 }).map((_, row) => (
-            <div key={row} className="contents">
-              <div className="border-b border-r border-border px-3 py-2 flex items-center">
-                <div className="shimmer-bar h-3 w-16 rounded" />
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center py-2 gap-1 bg-muted">
+                <div className="shimmer-bar h-2.5 w-6 rounded" />
+                <div className="shimmer-bar w-6 h-6 rounded-full" />
               </div>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className={cn("border-b border-r last:border-r-0 border-border p-1 flex items-center", compact ? "min-h-[28px]" : "min-h-[36px]")}>
-                  {row < 4 && <div className="shimmer-bar h-4 w-full rounded" />}
+            ))}
+            {/* Row shimmers (4 technique rows + OFF) */}
+            {Array.from({ length: 5 }).map((_, row) => (
+              <div key={row} className="contents">
+                <div className="border-b border-r border-border px-3 py-2 flex items-center">
+                  <div className="shimmer-bar h-3 w-16 rounded" />
                 </div>
-              ))}
-            </div>
-          ))}
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className={cn("border-b border-r last:border-r-0 border-border p-1 flex items-center", compact ? "min-h-[28px]" : "min-h-[36px]")}>
+                    {row < 4 && <div className="shimmer-bar h-4 w-full rounded" />}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1" />
         </div>
       </div>
     )

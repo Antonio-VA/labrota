@@ -37,7 +37,7 @@ export default async function OrgDetailPage({
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("rotas").select("id", { count: "exact", head: true }).eq("organisation_id", id).gte("created_at", thirtyDaysAgo),
     admin.from("organisation_members").select("user_id, role, display_name, linked_staff_id").eq("organisation_id", id),
-    admin.from("lab_config").select("country, region, enable_leave_requests, enable_notes, annual_leave_days, default_days_per_week, public_holiday_reduce_budget").eq("organisation_id", id).maybeSingle(),
+    admin.from("lab_config").select("country, region, enable_leave_requests, enable_swap_requests, enable_notes, annual_leave_days, default_days_per_week, public_holiday_reduce_budget").eq("organisation_id", id).maybeSingle(),
     admin.from("departments").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("shift_types").select("id", { count: "exact", head: true }).eq("organisation_id", id),
     admin.from("tecnicas").select("id", { count: "exact", head: true }).eq("organisation_id", id),
@@ -279,6 +279,7 @@ export default async function OrgDetailPage({
             initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
             initialDisplayMode={(org as { rota_display_mode?: string }).rota_display_mode as "by_shift" | "by_task" ?? "by_shift"}
             initialLeaveRequests={(labConfigRes.data as { enable_leave_requests?: boolean } | null)?.enable_leave_requests ?? false}
+            initialEnableSwapRequests={(labConfigRes.data as { enable_swap_requests?: boolean } | null)?.enable_swap_requests ?? false}
             initialEnableNotes={(labConfigRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true}
             initialEnableTaskInShift={(labConfigRes.data as { enable_task_in_shift?: boolean } | null)?.enable_task_in_shift ?? false}
             initialBilling={{ start: (org as { billing_start?: string | null }).billing_start ?? null, end: (org as { billing_end?: string | null }).billing_end ?? null, fee: (org as { billing_fee?: number | null }).billing_fee ?? null }}

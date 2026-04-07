@@ -93,6 +93,7 @@ export function SettingsFuncionalidades({
           startTransition(async () => {
             const result = await toggleLeaveRequests(val)
             if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
+            else toast.success(val ? t("leaveRequestsEnabled") : t("leaveRequestsDisabled"))
           })
         }}
       />
@@ -111,6 +112,7 @@ export function SettingsFuncionalidades({
             startTransition(async () => {
               const result = await toggleSwapRequests(val)
               if (result.error) { toast.error(result.error); setSwapRequests(!val) }
+              else toast.success(val ? ts("swapRequestsEnabled") : ts("swapRequestsDisabled"))
             })
           }}
         />
@@ -129,6 +131,7 @@ export function SettingsFuncionalidades({
           startTransition(async () => {
             const result = await updateLabConfig({ enable_notes: val })
             if (result.error) { toast.error(result.error); setNotes(!val) }
+            else toast.success(val ? t("notesEnabled") : t("notesDisabled"))
           })
         }}
       />
@@ -147,6 +150,7 @@ export function SettingsFuncionalidades({
             startTransition(async () => {
               const result = await updateLabConfig({ enable_task_in_shift: val })
               if (result.error) { toast.error(result.error); setTaskInShift(!val) }
+              else toast.success(val ? t("taskInShiftEnabled") : t("taskInShiftDisabled"))
             })
           }}
         />

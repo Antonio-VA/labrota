@@ -976,10 +976,16 @@
     "contactSupport": "Contact support to change the schedule mode.",
     "leaveRequests": "Leave requests",
     "leaveRequestsDescription": "Allows staff to request leave and time off from the app",
+    "leaveRequestsEnabled": "Leave requests enabled",
+    "leaveRequestsDisabled": "Leave requests disabled",
     "scheduleNotes": "Schedule notes",
     "scheduleNotesDescription": "Add daily notes at the bottom of the schedule (instructions, reminders)",
+    "notesEnabled": "Schedule notes enabled",
+    "notesDisabled": "Schedule notes disabled",
     "taskInShift": "Task assignment in shift-based schedule",
     "taskInShiftDescription": "Allows assigning tasks or sub-departments to each person within their shift. Enable only if your lab needs this level of detail.",
+    "taskInShiftEnabled": "Task assignment enabled",
+    "taskInShiftDisabled": "Task assignment disabled",
     "authMethod": "Login method",
     "authMethodDescription": "Choose how users sign in to this organisation.",
     "authMethodOtp": "Access code (OTP)",
@@ -1555,6 +1561,10 @@
     "working": "Working",
     "coverageWarning": "Coverage warning",
     "enableSwapRequests": "Enable swap requests",
-    "enableSwapRequestsDesc": "Allow staff to request shift swaps on published rotas"
+    "enableSwapRequestsDesc": "Allow staff to request shift swaps on published rotas",
+    "swapRequestsEnabled": "Swap requests enabled",
+    "swapRequestsDisabled": "Swap requests disabled",
+    "pendingApprovals": "Swap requests",
+    "acceptSwap": "Accept swap"
   }
 }

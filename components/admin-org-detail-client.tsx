@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, toggleOrgSwapRequests, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -24,6 +24,7 @@ export function AdminOrgDetailClient({
   initialLogoUrl = null,
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
+  initialEnableSwapRequests = false,
   initialEnableNotes = true,
   initialEnableTaskInShift = false,
   initialAuthMethod = "password",
@@ -51,6 +52,7 @@ export function AdminOrgDetailClient({
   initialLogoUrl?: string | null
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
+  initialEnableSwapRequests?: boolean
   initialEnableNotes?: boolean
   initialEnableTaskInShift?: boolean
   initialAuthMethod?: "otp" | "password"
@@ -84,6 +86,7 @@ export function AdminOrgDetailClient({
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
+  const [enableSwapRequests, setEnableSwapRequests] = useState(initialEnableSwapRequests)
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
   const [authMethod, setAuthMethod] = useState(initialAuthMethod)
@@ -383,6 +386,41 @@ export function AdminOrgDetailClient({
               )} />
             </button>
           </div>
+
+          {displayMode === "by_shift" && (<>
+          <div className="h-px bg-border" />
+
+          {/* Swap requests */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Solicitudes de cambio de turno</p>
+              <p className="text-[12px] text-muted-foreground">
+                Permitir que el personal solicite intercambios de turno en horarios publicados
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                const val = !enableSwapRequests
+                setEnableSwapRequests(val)
+                startTransition(async () => {
+                  const result = await toggleOrgSwapRequests(orgId, val)
+                  if (result?.error) setEnableSwapRequests(!val)
+                })
+              }}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                enableSwapRequests ? "bg-emerald-500" : "bg-muted-foreground/20"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+                enableSwapRequests ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+          </>)}
 
           <div className="h-px bg-border" />
 
