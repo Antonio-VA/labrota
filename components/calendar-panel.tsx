@@ -3102,7 +3102,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
-    getRotaWeek(ws).then((d) => {
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000))
+    Promise.race([getRotaWeek(ws), timeout]).then((d) => {
       if (fetchVersionRef.current !== version) return
       weekCache.current.set(ws, d)
       setInitialLoaded(true)
@@ -3301,7 +3302,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setStaffLoaded(true)
       return
     }
-    getActiveStaff().then((s) => { setStaffList(s); setStaffLoaded(true) })
+    const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
+    Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Navigation — both views move by 1 week
