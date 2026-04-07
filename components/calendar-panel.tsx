@@ -1180,7 +1180,27 @@ function PersonGrid({
                         onMouseLeave={() => setHoveredShift(null)}
                       >
                         {assignment ? (
-                          taskOff ? (
+                          swapStaffId && s.id === swapStaffId && isPublished ? (
+                            <Tooltip>
+                              <TooltipTrigger render={
+                                <div
+                                  className="w-full flex items-center gap-1 cursor-pointer group/swap rounded px-0.5 hover:bg-primary/10 transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
+                                >
+                                  <PersonShiftPill
+                                    assignment={assignment}
+                                    shiftTimes={shiftTimes}
+                                    tecnica={tecnica}
+                                    simplified={simplified}
+                                  />
+                                  <ArrowRightLeft className="size-3 text-primary shrink-0 opacity-40 group-hover/swap:opacity-100 transition-opacity ml-auto" />
+                                </div>
+                              } />
+                              <TooltipContent side="right">
+                                {locale === "es" ? "Solicitar cambio de turno" : "Request shift swap"}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : taskOff ? (
                             <PersonShiftSelector
                               assignment={assignment}
                               shiftTimes={shiftTimes}
@@ -1203,28 +1223,6 @@ function PersonGrid({
                                 }
                               }}
                             />
-                          ) : swapStaffId && s.id === swapStaffId && isPublished ? (
-                            <Tooltip>
-                              <TooltipTrigger render={
-                                <div
-                                  className="w-full relative group/swap cursor-pointer"
-                                  onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
-                                >
-                                  <PersonShiftPill
-                                    assignment={assignment}
-                                    shiftTimes={shiftTimes}
-                                    tecnica={tecnica}
-                                    simplified={simplified}
-                                  />
-                                  <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
-                                    <ArrowRightLeft className="size-2.5" />
-                                  </span>
-                                </div>
-                              } />
-                              <TooltipContent side="right">
-                                {locale === "es" ? "Solicitar cambio de turno" : "Request shift swap"}
-                              </TooltipContent>
-                            </Tooltip>
                           ) : (
                             <AssignmentPopover
                               assignment={assignment}

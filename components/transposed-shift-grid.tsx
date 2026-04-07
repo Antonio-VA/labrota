@@ -417,13 +417,15 @@ export function TransposedShiftGrid({
                           <DraggablePill key={a.id} id={a.id} disabled={isPublished}>
                             <div
                               className={cn(
-                                "flex items-center gap-1 rounded border border-transparent hover:border-border bg-background text-foreground font-medium cursor-pointer transition-colors duration-150",
+                                "flex items-center gap-1 rounded font-medium cursor-pointer transition-colors duration-150",
                                 compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]",
-                                isViewerChip && "relative group/swap"
+                                isViewerChip
+                                  ? "relative group/swap border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                                  : "border border-transparent hover:border-border bg-background text-foreground"
                               )}
                               style={{
                                 borderRadius: 4,
-                                ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
+                                ...(isHov && sColor && !isViewerChip ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
                               title={isViewerChip ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap") : undefined}
                               onMouseEnter={() => setHovered(a.staff_id)}
@@ -437,9 +439,7 @@ export function TransposedShiftGrid({
                                 </span>
                               )}
                               {isViewerChip && (
-                                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
-                                  <ArrowRightLeft className="size-2.5" />
-                                </span>
+                                <ArrowRightLeft className="size-2.5 ml-auto shrink-0 opacity-50 group-hover/swap:opacity-100 transition-opacity" />
                               )}
                             </div>
                           </DraggablePill>
