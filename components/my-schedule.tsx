@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl"
 import { Clock, Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
-import { WeeklyStrip } from "@/components/weekly-strip"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 
@@ -19,6 +18,22 @@ const CARD_H = "min-h-[52px]"
 
 const DOW_ES = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 const DOW_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const MON_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+function formatWeekLabel(days: { date: string }[], locale: "es" | "en"): string {
+  if (days.length === 0) return ""
+  const start = new Date(days[0].date + "T12:00:00")
+  const end = new Date(days[days.length - 1].date + "T12:00:00")
+  const months = locale === "es" ? MON_ES : MON_EN
+  const sDay = start.getDate()
+  const eDay = end.getDate()
+  const sMon = months[start.getMonth()]
+  const eMon = months[end.getMonth()]
+  const yr = end.getFullYear()
+  if (sMon === eMon) return `${sDay}–${eDay} ${sMon} ${yr}`
+  return `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
+}
 
 function formatCardDate(dateStr: string, locale: "es" | "en"): string {
   const d = new Date(dateStr + "T12:00:00")
@@ -118,21 +133,33 @@ export function MySchedule({
     )
   }
 
+  const weekLabel = formatWeekLabel(days, locale)
+
   return (
     <div className="flex flex-col md:hidden flex-1 overflow-auto">
-      <WeeklyStrip
-        days={myDays.map((d) => ({
-          date: d.date,
-          staffCount: d.myAssignments.length,
-          hasSkillGaps: false,
-          isWorking: d.myAssignments.length > 0,
-          isOnLeave: d.isOnLeave,
-        }))}
-        currentDate={currentDate}
-        onSelectDay={setCurrentDate}
-        locale={locale}
-        personalMode
-      />
+      {/* Week selector toolbar */}
+      <div className="flex items-center h-12 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-10">
+        <button
+          onClick={() => onWeekChange?.(-1)}
+          className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0"
+        >
+          <ChevronLeft className="size-[18px] text-muted-foreground" />
+        </button>
+        <span className="text-[14px] font-semibold capitalize flex-1 text-center">{weekLabel}</span>
+        <button
+          onClick={() => onWeekChange?.(1)}
+          className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0"
+        >
+          <ChevronRight className="size-[18px] text-muted-foreground" />
+        </button>
+        <button
+          onClick={() => setCurrentDate(today)}
+          disabled={isCurrentWeek}
+          className={cn("text-[12px] font-medium px-2 py-1 rounded-md transition-colors shrink-0 ml-1", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
+        >
+          {locale === "es" ? "Hoy" : "Today"}
+        </button>
+      </div>
 
       <div className="flex flex-col gap-2.5 px-4 py-3 flex-1 pb-24">
         {loading ? (
@@ -230,24 +257,6 @@ export function MySchedule({
           </>
         )}
 
-        {onWeekChange && !loading && (
-          <div className="flex items-center justify-between pt-2">
-            <button
-              onClick={() => onWeekChange(-1)}
-              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
-            >
-              <ChevronLeft className="size-4" />
-              {locale === "es" ? "Semana anterior" : "Previous week"}
-            </button>
-            <button
-              onClick={() => onWeekChange(1)}
-              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
-            >
-              {locale === "es" ? "Semana siguiente" : "Next week"}
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-        )}
       </div>
 
       {canSwap && swapAssignment && (
