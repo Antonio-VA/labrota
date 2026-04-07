@@ -406,6 +406,7 @@
     "columns": {
       "name": "Name",
       "role": "Department",
+      "email": "Email",
       "skills": "Skills",
       "capacidades": "Tasks",
       "training": "In training",

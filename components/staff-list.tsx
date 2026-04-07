@@ -712,10 +712,11 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
+  email: "minmax(140px,1.5fr)",
   capacidades: "minmax(0,3fr)",
   training: "minmax(200px,2.5fr)",
   status: "minmax(100px,0.8fr)",
@@ -727,7 +728,7 @@ const COL_WIDTHS: Record<ColKey, string> = {
 
 function buildGrid(cols: Set<ColKey>) {
   const parts = ["32px", "minmax(0,1.5fr)"]
-  for (const key of ["role", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
+  for (const key of ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
   return parts.join(" ")
@@ -782,6 +783,7 @@ function StaffTable({
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
         {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
+        {visibleCols.has("email") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>}
         {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
         {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
         {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
@@ -895,6 +897,23 @@ function StaffTable({
               <div className="hidden md:flex items-center gap-1.5">
                 <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
                 <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
+              </div>
+            )}
+
+            {/* Email */}
+            {visibleCols.has("email") && (
+              <div className="hidden md:flex items-center min-w-0">
+                {editMode && setEditValue ? (
+                  <input
+                    type="email"
+                    value={String(getVal?.(member, "email") ?? member.email ?? "")}
+                    onChange={(e) => setEditValue(member.id, "email", e.target.value || null)}
+                    placeholder="—"
+                    className="h-7 w-full rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
+                  />
+                ) : (
+                  <span className={cn("text-[13px] truncate", member.email ? "text-foreground" : "text-muted-foreground/40")}>{member.email ?? "—"}</span>
+                )}
               </div>
             )}
 
@@ -1169,7 +1188,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   // Column visibility
-  type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => new Set(DEFAULT_COLS))
   const [showColMenu, setShowColMenu] = useState(false)
@@ -1185,6 +1204,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   }
   const ALL_COLUMNS: { key: ColKey; label: string }[] = [
     { key: "role", label: "Departamento" },
+    { key: "email", label: "Email" },
     { key: "capacidades", label: "Técnicas" },
     { key: "training", label: "En formación" },
     { key: "status", label: "Estado" },
