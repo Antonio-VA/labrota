@@ -80,10 +80,11 @@ export function MySchedule({
     ? myDays.find((d) => d.date >= today && d.myAssignments.length > 0)
     : null
 
-  // All days to show (including past, grayed out)
-  const allDays = nextShift
-    ? [{ ...nextShift, isNextShift: true }, ...myDays.filter((d) => d.date !== nextShift.date).map((d) => ({ ...d, isNextShift: false }))]
-    : myDays.map((d) => ({ ...d, isNextShift: false }))
+  // All days in chronological order — tag the next shift in place
+  const allDays = myDays.map((d) => ({
+    ...d,
+    isNextShift: nextShift ? d.date === nextShift.date : false,
+  }))
 
   return (
     <div className="flex flex-col md:hidden flex-1 overflow-auto">
