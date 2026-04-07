@@ -20,6 +20,7 @@ function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-label={label}
         disabled={disabled}
         onClick={onToggle}
         className={cn(

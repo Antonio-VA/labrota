@@ -1613,6 +1613,9 @@ function ShiftGrid({
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
 
+  // O(1) staff lookup by ID
+  const staffById = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList])
+
   // Staff color map — maps each staff member to their department colour
   const deptColorMap = useMemo(() => {
     const m: Record<string, string> = {}
@@ -1696,7 +1699,7 @@ function ShiftGrid({
       const destDate  = destZone.slice(-10)
       const destShift = destZone.slice(0, destZone.length - 11) as ShiftType
       const staffId   = activeId.slice(4, activeId.length - 11)
-      const staffMember = staffList.find((s) => s.id === staffId)
+      const staffMember = staffById.get(staffId)
 
       // Optimistic: add a placeholder assignment immediately
       if (staffMember) {
@@ -2016,7 +2019,7 @@ function ShiftGrid({
                   style={undefined}
                 >
                   {dayShifts.map((a) => {
-                    const staffMember = staffList.find((s) => s.id === a.staff_id)
+                    const staffMember = staffById.get(a.staff_id)
                     const taskDisabled = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
                     const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
                     const tecnica = taskDisabled ? null

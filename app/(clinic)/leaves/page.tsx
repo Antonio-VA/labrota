@@ -14,6 +14,7 @@ export default async function LeavesPage() {
   let userRole: "admin" | "manager" | "viewer" = "admin"
   let viewerStaffId: string | null = null
   let enableLeaveRequests = false
+  let orgId: string | null = null
 
   if (user) {
     const { data: profile } = await supabase
@@ -21,20 +22,21 @@ export default async function LeavesPage() {
       .select("organisation_id")
       .eq("id", user.id)
       .single() as { data: { organisation_id: string | null } | null }
+    orgId = profile?.organisation_id ?? null
 
-    if (profile?.organisation_id) {
+    if (orgId) {
       const admin = createAdminClient()
       const [memberRes, labConfigRes] = await Promise.all([
         admin
           .from("organisation_members")
           .select("role, linked_staff_id")
           .eq("user_id", user.id)
-          .eq("organisation_id", profile.organisation_id)
+          .eq("organisation_id", orgId)
           .single() as unknown as Promise<{ data: OrgMember | null }>,
         admin
           .from("lab_config")
           .select("enable_leave_requests")
-          .eq("organisation_id", profile.organisation_id)
+          .eq("organisation_id", orgId)
           .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
       ])
 
@@ -61,7 +63,6 @@ export default async function LeavesPage() {
 
   // Use admin client for viewers (RLS may block their reads)
   const queryClient = userRole === "viewer" ? createAdminClient() : supabase
-  const orgId = user ? ((await supabase.from("profiles").select("organisation_id").eq("id", user.id).single()).data as { organisation_id: string | null } | null)?.organisation_id : null
 
   const [{ data: leavesData }, { data: staffData }] = await Promise.all([
     queryClient
