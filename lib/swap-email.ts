@@ -31,7 +31,18 @@ async function getSwapContext(swapId: string, orgId: string) {
   const initiator = staffMap.get(swap.initiator_staff_id)
   const target = swap.target_staff_id ? staffMap.get(swap.target_staff_id) : null
 
-  return { swap, orgName, locale, initiator, target }
+  // Get target's current shift type from their assignment
+  let targetShiftType: string | null = null
+  if (swap.target_assignment_id) {
+    const { data: targetAssignment } = await admin
+      .from("rota_assignments")
+      .select("shift_type")
+      .eq("id", swap.target_assignment_id)
+      .single() as { data: { shift_type: string } | null }
+    targetShiftType = targetAssignment?.shift_type ?? null
+  }
+
+  return { swap, orgName, locale, initiator, target, targetShiftType }
 }
 
 async function getManagerEmails(orgId: string): Promise<string[]> {
@@ -123,7 +134,7 @@ export async function sendSwapManagerEmail(swapId: string, orgId: string) {
   const ctx = await getSwapContext(swapId, orgId)
   if (!ctx) return
 
-  const { swap, orgName, locale, initiator, target } = ctx
+  const { swap, orgName, locale, initiator, target, targetShiftType } = ctx
   const isEs = locale === "es"
   const emails = await getManagerEmails(orgId)
   if (emails.length === 0) return
@@ -143,8 +154,8 @@ export async function sendSwapManagerEmail(swapId: string, orgId: string) {
 
   const descriptionHtml = swap.swap_type === "shift_swap"
     ? (isEs
-      ? `<strong>${initiatorName}</strong> quiere intercambiar su turno <strong>${swap.swap_shift_type}</strong> con el turno de <strong>${targetName}</strong> el <strong>${dateLabel}</strong>.`
-      : `<strong>${initiatorName}</strong> wants to swap their <strong>${swap.swap_shift_type}</strong> shift with <strong>${targetName}</strong>'s shift on <strong>${dateLabel}</strong>.`)
+      ? `<strong>${initiatorName}</strong> quiere intercambiar su turno <strong>${swap.swap_shift_type}</strong> con el turno <strong>${targetShiftType ?? "?"}</strong> de <strong>${targetName}</strong> el <strong>${dateLabel}</strong>.`
+      : `<strong>${initiatorName}</strong> wants to swap their <strong>${swap.swap_shift_type}</strong> shift with <strong>${targetName}</strong>'s <strong>${targetShiftType ?? "?"}</strong> shift on <strong>${dateLabel}</strong>.`)
     : (isEs
       ? `<strong>${initiatorName}</strong> solicita el día libre el <strong>${dateLabel}</strong>. <strong>${targetName}</strong> cubriría su turno <strong>${swap.swap_shift_type}</strong>.`
       : `<strong>${initiatorName}</strong> requests the day off on <strong>${dateLabel}</strong>. <strong>${targetName}</strong> would cover their <strong>${swap.swap_shift_type}</strong> shift.`)
@@ -161,9 +172,13 @@ export async function sendSwapManagerEmail(swapId: string, orgId: string) {
         <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${dateLabel}</td>
       </tr>
       <tr>
-        <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno" : "Shift"}</td>
+        <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno de" : "Shift for"} ${initiatorName}</td>
         <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${swap.swap_shift_type}</td>
       </tr>
+      ${targetShiftType ? `<tr>
+        <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno de" : "Shift for"} ${targetName}</td>
+        <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${targetShiftType}</td>
+      </tr>` : ""}
     </table>
     <div style="text-align:center;margin:24px 0 8px;">
       ${actionButton(isEs ? "Aprobar" : "Approve", approveUrl, "#059669")}
