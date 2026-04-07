@@ -448,6 +448,9 @@ export default function MarketingPage() {
               </a>
             ))}
             <div className="flex gap-2 pt-2">
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-[14px] font-semibold text-[#1b4f8a] border border-[#1b4f8a] py-2.5 rounded-lg hover:bg-[#eff6ff] transition-colors">
+                {t.nav.login}
+              </Link>
               <Link href="#contact" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-[14px] font-semibold text-white bg-[#1b4f8a] py-2.5 rounded-lg">
                 {t.nav.cta}
               </Link>
