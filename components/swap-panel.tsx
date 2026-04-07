@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { ArrowLeftRight, X, Check, Loader2 } from "lucide-react"
+import { ArrowLeftRight, X, Check, Loader2, Sparkles } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
@@ -214,7 +214,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
 
                       {/* Manager approve/reject */}
                       {canApprove && !a && (
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => handleAction(swap.id, "approve", swap.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
@@ -226,6 +226,21 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"
                           >
                             <X className="size-3" /> {locale === "es" ? "Rechazar" : "Reject"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              const prompt = locale === "es"
+                                ? `¿Qué impacto tendría en la cobertura si ${swap.initiatorName} intercambia su turno ${swap.swap_shift_type} con ${swap.targetName ?? "—"} el ${swap.swap_date}?`
+                                : `What would be the coverage impact if ${swap.initiatorName} swaps their ${swap.swap_shift_type} shift with ${swap.targetName ?? "—"} on ${swap.swap_date}?`
+                              setOpen(false)
+                              // Open AI chat with pre-filled prompt
+                              window.dispatchEvent(new CustomEvent("labrota:ai-prompt", { detail: prompt }))
+                              window.dispatchEvent(new Event("labrota:toggle-chat"))
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium text-primary border border-primary/20 hover:bg-primary/5 transition-colors"
+                            title={locale === "es" ? "Analizar impacto con IA" : "Check impact with AI"}
+                          >
+                            <Sparkles className="size-3" />
                           </button>
                         </div>
                       )}

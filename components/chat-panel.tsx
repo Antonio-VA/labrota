@@ -305,6 +305,18 @@ export function ChatPanel({
     if (open) setTimeout(() => inputRef.current?.focus(), 300)
   }, [open])
 
+  // Listen for pre-filled AI prompts (e.g. from swap panel "Check impact")
+  useEffect(() => {
+    function onPrompt(e: Event) {
+      const prompt = (e as CustomEvent).detail as string
+      if (prompt) {
+        setTimeout(() => sendMessage({ text: prompt }), 400)
+      }
+    }
+    window.addEventListener("labrota:ai-prompt", onPrompt)
+    return () => window.removeEventListener("labrota:ai-prompt", onPrompt)
+  }, [sendMessage])
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || isLoading) return

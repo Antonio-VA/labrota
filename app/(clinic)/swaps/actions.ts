@@ -173,12 +173,22 @@ export async function getSwapCandidates(assignmentId: string): Promise<{ candida
 
   if (!assignment) return { candidates: [], error: "Assignment not found." }
 
-  // Get all active staff in the org
+  // Get the initiator's role to filter candidates by same department
+  const { data: initiatorStaff } = await admin
+    .from("staff")
+    .select("role")
+    .eq("id", assignment.staff_id)
+    .single() as { data: { role: string } | null }
+
+  const initiatorRole = initiatorStaff?.role ?? "lab"
+
+  // Get all active staff in the org — same department only
   const { data: allStaff } = await admin
     .from("staff")
     .select("id, first_name, last_name, role, working_pattern, onboarding_status")
     .eq("organisation_id", orgId)
     .eq("onboarding_status", "active")
+    .eq("role", initiatorRole)
     .neq("id", assignment.staff_id) as { data: Array<{ id: string; first_name: string; last_name: string; role: string; working_pattern: string[]; onboarding_status: string }> | null }
 
   if (!allStaff || allStaff.length === 0) return { candidates: [] }
@@ -275,11 +285,21 @@ export async function getDayOffCandidates(assignmentId: string): Promise<{ candi
 
   if (!assignment) return { candidates: [], error: "Assignment not found." }
 
+  // Get the initiator's role to filter candidates by same department
+  const { data: initiatorStaff } = await admin
+    .from("staff")
+    .select("role")
+    .eq("id", assignment.staff_id)
+    .single() as { data: { role: string } | null }
+
+  const initiatorRole = initiatorStaff?.role ?? "lab"
+
   const { data: allStaff } = await admin
     .from("staff")
     .select("id, first_name, last_name, role")
     .eq("organisation_id", orgId)
     .eq("onboarding_status", "active")
+    .eq("role", initiatorRole)
     .neq("id", assignment.staff_id) as { data: Array<{ id: string; first_name: string; last_name: string; role: string }> | null }
 
   if (!allStaff || allStaff.length === 0) return { candidates: [] }
