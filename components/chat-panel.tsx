@@ -208,21 +208,21 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       {status === "done" && (
         <div className="flex items-center gap-1.5 text-emerald-600 text-[12px]">
           <CheckCircle2 className="size-3.5" />
-          <span>{useTranslations("agent")("applied")}</span>
+          <span>{t("applied")}</span>
         </div>
       )}
 
       {status === "discarded" && (
-        <p className="text-muted-foreground text-[12px]">{useTranslations("agent")("discarded")}</p>
+        <p className="text-muted-foreground text-[12px]">{t("discarded")}</p>
       )}
 
       {status === "pending" && (
         <div className="flex gap-2">
           <Button size="sm" onClick={handleApply} disabled={isPending}>
-            {isPending ? useTranslations("common")("saving") : useTranslations("agent")("apply")}
+            {isPending ? tc("saving") : t("apply")}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setStatus("discarded")}>
-            {useTranslations("agent")("discard")}
+            {t("discard")}
           </Button>
         </div>
       )}
@@ -235,13 +235,27 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 function ExamplePrompts({ onSend }: { onSend: (text: string) => void }) {
   const t = useTranslations("agent")
 
-  const examples = [
+  const allExamples = [
     t("examples.generate"),
     t("examples.whoIsOff"),
     t("examples.coverage"),
     t("examples.copyWeek"),
     t("examples.publish"),
+    t("examples.leave"),
+    t("examples.addStaff"),
+    t("examples.analyzeRota"),
+    t("examples.swapShift"),
+    t("examples.teamOverview"),
+    t("examples.rules"),
+    t("examples.regenerateDay"),
+    t("examples.shifts"),
   ]
+
+  // Pick 5 random examples (stable per mount via useState)
+  const [examples] = useState(() => {
+    const shuffled = [...allExamples].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, 5)
+  })
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-8">

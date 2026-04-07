@@ -1105,15 +1105,20 @@
     "discard": "Discard",
     "examples": {
       "generate": "Generate next week's rota",
-      "leave": "Add leave for {name} from {from} to {to}",
+      "leave": "Add a week of annual leave for Amira next month",
       "coverage": "Are we short on any skills this week?",
       "icsi": "Who covers ICSI on Thursday?",
-      "shifts": "How many shifts has {name} done this week?",
+      "shifts": "How many shifts has Amira done this month?",
       "print": "Print this week's rota",
       "publish": "Publish this week's rota",
       "copyWeek": "Copy last week's rota",
       "whoIsOff": "Who is on leave this week?",
-      "regenerateDay": "Regenerate Monday"
+      "regenerateDay": "Regenerate Monday",
+      "addStaff": "Add a new embryologist called Maria Garcia",
+      "analyzeRota": "What are the trade-offs in the current rota?",
+      "swapShift": "What shift swaps are pending?",
+      "teamOverview": "Give me a summary of the team workload this week",
+      "rules": "What scheduling rules are active?"
     },
     "promptHint": "Ask anything about the rota"
   },

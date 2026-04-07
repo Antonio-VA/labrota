@@ -12,7 +12,18 @@ class ChatErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
   state = { hasError: false }
   static getDerivedStateFromError() { return { hasError: true } }
   render() {
-    if (this.state.hasError) return null
+    if (this.state.hasError) {
+      return (
+        <div className="fixed bottom-6 right-6 z-30 hidden lg:flex">
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="size-14 rounded-full shadow-lg bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      )
+    }
     return this.props.children
   }
 }
