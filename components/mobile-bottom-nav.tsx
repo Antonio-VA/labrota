@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange, Briefcase } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase, ClipboardList } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
@@ -14,11 +14,12 @@ const BASE_ITEMS: NavItem[] = [
   { key: "week", icon: CalendarRange, href: "/mobile-week" },
 ]
 
+const MY_ROTA_ITEM: NavItem = { key: "myRota", icon: ClipboardList, href: "/my-rota" }
 const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", leaves: "Ausencias" },
-  en: { day: "Day", week: "Week", leaves: "Leave" },
+  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias" },
+  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave" },
 }
 
 export function MobileBottomNav() {
@@ -28,7 +29,13 @@ export function MobileBottomNav() {
   const viewerStaffId = useViewerStaffId()
 
   const showLeaves = canEdit || !!viewerStaffId
-  const navItems = showLeaves ? [...BASE_ITEMS, LEAVES_ITEM] : BASE_ITEMS
+  const showMyRota = !!viewerStaffId
+  const items: NavItem[] = [
+    ...BASE_ITEMS,
+    ...(showMyRota ? [MY_ROTA_ITEM] : []),
+    ...(showLeaves ? [LEAVES_ITEM] : []),
+  ]
+  const navItems = items
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
 
@@ -74,7 +81,7 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
-          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : pathname.startsWith(item.href)
+          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
             <button
