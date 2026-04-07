@@ -49,13 +49,12 @@ export async function getPublishRecipients(): Promise<RecipientRow[]> {
     .select("user_id, display_name")
     .eq("organisation_id", orgId) as { data: { user_id: string; display_name: string | null }[] | null }
 
-  // Get emails from auth.users
+  // Get emails from auth.users (parallel)
   const userIds = (members ?? []).map((m) => m.user_id)
-  const userEmails: Record<string, string> = {}
-  for (const uid of userIds) {
-    const { data: { user } } = await admin.auth.admin.getUserById(uid)
-    if (user?.email) userEmails[uid] = user.email
-  }
+  const emailResults = await Promise.all(
+    userIds.map((uid) => admin.auth.admin.getUserById(uid).then(({ data: { user } }) => user?.email ? [uid, user.email] as const : null))
+  )
+  const userEmails: Record<string, string> = Object.fromEntries(emailResults.filter(Boolean) as [string, string][])
 
   // Get existing recipients
   const supabase = await createClient()
@@ -242,15 +241,11 @@ export async function getEnabledRecipientEmails(orgId: string): Promise<string[]
 
   if (!recipients || recipients.length === 0) return []
 
-  const emails: string[] = []
-  for (const r of recipients) {
-    if (r.external_email) {
-      emails.push(r.external_email)
-    } else if (r.user_id) {
-      const { data: { user } } = await admin.auth.admin.getUserById(r.user_id)
-      if (user?.email) emails.push(user.email)
-    }
-  }
+  const externalEmails = recipients.filter((r) => r.external_email).map((r) => r.external_email!)
+  const userRecipients = recipients.filter((r) => r.user_id)
+  const userEmails = await Promise.all(
+    userRecipients.map((r) => admin.auth.admin.getUserById(r.user_id!).then(({ data: { user } }) => user?.email ?? null))
+  )
 
-  return emails
+  return [...externalEmails, ...userEmails.filter(Boolean) as string[]]
 }

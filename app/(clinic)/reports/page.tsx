@@ -1,7 +1,9 @@
+import dynamic from "next/dynamic"
 import { getTranslations } from "next-intl/server"
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
-import { ReportsClient } from "@/components/reports-client"
+
+const ReportsClient = dynamic(() => import("@/components/reports-client").then((m) => m.ReportsClient))
 import { getOrgDisplayMode } from "./actions"
 
 export default async function ReportsPage() {

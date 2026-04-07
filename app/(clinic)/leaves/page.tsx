@@ -83,23 +83,16 @@ export default async function LeavesPage() {
   // Resolve reviewer names for leaves that have reviewed_by
   const reviewerIds = [...new Set(rawLeaves.map((l) => l.reviewed_by).filter(Boolean))] as string[]
   let reviewerMap: Record<string, string> = {}
-  if (reviewerIds.length > 0) {
+  if (reviewerIds.length > 0 && orgId) {
     const adminClient = createAdminClient()
-    const { data: reviewerProfiles } = await adminClient
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", reviewerIds) as { data: Array<{ id: string; full_name: string | null }> | null }
-    if (orgId && reviewerProfiles) {
-      const { data: memberNames } = await adminClient
-        .from("organisation_members")
-        .select("user_id, display_name")
-        .eq("organisation_id", orgId)
-        .in("user_id", reviewerIds) as { data: Array<{ user_id: string; display_name: string | null }> | null }
-      const memberNameMap = Object.fromEntries((memberNames ?? []).map((m) => [m.user_id, m.display_name]))
-      reviewerMap = Object.fromEntries(
-        (reviewerProfiles ?? []).map((p) => [p.id, memberNameMap[p.id] ?? p.full_name ?? "Manager"])
-      )
-    }
+    const [{ data: reviewerProfiles }, { data: memberNames }] = await Promise.all([
+      adminClient.from("profiles").select("id, full_name").in("id", reviewerIds) as unknown as Promise<{ data: Array<{ id: string; full_name: string | null }> | null }>,
+      adminClient.from("organisation_members").select("user_id, display_name").eq("organisation_id", orgId).in("user_id", reviewerIds) as unknown as Promise<{ data: Array<{ user_id: string; display_name: string | null }> | null }>,
+    ])
+    const memberNameMap = Object.fromEntries((memberNames ?? []).map((m) => [m.user_id, m.display_name]))
+    reviewerMap = Object.fromEntries(
+      (reviewerProfiles ?? []).map((p) => [p.id, memberNameMap[p.id] ?? p.full_name ?? "Manager"])
+    )
   }
 
   const leaves = rawLeaves.map((l) => ({

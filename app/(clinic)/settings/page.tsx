@@ -1,13 +1,15 @@
+import dynamic from "next/dynamic"
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
 import { OrgUsersTable } from "@/components/org-users-table"
 import { OrgSettingsForm } from "@/components/org-settings-form"
-import { AuditLogViewer } from "@/components/audit-log-viewer"
 import { SettingsTabs } from "@/components/settings-tabs"
-import { SettingsFuncionalidades } from "@/components/settings-funcionalidades"
-import { SettingsFacturacion } from "@/components/settings-facturacion"
 import { SettingsImplementation } from "@/components/settings-implementation"
-import { SettingsNotifications } from "@/components/settings-notifications"
+
+const AuditLogViewer = dynamic(() => import("@/components/audit-log-viewer").then((m) => m.AuditLogViewer))
+const SettingsFuncionalidades = dynamic(() => import("@/components/settings-funcionalidades").then((m) => m.SettingsFuncionalidades))
+const SettingsFacturacion = dynamic(() => import("@/components/settings-facturacion").then((m) => m.SettingsFacturacion))
+const SettingsNotifications = dynamic(() => import("@/components/settings-notifications").then((m) => m.SettingsNotifications))
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
 import { getPublishRecipients, getRotaEmailFormat } from "@/app/(clinic)/notifications-actions"
