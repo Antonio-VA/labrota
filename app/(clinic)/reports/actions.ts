@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import { formatDateWithYear } from "@/lib/format-date"
@@ -506,14 +507,15 @@ export interface SwapReportData {
 }
 
 export async function generateSwapReport(from: string, to: string): Promise<SwapReportData | { error: string }> {
-  const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
+  const admin = createAdminClient()
+
+  const { data: org } = await admin.from("organisations").select("name").eq("id", orgId).single()
   const orgName = (org as { name: string } | null)?.name ?? ""
 
-  const { data: swaps } = await supabase
+  const { data: swaps } = await admin
     .from("swap_requests")
     .select("id, initiator_staff_id, target_staff_id, swap_type, swap_date, swap_shift_type, status, created_at, manager_reviewed_at, target_responded_at")
     .eq("organisation_id", orgId)
@@ -545,7 +547,7 @@ export async function generateSwapReport(from: string, to: string): Promise<Swap
     if (s.target_staff_id) staffIds.add(s.target_staff_id)
   }
 
-  const { data: staffData } = await supabase
+  const { data: staffData } = await admin
     .from("staff")
     .select("id, first_name, last_name")
     .eq("organisation_id", orgId)
