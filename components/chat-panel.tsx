@@ -114,7 +114,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             ok = true; break
           }
           case "addSkill": {
-            const result = await bulkAddSkill(p.staffIds as string[], p.skill as string)
+            const result = await bulkAddSkill(p.staffIds as string[], p.skill as string, (p.level as string) ?? "certified")
             if (result.error) { setError(result.error); break }
             ok = true; break
           }

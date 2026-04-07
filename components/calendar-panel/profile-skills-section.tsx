@@ -125,18 +125,18 @@ export function ProfileSkillsSection({
       )}
 
       {isDirty && (
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-2 flex items-center gap-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
+            className="text-[12px] font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 px-3 py-1.5 rounded-md transition-colors"
           >
             {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
           </button>
           <button
             onClick={() => setLevels(initialLevels)}
             disabled={saving}
-            className="text-[12px] font-medium text-muted-foreground hover:underline disabled:opacity-50"
+            className="text-[12px] font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-50"
           >
             {locale === "es" ? "Cancelar" : "Cancel"}
           </button>

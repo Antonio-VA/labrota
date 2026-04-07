@@ -115,6 +115,15 @@ export function MySchedule({
   const weekOptions = generateWeekOptions(currentMonday, locale)
   const todayMonday = getMondayOf(today)
 
+  // Derive staff first name from assignments
+  const staffFirstName = (() => {
+    for (const day of days) {
+      const a = day.assignments.find((a) => a.staff_id === staffId)
+      if (a) return a.staff.first_name
+    }
+    return null
+  })()
+
   const myDays = days.map((day) => {
     const myAssignments = day.assignments.filter((a) => a.staff_id === staffId)
     const isOnLeave = onLeaveByDate[day.date]?.includes(staffId) ?? false
@@ -163,19 +172,11 @@ export function MySchedule({
     <div className="flex flex-col md:hidden flex-1 overflow-auto">
       {/* Week selector toolbar */}
       <div className="flex items-center h-12 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10 gap-2">
-        <button
-          onClick={() => setCurrentDate(today)}
-          disabled={isCurrentWeek}
-          className={cn("text-[13px] font-medium px-2 py-1 rounded-md transition-colors shrink-0", isCurrentWeek ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
-        >
-          {tc("today")}
-        </button>
-        <div className="flex-1" />
-        <div className="relative">
+        <div className="relative shrink-0">
           <select
             value={currentMonday}
             onChange={(e) => setCurrentDate(e.target.value)}
-            className="appearance-none text-[14px] font-semibold capitalize bg-transparent pr-6 py-1 cursor-pointer focus:outline-none"
+            className="appearance-none text-[14px] font-semibold capitalize bg-transparent pr-5 py-1 cursor-pointer focus:outline-none"
           >
             {weekOptions.map((opt) => (
               <option key={opt.monday} value={opt.monday}>
@@ -185,6 +186,20 @@ export function MySchedule({
           </select>
           <ChevronDown className="size-3.5 text-muted-foreground absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
+        {!isCurrentWeek && (
+          <button
+            onClick={() => setCurrentDate(today)}
+            className="text-[12px] font-medium text-primary px-1.5 py-0.5 rounded-md active:bg-primary/10 transition-colors shrink-0"
+          >
+            {tc("today")}
+          </button>
+        )}
+        <div className="flex-1" />
+        {staffFirstName && (
+          <span className="text-[13px] text-muted-foreground truncate">
+            {locale === "es" ? `Turnos de ${staffFirstName}` : `${staffFirstName}'s shifts`}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col gap-2.5 px-4 py-3 flex-1 pb-24">
