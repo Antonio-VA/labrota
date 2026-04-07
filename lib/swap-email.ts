@@ -171,14 +171,17 @@ export async function sendSwapManagerEmail(swapId: string, orgId: string) {
         <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Fecha" : "Date"}</td>
         <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${dateLabel}</td>
       </tr>
-      <tr>
+      ${swap.swap_type === "shift_swap" ? `<tr>
         <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno de" : "Shift for"} ${initiatorName}</td>
         <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${swap.swap_shift_type}</td>
       </tr>
       ${targetShiftType ? `<tr>
         <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno de" : "Shift for"} ${targetName}</td>
         <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${targetShiftType}</td>
-      </tr>` : ""}
+      </tr>` : ""}` : `<tr>
+        <td style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;font-weight:600;">${isEs ? "Turno" : "Shift"}</td>
+        <td style="padding:10px 12px;border:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${swap.swap_shift_type}</td>
+      </tr>`}
     </table>
     <div style="text-align:center;margin:24px 0 8px;">
       ${actionButton(isEs ? "Aprobar" : "Approve", approveUrl, "#059669")}
