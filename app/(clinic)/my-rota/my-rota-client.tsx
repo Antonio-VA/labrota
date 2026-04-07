@@ -67,14 +67,15 @@ export function MyRotaClient() {
     )
   }
 
-  if (loading && !weekData) {
+  // Initial load — no data at all yet
+  if (!weekData && loading) {
     return (
       <div className="flex flex-col gap-4 px-4 py-6 md:hidden animate-pulse">
+        <Skeleton className="h-14 w-full rounded-lg" />
         <Skeleton className="h-12 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-12 w-full rounded-lg" />
       </div>
     )
   }
@@ -95,6 +96,7 @@ export function MyRotaClient() {
       rotaPublished={weekData.rota?.status === "published"}
       onDateChange={setCurrentDate}
       onWeekChange={handleWeekChange}
+      loading={loading}
     />
   )
 }
