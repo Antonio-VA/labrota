@@ -927,7 +927,7 @@ function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
   onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
-  isGenerating,
+  isGenerating, swapStaffId,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -946,6 +946,7 @@ function PersonGrid({
   simplified?: boolean
   onDateClick?: (date: string) => void
   isGenerating?: boolean
+  swapStaffId?: string | null
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -1202,6 +1203,21 @@ function PersonGrid({
                                 }
                               }}
                             />
+                          ) : swapStaffId && s.id === swapStaffId && isPublished ? (
+                            <div
+                              className="w-full relative group/swap cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
+                            >
+                              <PersonShiftPill
+                                assignment={assignment}
+                                shiftTimes={shiftTimes}
+                                tecnica={tecnica}
+                                simplified={simplified}
+                              />
+                              <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
+                                <ArrowRightLeft className="size-2.5" />
+                              </span>
+                            </div>
                           ) : (
                             <AssignmentPopover
                               assignment={assignment}
@@ -1276,6 +1292,7 @@ function PersonGrid({
 function TransposedPersonGrid({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
   onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
+  swapStaffId,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1292,6 +1309,7 @@ function TransposedPersonGrid({
   punctionsDefault?: Record<string, number>
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
+  swapStaffId?: string | null
 }) {
   const t = useTranslations("schedule")
   const { enabled: highlightEnabled } = useStaffHover()
@@ -1414,6 +1432,7 @@ function TransposedPersonGrid({
                 const isNewGroup = s.role !== prevRole
 
                 const isOffCell = !assignment && !onLeave && isPublished
+                const isViewerCell = !!swapStaffId && s.id === swapStaffId && !!assignment && isPublished
                 return (
                   <div
                     key={s.id}
@@ -1421,11 +1440,18 @@ function TransposedPersonGrid({
                       "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
                       compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
                       isHovered ? "bg-primary/10" : "bg-background",
+                      isViewerCell && "relative group/swap cursor-pointer",
                     )}
                     style={isOffCell ? { backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
+                    onClick={isViewerCell ? (e) => { e.stopPropagation(); onChipClick(assignment!, day.date) } : undefined}
                   >
+                    {isViewerCell && (
+                      <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
+                        <ArrowRightLeft className="size-2.5" />
+                      </span>
+                    )}
                     {assignment ? (
                       !isPublished ? (
                         <PersonShiftSelector
@@ -1570,6 +1596,7 @@ function ShiftGrid({
   onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
+  swapStaffId,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -1602,6 +1629,7 @@ function ShiftGrid({
   biopsyConversionRate?: number
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
+  swapStaffId?: string | null
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -2013,6 +2041,7 @@ function ShiftGrid({
                       : cleanFn
                       ? (data?.tecnicas ?? []).find((t) => t.codigo === cleanFn) ?? null
                       : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
+                    const isViewerChip = !!swapStaffId && a.staff_id === swapStaffId
                     return (
                       <AssignmentPopover
                         key={a.id}
@@ -2022,11 +2051,14 @@ function ShiftGrid({
                         departments={data?.departments ?? []}
                         onFunctionSave={handleFunctionLabelSave}
                         isPublished={isPublished}
-                        disabled={taskDisabled}
+                        disabled={taskDisabled || isViewerChip}
                       >
                         <Tooltip>
                           <TooltipTrigger render={
-                            <div onClick={taskDisabled ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(a, day.date) } : undefined} className={taskDisabled ? "cursor-pointer" : undefined}>
+                            <div
+                              onClick={(taskDisabled || isViewerChip) ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(a, day.date) } : undefined}
+                              className={cn((taskDisabled || isViewerChip) ? "cursor-pointer" : undefined, isViewerChip && "relative group/swap")}
+                            >
                               <DraggableShiftBadge
                                 id={a.id}
                                 first={a.staff.first_name}
@@ -2045,6 +2077,11 @@ function ShiftGrid({
                                 departments={data?.departments ?? []}
                                 trainingTecCode={data?.trainingByStaff?.[day.date]?.[a.staff_id] ?? null}
                               />
+                              {isViewerChip && (
+                                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
+                                  <ArrowRightLeft className="size-2.5" />
+                                </span>
+                              )}
                             </div>
                           } />
                           <TooltipContent side="right">
@@ -4131,6 +4168,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onCellClick={(date) => { setSheetDate(date); setSheetOpen(true) }}
                   onChipClick={(a, date) => handleDesktopChipClick(a, date)}
                   onRefresh={() => fetchWeekSilent(weekStart)}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
@@ -4165,6 +4203,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   biopsyConversionRate={weekData?.biopsyConversionRate}
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : calendarLayout === "person" && daysAsRows ? (
                 <TransposedPersonGrid
@@ -4183,6 +4222,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : (
                 <PersonGrid
@@ -4203,6 +4243,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                   simplified={personSimplified}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ))}
             </div>

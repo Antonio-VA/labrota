@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Briefcase, Hourglass } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Briefcase, Hourglass } from "lucide-react"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
@@ -42,6 +42,7 @@ interface TransposedShiftGridProps {
   onCellClick?: (date: string) => void
   onChipClick?: (assignment: { staff_id: string }, date: string) => void
   onRefresh?: () => void
+  swapStaffId?: string | null
 }
 
 // Draggable pill
@@ -67,6 +68,7 @@ function DroppableCell({ id, children, className, style }: { id: string; childre
 export function TransposedShiftGrid({
   data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
   compact, colorChips = true, timeFormat = "24h", loading, onCellClick, onChipClick, onRefresh,
+  swapStaffId,
 }: TransposedShiftGridProps) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -410,12 +412,14 @@ export function TransposedShiftGrid({
                         const tec = (!taskDisabled && cleanFn) ? tecnicas.find((tc) => tc.codigo === cleanFn) : null
                         const pillColor = tec ? TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue : null
 
+                        const isViewerChip = !!swapStaffId && a.staff_id === swapStaffId
                         return (
                           <DraggablePill key={a.id} id={a.id} disabled={isPublished}>
                             <div
                               className={cn(
                                 "flex items-center gap-1 rounded border border-transparent hover:border-border bg-background text-foreground font-medium cursor-pointer transition-colors duration-150",
-                                compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]"
+                                compact ? "px-1 py-0 text-[10px] min-h-[20px]" : "px-1.5 py-0.5 text-[11px] min-h-[24px]",
+                                isViewerChip && "relative group/swap"
                               )}
                               style={{
                                 borderRadius: 4,
@@ -429,6 +433,11 @@ export function TransposedShiftGrid({
                               {tec && pillColor && (
                                 <span className={cn("font-semibold px-0.5 py-0 rounded border ml-auto shrink-0 text-[8px]", pillColor)}>
                                   {tec.codigo}
+                                </span>
+                              )}
+                              {isViewerChip && (
+                                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
+                                  <ArrowRightLeft className="size-2.5" />
                                 </span>
                               )}
                             </div>
