@@ -381,14 +381,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }
 
   function prefetchAdjacent(ws: string) {
-    const prev = weekOffset(ws, -7)
-    const next = weekOffset(ws, 7)
-    if (!weekCache.current.has(prev)) {
-      getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+    // Defer prefetch to idle time so it doesn't compete with the main render
+    const run = () => {
+      const prev = weekOffset(ws, -7)
+      const next = weekOffset(ws, 7)
+      if (!weekCache.current.has(prev)) {
+        getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+      }
+      if (!weekCache.current.has(next)) {
+        getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
+      }
     }
-    if (!weekCache.current.has(next)) {
-      getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
-    }
+    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
+    else setTimeout(run, 200)
   }
 
   const fetchWeek = useCallback((ws: string) => {
@@ -631,6 +636,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
+  // Use activeStaff from weekData (returned by getRotaWeek) — avoids duplicate fetch
   const initialStaffUsed = useRef(false)
   useEffect(() => {
     if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
@@ -639,9 +645,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setStaffLoaded(true)
       return
     }
-    const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
-    Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
+    // Staff will be set from weekData.activeStaff when fetchWeek resolves — no separate call needed
+    if (!staffLoaded && !weekData?.activeStaff) {
+      // Fallback: fetch separately only if weekData doesn't include staff (e.g., older cached data)
+      const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
+      Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
+    }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When weekData arrives with activeStaff, use it (deduplicates the staff fetch)
+  useEffect(() => {
+    if (weekData?.activeStaff && weekData.activeStaff.length > 0) {
+      setStaffList(weekData.activeStaff)
+      setStaffLoaded(true)
+    }
+  }, [weekData?.activeStaff])
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
