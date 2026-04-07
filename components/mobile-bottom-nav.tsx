@@ -31,10 +31,10 @@ export function MobileBottomNav() {
   const showLeaves = canEdit || !!viewerStaffId
   const showMyRota = !!viewerStaffId
   const navItems: NavItem[] = [
+    ...(canEdit ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
     ...BASE_ITEMS,
     ...(showMyRota ? [MY_ROTA_ITEM] : []),
     ...(showLeaves ? [LEAVES_ITEM] : []),
-    { key: "ai", icon: Sparkles, href: "" },
   ]
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
@@ -85,6 +85,20 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
+          if (item.key === "ai") {
+            // AI is a toggle, never "active"
+            return (
+              <button
+                key="ai"
+                onTouchStart={() => handleTap("ai", "")}
+                onClick={() => handleTap("ai", "")}
+                className="flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full text-muted-foreground"
+              >
+                <Sparkles className="size-[26px]" strokeWidth={1.5} />
+                <span className="text-[11px] leading-none font-medium">AI</span>
+              </button>
+            )
+          }
           const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
