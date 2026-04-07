@@ -1259,9 +1259,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
         {isPublished && view === "week" && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
-            <Lock className="size-3.5 text-emerald-600 shrink-0" />
-            <span className="text-[13px] text-emerald-700">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 flex items-center gap-2">
+            <Lock className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-[13px] text-emerald-700 dark:text-emerald-300">
               {rota?.published_at
                 ? t("rotaPublishedBy", {
                     date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(rota.published_at)),
