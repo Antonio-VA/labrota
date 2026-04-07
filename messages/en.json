@@ -1540,7 +1540,7 @@
   "swaps": {
     "requestSwap": "Request swap",
     "swapShift": "Swap shifts",
-    "dayOff": "Take day off",
+    "dayOff": "Swap day off",
     "selectType": "What would you like to do?",
     "selectCandidate": "Choose who to swap with",
     "selectCover": "Choose who will cover",

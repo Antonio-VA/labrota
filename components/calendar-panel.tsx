@@ -4779,6 +4779,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           date={swapAssignment.date}
           dateLabel={formatDate(swapAssignment.date, locale as "es" | "en")}
           locale={locale as "es" | "en"}
+          weekStart={weekStart}
         />
       )}
 

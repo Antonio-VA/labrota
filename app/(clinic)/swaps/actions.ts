@@ -334,6 +334,78 @@ export async function getDayOffCandidates(assignmentId: string): Promise<{ candi
   return { candidates }
 }
 
+// ── Get exchange options for day-off swap ─────────────────────────────────────
+// Returns the TARGET's assignments on days when the INITIATOR is OFF
+// (current week + following week, 14 days from weekStart)
+
+export interface ExchangeOption {
+  date: string
+  shiftType: string
+  assignmentId: string
+}
+
+export async function getDayOffExchangeOptions(
+  initiatorAssignmentId: string,
+  targetStaffId: string,
+  weekStart: string,
+): Promise<{ options: ExchangeOption[]; error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { options: [], error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  // Get the initiator's assignment to find their staff ID
+  const { data: initAssignment } = await admin
+    .from("rota_assignments")
+    .select("id, staff_id, date")
+    .eq("id", initiatorAssignmentId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { id: string; staff_id: string; date: string } | null }
+
+  if (!initAssignment) return { options: [], error: "Assignment not found." }
+
+  // Build 14-day date range: weekStart → weekStart+13
+  const start = new Date(weekStart + "T12:00:00")
+  const dateRange: string[] = []
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    const iso = d.toISOString().split("T")[0]
+    // Exclude the initiator's own shift date
+    if (iso !== initAssignment.date) dateRange.push(iso)
+  }
+
+  if (dateRange.length === 0) return { options: [] }
+
+  // Get initiator's assignments in that range (to find their working days)
+  const { data: initiatorAssignments } = await admin
+    .from("rota_assignments")
+    .select("date")
+    .eq("staff_id", initAssignment.staff_id)
+    .eq("organisation_id", orgId)
+    .in("date", dateRange) as { data: Array<{ date: string }> | null }
+
+  const initiatorWorkingDays = new Set((initiatorAssignments ?? []).map(a => a.date))
+
+  // Initiator's OFF days = days in range where they have no assignment
+  const initiatorOffDays = dateRange.filter(d => !initiatorWorkingDays.has(d))
+  if (initiatorOffDays.length === 0) return { options: [] }
+
+  // Get target's assignments on those OFF days
+  const { data: targetAssignments } = await admin
+    .from("rota_assignments")
+    .select("id, date, shift_type")
+    .eq("staff_id", targetStaffId)
+    .eq("organisation_id", orgId)
+    .in("date", initiatorOffDays) as { data: Array<{ id: string; date: string; shift_type: string }> | null }
+
+  const options: ExchangeOption[] = (targetAssignments ?? [])
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(a => ({ date: a.date, shiftType: a.shift_type, assignmentId: a.id }))
+
+  return { options }
+}
+
 // ── Get my swap requests ─────────────────────────────────────────────────────
 
 export async function getMySwapRequests(staffId: string): Promise<SwapRequestWithNames[]> {
