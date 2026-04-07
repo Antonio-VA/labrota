@@ -685,14 +685,13 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   const cards: { label: string; value: number | string; detail?: string }[] = [
     { label: t("absentToday"), value: absentToday },
     { label: t("thisWeek"), value: `${thisWeekDays}d` },
-    { label: t("upcomingLeaves"), value: upcomingLeaves.length, detail: upcomingNames.length > 0 ? upcomingNames.slice(0, 3).join(", ") + (upcomingNames.length > 3 ? ` +${upcomingNames.length - 3}` : "") : undefined },
     { label: t("next4Weeks"), value: `${next4WeeksDays}d` },
     { label: t("next12Weeks"), value: `${next12WeeksDays}d` },
     { label: t("pendingReview"), value: pendingCount },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
       {cards.map((kpi) => (
         <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-3 md:px-4 py-2.5 md:py-3">
           <p className="text-[11px] md:text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
