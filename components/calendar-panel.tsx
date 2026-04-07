@@ -68,7 +68,6 @@ import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
-const ManagerSwapPanel = dynamic(() => import("@/components/manager-swap-panel").then((m) => ({ default: m.ManagerSwapPanel })), { ssr: false })
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -2977,10 +2976,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
-  // Manager swap panel
-  const [managerSwapOpen, setManagerSwapOpen] = useState(false)
-  const [pendingSwapCount, setPendingSwapCount] = useState(0)
-  const managerSwapVisible = canEdit && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
   function openProfile(staffId: string) {
     setProfileStaffId(staffId)
@@ -3718,28 +3713,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           )}
           {weekData && hasAssignments && (
             <WarningsPill days={weekData.days} staffList={filteredStaffList} />
-          )}
-          {managerSwapVisible && view === "week" && (
-            <Tooltip>
-              <TooltipTrigger render={
-                <button
-                  onClick={() => setManagerSwapOpen(true)}
-                  className="relative rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
-                  aria-label={locale === "es" ? "Solicitudes de cambio" : "Swap requests"}
-                >
-                  <ArrowRightLeft className="size-[14px]" />
-                  {pendingSwapCount > 0 && (
-                    <span className="absolute -top-1 -right-1 size-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">
-                      {pendingSwapCount}
-                    </span>
-                  )}
-                </button>
-              } />
-              <TooltipContent side="bottom">
-                {locale === "es" ? "Solicitudes de cambio" : "Swap requests"}
-                {pendingSwapCount > 0 && ` (${pendingSwapCount})`}
-              </TooltipContent>
-            </Tooltip>
           )}
           {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
             <Button
@@ -4776,15 +4749,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         />
       )}
 
-      {/* Manager swap approval panel */}
-      {managerSwapVisible && (
-        <ManagerSwapPanel
-          open={managerSwapOpen}
-          onOpenChange={setManagerSwapOpen}
-          locale={locale as "es" | "en"}
-          onCountChange={setPendingSwapCount}
-        />
-      )}
     </main>
   )
 }

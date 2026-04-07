@@ -529,6 +529,17 @@ export async function approveSwapByManager(swapId: string): Promise<{ error?: st
 
   if (error) return { error: error.message }
 
+  // Notify target staff via in-app notification + email
+  try {
+    const { notifySwapTarget, sendSwapTargetEmail } = await import("@/lib/swap-email")
+    await Promise.all([
+      notifySwapTarget(swapId, orgId),
+      sendSwapTargetEmail(swapId, orgId),
+    ])
+  } catch (e) {
+    console.error("[swap] Failed to notify target after manager approval:", e)
+  }
+
   revalidatePath("/")
   return {}
 }
