@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { CalendarDays, Clock, Palmtree, ArrowLeftRight } from "lucide-react"
+import { CalendarDays, Clock, Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
@@ -33,11 +33,12 @@ interface MyScheduleProps {
   swapEnabled?: boolean
   rotaPublished?: boolean
   onDateChange?: (date: string) => void
+  onWeekChange?: (dir: -1 | 1) => void
 }
 
 export function MySchedule({
   staffId, days, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat, initialDate,
-  swapEnabled = false, rotaPublished = false, onDateChange,
+  swapEnabled = false, rotaPublished = false, onDateChange, onWeekChange,
 }: MyScheduleProps) {
   const t = useTranslations("mySchedule")
   const today = new Date().toISOString().split("T")[0]
@@ -57,11 +58,20 @@ export function MySchedule({
     return { ...day, myAssignments, isOnLeave }
   })
 
-  // Next upcoming shift
-  const nextShift = myDays.find((d) => d.date >= today && d.myAssignments.length > 0)
+  // Filter to today and future days only
+  const futureDays = myDays.filter((d) => d.date >= today)
 
-  // Default selection to next shift date
-  const selectedDate = currentDate
+  // Next upcoming shift (always first card)
+  const nextShift = futureDays.find((d) => d.myAssignments.length > 0)
+
+  // Remaining days after the next shift
+  const remainingDays = nextShift
+    ? futureDays.filter((d) => d.date !== nextShift.date)
+    : futureDays
+
+  // Week label for navigation
+  const weekStart = days[0]?.date
+  const weekEnd = days[days.length - 1]?.date
 
   return (
     <div className="flex flex-col md:hidden flex-1 overflow-auto">
@@ -80,141 +90,133 @@ export function MySchedule({
         personalMode
       />
 
-      <div className="flex flex-col gap-3 px-4 py-3 flex-1 pb-24">
-        {/* Next shift card — only if next shift is on a different day */}
-        {nextShift && nextShift.date !== selectedDate && (
-          <button
-            onClick={() => setCurrentDate(nextShift.date)}
-            className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-left active:bg-primary/10 transition-colors"
-          >
-            <p className="text-[10px] text-primary font-medium uppercase tracking-wide mb-1">{t("nextShift")}</p>
-            <div className="flex items-center gap-2">
-              <CalendarDays className="size-4 text-primary shrink-0" />
-              <span className="text-[14px] font-medium">{formatDate(nextShift.date, locale)}</span>
-              {nextShift.myAssignments[0] && shiftTimes?.[nextShift.myAssignments[0].shift_type] && (
-                <span className="text-[12px] text-muted-foreground flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {formatTime(shiftTimes[nextShift.myAssignments[0].shift_type].start, timeFormat)}
-                </span>
-              )}
-              <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-auto">
-                {nextShift.myAssignments[0]?.shift_type}
-              </span>
+      <div className="flex flex-col gap-2 px-4 py-3 flex-1 pb-24">
+        {/* Next shift card */}
+        {nextShift && nextShift.myAssignments[0] && (() => {
+          const assignment = nextShift.myAssignments[0]
+          const times = shiftTimes?.[assignment.shift_type]
+          return (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+              <p className="text-[10px] text-primary font-medium uppercase tracking-wide mb-1.5">{t("nextShift")}</p>
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-primary shrink-0" />
+                <span className="text-[14px] font-medium">{formatDate(nextShift.date, locale)}</span>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[12px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                    {assignment.shift_type}
+                  </span>
+                  {times && (
+                    <span className="text-[12px] text-muted-foreground flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
+                    </span>
+                  )}
+                  {canSwap && (
+                    <button
+                      onClick={() => {
+                        setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date: nextShift.date })
+                        setSwapDialogOpen(true)
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md border border-primary/20 text-primary text-[11px] font-medium hover:bg-primary/10 active:bg-primary/15 transition-colors"
+                    >
+                      <ArrowLeftRight className="size-3" />
+                      Swap
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </button>
-        )}
+          )
+        })()}
 
-        {/* Shift cards for each day */}
-        <div className="flex flex-col gap-2">
-          {myDays.map((day) => {
-            const isSelected = day.date === selectedDate
-            const isToday = day.date === today
-            const assignment = day.myAssignments[0]
-            const times = assignment ? shiftTimes?.[assignment.shift_type] : null
-            const tec = assignment?.function_label ? tecnicas.find((tc) => tc.codigo === assignment.function_label) : null
+        {/* Remaining day cards */}
+        {remainingDays.map((day) => {
+          const assignment = day.myAssignments[0]
+          const times = assignment ? shiftTimes?.[assignment.shift_type] : null
+          const isToday = day.date === today
 
-            // On leave
-            if (day.isOnLeave) {
-              return (
-                <button
-                  key={day.date}
-                  onClick={() => setCurrentDate(day.date)}
-                  className={cn(
-                    "rounded-lg border px-4 py-3 text-left transition-colors",
-                    isSelected
-                      ? "border-amber-300 bg-amber-50 ring-1 ring-amber-300"
-                      : "border-border bg-background active:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className={cn("size-4 shrink-0", isSelected ? "text-amber-600" : "text-muted-foreground")} />
-                    <span className={cn("text-[14px] font-medium", isToday && "text-primary")}>{formatDate(day.date, locale)}</span>
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <Palmtree className="size-3.5 text-amber-500" />
-                      <span className="text-[12px] font-medium text-amber-600">{t("onLeave")}</span>
-                    </div>
+          // On leave
+          if (day.isOnLeave) {
+            return (
+              <div key={day.date} className="rounded-lg border border-amber-200 bg-amber-50/50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="size-4 text-amber-500 shrink-0" />
+                  <span className={cn("text-[14px] font-medium", isToday && "text-primary")}>{formatDate(day.date, locale)}</span>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <Palmtree className="size-3.5 text-amber-500" />
+                    <span className="text-[12px] font-medium text-amber-600">{t("onLeave")}</span>
                   </div>
-                </button>
-              )
-            }
+                </div>
+              </div>
+            )
+          }
 
-            // Has assignment — shift card
-            if (assignment) {
-              return (
-                <button
-                  key={day.date}
-                  onClick={() => setCurrentDate(day.date)}
-                  className={cn(
-                    "rounded-lg border px-4 py-3 text-left transition-colors",
-                    isSelected
-                      ? "border-primary/30 bg-primary/5 ring-1 ring-primary/30"
-                      : "border-border bg-background active:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className={cn("size-4 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
-                    <span className={cn("text-[14px] font-medium", isToday && "text-primary")}>{formatDate(day.date, locale)}</span>
+          // Has assignment
+          if (assignment) {
+            return (
+              <div key={day.date} className="rounded-lg border border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+                  <span className={cn("text-[14px] font-medium", isToday && "text-primary")}>{formatDate(day.date, locale)}</span>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-[12px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {assignment.shift_type}
+                    </span>
                     {times && (
                       <span className="text-[12px] text-muted-foreground flex items-center gap-1">
                         <Clock className="size-3" />
                         {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                       </span>
                     )}
-                    <span className={cn(
-                      "text-[11px] font-medium px-1.5 py-0.5 rounded ml-auto",
-                      isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    )}>
-                      {assignment.shift_type}
-                    </span>
-                  </div>
-                  {/* Function label row */}
-                  {tec && (
-                    <p className={cn("text-[12px] mt-1.5 ml-6", isSelected ? "text-primary" : "text-muted-foreground")}>{tec.nombre_es}</p>
-                  )}
-                  {assignment.function_label && !tec && (
-                    <p className="text-[12px] text-muted-foreground mt-1.5 ml-6">{assignment.function_label}</p>
-                  )}
-                  {/* Swap button on selected card */}
-                  {isSelected && canSwap && (
-                    <div className="flex justify-end mt-2">
+                    {canSwap && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
+                        onClick={() => {
                           setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date: day.date })
                           setSwapDialogOpen(true)
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 text-primary text-[12px] font-medium hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 rounded-md border border-border text-muted-foreground text-[11px] font-medium hover:bg-muted active:bg-accent transition-colors"
                       >
-                        <ArrowLeftRight className="size-3.5" />
-                        {locale === "es" ? "Solicitar cambio" : "Request swap"}
+                        <ArrowLeftRight className="size-3" />
+                        Swap
                       </button>
-                    </div>
-                  )}
-                </button>
-              )
-            }
-
-            // Free day
-            return (
-              <button
-                key={day.date}
-                onClick={() => setCurrentDate(day.date)}
-                className={cn(
-                  "rounded-lg border px-4 py-3 text-left transition-colors",
-                  isSelected
-                    ? "border-border bg-muted/50 ring-1 ring-border"
-                    : "border-border/50 bg-background active:bg-muted/30"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="size-4 text-muted-foreground/40 shrink-0" />
-                  <span className={cn("text-[14px] font-medium", isToday ? "text-primary" : "text-muted-foreground/60")}>{formatDate(day.date, locale)}</span>
-                  <span className="text-[12px] text-muted-foreground/40 ml-auto">{t("free")}</span>
+                    )}
+                  </div>
                 </div>
-              </button>
+              </div>
             )
-          })}
-        </div>
+          }
+
+          // Free day
+          return (
+            <div key={day.date} className="rounded-lg border border-border/50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-muted-foreground/30 shrink-0" />
+                <span className={cn("text-[14px]", isToday ? "font-medium text-primary" : "text-muted-foreground/50")}>{formatDate(day.date, locale)}</span>
+                <span className="text-[12px] text-muted-foreground/40 ml-auto">{t("free")}</span>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Week navigation */}
+        {onWeekChange && (
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => onWeekChange(-1)}
+              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
+            >
+              <ChevronLeft className="size-4" />
+              {locale === "es" ? "Semana anterior" : "Previous week"}
+            </button>
+            <button
+              onClick={() => onWeekChange(1)}
+              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
+            >
+              {locale === "es" ? "Semana siguiente" : "Next week"}
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
 
         {/* Swap requests list */}
         {canSwap && (

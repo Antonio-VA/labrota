@@ -10,6 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 const TODAY = new Date().toISOString().split("T")[0]
 
+function addDaysToDate(date: string, days: number): string {
+  const d = new Date(date + "T12:00:00")
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split("T")[0]
+}
+
 export function MyRotaClient() {
   const locale = useLocale() as "es" | "en"
   const viewerStaffId = useViewerStaffId()
@@ -46,6 +52,13 @@ export function MyRotaClient() {
     return () => window.removeEventListener("labrota:refresh", onRefresh)
   }, [weekStart, fetchWeek])
 
+  const handleWeekChange = useCallback((dir: -1 | 1) => {
+    setCurrentDate((prev) => {
+      const ws = getMondayOfWeek(new Date(prev + "T12:00:00"))
+      return addDaysToDate(ws, dir * 7)
+    })
+  }, [])
+
   if (!viewerStaffId) {
     return (
       <div className="flex items-center justify-center flex-1 md:hidden">
@@ -58,9 +71,10 @@ export function MyRotaClient() {
     return (
       <div className="flex flex-col gap-4 px-4 py-6 md:hidden animate-pulse">
         <Skeleton className="h-12 w-full rounded-lg" />
-        <Skeleton className="h-20 w-full rounded-lg" />
-        <Skeleton className="h-20 w-full rounded-lg" />
-        <Skeleton className="h-20 w-full rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-lg" />
       </div>
     )
   }
@@ -80,6 +94,7 @@ export function MyRotaClient() {
       swapEnabled={weekData.enableSwapRequests}
       rotaPublished={weekData.rota?.status === "published"}
       onDateChange={setCurrentDate}
+      onWeekChange={handleWeekChange}
     />
   )
 }
