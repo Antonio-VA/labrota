@@ -23,6 +23,7 @@ import {
   X,
   Wand2,
   GripVertical,
+  ArrowLeftRight,
 } from "lucide-react"
 
 // ─── i18n content ────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ const content = {
         { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
         { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
+        { title: "Shift Swap Requests", body: "Staff can request shift swaps directly from the app. Managers review and approve — coverage is maintained automatically and everyone is notified instantly." },
       ],
     },
     how: {
@@ -91,15 +93,17 @@ const content = {
     },
     pricing: {
       title: "Simple, transparent pricing",
-      sub: "No per-employee fees. One flat price per laboratory.",
+      sub: "Pay per staff member. Scale up or down as your team grows.",
       monthly: "Monthly",
       annual: "Annual",
-      save: "Save 23%",
-      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/month" },
+      save: "Save 2 months",
+      staffLabel: "staff members",
+      perStaffMonthly: "/staff/month",
+      perStaffAnnual: "/staff/month, billed annually",
       promo: "Launch offer",
       features: [
-        "Unlimited staff",
         "AI-powered rota generation",
+        "Shift swap requests",
         "Competency enforcement & skill gap detection",
         "Leave management",
         "Real-time visibility & notifications",
@@ -176,6 +180,7 @@ const content = {
         { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
         { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
+        { title: "Cambios de Turno", body: "El equipo puede solicitar cambios de turno directamente desde la app. Los managers revisan y aprueban — la cobertura se mantiene automáticamente y todos reciben la notificación al instante." },
       ],
     },
     how: {
@@ -193,15 +198,17 @@ const content = {
     },
     pricing: {
       title: "Precios simples y transparentes",
-      sub: "Sin coste por empleado. Un precio fijo por laboratorio.",
+      sub: "Precio por persona. Crece o reduce según el tamaño de tu equipo.",
       monthly: "Mensual",
       annual: "Anual",
-      save: "Ahorra 23%",
-      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/mes" },
+      save: "Ahorra 2 meses",
+      staffLabel: "personas en el equipo",
+      perStaffMonthly: "/persona/mes",
+      perStaffAnnual: "/persona/mes, facturado anualmente",
       promo: "Oferta de lanzamiento",
       features: [
-        "Empleados ilimitados",
         "Generación de rotas con IA",
+        "Solicitudes de cambio de turno",
         "Control de competencias y detección de brechas",
         "Gestión de ausencias",
         "Visibilidad en tiempo real y notificaciones",
@@ -238,7 +245,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertical]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertical, ArrowLeftRight]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -400,6 +407,7 @@ export default function MarketingPage() {
   const locale = useLocale()
   const [lang, setLang] = useState<Lang>(locale === "es" ? "es" : "en")
   const [annual, setAnnual] = useState(true)
+  const [staffCount, setStaffCount] = useState(12)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const t = content[lang]
@@ -627,20 +635,47 @@ export default function MarketingPage() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#f59e0b] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap tracking-wide uppercase">
               {t.pricing.promo}
             </div>
-            {/* Price */}
-            <div className="text-center mb-8 pt-2">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <span className="text-[18px] text-[#94a3b8] line-through">€{t.pricing.price.was}</span>
+
+            {/* Slider */}
+            <div className="mb-8 pt-2">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[14px] font-medium text-[#64748b]">{t.pricing.staffLabel}</span>
+                <span className="text-[22px] font-extrabold text-[#0f172a]">{staffCount}</span>
               </div>
-              <div className="flex items-end justify-center gap-1">
-                <span className="text-[24px] font-bold text-[#64748b] leading-[2]">€</span>
-                <span className="text-[64px] font-extrabold tracking-tight text-[#0f172a] leading-none">
-                  {annual ? t.pricing.price.annual : t.pricing.price.monthly}
-                </span>
-                <span className="text-[14px] text-[#94a3b8] mb-3">{t.pricing.price.unit}</span>
+              <input
+                type="range"
+                min={5}
+                max={30}
+                step={1}
+                value={staffCount}
+                onChange={e => setStaffCount(Number(e.target.value))}
+                className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: "#1b4f8a" }}
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[11px] text-[#94a3b8]">5</span>
+                <span className="text-[11px] text-[#94a3b8]">30</span>
               </div>
-              <p className="text-[13px] text-[#94a3b8] mt-1">{t.pricing.sub}</p>
             </div>
+
+            {/* Price */}
+            <div className="text-center mb-8 bg-[#f8fafc] rounded-xl py-6 px-4">
+              <div className="flex items-end justify-center gap-1 mb-1">
+                <span className="text-[22px] font-bold text-[#64748b] leading-[1.8]">€</span>
+                <span className="text-[60px] font-extrabold tracking-tight text-[#0f172a] leading-none">
+                  {annual ? Math.round((staffCount * 50) / 12 * 10) / 10 : staffCount * 5}
+                </span>
+                <span className="text-[13px] text-[#94a3b8] mb-3 leading-[1.3]">
+                  {annual ? t.pricing.perStaffAnnual : t.pricing.perStaffMonthly}
+                </span>
+              </div>
+              <p className="text-[13px] text-[#94a3b8] mt-2">
+                {annual
+                  ? (lang === "es" ? `€${staffCount * 50}/año — 2 meses gratis` : `€${staffCount * 50}/year — 2 months free`)
+                  : (lang === "es" ? `€${staffCount * 5}/mes en total` : `€${staffCount * 5}/month total`)}
+              </p>
+            </div>
+
             {/* Features */}
             <ul className="flex flex-col gap-3 mb-8">
               {t.pricing.features.map(f => (
