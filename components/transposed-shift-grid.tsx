@@ -425,6 +425,7 @@ export function TransposedShiftGrid({
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
+                              title={isViewerChip ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap") : undefined}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}
                               onClick={(e) => { e.stopPropagation(); onChipClick?.({ staff_id: a.staff_id }, day.date) }}

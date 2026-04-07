@@ -1204,20 +1204,27 @@ function PersonGrid({
                               }}
                             />
                           ) : swapStaffId && s.id === swapStaffId && isPublished ? (
-                            <div
-                              className="w-full relative group/swap cursor-pointer"
-                              onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
-                            >
-                              <PersonShiftPill
-                                assignment={assignment}
-                                shiftTimes={shiftTimes}
-                                tecnica={tecnica}
-                                simplified={simplified}
-                              />
-                              <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
-                                <ArrowRightLeft className="size-2.5" />
-                              </span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger render={
+                                <div
+                                  className="w-full relative group/swap cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); onChipClick(assignment, day.date) }}
+                                >
+                                  <PersonShiftPill
+                                    assignment={assignment}
+                                    shiftTimes={shiftTimes}
+                                    tecnica={tecnica}
+                                    simplified={simplified}
+                                  />
+                                  <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
+                                    <ArrowRightLeft className="size-2.5" />
+                                  </span>
+                                </div>
+                              } />
+                              <TooltipContent side="right">
+                                {locale === "es" ? "Solicitar cambio de turno" : "Request shift swap"}
+                              </TooltipContent>
+                            </Tooltip>
                           ) : (
                             <AssignmentPopover
                               assignment={assignment}
@@ -1446,6 +1453,7 @@ function TransposedPersonGrid({
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                     onClick={isViewerCell ? (e) => { e.stopPropagation(); onChipClick(assignment!, day.date) } : undefined}
+                    title={isViewerCell ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap") : undefined}
                   >
                     {isViewerCell && (
                       <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">
@@ -2085,7 +2093,9 @@ function ShiftGrid({
                             </div>
                           } />
                           <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
+                            {isViewerChip
+                              ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap")
+                              : `${a.staff.first_name} ${a.staff.last_name} · ${ROLE_LABEL[a.staff.role] ?? a.staff.role}${tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}${data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}`}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
