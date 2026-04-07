@@ -217,12 +217,12 @@ export function MySchedule({
                     <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider mb-1.5">{t("nextShift")}</p>
                     <div className="flex items-center">
                       <span className="text-[14px] font-semibold capitalize w-[100px] shrink-0">{dateLabel}</span>
-                      <div className="flex flex-col items-center flex-1">
-                        <span className="text-[14px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                      <div className="flex items-center justify-center gap-2 flex-1">
+                        <span className="text-[13px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
                           {assignment.shift_type}
                         </span>
                         {times && (
-                          <span className="text-[11px] text-emerald-600/70 mt-0.5">
+                          <span className="text-[12px] text-emerald-600/70">
                             {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                           </span>
                         )}
@@ -254,12 +254,12 @@ export function MySchedule({
                 return (
                   <div key={day.date} className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}>
                     <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>
-                    <div className="flex flex-col items-center flex-1">
+                    <div className="flex items-center justify-center gap-2 flex-1">
                       <span className={cn("text-[13px] font-semibold px-2 py-0.5 rounded", isPast ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
                         {assignment.shift_type}
                       </span>
                       {times && (
-                        <span className={cn("text-[11px] mt-0.5", isPast ? "text-muted-foreground" : "text-muted-foreground")}>
+                        <span className={cn("text-[12px]", isPast ? "text-muted-foreground" : "text-muted-foreground")}>
                           {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                         </span>
                       )}

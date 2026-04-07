@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange, Briefcase, ClipboardList } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase, ClipboardList, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
@@ -18,8 +18,8 @@ const MY_ROTA_ITEM: NavItem = { key: "myRota", icon: ClipboardList, href: "/my-r
 const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias" },
-  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave" },
+  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias", ai: "AI" },
+  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave", ai: "AI" },
 }
 
 export function MobileBottomNav() {
@@ -30,12 +30,12 @@ export function MobileBottomNav() {
 
   const showLeaves = canEdit || !!viewerStaffId
   const showMyRota = !!viewerStaffId
-  const items: NavItem[] = [
+  const navItems: NavItem[] = [
     ...BASE_ITEMS,
     ...(showMyRota ? [MY_ROTA_ITEM] : []),
     ...(showLeaves ? [LEAVES_ITEM] : []),
+    { key: "ai", icon: Sparkles, href: "" },
   ]
-  const navItems = items
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
 
@@ -67,6 +67,10 @@ export function MobileBottomNav() {
   useEffect(() => { setActiveKey(null) }, [pathname])
 
   const handleTap = useCallback((key: string, href: string) => {
+    if (key === "ai") {
+      window.dispatchEvent(new Event("labrota:toggle-chat"))
+      return
+    }
     setActiveKey(key)
     router.push(href)
   }, [router])
