@@ -191,7 +191,7 @@
     "onLeave": "De baja",
     "alreadyAssigned": "Ya asignado",
     "manualOverride": "Modificación manual",
-    "saveAsTemplate": "Guardar como plantilla",
+    "saveAsTemplate": "Guardar plantilla",
     "applyTemplate": "Aplicar plantilla",
     "templateName": "Nombre de la plantilla",
     "templateSaved": "Plantilla guardada",
