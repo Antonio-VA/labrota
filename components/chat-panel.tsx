@@ -136,9 +136,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             ok = true; break
           }
           case "updateCoverage": {
-            const formData = new FormData()
-            for (const [key, val] of Object.entries(p)) formData.set(key, String(val))
-            const result = await updateLabConfig(null, formData)
+            const result = await updateLabConfig(p as Parameters<typeof updateLabConfig>[0])
             if ((result as { error?: string })?.error) { setError((result as { error: string }).error); break }
             ok = true; break
           }
