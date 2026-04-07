@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-// Mock user state for tests
 let mockUser: { app_metadata?: { role?: string } } | null = null
 
 vi.mock("@supabase/ssr", () => ({
@@ -13,10 +12,9 @@ vi.mock("@supabase/ssr", () => ({
   }),
 }))
 
-// Capture NextResponse calls
 const mockRedirect = vi.fn()
 const mockRewrite = vi.fn()
-const mockNextResponse = vi.fn()
+const mockNext = vi.fn()
 
 class MockCookies {
   private store = new Map<string, string>()
@@ -29,7 +27,7 @@ class MockNextResponse {
   cookies = new MockCookies()
   static next({ request }: { request: unknown }) {
     const r = new MockNextResponse()
-    mockNextResponse(request)
+    mockNext(request)
     return r
   }
   static redirect(url: URL) {
@@ -56,6 +54,7 @@ function createRequest(pathname: string, host = "labrota.app"): unknown {
     cookies: new MockCookies(),
     nextUrl: {
       pathname,
+      searchParams: new URLSearchParams(),
       clone() {
         return { pathname, toString: () => url }
       },
@@ -70,14 +69,10 @@ function createRequest(pathname: string, host = "labrota.app"): unknown {
   }
 }
 
-// ── Import middleware after mocks ──────────────────────────────────────────────
-
-// We need to dynamically import to ensure mocks are in place
 async function runMiddleware(pathname: string, host?: string) {
-  // Reset mocks before each call
   mockRedirect.mockClear()
   mockRewrite.mockClear()
-  mockNextResponse.mockClear()
+  mockNext.mockClear()
   const { middleware } = await import("@/middleware")
   return middleware(createRequest(pathname, host) as Parameters<typeof middleware>[0])
 }
@@ -88,17 +83,12 @@ beforeEach(() => {
   mockUser = null
   mockRedirect.mockClear()
   mockRewrite.mockClear()
-  mockNextResponse.mockClear()
+  mockNext.mockClear()
 })
 
 describe("middleware — public paths (no auth required)", () => {
   it("allows /auth paths through", async () => {
     await runMiddleware("/auth/callback")
-    expect(mockRedirect).not.toHaveBeenCalled()
-  })
-
-  it("allows /_next paths through", async () => {
-    await runMiddleware("/_next/static/chunk.js")
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
@@ -121,6 +111,11 @@ describe("middleware — public paths (no auth required)", () => {
     await runMiddleware("/set-password")
     expect(mockRedirect).not.toHaveBeenCalled()
   })
+
+  it("allows /demo through", async () => {
+    await runMiddleware("/demo")
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
 })
 
 describe("middleware — /login", () => {
@@ -130,10 +125,10 @@ describe("middleware — /login", () => {
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it("redirects authenticated regular user to /", async () => {
+  it("redirects authenticated regular user to /schedule", async () => {
     mockUser = { app_metadata: { role: "member" } }
     await runMiddleware("/login")
-    expect(mockRedirect).toHaveBeenCalledWith("/")
+    expect(mockRedirect).toHaveBeenCalledWith("/schedule")
   })
 
   it("redirects super_admin to /admin", async () => {
@@ -143,13 +138,27 @@ describe("middleware — /login", () => {
   })
 })
 
-describe("middleware — clinic routes (unauthenticated)", () => {
-  it("redirects unauthenticated user to /login on /", async () => {
+describe("middleware — marketing home (/)", () => {
+  it("shows landing page to unauthenticated users", async () => {
     mockUser = null
     await runMiddleware("/")
-    expect(mockRedirect).toHaveBeenCalledWith("/login")
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
+  it("redirects regular user to /schedule", async () => {
+    mockUser = { app_metadata: { role: "member" } }
+    await runMiddleware("/")
+    expect(mockRedirect).toHaveBeenCalledWith("/schedule")
+  })
+
+  it("redirects super_admin to /admin", async () => {
+    mockUser = { app_metadata: { role: "super_admin" } }
+    await runMiddleware("/")
+    expect(mockRedirect).toHaveBeenCalledWith("/admin")
+  })
+})
+
+describe("middleware — clinic routes (unauthenticated)", () => {
   it("redirects unauthenticated user to /login on /staff", async () => {
     mockUser = null
     await runMiddleware("/staff")
@@ -161,24 +170,30 @@ describe("middleware — clinic routes (unauthenticated)", () => {
     await runMiddleware("/leaves")
     expect(mockRedirect).toHaveBeenCalledWith("/login")
   })
+
+  it("redirects unauthenticated user to /login on /schedule", async () => {
+    mockUser = null
+    await runMiddleware("/schedule")
+    expect(mockRedirect).toHaveBeenCalledWith("/login")
+  })
 })
 
 describe("middleware — clinic routes (authenticated)", () => {
-  it("allows regular user through to /", async () => {
-    mockUser = { app_metadata: { role: "member" } }
-    await runMiddleware("/")
-    expect(mockRedirect).not.toHaveBeenCalled()
-  })
-
   it("allows regular user through to /staff", async () => {
     mockUser = { app_metadata: { role: "member" } }
     await runMiddleware("/staff")
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
+  it("allows regular user through to /schedule", async () => {
+    mockUser = { app_metadata: { role: "member" } }
+    await runMiddleware("/schedule")
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
   it("redirects super_admin away from clinic to /admin", async () => {
     mockUser = { app_metadata: { role: "super_admin" } }
-    await runMiddleware("/")
+    await runMiddleware("/staff")
     expect(mockRedirect).toHaveBeenCalledWith("/admin")
   })
 })
@@ -190,10 +205,10 @@ describe("middleware — /admin/* routes (direct access)", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/login")
   })
 
-  it("redirects regular user to / (not authorized)", async () => {
+  it("redirects regular user to /schedule (not authorized)", async () => {
     mockUser = { app_metadata: { role: "member" } }
     await runMiddleware("/admin")
-    expect(mockRedirect).toHaveBeenCalledWith("/")
+    expect(mockRedirect).toHaveBeenCalledWith("/schedule")
   })
 
   it("allows super_admin through to /admin", async () => {
@@ -260,7 +275,6 @@ describe("middleware — admin subdomain", () => {
 })
 
 describe("middleware — matcher config", () => {
-  // The matcher is exported from the module
   it("exports matcher config", async () => {
     const mod = await import("@/middleware")
     expect(mod.config).toBeDefined()

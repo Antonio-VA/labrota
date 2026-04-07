@@ -224,6 +224,36 @@ ANTHROPIC_API_KEY=
 
 ---
 
+## Testing
+
+**After any feature change, update the corresponding tests.** Tests must pass before pushing.
+
+### Unit tests (Vitest)
+```bash
+npx vitest run
+```
+- `lib/__tests__/rota-engine.test.ts` — rota generation logic
+- `lib/__tests__/task-engine.test.ts` — task-based engine logic
+- `lib/__tests__/middleware.test.ts` — auth routing (public paths, login, admin, subdomain)
+- `lib/__tests__/format-date.test.ts` — date formatting helpers
+- `lib/__tests__/parse-leave-file.test.ts` — leave file parsing
+
+### E2E tests (Playwright)
+```bash
+npx playwright test
+```
+- `e2e/auth.setup.ts` — authenticates as demo user
+- `e2e/smoke.spec.ts` — smoke tests for all pages (schedule, staff, leaves, lab, reports, settings)
+
+### When to update tests
+- Changed middleware routing? → update `middleware.test.ts`
+- Changed rota engine logic? → update `rota-engine.test.ts`
+- Changed date formatting? → update `format-date.test.ts`
+- Added/removed pages or changed page content? → update `smoke.spec.ts`
+- Changed auth flow? → update `auth.setup.ts`
+
+---
+
 ## Build Order (remaining)
 
 | Step | Feature | Status |
