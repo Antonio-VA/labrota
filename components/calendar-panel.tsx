@@ -4229,24 +4229,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           </div>
         )}
 
-        {/* Mobile: viewer personal schedule */}
-        {!canEdit && viewerStaffId && weekData && (
-          <MySchedule
-            staffId={viewerStaffId}
-            days={weekData.days}
-            onLeaveByDate={weekData.onLeaveByDate ?? {}}
-            shiftTimes={weekData.shiftTimes ?? null}
-            tecnicas={weekData.tecnicas ?? []}
-            locale={locale as "es" | "en"}
-            timeFormat={weekData.timeFormat}
-            initialDate={currentDate}
-            swapEnabled={weekData.enableSwapRequests}
-            rotaPublished={weekData.rota?.status === "published"}
-          />
-        )}
-
-        {/* Mobile: admin/editor day view */}
-        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1", !canEdit && "hidden")}>
+        {/* Mobile: day view (all users) */}
+        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1")}>
           {/* Date carousel — hidden in edit mode */}
           {!mobileEditMode && weekData && (
             <WeeklyStrip
