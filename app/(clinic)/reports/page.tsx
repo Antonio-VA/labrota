@@ -3,7 +3,11 @@ import { getTranslations } from "next-intl/server"
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
 
-const ReportsClient = dynamic(() => import("@/components/reports-client").then((m) => m.ReportsClient))
+import { CardSkeleton } from "@/components/ui/skeleton"
+
+const ReportsClient = dynamic(() => import("@/components/reports-client").then((m) => m.ReportsClient), {
+  loading: () => <CardSkeleton />,
+})
 import { getOrgDisplayMode } from "./actions"
 
 export default async function ReportsPage() {

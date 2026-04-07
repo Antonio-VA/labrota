@@ -5,11 +5,14 @@ import { OrgUsersTable } from "@/components/org-users-table"
 import { OrgSettingsForm } from "@/components/org-settings-form"
 import { SettingsTabs } from "@/components/settings-tabs"
 import { SettingsImplementation } from "@/components/settings-implementation"
+import { CardSkeleton } from "@/components/ui/skeleton"
 
-const AuditLogViewer = dynamic(() => import("@/components/audit-log-viewer").then((m) => m.AuditLogViewer))
-const SettingsFuncionalidades = dynamic(() => import("@/components/settings-funcionalidades").then((m) => m.SettingsFuncionalidades))
-const SettingsFacturacion = dynamic(() => import("@/components/settings-facturacion").then((m) => m.SettingsFacturacion))
-const SettingsNotifications = dynamic(() => import("@/components/settings-notifications").then((m) => m.SettingsNotifications))
+const TabSkeleton = () => <div className="rounded-lg border border-border bg-background px-5 py-4"><CardSkeleton /></div>
+
+const AuditLogViewer = dynamic(() => import("@/components/audit-log-viewer").then((m) => m.AuditLogViewer), { loading: TabSkeleton })
+const SettingsFuncionalidades = dynamic(() => import("@/components/settings-funcionalidades").then((m) => m.SettingsFuncionalidades), { loading: TabSkeleton })
+const SettingsFacturacion = dynamic(() => import("@/components/settings-facturacion").then((m) => m.SettingsFacturacion), { loading: TabSkeleton })
+const SettingsNotifications = dynamic(() => import("@/components/settings-notifications").then((m) => m.SettingsNotifications), { loading: TabSkeleton })
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
 import { getPublishRecipients, getRotaEmailFormat } from "@/app/(clinic)/notifications-actions"
