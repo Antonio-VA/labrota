@@ -1529,5 +1529,31 @@
     "byTaskDesc": "By task — common in large labs (10+ people)",
     "saveChanges": "Save changes",
     "namePlaceholder": "Full Name"
+  },
+  "swaps": {
+    "requestSwap": "Request swap",
+    "swapShift": "Swap shifts",
+    "dayOff": "Take day off",
+    "selectType": "What would you like to do?",
+    "selectCandidate": "Choose who to swap with",
+    "selectCover": "Choose who will cover",
+    "confirm": "Confirm swap request",
+    "cancel": "Cancel",
+    "submit": "Submit request",
+    "pendingManager": "Pending manager approval",
+    "pendingTarget": "Awaiting response",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled",
+    "noCandidates": "No available candidates for this day",
+    "alreadyPending": "You already have a pending swap request for this shift",
+    "onlyPublished": "Swaps are only available for published rotas",
+    "mySwaps": "My swaps",
+    "shiftOn": "{shift} shift on {date}",
+    "off": "Off",
+    "working": "Working",
+    "coverageWarning": "Coverage warning",
+    "enableSwapRequests": "Enable swap requests",
+    "enableSwapRequestsDesc": "Allow staff to request shift swaps on published rotas"
   }
 }

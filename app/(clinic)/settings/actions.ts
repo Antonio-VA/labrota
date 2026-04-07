@@ -267,6 +267,7 @@ export interface OrgSettings {
   country: string
   region: string
   enableLeaveRequests: boolean
+  enableSwapRequests: boolean
   enableNotes: boolean
   enableTaskInShift: boolean
   displayMode: "by_shift" | "by_task"
@@ -287,9 +288,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
       .single() as unknown as Promise<{ data: { name: string; logo_url: string | null; rota_display_mode?: string; auth_method?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }>,
     admin
       .from("lab_config")
-      .select("country, region, enable_leave_requests, enable_notes, enable_task_in_shift")
+      .select("country, region, enable_leave_requests, enable_swap_requests, enable_notes, enable_task_in_shift")
       .eq("organisation_id", orgId)
-      .maybeSingle() as unknown as Promise<{ data: { country: string; region: string; enable_leave_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { country: string; region: string; enable_leave_requests?: boolean; enable_swap_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }>,
   ])
 
   if (!org) return null
@@ -299,6 +300,7 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     country: config?.country ?? "",
     region: config?.region ?? "",
     enableLeaveRequests: config?.enable_leave_requests ?? false,
+    enableSwapRequests: config?.enable_swap_requests ?? false,
     enableNotes: config?.enable_notes ?? true,
     enableTaskInShift: config?.enable_task_in_shift ?? false,
     displayMode: (org.rota_display_mode ?? "by_shift") as "by_shift" | "by_task",
@@ -377,6 +379,17 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
   const { error } = await admin
     .from("lab_config")
     .update({ enable_leave_requests: enabled } as never)
+    .eq("organisation_id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath("/settings")
+  return {}
+}
+
+export async function toggleSwapRequests(enabled: boolean): Promise<{ error?: string }> {
+  const { orgId, admin } = await requireOrgAdmin()
+  const { error } = await admin
+    .from("lab_config")
+    .update({ enable_swap_requests: enabled } as never)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")

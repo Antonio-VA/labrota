@@ -109,6 +109,7 @@ export default async function SettingsPage() {
                 <SettingsFuncionalidades
                   displayMode={orgSettings.displayMode}
                   enableLeaveRequests={orgSettings.enableLeaveRequests}
+                  enableSwapRequests={orgSettings.enableSwapRequests}
                   enableNotes={orgSettings.enableNotes}
                   enableTaskInShift={orgSettings.enableTaskInShift}
                 />
