@@ -107,6 +107,24 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
     if (!n.read) handleMarkRead(n.id)
   }
 
+  async function handleAcceptSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "approving" }))
+    const { executeSwap } = await import("@/app/(clinic)/swaps/actions")
+    await executeSwap(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
+  }
+
+  async function handleDeclineSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "rejecting" }))
+    const { cancelSwapRequest } = await import("@/app/(clinic)/swaps/actions")
+    await cancelSwapRequest(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
+  }
+
   return (
     <>
       {/* Bell button */}
@@ -172,8 +190,56 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
               {notifications.map((n) => {
                 const swapId = (n.data as { swapId?: string })?.swapId
                 const isSwapRequest = n.type === "swap_request" && swapId
+                const isSwapTarget = n.type === "swap_pending_target" && swapId
                 const actioning = swapActioning[n.id]
                 const actioned = swapActioned.has(n.id)
+
+                if (isSwapTarget) {
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3 border-b border-border",
+                        n.read || actioned ? "bg-background" : "bg-amber-500/5"
+                      )}
+                    >
+                      {TYPE_ICON.swap_pending_target}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-[13px] leading-tight", !n.read && !actioned && "font-medium")}>{n.title}</p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{formatDateTime(n.created_at, locale)}</p>
+                        {actioned ? (
+                          <p className="text-[11px] text-emerald-600 mt-1.5 flex items-center gap-1">
+                            <Check className="size-3" />
+                            {locale === "es" ? "Gestionado" : "Done"}
+                          </p>
+                        ) : (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => handleAcceptSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "approving" ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                              {locale === "es" ? "Aceptar" : "Accept"}
+                            </button>
+                            <button
+                              onClick={() => handleDeclineSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "rejecting" ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+                              {locale === "es" ? "Declinar" : "Decline"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {!n.read && !actioned && (
+                        <span className="size-2 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                      )}
+                    </div>
+                  )
+                }
 
                 if (isSwapRequest) {
                   return (
