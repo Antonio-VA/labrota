@@ -484,7 +484,7 @@ export default function MarketingPage() {
             ))}
           </div>
         </div>
-        <div className="md:order-last">
+        <div className="md:order-last flex justify-center">
           <ProductMockup />
         </div>
       </section>
