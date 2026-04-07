@@ -130,9 +130,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           }
           case "updateStaff": {
             const result = await bulkUpdateStaffField(
-              p.staffIds as string[],
-              p.field as string,
-              p.value as string | number | boolean
+              (p.staffIds as string[]).map(id => ({ id, field: p.field as string, value: p.value as unknown }))
             )
             if (result.error) { setError(result.error); break }
             ok = true; break
