@@ -956,7 +956,7 @@ export function LeavesList({
               {t("addFromFile")}
             </Button>
           )}
-          {!isViewer && enableOutlookSync && orgId && (
+          {userRole === "manager" && enableOutlookSync && orgId && (
             <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setOutlookPanelOpen(true)}>
               <Cloud className="size-4" />
               {to("outlook")}

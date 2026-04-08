@@ -51,11 +51,6 @@ export function OutlookSyncPanel({
     if (open) loadStatus()
   }, [open, loadStatus])
 
-  const handleConnect = (staffId: string) => {
-    // Navigate in same window — popups don't work well on mobile
-    window.location.href = `/api/outlook-auth?staffId=${staffId}&orgId=${orgId}`
-  }
-
   const handleSyncOne = (staffId: string, staffName: string) => {
     startTransition(async () => {
       const result = await syncOutlookForStaff(staffId)
@@ -214,15 +209,10 @@ export function OutlookSyncPanel({
                       )}
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleConnect(s.staffId)}
-                      className="text-[12px] gap-1.5"
-                    >
-                      <Cloud className="size-3.5" />
-                      {t("connect")}
-                    </Button>
+                    <span className="text-[12px] text-muted-foreground flex items-center gap-1.5">
+                      <CloudOff className="size-3.5" />
+                      {t("notConnected")}
+                    </span>
                   )}
                 </div>
               ))}
