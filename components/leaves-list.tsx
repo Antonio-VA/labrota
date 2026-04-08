@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useState, useTransition, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
@@ -810,6 +810,24 @@ export function LeavesList({
   const [, startCancelTransition] = useTransition()
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
+  const searchParams = useSearchParams()
+
+  // Handle Outlook OAuth callback URL params
+  useEffect(() => {
+    const outlookStatus = searchParams.get("outlook")
+    if (!outlookStatus) return
+    const reason = searchParams.get("reason")
+    if (outlookStatus === "connected") {
+      toast.success(to("connectSuccess", { name: "" }))
+      setOutlookPanelOpen(true)
+    } else if (outlookStatus === "cancelled") {
+      toast.info("Outlook connection cancelled")
+    } else if (outlookStatus === "error") {
+      toast.error(`Outlook connection failed${reason ? `: ${reason}` : ""}`)
+    }
+    // Clean URL params
+    router.replace("/leaves", { scroll: false })
+  }, [searchParams, router, to])
 
   function handleCancel(leaveId: string) {
     toast(t("cancelConfirm"), {

@@ -27,23 +27,32 @@ function parseState(state: string): { staffId: string; orgId: string } | null {
   }
 }
 
+function errorRedirect(req: NextRequest, reason: string) {
+  const url = new URL("/leaves", req.url)
+  url.searchParams.set("outlook", "error")
+  url.searchParams.set("reason", reason)
+  return NextResponse.redirect(url)
+}
+
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code")
   const state = req.nextUrl.searchParams.get("state")
   const error = req.nextUrl.searchParams.get("error")
+  const errorDesc = req.nextUrl.searchParams.get("error_description")
 
   // User declined consent
   if (error) {
-    return NextResponse.redirect(new URL("/leaves?outlook=cancelled", req.url))
+    console.error("[outlook-callback] OAuth error:", error, errorDesc)
+    return errorRedirect(req, `consent_${error}`)
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/leaves?outlook=error", req.url))
+    return errorRedirect(req, "missing_code")
   }
 
   const parsed = parseState(state)
   if (!parsed) {
-    return NextResponse.redirect(new URL("/leaves?outlook=error&reason=invalid_state", req.url))
+    return errorRedirect(req, "invalid_state")
   }
 
   const { staffId, orgId } = parsed
@@ -74,12 +83,13 @@ export async function GET(req: NextRequest) {
 
     if (dbError) {
       console.error("[outlook-callback] DB error:", dbError)
-      return NextResponse.redirect(new URL("/leaves?outlook=error&reason=db", req.url))
+      return errorRedirect(req, `db_${dbError.code}`)
     }
 
     return NextResponse.redirect(new URL("/leaves?outlook=connected", req.url))
   } catch (err) {
-    console.error("[outlook-callback] Error:", err)
-    return NextResponse.redirect(new URL("/leaves?outlook=error", req.url))
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[outlook-callback] Error:", msg)
+    return errorRedirect(req, encodeURIComponent(msg.slice(0, 100)))
   }
 }
