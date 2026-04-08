@@ -276,13 +276,12 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().describe("Full or partial name of the staff member"),
         }),
         execute: async ({ staffName }) => {
-          const nameParts = staffName.trim().split(" ")
-          const searchTerm = nameParts[nameParts.length - 1]
+          const searchTerm = staffName.trim()
 
           const { data: staffList } = await supabase
             .from("staff")
             .select("id, first_name, last_name, role, email, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, onboarding_status, notes, staff_skills(skill, level)")
-            .ilike("last_name", `%${searchTerm}%`)
+            .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
             .neq("onboarding_status", "inactive") as {
               data: { id: string; first_name: string; last_name: string; role: string; email: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; onboarding_status: string; notes: string | null; staff_skills: { skill: string; level: string }[] }[] | null
             }
