@@ -184,7 +184,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .maybeSingle() as unknown as Promise<{ data: OrgConfig | null; error: { message: string } | null }>,
     supabase
       .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date") as unknown as Promise<{ data: StaffRow[] | null; error: { message: string } | null }>,
+      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours") as unknown as Promise<{ data: StaffRow[] | null; error: { message: string } | null }>,
     supabase
       .from("staff_skills")
       .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null; error: { message: string } | null }>,
