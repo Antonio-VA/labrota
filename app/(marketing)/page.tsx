@@ -23,6 +23,7 @@ import {
   Wand2,
   GripVertical,
   ArrowLeftRight,
+  Cloud,
 } from "lucide-react"
 
 // ─── i18n content ────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ const content = {
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
         { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
         { title: "Shift Swap Requests", body: "Staff can request shift swaps directly from the app. Managers review and approve — coverage is maintained automatically and everyone is notified instantly." },
+        { title: "Outlook Calendar Sync", body: "Connect staff Outlook calendars and out-of-office events automatically become leaves in LabRota — no manual entry, no missed absences." },
       ],
     },
     how: {
@@ -105,6 +107,7 @@ const content = {
         "Shift swap requests",
         "Competency enforcement & skill gap detection",
         "Leave management",
+        "Outlook calendar sync",
         "PDF & XLS export",
         "AI-assisted lab setup from your existing rotas",
         "Priority support",
@@ -178,6 +181,7 @@ const content = {
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
         { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
         { title: "Cambios de Turno", body: "El equipo puede solicitar cambios de turno directamente desde la app. Los managers revisan y aprueban — la cobertura se mantiene automáticamente y todos reciben la notificación al instante." },
+        { title: "Sincronización Outlook", body: "Conecta los calendarios de Outlook del equipo y los eventos de fuera de oficina se convierten automáticamente en ausencias en LabRota — sin entrada manual, sin ausencias olvidadas." },
       ],
     },
     how: {
@@ -209,6 +213,7 @@ const content = {
         "Solicitudes de cambio de turno",
         "Control de competencias y detección de brechas",
         "Gestión de ausencias",
+        "Sincronización calendario Outlook",
         "Exportación PDF y XLS",
         "Configuración asistida por IA desde tus rotas actuales",
         "Soporte prioritario",
@@ -242,7 +247,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, GripVertical, ArrowLeftRight]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, GripVertical, ArrowLeftRight, Cloud]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
