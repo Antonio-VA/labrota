@@ -146,8 +146,9 @@ export async function fetchOOFEvents(
   const data = await res.json()
   const events = (data.value ?? []) as GraphCalendarEvent[]
 
+  // Capture: Out of Office events, OR all-day events (vacations, holidays, absences)
   return events
-    .filter((e) => !e.isCancelled && e.showAs === "oof")
+    .filter((e) => !e.isCancelled && (e.showAs === "oof" || e.isAllDay))
     .map((e) => {
       // Parse dates — Graph returns ISO datetime strings
       const start = e.start.dateTime.split("T")[0]
