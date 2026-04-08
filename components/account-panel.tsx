@@ -284,63 +284,66 @@ export function AccountPanel({ open, onClose, user }: {
           <div className="px-5 py-4 border-b border-border">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{to("panelTitle")}</p>
             {outlook.connected ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center size-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                  <Cloud className="size-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 px-3 py-2.5">
+                <Cloud className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium">{to("connected")}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{outlook.email}</p>
+                  <p className="text-[13px] font-medium text-emerald-700 dark:text-emerald-300">{to("connected")}</p>
+                  <p className="text-[11px] text-emerald-600/70 dark:text-emerald-400/70 truncate">{outlook.email}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      if (!outlook.staffId) return
-                      startTransition(async () => {
-                        const r = await syncOutlookForStaff(outlook.staffId!)
-                        if (r.errors.length > 0) toast.error(r.errors[0])
-                        else toast.success(to("syncSuccess", { count: r.created + r.updated }))
-                        getUserOutlookStatus().then(setOutlook)
-                      })
-                    }}
-                    disabled={isPending}
-                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                    title={to("syncNow")}
-                  >
-                    <Cloud className="size-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!outlook.staffId) return
-                      startTransition(async () => {
-                        await disconnectOutlook(outlook.staffId!, true)
-                        toast.success(to("disconnectSuccess", { name: "" }))
-                        getUserOutlookStatus().then(setOutlook)
-                      })
-                    }}
-                    disabled={isPending}
-                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                    title={to("disconnectOutlook")}
-                  >
-                    <Unplug className="size-3.5" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    if (!outlook.staffId) return
+                    startTransition(async () => {
+                      const r = await syncOutlookForStaff(outlook.staffId!)
+                      if (r.errors.length > 0) toast.error(r.errors[0])
+                      else toast.success(to("syncSuccess", { count: r.created + r.updated }))
+                      getUserOutlookStatus().then(setOutlook)
+                    })
+                  }}
+                  disabled={isPending}
+                  className="p-1.5 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 transition-colors"
+                  title={to("syncNow")}
+                >
+                  <Cloud className="size-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (!outlook.staffId) return
+                    startTransition(async () => {
+                      await disconnectOutlook(outlook.staffId!, true)
+                      toast.success(to("featureDisabled"))
+                      getUserOutlookStatus().then(setOutlook)
+                    })
+                  }}
+                  disabled={isPending}
+                  className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 text-muted-foreground hover:text-destructive transition-colors"
+                  title={to("disconnectOutlook")}
+                >
+                  <Unplug className="size-3.5" />
+                </button>
               </div>
-            ) : (
+            ) : outlook.staffId ? (
               <button
                 onClick={() => {
-                  if (outlook.staffId && outlook.orgId) {
-                    window.location.href = `/api/outlook-auth?staffId=${outlook.staffId}&orgId=${outlook.orgId}`
-                  }
+                  window.location.href = `/api/outlook-auth?staffId=${outlook.staffId}&orgId=${outlook.orgId}`
                 }}
-                className="flex items-center gap-2.5 w-full rounded-lg border border-border px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 w-full rounded-lg border border-dashed border-primary/30 px-3 py-2.5 hover:bg-primary/5 hover:border-primary/50 transition-colors"
               >
-                <Cloud className="size-4 text-primary" />
+                <Cloud className="size-4 text-primary shrink-0" />
                 <div className="text-left">
                   <p className="text-[13px] font-medium">{to("connectOutlook")}</p>
                   <p className="text-[11px] text-muted-foreground">{to("featureDescription")}</p>
                 </div>
               </button>
+            ) : (
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <Cloud className="size-4 text-muted-foreground shrink-0" />
+                <p className="text-[12px] text-muted-foreground">
+                  {tc("save") === "Save"
+                    ? "Link your account to a staff member to connect Outlook"
+                    : "Vincula tu cuenta a un miembro del equipo para conectar Outlook"}
+                </p>
+              </div>
             )}
           </div>
         )}
