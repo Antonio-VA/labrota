@@ -1381,7 +1381,7 @@
     "history": "Historial"
   },
   "notifications": {
-    "title": "Notificaciones de publicación",
+    "title": "Notificaciones",
     "description": "Selecciona quién recibe un email cuando se publica un horario. Los usuarios seleccionados y los emails externos recibirán el horario completo por email.",
     "orgUsers": "Usuarios de la organización",
     "externalEmails": "Emails externos",

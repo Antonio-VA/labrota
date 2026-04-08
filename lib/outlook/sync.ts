@@ -131,6 +131,36 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     .update({ last_synced_at: new Date().toISOString() } as never)
     .eq("staff_id", staffId)
 
+  // Notify managers if new leaves were created
+  if (result.created > 0) {
+    try {
+      const { data: staffData } = await admin
+        .from("staff")
+        .select("first_name, last_name")
+        .eq("id", staffId)
+        .single() as { data: { first_name: string; last_name: string } | null }
+      const staffName = staffData ? `${staffData.first_name} ${staffData.last_name}` : "Staff"
+
+      const { data: managers } = await admin
+        .from("organisation_members")
+        .select("user_id")
+        .eq("organisation_id", orgId)
+        .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string }> | null }
+
+      if (managers && managers.length > 0) {
+        const notifications = managers.map(m => ({
+          organisation_id: orgId,
+          user_id: m.user_id,
+          type: "outlook_sync",
+          title: "Outlook leave synced",
+          message: `${result.created} new leave(s) synced from ${staffName}'s Outlook calendar.`,
+          data: { staffId, created: result.created },
+        }))
+        await admin.from("notifications").insert(notifications as never)
+      }
+    } catch { /* notification failure is non-blocking */ }
+  }
+
   return result
 }
 

@@ -1381,7 +1381,7 @@
     "history": "History"
   },
   "notifications": {
-    "title": "Publish notifications",
+    "title": "Notifications",
     "description": "Select who receives an email when a rota is published. Selected users and external emails will receive the full schedule by email.",
     "orgUsers": "Organisation users",
     "externalEmails": "External emails",

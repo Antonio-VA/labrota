@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react"
 import { useRef } from "react"
 import { useTranslations } from "next-intl"
-import { X, Sun, Moon, Monitor, Check, Camera } from "lucide-react"
+import { X, Sun, Moon, Monitor, Check, Camera, Cloud, Unplug } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,8 +12,11 @@ import {
   getUserDepartment,
   saveUserPreferences,
   uploadAvatar,
+  getUserOutlookStatus,
   type UserPreferences,
+  type UserOutlookStatus,
 } from "@/app/(clinic)/account-actions"
+import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import type { User } from "@supabase/supabase-js"
 
 const ACCENT_COLORS = [
@@ -42,6 +45,7 @@ export function AccountPanel({ open, onClose, user }: {
 }) {
   const t = useTranslations("account")
   const tc = useTranslations("common")
+  const to = useTranslations("outlook")
   const [prefs, setPrefs] = useState<UserPreferences>(() => {
     if (typeof window === "undefined") return { locale: "browser", theme: "light", accentColor: "#1b4f8a" }
     try {
@@ -52,11 +56,12 @@ export function AccountPanel({ open, onClose, user }: {
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [department, setDepartment] = useState<string | null>(null)
+  const [outlook, setOutlook] = useState<UserOutlookStatus>({ available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null })
 
   useEffect(() => {
     if (!open || !user) return
     setLoading(true)
-    Promise.all([getUserPreferences(), getUserDepartment()]).then(([p, dept]) => {
+    Promise.all([getUserPreferences(), getUserDepartment(), getUserOutlookStatus()]).then(([p, dept, ol]) => {
       setPrefs({
         locale: p.locale ?? "browser",
         theme: p.theme ?? "light",
@@ -65,6 +70,7 @@ export function AccountPanel({ open, onClose, user }: {
         firstDayOfWeek: p.firstDayOfWeek ?? 0,
       })
       setDepartment(dept)
+      setOutlook(ol)
       setLoading(false)
     })
   }, [open, user])
@@ -272,6 +278,72 @@ export function AccountPanel({ open, onClose, user }: {
             </div>
           </div>
         </div>
+
+        {/* Outlook sync */}
+        {outlook.available && (
+          <div className="px-5 py-4 border-b border-border">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{to("panelTitle")}</p>
+            {outlook.connected ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center size-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <Cloud className="size-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium">{to("connected")}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{outlook.email}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (!outlook.staffId) return
+                      startTransition(async () => {
+                        const r = await syncOutlookForStaff(outlook.staffId!)
+                        if (r.errors.length > 0) toast.error(r.errors[0])
+                        else toast.success(to("syncSuccess", { count: r.created + r.updated }))
+                        getUserOutlookStatus().then(setOutlook)
+                      })
+                    }}
+                    disabled={isPending}
+                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    title={to("syncNow")}
+                  >
+                    <Cloud className="size-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!outlook.staffId) return
+                      startTransition(async () => {
+                        await disconnectOutlook(outlook.staffId!, true)
+                        toast.success(to("disconnectSuccess", { name: "" }))
+                        getUserOutlookStatus().then(setOutlook)
+                      })
+                    }}
+                    disabled={isPending}
+                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    title={to("disconnectOutlook")}
+                  >
+                    <Unplug className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  if (outlook.staffId && outlook.orgId) {
+                    window.location.href = `/api/outlook-auth?staffId=${outlook.staffId}&orgId=${outlook.orgId}`
+                  }
+                }}
+                className="flex items-center gap-2.5 w-full rounded-lg border border-border px-3 py-2.5 hover:bg-muted/50 transition-colors"
+              >
+                <Cloud className="size-4 text-primary" />
+                <div className="text-left">
+                  <p className="text-[13px] font-medium">{to("connectOutlook")}</p>
+                  <p className="text-[11px] text-muted-foreground">{to("featureDescription")}</p>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
