@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange, Briefcase } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase, ClipboardList, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
@@ -14,11 +14,12 @@ const BASE_ITEMS: NavItem[] = [
   { key: "week", icon: CalendarRange, href: "/mobile-week" },
 ]
 
+const MY_ROTA_ITEM: NavItem = { key: "myRota", icon: ClipboardList, href: "/my-rota" }
 const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", leaves: "Ausencias" },
-  en: { day: "Day", week: "Week", leaves: "Leave" },
+  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias", ai: "AI" },
+  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave", ai: "AI" },
 }
 
 export function MobileBottomNav() {
@@ -28,7 +29,13 @@ export function MobileBottomNav() {
   const viewerStaffId = useViewerStaffId()
 
   const showLeaves = canEdit || !!viewerStaffId
-  const navItems = showLeaves ? [...BASE_ITEMS, LEAVES_ITEM] : BASE_ITEMS
+  const showMyRota = !!viewerStaffId
+  const navItems: NavItem[] = [
+    ...(canEdit ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
+    ...(showLeaves ? [LEAVES_ITEM] : []),
+    ...BASE_ITEMS,
+    ...(showMyRota ? [MY_ROTA_ITEM] : []),
+  ]
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
 
@@ -60,6 +67,10 @@ export function MobileBottomNav() {
   useEffect(() => { setActiveKey(null) }, [pathname])
 
   const handleTap = useCallback((key: string, href: string) => {
+    if (key === "ai") {
+      window.dispatchEvent(new Event("labrota:toggle-chat"))
+      return
+    }
     setActiveKey(key)
     router.push(href)
   }, [router])
@@ -74,7 +85,20 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
-          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : pathname.startsWith(item.href)
+          if (item.key === "ai") {
+            return (
+              <button
+                key="ai"
+                onTouchStart={() => handleTap("ai", "")}
+                onClick={() => handleTap("ai", "")}
+                className="flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full text-muted-foreground"
+              >
+                <Sparkles className="size-[26px]" strokeWidth={1.5} />
+                <span className="text-[11px] leading-none font-medium">AI</span>
+              </button>
+            )
+          }
+          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
             <button

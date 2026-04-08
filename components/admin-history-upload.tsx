@@ -24,11 +24,11 @@ export function AdminHistoryUpload({ orgId }: { orgId: string }) {
       for (const file of files) {
         try {
           const buffer = await file.arrayBuffer()
-          const sheets = getSheetNames(buffer)
+          const sheets = await getSheetNames(buffer)
 
           for (const sheet of sheets) {
             try {
-              const parsed = parseSheet(buffer, sheet)
+              const parsed = await parseSheet(buffer, sheet)
 
               const result = await importHistoricalRota(orgId, {
                 staff: parsed.staff,

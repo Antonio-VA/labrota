@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export interface FavoriteView {
   view: string
@@ -106,4 +107,79 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
   if (error) return { error: error.message }
   revalidatePath("/")
   return {}
+}
+
+export interface UserOutlookStatus {
+  available: boolean   // feature enabled for this user's org
+  connected: boolean
+  email: string | null
+  lastSyncedAt: string | null
+  staffId: string | null
+  orgId: string | null
+}
+
+export async function getUserOutlookStatus(): Promise<UserOutlookStatus> {
+  const none: UserOutlookStatus = { available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return none
+
+  const admin = createAdminClient()
+
+  // Get user's active org
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("organisation_id")
+    .eq("id", user.id)
+    .single() as { data: { organisation_id: string | null } | null }
+  const orgId = profile?.organisation_id
+  if (!orgId) return none
+
+  // Check if feature is enabled
+  const { data: config } = await admin
+    .from("lab_config")
+    .select("enable_outlook_sync")
+    .eq("organisation_id", orgId)
+    .maybeSingle() as { data: { enable_outlook_sync: boolean } | null }
+  if (!config?.enable_outlook_sync) return none
+
+  // Find linked staff
+  const { data: member } = await admin
+    .from("organisation_members")
+    .select("linked_staff_id")
+    .eq("user_id", user.id)
+    .eq("organisation_id", orgId)
+    .maybeSingle() as { data: { linked_staff_id: string | null } | null }
+
+  let staffId = member?.linked_staff_id ?? null
+
+  // Fallback: match by email
+  if (!staffId) {
+    const { data: staffMatch } = await admin
+      .from("staff")
+      .select("id")
+      .eq("email", user.email ?? "")
+      .eq("organisation_id", orgId)
+      .maybeSingle() as { data: { id: string } | null }
+    staffId = staffMatch?.id ?? null
+  }
+
+  if (!staffId) return { available: true, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId }
+
+  // Check connection
+  const { data: conn } = await admin
+    .from("outlook_connections")
+    .select("email, last_synced_at")
+    .eq("staff_id", staffId)
+    .maybeSingle() as { data: { email: string; last_synced_at: string | null } | null }
+
+  return {
+    available: true,
+    connected: !!conn,
+    email: conn?.email ?? null,
+    lastSyncedAt: conn?.last_synced_at ?? null,
+    staffId,
+    orgId,
+  }
 }

@@ -1,6 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment } from "react"
+import { useUndoRedo } from "@/hooks/use-undo-redo"
+import { useDepartmentFilter } from "@/hooks/use-department-filter"
+import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
+import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -90,2724 +94,39 @@ import { DayStatsInput } from "./calendar-panel/day-stats-input"
 import { OverflowMenu } from "./calendar-panel/overflow-menu"
 import { DepartmentFilterDropdown } from "./calendar-panel/department-filter"
 import { MobileOverflow } from "./calendar-panel/mobile-overflow"
+import { InlineLeaveForm } from "./calendar-panel/inline-leave-form"
+import { PersonShiftSelector } from "./calendar-panel/person-shift-selector"
+import { ProfileSkillsSection } from "./calendar-panel/profile-skills-section"
+import { PersonShiftPill } from "./calendar-panel/person-shift-pill"
+import { DraggableShiftBadge, DraggableOffStaff, DroppableCell } from "./calendar-panel/dnd-wrappers"
+import { StaffProfilePanel } from "./calendar-panel/staff-profile-panel"
+import { PersonGrid } from "./calendar-panel/person-grid"
+import { TransposedPersonGrid } from "./calendar-panel/transposed-person-grid"
+import { ShiftGrid } from "./calendar-panel/shift-grid"
+import { MonthGrid } from "./calendar-panel/month-grid"
+import { DayView } from "./calendar-panel/day-view"
 
-// ── Staff profile panel ───────────────────────────────────────────────────────
-
-function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId: string | null; open: boolean; onClose: () => void; onCreated: () => void }) {
-  const t = useTranslations("schedule")
-  const tl = useTranslations("leaves")
-  const tc = useTranslations("common")
-  const [isPending, startTransition] = useTransition()
-  const [type, setType] = useState("annual")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [notes, setNotes] = useState("")
-
-  function reset() {
-    setType("annual")
-    setStartDate("")
-    setEndDate("")
-    setNotes("")
-    onClose()
-  }
-
-  function handleSubmit() {
-    if (!staffId || !startDate || !endDate) return
-    startTransition(async () => {
-      const result = await quickCreateLeave({ staffId, type, startDate, endDate, notes })
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(t("leaveRecorded"))
-        reset()
-        onCreated()
-      }
-    })
-  }
-
-  if (!open) return null
-
-  return (
-    <div className="px-5 py-3 border-t border-border flex flex-col gap-2">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{t("newLeave")}</p>
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-        className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
-      >
-        <option value="annual">{tl("types.annual")}</option>
-        <option value="sick">{tl("types.sick")}</option>
-        <option value="personal">{tl("types.personal")}</option>
-        <option value="training">{tl("types.training")}</option>
-        <option value="maternity">{tl("types.maternity")}</option>
-        <option value="other">{tl("types.other")}</option>
-      </select>
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => { setStartDate(e.target.value); if (!endDate || endDate < e.target.value) setEndDate(e.target.value) }}
-          className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          min={startDate}
-          className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none"
-        />
-      </div>
-      <input
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder={t("notesOptional")}
-        className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
-      />
-      <div className="flex items-center gap-2 mt-1">
-        <Button size="sm" onClick={handleSubmit} disabled={isPending || !startDate || !endDate} className="text-[12px] h-7">
-          {isPending ? tc("saving") : tc("save")}
-        </Button>
-        <button onClick={reset} className="text-[12px] text-muted-foreground hover:underline">
-          {tc("cancel")}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function PersonShiftSelector({ assignment, shiftTimes, shiftTypes, isPublished, onShiftChange, simplified, isOff }: {
-  assignment: Assignment
-  shiftTimes: ShiftTimes | null
-  shiftTypes: import("@/lib/types/database").ShiftTypeDefinition[]
-  isPublished: boolean
-  onShiftChange: (shift: string) => void
-  simplified?: boolean
-  isOff?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const trigRef = useRef<HTMLDivElement>(null)
-  const dropRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
-
-  useEffect(() => {
-    if (!open) return
-    function h(e: MouseEvent) {
-      if (trigRef.current?.contains(e.target as Node)) return
-      if (dropRef.current?.contains(e.target as Node)) return
-      setOpen(false)
-    }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
-  }, [open])
-
-  useEffect(() => {
-    if (!open || !trigRef.current) return
-    const rect = trigRef.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 2, left: rect.left })
-  }, [open])
-
-  const time = shiftTimes?.[assignment.shift_type]
-  const activeShifts = shiftTypes.filter((st) => st.active !== false)
-
-  return (
-    <div ref={trigRef} className="w-full">
-      <div
-        onClick={isPublished ? undefined : () => setOpen((v) => !v)}
-        className={cn("w-full rounded select-none flex items-center justify-center px-1.5", simplified ? "py-0.5 min-h-[24px]" : "py-1.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/50")}
-      >
-        {isOff ? (
-          <span className="text-[12px] text-muted-foreground font-semibold">OFF</span>
-        ) : simplified ? (
-          <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
-        ) : (
-          <div className="flex flex-col gap-0 items-center">
-            <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{assignment.shift_type}</span>
-            {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
-          </div>
-        )}
-      </div>
-      {open && createPortal(
-        <div ref={dropRef} className="fixed z-[9999] w-36 rounded-lg border border-border bg-background shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
-          {activeShifts.map((st) => (
-            <button
-              key={st.code}
-              onClick={() => { onShiftChange(st.code); setOpen(false) }}
-              className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors", st.code === assignment.shift_type && "font-semibold text-primary bg-primary/5")}
-            >
-              <span className="w-4 shrink-0">{st.code === assignment.shift_type ? "✓" : ""}</span>
-              <span>{st.code}</span>
-              <span className="text-[10px] text-muted-foreground ml-auto">{st.start_time}–{st.end_time}</span>
-            </button>
-          ))}
-          <div className="h-px bg-border mx-2 my-1" />
-          <button
-            onClick={() => {
-              // Remove assignment — set to OFF
-              onShiftChange("")
-              setOpen(false)
-            }}
-            className="flex items-center w-full px-3 py-1.5 text-[13px] text-left text-muted-foreground hover:bg-accent transition-colors font-medium"
-          >
-            OFF
-          </button>
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-// ── Inline skills editor for profile panel ──────────────────────────────────
-
-function ProfileSkillsSection({
-  staffId, staffSkills, tecnicas, skillLabel, canEdit, onChanged, dirtyRef,
-}: {
-  staffId: string
-  staffSkills: { id: string; skill: string; level: string }[]
-  tecnicas: Tecnica[]
-  skillLabel: (code: string) => string
-  canEdit: boolean
-  onChanged?: () => void
-  dirtyRef?: React.MutableRefObject<boolean>
-}) {
-  const t = useTranslations("schedule")
-  const ts = useTranslations("skills")
-  const locale = useLocale()
-  const [saving, setSaving] = useState(false)
-
-  // All available skill codes from active tecnicas
-  const allSkills = useMemo(() => {
-    const fromTecnicas = tecnicas
-      .filter((tc) => tc.activa)
-      .map((tc) => tc.codigo)
-    return [...new Set(fromTecnicas)]
-  }, [tecnicas])
-
-  // Build initial state: skill → level ("off" | "training" | "certified")
-  const initialLevels = useMemo(() => {
-    const map: Record<string, "off" | "training" | "certified"> = {}
-    for (const s of allSkills) map[s] = "off"
-    for (const sk of staffSkills) {
-      if (allSkills.includes(sk.skill)) map[sk.skill] = sk.level as "training" | "certified"
-    }
-    return map
-  }, [allSkills, staffSkills])
-
-  const [levels, setLevels] = useState(initialLevels)
-
-  // Reset local state when staff changes
-  useEffect(() => { setLevels(initialLevels) }, [initialLevels])
-
-  // Track dirty state
-  const isDirty = useMemo(() => {
-    return allSkills.some((s) => levels[s] !== initialLevels[s])
-  }, [allSkills, levels, initialLevels])
-
-  // Expose dirty state to parent for close warning
-  useEffect(() => { if (dirtyRef) dirtyRef.current = isDirty }, [isDirty, dirtyRef])
-
-  function cycleLevel(skill: string) {
-    if (!canEdit) return
-    setLevels((prev) => {
-      const current = prev[skill] ?? "off"
-      const next = current === "off" ? "training" : current === "training" ? "certified" : "off"
-      return { ...prev, [skill]: next }
-    })
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    // Compute diffs
-    for (const skill of allSkills) {
-      const was = initialLevels[skill]
-      const now = levels[skill]
-      if (was === now) continue
-      // Remove old assignment if it existed
-      if (was !== "off") {
-        await bulkRemoveSkill([staffId], skill)
-      }
-      // Add new assignment if not off
-      if (now !== "off") {
-        await bulkAddSkill([staffId], skill, now)
-      }
-    }
-    setSaving(false)
-    onChanged?.()
-  }
-
-  // Tecnica code map: codigo is already the display code
-  const codeMap = useMemo(() =>
-    Object.fromEntries(tecnicas.map((tc) => [tc.codigo, tc.codigo]))
-  , [tecnicas])
-
-  return (
-    <div className="px-5 py-3 border-b border-border">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{ts("title")}</p>
-
-      {allSkills.length === 0 ? (
-        <p className="text-[12px] text-muted-foreground italic">{t("noTecnicas")}</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {allSkills.map((skill) => {
-            const level = levels[skill] ?? "off"
-            const code = codeMap[skill] ?? skill
-            const changed = level !== initialLevels[skill]
-            return (
-              <button
-                key={skill}
-                type="button"
-                disabled={saving || !canEdit}
-                onClick={() => cycleLevel(skill)}
-                title={canEdit ? (locale === "es"
-                  ? `${skillLabel(skill)} — clic para cambiar (${level === "off" ? "desactivado" : level === "training" ? "en formación" : "certificado"})`
-                  : `${skillLabel(skill)} — click to cycle (${level})`) : skillLabel(skill)}
-                className={cn(
-                  "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors",
-                  level === "certified" && "bg-blue-50 border-blue-200 text-blue-700",
-                  level === "training" && "bg-amber-50 border-amber-200 text-amber-600",
-                  level === "off" && "bg-muted/50 border-border text-muted-foreground/60",
-                  canEdit && "cursor-pointer hover:shadow-sm",
-                  changed && "ring-1 ring-primary/30",
-                  saving && "opacity-50"
-                )}
-              >
-                {level === "training" && <Hourglass className="size-2.5 shrink-0" />}
-                {code}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {canEdit && allSkills.length > 0 && (
-        <p className="mt-1.5 text-[10px] text-muted-foreground/70 italic">
-          {locale === "es" ? "Clic para alternar: desactivado → formación → certificado" : "Click to cycle: off → training → certified"}
-        </p>
-      )}
-
-      {isDirty && (
-        <div className="mt-2 flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
-          >
-            {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
-          </button>
-          <button
-            onClick={() => setLevels(initialLevels)}
-            disabled={saving}
-            className="text-[12px] font-medium text-muted-foreground hover:underline disabled:opacity-50"
-          >
-            {locale === "es" ? "Cancelar" : "Cancel"}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StaffProfilePanel({
-  staffId, staffList, weekData, open, onClose, onRefreshWeek,
-}: {
-  staffId: string | null
-  staffList: StaffWithSkills[]
-  weekData: RotaWeekData | null
-  open: boolean
-  onClose: () => void
-  onRefreshWeek?: () => void
-}) {
-  const localeRaw = useLocale()
-  const locale    = localeRaw as "es" | "en"
-  const t         = useTranslations("schedule")
-  const tStaff    = useTranslations("staff")
-  const tl        = useTranslations("leaves")
-  const ts        = useTranslations("skills")
-  const tLab      = useTranslations("lab")
-  const userRole  = useUserRole()
-  const [data, setData]       = useState<StaffProfileData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [showAdjWeeks, setShowAdjWeeks] = useState(false)
-  const [showLeaveForm, setShowLeaveForm] = useState(false)
-  const skillsDirtyRef = useRef(false)
-
-  const handleClose = useCallback(() => {
-    if (skillsDirtyRef.current) {
-      const msg = locale === "es"
-        ? "Tienes cambios sin guardar en las tareas. ¿Salir sin guardar?"
-        : "You have unsaved skill changes. Leave without saving?"
-      if (!window.confirm(msg)) return
-    }
-    onClose()
-  }, [onClose, locale])
-
-  const weekStart = weekData?.weekStart ?? null
-  useEffect(() => {
-    if (!staffId || !open) return
-    setData(null)
-    setLoading(true)
-    getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })
-  }, [staffId, open, weekStart])
-
-  const staff = staffId ? staffList.find((s) => s.id === staffId) : null
-  const deptMaps = buildDeptMaps(weekData?.departments ?? [])
-  const ROLE_LABEL = deptMaps.label
-  const ROLE_BORDER = deptMaps.border
-
-  // Weekly shift strip: this person's assignments for the current visible week
-  const weekDays = weekData?.days ?? []
-  const DOW_SHORT = locale === "es"
-    ? ["L", "M", "X", "J", "V", "S", "D"]
-    : ["M", "T", "W", "T", "F", "S", "S"]
-
-  const skillLabel = makeSkillLabel(weekData?.tecnicas ?? [])
-
-  // Tenure in years + months
-  const tenureLabel = staff ? (() => {
-    const start = new Date(staff.start_date + "T12:00:00")
-    const now = new Date()
-    let years = now.getFullYear() - start.getFullYear()
-    let months = now.getMonth() - start.getMonth()
-    if (months < 0) { years--; months += 12 }
-    return years > 0 ? `${years}a ${months}m` : `${months}m`
-  })() : null
-
-  return (
-    <>
-      {/* Overlay */}
-      {open && <div className="fixed inset-0 z-40" onClick={handleClose} />}
-
-      {/* Side panel — 400px */}
-      <div className={cn(
-        "fixed right-0 top-0 bottom-0 z-50 bg-background border-l border-border shadow-xl",
-        "flex flex-col transition-transform duration-200 ease-out w-[400px]",
-        open ? "translate-x-0" : "translate-x-full",
-      )}>
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          {/* Role dot + avatar placeholder */}
-          <div
-            className="size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0"
-            style={{ background: staff ? (ROLE_BORDER[staff.role] ?? "#94A3B8") : "#94A3B8" }}
-          >
-            {staff ? `${staff.first_name[0]}${staff.last_name[0]}` : "—"}
-          </div>
-          <div className="flex-1 min-w-0">
-            {staff ? (
-              <>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-[14px] font-medium truncate">{staff.first_name} {staff.last_name}</p>
-                  {(() => {
-                    const deptTecs = (weekData?.tecnicas ?? []).filter((tc) => tc.activa && tc.department.split(",").includes(staff.role))
-                    const certCodes = new Set(staff.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))
-                    const allCertified = staff.role !== "admin" && deptTecs.length > 0 && deptTecs.every((tc) => certCodes.has(tc.codigo))
-                    return allCertified ? (
-                      <Tooltip>
-                        <TooltipTrigger render={<Star className="size-3.5 text-amber-400 fill-amber-400 shrink-0" />} />
-                        <TooltipContent side="right">Todas las técnicas validadas</TooltipContent>
-                      </Tooltip>
-                    ) : null
-                  })()}
-                  {(staff as any).contract_type === "part_time" && (
-                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
-                  )}
-                  {(staff as any).contract_type === "intern" && (
-                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
-                  )}
-                  {(() => {
-                    const end = (staff as any).onboarding_end_date as string | null
-                    const today = new Date().toISOString().split("T")[0]
-                    if (end && today <= end) return (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
-                    )
-                    return null
-                  })()}
-                  {(staff as any).prefers_guardia === true && (
-                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">G</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{ROLE_LABEL[staff.role] ?? staff.role}</span>
-                  <span className="text-muted-foreground/40">·</span>
-                  <span>{staff.days_per_week}d/sem</span>
-                </div>
-              </>
-            ) : (
-              <div className="shimmer-bar h-4 w-32 rounded" />
-            )}
-          </div>
-          <button onClick={handleClose} className="size-7 flex items-center justify-center rounded hover:bg-muted shrink-0">
-            <X className="size-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* ── Content ────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
-
-          {/* Weekly shift strips — current + collapsible prev/next */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("currentWeek")}</p>
-            <div className="grid grid-cols-7 gap-1">
-              {weekDays.map((day, i) => {
-                const a = day.assignments.find((a) => a.staff_id === staffId)
-                const onLeave = weekData?.onLeaveByDate[day.date]?.includes(staffId ?? "") ?? false
-                const isToday = day.date === TODAY
-                return (
-                  <div key={day.date} className="flex flex-col items-center gap-0.5">
-                    <span className={cn(
-                      "text-[10px] font-medium leading-none",
-                      isToday ? "text-primary" : "text-muted-foreground"
-                    )}>
-                      {DOW_SHORT[i]}
-                    </span>
-                    <div className={cn(
-                      "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
-                      a ? "bg-primary/10 text-primary border border-primary/20"
-                        : onLeave ? "bg-amber-50 text-amber-600 border border-amber-200"
-                        : "bg-muted text-muted-foreground/40 border border-border/50"
-                    )}>
-                      {a ? a.shift_type : onLeave ? t("leave") : "—"}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Collapsible prev/next weeks */}
-            <button
-              onClick={() => setShowAdjWeeks(!showAdjWeeks)}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground mt-2 w-full"
-            >
-              {showAdjWeeks ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-              <span>{t("previousWeek")} / {t("nextWeek")}</span>
-            </button>
-
-            {showAdjWeeks && (
-              <div className="mt-2 flex flex-col gap-3">
-                {/* Previous week */}
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("previousWeek")}</p>
-                  {loading ? (
-                    <div className="shimmer-bar h-7 w-full rounded" />
-                  ) : (
-                    <div className="grid grid-cols-7 gap-1 opacity-60">
-                      {Array.from({ length: 7 }).map((_, i) => {
-                        const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
-                        const d = new Date(ws); d.setDate(d.getDate() - 7 + i)
-                        const dateStr = d.toISOString().split("T")[0]
-                        const a = (data?.prevWeekAssignments ?? []).find((a) => a.date === dateStr)
-                        return (
-                          <div key={i} className="flex flex-col items-center gap-0.5">
-                            <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
-                            <div className={cn(
-                              "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
-                              a ? "bg-muted text-foreground/60 border border-border"
-                                : "bg-muted/50 text-muted-foreground/30 border border-border/30"
-                            )}>
-                              {a ? a.shift_type : "—"}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-                {/* Next week */}
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("nextWeek")}</p>
-                  {loading ? (
-                    <div className="shimmer-bar h-7 w-full rounded" />
-                  ) : (
-                    <div className="grid grid-cols-7 gap-1 opacity-60">
-                      {Array.from({ length: 7 }).map((_, i) => {
-                        const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
-                        const d = new Date(ws); d.setDate(d.getDate() + 7 + i)
-                        const dateStr = d.toISOString().split("T")[0]
-                        const a = (data?.nextWeekAssignments ?? []).find((a) => a.date === dateStr)
-                        return (
-                          <div key={i} className="flex flex-col items-center gap-0.5">
-                            <span className="text-[10px] font-medium leading-none text-muted-foreground">{DOW_SHORT[i]}</span>
-                            <div className={cn(
-                              "w-full h-7 rounded flex items-center justify-center text-[10px] font-semibold",
-                              a ? "bg-muted text-foreground/60 border border-border"
-                                : "bg-muted/50 text-muted-foreground/30 border border-border/30"
-                            )}>
-                              {a ? a.shift_type : "—"}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Capacidades (skills) — editable */}
-          {staff && (
-            <ProfileSkillsSection
-              staffId={staffId!}
-              staffSkills={staff.staff_skills}
-              tecnicas={weekData?.tecnicas ?? []}
-              skillLabel={skillLabel}
-              canEdit={userRole !== "viewer"}
-              dirtyRef={skillsDirtyRef}
-              onChanged={() => {
-                // Refresh the staff list so chips update everywhere
-                onRefreshWeek?.()
-              }}
-            />
-          )}
-
-          {/* Scheduling rules affecting this person — managers/admins only */}
-          {staff && userRole !== "viewer" && (
-            <div className="px-5 py-3 border-b border-border">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("activeRules")}</p>
-              {loading ? (
-                <div className="shimmer-bar h-4 w-40 rounded" />
-              ) : !data?.rules?.length ? (
-                <p className="text-[12px] text-muted-foreground italic">{t("noActiveRules")}</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {data.rules.map((rule, i) => {
-                    const otherStaff = rule.staff_ids
-                      .filter((id) => id !== staffId)
-                      .map((id) => staffList.find((s) => s.id === id))
-                      .filter(Boolean)
-                    const otherNames = otherStaff.map((s) => `${s!.first_name} ${s!.last_name[0]}.`).join(", ")
-                    // Extract day pattern from various param keys
-                    const dayKeys = ["supervisorDays", "fixedDays", "restrictedDays", "days"] as const
-                    const ruleDays = dayKeys.reduce<string[]>((acc, k) => acc.length > 0 ? acc : ((rule.params[k] as string[] | undefined) ?? []), [])
-                    const dayStr = ruleDays.length > 0 ? ruleDays.map((d) => DAY_ES_2[d] ?? d).join(", ") : ""
-                    // Extra info: training technique, fixed shift
-                    const trainingTec = rule.params.training_tecnica_code as string | undefined
-                    const tecLabel = trainingTec ? (weekData?.tecnicas?.find((tc) => tc.codigo === trainingTec)?.nombre_es ?? trainingTec) : null
-                    const fixedShift = rule.params.fixedShift as string | undefined
-                    const detail = [otherNames, dayStr ? `(${dayStr})` : "", tecLabel, fixedShift].filter(Boolean).join(" · ")
-                    return (
-                      <div key={i} className="flex items-start gap-2">
-                        <div className={cn(
-                          "mt-1 size-1.5 rounded-full shrink-0",
-                          rule.is_hard ? "bg-red-400" : "bg-amber-400"
-                        )} />
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-medium text-foreground">{tLab(`rules.types.${rule.type}`)}</p>
-                          {detail && (
-                            <p className="text-[11px] text-muted-foreground truncate">{detail}</p>
-                          )}
-                          {rule.expires_at && (
-                            <p className="text-[11px] text-muted-foreground">
-                              <Clock className="inline size-2.5 mr-0.5 -mt-0.5" />
-                              {formatDateWithYear(rule.expires_at, locale)}
-                            </p>
-                          )}
-                          {rule.notes && (
-                            <p className="text-[11px] text-muted-foreground italic truncate">{rule.notes}</p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Upcoming leaves */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("upcomingLeaves")}</p>
-            {loading ? (
-              <div className="shimmer-bar h-4 w-40 rounded" />
-            ) : !data?.upcomingLeaves.length ? (
-              <p className="text-[12px] text-muted-foreground italic">{t("noLeavesScheduled")}</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {data.upcomingLeaves.map((leave, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CalendarX className="size-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
-                      <p className="text-[11px] text-muted-foreground">{tl(`types.${leave.type}`)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Past leaves */}
-          <div className="px-5 py-3 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("pastLeaves")}</p>
-            {loading ? (
-              <div className="shimmer-bar h-4 w-40 rounded" />
-            ) : !data?.pastLeaves?.length ? (
-              <p className="text-[12px] text-muted-foreground italic">{t("noRecords")}</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {data.pastLeaves.map((leave, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CalendarX className="size-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-[12px] text-foreground">{formatDateRange(leave.start_date, leave.end_date, locale)}</p>
-                      <p className="text-[11px] text-muted-foreground">{tl(`types.${leave.type}`)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Key info */}
-          {staff && (
-            <div className="px-5 py-3">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-2">{t("information")}</p>
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[12px]">
-                <div>
-                  <p className="text-muted-foreground">{tStaff("fields.startDate")}</p>
-                  <p className="text-foreground font-medium">{formatDateWithYear(staff.start_date, locale)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("seniority")}</p>
-                  <p className="text-foreground font-medium">{tenureLabel}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("daysPerWeek")}</p>
-                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                    <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
-                    {(staff as any).contract_type === "part_time" && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">{locale === "es" ? "A tiempo parcial" : "Part-time"}</span>
-                    )}
-                    {(staff as any).contract_type === "intern" && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">{locale === "es" ? "Becario" : "Intern"}</span>
-                    )}
-                  </div>
-                </div>
-                {(() => {
-                  const end = (staff as any).onboarding_end_date as string | null
-                  const today = new Date().toISOString().split("T")[0]
-                  if (!end) return null
-                  return (
-                    <div>
-                      <p className="text-muted-foreground">{locale === "es" ? "Periodo de incorporación" : "Onboarding until"}</p>
-                      <p className={`text-[12px] font-medium ${today <= end ? "text-amber-600" : "text-muted-foreground"}`}>
-                        {formatDateWithYear(end, locale)}
-                        {today <= end ? ` (${locale === "es" ? "activo" : "active"})` : ` (${locale === "es" ? "completado" : "done"})`}
-                      </p>
-                    </div>
-                  )
-                })()}
-                <div>
-                  <p className="text-muted-foreground">{tStaff("daysAvailable")}</p>
-                  <p className="text-foreground font-medium">{(staff.working_pattern ?? []).map((d) => DAY_ES_2[d] ?? d).join(", ")}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("preferredShift")}</p>
-                  {staff.preferred_shift ? (
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                      {staff.preferred_shift.split(",").filter(Boolean).map((s) => (
-                        <span key={s} className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                          {s.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-foreground font-medium">{t("noPreference")}</p>
-                  )}
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">{t("dayPreferences")}</p>
-                  {(staff.preferred_days?.length ?? 0) > 0 || (staff.avoid_days?.length ?? 0) > 0 ? (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {(staff.preferred_days ?? []).map((d) => (
-                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[var(--pref-bg)] text-white">{DAY_ES_2[d] ?? d}</span>
-                      ))}
-                      {(staff.avoid_days ?? []).map((d) => (
-                        <span key={d} className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FEE2E2] text-[#B91C1C]">{DAY_ES_2[d] ?? d}</span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-foreground font-medium">{t("noPreference")}</p>
-                  )}
-                </div>
-                {staff.end_date && (
-                  <div>
-                    <p className="text-muted-foreground">{t("endDate")}</p>
-                    <p className="text-foreground font-medium">{formatDateWithYear(staff.end_date, locale)}</p>
-                  </div>
-                )}
-                {staff.email && (
-                  <div className="col-span-2">
-                    <p className="text-muted-foreground">Email</p>
-                    <p className="text-foreground font-medium truncate">{staff.email}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Inline leave form ─────────────────────────────────── */}
-        <InlineLeaveForm staffId={staffId} open={showLeaveForm} onClose={() => setShowLeaveForm(false)} onCreated={() => {
-          // Re-fetch profile to update leaves
-          if (staffId) {
-            setLoading(true)
-            getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })
-          }
-          // Refresh the week view so the leave shows on the calendar grid
-          onRefreshWeek?.()
-        }} />
-
-        {/* ── Footer ───────────────────────────────────────────── */}
-        <div className="border-t border-border px-5 py-4 shrink-0 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setShowLeaveForm(true)} className="gap-1.5 text-[14px] h-9">
-            <CalendarPlus className="size-4" />
-            {tl("addLeave")}
-          </Button>
-          <a href={`/staff/${staffId}`} className="text-[13px] text-primary hover:underline">{tStaff("profile")}</a>
-        </div>
-      </div>
-    </>
-  )
-}
 
 import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
 
 // ── Person view (Vista por persona) ───────────────────────────────────────────
 
 
-function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, taskDisabled, simplified }: {
-  assignment: Assignment
-  shiftTimes: ShiftTimes | null
-  tecnica: Tecnica | null
-  onClick?: (e: React.MouseEvent) => void
-  taskDisabled?: boolean
-  simplified?: boolean
-}) {
-  const { shift_type, is_manual_override, function_label } = assignment
-  const time = shiftTimes?.[shift_type]
-
-  const cleanLabel = function_label?.startsWith("dept_") ? null : function_label
-  const showTask = !taskDisabled && (tecnica || cleanLabel)
-  const pillLabel = tecnica ? tecnica.codigo : cleanLabel
-  const pillColor = tecnica
-    ? (TECNICA_PILL[tecnica.color] ?? TECNICA_PILL.blue)
-    : pillLabel === "SUP" ? "bg-purple-50 border-purple-200 text-purple-700"
-    : pillLabel === "TRN" ? "bg-muted border-border text-muted-foreground"
-    : pillLabel ? "bg-blue-50 border-blue-200 text-blue-700"
-    : null
-
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "w-full rounded select-none flex items-center gap-1.5 px-1.5",
-        simplified ? "py-0.5 min-h-[24px] justify-center" : "py-1.5 min-h-[36px] justify-center",
-        !onClick ? "cursor-default" : "cursor-pointer hover:bg-muted/50",
-      )}
-    >
-      {simplified ? (
-        <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
-      ) : (
-        <div className="flex flex-col gap-0 items-center">
-          <span className="text-[13px] font-semibold" style={{ color: "var(--pref-bg)" }}>{shift_type}</span>
-          {time && <span className="text-[10px] text-muted-foreground tabular-nums leading-tight">{time.start}–{time.end}</span>}
-        </div>
-      )}
-      {showTask && pillLabel && pillColor && (
-        <span className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ml-auto", pillColor)}>
-          {pillLabel}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function PersonGrid({
-  data, staffList, loading, locale,
-  isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
-  isGenerating,
-}: {
-  data: RotaWeekData | null
-  staffList: StaffWithSkills[]
-  loading: boolean
-  locale: string
-  isPublished: boolean
-  shiftTimes: ShiftTimes | null
-  onLeaveByDate: Record<string, string[]>
-  publicHolidays: Record<string, string>
-  onChipClick: (assignment: Assignment, date: string) => void
-  colorChips?: boolean
-  compact?: boolean
-  punctionsDefault?: Record<string, number>
-  punctionsOverride?: Record<string, number>
-  onPunctionsChange?: (date: string, value: number | null) => void
-  simplified?: boolean
-  onDateClick?: (date: string) => void
-  isGenerating?: boolean
-}) {
-  const t = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const [localDays, setLocalDays] = useState(data?.days ?? [])
-  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
-
-  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
-    setLocalDays((prev) => prev.map((d) => ({
-      ...d,
-      assignments: d.assignments.map((a) =>
-        a.id === assignmentId ? { ...a, ...patch } : a
-      ),
-    })))
-  }
-
-  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
-    patchLocalAssignment(assignmentId, { function_label: label })
-    const result = await setFunctionLabel(assignmentId, label)
-    if (result.error) toast.error(result.error)
-  }
-
-  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
-    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
-    const result = await setTecnica(assignmentId, tecnicaId)
-    if (result.error) toast.error(result.error)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden w-full">
-          <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-            <div className="h-[72px] border-b border-r border-border" />
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
-                <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-8 h-8 rounded-full" />
-                <div className="shimmer-bar h-2.5 w-12 rounded" />
-              </div>
-            ))}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Fragment key={i}>
-                <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
-                  <div className="shimmer-bar h-3 w-28" />
-                </div>
-                {Array.from({ length: 7 }).map((_, j) => (
-                  <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
-                    <div className="shimmer-bar h-9 w-full rounded" />
-                  </div>
-                ))}
-              </Fragment>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? tc("generating") : tc("loading")}
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!data) return null
-
-  const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [])
-
-  // Build assignment lookup: staffId → date → assignment
-  const assignMap = useMemo(() => {
-    const map: Record<string, Record<string, Assignment>> = {}
-    for (const day of localDays) {
-      for (const a of day.assignments) {
-        if (!map[a.staff_id]) map[a.staff_id] = {}
-        map[a.staff_id][day.date] = a
-      }
-    }
-    return map
-  }, [localDays])
-
-  // Shift highlighting — hover a shift to highlight all same-shift cells
-  const { enabled: highlightEnabled } = useStaffHover()
-  const [hoveredShift, setHoveredShift] = useState<string | null>(null)
-
-  // Active staff sorted by role then first name + role grouping
-  const { activeStaff, roleGroups } = useMemo(() => {
-    const active = staffList
-      .filter((s) => s.onboarding_status !== "inactive")
-      .sort((a, b) => {
-        const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-        return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
-      })
-    const groups: { role: string; members: StaffWithSkills[] }[] = []
-    for (const s of active) {
-      const last = groups[groups.length - 1]
-      if (last && last.role === s.role) last.members.push(s)
-      else groups.push({ role: s.role, members: [s] })
-    }
-    return { activeStaff: active, roleGroups: groups }
-  }, [staffList])
-
-  const days = localDays
-
-  return (
-    <div className="rounded-lg border border-border overflow-hidden w-full">
-      <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-
-        {/* Header row — matches by-shift view */}
-        <div className="border-r border-b border-border bg-muted sticky left-0 z-10" style={{ minHeight: 52 }} />
-        {days.map((day) => {
-          const d       = new Date(day.date + "T12:00:00")
-          const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-          const dayN    = String(d.getDate())
-          const today   = day.date === TODAY
-          const holiday = publicHolidays[day.date]
-          const isSat   = d.getDay() === 6
-          const isSun   = d.getDay() === 0
-          const isWknd  = isSat || isSun
-          return (
-            <div key={day.date} className={cn(
-              "relative flex flex-col items-center justify-center py-1 gap-0 border-b border-r last:border-r-0 border-border",
-              holiday ? "bg-amber-100/80" : "bg-muted"
-            )}
-            style={{
-              ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-            }}
-            >
-              {day.warnings.length > 0 && (
-                <DayWarningPopover warnings={day.warnings} />
-              )}
-              <button
-                onClick={() => onDateClick?.(day.date)}
-                className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
-              >
-                <span className={cn("text-[10px] uppercase tracking-wider", isWknd && !holiday ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
-                <span className={cn(
-                  "font-semibold leading-none text-[18px]",
-                  today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                  : holiday ? "text-amber-600" : isWknd ? "text-muted-foreground" : "text-primary"
-                )}>
-                  {dayN}
-                </span>
-              </button>
-              {holiday && (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
-                  <TooltipContent side="bottom">{holiday}</TooltipContent>
-                </Tooltip>
-              )}
-              {/* Punciones / Biopsias — same component as ShiftGrid (hidden in simplified mode) */}
-              {!simplified && (() => {
-                const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-                function getPunc(dateStr: string): number {
-                  if ((punctionsOverride ?? {})[dateStr] !== undefined) return (punctionsOverride ?? {})[dateStr]
-                  if ((punctionsDefault ?? {})[dateStr] !== undefined) return (punctionsDefault ?? {})[dateStr]
-                  const dow = new Date(dateStr + "T12:00:00").getDay()
-                  const sameDow = Object.entries(punctionsDefault ?? {}).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-                  return sameDow ? sameDow[1] : 0
-                }
-                const pDefault = (punctionsDefault ?? {})[day.date] ?? 0
-                const pEffective = (punctionsOverride ?? {})[day.date] ?? pDefault
-                const hasOverride = (punctionsOverride ?? {})[day.date] !== undefined
-                const bRate = data?.biopsyConversionRate ?? 0.5
-                const bD5 = data?.biopsyDay5Pct ?? 0.5
-                const bD6 = data?.biopsyDay6Pct ?? 0.5
-                const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                const p5 = getPunc(d5ago.toISOString().split("T")[0])
-                const p6 = getPunc(d6ago.toISOString().split("T")[0])
-                const forecast = Math.round(p5 * bRate * bD5 + p6 * bRate * bD6)
-                const tooltip = forecast > 0 ? `${forecast} biopsias previstas` : `${pEffective} punciones`
-                return (
-                  <DayStatsInput
-                    date={day.date}
-                    value={pEffective}
-                    defaultValue={pDefault}
-                    isOverride={hasOverride}
-                    onChange={onPunctionsChange ?? (() => {})}
-                    disabled={!onPunctionsChange}
-                    biopsyForecast={forecast}
-                    biopsyTooltip={tooltip}
-                    compact
-                  />
-                )
-              })()}
-            </div>
-          )
-        })}
-
-        {/* Role groups */}
-        {roleGroups.map(({ role, members }, groupIdx) => (
-          <Fragment key={role}>
-            {/* Role header — spans all 8 columns */}
-            <div
-              className="px-3 py-1.5 bg-muted border-b border-border flex items-center gap-1.5"
-              style={{ gridColumn: "1 / -1" }}
-            >
-              <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[role] ?? "bg-slate-400")} />
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                {ROLE_LABEL_MAP[role] ?? role}
-              </span>
-            </div>
-
-            {/* Member rows */}
-            {members.map((s) => {
-              const staffAssigns = assignMap[s.id] ?? {}
-              return (
-                <Fragment key={s.id}>
-                  {/* Name cell — click opens profile */}
-                  <div
-                    className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 cursor-pointer hover:bg-muted/50", compact ? "px-1.5 py-0.5 min-h-[28px]" : "px-2 py-1 min-h-[36px]")}
-                    style={colorChips ? { borderLeft: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
-                    onClick={() => onChipClick({ staff_id: s.id } as Assignment, "")}
-                  >
-                    <span className="text-[13px] font-medium truncate leading-tight">
-                      {s.first_name} {s.last_name}
-                    </span>
-                  </div>
-
-                  {/* Day cells */}
-                  {days.map((day) => {
-                    const assignment = staffAssigns[day.date]
-                    const onLeave    = (onLeaveByDate[day.date] ?? []).includes(s.id)
-                    const taskOff = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
-                    const cleanFnLabel = assignment?.function_label?.startsWith("dept_") ? null : assignment?.function_label
-                    const tecnica    = (taskOff || !assignment) ? null
-                      : cleanFnLabel
-                        ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
-                        : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
-                    const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
-                    const isShiftHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
-                    const isOffCell = !assignment && !onLeave && isPublished
-                    return (
-                      <div
-                        key={day.date}
-                        className={cn("border-b border-r last:border-r-0 border-border flex items-center transition-colors duration-100", compact ? "px-0.5 py-0 min-h-[24px]" : "px-0.5 py-0.5 min-h-[36px]", isShiftHovered ? "bg-primary/10" : "bg-background")}
-                        style={isOffCell ? { backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
-                        onMouseEnter={() => setHoveredShift(cellShift)}
-                        onMouseLeave={() => setHoveredShift(null)}
-                      >
-                        {assignment ? (
-                          taskOff ? (
-                            <PersonShiftSelector
-                              assignment={assignment}
-                              shiftTimes={shiftTimes}
-                              shiftTypes={data?.shiftTypes ?? []}
-                              isPublished={isPublished}
-                              simplified={simplified}
-                              onShiftChange={async (newShift) => {
-                                if (!newShift) {
-                                  patchLocalAssignment(assignment.id, { _removed: true })
-                                  setLocalDays((prev) => prev.map((d) => ({
-                                    ...d,
-                                    assignments: d.assignments.filter((a) => a.id !== assignment.id),
-                                  })))
-                                  const result = await removeAssignment(assignment.id)
-                                  if (result.error) toast.error(result.error)
-                                } else {
-                                  patchLocalAssignment(assignment.id, { shift_type: newShift })
-                                  const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                                  if (result.error) toast.error(result.error)
-                                }
-                              }}
-                            />
-                          ) : (
-                            <AssignmentPopover
-                              assignment={assignment}
-                              staffSkills={s.staff_skills ?? []}
-                              tecnicas={data?.tecnicas ?? []}
-                              departments={data?.departments ?? []}
-                              onFunctionSave={handleFunctionLabelSave}
-                              isPublished={isPublished}
-                            >
-                              <div className="w-full">
-                                <PersonShiftPill
-                                  assignment={assignment}
-                                  shiftTimes={shiftTimes}
-                                  tecnica={tecnica}
-                                  simplified={simplified}
-                                />
-                              </div>
-                            </AssignmentPopover>
-                          )
-                        ) : onLeave ? (
-                          <span className="text-[12px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
-                        ) : !isPublished ? (
-                          <PersonShiftSelector
-                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
-                            shiftTimes={shiftTimes}
-                            shiftTypes={data?.shiftTypes ?? []}
-                            isPublished={false}
-                            simplified={simplified}
-                            isOff
-                            onShiftChange={async (newShift) => {
-                              if (!newShift) return
-                              const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                              if (result.error) toast.error(result.error)
-                              else {
-                                // Refresh local state
-                                setLocalDays((prev) => prev.map((d) => d.date !== day.date ? d : {
-                                  ...d,
-                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
-                                }))
-                              }
-                            }}
-                          />
-                        ) : (
-                          <span className="text-[12px] text-muted-foreground font-semibold select-none w-full text-center">OFF</span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </Fragment>
-              )
-            })}
-          </Fragment>
-        ))}
-      </div>
-      {/* Shift legend — shown in simplified mode */}
-      {simplified && shiftTimes && Object.keys(shiftTimes).length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-border bg-muted/50">
-          {Object.entries(shiftTimes).map(([code, time]) => (
-            <span key={code} className="text-[11px] text-muted-foreground">
-              <span className="font-semibold" style={{ color: "var(--pref-bg)" }}>{code}</span>
-              {" "}{time.start}–{time.end}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Transposed Person Grid (días como filas) ─────────────────────────────────
 
-function TransposedPersonGrid({
-  data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
-}: {
-  data: RotaWeekData | null
-  staffList: StaffWithSkills[]
-  locale: string
-  isPublished: boolean
-  shiftTimes: ShiftTimes | null
-  onLeaveByDate: Record<string, string[]>
-  publicHolidays: Record<string, string>
-  onChipClick: (assignment: { staff_id: string }, date: string) => void
-  onDateClick?: (date: string) => void
-  colorChips?: boolean
-  compact?: boolean
-  simplified?: boolean
-  punctionsDefault?: Record<string, number>
-  punctionsOverride?: Record<string, number>
-  onPunctionsChange?: (date: string, value: number | null) => void
-}) {
-  const t = useTranslations("schedule")
-  const { enabled: highlightEnabled } = useStaffHover()
-  const [hoveredShift, setHoveredShift] = useState<string | null>(null)
-
-  if (!data) return null
-
-  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-  const ROLE_LABEL_MAP: Record<string, string> = {}
-  for (const d of data.departments ?? []) { if (!d.parent_id) ROLE_LABEL_MAP[d.code] = d.name }
-
-  const activeStaff = staffList
-    .filter((s) => s.onboarding_status !== "inactive")
-    .sort((a, b) => {
-      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-      return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
-    })
-
-  const [localDays, setLocalDays] = useState(data.days)
-  useEffect(() => { setLocalDays(data.days) }, [data])
-
-  // Build assignment map: staffId → date → assignment
-  const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of localDays) {
-    for (const a of day.assignments) {
-      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
-      assignMap[a.staff_id][day.date] = a
-    }
-  }
-
-  // Group staff by role for sub-headers
-  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
-  for (const s of activeStaff) {
-    const last = roleGroups[roleGroups.length - 1]
-    if (last && last.role === s.role) last.members.push(s)
-    else roleGroups.push({ role: s.role, members: [s] })
-  }
-
-  const allMembers = roleGroups.flatMap((g) => g.members)
-  const days = localDays
-
-  return (
-    <div className="rounded-lg border border-border overflow-auto w-full">
-      <div style={{ display: "grid", gridTemplateColumns: `80px repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: allMembers.length * (compact ? 53 : 65) + 80 }}>
-
-        {/* Header: empty corner + staff names */}
-        <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
-        {allMembers.map((s, i) => {
-          // Check if this is the first in a new role group
-          const prevRole = i > 0 ? allMembers[i - 1].role : null
-          const isNewGroup = s.role !== prevRole
-          return (
-            <div
-              key={s.id}
-              className={cn(
-                "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
-                              )}
-              style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : { borderTop: "none" }}
-            >
-              <button
-                onClick={() => onChipClick({ staff_id: s.id }, "")}
-                className="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity"
-              >
-                <span className={cn("font-medium text-center leading-tight truncate w-full", compact ? "text-[9px]" : "text-[10px]")}>
-                  {s.first_name}
-                </span>
-                <span className={cn("text-muted-foreground text-center truncate w-full", compact ? "text-[8px]" : "text-[9px]")}>
-                  {s.last_name[0]}.
-                </span>
-              </button>
-            </div>
-          )
-        })}
-
-        {/* Day rows */}
-        {days.map((day) => {
-          const d = new Date(day.date + "T12:00:00")
-          const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).slice(0, 2).toUpperCase()
-          const dayN = String(d.getDate())
-          const today = day.date === TODAY
-          const holiday = publicHolidays[day.date]
-          const isSat = d.getDay() === 6
-
-          return (
-            <Fragment key={day.date}>
-              {/* Day label cell — click opens day view */}
-              <div
-                className={cn(
-                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2 cursor-pointer hover:bg-muted/80",
-                  holiday && "bg-amber-50/60"
-                )}
-                style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
-                onClick={() => onDateClick?.(day.date)}
-              >
-                {day.warnings?.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
-                  <span className={cn(
-                    "font-semibold leading-none",
-                    today ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
-                  )}>
-                    {dayN}
-                  </span>
-                </div>
-                {holiday && (
-                  <Tooltip>
-                    <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
-                    <TooltipContent side="right">{holiday}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-
-              {/* Staff cells for this day */}
-              {allMembers.map((s, i) => {
-                const assignment = assignMap[s.id]?.[day.date]
-                const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
-                const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
-                const isHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
-                const prevRole = i > 0 ? allMembers[i - 1].role : null
-                const isNewGroup = s.role !== prevRole
-
-                const isOffCell = !assignment && !onLeave && isPublished
-                return (
-                  <div
-                    key={s.id}
-                    className={cn(
-                      "border-b border-r last:border-r-0 border-border flex items-center justify-center transition-colors duration-100",
-                      compact ? "min-h-[22px] px-0.5 py-0" : "min-h-[28px] px-0.5 py-0.5",
-                      isHovered ? "bg-primary/10" : "bg-background",
-                    )}
-                    style={isOffCell ? { backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" } : undefined}
-                    onMouseEnter={() => setHoveredShift(cellShift)}
-                    onMouseLeave={() => setHoveredShift(null)}
-                  >
-                    {assignment ? (
-                      !isPublished ? (
-                        <PersonShiftSelector
-                          assignment={assignment}
-                          shiftTimes={shiftTimes}
-                          shiftTypes={data?.shiftTypes ?? []}
-                          isPublished={false}
-                          simplified={simplified !== false}
-                          onShiftChange={async (newShift) => {
-                            if (!newShift) {
-                              setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.filter((a) => a.id !== assignment.id) })))
-                              const result = await removeAssignment(assignment.id)
-                              if (result.error) toast.error(result.error)
-                            } else {
-                              setLocalDays((prev) => prev.map((dd) => ({ ...dd, assignments: dd.assignments.map((a) => a.id === assignment.id ? { ...a, shift_type: newShift } : a) })))
-                              const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                              if (result.error) toast.error(result.error)
-                            }
-                          }}
-                        />
-                      ) : simplified !== false ? (
-                        <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "var(--pref-bg)" }}>
-                          {assignment.shift_type}
-                        </span>
-                      ) : (
-                        <div className="flex flex-col items-center gap-0">
-                          <span className={cn("font-semibold tabular-nums", compact ? "text-[10px]" : "text-[12px]")} style={{ color: "var(--pref-bg)" }}>
-                            {assignment.shift_type}
-                          </span>
-                          {shiftTimes?.[assignment.shift_type] && (
-                            <span className={cn("text-muted-foreground", compact ? "text-[8px]" : "text-[9px]")}>
-                              {shiftTimes[assignment.shift_type].start}–{shiftTimes[assignment.shift_type].end}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    ) : onLeave ? (
-                      <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
-                    ) : !isPublished ? (
-                      <PersonShiftSelector
-                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
-                        shiftTimes={shiftTimes}
-                        shiftTypes={data?.shiftTypes ?? []}
-                        isPublished={false}
-                        simplified={simplified !== false}
-                        isOff
-                        onShiftChange={async (newShift) => {
-                          if (!newShift) return
-                          const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                          if (result.error) toast.error(result.error)
-                          else {
-                            setLocalDays((prev) => prev.map((dd) => dd.date !== day.date ? dd : {
-                              ...dd,
-                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
-                            }))
-                          }
-                        }}
-                      />
-                    ) : (
-                      <span className={cn("text-muted-foreground font-semibold", compact ? "text-[9px]" : "text-[11px]")}>OFF</span>
-                    )}
-                  </div>
-                )
-              })}
-            </Fragment>
-          )
-        })}
-      </div>
-      {/* Shift legend — shown in simplified mode */}
-      {simplified !== false && shiftTimes && Object.keys(shiftTimes).length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-border bg-muted/50">
-          {Object.entries(shiftTimes).map(([code, time]) => (
-            <span key={code} className="text-[11px] text-muted-foreground">
-              <span className="font-semibold" style={{ color: "var(--pref-bg)" }}>{code}</span>
-              {" "}{time.start}–{time.end}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Shift grid (Vista por turno) ──────────────────────────────────────────────
 
-function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
-    opacity: isDragging ? 0 : 1,
-    zIndex: isDragging ? 50 : undefined,
-    position: isDragging ? "relative" as const : undefined,
-  } : undefined
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <ShiftBadge {...props} />
-    </div>
-  )
-}
-
-function DraggableOffStaff({ staffId, date, children, disabled }: {
-  staffId: string; date: string; children: React.ReactNode; disabled?: boolean
-}) {
-  const id = `off-${staffId}-${date}`
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, disabled })
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(1.02)`,
-    opacity: isDragging ? 0 : 1,
-    zIndex: isDragging ? 50 : undefined,
-    position: isDragging ? "relative" as const : undefined,
-  } : undefined
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={disabled ? undefined : "cursor-grab"}>
-      {children}
-    </div>
-  )
-}
-
-function DroppableCell({ id, children, isOver, isPublished, onClick, className, style }: {
-  id: string; children: React.ReactNode; isOver: boolean
-  isPublished: boolean; onClick?: () => void; className?: string; style?: React.CSSProperties
-}) {
-  const { setNodeRef, isOver: dndIsOver } = useDroppable({ id })
-  return (
-    <div
-      ref={setNodeRef}
-      onClick={onClick}
-      style={style}
-      className={cn(className, (isOver || dndIsOver) && !isPublished && "bg-blue-50")}
-    >
-      {children}
-    </div>
-  )
-}
-
-function ShiftGrid({
-  data, staffList, loading, locale,
-  onCellClick, onChipClick,
-  isPublished, isGenerating,
-  shiftTimes, onLeaveByDate, publicHolidays,
-  punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
-  onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
-  ratioOptimal, ratioMinimum, timeFormat = "24h",
-  biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
-}: {
-  data: RotaWeekData | null
-  staffList: StaffWithSkills[]
-  loading: boolean
-  locale: string
-  onCellClick: (date: string, shiftType: ShiftType) => void
-  onChipClick: (assignment: Assignment, date: string) => void
-  isPublished: boolean
-  isGenerating?: boolean
-  shiftTimes: ShiftTimes | null
-  onLeaveByDate: Record<string, string[]>
-  publicHolidays: Record<string, string>
-  punctionsDefault: Record<string, number>
-  punctionsOverride: Record<string, number>
-  onPunctionsChange: (date: string, value: number | null) => void
-  onBiopsyChange?: (date: string, value: number) => void
-  onRefresh: () => void
-  onAfterMutation?: (snapshot: RotaWeekData, inverse: () => Promise<{ error?: string }>, forward: () => Promise<{ error?: string }>) => void
-  onCancelUndo?: () => void
-  onSaved?: () => void
-  weekStart: string
-  compact?: boolean
-  colorChips?: boolean
-  simplified?: boolean
-  onDateClick?: (date: string) => void
-  onLocalDaysChange?: (days: RotaDay[]) => void
-  ratioOptimal?: number
-  ratioMinimum?: number
-  timeFormat?: string
-  biopsyConversionRate?: number
-  biopsyDay5Pct?: number
-  biopsyDay6Pct?: number
-}) {
-  const t  = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const ts = useTranslations("skills")
-
-  // Staff color map — maps each staff member to their department colour
-  const deptColorMap = useMemo(() => {
-    const m: Record<string, string> = {}
-    for (const dept of (data?.departments ?? [])) m[dept.code] = dept.colour
-    return m
-  }, [data?.departments])
-  const staffColorMap = useMemo(() =>
-    Object.fromEntries(staffList.map((s) => [s.id, s.color || deptColorMap[s.role] || DEFAULT_DEPT_MAPS.border[s.role] || "#94A3B8"]))
-  , [staffList, deptColorMap])
-  const { hoveredStaffId, setHovered } = useStaffHover()
-
-  // Require 5px movement before drag activates — allows click events to pass through
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  // Compute header dates from weekStart so they update immediately on navigation
-  const headerDates = useMemo(() => {
-    const dates: string[] = []
-    const base = new Date(weekStart + "T12:00:00")
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(base)
-      d.setDate(base.getDate() + i)
-      dates.push(d.toISOString().split("T")[0])
-    }
-    return dates
-  }, [weekStart])
-
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [overId, setOverId]     = useState<string | null>(null)
-  const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
-  const setLocalDays: typeof setLocalDaysRaw = (update) => {
-    setLocalDaysRaw((prev) => {
-      const next = typeof update === "function" ? update(prev) : update
-      onLocalDaysChange?.(next)
-      return next
-    })
-  }
-
-  // Sync local state whenever server data arrives
-  useEffect(() => { if (data) { setLocalDaysRaw(data.days); onLocalDaysChange?.(data.days) } }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
-    setLocalDays((prev) => prev.map((d) => ({
-      ...d,
-      assignments: d.assignments.map((a) =>
-        a.id === assignmentId ? { ...a, ...patch } : a
-      ),
-    })))
-  }
-
-  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
-    patchLocalAssignment(assignmentId, { function_label: label })
-    const result = await setFunctionLabel(assignmentId, label)
-    if (result.error) { toast.error(result.error); onRefresh() }
-  }
-
-  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
-    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
-    const result = await setTecnica(assignmentId, tecnicaId)
-    if (result.error) { toast.error(result.error); onRefresh() }
-  }
-
-  // Debounced refresh — batches rapid changes into one server fetch
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  function debouncedRefresh() {
-    if (refreshTimer.current) clearTimeout(refreshTimer.current)
-    refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    setActiveId(null)
-    setOverId(null)
-    if (!over) return
-
-    const activeId = String(active.id)
-    const destZone = String(over.id)
-
-    // ── OFF → shift: create a new assignment ─────────────────────────────────
-    if (activeId.startsWith("off-")) {
-      if (destZone.startsWith("OFF-")) return
-      const destDate  = destZone.slice(-10)
-      const destShift = destZone.slice(0, destZone.length - 11) as ShiftType
-      const staffId   = activeId.slice(4, activeId.length - 11)
-      const staffMember = staffList.find((s) => s.id === staffId)
-
-      // Optimistic: add a placeholder assignment immediately
-      if (staffMember) {
-        setLocalDays((prev) => prev.map((d) => {
-          if (d.date !== destDate) return d
-          const optimistic = {
-            id: `opt-${Date.now()}`, staff_id: staffId,
-            staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
-            shift_type: destShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false,
-          }
-          return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
-        }))
-      }
-
-      {
-        const snapshot = data
-        const idCapture: { value: string | undefined } = { value: undefined }
-        if (snapshot) {
-          onAfterMutation?.(
-            snapshot,
-            () => idCapture.value ? deleteAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
-            () => upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift }),
-          )
-        }
-        try {
-          const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
-          if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-          idCapture.value = result.id
-          onSaved?.()
-        } catch {
-          onCancelUndo?.(); toast.error(t("assignmentError")); onRefresh(); return
-        }
-      }
-      // No refresh — optimistic state is correct
-      return
-    }
-
-    // ── Existing assignment → shift or OFF ────────────────────────────────────
-    const assignmentId    = activeId
-    const sourceAssignment = localDays.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
-    if (!sourceAssignment) return
-
-    const sourceZone = `${sourceAssignment.shift_type}-${sourceAssignment.date}`
-    if (sourceZone === destZone) return
-
-    if (destZone.startsWith("OFF-")) {
-      // Optimistic: remove immediately
-      setLocalDays((prev) => prev.map((d) => ({
-        ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId),
-      })))
-      const oldShift = sourceAssignment.shift_type as ShiftType
-      const oldDate  = sourceAssignment.date
-      const oldStaff = sourceAssignment.staff_id
-      const snapshot = data
-      if (snapshot) {
-        onAfterMutation?.(
-          snapshot,
-          () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
-          () => removeAssignment(assignmentId),
-        )
-      }
-      try {
-        const result = await removeAssignment(assignmentId)
-        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-        onSaved?.()
-        // No refresh — optimistic state is correct
-      } catch {
-        onCancelUndo?.(); toast.error(t("removeError")); onRefresh()
-      }
-    } else {
-      const destDate  = destZone.slice(-10)
-      const destShift = destZone.slice(0, destZone.length - 11)
-
-      if (sourceAssignment.date !== destDate) {
-        toast.error(t("shiftMoveError"))
-        return
-      }
-
-      const oldShift = sourceAssignment.shift_type
-      const snapshot = data
-      // Optimistic: change shift_type immediately
-      setLocalDays((prev) => prev.map((d) => ({
-        ...d, assignments: d.assignments.map((a) =>
-          a.id === assignmentId ? { ...a, shift_type: destShift, is_manual_override: true } : a
-        ),
-      })))
-      if (snapshot) {
-        onAfterMutation?.(
-          snapshot,
-          () => moveAssignmentShift(assignmentId, oldShift),
-          () => moveAssignmentShift(assignmentId, destShift),
-        )
-      }
-      try {
-        const result = await moveAssignmentShift(assignmentId, destShift)
-        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-        onSaved?.()
-        // Don't refresh — optimistic state is already correct
-      } catch {
-        onCancelUndo?.(); toast.error(t("moveError")); onRefresh()
-      }
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="rounded-lg border border-border overflow-hidden w-full">
-          {/* Header */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            <div className="border-r border-border h-[72px]" />
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1">
-                <div className="shimmer-bar h-2.5 w-6" />
-                <div className="shimmer-bar w-8 h-8 rounded-full" />
-                <div className="shimmer-bar h-2.5 w-12 rounded" />
-              </div>
-            ))}
-          </div>
-          {/* Rows — enough to cover up to 5 shifts + off */}
-          {Array.from({ length: 6 }).map((_, row) => (
-            <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
-              <div className="border-r border-border flex items-center justify-end px-2 py-3">
-                <div className="shimmer-bar h-3 w-8" />
-              </div>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="p-2 flex items-center justify-center min-h-[36px] bg-background">
-                  <div className="shimmer-bar h-5 w-full rounded" />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="generating-label text-[13px] text-muted-foreground">
-            {isGenerating ? tc("generating") : tc("loading")}
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!data) return null
-
-  // Build skill map for coverage dots
-  const staffSkillMap: Record<string, string[]> = {}
-  for (const s of staffList) {
-    staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
-  }
-
-  // Dynamic shift rows from data
-  const SHIFT_ROWS = data.shiftTypes.map((s) => s.code)
-  const shiftTypeMap = Object.fromEntries((data.shiftTypes ?? []).map((st) => [st.code, st]))
-
-  // Staff IDs visible based on department filter
-  const visibleStaffIds = new Set(staffList.map((s) => s.id))
-
-  // Dynamic department maps from DB
-  const deptMaps = buildDeptMaps(data.departments ?? [])
-  const ROLE_BORDER = deptMaps.border
-  const ROLE_LABEL = deptMaps.label
-  const ROLE_ORDER = deptMaps.order
-
-  // Find the active assignment for drag overlay
-  const activeAssignment = activeId
-    ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
-    : null
-
-  // Find the active off-staff member for drag overlay (id = "off-{staffId}-{date}")
-  const activeOffStaff = activeId?.startsWith("off-")
-    ? staffList.find((s) => activeId.startsWith(`off-${s.id}`))
-    : null
-
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={(e) => { setActiveId(String(e.active.id)); setOverId(null) }}
-      onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="rounded-lg border border-border bg-background overflow-hidden w-full">
-
-        {/* Header row — uses headerDates (from weekStart) so dates update immediately on navigation */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
-          <div className="bg-muted" />
-          {headerDates.map((dateStr) => {
-            const day   = localDays.find((ld) => ld.date === dateStr)
-            const d     = new Date(dateStr + "T12:00:00")
-            const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-            const dayN  = String(d.getDate())
-            const today = dateStr === TODAY
-            const isSat = d.getDay() === 6
-            const isSun = d.getDay() === 0
-            const isWknd = isSat || isSun
-            const holidayName = publicHolidays[dateStr]
-
-            const defaultP      = punctionsDefault[dateStr] ?? 0
-            const effectiveP    = punctionsOverride[dateStr] ?? defaultP
-            const hasOverride   = punctionsOverride[dateStr] !== undefined
-
-            return (
-              <div
-                key={dateStr}
-                className={cn(
-                  "relative flex flex-col items-center justify-center py-1 gap-0 border-l border-border",
-                  holidayName ? "bg-amber-100/80" : "bg-muted"
-                )}
-              >
-                {day && day.warnings.length > 0 && (
-                  <DayWarningPopover warnings={day.warnings} />
-                )}
-
-                <button
-                  onClick={() => onDateClick?.(dateStr)}
-                  className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
-                >
-                  <span className={cn("text-[10px] uppercase tracking-wider", isWknd && !holidayName ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
-                  <span className={cn(
-                    "font-semibold leading-none text-[18px]",
-                    today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                    : holidayName ? "text-amber-600 dark:text-amber-400" : isWknd ? "text-muted-foreground" : "text-primary"
-                  )}>
-                    {dayN}
-                  </span>
-                </button>
-                {holidayName && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>
-                    } />
-                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
-                  </Tooltip>
-                )}
-
-                {/* Punciones + biopsias — single clickable area (hidden in simplified mode) */}
-                {!simplified && (() => {
-                  // Biopsy forecast: punciones from 5 and 6 days ago
-                  const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-                  function getPuncForDate(ds: string): number {
-                    // Try override, then default map, then lab config by weekday
-                    if (punctionsOverride[ds] !== undefined) return punctionsOverride[ds]
-                    if (punctionsDefault[ds] !== undefined) return punctionsDefault[ds]
-                    // Fallback: use weekday default from punctionsDefault of same weekday in current week
-                    const dow = new Date(ds + "T12:00:00").getDay()
-                    const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-                    return sameDow ? sameDow[1] : 0
-                  }
-                  const d5ago = new Date(dateStr + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                  const d6ago = new Date(dateStr + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const d5str = d5ago.toISOString().split("T")[0]
-                  const d6str = d6ago.toISOString().split("T")[0]
-                  const p5 = getPuncForDate(d5str)
-                  const p6 = getPuncForDate(d6str)
-                  const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
-                  const sources: string[] = []
-                  if (p5 > 0) sources.push(t("punctionsD5", { count: p5 }))
-                  if (p6 > 0) sources.push(t("punctionsD6", { count: p6 }))
-                  const tooltip = forecast > 0 ? t("biopsyForecast", { count: forecast, sources: sources.join(", ") }) : t("punctionsLabel", { count: effectiveP })
-                  return (
-                    <DayStatsInput
-                      date={dateStr}
-                      value={effectiveP}
-                      defaultValue={defaultP}
-                      isOverride={hasOverride}
-                      onChange={onPunctionsChange}
-                      onBiopsyChange={onBiopsyChange}
-                      disabled={isPublished || !data.rota}
-                      biopsyForecast={forecast}
-                      biopsyTooltip={tooltip}
-                      compact
-                    />
-                  )
-                })()}
-
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Shift rows */}
-        {SHIFT_ROWS.map((shiftRow) => (
-          <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            {/* Shift label — right-aligned, three-line: code / start / end */}
-            <div className="flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
-              <span className="text-[11px] leading-tight font-semibold text-foreground">{shiftRow}</span>
-              <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
-                {shiftTypeMap[shiftRow]?.start_time ? formatTime(shiftTypeMap[shiftRow].start_time, timeFormat) : shiftRow}
-              </span>
-              {shiftTypeMap[shiftRow]?.end_time && (
-                <span className="text-[11px] text-muted-foreground leading-tight tabular-nums">
-                  {formatTime(shiftTypeMap[shiftRow].end_time, timeFormat)}
-                </span>
-              )}
-            </div>
-            {localDays.map((day) => {
-              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))].sort((a, b) => a.staff.first_name.localeCompare(b.staff.first_name) || a.staff.last_name.localeCompare(b.staff.last_name))
-                .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
-              const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
-              const cellId = `${shiftRow}-${day.date}`
-              const cellDow   = new Date(day.date + "T12:00:00").getDay()
-              const isSatCell = cellDow === 6
-              const isWkndCell = isSatCell || cellDow === 0
-              const isEmpty   = dayShifts.length === 0 && effectivePDay === 0
-              return (
-                <DroppableCell
-                  key={day.date}
-                  id={cellId}
-                  isOver={overId === cellId}
-                  isPublished={isPublished}
-                  onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
-                  className={cn(
-                    "p-1.5 flex flex-col gap-1 border-l border-border",
-                    "bg-background",
-                    compact ? "min-h-[32px]" : "min-h-[48px]",
-                    !isPublished && "cursor-pointer"
-                  )}
-                  style={undefined}
-                >
-                  {dayShifts.map((a) => {
-                    const staffMember = staffList.find((s) => s.id === a.staff_id)
-                    const taskDisabled = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
-                    const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
-                    const tecnica = taskDisabled ? null
-                      : cleanFn
-                      ? (data?.tecnicas ?? []).find((t) => t.codigo === cleanFn) ?? null
-                      : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
-                    return (
-                      <AssignmentPopover
-                        key={a.id}
-                        assignment={a}
-                        staffSkills={staffMember?.staff_skills ?? []}
-                        tecnicas={data?.tecnicas ?? []}
-                        departments={data?.departments ?? []}
-                        onFunctionSave={handleFunctionLabelSave}
-                        isPublished={isPublished}
-                        disabled={taskDisabled}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger render={
-                            <div onClick={taskDisabled ? (e: React.MouseEvent) => { e.stopPropagation(); onChipClick(a, day.date) } : undefined} className={taskDisabled ? "cursor-pointer" : undefined}>
-                              <DraggableShiftBadge
-                                id={a.id}
-                                first={a.staff.first_name}
-                                last={a.staff.last_name}
-                                role={a.staff.role}
-                                isOverride={a.is_manual_override}
-                                functionLabel={taskDisabled ? null : cleanFn}
-                                tecnica={tecnica}
-                                compact={compact}
-                                borderColor={ROLE_BORDER[a.staff.role]}
-                                isTrainingTecnica={!!(cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training")}
-                                colorChips={colorChips}
-                                readOnly={isPublished || taskDisabled}
-                                staffId={a.staff_id}
-                                staffColor={staffColorMap[a.staff_id]}
-                                departments={data?.departments ?? []}
-                                trainingTecCode={data?.trainingByStaff?.[day.date]?.[a.staff_id] ?? null}
-                              />
-                            </div>
-                          } />
-                          <TooltipContent side="right">
-                            {a.staff.first_name} {a.staff.last_name} · {ROLE_LABEL[a.staff.role] ?? a.staff.role}{tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}{data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}
-                          </TooltipContent>
-                        </Tooltip>
-                      </AssignmentPopover>
-                    )
-                  })}
-                  {/* Empty cell — grey bg applied via parent */}
-                </DroppableCell>
-              )
-            })}
-          </div>
-        ))}
-
-        {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted">
-          <div className="flex flex-col items-end justify-center px-2.5 py-2">
-            <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
-          </div>
-          {localDays.map((day) => {
-            const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-            const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
-            const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-            const isSaturday   = dow === 6
-            const isWeekendOff = dow === 6 || dow === 0
-            const offCellId    = `OFF-${day.date}`
-
-            // Unassigned staff — leave people first (non-draggable), then others
-            const allOff = staffList.filter((s) => !assignedIds.has(s.id))
-            const onLeaveStaff = allOff.filter((s) => leaveIds.has(s.id))
-              .sort((a, b) => a.last_name.localeCompare(b.last_name))
-            const availableOff = allOff.filter((s) => !leaveIds.has(s.id))
-              .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-            return (
-              <DroppableCell
-                key={day.date}
-                id={offCellId}
-                isOver={overId === offCellId}
-                isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 border-l border-border"
-                style={{
-                  backgroundColor: "var(--color-card)",
-                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
-                  backgroundSize: "10px 10px",
-                }}
-              >
-                {/* On leave — always first, not draggable, gray + airplane */}
-                {onLeaveStaff.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  return (
-                  <div
-                    key={s.id}
-                    onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
-                    onMouseEnter={() => setHovered(s.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border select-none cursor-pointer transition-colors duration-150"
-                    style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
-                  >
-                    <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                    <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
-                  </div>
-                  )
-                })}
-                {/* Available — draggable + clickable for profile */}
-                {availableOff.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  return (
-                  <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
-                    <div
-                      onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
-                      onMouseEnter={() => setHovered(s.id)}
-                      onMouseLeave={() => setHovered(null)}
-                      className="flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border cursor-pointer transition-colors duration-150"
-                      style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
-                    >
-                      <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
-                    </div>
-                  </DraggableOffStaff>
-                  )
-                })}
-              </DroppableCell>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Drag overlay */}
-      <DragOverlay>
-        {activeAssignment ? (
-          <div className="opacity-90 shadow-lg rounded">
-            <ShiftBadge
-              first={activeAssignment.staff.first_name}
-              last={activeAssignment.staff.last_name}
-              role={activeAssignment.staff.role}
-              isOverride={activeAssignment.is_manual_override}
-              functionLabel={activeAssignment.function_label}
-              borderColor={ROLE_BORDER[activeAssignment.staff.role]}
-              readOnly
-              departments={data?.departments ?? []}
-              tecnica={activeAssignment.function_label
-                ? (data?.tecnicas ?? []).find((t) => t.codigo === activeAssignment.function_label) ?? null
-                : (data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
-            />
-          </div>
-        ) : activeOffStaff ? (
-          <div className="opacity-90 shadow-lg rounded">
-            <ShiftBadge
-              first={activeOffStaff.first_name}
-              last={activeOffStaff.last_name}
-              role={activeOffStaff.role}
-              isOverride={false}
-              functionLabel={null}
-              readOnly
-              borderColor={ROLE_BORDER[activeOffStaff.role]}
-            />
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
-  )
-}
 
 // ── Month view ────────────────────────────────────────────────────────────────
 
-function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
-  summary: RotaMonthSummary | null
-  loading: boolean
-  locale: string
-  currentDate: string
-  onSelectDay: (date: string) => void
-  onSelectWeek: (weekStart: string) => void
-  firstDayOfWeek?: number
-  punctionsOverride?: Record<string, number>
-  onPunctionsChange?: (date: string, value: number | null) => void
-  onBiopsyChange?: (date: string, value: number) => void
-  monthViewMode?: "shift" | "person"
-  colorChips?: boolean
-}) {
-  const t = useTranslations("schedule")
-  const { hoveredStaffId, setHovered } = useStaffHover()
-  const baseHeaders = locale === "es" ? DOW_HEADERS_ES : DOW_HEADERS_EN
-  const headers = rotateArray(baseHeaders, firstDayOfWeek)
-
-  if (loading || !summary) {
-    return (
-      <div className="flex flex-col gap-1">
-        <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
-          <div />
-          {headers.map((h) => (
-            <div key={h} className="text-center text-[11px] font-medium text-muted-foreground py-1">{h}</div>
-          ))}
-        </div>
-        {Array.from({ length: 4 }).map((_, w) => (
-          <div key={w} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5">
-            <Skeleton className="h-[120px] rounded-lg" />
-            {Array.from({ length: 7 }).map((_, d) => (
-              <Skeleton key={d} className="h-[120px] rounded-lg" />
-            ))}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const weeks: (typeof summary.days)[] = []
-  for (let i = 0; i < summary.days.length; i += 7) {
-    weeks.push(rotateArray(summary.days.slice(i, i + 7), firstDayOfWeek))
-  }
-
-  const weekStatusMap = Object.fromEntries(summary.weekStatuses.map((ws) => [ws.weekStart, ws.status]))
-
-  // Compute which column indices are weekends (Sat=5, Sun=6 in base, rotated)
-  const weekendIndices = new Set(
-    [5, 6].map((i) => ((i - firstDayOfWeek) % 7 + 7) % 7)
-  )
-
-  return (
-    <div className="flex flex-col gap-1.5 flex-1 min-h-0">
-      {/* Day headers — with week number column */}
-      <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 mb-1">
-        <div className="text-center text-[11px] font-medium text-muted-foreground/40 py-2">S</div>
-        {headers.map((h, i) => (
-          <div key={h} className={cn(
-            "text-center text-[13px] font-semibold py-2",
-            weekendIndices.has(i) ? "text-muted-foreground/60 bg-muted/40 rounded-t-lg" : "text-muted-foreground"
-          )}>{h}</div>
-        ))}
-      </div>
-
-      {weeks.map((week, wi) => {
-        const weekStart = week[0].date
-        const weekStatus = weekStatusMap[weekStart] ?? null
-        const isWeekPublished = weekStatus === "published"
-        // ISO week number
-        const d = new Date(weekStart + "T12:00:00")
-        const jan1 = new Date(d.getFullYear(), 0, 1)
-        const weekNum = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
-        return (
-          <div key={wi} className="grid grid-cols-[36px_repeat(7,1fr)] gap-1.5 flex-1">
-            {/* Week number + publish lock */}
-            <div className="flex flex-col items-center justify-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={() => onSelectWeek(weekStart)}
-                    className="text-[11px] font-medium text-muted-foreground/50 hover:text-primary transition-colors"
-                  >
-                    S{weekNum}
-                  </button>
-                } />
-                <TooltipContent side="left">{t("goToWeek", { week: weekNum })}</TooltipContent>
-              </Tooltip>
-              {isWeekPublished && (
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Lock className="size-3 text-emerald-500 cursor-default" />
-                  } />
-                  <TooltipContent side="left">{t("published")}</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-              {week.map((day) => {
-                const isToday    = day.date === TODAY
-                const isPast     = day.date < TODAY
-                const dayNum     = String(new Date(day.date + "T12:00:00").getDate())
-                const dayDow     = new Date(day.date + "T12:00:00").getDay()
-                const isSat      = dayDow === 6
-                const isSun      = dayDow === 0
-
-                const deptParts: string[] = []
-                if (day.labCount > 0) deptParts.push(`Lab ${day.labCount}`)
-                if (day.andrologyCount > 0) deptParts.push(`${locale === "es" ? "Andr" : "Andr"} ${day.andrologyCount}`)
-                if (day.adminCount > 0) deptParts.push(`Admin ${day.adminCount}`)
-                // PB Index — b/pu ratio vs expected conversion rate, shown as colored indicator
-                const tooltipPb = (() => {
-                  const s = summary as RotaMonthSummary
-                  const pu = punctionsOverride[day.date] ?? day.punctions
-                  const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                  const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const d5str = d5ago.toISOString().split("T")[0]
-                  const d6str = d6ago.toISOString().split("T")[0]
-                  const p5 = punctionsOverride[d5str] ?? s.days.find((dd) => dd.date === d5str)?.punctions ?? 0
-                  const p6 = punctionsOverride[d6str] ?? s.days.find((dd) => dd.date === d6str)?.punctions ?? 0
-                  const cr = s.biopsyConversionRate ?? 0.5
-                  const b = Math.round(p5 * cr * (s.biopsyDay5Pct ?? 0.5) + p6 * cr * (s.biopsyDay6Pct ?? 0.5))
-                  if (pu === 0 && b === 0) return null
-                  const indexPct = pu > 0 ? Math.round((b / pu) * 100) : null
-                  const expectedPct = Math.round(cr * 100)
-                  const color = indexPct === null ? "text-muted-foreground"
-                    : indexPct >= expectedPct * 0.8 ? "text-emerald-400"
-                    : indexPct >= expectedPct * 0.5 ? "text-amber-400"
-                    : "text-red-400"
-                  return { indexPct, color }
-                })()
-                const tooltipParts: string[] = []
-                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${locale === "es" ? "personas" : "staff"}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
-                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${locale === "es" ? "ausencias" : "absences"}`)
-                if (day.hasSkillGaps) {
-                  if ((day.warningMessages?.length ?? 0) > 0) {
-                    tooltipParts.push(...day.warningMessages)
-                  } else {
-                    tooltipParts.push(locale === "es" ? "Tareas sin cobertura" : "Uncovered tasks")
-                  }
-                }
-                if (day.holidayName) tooltipParts.push(day.holidayName)
-                const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(" · ") : null
-
-                return (
-                  <Tooltip key={day.date}>
-                    <TooltipTrigger render={
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSelectDay(day.date) }}
-                    style={{
-                      ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-                      ...(isSun ? { borderRight: "1px dashed var(--border)" } : {}),
-                    }}
-                    className={cn(
-                      "relative flex flex-col items-start p-2.5 rounded-lg border text-left transition-colors min-h-[100px] flex-1",
-                      isPast && !isToday && "opacity-55",
-                      !day.isCurrentMonth
-                        ? "bg-muted/40 border-border/30"
-                        : day.holidayName
-                        ? day.isWeekend ? "bg-muted/40 border-border hover:bg-accent/20" : "bg-muted/20 border-border hover:bg-accent/10"
-                        : day.staffCount > 0
-                        ? day.isWeekend
-                          ? "bg-muted/40 border-border hover:bg-accent/20"
-                          : "bg-muted/20 border-border hover:bg-accent/10"
-                        : day.isWeekend
-                        ? "bg-background border-dashed border-border/50 hover:bg-accent/10"
-                        : "bg-background border-dashed border-border/50 hover:bg-accent/10"
-                    )}
-                  >
-                    {/* Top row: date + status icon */}
-                    <div className="flex items-start justify-between w-full">
-                      <div className={cn(
-                        "flex items-center justify-center rounded-full leading-none",
-                        isToday
-                          ? "size-8 bg-primary text-primary-foreground text-[20px] font-bold"
-                          : !day.isCurrentMonth
-                          ? "text-muted-foreground/25 text-[16px] font-normal"
-                          : "text-[20px] font-bold text-foreground"
-                      )}>
-                        {dayNum}
-                      </div>
-                      {day.staffCount > 0 && (
-                        day.hasSkillGaps
-                          ? <AlertTriangle className="size-3.5 text-amber-500" />
-                          : <Check className="size-3.5 text-emerald-500" />
-                      )}
-                    </div>
-
-                    {/* Holiday name */}
-                    {day.holidayName && day.isCurrentMonth && (
-                      <span className="text-[10px] text-amber-500/80 leading-tight truncate w-full mt-1">{day.holidayName}</span>
-                    )}
-
-                    {/* Staff display — shift mode (dept badges) or person mode (initials) */}
-                    {day.staffCount > 0 && day.isCurrentMonth && monthViewMode === "person" ? (
-                      <div className="flex flex-wrap gap-0.5 mt-auto">
-                        {(day.staffInitials ?? []).map((si, i) => {
-                          const roleColor = si.role === "lab" ? "#3B82F6" : si.role === "andrology" ? "#10B981" : "#64748B"
-                          const isHov = hoveredStaffId === si.id
-                          return (
-                            <span
-                              key={i}
-                              className="text-[9px] font-semibold rounded px-1 py-px border border-border transition-colors cursor-default"
-                              style={{
-                                ...(colorChips ? { borderLeft: `2px solid ${roleColor}` } : {}),
-                                ...(isHov ? { backgroundColor: roleColor + "25", color: roleColor, borderColor: roleColor + "40" } : {}),
-                              }}
-                              onMouseEnter={() => setHovered(si.id)}
-                              onMouseLeave={() => setHovered(null)}
-                            >
-                              {si.initials}
-                            </span>
-                          )
-                        })}
-                        {day.staffCount > 10 && (
-                          <span className="text-[9px] text-muted-foreground/50">+{day.staffCount - 10}</span>
-                        )}
-                      </div>
-                    ) : day.staffCount > 0 && day.isCurrentMonth ? (
-                      <div className="flex-1 flex items-center py-1">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {Object.entries(day.shiftCounts ?? {})
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([shift, count]) => (
-                              <span key={shift} className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-[11px] font-normal bg-primary/10 text-primary border border-primary/20 tabular-nums">
-                                {shift} <span className="font-semibold text-foreground">{count}</span>
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                    ) : <div className="flex-1" />}
-
-                    {/* Empty cells are visually distinct via dashed border + no bg tint */}
-
-                    {/* Punctions + ratio + leave */}
-                    {day.isCurrentMonth && (() => {
-                      const isOverride = punctionsOverride[day.date] !== undefined
-                      const effectiveP = punctionsOverride[day.date] ?? day.punctions
-                      // Biopsy forecast — use summary days or weekday fallback
-                      const s = summary as RotaMonthSummary
-                      const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                      const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                      const d5str = d5ago.toISOString().split("T")[0]
-                      const d6str = d6ago.toISOString().split("T")[0]
-                      function getPuncFromSummary(dateStr: string): number {
-                        if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
-                        const found = s.days.find((dd) => dd.date === dateStr)
-                        if (found) return found.punctions
-                        // Fallback: same weekday from any day in summary
-                        const dow = new Date(dateStr + "T12:00:00").getDay()
-                        const sameDow = s.days.find((dd) => new Date(dd.date + "T12:00:00").getDay() === dow)
-                        return sameDow?.punctions ?? 0
-                      }
-                      const p5src = getPuncFromSummary(d5str)
-                      const p6src = getPuncFromSummary(d6str)
-                      const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
-                      return (
-                        <div className="flex items-end gap-2">
-                          <DayStatsInput
-                            date={day.date}
-                            value={effectiveP}
-                            defaultValue={day.punctions}
-                            isOverride={isOverride}
-                            onChange={onPunctionsChange ?? (() => {})}
-                            onBiopsyChange={onBiopsyChange}
-                            disabled={!onPunctionsChange}
-                            biopsyForecast={bForecast}
-                            biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
-                          />
-                          {day.leaveCount > 0 && (
-                            <span className="flex items-center gap-0.5 text-amber-500 ml-auto self-end pb-0.5">
-                              <Briefcase className="size-3" />{day.leaveCount}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </button>
-                    } />
-                    {(tooltipText || tooltipPb) && (
-                      <TooltipContent side="top">
-                        <span className="flex items-center gap-1.5 flex-wrap">
-                          {tooltipText && <span>{tooltipText}</span>}
-                          {tooltipText && tooltipPb && <span className="opacity-40">·</span>}
-                          {tooltipPb && (
-                            <span className={cn("font-semibold", tooltipPb.color)}>
-                              {tooltipPb.indexPct !== null ? `PB ${tooltipPb.indexPct}%` : "PB —"}
-                            </span>
-                          )}
-                        </span>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                )
-              })}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── Day view ──────────────────────────────────────────────────────────────────
 
-function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact, mobileDeptColor = true, ratioOptimal, ratioMinimum }: {
-  day: RotaDay | null
-  loading: boolean
-  locale: string
-  departments?: import("@/lib/types/database").Department[]
-  punctions?: number
-  biopsyForecast?: number
-  isEditMode?: boolean
-  onRemoveAssignment?: (id: string) => void
-  onAddStaff?: (role: string) => void
-  data?: RotaWeekData | null
-  staffList?: StaffWithSkills[]
-  mobileCompact?: boolean
-  mobileDeptColor?: boolean
-  ratioOptimal?: number
-  ratioMinimum?: number
-}) {
-  const t  = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const ts = useTranslations("skills")
-
-  // Build dept color map: role code → colour
-  const { hoveredStaffId, setHovered } = useStaffHover()
-  const { deptColorMap, deptLabelMap } = useMemo(() => {
-    const colors: Record<string, string> = {}
-    const labels: Record<string, string> = {}
-    for (const d of departments) {
-      if (!d.parent_id) { colors[d.code] = d.colour; labels[d.code] = d.name }
-    }
-    return { deptColorMap: colors, deptLabelMap: labels }
-  }, [departments])
-  // Staff → department colour map
-  const staffColorMap = useMemo(() => {
-    const m: Record<string, string> = {}
-    ;(staffList ?? []).forEach((s) => { m[s.id] = deptColorMap[s.role] ?? DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8" })
-    return m
-  }, [staffList, deptColorMap])
-  const deptByCode = useMemo(() => Object.fromEntries((departments ?? []).map((d) => [d.code, d])), [departments])
-  const tecByCode = useMemo(() => Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t])), [data?.tecnicas])
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-4 w-full animate-pulse">
-        <Skeleton className="h-5 w-40 rounded-md" />
-        {[4, 5, 3, 4].map((count, g) => (
-          <div key={g} className="flex flex-col gap-2">
-            <Skeleton className="h-5 w-28 rounded" />
-            <div className="flex flex-wrap gap-1.5">
-              {Array.from({ length: count }).map((_, i) => (
-                <Skeleton key={i} className="h-8 rounded-md" style={{ width: [72, 85, 68, 90, 76][i % 5] }} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (!day || day.assignments.length === 0) {
-    return (
-      <EmptyState
-        icon={CalendarDays}
-        title={t("noRota")}
-        description={t("noRotaDescription")}
-      />
-    )
-  }
-
-  const byRole: Record<string, typeof day.assignments> = { lab: [], andrology: [], admin: [] }
-  for (const a of day.assignments) {
-    byRole[a.staff.role]?.push(a)
-  }
-
-  return (
-    <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
-
-      {(day.skillGaps.length > 0) && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2">
-          <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[12px] font-medium text-amber-600 dark:text-amber-400">{t("insufficientCoverage")}</p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {day.skillGaps.map((sk) => (
-                <Badge key={sk} variant="skill-gap">
-                  {sk}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(() => {
-        // Group by shift type instead of department
-        const shiftTypes = data?.shiftTypes ?? []
-        const byShift: Record<string, typeof day.assignments> = {}
-        for (const a of day.assignments) {
-          if (!byShift[a.shift_type]) byShift[a.shift_type] = []
-          byShift[a.shift_type].push(a)
-        }
-        const shiftOrder = shiftTypes.filter((s) => s.active !== false).map((s) => s.code)
-        const allShifts = [...new Set([...shiftOrder, ...Object.keys(byShift)])]
-
-        function resolveFunctionLabel(label: string): string {
-          const dept = deptByCode[label]
-          if (dept) return dept.abbreviation || dept.name
-          const tec = tecByCode[label]
-          if (tec) return tec.nombre_es
-          return label
-        }
-
-        return allShifts.map((shiftCode, shiftIdx) => {
-          const assignments = byShift[shiftCode] ?? []
-          const st = shiftTypes.find((s) => s.code === shiftCode)
-          const timeLabel = st ? `${st.start_time}–${st.end_time}` : ""
-          return (
-            <Fragment key={shiftCode}>
-            {shiftIdx > 0 && <div className="h-px bg-border/50 my-1" />}
-            <div key={shiftCode} className="flex flex-col gap-1.5">
-              {/* Shift header */}
-              <div className="flex items-center gap-2">
-                <span className="text-[14px] font-semibold">{shiftCode}</span>
-                {timeLabel && <span className="text-[12px] text-muted-foreground">{timeLabel}</span>}
-                <span className="text-[11px] text-muted-foreground ml-auto">{assignments.length}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                {assignments.length === 0 && !isEditMode && (
-                  <div className="h-6 rounded bg-muted/40" />
-                )}
-                {mobileCompact ? (
-                  /* Compact: inline badges with left border, sorted by dept then name */
-                  <div className="flex flex-wrap gap-1">
-                    {[...assignments].sort((a, b) => {
-                      const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-                      const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
-                      return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
-                    }).map((a) => {
-                      const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
-                      const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
-                      const staffMember = staffList?.find((s) => s.id === a.staff_id)
-                      const deptName = deptLabelMap[a.staff.role] ?? a.staff.role
-                      const workDays = staffMember?.working_pattern ?? []
-                      const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
-                      const pillContent = (
-                        <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-pointer transition-colors active:scale-95"
-                          style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}
-                        >
-                          {a.staff.first_name} {a.staff.last_name[0]}.
-                          {fnLabel && <span className="text-[9px] text-muted-foreground">{fnLabel}</span>}
-                          {isEditMode && onRemoveAssignment && (
-                            <button onClick={(e) => { e.stopPropagation(); onRemoveAssignment(a.id) }} className="text-muted-foreground hover:text-destructive ml-0.5"><X className="size-3" /></button>
-                          )}
-                        </span>
-                      )
-                      return isEditMode ? (
-                        <Fragment key={a.id}>{pillContent}</Fragment>
-                      ) : (
-                        <TapPopover key={a.id} trigger={pillContent}>
-                          <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                          {(() => {
-                            const weekDays = data?.days ?? []
-                            const workedDays = weekDays.filter((d) => d.assignments.some((as) => as.staff_id === a.staff_id))
-                            const offDays = weekDays.filter((d) => !d.assignments.some((as) => as.staff_id === a.staff_id))
-                            const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                            const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
-                            return <p className="text-[11px] opacity-70">{deptName} · {workedDays.length}/{staffMember?.days_per_week ?? "?"}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
-                          })()}
-                        </TapPopover>
-                      )
-                    })}
-                  </div>
-                ) : [...assignments].sort((a, b) => {
-                  const ro: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-                  const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
-                  return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
-                }).map((a) => {
-                  const roleColor = deptColorMap[a.staff.role] ?? (a.staff.role === "lab" ? "#3B82F6" : a.staff.role === "andrology" ? "#10B981" : "#64748B")
-                  const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-background"
-                      style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}
-                    >
-                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                        <span className="text-[15px] font-medium truncate">{a.staff.first_name} {a.staff.last_name}</span>
-                        {fnLabel && (
-                          <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">{fnLabel}</span>
-                        )}
-                      </div>
-                      {isEditMode && onRemoveAssignment && (
-                        <button
-                          onClick={() => onRemoveAssignment(a.id)}
-                          className="size-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive active:bg-destructive/10 shrink-0"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-                {isEditMode && onAddStaff && (
-                  <button
-                    onClick={() => onAddStaff(assignments[0]?.staff.role ?? "lab")}
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-[12px] text-primary font-medium active:bg-primary/5"
-                  >
-                    + {tc("add")}
-                  </button>
-                )}
-              </div>
-            </div>
-          </Fragment>
-          )
-        })
-      })()}
-
-      {/* OFF section — staff not assigned today */}
-      {day && staffList && staffList.length > 0 && (() => {
-        const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-        const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-        const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
-        const onLeave = staffList.filter((s) => leaveIds.has(s.id))
-          .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.first_name.localeCompare(b.first_name))
-        const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
-          .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.first_name.localeCompare(b.first_name))
-        if (onLeave.length === 0 && offDuty.length === 0) return null
-        return (
-          <div className="flex flex-col gap-1.5 mt-2 pt-3 pb-2 px-2 -mx-2 border-t border-dashed border-border bg-muted/30 rounded-lg">
-            <div className="flex items-center gap-2 pl-2">
-              <span className="text-[13px] font-medium text-muted-foreground">{t("offSection")}</span>
-              <span className="text-[12px] text-muted-foreground/60">{onLeave.length + offDuty.length}</span>
-            </div>
-            {mobileCompact ? (
-              <div className="flex flex-wrap gap-1">
-                {onLeave.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
-                  const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
-                  const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
-                  return (
-                    <TapPopover key={s.id} trigger={
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-700 text-[12px] italic cursor-pointer active:scale-95">
-                        <LeaveIcon className="size-2.5 shrink-0" />
-                        {s.first_name} {s.last_name[0]}.
-                      </span>
-                    }>
-                      <p className="font-medium">{s.first_name} {s.last_name}</p>
-                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
-                    </TapPopover>
-                  )
-                })}
-                {offDuty.map((s) => {
-                  const roleColor = deptColorMap[s.role] ?? "#64748B"
-                  const isHov = hoveredStaffId === s.id
-                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
-                  return (
-                    <TapPopover key={s.id} trigger={
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-muted-foreground text-[12px] cursor-pointer active:scale-95"
-                        style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 6 }}>
-                        {s.first_name} {s.last_name[0]}.
-                      </span>
-                    }>
-                      <p className="font-medium">{s.first_name} {s.last_name}</p>
-                      {(() => {
-                        const weekDays = data?.days ?? []
-                        const offDays = weekDays.filter((d) => !d.assignments.some((a) => a.staff_id === s.id))
-                        const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                        const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
-                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
-                      })()}
-                    </TapPopover>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                {onLeave.map((s) => {
-                  const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
-                  const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
-                  return (
-                    <TapPopover key={s.id} trigger={
-                      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 cursor-pointer">
-                        <LeaveIcon className="size-3 text-amber-500 shrink-0" />
-                        <span className="text-[13px] text-amber-700 italic">{s.first_name} {s.last_name}</span>
-                      </div>
-                    }>
-                      <p className="font-medium">{s.first_name} {s.last_name}</p>
-                      <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d</p>
-                    </TapPopover>
-                  )
-                })}
-                {offDuty.map((s) => {
-                  const roleColor = deptColorMap[s.role] ?? "#64748B"
-                  return (
-                    <TapPopover key={s.id} trigger={
-                      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/50 bg-background text-muted-foreground cursor-pointer" style={{ ...(mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : {}), borderRadius: 8 }}>
-                        <span className="text-[13px]">{s.first_name} {s.last_name}</span>
-                      </div>
-                    }>
-                      <p className="font-medium">{s.first_name} {s.last_name}</p>
-                      {(() => {
-                        const weekDays = data?.days ?? []
-                        const offDays = weekDays.filter((d) => !d.assignments.some((a) => a.staff_id === s.id))
-                        const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                        const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
-                        return <p className="text-[11px] opacity-70">{deptLabelMap[s.role] ?? s.role} · {s.days_per_week}d{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
-                      })()}
-                    </TapPopover>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-      })()}
-    </div>
-  )
-}
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal } from "./calendar-panel/generation-modals"
+import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
@@ -2832,21 +151,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     return (sessionStorage.getItem("labrota_view") as ViewMode) || "week"
   })
   const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
-  const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
+  const [calendarLayout, setCalendarLayout] = usePersistedState<CalendarLayout>("labrota_calendar_layout", "shift")
   const [compact, setCompact] = useState(false)
-  const [personSimplified, setPersonSimplified] = useState(() => {
-    if (typeof window === "undefined") return true
-    const stored = localStorage.getItem("labrota_person_simplified")
-    return stored === null ? true : stored === "true" // default true
-  })
-  const [daysAsRows, setDaysAsRows] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("labrota_days_as_rows") === "true"
-  })
-  const [colorChips, setColorChips] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_color_chips") !== "false"
-  })
+  const [personSimplified, togglePersonSimplified, setPersonSimplified] = usePersistedToggle("labrota_person_simplified", true)
+  const [daysAsRows, toggleDaysAsRows, setDaysAsRows] = usePersistedToggle("labrota_days_as_rows", false)
+  const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
   // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
@@ -2879,23 +188,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
 
-  // ── Undo / Redo ────────────────────────────────────────────────────────────
-  type UndoEntry = {
-    snapshot: RotaWeekData
-    forwardSnapshot?: RotaWeekData // snapshot to restore on redo (optimistic)
-    inverse: () => Promise<{ error?: string }>
-    forward: () => Promise<{ error?: string }>
-  }
-  const undoStack = useRef<UndoEntry[]>([])
-  const redoStack = useRef<UndoEntry[]>([])
-  const [undoLen, setUndoLen] = useState(0)
-  const [redoLen, setRedoLen] = useState(0)
-  const [showSaved, setShowSaved] = useState(false)
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
-  const [loadingWeek, setLoadingWeek]   = useState(true)
+  const [loadingWeek, setLoadingWeek]   = useState(!initialData)
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(false)
+  const [initialLoaded, setInitialLoaded] = useState(!!initialData)
   const [loadingMonth, setLoadingMonth] = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
@@ -2929,57 +225,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
   const [dayWarningsOpen, setDayWarningsOpen] = useState(false)
-  const [mobileCompact, setMobileCompact] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_mobile_compact") !== "false"
-  })
-  const [mobileDeptColor, setMobileDeptColor] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_mobile_dept_color") !== "false"
-  })
+  const [mobileCompact, toggleMobileCompact, setMobileCompact] = usePersistedToggle("labrota_mobile_compact", true)
+  const [mobileDeptColor, toggleMobileDeptColor, setMobileDeptColor] = usePersistedToggle("labrota_mobile_dept_color", true)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [monthViewMode, setMonthViewMode] = useState<"shift" | "person">(() => {
-    if (typeof window === "undefined") return "shift"
-    return (localStorage.getItem("labrota_month_view") as "shift" | "person") ?? "shift"
-  })
+  const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
 
-  // Department filter — persisted in localStorage
-  // Dynamic department data from weekData (or defaults) — memoised to avoid re-creating every render
-  const departments = weekData?.departments ?? []
-  const globalDeptMaps = useMemo(() => buildDeptMaps(departments), [departments])
-  const ALL_DEPTS = useMemo(() =>
-    departments.length > 0 ? departments.map((d) => d.code) : ["lab", "andrology", "admin"],
-    [departments]
-  )
-  const deptAbbrMap = useMemo(() => Object.fromEntries(
-    departments.length > 0
-      ? departments.map((d) => [d.code, d.abbreviation || d.name.slice(0, 3)])
-      : [["lab", "Emb"], ["andrology", "And"], ["admin", "Adm"]]
-  ), [departments])
-  const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set(ALL_DEPTS))
-  // Reset filter when org departments change
-  useEffect(() => { setDeptFilter(new Set(ALL_DEPTS)) }, [ALL_DEPTS])
-  const allDeptsSelected = deptFilter.size >= ALL_DEPTS.length
-  function toggleDept(dept: string) {
-    setDeptFilter((prev) => {
-      const next = new Set(prev)
-      next.has(dept) ? next.delete(dept) : next.add(dept)
-      return next
-    })
-  }
-  function setAllDepts() {
-    setDeptFilter(new Set(ALL_DEPTS))
-  }
-  function setOnlyDept(dept: string) {
-    const next = new Set([dept])
-    setDeptFilter(next)
-    localStorage.setItem("labrota_dept_filter", JSON.stringify([dept]))
-  }
-
-  // Filtered staff list based on department filter
-  const filteredStaffList = allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role))
+  // Department filter (extracted to hook)
+  const {
+    departments, globalDeptMaps, ALL_DEPTS, deptAbbrMap,
+    deptFilter, allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
+    filteredStaffList,
+  } = useDepartmentFilter(weekData, staffList)
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
   // Swap state for desktop viewers
@@ -2987,28 +245,30 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
-  function openProfile(staffId: string) {
+
+  const openProfile = useCallback((staffId: string) => {
     setProfileStaffId(staffId)
     setProfileOpen(true)
-  }
+  }, [])
 
   // For desktop viewers: intercept chip click on their own assignments to open swap dialog
-  function handleDesktopChipClick(assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) {
+  const handleDesktopChipClick = useCallback((assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) => {
     if (desktopSwapEnabled && assignment.staff_id === viewerStaffId && assignment.id && assignment.shift_type && date) {
       setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date })
       setSwapDialogOpen(true)
     } else {
-      openProfile(assignment.staff_id)
+      setProfileStaffId(assignment.staff_id)
+      setProfileOpen(true)
     }
-  }
+  }, [desktopSwapEnabled, viewerStaffId])
 
-  // DnD state
-  const [draggingId, setDraggingId]     = useState<string | null>(null)
-  const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
-  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const handleOpenSheet = useCallback((date: string) => {
+    setSheetDate(date)
+    setSheetOpen(true)
+  }, [])
 
   // Local punctions override
-  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>({})
+  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(initialData?.rota?.punctions_override ?? {})
 
   // Handle biopsy override: back-calculate punction adjustments for D-5 and D-6
   // Formula: since d5Pct + d6Pct = 1, ΔP = ΔBiopsies / conversionRate
@@ -3040,17 +300,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
   const monthStart = getMonthStart(currentDate)
 
-  // Persist calendar layout preference
-  useEffect(() => {
-    const saved = localStorage.getItem("labrota_calendar_layout") as CalendarLayout | null
-    if (saved === "shift" || saved === "person") setCalendarLayoutState(saved)
-  }, [])
-
-  function setCalendarLayout(layout: CalendarLayout) {
-    setCalendarLayoutState(layout)
-    localStorage.setItem("labrota_calendar_layout", layout)
-  }
-
   // Fetch week data
   const fetchVersionRef = useRef(0)
   const initialDataUsed = useRef(false)
@@ -3065,14 +314,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }
 
   function prefetchAdjacent(ws: string) {
-    const prev = weekOffset(ws, -7)
-    const next = weekOffset(ws, 7)
-    if (!weekCache.current.has(prev)) {
-      getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+    // Defer prefetch to idle time so it doesn't compete with the main render
+    const run = () => {
+      const prev = weekOffset(ws, -7)
+      const next = weekOffset(ws, 7)
+      if (!weekCache.current.has(prev)) {
+        getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+      }
+      if (!weekCache.current.has(next)) {
+        getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
+      }
     }
-    if (!weekCache.current.has(next)) {
-      getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
-    }
+    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
+    else setTimeout(run, 200)
   }
 
   const fetchWeek = useCallback((ws: string) => {
@@ -3118,7 +372,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
-    getRotaWeek(ws).then((d) => {
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000))
+    Promise.race([getRotaWeek(ws), timeout]).then((d) => {
       if (fetchVersionRef.current !== version) return
       weekCache.current.set(ws, d)
       setInitialLoaded(true)
@@ -3148,94 +403,22 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     }).catch(() => {/* ignore — grid stays as-is */})
   }, [])
 
-  // ── Undo/Redo helpers ──────────────────────────────────────────────────────
-  function triggerSaved() {
-    setShowSaved(true)
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setShowSaved(false), 2000)
-  }
+  const handleRefresh = useCallback(() => {
+    fetchWeekSilent(weekStart)
+  }, [fetchWeekSilent, weekStart])
 
-  function cancelLastUndo() {
-    undoStack.current.pop()
-    setUndoLen(undoStack.current.length)
-  }
+  // DnD (extracted to hook)
+  const {
+    draggingId, draggingFrom, dragOverDate,
+    handleChipDragStart, handleChipDragEnd,
+    handleColumnDragOver, handleColumnDragLeave, handleColumnDrop,
+  } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
-  function pushUndo(
-    snapshot: RotaWeekData,
-    inverse: () => Promise<{ error?: string }>,
-    forward: () => Promise<{ error?: string }>,
-  ) {
-    undoStack.current = [...undoStack.current.slice(-19), { snapshot, inverse, forward }]
-    redoStack.current = []
-    setUndoLen(undoStack.current.length)
-    setRedoLen(0)
-  }
-
-  async function handleUndo() {
-    const entry = undoStack.current.pop()
-    if (!entry) return
-    const currentData = weekData
-    if (currentData) {
-      // Store current state so redo can apply it optimistically
-      redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
-      setRedoLen(redoStack.current.length)
-    }
-    // Bump lastFetchId so any pending debounced refresh is discarded
-    lastFetchId.current++
-    setWeekData(entry.snapshot)
-    setUndoLen(undoStack.current.length)
-    // Fire-and-forget: run inverse on server without blocking UI
-    entry.inverse().then((result) => {
-      if (result?.error) toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
-      fetchWeekSilent(weekStart)
-    }).catch(() => {
-      toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
-      fetchWeekSilent(weekStart)
-    })
-  }
-
-  async function handleRedo() {
-    const entry = redoStack.current.pop()
-    if (!entry) return
-    const currentData = weekData
-    // Apply optimistic forward snapshot immediately (like undo does)
-    if (entry.forwardSnapshot) {
-      lastFetchId.current++
-      setWeekData(entry.forwardSnapshot)
-    }
-    if (currentData) {
-      undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: entry.forwardSnapshot, inverse: entry.inverse, forward: entry.forward }]
-      setUndoLen(undoStack.current.length)
-    }
-    setRedoLen(redoStack.current.length)
-    // Fire-and-forget: run forward on server without blocking UI
-    entry.forward().then((result) => {
-      if (result?.error) toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
-      fetchWeekSilent(weekStart)
-    }).catch(() => {
-      toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
-      fetchWeekSilent(weekStart)
-    })
-  }
-
-  // Clear stacks when navigating weeks
-  useEffect(() => {
-    undoStack.current = []
-    redoStack.current = []
-    setUndoLen(0)
-    setRedoLen(0)
-  }, [weekStart])
-
-  // Keyboard shortcuts — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey)) return
-      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo() }
-      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); handleRedo() }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }) // intentionally no deps — closures must see latest stack state
+  // ── Undo/Redo (extracted to hook) ───────────────────────────────────────────
+  const {
+    undoLen, redoLen, showSaved,
+    triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
+  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId })
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
@@ -3247,7 +430,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     })
   }, [])
 
-  useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
+  // Skip initial fetch if server-prefetched data was provided
+  const skipInitialFetch = useRef(!!initialData)
+  useEffect(() => {
+    if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
+    fetchWeek(weekStart)
+  }, [weekStart, fetchWeek])
 
   // Apply favorite view on first mount — only if no session-stored view exists
   const favAppliedRef = useRef(false)
@@ -3292,8 +480,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if previous week has a rota (for "copy previous week" button)
-  // Don't reset to false while loading — keep the last known value
+  // Only fetch for editors in week view — button is hidden otherwise
   useEffect(() => {
+    if (!canEdit || view !== "week") return
     let cancelled = false
     const prev = new Date(weekStart + "T12:00:00")
     prev.setDate(prev.getDate() - 7)
@@ -3302,7 +491,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
     }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
     return () => { cancelled = true }
-  }, [weekStart])
+  }, [weekStart, canEdit, view])
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart, weekStart)
   }, [monthStart, weekStart, view, fetchMonth])
@@ -3314,6 +503,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
+  // Use activeStaff from weekData (returned by getRotaWeek) — avoids duplicate fetch
   const initialStaffUsed = useRef(false)
   useEffect(() => {
     if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
@@ -3322,8 +512,21 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setStaffLoaded(true)
       return
     }
-    getActiveStaff().then((s) => { setStaffList(s); setStaffLoaded(true) })
+    // Staff will be set from weekData.activeStaff when fetchWeek resolves — no separate call needed
+    if (!staffLoaded && !weekData?.activeStaff) {
+      // Fallback: fetch separately only if weekData doesn't include staff (e.g., older cached data)
+      const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
+      Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
+    }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When weekData arrives with activeStaff, use it (deduplicates the staff fetch)
+  useEffect(() => {
+    if (weekData?.activeStaff && weekData.activeStaff.length > 0) {
+      setStaffList(weekData.activeStaff)
+      setStaffLoaded(true)
+    }
+  }, [weekData?.activeStaff])
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
@@ -3445,40 +648,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setSheetOpen(true)
   }
 
-  // Drag and drop
-  function handleChipDragStart(assignmentId: string, fromDate: string) {
-    setDraggingId(assignmentId)
-    setDraggingFrom(fromDate)
-  }
-
-  function handleChipDragEnd() {
-    setDraggingId(null)
-    setDraggingFrom(null)
-    setDragOverDate(null)
-  }
-
-  function handleColumnDragOver(date: string, e: React.DragEvent) {
-    e.preventDefault()
-    setDragOverDate(date)
-  }
-
-  function handleColumnDragLeave() {
-    setDragOverDate(null)
-  }
-
-  function handleColumnDrop(toDate: string) {
-    if (!draggingId || !draggingFrom || toDate === draggingFrom) {
-      handleChipDragEnd()
-      return
-    }
-    const id = draggingId
-    handleChipDragEnd()
-    startTransition(async () => {
-      const result = await moveAssignment(id, toDate)
-      if (result.error) setError(result.error)
-      else fetchWeek(weekStart)
-    })
-  }
 
   function handlePunctionsChange(date: string, value: number | null) {
     if (!weekData?.rota) return
@@ -3522,23 +691,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
-  // Stable callbacks for child components — avoid re-creating on every render
-  const toggleMobileCompact = useCallback(() => {
-    setMobileCompact((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_compact", String(next)); return next })
-  }, [])
-  const toggleMobileDeptColor = useCallback(() => {
-    setMobileDeptColor((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_dept_color", String(next)); return next })
-  }, [])
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
-  const togglePersonSimplified = useCallback(() => {
-    setPersonSimplified((prev) => { const next = !prev; localStorage.setItem("labrota_person_simplified", String(next)); return next })
-  }, [])
-  const toggleColorChips = useCallback(() => {
-    setColorChips((prev) => { const next = !prev; localStorage.setItem("labrota_color_chips", String(next)); return next })
-  }, [])
-  const toggleDaysAsRows = useCallback(() => {
-    setDaysAsRows((prev) => { const next = !prev; localStorage.setItem("labrota_days_as_rows", String(next)); return next })
-  }, [])
 
   // On first load, show inline skeleton so the panel occupies space
   // and the chat panel doesn't appear alone before the calendar.
@@ -3636,7 +789,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift"); localStorage.setItem("labrota_month_view", "shift") }}
+                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift") }}
                       className={cn(
                         "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
@@ -3655,7 +808,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person"); localStorage.setItem("labrota_month_view", "person") }}
+                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person") }}
                       className={cn(
                         "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
@@ -3941,9 +1094,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
         {isPublished && view === "week" && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 flex items-center gap-2">
-            <Lock className="size-3.5 text-emerald-600 shrink-0" />
-            <span className="text-[13px] text-emerald-700">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 flex items-center gap-2">
+            <Lock className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-[13px] text-emerald-700 dark:text-emerald-300">
               {rota?.published_at
                 ? t("rotaPublishedBy", {
                     date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(rota.published_at)),
@@ -3969,7 +1122,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
-                <div className="absolute inset-0 z-10 bg-background">
+                <div className="absolute inset-0 z-10 bg-background flex flex-col">
                   {weekData?.rotaDisplayMode === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
                   ) : calendarLayout === "person" ? (
@@ -4041,10 +1194,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                       )
                     }
                   }}
-                  onCellClick={(date, tecCode) => {
-                    setSheetDate(date)
-                    setSheetOpen(true)
-                  }}
+                  onCellClick={handleOpenSheet}
                   onChipClick={openProfile}
                   onDateClick={handleMonthDayClick}
                 />
@@ -4056,7 +1206,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   loading={false}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onRefresh={handleRefresh}
                   onAfterMutation={canEdit ? pushUndo : undefined}
                   onCancelUndo={canEdit ? cancelLastUndo : undefined}
                   onSaved={canEdit ? triggerSaved : undefined}
@@ -4141,9 +1291,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   compact={compact}
                   colorChips={colorChips}
                   timeFormat={weekData?.timeFormat}
-                  onCellClick={(date) => { setSheetDate(date); setSheetOpen(true) }}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onCellClick={handleOpenSheet}
+                  onChipClick={handleDesktopChipClick}
+                  onRefresh={handleRefresh}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
@@ -4153,7 +1304,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
-                  onChipClick={(a) => openProfile(a.staff_id)}
+                  onChipClick={handleDesktopChipClick}
                   isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
@@ -4162,7 +1313,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={handlePunctionsChange}
                   onBiopsyChange={handleBiopsyChange}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onRefresh={handleRefresh}
                   onAfterMutation={canEdit ? pushUndo : undefined}
                   onCancelUndo={canEdit ? cancelLastUndo : undefined}
                   onSaved={canEdit ? triggerSaved : undefined}
@@ -4178,6 +1329,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   biopsyConversionRate={weekData?.biopsyConversionRate}
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : calendarLayout === "person" && daysAsRows ? (
                 <TransposedPersonGrid
@@ -4188,7 +1340,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
+                  onChipClick={handleDesktopChipClick}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -4196,6 +1348,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : (
                 <PersonGrid
@@ -4208,7 +1361,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
+                  onChipClick={handleDesktopChipClick}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -4216,6 +1369,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                   simplified={personSimplified}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ))}
             </div>
@@ -4242,24 +1396,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           </div>
         )}
 
-        {/* Mobile: viewer personal schedule */}
-        {!canEdit && viewerStaffId && weekData && (
-          <MySchedule
-            staffId={viewerStaffId}
-            days={weekData.days}
-            onLeaveByDate={weekData.onLeaveByDate ?? {}}
-            shiftTimes={weekData.shiftTimes ?? null}
-            tecnicas={weekData.tecnicas ?? []}
-            locale={locale as "es" | "en"}
-            timeFormat={weekData.timeFormat}
-            initialDate={currentDate}
-            swapEnabled={weekData.enableSwapRequests}
-            rotaPublished={weekData.rota?.status === "published"}
-          />
-        )}
-
-        {/* Mobile: admin/editor day view */}
-        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1", !canEdit && "hidden")}>
+        {/* Mobile: day view (all users) */}
+        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1")}>
           {/* Date carousel — hidden in edit mode */}
           {!mobileEditMode && weekData && (
             <WeeklyStrip
@@ -4562,102 +1700,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       />
 
       {/* Multi-week generation scope dialog */}
-      {showMultiWeekDialog && monthSummary && (() => {
-        const allWeekStarts: string[] = []
-        for (let i = 0; i < monthSummary.days.length; i += 7) {
-          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-        }
-        const publishedSet = new Set(
-          monthSummary.weekStatuses.filter((ws) => ws.status === "published").map((ws) => ws.weekStart)
-        )
-        const withRota = new Set(
-          monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
-        )
-        const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
-        // "Remaining" = weeks whose start date is >= today AND not published
-        const remaining = allWeekStarts.filter((ws) => ws >= TODAY && !publishedSet.has(ws))
-        const nonPublished = allWeekStarts.filter((ws) => !publishedSet.has(ws))
-        const hasOptions = withoutRota.length > 0 || remaining.length > 0 || nonPublished.length > 0
-
-        return (
-          <>
-            <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
-            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
-              <p className="text-[15px] font-medium">
-                {t("generate4WeeksTitle")}
-              </p>
-
-              {!hasOptions ? (
-                <p className="text-[13px] text-muted-foreground">
-                  {locale === "es" ? "Todas las semanas están publicadas." : "All weeks are published."}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {/* Option 1: Generate only weeks without rota */}
-                  {withoutRota.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(withoutRota)
-                        setShowStrategyModal(true)
-                      }}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="text-[14px] font-medium">{t("generateWeeksWithout")}</p>
-                        <p className="text-[12px] text-muted-foreground">{t("weeksWithoutSchedule", { count: withoutRota.length })}</p>
-                      </div>
-                    </button>
-                  )}
-                  {/* Option 2: Regenerate remaining (current + future) weeks */}
-                  {remaining.length > 0 && remaining.length < nonPublished.length && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(remaining)
-                        setShowStrategyModal(true)
-                      }}
-                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
-                    >
-                      {remaining.some((ws) => withRota.has(ws)) && (
-                        <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
-                      )}
-                      <p className="text-[14px] font-medium">{t("generateRemainingWeeks")}</p>
-                      <p className="text-[12px] text-muted-foreground">{t("remainingWeeksDescription", { count: remaining.length })}</p>
-                    </button>
-                  )}
-                  {/* Option 3: Regenerate all non-published weeks */}
-                  {nonPublished.length > 0 && nonPublished.length > withoutRota.length && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(nonPublished)
-                        setShowStrategyModal(true)
-                      }}
-                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
-                    >
-                      <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
-                      <p className="text-[14px] font-medium">{t("regenerateAllWeeks")}</p>
-                      <p className="text-[12px] text-muted-foreground">
-                        {nonPublished.length === allWeekStarts.length
-                          ? t("weeksOverwrite")
-                          : (locale === "es"
-                            ? `${nonPublished.length} semana(s) — sobreescribirá horarios existentes`
-                            : `${nonPublished.length} week(s) — will overwrite existing rotas`)}
-                      </p>
-                    </button>
-                  )}
-                </div>
-              )}
-              <div className="flex justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                  {tc("cancel")}
-                </Button>
-              </div>
-            </div>
-          </>
-        )
-      })()}
+      {showMultiWeekDialog && monthSummary && (
+        <MultiWeekScopeDialog
+          monthSummary={monthSummary}
+          onClose={() => setShowMultiWeekDialog(false)}
+          onSelectScope={(weeks) => { setMultiWeekScope(weeks); setShowStrategyModal(true) }}
+        />
+      )}
 
       {/* Staff profile panel */}
       <StaffProfilePanel
@@ -4759,8 +1808,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           date={swapAssignment.date}
           dateLabel={formatDate(swapAssignment.date, locale as "es" | "en")}
           locale={locale as "es" | "en"}
+          weekStart={weekStart}
         />
       )}
+
     </main>
   )
 }

@@ -16,7 +16,7 @@ export function ScheduleClient({
   initialStaff?: StaffWithSkills[]
   hasNotifications?: boolean
   initialNotes?: WeekNoteData
-}) {
+} = {}) {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
 
   // Listen for AI agent refresh events (from ProposalCard in layout-level ChatPanel)

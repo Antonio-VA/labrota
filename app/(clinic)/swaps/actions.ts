@@ -18,6 +18,14 @@ export interface SwapCandidate {
   coverageWarning: string | null
 }
 
+export interface DayOffCandidate {
+  staffId: string
+  firstName: string
+  lastName: string
+  role: string
+  weeklyAssignments: Array<{ date: string; shiftType: string; assignmentId: string }>
+}
+
 export interface SwapRequestWithNames extends SwapRequest {
   initiatorName: string
   targetName: string | null
@@ -165,12 +173,22 @@ export async function getSwapCandidates(assignmentId: string): Promise<{ candida
 
   if (!assignment) return { candidates: [], error: "Assignment not found." }
 
-  // Get all active staff in the org
+  // Get the initiator's role to filter candidates by same department
+  const { data: initiatorStaff } = await admin
+    .from("staff")
+    .select("role")
+    .eq("id", assignment.staff_id)
+    .single() as { data: { role: string } | null }
+
+  const initiatorRole = initiatorStaff?.role ?? "lab"
+
+  // Get all active staff in the org — same department only
   const { data: allStaff } = await admin
     .from("staff")
     .select("id, first_name, last_name, role, working_pattern, onboarding_status")
     .eq("organisation_id", orgId)
     .eq("onboarding_status", "active")
+    .eq("role", initiatorRole)
     .neq("id", assignment.staff_id) as { data: Array<{ id: string; first_name: string; last_name: string; role: string; working_pattern: string[]; onboarding_status: string }> | null }
 
   if (!allStaff || allStaff.length === 0) return { candidates: [] }
@@ -248,6 +266,164 @@ export async function getSwapCandidates(assignmentId: string): Promise<{ candida
   }
 
   return { candidates }
+}
+
+// ── Get day-off swap candidates (staff who are OFF on the initiator's date) ──
+
+export async function getDayOffCandidates(assignmentId: string): Promise<{ candidates: DayOffCandidate[]; error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { candidates: [], error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  const { data: assignment } = await admin
+    .from("rota_assignments")
+    .select("id, rota_id, staff_id, date, shift_type")
+    .eq("id", assignmentId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { id: string; rota_id: string; staff_id: string; date: string; shift_type: string } | null }
+
+  if (!assignment) return { candidates: [], error: "Assignment not found." }
+
+  // Get the initiator's role to filter candidates by same department
+  const { data: initiatorStaff } = await admin
+    .from("staff")
+    .select("role")
+    .eq("id", assignment.staff_id)
+    .single() as { data: { role: string } | null }
+
+  const initiatorRole = initiatorStaff?.role ?? "lab"
+
+  const { data: allStaff } = await admin
+    .from("staff")
+    .select("id, first_name, last_name, role")
+    .eq("organisation_id", orgId)
+    .eq("onboarding_status", "active")
+    .eq("role", initiatorRole)
+    .neq("id", assignment.staff_id) as { data: Array<{ id: string; first_name: string; last_name: string; role: string }> | null }
+
+  if (!allStaff || allStaff.length === 0) return { candidates: [] }
+
+  // Who is already working that day?
+  const { data: dayAssignments } = await admin
+    .from("rota_assignments")
+    .select("staff_id")
+    .eq("rota_id", assignment.rota_id)
+    .eq("date", assignment.date) as { data: Array<{ staff_id: string }> | null }
+
+  const workingOnDay = new Set((dayAssignments ?? []).map(a => a.staff_id))
+
+  // Who is on leave that day?
+  const { data: leaves } = await admin
+    .from("leaves")
+    .select("staff_id")
+    .eq("organisation_id", orgId)
+    .eq("status", "approved")
+    .lte("start_date", assignment.date)
+    .gte("end_date", assignment.date) as { data: Array<{ staff_id: string }> | null }
+
+  const onLeaveIds = new Set((leaves ?? []).map(l => l.staff_id))
+
+  // Only staff who are OFF (not working, not on leave)
+  const offStaff = allStaff.filter(s => !workingOnDay.has(s.id) && !onLeaveIds.has(s.id))
+  if (offStaff.length === 0) return { candidates: [] }
+
+  // Get their assignments for the rest of the week (to pick which day to exchange)
+  const offStaffIds = offStaff.map(s => s.id)
+  const { data: weekAssignments } = await admin
+    .from("rota_assignments")
+    .select("id, staff_id, date, shift_type")
+    .eq("rota_id", assignment.rota_id)
+    .in("staff_id", offStaffIds)
+    .neq("date", assignment.date) as { data: Array<{ id: string; staff_id: string; date: string; shift_type: string }> | null }
+
+  const weekMap: Record<string, Array<{ date: string; shiftType: string; assignmentId: string }>> = {}
+  for (const a of weekAssignments ?? []) {
+    if (!weekMap[a.staff_id]) weekMap[a.staff_id] = []
+    weekMap[a.staff_id].push({ date: a.date, shiftType: a.shift_type, assignmentId: a.id })
+  }
+
+  const candidates: DayOffCandidate[] = offStaff.map(s => ({
+    staffId: s.id,
+    firstName: s.first_name,
+    lastName: s.last_name,
+    role: s.role,
+    weeklyAssignments: (weekMap[s.id] ?? []).sort((a, b) => a.date.localeCompare(b.date)),
+  }))
+
+  return { candidates }
+}
+
+// ── Get exchange options for day-off swap ─────────────────────────────────────
+// Returns the TARGET's assignments on days when the INITIATOR is OFF
+// (current week + following week, 14 days from weekStart)
+
+export interface ExchangeOption {
+  date: string
+  shiftType: string
+  assignmentId: string
+}
+
+export async function getDayOffExchangeOptions(
+  initiatorAssignmentId: string,
+  targetStaffId: string,
+  weekStart: string,
+): Promise<{ options: ExchangeOption[]; error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { options: [], error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  // Get the initiator's assignment to find their staff ID
+  const { data: initAssignment } = await admin
+    .from("rota_assignments")
+    .select("id, staff_id, date")
+    .eq("id", initiatorAssignmentId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { id: string; staff_id: string; date: string } | null }
+
+  if (!initAssignment) return { options: [], error: "Assignment not found." }
+
+  // Build 14-day date range: weekStart → weekStart+13
+  const start = new Date(weekStart + "T12:00:00")
+  const dateRange: string[] = []
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    const iso = d.toISOString().split("T")[0]
+    // Exclude the initiator's own shift date
+    if (iso !== initAssignment.date) dateRange.push(iso)
+  }
+
+  if (dateRange.length === 0) return { options: [] }
+
+  // Get initiator's assignments in that range (to find their working days)
+  const { data: initiatorAssignments } = await admin
+    .from("rota_assignments")
+    .select("date")
+    .eq("staff_id", initAssignment.staff_id)
+    .eq("organisation_id", orgId)
+    .in("date", dateRange) as { data: Array<{ date: string }> | null }
+
+  const initiatorWorkingDays = new Set((initiatorAssignments ?? []).map(a => a.date))
+
+  // Initiator's OFF days = days in range where they have no assignment
+  const initiatorOffDays = dateRange.filter(d => !initiatorWorkingDays.has(d))
+  if (initiatorOffDays.length === 0) return { options: [] }
+
+  // Get target's assignments on those OFF days
+  const { data: targetAssignments } = await admin
+    .from("rota_assignments")
+    .select("id, date, shift_type")
+    .eq("staff_id", targetStaffId)
+    .eq("organisation_id", orgId)
+    .in("date", initiatorOffDays) as { data: Array<{ id: string; date: string; shift_type: string }> | null }
+
+  const options: ExchangeOption[] = (targetAssignments ?? [])
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(a => ({ date: a.date, shiftType: a.shift_type, assignmentId: a.id }))
+
+  return { options }
 }
 
 // ── Get my swap requests ─────────────────────────────────────────────────────
@@ -405,13 +581,49 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
     } as never)
 
   } else {
-    // day_off: reassign initiator's shift to target staff
+    // day_off: target covers initiator's day; initiator covers target's exchange day
     if (!swap.target_staff_id) return { error: "Target staff not specified." }
 
-    await admin
-      .from("rota_assignments")
-      .update({ staff_id: swap.target_staff_id, is_manual_override: true } as never)
-      .eq("id", initiatorAssignment.id)
+    if (swap.target_assignment_id) {
+      // Mutual exchange: both assignments are swapped
+      const { data: targetAssignment } = await admin
+        .from("rota_assignments")
+        .select("id, staff_id, shift_type, date, rota_id")
+        .eq("id", swap.target_assignment_id)
+        .single() as { data: { id: string; staff_id: string; shift_type: string; date: string; rota_id: string } | null }
+
+      if (!targetAssignment) {
+        await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" } as never).eq("id", swapId)
+        return { error: "The exchange assignment no longer exists." }
+      }
+
+      await admin.from("rota_assignments").delete().eq("id", initiatorAssignment.id)
+      await admin.from("rota_assignments").delete().eq("id", targetAssignment.id)
+
+      await admin.from("rota_assignments").insert({
+        rota_id: initiatorAssignment.rota_id,
+        staff_id: targetAssignment.staff_id,
+        date: initiatorAssignment.date,
+        shift_type: initiatorAssignment.shift_type,
+        organisation_id: swap.organisation_id,
+        is_manual_override: true,
+      } as never)
+
+      await admin.from("rota_assignments").insert({
+        rota_id: targetAssignment.rota_id,
+        staff_id: initiatorAssignment.staff_id,
+        date: targetAssignment.date,
+        shift_type: targetAssignment.shift_type,
+        organisation_id: swap.organisation_id,
+        is_manual_override: true,
+      } as never)
+    } else {
+      // Legacy / simple cover: reassign initiator's shift to target staff
+      await admin
+        .from("rota_assignments")
+        .update({ staff_id: swap.target_staff_id, is_manual_override: true } as never)
+        .eq("id", initiatorAssignment.id)
+    }
   }
 
   // Mark swap as approved
@@ -459,6 +671,129 @@ export async function isSwapEnabled(): Promise<boolean> {
   return !!(config?.enable_swap_requests && org?.rota_display_mode === "by_shift")
 }
 
+// ── Manager: get pending swap requests ──────────────────────────────────────
+
+export async function getPendingSwapRequestsForManager(): Promise<SwapRequestWithNames[]> {
+  const orgId = await getOrgId()
+  if (!orgId) return []
+
+  const admin = createAdminClient()
+
+  const { data: swaps } = await admin
+    .from("swap_requests")
+    .select("*")
+    .eq("organisation_id", orgId)
+    .eq("status", "pending_manager")
+    .order("created_at", { ascending: true }) as { data: SwapRequest[] | null }
+
+  if (!swaps || swaps.length === 0) return []
+
+  const staffIds = new Set<string>()
+  for (const s of swaps) {
+    staffIds.add(s.initiator_staff_id)
+    if (s.target_staff_id) staffIds.add(s.target_staff_id)
+  }
+
+  const { data: staffNames } = await admin
+    .from("staff")
+    .select("id, first_name, last_name")
+    .in("id", [...staffIds]) as { data: Array<{ id: string; first_name: string; last_name: string }> | null }
+
+  const nameMap = new Map((staffNames ?? []).map(s => [s.id, `${s.first_name} ${s.last_name}`]))
+
+  return swaps.map(s => ({
+    ...s,
+    initiatorName: nameMap.get(s.initiator_staff_id) ?? "Unknown",
+    targetName: s.target_staff_id ? nameMap.get(s.target_staff_id) ?? "Unknown" : null,
+  }))
+}
+
+// ── Manager: approve swap request ────────────────────────────────────────────
+
+export async function approveSwapByManager(swapId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated." }
+
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  const { data: swap } = await admin
+    .from("swap_requests")
+    .select("*")
+    .eq("id", swapId)
+    .eq("organisation_id", orgId)
+    .single() as { data: SwapRequest | null }
+
+  if (!swap) return { error: "Swap request not found." }
+  if (swap.status !== "pending_manager") return { error: "Swap is not pending manager approval." }
+
+  const { error } = await admin
+    .from("swap_requests")
+    .update({
+      status: "pending_target",
+      manager_reviewed_at: new Date().toISOString(),
+      manager_reviewed_by: user.id,
+    } as never)
+    .eq("id", swapId)
+
+  if (error) return { error: error.message }
+
+  // Notify target staff via in-app notification + email
+  try {
+    const { notifySwapTarget, sendSwapTargetEmail } = await import("@/lib/swap-email")
+    await Promise.all([
+      notifySwapTarget(swapId, orgId),
+      sendSwapTargetEmail(swapId, orgId),
+    ])
+  } catch (e) {
+    console.error("[swap] Failed to notify target after manager approval:", e)
+  }
+
+  revalidatePath("/")
+  return {}
+}
+
+// ── Manager: reject swap request ─────────────────────────────────────────────
+
+export async function rejectSwapByManager(swapId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated." }
+
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
+  const admin = createAdminClient()
+
+  const { data: swap } = await admin
+    .from("swap_requests")
+    .select("id, organisation_id, status")
+    .eq("id", swapId)
+    .eq("organisation_id", orgId)
+    .single() as { data: { id: string; organisation_id: string; status: string } | null }
+
+  if (!swap) return { error: "Swap request not found." }
+  if (swap.status !== "pending_manager") return { error: "Swap is not pending manager approval." }
+
+  const { error } = await admin
+    .from("swap_requests")
+    .update({
+      status: "rejected",
+      rejected_by: "manager",
+      manager_reviewed_at: new Date().toISOString(),
+      manager_reviewed_by: user.id,
+    } as never)
+    .eq("id", swapId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/")
+  return {}
+}
+
 // ── Check pending swaps for an assignment ────────────────────────────────────
 
 export async function hasPendingSwap(assignmentId: string): Promise<boolean> {
@@ -474,4 +809,72 @@ export async function hasPendingSwap(assignmentId: string): Promise<boolean> {
     .maybeSingle() as { data: { id: string } | null }
 
   return !!data
+}
+
+// ── Get all swap requests for the org (managers) ────────────────────────────
+
+export async function getOrgSwapRequests(): Promise<SwapRequestWithNames[]> {
+  const orgId = await getOrgId()
+  if (!orgId) return []
+
+  const admin = createAdminClient()
+
+  const { data: swaps } = await admin
+    .from("swap_requests")
+    .select("*")
+    .eq("organisation_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(30) as { data: SwapRequest[] | null }
+
+  if (!swaps || swaps.length === 0) return []
+
+  const staffIds = new Set<string>()
+  for (const s of swaps) {
+    staffIds.add(s.initiator_staff_id)
+    if (s.target_staff_id) staffIds.add(s.target_staff_id)
+  }
+
+  const { data: staffNames } = await admin
+    .from("staff")
+    .select("id, first_name, last_name")
+    .in("id", [...staffIds]) as { data: Array<{ id: string; first_name: string; last_name: string }> | null }
+
+  const nameMap = new Map((staffNames ?? []).map(s => [s.id, `${s.first_name} ${s.last_name}`]))
+
+  return swaps.map(s => ({
+    ...s,
+    initiatorName: nameMap.get(s.initiator_staff_id) ?? "Unknown",
+    targetName: s.target_staff_id ? nameMap.get(s.target_staff_id) ?? "Unknown" : null,
+  }))
+}
+
+// ── Get swap badge count ────────────────────────────────────────────────────
+
+export async function getSwapBadgeCount(role: "viewer" | "manager" | "admin", staffId?: string): Promise<number> {
+  const orgId = await getOrgId()
+  if (!orgId) return 0
+
+  const admin = createAdminClient()
+
+  if (role === "admin" || role === "manager") {
+    // Managers see count of pending_manager requests
+    const { count } = await admin
+      .from("swap_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organisation_id", orgId)
+      .eq("status", "pending_manager") as { count: number | null }
+    return count ?? 0
+  }
+
+  if (!staffId) return 0
+
+  // Staff see count of active (non-resolved) requests they're involved in
+  const { count } = await admin
+    .from("swap_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", orgId)
+    .or(`initiator_staff_id.eq.${staffId},target_staff_id.eq.${staffId}`)
+    .in("status", ["pending_manager", "manager_approved", "pending_target"]) as { count: number | null }
+
+  return count ?? 0
 }

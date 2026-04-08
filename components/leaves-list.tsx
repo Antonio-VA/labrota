@@ -1,11 +1,11 @@
 "use client"
 
 import { useActionState, useEffect, useState, useTransition, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud,
 } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
 import { LeaveFileImport } from "@/components/leave-file-import"
@@ -20,6 +20,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet"
 import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave } from "@/app/(clinic)/leaves/actions"
+import { OutlookSyncPanel } from "@/components/outlook-sync-panel"
 import { formatDateWithYear } from "@/lib/format-date"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -509,6 +510,12 @@ function LeaveCard({
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
+        {leave.source === "outlook" && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400" title="Synced from Outlook">
+            <Cloud className="size-2.5" />
+            Outlook
+          </span>
+        )}
         <span className={cn("text-[12px]", muted ? "text-muted-foreground" : "text-foreground/70")}>
           {formatDateWithYear(leave.start_date, locale)} — {formatDateWithYear(leave.end_date, locale)}
         </span>
@@ -591,7 +598,12 @@ function LeavesTable({
                   {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
                 </td>
                 <td className="px-4 py-2.5">
-                  <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
+                  <div className="flex items-center gap-1.5">
+                    <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
+                    {leave.source === "outlook" && (
+                      <span title="Synced from Outlook"><Cloud className="size-3.5 text-blue-500" /></span>
+                    )}
+                  </div>
                 </td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
@@ -685,14 +697,13 @@ function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   const cards: { label: string; value: number | string; detail?: string }[] = [
     { label: t("absentToday"), value: absentToday },
     { label: t("thisWeek"), value: `${thisWeekDays}d` },
-    { label: t("upcomingLeaves"), value: upcomingLeaves.length, detail: upcomingNames.length > 0 ? upcomingNames.slice(0, 3).join(", ") + (upcomingNames.length > 3 ? ` +${upcomingNames.length - 3}` : "") : undefined },
     { label: t("next4Weeks"), value: `${next4WeeksDays}d` },
     { label: t("next12Weeks"), value: `${next12WeeksDays}d` },
     { label: t("pendingReview"), value: pendingCount },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
       {cards.map((kpi) => (
         <div key={kpi.label} className="rounded-xl border border-border/60 bg-background px-3 md:px-4 py-2.5 md:py-3">
           <p className="text-[11px] md:text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.label}</p>
@@ -771,15 +782,20 @@ export function LeavesList({
   userRole = "admin",
   viewerStaffId,
   enableLeaveRequests = false,
+  enableOutlookSync = false,
+  orgId,
 }: {
   leaves: LeaveWithStaff[]
   staff: Staff[]
   userRole?: "admin" | "manager" | "viewer"
   viewerStaffId?: string | null
   enableLeaveRequests?: boolean
+  enableOutlookSync?: boolean
+  orgId?: string
 }) {
   const isViewer = userRole === "viewer"
   const t      = useTranslations("leaves")
+  const to     = useTranslations("outlook")
   const tc     = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const router = useRouter()
@@ -790,9 +806,28 @@ export function LeavesList({
   const [showHistory, setShowHistory] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
+  const [outlookPanelOpen, setOutlookPanelOpen] = useState(false)
   const [, startCancelTransition] = useTransition()
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
+  const searchParams = useSearchParams()
+
+  // Handle Outlook OAuth callback URL params
+  useEffect(() => {
+    const outlookStatus = searchParams.get("outlook")
+    if (!outlookStatus) return
+    const reason = searchParams.get("reason")
+    if (outlookStatus === "connected") {
+      toast.success(to("featureEnabled"))
+      setOutlookPanelOpen(true)
+    } else if (outlookStatus === "cancelled") {
+      toast.info("Outlook connection cancelled")
+    } else if (outlookStatus === "error") {
+      toast.error(`Outlook connection failed${reason ? `: ${reason}` : ""}`)
+    }
+    // Clean URL params
+    router.replace("/leaves", { scroll: false })
+  }, [searchParams, router, to])
 
   function handleCancel(leaveId: string) {
     toast(t("cancelConfirm"), {
@@ -919,6 +954,12 @@ export function LeavesList({
             <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setFileImportOpen(true)}>
               <FileUp className="size-4" />
               {t("addFromFile")}
+            </Button>
+          )}
+          {!isViewer && enableOutlookSync && orgId && (
+            <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setOutlookPanelOpen(true)}>
+              <Cloud className="size-4" />
+              {to("outlook")}
             </Button>
           )}
         </div>
@@ -1092,6 +1133,15 @@ export function LeavesList({
         </>
       )}
       </div>
+
+      {/* Outlook Sync Panel */}
+      {enableOutlookSync && orgId && (
+        <OutlookSyncPanel
+          open={outlookPanelOpen}
+          onClose={() => setOutlookPanelOpen(false)}
+          orgId={orgId}
+        />
+      )}
     </div>
   )
 }

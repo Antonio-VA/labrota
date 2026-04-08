@@ -55,11 +55,7 @@ export function SettingsTabs({
         ))}
       </div>
       <div className="w-full">
-        {tabKeys.map((key) => (
-          <div key={key} className={key !== active ? "hidden" : undefined}>
-            {content[key]}
-          </div>
-        ))}
+        {content[active]}
       </div>
     </div>
   )

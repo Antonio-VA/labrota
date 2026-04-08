@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
-import { ArrowLeftRight, X, Loader2 } from "lucide-react"
+import { ArrowLeftRight, Check, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +27,7 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
   const [swaps, setSwaps] = useState<SwapRequestWithNames[]>([])
   const [loading, setLoading] = useState(true)
   const [cancelling, startCancel] = useTransition()
+  const [accepting, startAccept] = useTransition()
 
   useEffect(() => {
     let mounted = true
@@ -52,8 +53,22 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
     })
   }
 
+  function handleAccept(swapId: string) {
+    startAccept(async () => {
+      const { executeSwap } = await import("@/app/(clinic)/swaps/actions")
+      const result = await executeSwap(swapId)
+      if (!result.error) {
+        setSwaps(prev => prev.map(s => s.id === swapId ? { ...s, status: "approved" } : s))
+      }
+    })
+  }
+
   if (loading) return null
-  if (swaps.length === 0) return null
+
+  // Only show swaps for today or future dates
+  const today = new Date().toISOString().split("T")[0]
+  const futureSwaps = swaps.filter(s => s.swap_date >= today)
+  if (futureSwaps.length === 0) return null
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -70,10 +85,11 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{t("mySwaps")}</p>
-      {swaps.slice(0, 5).map(swap => {
+      {futureSwaps.slice(0, 5).map(swap => {
         const isInitiator = swap.initiator_staff_id === staffId
         const otherName = isInitiator ? swap.targetName : swap.initiatorName
         const canCancel = isInitiator && ["pending_manager", "manager_approved", "pending_target"].includes(swap.status)
+        const canAccept = !isInitiator && swap.status === "pending_target"
 
         return (
           <div key={swap.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background">
@@ -89,6 +105,17 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
             <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", STATUS_STYLE[swap.status] ?? "")}>
               {statusLabel(swap.status)}
             </span>
+            {canAccept && (
+              <button
+                onClick={() => handleAccept(swap.id)}
+                disabled={accepting}
+                className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                title={t("acceptSwap")}
+              >
+                {accepting ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                {t("acceptSwap")}
+              </button>
+            )}
             {canCancel && (
               <button
                 onClick={() => handleCancel(swap.id)}

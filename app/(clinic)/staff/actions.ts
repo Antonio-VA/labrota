@@ -10,6 +10,51 @@ import { getOrgId } from "@/lib/get-org-id"
 import type { StaffRole, OnboardingStatus, ContractType, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+async function inviteStaffAsViewer(staffId: string, email: string, fullName: string, orgId: string) {
+  const admin = createAdminClient()
+
+  // Read org auth method for correct redirect
+  const { data: orgData } = await admin
+    .from("organisations")
+    .select("auth_method")
+    .eq("id", orgId)
+    .single() as { data: { auth_method: string } | null }
+  const redirectTo = orgData?.auth_method === "password"
+    ? "https://www.labrota.app/auth/callback?next=/set-password"
+    : "https://www.labrota.app/auth/callback"
+
+  // Check if user already exists
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle() as { data: { id: string } | null }
+
+  let userId: string
+  if (existingProfile) {
+    userId = existingProfile.id
+  } else {
+    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: fullName },
+      redirectTo,
+    })
+    if (inviteError) { console.error("Invite failed:", inviteError.message); return }
+    userId = invited.user.id
+  }
+
+  // Link organisation member
+  await admin.from("organisation_members").upsert(
+    { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName, linked_staff_id: staffId } as never,
+    { onConflict: "organisation_id,user_id" }
+  )
+
+  // Set profile org if first org
+  const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
+  if (!profile?.organisation_id) {
+    await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
+  }
+}
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 function parseSkillsFromForm(formData: FormData): { skill: string; level: SkillLevel }[] {
   const skills: { skill: string; level: SkillLevel }[] = []
@@ -109,42 +154,9 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
     // Invite as viewer if checkbox was checked and email provided
     if (inviteViewer && staff.email) {
       try {
-        const admin = createAdminClient()
-        const fullName = `${staff.first_name} ${staff.last_name}`.trim()
-
-        // Check if user already exists in profiles (linked to auth.users)
-        const { data: existingProfile } = await admin
-          .from("profiles")
-          .select("id")
-          .eq("email", staff.email)
-          .maybeSingle() as { data: { id: string } | null }
-
-        let userId: string
-        if (existingProfile) {
-          userId = existingProfile.id
-        } else {
-          const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(staff.email, {
-            data: { full_name: fullName },
-            redirectTo: "https://www.labrota.app/auth/callback",
-          })
-          if (inviteError) { console.error("Invite failed:", inviteError.message); return }
-          userId = invited.user.id
-        }
-
-        // Link staff record to user
-        await admin.from("staff").update({ linked_user_id: userId } as never).eq("id", newStaffId)
-
-        await admin.from("organisation_members").upsert(
-          { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName } as never,
-          { onConflict: "organisation_id,user_id" }
-        )
-
-        const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
-        if (!profile?.organisation_id) {
-          await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
-        }
+        await inviteStaffAsViewer(newStaffId, staff.email, `${staff.first_name} ${staff.last_name}`.trim(), orgId)
       } catch (e) {
-        console.error("Viewer invite error:", e)
+        console.error("[staff] Viewer invite error:", e)
       }
     }
   })
@@ -179,6 +191,18 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
       skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
     )
     if (insError) return { error: insError.message }
+  }
+
+  // Invite as viewer if checkbox was checked and email provided
+  const inviteViewer = formData.get("invite_viewer") === "on"
+  if (inviteViewer && staff.email) {
+    after(async () => {
+      try {
+        await inviteStaffAsViewer(id, staff.email!, `${staff.first_name} ${staff.last_name}`.trim(), orgId)
+      } catch (e) {
+        console.error("[staff] Viewer invite error:", e)
+      }
+    })
   }
 
   revalidatePath("/staff")
@@ -396,7 +420,7 @@ export async function bulkUpdateStaffField(
   let count = 0
   for (const { id, field, value } of updates) {
     // Only allow safe fields
-    const allowed = ["first_name", "last_name", "preferred_shift", "avoid_shifts", "preferred_days", "avoid_days", "days_per_week", "working_pattern", "onboarding_status", "color"]
+    const allowed = ["first_name", "last_name", "email", "preferred_shift", "avoid_shifts", "preferred_days", "avoid_days", "days_per_week", "working_pattern", "onboarding_status", "color"]
     if (!allowed.includes(field)) continue
     const { error } = await supabase
       .from("staff")

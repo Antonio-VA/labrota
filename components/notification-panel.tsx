@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Bell, X, Check, AlertTriangle, CalendarDays } from "lucide-react"
+import { Bell, X, Check, AlertTriangle, CalendarDays, ArrowLeftRight, Loader2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
@@ -14,10 +14,14 @@ import {
 } from "@/app/(clinic)/notification-actions"
 import type { Notification } from "@/lib/types/database"
 
+const SWAP_TYPES = new Set(["swap_request", "swap_pending_target", "swap_approved", "swap_rejected"])
+
 const TYPE_ICON: Record<string, React.ReactNode> = {
-  leave_impact:  <AlertTriangle className="size-4 text-amber-500 shrink-0" />,
-  info:          <CalendarDays className="size-4 text-primary shrink-0" />,
-  shift_change:  <CalendarDays className="size-4 text-blue-500 shrink-0" />,
+  leave_impact:        <AlertTriangle className="size-4 text-amber-500 shrink-0" />,
+  info:                <CalendarDays className="size-4 text-primary shrink-0" />,
+  shift_change:        <CalendarDays className="size-4 text-blue-500 shrink-0" />,
+  swap_request:        <ArrowLeftRight className="size-4 text-primary shrink-0" />,
+  swap_pending_target: <ArrowLeftRight className="size-4 text-amber-500 shrink-0" />,
 }
 
 export function NotificationBell({ large }: { large?: boolean } = {}) {
@@ -27,6 +31,8 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
   const [count, setCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
+  const [swapActioning, setSwapActioning] = useState<Record<string, "approving" | "rejecting">>({})
+  const [swapActioned, setSwapActioned] = useState<Set<string>>(new Set())
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const delayRef = useRef(30_000) // start at 30s
@@ -50,7 +56,10 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
   useEffect(() => {
     getUnreadCount().then(setCount)
     // Prefetch notifications in background so opening is instant
-    getNotifications().then(setNotifications)
+    getNotifications().then((all) => {
+      const filtered = all.filter(n => !SWAP_TYPES.has(n.type))
+      setNotifications(filtered)
+    })
     scheduleNext()
     return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
   }, [scheduleNext])
@@ -59,7 +68,10 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
     setOpen(true)
     if (notifications.length === 0) {
       setLoading(true)
-      getNotifications().then((n) => { setNotifications(n); setLoading(false) })
+      getNotifications().then((all) => {
+        setNotifications(all.filter(n => !SWAP_TYPES.has(n.type)))
+        setLoading(false)
+      })
     }
   }
 
@@ -83,6 +95,42 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
       window.location.href = `/?week=${weeks[0]}`
     }
     setOpen(false)
+  }
+
+  async function handleApproveSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "approving" }))
+    const { approveSwapByManager } = await import("@/app/(clinic)/swaps/actions")
+    await approveSwapByManager(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
+  }
+
+  async function handleRejectSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "rejecting" }))
+    const { rejectSwapByManager } = await import("@/app/(clinic)/swaps/actions")
+    await rejectSwapByManager(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
+  }
+
+  async function handleAcceptSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "approving" }))
+    const { executeSwap } = await import("@/app/(clinic)/swaps/actions")
+    await executeSwap(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
+  }
+
+  async function handleDeclineSwap(n: Notification, swapId: string) {
+    setSwapActioning(prev => ({ ...prev, [n.id]: "rejecting" }))
+    const { cancelSwapRequest } = await import("@/app/(clinic)/swaps/actions")
+    await cancelSwapRequest(swapId)
+    setSwapActioned(prev => new Set([...prev, n.id]))
+    setSwapActioning(prev => { const s = { ...prev }; delete s[n.id]; return s })
+    if (!n.read) handleMarkRead(n.id)
   }
 
   return (
@@ -147,29 +195,131 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
             </div>
           ) : (
             <div className="flex flex-col">
-              {notifications.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => handleClickNotification(n)}
-                  className={cn(
-                    "flex items-start gap-3 px-4 py-3 text-left border-b border-border transition-colors",
-                    n.read ? "bg-background" : "bg-primary/5",
-                    "hover:bg-muted"
-                  )}
-                >
-                  {TYPE_ICON[n.type] ?? TYPE_ICON.info}
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-[13px] leading-tight", !n.read && "font-medium")}>{n.title}</p>
-                    <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      {formatDateTime(n.created_at, locale)}
-                    </p>
-                  </div>
-                  {!n.read && (
-                    <span className="size-2 rounded-full bg-primary shrink-0 mt-1.5" />
-                  )}
-                </button>
-              ))}
+              {notifications.map((n) => {
+                const swapId = (n.data as { swapId?: string })?.swapId
+                const isSwapRequest = n.type === "swap_request" && swapId
+                const isSwapTarget = n.type === "swap_pending_target" && swapId
+                const actioning = swapActioning[n.id]
+                const actioned = swapActioned.has(n.id)
+
+                if (isSwapTarget) {
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3 border-b border-border",
+                        n.read || actioned ? "bg-background" : "bg-amber-500/5"
+                      )}
+                    >
+                      {TYPE_ICON.swap_pending_target}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-[13px] leading-tight", !n.read && !actioned && "font-medium")}>{n.title}</p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{formatDateTime(n.created_at, locale)}</p>
+                        {actioned ? (
+                          <p className="text-[11px] text-emerald-600 mt-1.5 flex items-center gap-1">
+                            <Check className="size-3" />
+                            {locale === "es" ? "Gestionado" : "Done"}
+                          </p>
+                        ) : (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => handleAcceptSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "approving" ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                              {locale === "es" ? "Aceptar" : "Accept"}
+                            </button>
+                            <button
+                              onClick={() => handleDeclineSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "rejecting" ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+                              {locale === "es" ? "Declinar" : "Decline"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {!n.read && !actioned && (
+                        <span className="size-2 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                      )}
+                    </div>
+                  )
+                }
+
+                if (isSwapRequest) {
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3 border-b border-border",
+                        n.read || actioned ? "bg-background" : "bg-primary/5"
+                      )}
+                    >
+                      {TYPE_ICON.swap_request}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-[13px] leading-tight", !n.read && !actioned && "font-medium")}>{n.title}</p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{formatDateTime(n.created_at, locale)}</p>
+                        {actioned ? (
+                          <p className="text-[11px] text-emerald-600 mt-1.5 flex items-center gap-1">
+                            <Check className="size-3" />
+                            {locale === "es" ? "Gestionado" : "Done"}
+                          </p>
+                        ) : (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => handleApproveSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "approving" ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                              {locale === "es" ? "Aprobar" : "Approve"}
+                            </button>
+                            <button
+                              onClick={() => handleRejectSwap(n, swapId!)}
+                              disabled={!!actioning}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {actioning === "rejecting" ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+                              {locale === "es" ? "Rechazar" : "Reject"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {!n.read && !actioned && (
+                        <span className="size-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                      )}
+                    </div>
+                  )
+                }
+
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => handleClickNotification(n)}
+                    className={cn(
+                      "flex items-start gap-3 px-4 py-3 text-left border-b border-border transition-colors",
+                      n.read ? "bg-background" : "bg-primary/5",
+                      "hover:bg-muted"
+                    )}
+                  >
+                    {TYPE_ICON[n.type] ?? TYPE_ICON.info}
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-[13px] leading-tight", !n.read && "font-medium")}>{n.title}</p>
+                      <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        {formatDateTime(n.created_at, locale)}
+                      </p>
+                    </div>
+                    {!n.read && (
+                      <span className="size-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

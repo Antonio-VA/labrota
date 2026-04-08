@@ -123,20 +123,24 @@ export interface StaffSkill {
   created_at:      string
 }
 
+export type LeaveSource = 'manual' | 'outlook'
+
 export interface Leave {
-  id:              string
-  organisation_id: string
-  staff_id:        string
-  type:            LeaveType
-  start_date:      string
-  end_date:        string
-  status:          LeaveStatus
-  notes:           string | null
-  created_by:      string | null
-  reviewed_by:     string | null
-  reviewed_at:     string | null
-  created_at:      string
-  updated_at:      string
+  id:               string
+  organisation_id:  string
+  staff_id:         string
+  type:             LeaveType
+  start_date:       string
+  end_date:         string
+  status:           LeaveStatus
+  source:           LeaveSource
+  outlook_event_id: string | null
+  notes:            string | null
+  created_by:       string | null
+  reviewed_by:      string | null
+  reviewed_at:      string | null
+  created_at:       string
+  updated_at:       string
 }
 
 export type GenerationType = 'strict_template' | 'flexible_template' | 'ai_optimal' | 'ai_optimal_v2' | 'ai_reasoning' | 'ai_hybrid' | 'manual'
@@ -236,6 +240,7 @@ export interface LabConfig {
   enable_leave_requests:    boolean
   enable_swap_requests:     boolean  // allow staff to request shift swaps on published rotas
   enable_task_in_shift:     boolean  // show task assignment in by_shift mode
+  enable_outlook_sync:      boolean
   enable_notes:             boolean
   days_off_preference:      "always_weekend" | "prefer_weekend" | "any_day" | "guardia"  // default "prefer_weekend"
   guardia_min_weeks_between: number  // default 2 — min full weeks between two guardias for same person
@@ -260,6 +265,22 @@ export interface LabConfig {
   shift_full_end:           string
   created_at:               string
   updated_at:               string
+}
+
+// ── Outlook Connections ──────────────────────────────────────────────────────
+export interface OutlookConnection {
+  id:                string
+  organisation_id:   string
+  staff_id:          string
+  microsoft_user_id: string
+  email:             string
+  access_token:      string   // encrypted at app layer
+  refresh_token:     string   // encrypted at app layer
+  token_expires_at:  string
+  last_synced_at:    string | null
+  sync_enabled:      boolean
+  created_at:        string
+  updated_at:        string
 }
 
 // ── Swap Requests ────────────────────────────────────────────────────────────
@@ -320,6 +341,7 @@ export type LabConfigUpdate = {
   biopsy_day6_pct?:          number
   task_conflict_threshold?:  number
   shift_rotation?:           "stable" | "weekly" | "daily"
+  enable_outlook_sync?:      boolean
   enable_notes?:             boolean
   enable_task_in_shift?:     boolean
   enable_leave_requests?:    boolean
@@ -525,6 +547,12 @@ export interface Database {
         Row:    Department
         Insert: { organisation_id: string; code: string; name: string; name_en?: string; abbreviation?: string; colour?: string; is_default?: boolean; sort_order?: number }
         Update: { name?: string; name_en?: string; abbreviation?: string; colour?: string; sort_order?: number }
+        Relationships: []
+      }
+      outlook_connections: {
+        Row:    OutlookConnection
+        Insert: { organisation_id: string; staff_id: string; microsoft_user_id: string; email: string; access_token: string; refresh_token: string; token_expires_at: string; sync_enabled?: boolean }
+        Update: { access_token?: string; refresh_token?: string; token_expires_at?: string; last_synced_at?: string; sync_enabled?: boolean }
         Relationships: []
       }
       organisation_members: {

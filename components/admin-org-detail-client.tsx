@@ -9,10 +9,31 @@ import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, toggleOrgSwapRequests, toggleOrgOutlookSync, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
+
+function AdminToggle({ label, desc, value, onChange, disabled }: {
+  label: string; desc: string; value: boolean; onChange: (v: boolean) => void; disabled: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-[14px] font-medium">{label}</p>
+        <p className="text-[12px] text-muted-foreground">{desc}</p>
+      </div>
+      <button type="button" disabled={disabled} onClick={() => onChange(!value)}
+        className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+          value ? "bg-emerald-500" : "bg-muted-foreground/20"
+        )}>
+        <span className={cn("pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
+          value ? "translate-x-5" : "translate-x-0"
+        )} />
+      </button>
+    </div>
+  )
+}
 
 export function AdminOrgDetailClient({
   orgId,
@@ -24,6 +45,8 @@ export function AdminOrgDetailClient({
   initialLogoUrl = null,
   initialDisplayMode = "by_shift",
   initialLeaveRequests = false,
+  initialEnableSwapRequests = false,
+  initialEnableOutlookSync = false,
   initialEnableNotes = true,
   initialEnableTaskInShift = false,
   initialAuthMethod = "password",
@@ -51,6 +74,8 @@ export function AdminOrgDetailClient({
   initialLogoUrl?: string | null
   initialDisplayMode?: "by_shift" | "by_task"
   initialLeaveRequests?: boolean
+  initialEnableSwapRequests?: boolean
+  initialEnableOutlookSync?: boolean
   initialEnableNotes?: boolean
   initialEnableTaskInShift?: boolean
   initialAuthMethod?: "otp" | "password"
@@ -84,6 +109,8 @@ export function AdminOrgDetailClient({
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [displayMode, setDisplayMode] = useState(initialDisplayMode)
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests)
+  const [enableSwapRequests, setEnableSwapRequests] = useState(initialEnableSwapRequests)
+  const [enableOutlookSync, setEnableOutlookSync] = useState(initialEnableOutlookSync)
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
   const [authMethod, setAuthMethod] = useState(initialAuthMethod)
@@ -326,8 +353,10 @@ export function AdminOrgDetailClient({
       {(section === "all" || section === "funcionalidades") && <>
       {/* ── FUNCIONALIDADES ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
+
+        {/* Schedule mode */}
         <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-          {/* Display mode */}
+          <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Horario</p>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[14px] font-medium">Modo de horario</p>
@@ -340,105 +369,47 @@ export function AdminOrgDetailClient({
                 { key: "by_shift" as const, label: t("byShift") },
                 { key: "by_task" as const, label: t("byTask") },
               ]).map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => setDisplayMode(key)}
-                  className={cn(
-                    "px-4 py-1.5 text-[13px] font-medium transition-colors",
-                    displayMode === key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-transparent text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {label}
-                </button>
+                <button key={key} type="button" disabled={isPending} onClick={() => setDisplayMode(key)}
+                  className={cn("px-4 py-1.5 text-[13px] font-medium transition-colors",
+                    displayMode === key ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
+                  )}>{label}</button>
               ))}
             </div>
           </div>
-
           <div className="h-px bg-border" />
-
-          {/* Leave requests */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[14px] font-medium">Solicitud de ausencias</p>
-              <p className="text-[12px] text-muted-foreground">
-                Permite al personal solicitar vacaciones y ausencias desde la app
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => setLeaveRequests(!leaveRequests)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                leaveRequests ? "bg-emerald-500" : "bg-muted-foreground/20"
-              )}
-            >
-              <span className={cn(
-                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                leaveRequests ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
-          </div>
-
-          <div className="h-px bg-border" />
-
-          {/* Notes */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[14px] font-medium">Notas en el horario</p>
-              <p className="text-[12px] text-muted-foreground">
-                Añade notas diarias al pie del horario
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => setEnableNotes(!enableNotes)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                enableNotes ? "bg-emerald-500" : "bg-muted-foreground/20"
-              )}
-            >
-              <span className={cn(
-                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                enableNotes ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
-          </div>
-
+          <AdminToggle label="Notas en el horario" desc="Añade notas diarias al pie del horario" value={enableNotes} onChange={setEnableNotes} disabled={isPending} />
           {displayMode === "by_shift" && (<>
-          <div className="h-px bg-border" />
-
-          {/* Task in shift — only for by_shift mode */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[14px] font-medium">Asignación de tareas en horario por turno</p>
-              <p className="text-[12px] text-muted-foreground">
-                Permite asignar tareas o subdepartamentos a cada persona dentro de su turno
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => setEnableTaskInShift(!enableTaskInShift)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                enableTaskInShift ? "bg-emerald-500" : "bg-muted-foreground/20"
-              )}
-            >
-              <span className={cn(
-                "pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform",
-                enableTaskInShift ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
-          </div>
+            <div className="h-px bg-border" />
+            <AdminToggle label="Asignación de tareas en horario por turno" desc="Permite asignar tareas o subdepartamentos a cada persona dentro de su turno" value={enableTaskInShift} onChange={setEnableTaskInShift} disabled={isPending} />
           </>)}
+        </div>
 
-          <div className="h-px bg-border" />
+        {/* Staff self-service */}
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
+          <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Autoservicio del personal</p>
+          <AdminToggle label="Solicitud de ausencias" desc="Permite al personal solicitar vacaciones y ausencias desde la app" value={leaveRequests} onChange={setLeaveRequests} disabled={isPending} />
+          {displayMode === "by_shift" && (<>
+            <div className="h-px bg-border" />
+            <AdminToggle label="Solicitudes de cambio de turno" desc="Permitir que el personal solicite intercambios de turno en horarios publicados" value={enableSwapRequests} onChange={(val) => {
+              setEnableSwapRequests(val)
+              startTransition(async () => {
+                const result = await toggleOrgSwapRequests(orgId, val)
+                if (result?.error) setEnableSwapRequests(!val)
+              })
+            }} disabled={isPending} />
+          </>)}
+        </div>
+
+        {/* Integrations */}
+        <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
+          <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">Integraciones</p>
+          <AdminToggle label="Sincronización Outlook" desc="Sincronizar ausencias automáticamente desde calendarios de Outlook del personal" value={enableOutlookSync} onChange={(val) => {
+            setEnableOutlookSync(val)
+            startTransition(async () => {
+              const result = await toggleOrgOutlookSync(orgId, val)
+              if (result?.error) setEnableOutlookSync(!val)
+            })
+          }} disabled={isPending} />
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { StaffRole, SkillName, PunctionsByDay } from "@/lib/types/database"
 
 const SKILL_LABEL: Record<string, string> = {
@@ -31,9 +32,14 @@ const RULE_TYPE_LABEL: Record<string, string> = {
 }
 
 export async function POST(req: Request) {
-  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
-
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { success } = rateLimit(`chat:${user.id}`, 20) // 20 req/min per user
+  if (!success) return rateLimitResponse()
+
+  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
 
   // Page context — helps the AI understand what the user is looking at
   const pageLabels: Record<string, string> = {
@@ -270,13 +276,14 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().describe("Full or partial name of the staff member"),
         }),
         execute: async ({ staffName }) => {
-          const nameParts = staffName.trim().split(" ")
-          const searchTerm = nameParts[nameParts.length - 1]
+          const parts = staffName.trim().split(/\s+/)
+          // Search each word against both first_name and last_name
+          const orClauses = parts.map(p => `first_name.ilike.%${p}%,last_name.ilike.%${p}%`).join(",")
 
           const { data: staffList } = await supabase
             .from("staff")
             .select("id, first_name, last_name, role, email, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, onboarding_status, notes, staff_skills(skill, level)")
-            .ilike("last_name", `%${searchTerm}%`)
+            .or(orClauses)
             .neq("onboarding_status", "inactive") as {
               data: { id: string; first_name: string; last_name: string; role: string; email: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; onboarding_status: string; notes: string | null; staff_skills: { skill: string; level: string }[] }[] | null
             }

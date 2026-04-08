@@ -709,7 +709,7 @@ export function TaskGrid({
 
   if (loading || !data) {
     return (
-      <div className="rounded-lg border border-border overflow-hidden bg-background">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, 1fr)` }}>
           {/* Header shimmer */}
           <div className="border-b border-r border-border bg-muted px-3 py-2">

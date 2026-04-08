@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { ProcessedFile } from "@/lib/types/import"
 
 const extractionSchema = z.object({
@@ -118,9 +119,33 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const { success } = rateLimit(`import:${user.id}`, 10) // 10 req/min per user
+  if (!success) return rateLimitResponse()
+
   const { files }: { files: ProcessedFile[] } = await req.json()
   if (!files?.length) {
     return Response.json({ error: "No files provided" }, { status: 400 })
+  }
+  if (files.length > 10) {
+    return Response.json({ error: "Maximum 10 files per request" }, { status: 400 })
+  }
+
+  const ALLOWED_TYPES = ["text", "image"] as const
+  const ALLOWED_MEDIA = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+  const MAX_CONTENT_LENGTH = 10 * 1024 * 1024 // 10 MB total
+
+  let totalBytes = 0
+  for (const file of files) {
+    if (!ALLOWED_TYPES.includes(file.type as (typeof ALLOWED_TYPES)[number])) {
+      return Response.json({ error: `Invalid file type: ${file.type}` }, { status: 400 })
+    }
+    if (file.type === "image" && file.mediaType && !ALLOWED_MEDIA.includes(file.mediaType)) {
+      return Response.json({ error: `Unsupported media type: ${file.mediaType}` }, { status: 400 })
+    }
+    totalBytes += (file.content?.length ?? 0) + (file.base64?.length ?? 0)
+  }
+  if (totalBytes > MAX_CONTENT_LENGTH) {
+    return Response.json({ error: "Files too large. Maximum 10 MB total." }, { status: 413 })
   }
 
   // Build message content parts

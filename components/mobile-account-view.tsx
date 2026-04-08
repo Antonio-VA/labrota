@@ -4,10 +4,11 @@ import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { Sun, Moon, Monitor, LogOut } from "lucide-react"
+import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { getUserPreferences, saveUserPreferences, type UserPreferences } from "@/app/(clinic)/account-actions"
+import { getUserPreferences, saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
+import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import { applyTheme } from "@/components/account-panel"
 import { toast } from "sonner"
 
@@ -25,20 +26,23 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
   const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
+  const [avatarImgError, setAvatarImgError] = useState(false)
   const [prefs, setPrefs] = useState<UserPreferences>({
     theme: "light",
     accentColor: "#1b4f8a",
     locale: "browser",
   })
+  const [outlook, setOutlook] = useState<UserOutlookStatus>({ available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null })
 
   // Load preferences from DB on mount — DB is authoritative
   useEffect(() => {
-    getUserPreferences().then((p) => {
+    Promise.all([getUserPreferences(), getUserOutlookStatus()]).then(([p, ol]) => {
       setPrefs({
         theme: p.theme ?? "light",
         accentColor: p.accentColor ?? "#1b4f8a",
         locale: p.locale ?? "browser",
       })
+      setOutlook(ol)
       setLoading(false)
     })
   }, [])
@@ -82,8 +86,8 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
     <div className="flex flex-col gap-4 px-4 py-5">
       {/* Profile header */}
       <div className="flex items-center gap-3">
-        {initialUser?.avatarUrl ? (
-          <img src={initialUser.avatarUrl} alt="" className="size-14 rounded-full object-cover" />
+        {initialUser?.avatarUrl && !avatarImgError ? (
+          <img src={initialUser.avatarUrl} alt="" className="size-14 rounded-full object-cover" onError={() => setAvatarImgError(true)} />
         ) : (
           <div className="size-14 rounded-full bg-primary/10 text-primary text-[18px] font-bold flex items-center justify-center">
             {initials}
@@ -175,6 +179,70 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
               ))}
             </div>
           </div>
+
+          {/* Outlook sync */}
+          {outlook.available && (
+            <div className="rounded-xl border border-border bg-background px-4 py-3">
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
+                {locale === "es" ? "Sincronización Outlook" : "Outlook Sync"}
+              </p>
+              {outlook.connected ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center size-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
+                    <Cloud className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium">{locale === "es" ? "Conectado" : "Connected"}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{outlook.email}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!outlook.staffId) return
+                      startTransition(async () => {
+                        const r = await syncOutlookForStaff(outlook.staffId!)
+                        if (r.errors.length > 0) toast.error(r.errors[0])
+                        else toast.success(locale === "es" ? `${r.created + r.updated} ausencias sincronizadas` : `${r.created + r.updated} leaves synced`)
+                        getUserOutlookStatus().then(setOutlook)
+                      })
+                    }}
+                    disabled={isPending}
+                    className="p-2 rounded-lg active:bg-muted text-muted-foreground"
+                  >
+                    <RefreshCw className={cn("size-4", isPending && "animate-spin")} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!outlook.staffId) return
+                      startTransition(async () => {
+                        await disconnectOutlook(outlook.staffId!, true)
+                        toast.success(locale === "es" ? "Outlook desconectado" : "Outlook disconnected")
+                        getUserOutlookStatus().then(setOutlook)
+                      })
+                    }}
+                    disabled={isPending}
+                    className="p-2 rounded-lg active:bg-muted text-muted-foreground"
+                  >
+                    <Unplug className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (outlook.staffId && outlook.orgId) {
+                      window.location.href = `/api/outlook-auth?staffId=${outlook.staffId}&orgId=${outlook.orgId}`
+                    }
+                  }}
+                  className="flex items-center gap-2.5 w-full rounded-lg border border-dashed border-border px-3 py-3 active:bg-muted/50 transition-colors"
+                >
+                  <Cloud className="size-4 text-primary shrink-0" />
+                  <div className="text-left">
+                    <p className="text-[13px] font-medium">{locale === "es" ? "Conectar Outlook" : "Connect Outlook"}</p>
+                    <p className="text-[11px] text-muted-foreground">{locale === "es" ? "Sincroniza ausencias automáticamente" : "Auto-sync your out-of-office events"}</p>
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Save */}
           <button

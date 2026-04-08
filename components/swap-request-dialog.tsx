@@ -2,13 +2,11 @@
 
 import { useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
-import { ArrowLeftRight, Palmtree, Loader2, User } from "lucide-react"
+import { ArrowLeftRight, Palmtree, Loader2, User, X, ChevronLeft, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
-} from "@/components/ui/sheet"
-import type { SwapCandidate } from "@/app/(clinic)/swaps/actions"
+import type { SwapCandidate, DayOffCandidate, ExchangeOption } from "@/app/(clinic)/swaps/actions"
 import type { SwapType } from "@/lib/types/database"
 
 interface SwapRequestDialogProps {
@@ -19,65 +17,105 @@ interface SwapRequestDialogProps {
   date: string
   dateLabel: string
   locale: "es" | "en"
+  weekStart?: string
 }
 
-type Step = "type" | "candidates" | "confirm"
+// Compute Monday of the week containing the given date
+function getMondayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00")
+  const dow = d.getDay() // 0=Sun
+  const diff = dow === 0 ? -6 : 1 - dow
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split("T")[0]
+}
+
+type Step = "type" | "candidates" | "exchange" | "confirm"
 
 export function SwapRequestDialog({
-  open, onOpenChange, assignmentId, shiftType, date, dateLabel, locale,
+  open, onOpenChange, assignmentId, shiftType, date, dateLabel, locale, weekStart,
 }: SwapRequestDialogProps) {
+  const effectiveWeekStart = weekStart ?? getMondayOf(date)
   const t = useTranslations("swaps")
   const [step, setStep] = useState<Step>("type")
   const [swapType, setSwapType] = useState<SwapType>("shift_swap")
-  const [candidates, setCandidates] = useState<SwapCandidate[]>([])
-  const [selectedCandidate, setSelectedCandidate] = useState<SwapCandidate | null>(null)
+  const [shiftCandidates, setShiftCandidates] = useState<SwapCandidate[]>([])
+  const [dayOffCandidates, setDayOffCandidates] = useState<DayOffCandidate[]>([])
+  const [selectedCandidate, setSelectedCandidate] = useState<SwapCandidate | DayOffCandidate | null>(null)
+  const [exchangeOptions, setExchangeOptions] = useState<ExchangeOption[]>([])
+  const [selectedExchange, setSelectedExchange] = useState<ExchangeOption | null>(null)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
+  const isEs = locale === "es"
+
   function reset() {
     setStep("type")
     setSwapType("shift_swap")
-    setCandidates([])
+    setShiftCandidates([])
+    setDayOffCandidates([])
     setSelectedCandidate(null)
+    setExchangeOptions([])
+    setSelectedExchange(null)
     setError(null)
     setSuccess(false)
   }
 
-  function handleOpenChange(v: boolean) {
-    if (!v) reset()
-    onOpenChange(v)
+  function handleClose() {
+    reset()
+    onOpenChange(false)
   }
 
-  async function handleSelectType(type: SwapType) {
-    setSwapType(type)
+  async function handleSelectShiftSwap() {
+    setSwapType("shift_swap")
     setLoading(true)
     setError(null)
     try {
       const { getSwapCandidates } = await import("@/app/(clinic)/swaps/actions")
       const result = await getSwapCandidates(assignmentId)
-      if (result.error) {
-        setError(result.error)
-        setLoading(false)
-        return
-      }
-
-      // Filter candidates based on swap type
-      const filtered = type === "shift_swap"
-        ? result.candidates.filter(c => c.shiftType !== null)  // must be working
-        : result.candidates  // anyone available
-
-      setCandidates(filtered)
+      if (result.error) { setError(result.error); setLoading(false); return }
+      setShiftCandidates(result.candidates.filter(c => c.shiftType !== null))
       setStep("candidates")
-    } catch {
-      setError("Failed to load candidates.")
-    }
+    } catch { setError(isEs ? "Error al cargar compañeros." : "Failed to load candidates.") }
     setLoading(false)
   }
 
-  function handleSelectCandidate(candidate: SwapCandidate) {
-    setSelectedCandidate(candidate)
+  async function handleSelectDayOff() {
+    setSwapType("day_off")
+    setLoading(true)
+    setError(null)
+    try {
+      const { getDayOffCandidates } = await import("@/app/(clinic)/swaps/actions")
+      const result = await getDayOffCandidates(assignmentId)
+      if (result.error) { setError(result.error); setLoading(false); return }
+      setDayOffCandidates(result.candidates)
+      setStep("candidates")
+    } catch { setError(isEs ? "Error al cargar compañeros." : "Failed to load candidates.") }
+    setLoading(false)
+  }
+
+  function handleSelectShiftCandidate(c: SwapCandidate) {
+    setSelectedCandidate(c)
+    setStep("confirm")
+  }
+
+  async function handleSelectDayOffCandidate(c: DayOffCandidate) {
+    setSelectedCandidate(c)
+    setLoading(true)
+    setError(null)
+    try {
+      const { getDayOffExchangeOptions } = await import("@/app/(clinic)/swaps/actions")
+      const result = await getDayOffExchangeOptions(assignmentId, c.staffId, effectiveWeekStart)
+      if (result.error) { setError(result.error); setLoading(false); return }
+      setExchangeOptions(result.options)
+      setStep("exchange")
+    } catch { setError(isEs ? "Error al cargar opciones." : "Failed to load options.") }
+    setLoading(false)
+  }
+
+  function handleSelectExchange(ex: ExchangeOption) {
+    setSelectedExchange(ex)
     setStep("confirm")
   }
 
@@ -88,47 +126,55 @@ export function SwapRequestDialog({
     startTransition(async () => {
       try {
         const { createSwapRequest } = await import("@/app/(clinic)/swaps/actions")
+        const shiftCand = selectedCandidate as SwapCandidate
         const result = await createSwapRequest({
           assignmentId,
           swapType,
           targetStaffId: selectedCandidate.staffId,
-          targetAssignmentId: selectedCandidate.assignmentId ?? undefined,
+          targetAssignmentId: swapType === "shift_swap"
+            ? (shiftCand.assignmentId ?? undefined)
+            : (selectedExchange?.assignmentId ?? undefined),
         })
-
-        if (result.error) {
-          setError(result.error)
-          return
-        }
-
+        if (result.error) { setError(result.error); return }
         setSuccess(true)
-        setTimeout(() => handleOpenChange(false), 2000)
-      } catch {
-        setError("Failed to submit swap request.")
-      }
+        setTimeout(() => handleClose(), 2500)
+      } catch { setError(isEs ? "Error al enviar la solicitud." : "Failed to submit swap request.") }
     })
   }
 
-  const isEs = locale === "es"
+  const shiftCand = selectedCandidate as SwapCandidate | null
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" className="max-h-[80vh] rounded-t-xl">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ArrowLeftRight className="size-4 text-primary" />
-            {t("requestSwap")}
-          </SheetTitle>
-          <SheetDescription>
-            {shiftType} · {dateLabel}
-          </SheetDescription>
-        </SheetHeader>
+    <>
+      {open && <div className="fixed inset-0 z-40" onClick={handleClose} />}
 
-        <div className="flex-1 overflow-y-auto px-4 pb-2">
-          {/* Success state */}
+      <div className={cn(
+        "fixed right-0 top-0 bottom-0 z-50 bg-background border-l border-border shadow-xl",
+        "flex flex-col transition-transform duration-200 ease-out w-[380px]",
+        open ? "translate-x-0" : "translate-x-full",
+      )}>
+        {/* Header */}
+        <div className="flex items-start justify-between px-4 py-3 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="size-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[14px] font-medium">{t("requestSwap")}</p>
+              <p className="text-[12px] text-muted-foreground">{shiftType} · {dateLabel}</p>
+            </div>
+          </div>
+          <button onClick={handleClose} className="size-7 flex items-center justify-center rounded hover:bg-muted shrink-0">
+            <X className="size-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+
+          {/* Success */}
           {success && (
-            <div className="flex flex-col items-center gap-3 py-8">
+            <div className="flex flex-col items-center gap-3 py-10">
               <div className="size-12 rounded-full bg-green-100 flex items-center justify-center">
-                <ArrowLeftRight className="size-5 text-green-600" />
+                <Check className="size-5 text-green-600" />
               </div>
               <p className="text-[14px] font-medium text-green-700">
                 {isEs ? "Solicitud enviada" : "Request submitted"}
@@ -141,19 +187,19 @@ export function SwapRequestDialog({
 
           {/* Error */}
           {error && !success && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 mb-3">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
               <p className="text-[13px] text-red-700">{error}</p>
             </div>
           )}
 
-          {/* Step 1: Type selection */}
+          {/* Step: type */}
           {step === "type" && !success && (
-            <div className="flex flex-col gap-3 py-2">
-              <p className="text-[13px] text-muted-foreground font-medium">{t("selectType")}</p>
+            <>
+              <p className="text-[13px] text-muted-foreground">{t("selectType")}</p>
               <button
-                onClick={() => handleSelectType("shift_swap")}
+                onClick={handleSelectShiftSwap}
                 disabled={loading}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left disabled:opacity-50"
               >
                 <ArrowLeftRight className="size-5 text-primary shrink-0" />
                 <div>
@@ -164,131 +210,228 @@ export function SwapRequestDialog({
                 </div>
               </button>
               <button
-                onClick={() => handleSelectType("day_off")}
+                onClick={handleSelectDayOff}
                 disabled={loading}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left disabled:opacity-50"
               >
                 <Palmtree className="size-5 text-amber-500 shrink-0" />
                 <div>
                   <p className="text-[14px] font-medium">{t("dayOff")}</p>
                   <p className="text-[12px] text-muted-foreground">
-                    {isEs ? "Pide el día libre; un compañero cubre tu turno" : "Take the day off; a colleague covers your shift"}
+                    {isEs ? "Cambia tu día libre con el de un compañero" : "Swap your day off with a colleague's"}
                   </p>
                 </div>
               </button>
               {loading && (
-                <div className="flex items-center justify-center py-4">
+                <div className="flex items-center justify-center py-6">
                   <Loader2 className="size-5 text-primary animate-spin" />
                 </div>
               )}
-            </div>
+            </>
           )}
 
-          {/* Step 2: Candidate list */}
+          {/* Step: candidates */}
           {step === "candidates" && !success && (
-            <div className="flex flex-col gap-2 py-2">
+            <>
+              <button
+                onClick={() => { setStep("type"); setShiftCandidates([]); setDayOffCandidates([]) }}
+                className="flex items-center gap-1 text-[13px] text-primary font-medium"
+              >
+                <ChevronLeft className="size-3.5" />
+                {isEs ? "Volver" : "Back"}
+              </button>
               <p className="text-[13px] text-muted-foreground font-medium">
-                {swapType === "shift_swap" ? t("selectCandidate") : t("selectCover")}
+                {swapType === "shift_swap"
+                  ? (isEs ? "Elige con quién intercambiar turno" : "Choose who to swap shifts with")
+                  : (isEs ? "Elige quién te cubre (está libre ese día)" : "Choose who will cover you (they're off that day)")}
               </p>
-              {candidates.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8">
+              {(swapType === "shift_swap" ? shiftCandidates : dayOffCandidates).length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-10">
                   <User className="size-8 text-muted-foreground/40" />
                   <p className="text-[13px] text-muted-foreground">{t("noCandidates")}</p>
                 </div>
-              ) : (
-                candidates.map(c => (
+              ) : swapType === "shift_swap" ? (
+                shiftCandidates.map(c => (
                   <button
                     key={c.staffId}
-                    onClick={() => handleSelectCandidate(c)}
+                    onClick={() => handleSelectShiftCandidate(c)}
                     className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
                   >
                     <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-[12px] font-semibold text-primary">
-                        {c.firstName[0]}{c.lastName[0]}
-                      </span>
+                      <span className="text-[12px] font-semibold text-primary">{c.firstName[0]}{c.lastName[0]}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-medium">{c.firstName} {c.lastName}</p>
+                      <p className="text-[12px] text-muted-foreground">{isEs ? "Turno" : "Shift"}: {c.shiftType}</p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <>
+                  {loading && (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="size-4 text-primary animate-spin" />
+                    </div>
+                  )}
+                  {dayOffCandidates.map(c => (
+                    <button
+                      key={c.staffId}
+                      onClick={() => handleSelectDayOffCandidate(c)}
+                      disabled={loading}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    >
+                      <div className="size-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                        <span className="text-[12px] font-semibold text-amber-600">{c.firstName[0]}{c.lastName[0]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium">{c.firstName} {c.lastName}</p>
+                        <p className="text-[12px] text-muted-foreground">
+                          {isEs ? "Libre ese día" : "Off that day"}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Step: exchange (day_off only) — shows initiator's OFF days where target is working */}
+          {step === "exchange" && selectedCandidate && !success && (
+            <>
+              <button
+                onClick={() => { setStep("candidates"); setSelectedCandidate(null); setExchangeOptions([]) }}
+                className="flex items-center gap-1 text-[13px] text-primary font-medium"
+              >
+                <ChevronLeft className="size-3.5" />
+                {isEs ? "Volver" : "Back"}
+              </button>
+              <div>
+                <p className="text-[13px] font-medium">
+                  {isEs
+                    ? `¿Qué día libre tuyo le das a ${selectedCandidate.firstName} a cambio?`
+                    : `Which of your days off do you give ${selectedCandidate.firstName} in exchange?`}
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-0.5">
+                  {isEs ? "Cubrirás su turno ese día." : "You'll cover their shift on that day."}
+                </p>
+              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="size-5 text-primary animate-spin" />
+                </div>
+              ) : exchangeOptions.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8">
+                  <User className="size-8 text-muted-foreground/40" />
+                  <p className="text-[13px] text-muted-foreground text-center">
+                    {isEs
+                      ? "No hay días libres tuyos coincidentes con turnos de este compañero en las próximas 2 semanas."
+                      : "No matching free days found in the next 2 weeks."}
+                  </p>
+                </div>
+              ) : (
+                exchangeOptions.map(ex => (
+                  <button
+                    key={ex.assignmentId}
+                    onClick={() => handleSelectExchange(ex)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+                  >
+                    <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-[12px] font-semibold text-primary">{ex.shiftType}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-medium">{formatDate(ex.date, locale)}</p>
                       <p className="text-[12px] text-muted-foreground">
-                        {c.shiftType
-                          ? `${isEs ? "Turno" : "Shift"}: ${c.shiftType}`
-                          : (isEs ? "Libre" : "Off")}
+                        {isEs ? "Cubrirías" : "You'd cover"}: {ex.shiftType}
                       </p>
                     </div>
-                    {c.coverageWarning && (
-                      <span className="text-[11px] px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium shrink-0">
-                        ⚠
-                      </span>
-                    )}
                   </button>
                 ))
               )}
-              <button
-                onClick={() => { setStep("type"); setCandidates([]); setSelectedCandidate(null) }}
-                className="text-[13px] text-primary font-medium mt-2"
-              >
-                ← {isEs ? "Volver" : "Back"}
-              </button>
-            </div>
+            </>
           )}
 
-          {/* Step 3: Confirmation */}
+          {/* Step: confirm */}
           {step === "confirm" && selectedCandidate && !success && (
-            <div className="flex flex-col gap-4 py-2">
+            <>
+              <button
+                onClick={() => {
+                  if (swapType === "day_off") {
+                    setStep("exchange")
+                    setSelectedExchange(null)
+                  } else {
+                    setStep("candidates")
+                    setSelectedCandidate(null)
+                  }
+                }}
+                className="flex items-center gap-1 text-[13px] text-primary font-medium"
+              >
+                <ChevronLeft className="size-3.5" />
+                {isEs ? "Volver" : "Back"}
+              </button>
               <p className="text-[13px] text-muted-foreground font-medium">{t("confirm")}</p>
-
-              <div className="rounded-lg border border-border p-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="rounded-lg border border-border divide-y divide-border">
+                <div className="flex items-center justify-between px-3 py-2.5">
                   <span className="text-[13px] text-muted-foreground">{isEs ? "Tipo" : "Type"}</span>
-                  <span className="text-[14px] font-medium">
+                  <span className="text-[13px] font-medium">
                     {swapType === "shift_swap" ? t("swapShift") : t("dayOff")}
                   </span>
                 </div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[13px] text-muted-foreground">{isEs ? "Fecha" : "Date"}</span>
-                  <span className="text-[14px] font-medium">{dateLabel}</span>
-                </div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between px-3 py-2.5">
                   <span className="text-[13px] text-muted-foreground">{isEs ? "Tu turno" : "Your shift"}</span>
-                  <span className="text-[14px] font-medium">{shiftType}</span>
+                  <span className="text-[13px] font-medium">{shiftType} · {dateLabel}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between px-3 py-2.5">
                   <span className="text-[13px] text-muted-foreground">{isEs ? "Con" : "With"}</span>
-                  <span className="text-[14px] font-medium">{selectedCandidate.firstName} {selectedCandidate.lastName}</span>
+                  <span className="text-[13px] font-medium">{selectedCandidate.firstName} {selectedCandidate.lastName}</span>
                 </div>
+                {swapType === "shift_swap" && shiftCand?.shiftType && (
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-[13px] text-muted-foreground">{isEs ? "Su turno" : "Their shift"}</span>
+                    <span className="text-[13px] font-medium">{shiftCand.shiftType} · {dateLabel}</span>
+                  </div>
+                )}
+                {swapType === "day_off" && selectedExchange && (
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-[13px] text-muted-foreground">{isEs ? "Día que das" : "Day you give"}</span>
+                    <span className="text-[13px] font-medium">{selectedExchange.shiftType} · {formatDate(selectedExchange.date, locale)}</span>
+                  </div>
+                )}
               </div>
-
               <p className="text-[12px] text-muted-foreground">
                 {isEs
-                  ? "Tu responsable recibirá un email para aprobar la solicitud. Si aprueba, tu compañero podrá aceptar o rechazar."
-                  : "Your manager will receive an email to approve the request. If approved, your colleague can then accept or decline."}
+                  ? "Tu responsable recibirá un email para aprobar. Si aprueba, tu compañero podrá aceptar o rechazar."
+                  : "Your manager will receive an email to approve. If approved, your colleague can accept or decline."}
               </p>
-            </div>
+            </>
           )}
         </div>
 
+        {/* Footer — only on confirm step */}
         {step === "confirm" && selectedCandidate && !success && (
-          <SheetFooter>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => { setStep("candidates"); setSelectedCandidate(null) }}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleSubmit}
-                disabled={isPending}
-              >
-                {isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-                {t("submit")}
-              </Button>
-            </div>
-          </SheetFooter>
+          <div className="px-4 py-3 border-t border-border flex gap-2 shrink-0">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                if (swapType === "day_off") {
+                  setStep("exchange")
+                  setSelectedExchange(null)
+                } else {
+                  setStep("candidates")
+                  setSelectedCandidate(null)
+                }
+              }}
+            >
+              {t("cancel")}
+            </Button>
+            <Button className="flex-1" onClick={handleSubmit} disabled={isPending}>
+              {isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {t("submit")}
+            </Button>
+          </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </>
   )
 }

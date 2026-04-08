@@ -1,19 +1,37 @@
+import dynamic from "next/dynamic"
 import { requireEditor } from "@/lib/require-editor"
 import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 import { MobileGate } from "@/components/mobile-gate"
-import { LabConfigForm } from "@/components/lab-config-form"
-import { RulesSection } from "@/components/rules-section"
+import { CardSkeleton } from "@/components/ui/skeleton"
 // BiopsiaConfig merged into LabConfigForm parametros section
-import { TurnosTab } from "@/components/turnos-tab"
-import { TécnicasTab } from "@/components/tecnicas-tab"
-import { PlantillasTab } from "@/components/plantillas-tab"
-import { DepartmentsTab } from "@/components/departments-tab"
 import { LabPageTabs } from "@/components/lab-page-tabs"
-import { NotesConfig } from "@/components/notes-config"
+
+const TurnosTab = dynamic(() => import("@/components/turnos-tab").then((m) => m.TurnosTab), {
+  loading: () => <CardSkeleton />,
+})
+const TécnicasTab = dynamic(() => import("@/components/tecnicas-tab").then((m) => m.TécnicasTab), {
+  loading: () => <CardSkeleton />,
+})
+const PlantillasTab = dynamic(() => import("@/components/plantillas-tab").then((m) => m.PlantillasTab), {
+  loading: () => <CardSkeleton />,
+})
+const DepartmentsTab = dynamic(() => import("@/components/departments-tab").then((m) => m.DepartmentsTab), {
+  loading: () => <CardSkeleton />,
+})
+const NotesConfig = dynamic(() => import("@/components/notes-config").then((m) => m.NotesConfig), {
+  loading: () => <CardSkeleton />,
+})
 import { getNoteTemplates } from "@/app/(clinic)/notes-actions"
 import type { LabConfig, RotaRule, Staff, ShiftTypeDefinition, Tecnica, RotaTemplate, Department } from "@/lib/types/database"
+
+const LabConfigForm = dynamic(() => import("@/components/lab-config-form").then((m) => m.LabConfigForm), {
+  loading: () => <CardSkeleton />,
+})
+const RulesSection = dynamic(() => import("@/components/rules-section").then((m) => m.RulesSection), {
+  loading: () => <CardSkeleton />,
+})
 
 export default async function LabConfigPage() {
   await requireEditor()

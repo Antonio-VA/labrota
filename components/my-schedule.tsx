@@ -1,13 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { CalendarDays, Clock, Palmtree, ArrowLeftRight } from "lucide-react"
+import { Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
-import { WeeklyStrip } from "@/components/weekly-strip"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 
@@ -16,10 +14,58 @@ const SwapRequestDialog = dynamic(
   { ssr: false }
 )
 
-const SwapRequestsList = dynamic(
-  () => import("@/components/swap-requests-list").then(m => ({ default: m.SwapRequestsList })),
-  { ssr: false }
-)
+const CARD_H = "min-h-[52px]"
+
+const DOW_ES = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+const DOW_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const MON_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+function getMondayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00")
+  const dow = d.getDay()
+  const diff = dow === 0 ? -6 : 1 - dow
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split("T")[0]
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + "T12:00:00")
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split("T")[0]
+}
+
+function formatWeekOption(mondayStr: string, locale: "es" | "en"): string {
+  const start = new Date(mondayStr + "T12:00:00")
+  const end = new Date(mondayStr + "T12:00:00")
+  end.setDate(start.getDate() + 6)
+  const months = locale === "es" ? MON_ES : MON_EN
+  const sDay = start.getDate()
+  const eDay = end.getDate()
+  const sMon = months[start.getMonth()]
+  const eMon = months[end.getMonth()]
+  const yr = end.getFullYear()
+  if (sMon === eMon) return `${sDay}–${eDay} ${sMon} ${yr}`
+  return `${sDay} ${sMon} – ${eDay} ${eMon} ${yr}`
+}
+
+function formatCardDate(dateStr: string, locale: "es" | "en"): string {
+  const d = new Date(dateStr + "T12:00:00")
+  const dow = (locale === "es" ? DOW_ES : DOW_EN)[(d.getDay() + 6) % 7]
+  const day = d.getDate()
+  const mon = (locale === "es" ? MON_ES : MON_EN)[d.getMonth()]
+  return `${dow} ${day} ${mon}`
+}
+
+function generateWeekOptions(currentMonday: string, locale: "es" | "en") {
+  const options: { monday: string; label: string }[] = []
+  // 4 weeks back, current, 4 weeks forward
+  for (let i = -4; i <= 4; i++) {
+    const monday = addDays(currentMonday, i * 7)
+    options.push({ monday, label: formatWeekOption(monday, locale) })
+  }
+  return options
+}
 
 interface MyScheduleProps {
   staffId: string
@@ -32,194 +78,258 @@ interface MyScheduleProps {
   initialDate?: string
   swapEnabled?: boolean
   rotaPublished?: boolean
+  onDateChange?: (date: string) => void
+  onWeekChange?: (dir: -1 | 1) => void
+  loading?: boolean
 }
 
 export function MySchedule({
   staffId, days, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat, initialDate,
-  swapEnabled = false, rotaPublished = false,
+  swapEnabled = false, rotaPublished = false, onDateChange, onWeekChange, loading = false,
 }: MyScheduleProps) {
   const t = useTranslations("mySchedule")
+  const tc = useTranslations("common")
   const today = new Date().toISOString().split("T")[0]
   const [currentDate, setCurrentDate] = useState(initialDate ?? today)
+
+  // Sync internal state when parent changes the week (via prev/next buttons)
+  useEffect(() => {
+    if (initialDate && initialDate !== currentDate) {
+      setCurrentDate(initialDate)
+    }
+  }, [initialDate]) // eslint-disable-line react-hooks/exhaustive-deps
   const [swapDialogOpen, setSwapDialogOpen] = useState(false)
   const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
+  const [openMenuDate, setOpenMenuDate] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const canSwap = swapEnabled && rotaPublished
 
-  // Find viewer's assignments and leave status per day
+  useEffect(() => {
+    if (!openMenuDate) return
+    function onTap(e: MouseEvent | TouchEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuDate(null)
+    }
+    document.addEventListener("mousedown", onTap)
+    document.addEventListener("touchstart", onTap)
+    return () => { document.removeEventListener("mousedown", onTap); document.removeEventListener("touchstart", onTap) }
+  }, [openMenuDate])
+
+  useEffect(() => { onDateChange?.(currentDate) }, [currentDate, onDateChange])
+
+  const isCurrentWeek = days.some((d) => d.date === today)
+  const currentMonday = days[0]?.date ? getMondayOf(days[0].date) : getMondayOf(today)
+  const weekOptions = generateWeekOptions(currentMonday, locale)
+  const todayMonday = getMondayOf(today)
+
+  // Derive staff first name from assignments
+  const staffFirstName = (() => {
+    for (const day of days) {
+      const a = day.assignments.find((a) => a.staff_id === staffId)
+      if (a) return a.staff.first_name
+    }
+    return null
+  })()
+
   const myDays = days.map((day) => {
     const myAssignments = day.assignments.filter((a) => a.staff_id === staffId)
     const isOnLeave = onLeaveByDate[day.date]?.includes(staffId) ?? false
     return { ...day, myAssignments, isOnLeave }
   })
 
-  // Next upcoming shift
-  const nextShift = myDays.find((d) => d.date >= today && d.myAssignments.length > 0)
+  const nextShift = isCurrentWeek
+    ? myDays.find((d) => d.date >= today && d.myAssignments.length > 0)
+    : null
 
-  // Current day detail
-  const currentDay = myDays.find((d) => d.date === currentDate)
+  const allDays = myDays.map((d) => ({
+    ...d,
+    isNextShift: nextShift ? d.date === nextShift.date : false,
+  }))
+
+  function renderSwapMenu(dayDate: string, assignmentId: string, shiftType: string, iconColor: string, hoverBg: string) {
+    if (!canSwap) return null
+    return (
+      <div className="relative" ref={openMenuDate === dayDate ? menuRef : undefined}>
+        <button
+          onClick={() => setOpenMenuDate(openMenuDate === dayDate ? null : dayDate)}
+          className={cn("size-7 flex items-center justify-center rounded-md transition-colors", hoverBg)}
+        >
+          <MoreHorizontal className={cn("size-4", iconColor)} />
+        </button>
+        {openMenuDate === dayDate && (
+          <div className="absolute right-0 top-8 z-10 bg-white rounded-lg border border-border shadow-lg py-1 min-w-[160px]">
+            <button
+              onClick={() => {
+                setOpenMenuDate(null)
+                setSwapAssignment({ id: assignmentId, shiftType, date: dayDate })
+                setSwapDialogOpen(true)
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] font-medium text-foreground hover:bg-muted active:bg-accent transition-colors"
+            >
+              <ArrowLeftRight className="size-3.5" />
+              {locale === "es" ? "Solicitar cambio" : "Request swap"}
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col md:hidden flex-1 overflow-auto">
-      {/* Personal weekly strip */}
-      <WeeklyStrip
-        days={myDays.map((d) => ({
-          date: d.date,
-          staffCount: d.myAssignments.length,
-          hasSkillGaps: false,
-          isWorking: d.myAssignments.length > 0,
-          isOnLeave: d.isOnLeave,
-        }))}
-        currentDate={currentDate}
-        onSelectDay={setCurrentDate}
-        locale={locale}
-        personalMode
-      />
-
-      <div className="flex flex-col gap-4 px-4 py-3 flex-1">
-        {/* Next shift card */}
-        {nextShift && nextShift.date !== currentDate && (
-          <button
-            onClick={() => setCurrentDate(nextShift.date)}
-            className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-left active:bg-primary/10 transition-colors"
+      {/* Week selector toolbar */}
+      <div className="flex items-center h-12 px-3 border-b border-border bg-background lg:hidden sticky top-0 z-10 gap-2">
+        <div className="relative shrink-0">
+          <select
+            value={currentMonday}
+            onChange={(e) => setCurrentDate(e.target.value)}
+            className="appearance-none text-[14px] font-semibold capitalize bg-transparent pr-5 py-1 cursor-pointer focus:outline-none"
           >
-            <p className="text-[10px] text-primary font-medium uppercase tracking-wide mb-1">{t("nextShift")}</p>
-            <div className="flex items-center gap-2">
-              <CalendarDays className="size-4 text-primary shrink-0" />
-              <span className="text-[14px] font-medium">{formatDate(nextShift.date, locale)}</span>
-              {nextShift.myAssignments[0] && shiftTimes?.[nextShift.myAssignments[0].shift_type] && (
-                <span className="text-[12px] text-muted-foreground flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {formatTime(shiftTimes[nextShift.myAssignments[0].shift_type].start, timeFormat)}
-                </span>
-              )}
-              <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-auto">
-                {nextShift.myAssignments[0]?.shift_type}
-              </span>
-            </div>
-            {nextShift.myAssignments.some((a) => a.function_label) && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {nextShift.myAssignments.filter((a) => a.function_label).map((a) => {
-                  const tec = tecnicas.find((t) => t.codigo === a.function_label)
-                  return (
-                    <span key={a.id} className="text-[11px] px-1.5 py-0.5 rounded border border-primary/20 bg-primary/5 text-primary font-medium">
-                      {tec?.nombre_es ?? a.function_label}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
+            {weekOptions.map((opt) => (
+              <option key={opt.monday} value={opt.monday}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="size-3.5 text-muted-foreground absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
+        {!isCurrentWeek && (
+          <button
+            onClick={() => setCurrentDate(today)}
+            className="text-[12px] font-medium text-primary px-1.5 py-0.5 rounded-md active:bg-primary/10 transition-colors shrink-0"
+          >
+            {tc("today")}
           </button>
         )}
+        <div className="flex-1" />
+        {staffFirstName && (
+          <span className="text-[13px] text-muted-foreground truncate">
+            {locale === "es" ? `Turnos de ${staffFirstName}` : `${staffFirstName}'s shifts`}
+          </span>
+        )}
+      </div>
 
-        {/* Current day detail */}
-        <div>
-          <p className="text-[13px] font-medium mb-2">{formatDate(currentDate, locale)}</p>
-          {currentDay?.isOnLeave ? (
-            <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-amber-200 bg-amber-50">
-              <Palmtree className="size-4 text-amber-500" />
-              <span className="text-[14px] font-medium text-amber-700">{t("onLeave")}</span>
-            </div>
-          ) : currentDay && currentDay.myAssignments.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {currentDay.myAssignments.map((a) => {
-                const times = shiftTimes?.[a.shift_type]
-                const tec = a.function_label ? tecnicas.find((t) => t.codigo === a.function_label) : null
+      <div className="flex flex-col gap-2.5 px-4 py-3 flex-1 pb-24">
+        {loading ? (
+          <>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className={cn("rounded-lg border border-border px-4 animate-pulse flex items-center", CARD_H)}>
+                <div className="h-4 w-20 rounded bg-muted" />
+                <div className="mx-auto flex flex-col items-center gap-1">
+                  <div className="h-5 w-8 rounded bg-muted" />
+                  <div className="h-3 w-20 rounded bg-muted" />
+                </div>
+                <div className="size-7" />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            {allDays.map((day) => {
+              const assignment = day.myAssignments[0]
+              const times = assignment ? shiftTimes?.[assignment.shift_type] : null
+              const isToday = day.date === today
+              const isPast = day.date < today
+              const dateLabel = formatCardDate(day.date, locale)
+
+              // ── Next shift card ──
+              if (day.isNextShift && assignment) {
                 return (
-                  <div key={a.id} className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border bg-background">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[14px] font-semibold">{a.shift_type}</span>
+                  <div key={`next-${day.date}`} className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 pt-2.5 pb-3">
+                    <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider mb-1.5">{t("nextShift")}</p>
+                    <div className="flex items-center">
+                      <span className="text-[14px] font-semibold capitalize w-[100px] shrink-0">{dateLabel}</span>
+                      <div className="flex items-center justify-center gap-2 flex-1">
+                        <span className="text-[13px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                          {assignment.shift_type}
+                        </span>
                         {times && (
-                          <span className="text-[12px] text-muted-foreground">
+                          <span className="text-[12px] text-emerald-600/70">
                             {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                           </span>
                         )}
                       </div>
-                      {tec && (
-                        <p className="text-[12px] text-primary mt-0.5">{tec.nombre_es}</p>
-                      )}
-                      {a.function_label && !tec && (
-                        <p className="text-[12px] text-muted-foreground mt-0.5">{a.function_label}</p>
-                      )}
+                      <div className="w-7 shrink-0 flex justify-end">
+                        {renderSwapMenu(day.date, assignment.id, assignment.shift_type, "text-emerald-600", "hover:bg-emerald-100 active:bg-emerald-200")}
+                      </div>
                     </div>
-                    {canSwap && (
-                      <button
-                        onClick={() => {
-                          setSwapAssignment({ id: a.id, shiftType: a.shift_type, date: currentDate })
-                          setSwapDialogOpen(true)
-                        }}
-                        className="shrink-0 size-8 rounded-lg border border-primary/20 flex items-center justify-center hover:bg-primary/5 active:bg-primary/10 transition-colors"
-                        title={locale === "es" ? "Solicitar cambio" : "Request swap"}
-                      >
-                        <ArrowLeftRight className="size-3.5 text-primary" />
-                      </button>
-                    )}
                   </div>
                 )
-              })}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-border bg-muted/30">
-              <span className="text-[14px] text-muted-foreground">{t("free")}</span>
-            </div>
-          )}
-        </div>
+              }
 
-        {/* Full week list */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{t("thisWeek")}</p>
-          {myDays.map((day) => {
-            const isToday = day.date === today
-            const isActive = day.date === currentDate
-            const assignment = day.myAssignments[0]
-            const times = assignment ? shiftTimes?.[assignment.shift_type] : null
-
-            return (
-              <button
-                key={day.date}
-                onClick={() => setCurrentDate(day.date)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
-                  isActive ? "bg-accent" : "hover:bg-muted/50 active:bg-accent"
-                )}
-              >
-                <span className={cn(
-                  "text-[12px] font-medium w-16 shrink-0",
-                  isToday && "text-primary"
-                )}>
-                  {formatDate(day.date, locale).split(",")[0] ?? formatDate(day.date, locale).slice(0, 6)}
-                </span>
-                {day.isOnLeave ? (
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <Palmtree className="size-3 text-amber-500" />
-                    <span className="text-[12px] text-amber-600">{t("absence")}</span>
+              // ── On leave ──
+              if (day.isOnLeave) {
+                return (
+                  <div key={day.date} className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-amber-200 bg-amber-50/50")}>
+                    <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>
+                    <div className="flex items-center gap-1.5 justify-center flex-1">
+                      <Palmtree className={cn("size-3.5", isPast ? "text-muted-foreground" : "text-amber-500")} />
+                      <span className={cn("text-[12px] font-medium", isPast ? "text-muted-foreground" : "text-amber-600")}>{t("onLeave")}</span>
+                    </div>
+                    <div className="w-7 shrink-0" />
                   </div>
-                ) : assignment ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-[12px] font-medium bg-muted px-1.5 py-0.5 rounded">{assignment.shift_type}</span>
-                    {times && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatTime(times.start, timeFormat)}
+                )
+              }
+
+              // ── Has assignment ──
+              if (assignment) {
+                return (
+                  <div key={day.date} className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}>
+                    <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>
+                    <div className="flex items-center justify-center gap-2 flex-1">
+                      <span className={cn("text-[13px] font-semibold px-2 py-0.5 rounded", isPast ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
+                        {assignment.shift_type}
                       </span>
-                    )}
-                    {assignment.function_label && (
-                      <span className="text-[11px] text-primary ml-auto">{
-                        tecnicas.find((t) => t.codigo === assignment.function_label)?.nombre_es ?? assignment.function_label
-                      }</span>
-                    )}
+                      {times && (
+                        <span className={cn("text-[12px]", isPast ? "text-muted-foreground" : "text-muted-foreground")}>
+                          {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-7 shrink-0 flex justify-end">
+                      {!isPast && renderSwapMenu(day.date, assignment.id, assignment.shift_type, "text-muted-foreground", "hover:bg-muted active:bg-accent")}
+                    </div>
                   </div>
-                ) : (
-                  <span className="text-[12px] text-muted-foreground/50">{t("free")}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+                )
+              }
 
-        {/* Swap requests list */}
-        {canSwap && (
-          <SwapRequestsList staffId={staffId} locale={locale} />
+              // ── Free day ──
+              return (
+                <div
+                  key={day.date}
+                  className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}
+                  style={!isPast ? {
+                    backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
+                    backgroundSize: "12px 12px",
+                  } : undefined}
+                >
+                  <span className={cn("text-[14px] capitalize w-[100px] shrink-0", isToday ? "font-medium text-primary" : isPast ? "text-muted-foreground" : "text-muted-foreground/60")}>{dateLabel}</span>
+                  <span className={cn("text-[12px] flex-1 text-center", isPast ? "text-muted-foreground" : "text-muted-foreground/50")}>{t("free")}</span>
+                  <div className="w-7 shrink-0" />
+                </div>
+              )
+            })}
+          </>
+        )}
+
+        {/* Bottom week navigation */}
+        {onWeekChange && !loading && (
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => onWeekChange(-1)}
+              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
+            >
+              <ChevronLeft className="size-4" />
+              {locale === "es" ? "Semana anterior" : "Previous week"}
+            </button>
+            <button
+              onClick={() => onWeekChange(1)}
+              className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
+            >
+              {locale === "es" ? "Semana siguiente" : "Next week"}
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -230,7 +340,7 @@ export function MySchedule({
           assignmentId={swapAssignment.id}
           shiftType={swapAssignment.shiftType}
           date={swapAssignment.date}
-          dateLabel={formatDate(swapAssignment.date, locale)}
+          dateLabel={formatCardDate(swapAssignment.date, locale)}
           locale={locale}
         />
       )}

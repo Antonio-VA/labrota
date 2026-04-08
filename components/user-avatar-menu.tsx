@@ -93,7 +93,8 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
   const initials = fullName
     ? fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
     : (initialUser.email ?? "").slice(0, 2).toUpperCase()
-  const avatarUrl = initialUser.avatarUrl
+  const [avatarError, setAvatarError] = useState(false)
+  const avatarUrl = !avatarError ? initialUser.avatarUrl : null
 
   return (
     <div ref={ref} className="relative flex items-center">
@@ -104,7 +105,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
           style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: variant === "light" ? "1.5px solid var(--border)" : "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+          <img src={avatarUrl} alt="Avatar" onError={() => setAvatarError(true)} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
         </button>
       ) : (
         <button

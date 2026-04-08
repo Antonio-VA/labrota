@@ -91,6 +91,7 @@
     "sendLink": "Send access link",
     "checkEmail": "Check your email",
     "checkEmailDescription": "We sent a 6-digit code to {email}.",
+    "checkSpam": "Can't find it? Check your spam or junk folder.",
     "sendCode": "Send access code",
     "resendLink": "Resend code",
     "passwordLabel": "Password",
@@ -114,7 +115,7 @@
     "continueButton": "Continue",
     "signingIn": "Signing in...",
     "signInWithPassword": "Sign in",
-    "sendCodeInstead": "Send me a code instead",
+    "sendCodeInstead": "Sign in without password",
     "forgotPassword": "Forgot password?",
     "sendResetLink": "Send reset link",
     "checkResetEmail": "Check your email",
@@ -406,11 +407,28 @@
     "columns": {
       "name": "Name",
       "role": "Department",
+      "email": "Email",
       "skills": "Skills",
       "capacidades": "Tasks",
       "training": "In training",
       "shiftsThisWeek": "Shifts this week",
-      "status": "Status"
+      "status": "Status",
+      "shiftPrefs": "Shifts",
+      "dayPrefs": "Day pref.",
+      "daysPerWeek": "Days/wk",
+      "workingPattern": "Pattern"
+    },
+    "selectAll": "Select all",
+    "columnMenu": {
+      "role": "Department",
+      "email": "Email",
+      "capacidades": "Tasks",
+      "training": "In training",
+      "status": "Status",
+      "shiftPrefs": "Shift preference",
+      "dayPrefs": "Day preference",
+      "daysPerWeek": "Days/week",
+      "workingPattern": "Working pattern"
     },
     "roles": {
       "lab": "Lab",
@@ -485,6 +503,7 @@
     },
     "skillCycleHint": "Click to cycle: off → training → certified",
     "inviteViewerLabel": "Send viewer invitation — they will receive an email to create their account with read-only calendar access",
+    "viewerLinked": "This person has a viewer account linked",
     "wizardStep1": "Details",
     "wizardStep2": "Availability",
     "wizardStep3": "Skills",
@@ -526,7 +545,8 @@
       "skillRemoved": "{count} task(s) removed",
       "statusUpdated": "{count} status(es) updated",
       "deactivated": "{count} member(s) deactivated",
-      "hardDeleted": "{count} member(s) deleted"
+      "hardDeleted": "{count} member(s) deleted",
+      "fieldsUpdated": "{count} field(s) updated"
     },
     "deactivateModal": {
       "description": "They will be marked as inactive with today as the end date",
@@ -946,6 +966,24 @@
     "leaveNotes": "Notes",
     "noLeaves": "No confirmed leaves in the selected period.",
     "leavesFooter": "Only leaves with approved status are shown.",
+    "swapRequests": "Shift changes",
+    "swapRequestsDescription": "All shift swap and day-off requests with approval timeline",
+    "totalRequests": "Total requests",
+    "swapApproved": "Approved",
+    "swapRejected": "Rejected",
+    "swapPending": "Pending",
+    "swapCancelled": "Cancelled",
+    "swapInitiator": "Requested by",
+    "swapTarget": "Swap with",
+    "swapType": "Type",
+    "swapDate": "Date",
+    "swapShift": "Shift",
+    "swapStatus": "Status",
+    "swapRequested": "Requested",
+    "swapManagerReview": "Manager review",
+    "swapTargetResponse": "Staff response",
+    "noSwapRequests": "No shift change requests in the selected period.",
+    "swapReportFooter": "Shows all shift swap and day-off coverage requests regardless of status.",
     "leaveTypes": {
       "annual": "Annual leave",
       "sick": "Sick leave",
@@ -975,10 +1013,16 @@
     "contactSupport": "Contact support to change the schedule mode.",
     "leaveRequests": "Leave requests",
     "leaveRequestsDescription": "Allows staff to request leave and time off from the app",
+    "leaveRequestsEnabled": "Leave requests enabled",
+    "leaveRequestsDisabled": "Leave requests disabled",
     "scheduleNotes": "Schedule notes",
     "scheduleNotesDescription": "Add daily notes at the bottom of the schedule (instructions, reminders)",
+    "notesEnabled": "Schedule notes enabled",
+    "notesDisabled": "Schedule notes disabled",
     "taskInShift": "Task assignment in shift-based schedule",
     "taskInShiftDescription": "Allows assigning tasks or sub-departments to each person within their shift. Enable only if your lab needs this level of detail.",
+    "taskInShiftEnabled": "Task assignment enabled",
+    "taskInShiftDisabled": "Task assignment disabled",
     "authMethod": "Login method",
     "authMethodDescription": "Choose how users sign in to this organisation.",
     "authMethodOtp": "Access code (OTP)",
@@ -1062,15 +1106,20 @@
     "discard": "Discard",
     "examples": {
       "generate": "Generate next week's rota",
-      "leave": "Add leave for {name} from {from} to {to}",
+      "leave": "Add a week of annual leave for Amira next month",
       "coverage": "Are we short on any skills this week?",
       "icsi": "Who covers ICSI on Thursday?",
-      "shifts": "How many shifts has {name} done this week?",
+      "shifts": "How many shifts has Amira done this month?",
       "print": "Print this week's rota",
       "publish": "Publish this week's rota",
       "copyWeek": "Copy last week's rota",
       "whoIsOff": "Who is on leave this week?",
-      "regenerateDay": "Regenerate Monday"
+      "regenerateDay": "Regenerate Monday",
+      "addStaff": "Add a new embryologist called Maria Garcia",
+      "analyzeRota": "What are the trade-offs in the current rota?",
+      "swapShift": "What shift swaps are pending?",
+      "teamOverview": "Give me a summary of the team workload this week",
+      "rules": "What scheduling rules are active?"
     },
     "promptHint": "Ask anything about the rota"
   },
@@ -1333,7 +1382,7 @@
     "history": "History"
   },
   "notifications": {
-    "title": "Publish notifications",
+    "title": "Notifications",
     "description": "Select who receives an email when a rota is published. Selected users and external emails will receive the full schedule by email.",
     "orgUsers": "Organisation users",
     "externalEmails": "External emails",
@@ -1354,7 +1403,9 @@
     "byTask": "By task",
     "byTaskDesc": "Rows are tasks, columns are days",
     "byPerson": "By person",
-    "byPersonDesc": "Rows are staff, columns are days"
+    "byPersonDesc": "Rows are staff, columns are days",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications"
   },
   "mobileEdit": {
     "editMode": "Edit mode",
@@ -1476,11 +1527,6 @@
     "adminOnWeekends": "Admin on weekends",
     "doneDescriptionWithSettings": "We imported {staff} staff, {shifts} shifts, {techniques} techniques and {rules} rules. Coverage and parameters configured."
   },
-  "notifications": {
-    "title": "Notifications",
-    "markAllRead": "Mark all read",
-    "empty": "No notifications"
-  },
   "adminBackups": {
     "title": "Backups",
     "createManual": "Create manual backup",
@@ -1533,7 +1579,7 @@
   "swaps": {
     "requestSwap": "Request swap",
     "swapShift": "Swap shifts",
-    "dayOff": "Take day off",
+    "dayOff": "Swap day off",
     "selectType": "What would you like to do?",
     "selectCandidate": "Choose who to swap with",
     "selectCover": "Choose who will cover",
@@ -1554,6 +1600,42 @@
     "working": "Working",
     "coverageWarning": "Coverage warning",
     "enableSwapRequests": "Enable swap requests",
-    "enableSwapRequestsDesc": "Allow staff to request shift swaps on published rotas"
+    "enableSwapRequestsDesc": "Allow staff to request shift swaps on published rotas",
+    "swapRequestsEnabled": "Swap requests enabled",
+    "swapRequestsDisabled": "Swap requests disabled",
+    "pendingApprovals": "Swap requests",
+    "acceptSwap": "Accept swap"
+  },
+  "outlook": {
+    "outlook": "Outlook",
+    "panelTitle": "Outlook Sync",
+    "connect": "Connect",
+    "connectOutlook": "Connect Outlook",
+    "disconnectOutlook": "Disconnect Outlook",
+    "syncNow": "Sync now",
+    "syncAll": "Sync all",
+    "lastSynced": "Last synced: {time}",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "tokenExpired": "Connection expired — reconnect",
+    "syncedFromOutlook": "Synced from Outlook",
+    "featureLabel": "Outlook calendar sync",
+    "featureDescription": "Automatically create leaves from Outlook Out-of-Office events",
+    "featureEnabled": "Outlook sync enabled",
+    "featureDisabled": "Outlook sync disabled",
+    "connectSuccess": "Outlook connected for {name}",
+    "disconnectSuccess": "Outlook disconnected for {name}",
+    "syncSuccess": "{count, plural, =0 {No changes} one {1 leave synced} other {# leaves synced}}",
+    "syncNoNew": "No new OOO events found",
+    "connectedCount": "{count} of {total} connected",
+    "noStaff": "No active staff",
+    "keep": "Keep",
+    "delete": "Delete",
+    "disconnectKeep": "Keep synced leaves",
+    "disconnectDelete": "Delete future synced leaves",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
   }
 }

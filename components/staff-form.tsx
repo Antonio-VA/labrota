@@ -255,6 +255,7 @@ export function StaffForm({
   shiftTypes = [],
   defaultDaysPerWeek = 5,
   guardiaMode = false,
+  hasViewerAccount = false,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
@@ -263,6 +264,7 @@ export function StaffForm({
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
   defaultDaysPerWeek?: number
   guardiaMode?: boolean
+  hasViewerAccount?: boolean
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -449,13 +451,18 @@ export function StaffForm({
             <input type="hidden" name="color" value={selectedColor} />
           </Field>
         </div>
-        {mode === "create" && (
+        {!hasViewerAccount && (
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" name="invite_viewer" value="on" className="mt-0.5 size-4 rounded border-border accent-primary" />
             <span className="text-[12px] text-muted-foreground leading-tight">
               {t("inviteViewerLabel")}
             </span>
           </label>
+        )}
+        {hasViewerAccount && (
+          <p className="text-[12px] text-emerald-600 dark:text-emerald-400">
+            ✓ {t("viewerLinked")}
+          </p>
         )}
       </Section>
 

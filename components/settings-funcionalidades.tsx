@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { toggleLeaveRequests, toggleSwapRequests } from "@/app/(clinic)/settings/actions"
+import { toggleOutlookSync } from "@/app/(clinic)/leaves/outlook-actions"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 
 function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
@@ -20,6 +21,7 @@ function FeatureToggle({ label, description, enabled, onToggle, disabled }: {
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-label={label}
         disabled={disabled}
         onClick={onToggle}
         className={cn(
@@ -40,20 +42,24 @@ export function SettingsFuncionalidades({
   displayMode,
   enableLeaveRequests,
   enableSwapRequests = false,
+  enableOutlookSync = false,
   enableNotes,
   enableTaskInShift,
 }: {
   displayMode: "by_shift" | "by_task"
   enableLeaveRequests: boolean
   enableSwapRequests?: boolean
+  enableOutlookSync?: boolean
   enableNotes: boolean
   enableTaskInShift: boolean
   authMethod?: "otp" | "password"
 }) {
   const t = useTranslations("features")
   const ts = useTranslations("swaps")
+  const to = useTranslations("outlook")
   const [leaveRequests, setLeaveRequests] = useState(enableLeaveRequests)
   const [swapRequests, setSwapRequests] = useState(enableSwapRequests)
+  const [outlookSync, setOutlookSync] = useState(enableOutlookSync)
   const [notes, setNotes] = useState(enableNotes)
   const [taskInShift, setTaskInShift] = useState(enableTaskInShift)
   const [isPending, startTransition] = useTransition()
@@ -92,6 +98,7 @@ export function SettingsFuncionalidades({
           startTransition(async () => {
             const result = await toggleLeaveRequests(val)
             if (result.error) { toast.error(result.error); setLeaveRequests(!val) }
+            else toast.success(val ? t("leaveRequestsEnabled") : t("leaveRequestsDisabled"))
           })
         }}
       />
@@ -110,10 +117,29 @@ export function SettingsFuncionalidades({
             startTransition(async () => {
               const result = await toggleSwapRequests(val)
               if (result.error) { toast.error(result.error); setSwapRequests(!val) }
+              else toast.success(val ? ts("swapRequestsEnabled") : ts("swapRequestsDisabled"))
             })
           }}
         />
       </>)}
+
+      <div className="h-px bg-border" />
+
+      <FeatureToggle
+        label={to("featureLabel")}
+        description={to("featureDescription")}
+        enabled={outlookSync}
+        disabled={isPending}
+        onToggle={() => {
+          const val = !outlookSync
+          setOutlookSync(val)
+          startTransition(async () => {
+            const result = await toggleOutlookSync(val)
+            if (result.error) { toast.error(result.error); setOutlookSync(!val) }
+            else toast.success(val ? to("featureEnabled") : to("featureDisabled"))
+          })
+        }}
+      />
 
       <div className="h-px bg-border" />
 
@@ -128,6 +154,7 @@ export function SettingsFuncionalidades({
           startTransition(async () => {
             const result = await updateLabConfig({ enable_notes: val })
             if (result.error) { toast.error(result.error); setNotes(!val) }
+            else toast.success(val ? t("notesEnabled") : t("notesDisabled"))
           })
         }}
       />
@@ -146,6 +173,7 @@ export function SettingsFuncionalidades({
             startTransition(async () => {
               const result = await updateLabConfig({ enable_task_in_shift: val })
               if (result.error) { toast.error(result.error); setTaskInShift(!val) }
+              else toast.success(val ? t("taskInShiftEnabled") : t("taskInShiftDisabled"))
             })
           }}
         />

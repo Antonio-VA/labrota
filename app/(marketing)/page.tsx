@@ -8,9 +8,8 @@ import { setLocale } from "@/lib/locale-action"
 import {
   Calendar,
   ShieldCheck,
-  Eye,
   BarChart3,
-  CalendarOff,
+  Palmtree,
   Sparkles,
   AlertTriangle,
   Clock,
@@ -23,6 +22,8 @@ import {
   X,
   Wand2,
   GripVertical,
+  ArrowLeftRight,
+  Cloud,
 } from "lucide-react"
 
 // ─── i18n content ────────────────────────────────────────────────────────────
@@ -71,9 +72,10 @@ const content = {
         { title: "AI-Powered Setup", body: "Share your existing spreadsheets or rotas. Our AI reads them, extracts your staff, shifts and procedure assignments, and configures your lab automatically — go live in one session." },
         { title: "AI Smart Rotas", body: "One click and LabRota's AI organises your entire shift schedule — balancing workload, respecting approved leave, and ensuring every procedure has the right certified staff assigned." },
         { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
-        { title: "Real-time Visibility", body: "A live dashboard for managers and instant notifications for staff — everyone sees the rota the moment it changes." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
         { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
+        { title: "Shift Swap Requests", body: "Staff can request shift swaps directly from the app. Managers review and approve — coverage is maintained automatically and everyone is notified instantly." },
+        { title: "Outlook Calendar Sync", body: "Connect staff Outlook calendars and out-of-office events automatically become leaves in LabRota — no manual entry, no missed absences." },
       ],
     },
     how: {
@@ -91,18 +93,21 @@ const content = {
     },
     pricing: {
       title: "Simple, transparent pricing",
-      sub: "No per-employee fees. One flat price per laboratory.",
+      sub: "Pay per staff member. Scale up or down as your team grows.",
       monthly: "Monthly",
       annual: "Annual",
-      save: "Save 23%",
-      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/month" },
+      save: "Save 2 months",
+      staffLabel: "Staff members",
+      perMonthUnit: "/month",
+      perAnnualUnit: "/month, billed annually",
+      perPersonRate: "€5 per staff member",
       promo: "Launch offer",
       features: [
-        "Unlimited staff",
         "AI-powered rota generation",
+        "Shift swap requests",
         "Competency enforcement & skill gap detection",
         "Leave management",
-        "Real-time visibility & notifications",
+        "Outlook calendar sync",
         "PDF & XLS export",
         "AI-assisted lab setup from your existing rotas",
         "Priority support",
@@ -173,9 +178,10 @@ const content = {
         { title: "Configuración con IA", body: "Comparte tus hojas de cálculo o rotas actuales. Nuestra IA las lee, extrae tu equipo, turnos y asignaciones de procedimientos, y configura tu laboratorio automáticamente — en una sola sesión." },
         { title: "Rotas Inteligentes con IA", body: "Un clic y la IA de LabRota organiza todo el horario de turnos — equilibrando carga, respetando ausencias aprobadas y asegurando que cada procedimiento tiene asignado el personal certificado correcto." },
         { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
-        { title: "Visibilidad en Tiempo Real", body: "Dashboard en directo para managers y notificaciones instantáneas para el equipo — todos ven la rota en el momento en que cambia." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
         { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
+        { title: "Cambios de Turno", body: "El equipo puede solicitar cambios de turno directamente desde la app. Los managers revisan y aprueban — la cobertura se mantiene automáticamente y todos reciben la notificación al instante." },
+        { title: "Sincronización Outlook", body: "Conecta los calendarios de Outlook del equipo y los eventos de fuera de oficina se convierten automáticamente en ausencias en LabRota — sin entrada manual, sin ausencias olvidadas." },
       ],
     },
     how: {
@@ -193,18 +199,21 @@ const content = {
     },
     pricing: {
       title: "Precios simples y transparentes",
-      sub: "Sin coste por empleado. Un precio fijo por laboratorio.",
+      sub: "Precio por persona. Crece o reduce según el tamaño de tu equipo.",
       monthly: "Mensual",
       annual: "Anual",
-      save: "Ahorra 23%",
-      price: { monthly: "129", annual: "99", was: "149", unit: "/lab/mes" },
+      save: "Ahorra 2 meses",
+      staffLabel: "Personas en el equipo",
+      perMonthUnit: "/mes",
+      perAnnualUnit: "/mes, facturado anualmente",
+      perPersonRate: "€5 por persona",
       promo: "Oferta de lanzamiento",
       features: [
-        "Empleados ilimitados",
         "Generación de rotas con IA",
+        "Solicitudes de cambio de turno",
         "Control de competencias y detección de brechas",
         "Gestión de ausencias",
-        "Visibilidad en tiempo real y notificaciones",
+        "Sincronización calendario Outlook",
         "Exportación PDF y XLS",
         "Configuración asistida por IA desde tus rotas actuales",
         "Soporte prioritario",
@@ -238,7 +247,7 @@ type Lang = keyof typeof content
 
 // ─── Feature icons ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Eye, CalendarOff, GripVertical]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, GripVertical, ArrowLeftRight, Cloud]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -400,6 +409,7 @@ export default function MarketingPage() {
   const locale = useLocale()
   const [lang, setLang] = useState<Lang>(locale === "es" ? "es" : "en")
   const [annual, setAnnual] = useState(true)
+  const [staffCount, setStaffCount] = useState(12)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const t = content[lang]
@@ -448,6 +458,9 @@ export default function MarketingPage() {
               </a>
             ))}
             <div className="flex gap-2 pt-2">
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-[14px] font-semibold text-[#1b4f8a] border border-[#1b4f8a] py-2.5 rounded-lg hover:bg-[#eff6ff] transition-colors">
+                {t.nav.login}
+              </Link>
               <Link href="#contact" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-[14px] font-semibold text-white bg-[#1b4f8a] py-2.5 rounded-lg">
                 {t.nav.cta}
               </Link>
@@ -624,20 +637,50 @@ export default function MarketingPage() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#f59e0b] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap tracking-wide uppercase">
               {t.pricing.promo}
             </div>
-            {/* Price */}
-            <div className="text-center mb-8 pt-2">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <span className="text-[18px] text-[#94a3b8] line-through">€{t.pricing.price.was}</span>
+
+            {/* Slider */}
+            <div className="mb-8 pt-2">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[14px] font-medium text-[#64748b]">{t.pricing.staffLabel}</span>
+                <span className="inline-flex items-center justify-center min-w-[44px] h-9 px-3 rounded-lg bg-[#1b4f8a] text-white text-[20px] font-extrabold tabular-nums">{staffCount}</span>
               </div>
-              <div className="flex items-end justify-center gap-1">
-                <span className="text-[24px] font-bold text-[#64748b] leading-[2]">€</span>
-                <span className="text-[64px] font-extrabold tracking-tight text-[#0f172a] leading-none">
-                  {annual ? t.pricing.price.annual : t.pricing.price.monthly}
-                </span>
-                <span className="text-[14px] text-[#94a3b8] mb-3">{t.pricing.price.unit}</span>
+              <input
+                type="range"
+                min={5}
+                max={30}
+                step={1}
+                value={staffCount}
+                onChange={e => setStaffCount(Number(e.target.value))}
+                className="w-full cursor-pointer appearance-none h-[6px] rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1b4f8a] [&::-webkit-slider-thumb]:shadow-[0_0_0_3px_rgba(27,79,138,0.2)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#1b4f8a] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #1b4f8a ${((staffCount - 5) / 25) * 100}%, #dbeafe ${((staffCount - 5) / 25) * 100}%)`,
+                }}
+              />
+              <div className="flex justify-between mt-2">
+                <span className="text-[11px] text-[#94a3b8]">5</span>
+                <span className="text-[11px] text-[#94a3b8]">30</span>
               </div>
-              <p className="text-[13px] text-[#94a3b8] mt-1">{t.pricing.sub}</p>
             </div>
+
+            {/* Price */}
+            <div className="text-center mb-8 bg-[#f8fafc] rounded-xl py-6 px-4">
+              <p className="text-[12px] font-semibold text-[#1b4f8a] uppercase tracking-wide mb-2">{t.pricing.perPersonRate}</p>
+              <div className="flex items-end justify-center gap-1 mb-1">
+                <span className="text-[22px] font-bold text-[#64748b] leading-[1.8]">€</span>
+                <span className="text-[60px] font-extrabold tracking-tight text-[#0f172a] leading-none">
+                  {annual ? Math.round(staffCount * 50 / 12) : staffCount * 5}
+                </span>
+                <span className="text-[13px] text-[#94a3b8] mb-3 leading-[1.3]">
+                  {annual ? t.pricing.perAnnualUnit : t.pricing.perMonthUnit}
+                </span>
+              </div>
+              <p className="text-[13px] text-[#94a3b8] mt-2">
+                {annual
+                  ? (lang === "es" ? `€${staffCount * 50}/año — 2 meses gratis` : `€${staffCount * 50}/year — 2 months free`)
+                  : (lang === "es" ? `Total ${staffCount} × €5` : `Total ${staffCount} × €5`)}
+              </p>
+            </div>
+
             {/* Features */}
             <ul className="flex flex-col gap-3 mb-8">
               {t.pricing.features.map(f => (

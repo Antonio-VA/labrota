@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react"
 import { Check, ChevronDown, Star, Loader2 } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
+import { SwapBell } from "@/components/swap-panel"
 import { UserAvatarMenu } from "@/components/user-avatar-menu"
 import { cn } from "@/lib/utils"
 
@@ -133,8 +134,9 @@ export function ClinicTopBar({
 
         <div className="flex-1" />
 
-        {/* Right: bell + avatar */}
-        <div className="flex items-center gap-2 header-icons">
+        {/* Right: swaps + bell + avatar */}
+        <div className="flex items-center gap-0.5 header-icons">
+          <SwapBell />
           <NotificationBell />
           {initialUser && <UserAvatarMenu initialUser={initialUser} />}
         </div>

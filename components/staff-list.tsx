@@ -712,10 +712,11 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
+  email: "minmax(140px,1.5fr)",
   capacidades: "minmax(0,3fr)",
   training: "minmax(200px,2.5fr)",
   status: "minmax(100px,0.8fr)",
@@ -727,7 +728,7 @@ const COL_WIDTHS: Record<ColKey, string> = {
 
 function buildGrid(cols: Set<ColKey>) {
   const parts = ["32px", "minmax(0,1.5fr)"]
-  for (const key of ["role", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
+  for (const key of ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
   return parts.join(" ")
@@ -776,19 +777,20 @@ function StaffTable({
           ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
           onChange={() => onToggleAll(members.map((m) => m.id))}
           className="size-4 rounded border-border cursor-pointer accent-primary"
-          aria-label="Seleccionar todos"
+          aria-label={t("selectAll")}
         />
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
         {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
+        {visibleCols.has("email") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>}
         {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
         {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
         {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
-        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Turnos</span>}
-        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">Días pref.</span>}
-        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">Días/sem</span>}
-        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">Patrón</span>}
+        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>}
+        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>}
+        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>}
+        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>}
       </div>
 
       {/* Rows */}
@@ -895,6 +897,23 @@ function StaffTable({
               <div className="hidden md:flex items-center gap-1.5">
                 <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
                 <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
+              </div>
+            )}
+
+            {/* Email */}
+            {visibleCols.has("email") && (
+              <div className="hidden md:flex items-center min-w-0">
+                {editMode && setEditValue ? (
+                  <input
+                    type="email"
+                    value={String(getVal?.(member, "email") ?? member.email ?? "")}
+                    onChange={(e) => setEditValue(member.id, "email", e.target.value || null)}
+                    placeholder="—"
+                    className="h-7 w-full rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
+                  />
+                ) : (
+                  <span className={cn("text-[13px] truncate", member.email ? "text-foreground" : "text-muted-foreground/40")}>{member.email ?? "—"}</span>
+                )}
               </div>
             )}
 
@@ -1169,7 +1188,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   // Column visibility
-  type ColKey = "role" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => new Set(DEFAULT_COLS))
   const [showColMenu, setShowColMenu] = useState(false)
@@ -1184,14 +1203,15 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     setVisibleCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
   }
   const ALL_COLUMNS: { key: ColKey; label: string }[] = [
-    { key: "role", label: "Departamento" },
-    { key: "capacidades", label: "Técnicas" },
-    { key: "training", label: "En formación" },
-    { key: "status", label: "Estado" },
-    { key: "shiftPrefs", label: "Preferencia turno" },
-    { key: "dayPrefs", label: "Preferencia días" },
-    { key: "daysPerWeek", label: "Días/semana" },
-    { key: "workingPattern", label: "Patrón trabajo" },
+    { key: "role", label: t("columnMenu.role") },
+    { key: "email", label: t("columnMenu.email") },
+    { key: "capacidades", label: t("columnMenu.capacidades") },
+    { key: "training", label: t("columnMenu.training") },
+    { key: "status", label: t("columnMenu.status") },
+    { key: "shiftPrefs", label: t("columnMenu.shiftPrefs") },
+    { key: "dayPrefs", label: t("columnMenu.dayPrefs") },
+    { key: "daysPerWeek", label: t("columnMenu.daysPerWeek") },
+    { key: "workingPattern", label: t("columnMenu.workingPattern") },
   ]
 
   // Inline edit mode
@@ -1220,7 +1240,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     startSaving(async () => {
       const result = await bulkUpdateStaffField(updates)
       if (result.error) toast.error(result.error)
-      else toast.success(`${result.updated} campos actualizados`)
+      else toast.success(t("bulk.fieldsUpdated", { count: result.updated }))
       setEditDirty(new Map())
       setEditMode(false)
     })

@@ -101,15 +101,15 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
     setFileName(file.name)
 
     const reader = new FileReader()
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const buf = ev.target?.result as ArrayBuffer
         setBuffer(buf)
-        const names = getSheetNames(buf)
+        const names = await getSheetNames(buf)
         setSheets(names)
         if (names.length === 1) {
           setSelectedSheet(names[0])
-          doParse(buf, names[0])
+          await doParse(buf, names[0])
         } else if (names.length > 1) {
           setSelectedSheet(names[0])
           setStep("sheet")
@@ -123,9 +123,9 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
     reader.readAsArrayBuffer(file)
   }
 
-  function doParse(buf: ArrayBuffer, sheet: string) {
+  async function doParse(buf: ArrayBuffer, sheet: string) {
     try {
-      const result = parseSheet(buf, sheet)
+      const result = await parseSheet(buf, sheet)
       setParsed(result)
       setOrgName(externalOrgName || sheet || fileName.replace(/\.(xlsx?)/i, ""))
       setMode(result.mode)

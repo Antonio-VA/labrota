@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import type * as XLSXType from "xlsx"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,10 +72,10 @@ function norm(s: string): string {
   return s.toLowerCase().trim()
 }
 
-function isDate(cell: unknown): Date | null {
+function isDate(cell: unknown, SSF?: typeof XLSXType.SSF): Date | null {
   if (cell instanceof Date) return cell
-  if (typeof cell === "number") {
-    const d = XLSX.SSF.parse_date_code(cell)
+  if (typeof cell === "number" && SSF) {
+    const d = SSF.parse_date_code(cell)
     if (d) return new Date(d.y, d.m - 1, d.d)
   }
   if (typeof cell === "string") {
@@ -114,12 +114,14 @@ function isTaskHeader(s: string): boolean {
 
 // ── Main parser ───────────────────────────────────────────────────────────────
 
-export function getSheetNames(buffer: ArrayBuffer): string[] {
+export async function getSheetNames(buffer: ArrayBuffer): Promise<string[]> {
+  const XLSX = await import("xlsx")
   const wb = XLSX.read(buffer, { type: "array" })
   return wb.SheetNames
 }
 
-export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
+export async function parseSheet(buffer: ArrayBuffer, sheetName: string): Promise<ParsedRota> {
+  const XLSX = await import("xlsx")
   const wb = XLSX.read(buffer, { type: "array", cellDates: true })
   const ws = wb.Sheets[sheetName]
   if (!ws) throw new Error("Sheet not found")
@@ -177,7 +179,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
   }
 
   // Determine orientation: if days are columns and tasks are in first column, flip
-  const columnsAreDays = headerDayCount >= 3 || headerRow.some((h) => isDate(h) !== null)
+  const columnsAreDays = headerDayCount >= 3 || headerRow.some((h) => isDate(h, XLSX.SSF) !== null)
   const rowsAreTasks = col0TaskCount >= 3
 
   const mode: "by_task" | "by_shift" =
@@ -208,7 +210,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
 
   // Check header for dates
   for (let col = 1; col < headerRow.length; col++) {
-    const d = isDate(data[headerRowIdx]?.[col])
+    const d = isDate(data[headerRowIdx]?.[col], XLSX.SSF)
     if (d) headerDates.push(toISO(d))
     else if (DAY_NAMES.has(norm(headerRow[col]))) headerDates.push("") // placeholder
   }
@@ -239,7 +241,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
 
   for (let row = headerRowIdx + 1; row < data.length; row++) {
     const cell = data[row]?.[0]
-    const d = isDate(cell)
+    const d = isDate(cell, XLSX.SSF)
     if (d) { dates.push(toISO(d)); continue }
     // Try "MONDAY 23" or "23" pattern
     const cellStr = String(cell ?? "").trim()
@@ -340,7 +342,7 @@ export function parseSheet(buffer: ArrayBuffer, sheetName: string): ParsedRota {
         if (colA) {
           // Try to extract a date from "MONDAY 23" or "23" or an actual date
           const dateMatch = colA.match(/(\d{1,2})\s*$/) // trailing number = day of month
-          const fullDate = isDate(rowData[0])
+          const fullDate = isDate(rowData[0], XLSX.SSF)
           if (fullDate) {
             currentDate = toISO(fullDate)
           } else if (dateMatch && allDates.length > 0) {

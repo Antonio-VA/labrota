@@ -34,7 +34,8 @@ export async function middleware(request: NextRequest) {
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
 
   // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback
-  if (searchParams.get("code") && !pathname.startsWith("/auth/callback")) {
+  // Skip for Outlook OAuth callback which also uses ?code=
+  if (searchParams.get("code") && !pathname.startsWith("/auth/callback") && !pathname.startsWith("/api/outlook-")) {
     const callbackUrl = new URL("/auth/callback", request.url)
     callbackUrl.search = request.nextUrl.search
     return NextResponse.redirect(callbackUrl)
@@ -81,6 +82,7 @@ export async function middleware(request: NextRequest) {
   // Allow through unconditionally (public routes)
   if (
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/outlook-") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") ||
     pathname === "/privacy" ||

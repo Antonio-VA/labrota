@@ -356,6 +356,7 @@ export default function LoginPage() {
               <div className="text-left">
                 <p className="text-[14px] font-medium text-emerald-700 dark:text-emerald-400">{t("checkEmail")}</p>
                 <p className="text-[13px] text-emerald-600 dark:text-emerald-400/80 mt-1">{t("checkEmailDescription", { email })}</p>
+                <p className="text-[12px] text-emerald-600/60 dark:text-emerald-400/50 mt-1">{t("checkSpam")}</p>
               </div>
             </div>
 
