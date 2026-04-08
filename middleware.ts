@@ -33,6 +33,44 @@ export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
 
+  // ── Sync user preferences from DB → cookies on new device/browser ────────
+  // Only runs once per browser (marker cookie prevents repeated DB lookups).
+  // Covers: locale, theme, accentColor, fontScale.
+  if (user && !isSuperAdmin && !request.cookies.has("labrota_prefs_synced")) {
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("preferences")
+        .eq("id", user.id)
+        .single() as { data: { preferences?: Record<string, unknown> } | null }
+      const prefs = data?.preferences as Record<string, unknown> | undefined
+      if (prefs) {
+        const maxAge = 365 * 24 * 60 * 60
+        const cookieOpts = { path: "/", maxAge, sameSite: "lax" as const }
+
+        // Locale: only set if user explicitly chose one (not "browser")
+        const dbLocale = prefs.locale as string | undefined
+        if (dbLocale && dbLocale !== "browser" && !request.cookies.has("locale")) {
+          supabaseResponse.cookies.set("locale", dbLocale, cookieOpts)
+        }
+
+        // Theme bundle: theme + accentColor + fontScale
+        const dbTheme = prefs.theme as string | undefined
+        const dbAccent = prefs.accentColor as string | undefined
+        const dbFontScale = prefs.fontScale as string | undefined
+        if ((dbTheme || dbAccent || dbFontScale) && !request.cookies.has("labrota_theme")) {
+          const themeObj: Record<string, string> = {}
+          if (dbTheme) themeObj.theme = dbTheme
+          if (dbAccent) themeObj.accentColor = dbAccent
+          if (dbFontScale) themeObj.fontScale = dbFontScale
+          supabaseResponse.cookies.set("labrota_theme", JSON.stringify(themeObj), cookieOpts)
+        }
+      }
+    } catch { /* non-critical — preferences will use defaults */ }
+    // Marker cookie so we don't query DB on every request
+    supabaseResponse.cookies.set("labrota_prefs_synced", "1", { path: "/", maxAge: 365 * 24 * 60 * 60, sameSite: "lax" })
+  }
+
   // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback
   // Skip for Outlook OAuth callback which also uses ?code=
   if (searchParams.get("code") && !pathname.startsWith("/auth/callback") && !pathname.startsWith("/api/outlook-")) {

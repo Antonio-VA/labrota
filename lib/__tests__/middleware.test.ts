@@ -9,6 +9,13 @@ vi.mock("@supabase/ssr", () => ({
     auth: {
       getUser: async () => ({ data: { user: mockUser } }),
     },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: null }),
+        }),
+      }),
+    }),
   }),
 }))
 
@@ -21,6 +28,7 @@ class MockCookies {
   getAll() { return [...this.store.entries()].map(([name, value]) => ({ name, value })) }
   set(name: string, value: string) { this.store.set(name, value) }
   get(name: string) { return this.store.has(name) ? { name, value: this.store.get(name)! } : undefined }
+  has(name: string) { return this.store.has(name) }
 }
 
 class MockNextResponse {

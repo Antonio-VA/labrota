@@ -105,6 +105,12 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
     .eq("id", user.id)
 
   if (error) return { error: error.message }
+
+  // Clear sync marker so other devices pick up the new preferences
+  const { cookies } = await import("next/headers")
+  const cookieStore = await cookies()
+  cookieStore.delete("labrota_prefs_synced")
+
   revalidatePath("/")
   return {}
 }
