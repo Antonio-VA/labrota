@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
@@ -48,18 +49,22 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     setRedoLen(0)
   }
 
-  async function handleUndo() {
+  function handleUndo() {
     const entry = undoStack.current.pop()
     if (!entry) return
     const currentData = weekData
     if (currentData) {
       redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
-      setRedoLen(redoStack.current.length)
     }
     lastFetchId.current++
-    setWeekData(entry.snapshot)
-    setUndoLen(undoStack.current.length)
-    // Fire-and-forget: run inverse on server without blocking UI
+    // flushSync forces React to render + commit to DOM synchronously
+    // before the server action fires, making the visual update instant
+    flushSync(() => {
+      setWeekData(entry.snapshot)
+      setUndoLen(undoStack.current.length)
+      setRedoLen(redoStack.current.length)
+    })
+    // Fire-and-forget: persist to server without blocking UI
     entry.inverse().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
       fetchWeekSilent(weekStart)
@@ -69,20 +74,21 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     })
   }
 
-  async function handleRedo() {
+  function handleRedo() {
     const entry = redoStack.current.pop()
     if (!entry) return
     const currentData = weekData
-    if (entry.forwardSnapshot) {
-      lastFetchId.current++
-      setWeekData(entry.forwardSnapshot)
-    }
     if (currentData) {
       undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: entry.forwardSnapshot, inverse: entry.inverse, forward: entry.forward }]
-      setUndoLen(undoStack.current.length)
     }
-    setRedoLen(redoStack.current.length)
-    // Fire-and-forget: run forward on server without blocking UI
+    lastFetchId.current++
+    // flushSync forces React to render + commit to DOM synchronously
+    flushSync(() => {
+      if (entry.forwardSnapshot) setWeekData(entry.forwardSnapshot)
+      setUndoLen(undoStack.current.length)
+      setRedoLen(redoStack.current.length)
+    })
+    // Fire-and-forget: persist to server without blocking UI
     entry.forward().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
       fetchWeekSilent(weekStart)

@@ -521,11 +521,15 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When weekData arrives with activeStaff, use it (deduplicates the staff fetch)
+  // Compare by staff IDs to avoid cascading re-renders on undo (same staff, new reference)
+  const prevStaffIdsRef = useRef("")
   useEffect(() => {
-    if (weekData?.activeStaff && weekData.activeStaff.length > 0) {
-      setStaffList(weekData.activeStaff)
-      setStaffLoaded(true)
-    }
+    if (!weekData?.activeStaff || weekData.activeStaff.length === 0) return
+    const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
+    if (ids === prevStaffIdsRef.current) return
+    prevStaffIdsRef.current = ids
+    setStaffList(weekData.activeStaff)
+    setStaffLoaded(true)
   }, [weekData?.activeStaff])
 
   // Navigation — both views move by 1 week
