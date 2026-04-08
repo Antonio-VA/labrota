@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Plane, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -118,8 +118,13 @@ export function ShiftGrid({
     })
   }
 
-  // Sync local state whenever server data arrives
-  useEffect(() => { if (data) { setLocalDaysRaw(data.days); onLocalDaysChange?.(data.days) } }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Sync local state whenever server data arrives — set-during-render avoids one-frame lag
+  const [prevData, setPrevData] = useState(data)
+  if (data && data !== prevData) {
+    setPrevData(data)
+    setLocalDaysRaw(data.days)
+    onLocalDaysChange?.(data.days)
+  }
 
   function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
     setLocalDays((prev) => prev.map((d) => ({

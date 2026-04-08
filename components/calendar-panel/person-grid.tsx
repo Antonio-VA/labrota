@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, Fragment } from "react"
+import { useMemo, useState, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -46,7 +46,11 @@ export function PersonGrid({
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const [localDays, setLocalDays] = useState(data?.days ?? [])
-  useEffect(() => { if (data) setLocalDays(data.days) }, [data])
+  const [prevData, setPrevData] = useState(data)
+  if (data && data !== prevData) {
+    setPrevData(data)
+    setLocalDays(data.days)
+  }
 
   function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
     setLocalDays((prev) => prev.map((d) => ({

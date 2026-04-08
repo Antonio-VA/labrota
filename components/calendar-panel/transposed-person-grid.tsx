@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Fragment } from "react"
+import { useState, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, Check, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -53,7 +53,11 @@ export function TransposedPersonGrid({
     })
 
   const [localDays, setLocalDays] = useState(data.days)
-  useEffect(() => { setLocalDays(data.days) }, [data])
+  const [prevData, setPrevData] = useState(data)
+  if (data !== prevData) {
+    setPrevData(data)
+    setLocalDays(data.days)
+  }
 
   // Build assignment map: staffId → date → assignment
   const assignMap: Record<string, Record<string, Assignment>> = {}

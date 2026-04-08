@@ -146,27 +146,20 @@ export function TransposedShiftGrid({
 
   // Local optimistic state — mirrors data.days but allows instant UI updates
   type DayData = NonNullable<typeof data>["days"][0]
-  const [localDays, setLocalDays] = useState<DayData[]>([])
-  const prevDataRef = useMemo(() => ({ days: data?.days }), [data?.days])
-  if (data?.days && data.days !== prevDataRef.days) {
-    // Sync from server when data changes
-    // Using this pattern to avoid useEffect flash
-  }
-  const days = data?.days ?? localDays
-  // Keep localDays synced with server data
-  const daysToRender = useMemo(() => {
-    if (localDays.length > 0) return localDays
-    return data?.days ?? []
-  }, [localDays, data?.days])
+  const [localDays, setLocalDays] = useState<DayData[]>(data?.days ?? [])
 
-  // Sync local days from server data
+  // Sync from server — set-during-render avoids one-frame lag vs useEffect
+  const [prevData, setPrevData] = useState(data)
+  if (data && data !== prevData) {
+    setPrevData(data)
+    setLocalDays(data.days)
+  }
+
+  const daysToRender = localDays.length > 0 ? localDays : (data?.days ?? [])
+
+  // Reset local state to server data on error
   const syncFromServer = useCallback(() => {
     setLocalDays(data?.days ?? [])
-  }, [data?.days])
-
-  // Initialize local days from data
-  useMemo(() => {
-    if (data?.days) setLocalDays(data.days)
   }, [data?.days])
 
   if (!data || daysToRender.length === 0) return null

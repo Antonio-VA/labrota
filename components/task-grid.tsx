@@ -674,9 +674,10 @@ export function TaskGrid({
   // Local whole_team state: "tecnicaCode:date" → boolean
   const [localWholeTeam, setLocalWholeTeam] = useState<Record<string, boolean>>({})
 
-  // Sync from server whenever data changes
-  useEffect(() => {
-    if (!data) return
+  // Sync from server whenever data changes — set-during-render avoids one-frame lag
+  const [prevData, setPrevData] = useState(data)
+  if (data && data !== prevData) {
+    setPrevData(data)
     setLocalDays(data.days)
     // Merge whole_team from server: keys with assignments get server truth,
     // keys without assignments keep local state (optimistic toggle)
@@ -693,11 +694,9 @@ export function TaskGrid({
     }
     setLocalWholeTeam((prev) => {
       const next: Record<string, boolean> = {}
-      // Server-known keys: use server truth
       for (const key of keysWithAssignments) {
         next[key] = serverWt[key] ?? false
       }
-      // Keys without assignments: keep local optimistic state
       for (const [key, val] of Object.entries(prev)) {
         if (!keysWithAssignments.has(key) && val) {
           next[key] = true
@@ -705,7 +704,7 @@ export function TaskGrid({
       }
       return next
     })
-  }, [data])
+  }
 
   if (loading || !data) {
     return (
