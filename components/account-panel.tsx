@@ -130,7 +130,7 @@ export function AccountPanel({ open, onClose, user }: {
                 style={{ background: prefs.accentColor ?? "#1b4f8a" }}
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+                  <img src={avatarUrl} alt="Avatar" className="size-full object-cover" onError={() => setAvatarUrl(null)} />
                 ) : (
                   <span className="flex items-center justify-center size-full text-[18px] font-bold text-white">{initials}</span>
                 )}

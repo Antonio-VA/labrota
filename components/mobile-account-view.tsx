@@ -25,6 +25,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
   const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
+  const [avatarImgError, setAvatarImgError] = useState(false)
   const [prefs, setPrefs] = useState<UserPreferences>({
     theme: "light",
     accentColor: "#1b4f8a",
@@ -82,8 +83,8 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
     <div className="flex flex-col gap-4 px-4 py-5">
       {/* Profile header */}
       <div className="flex items-center gap-3">
-        {initialUser?.avatarUrl ? (
-          <img src={initialUser.avatarUrl} alt="" className="size-14 rounded-full object-cover" />
+        {initialUser?.avatarUrl && !avatarImgError ? (
+          <img src={initialUser.avatarUrl} alt="" className="size-14 rounded-full object-cover" onError={() => setAvatarImgError(true)} />
         ) : (
           <div className="size-14 rounded-full bg-primary/10 text-primary text-[18px] font-bold flex items-center justify-center">
             {initials}

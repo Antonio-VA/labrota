@@ -116,7 +116,12 @@ export function MobileHeader({
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"
                   >
                     {org.logo_url ? (
-                      <img src={org.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                      <>
+                        <img src={org.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display") }} />
+                        <span className="size-8 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0" style={{ display: "none" }}>
+                          {initials}
+                        </span>
+                      </>
                     ) : (
                       <span className="size-8 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
                         {initials}
