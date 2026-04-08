@@ -3184,12 +3184,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     lastFetchId.current++
     setWeekData(entry.snapshot)
     setUndoLen(undoStack.current.length)
-    const result = await entry.inverse()
-    if (result?.error) {
+    // Fire-and-forget: run inverse on server without blocking UI
+    entry.inverse().then((result) => {
+      if (result?.error) toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
+      fetchWeekSilent(weekStart)
+    }).catch(() => {
       toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
-    }
-    // Always re-fetch after inverse to get authoritative server state
-    fetchWeekSilent(weekStart)
+      fetchWeekSilent(weekStart)
+    })
   }
 
   async function handleRedo() {
@@ -3206,11 +3208,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       setUndoLen(undoStack.current.length)
     }
     setRedoLen(redoStack.current.length)
-    const result = await entry.forward()
-    if (result?.error) {
+    // Fire-and-forget: run forward on server without blocking UI
+    entry.forward().then((result) => {
+      if (result?.error) toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
+      fetchWeekSilent(weekStart)
+    }).catch(() => {
       toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
-    }
-    fetchWeekSilent(weekStart)
+      fetchWeekSilent(weekStart)
+    })
   }
 
   // Clear stacks when navigating weeks
