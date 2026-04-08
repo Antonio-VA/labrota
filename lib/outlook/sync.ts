@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getValidAccessToken, fetchOOFEvents, type OOFEvent } from "./graph-client"
+import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import type { LeaveType } from "@/lib/types/database"
 
 // Map Outlook event subject to leave type using keyword heuristics
@@ -64,6 +65,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   )
 
   const processedEventIds = new Set<string>()
+  const affectedLeaves: Array<{ startDate: string; endDate: string }> = []
 
   // Upsert OOF events
   for (const event of oofEvents) {
@@ -81,8 +83,20 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
             type: guessLeaveType(event.subject),
           } as never)
           .eq("id", existing.id)
-        if (error) result.errors.push(`Update failed for event ${event.eventId}: ${error.message}`)
-        else result.updated++
+        if (error) {
+          result.errors.push(`Update failed for event ${event.eventId}: ${error.message}`)
+        } else {
+          result.updated++
+          // Auto-remove conflicting rota assignments for updated date range
+          await admin
+            .from("rota_assignments")
+            .delete()
+            .eq("staff_id", staffId)
+            .eq("organisation_id", orgId)
+            .gte("date", event.startDate)
+            .lte("date", event.endDate)
+          affectedLeaves.push({ startDate: event.startDate, endDate: event.endDate })
+        }
       }
     } else {
       // Create new leave
@@ -99,8 +113,20 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
           outlook_event_id: event.eventId,
           notes: `Outlook: ${event.subject}`,
         } as never)
-      if (error) result.errors.push(`Insert failed for event ${event.eventId}: ${error.message}`)
-      else result.created++
+      if (error) {
+        result.errors.push(`Insert failed for event ${event.eventId}: ${error.message}`)
+      } else {
+        result.created++
+        // Auto-remove conflicting rota assignments
+        await admin
+          .from("rota_assignments")
+          .delete()
+          .eq("staff_id", staffId)
+          .eq("organisation_id", orgId)
+          .gte("date", event.startDate)
+          .lte("date", event.endDate)
+        affectedLeaves.push({ startDate: event.startDate, endDate: event.endDate })
+      }
     }
   }
 
@@ -131,8 +157,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     .update({ last_synced_at: new Date().toISOString() } as never)
     .eq("staff_id", staffId)
 
-  // Notify managers if new leaves were created
-  if (result.created > 0) {
+  // Notify managers if new leaves were created or updated
+  if (result.created > 0 || result.updated > 0) {
     try {
       const { data: staffData } = await admin
         .from("staff")
@@ -141,22 +167,35 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
         .single() as { data: { first_name: string; last_name: string } | null }
       const staffName = staffData ? `${staffData.first_name} ${staffData.last_name}` : "Staff"
 
-      const { data: managers } = await admin
-        .from("organisation_members")
-        .select("user_id")
-        .eq("organisation_id", orgId)
-        .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string }> | null }
+      // Generic sync notification for admins
+      if (result.created > 0) {
+        const { data: managers } = await admin
+          .from("organisation_members")
+          .select("user_id")
+          .eq("organisation_id", orgId)
+          .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string }> | null }
 
-      if (managers && managers.length > 0) {
-        const notifications = managers.map(m => ({
-          organisation_id: orgId,
-          user_id: m.user_id,
-          type: "outlook_sync",
-          title: "Outlook leave synced",
-          message: `${result.created} new leave(s) synced from ${staffName}'s Outlook calendar.`,
-          data: { staffId, created: result.created },
-        }))
-        await admin.from("notifications").insert(notifications as never)
+        if (managers && managers.length > 0) {
+          const notifications = managers.map(m => ({
+            organisation_id: orgId,
+            user_id: m.user_id,
+            type: "outlook_sync",
+            title: "Outlook leave synced",
+            message: `${result.created} new leave(s) synced from ${staffName}'s Outlook calendar.`,
+            data: { staffId, created: result.created },
+          }))
+          await admin.from("notifications").insert(notifications as never)
+        }
+      }
+
+      // Leave impact notifications — alert admins that shifts were removed from rotas
+      for (const leave of affectedLeaves) {
+        await notifyLeaveImpact({
+          orgId,
+          staffName,
+          startDate: leave.startDate,
+          endDate: leave.endDate,
+        }).catch((err) => console.error("[outlook-sync] notifyLeaveImpact failed:", err))
       }
     } catch { /* notification failure is non-blocking */ }
   }
