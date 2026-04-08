@@ -818,7 +818,7 @@ export function LeavesList({
     if (!outlookStatus) return
     const reason = searchParams.get("reason")
     if (outlookStatus === "connected") {
-      toast.success(to("connectSuccess", { name: "" }))
+      toast.success(to("featureEnabled"))
       setOutlookPanelOpen(true)
     } else if (outlookStatus === "cancelled") {
       toast.info("Outlook connection cancelled")
