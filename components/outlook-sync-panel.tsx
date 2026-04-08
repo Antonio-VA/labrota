@@ -52,7 +52,8 @@ export function OutlookSyncPanel({
   }, [open, loadStatus])
 
   const handleConnect = (staffId: string) => {
-    window.open(`/api/outlook-auth?staffId=${staffId}&orgId=${orgId}`, "_blank", "width=600,height=700")
+    // Navigate in same window — popups don't work well on mobile
+    window.location.href = `/api/outlook-auth?staffId=${staffId}&orgId=${orgId}`
   }
 
   const handleSyncOne = (staffId: string, staffName: string) => {

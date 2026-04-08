@@ -97,9 +97,10 @@ describe("middleware — public paths (no auth required)", () => {
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it("allows /api/outlook-callback through", async () => {
+  it("allows /api/outlook-callback through without PKCE redirect", async () => {
     mockUser = null
     await runMiddleware("/api/outlook-callback?code=test&state=xyz")
+    // Should NOT redirect to /auth/callback (PKCE) — the ?code= is for Microsoft OAuth
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
