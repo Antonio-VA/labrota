@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com https://graph.microsoft.com https://login.microsoftonline.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

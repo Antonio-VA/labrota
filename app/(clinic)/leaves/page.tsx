@@ -5,7 +5,7 @@ import { LeavesList } from "@/components/leaves-list"
 import type { LeaveWithStaff, Staff } from "@/lib/types/database"
 
 type OrgMember = { role: string; linked_staff_id: string | null }
-type LabConfigData = { enable_leave_requests: boolean }
+type LabConfigData = { enable_leave_requests: boolean; enable_outlook_sync: boolean }
 
 export default async function LeavesPage() {
   const [user, orgId] = await Promise.all([getAuthUser(), getCachedOrgId()])
@@ -13,6 +13,7 @@ export default async function LeavesPage() {
   let userRole: "admin" | "manager" | "viewer" = "admin"
   let viewerStaffId: string | null = null
   let enableLeaveRequests = false
+  let enableOutlookSync = false
 
   if (user && orgId) {
     const admin = createAdminClient()
@@ -25,12 +26,13 @@ export default async function LeavesPage() {
         .single() as unknown as Promise<{ data: OrgMember | null }>,
       admin
         .from("lab_config")
-        .select("enable_leave_requests")
+        .select("enable_leave_requests, enable_outlook_sync")
         .eq("organisation_id", orgId)
         .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
     ])
 
     enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false
+    enableOutlookSync = labConfigRes.data?.enable_outlook_sync ?? false
 
     if (memberRes.data?.role === "viewer") {
       userRole = "viewer"
@@ -107,6 +109,8 @@ export default async function LeavesPage() {
         userRole={userRole}
         viewerStaffId={viewerStaffId}
         enableLeaveRequests={enableLeaveRequests}
+        enableOutlookSync={enableOutlookSync}
+        orgId={orgId ?? undefined}
       />
     </div>
   )

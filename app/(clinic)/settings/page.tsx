@@ -113,6 +113,7 @@ export default async function SettingsPage() {
                   displayMode={orgSettings.displayMode}
                   enableLeaveRequests={orgSettings.enableLeaveRequests}
                   enableSwapRequests={orgSettings.enableSwapRequests}
+                  enableOutlookSync={orgSettings.enableOutlookSync}
                   enableNotes={orgSettings.enableNotes}
                   enableTaskInShift={orgSettings.enableTaskInShift}
                 />

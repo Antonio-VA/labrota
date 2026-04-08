@@ -270,6 +270,7 @@ export interface OrgSettings {
   region: string
   enableLeaveRequests: boolean
   enableSwapRequests: boolean
+  enableOutlookSync: boolean
   enableNotes: boolean
   enableTaskInShift: boolean
   displayMode: "by_shift" | "by_task"
@@ -290,9 +291,9 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
       .single() as unknown as Promise<{ data: { name: string; logo_url: string | null; rota_display_mode?: string; auth_method?: string; billing_start?: string | null; billing_end?: string | null; billing_fee?: number | null } | null }>,
     admin
       .from("lab_config")
-      .select("country, region, enable_leave_requests, enable_swap_requests, enable_notes, enable_task_in_shift")
+      .select("country, region, enable_leave_requests, enable_swap_requests, enable_outlook_sync, enable_notes, enable_task_in_shift")
       .eq("organisation_id", orgId)
-      .maybeSingle() as unknown as Promise<{ data: { country: string; region: string; enable_leave_requests?: boolean; enable_swap_requests?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }>,
+      .maybeSingle() as unknown as Promise<{ data: { country: string; region: string; enable_leave_requests?: boolean; enable_swap_requests?: boolean; enable_outlook_sync?: boolean; enable_notes?: boolean; enable_task_in_shift?: boolean } | null }>,
   ])
 
   if (!org) return null
@@ -303,6 +304,7 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
     region: config?.region ?? "",
     enableLeaveRequests: config?.enable_leave_requests ?? false,
     enableSwapRequests: config?.enable_swap_requests ?? false,
+    enableOutlookSync: config?.enable_outlook_sync ?? false,
     enableNotes: config?.enable_notes ?? true,
     enableTaskInShift: config?.enable_task_in_shift ?? false,
     displayMode: (org.rota_display_mode ?? "by_shift") as "by_shift" | "by_task",

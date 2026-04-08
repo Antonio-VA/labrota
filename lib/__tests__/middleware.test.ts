@@ -97,6 +97,12 @@ describe("middleware — public paths (no auth required)", () => {
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
+  it("allows /api/outlook-callback through", async () => {
+    mockUser = null
+    await runMiddleware("/api/outlook-callback?code=test&state=xyz")
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
   it("allows /forgot-password through", async () => {
     await runMiddleware("/forgot-password")
     expect(mockRedirect).not.toHaveBeenCalled()

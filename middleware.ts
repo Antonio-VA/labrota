@@ -81,6 +81,7 @@ export async function middleware(request: NextRequest) {
   // Allow through unconditionally (public routes)
   if (
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/outlook-") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") ||
     pathname === "/privacy" ||
