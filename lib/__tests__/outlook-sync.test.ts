@@ -297,6 +297,60 @@ describe("syncStaffOutlook — no assignment removal when dates unchanged", () =
   })
 })
 
+describe("syncStaffOutlook — deletion of removed Outlook events", () => {
+  it("deletes leave when Outlook event is removed (future leave)", async () => {
+    mockAdminChain = setupAdminChain({
+      existingLeaves: [
+        {
+          id: "leave-to-delete",
+          outlook_event_id: "evt-removed-1",
+          start_date: "2026-04-20",
+          end_date: "2026-04-22",
+          type: "annual",
+        },
+      ],
+    })
+
+    // Outlook returns empty — the event was removed
+    mockFetchOOFEvents.mockResolvedValue([])
+
+    const result = await syncStaffOutlook(STAFF_ID, ORG_ID)
+
+    expect(result.deleted).toBe(1)
+    expect(result.errors).toHaveLength(0)
+
+    // Verify leaves delete was called
+    const fromCalls = (mockAdminChain.from as ReturnType<typeof vi.fn>).mock.calls
+    const tableNames = fromCalls.map((call: string[]) => call[0])
+    expect(tableNames).toContain("leaves")
+    expect(mockAdminChain.delete).toHaveBeenCalled()
+  })
+
+  it("deletes leave that started before today but is still active", async () => {
+    // Simulates: leave started April 6, ends April 10, today is April 8
+    // The Outlook event was removed — this leave should still be found and deleted
+    mockAdminChain = setupAdminChain({
+      existingLeaves: [
+        {
+          id: "leave-active-past-start",
+          outlook_event_id: "evt-removed-2",
+          start_date: "2026-04-06", // Before today (April 8)
+          end_date: "2026-04-10",   // After today — still active
+          type: "annual",
+        },
+      ],
+    })
+
+    mockFetchOOFEvents.mockResolvedValue([])
+
+    const result = await syncStaffOutlook(STAFF_ID, ORG_ID)
+
+    // The leave should be found via end_date >= today and deleted
+    expect(result.deleted).toBe(1)
+    expect(result.errors).toHaveLength(0)
+  })
+})
+
 describe("syncStaffOutlook — insert failure does not remove assignments", () => {
   it("does not remove assignments when leave insert fails", async () => {
     mockAdminChain = setupAdminChain({
