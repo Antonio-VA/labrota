@@ -14,12 +14,11 @@ interface UseUndoRedoOptions {
   locale: string
   weekData: RotaWeekData | null
   setWeekData: (d: RotaWeekData) => void
-  setLiveDays: (d: null) => void
   fetchWeekSilent: (ws: string) => void
   lastFetchId: React.RefObject<number>
 }
 
-export function useUndoRedo({ weekStart, locale, weekData, setWeekData, setLiveDays, fetchWeekSilent, lastFetchId }: UseUndoRedoOptions) {
+export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId }: UseUndoRedoOptions) {
   const undoStack = useRef<UndoEntry[]>([])
   const redoStack = useRef<UndoEntry[]>([])
   const [undoLen, setUndoLen] = useState(0)
@@ -58,7 +57,6 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, setLiveD
       setRedoLen(redoStack.current.length)
     }
     lastFetchId.current++
-    setLiveDays(null)
     setWeekData(entry.snapshot)
     setUndoLen(undoStack.current.length)
     const result = await entry.inverse()
@@ -74,7 +72,6 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, setLiveD
     const currentData = weekData
     if (entry.forwardSnapshot) {
       lastFetchId.current++
-      setLiveDays(null)
       setWeekData(entry.forwardSnapshot)
     }
     if (currentData) {
