@@ -467,7 +467,7 @@ export function ChatPanel({
         </ScrollArea>
 
         {/* Input */}
-        <div className="shrink-0 border-t bg-background px-3 py-2.5" style={{ paddingBottom: "max(0.625rem, env(safe-area-inset-bottom, 0px))" }}>
+        <div className="shrink-0 border-t bg-background px-3 py-2.5 pb-16 md:pb-2.5">
           <form onSubmit={handleSubmit}>
             <div className="rounded-lg border border-input bg-muted/20 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-background transition-all">
               <textarea

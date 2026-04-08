@@ -279,91 +279,19 @@ export async function notifySwapInitiator(swapId: string, orgId: string, result:
   const title = subject
 
   await sendEmail([initiatorEmail], subject, emailWrapper(headerColor, title, orgName, bodyHtml))
-
-  // Also create in-app notification
-  try {
-    const admin = createAdminClient()
-    const { data: member } = await admin
-      .from("organisation_members")
-      .select("user_id")
-      .eq("organisation_id", orgId)
-      .eq("linked_staff_id", initiator.id)
-      .maybeSingle() as { data: { user_id: string } | null }
-
-    if (member) {
-      await admin.from("notifications").insert({
-        organisation_id: orgId,
-        user_id: member.user_id,
-        type: isApproved ? "swap_approved" : "swap_rejected",
-        title: isApproved ? "Shift swap approved" : "Shift swap rejected",
-        message: isApproved
-          ? `Your swap with ${targetName} on ${dateLabel} has been approved.`
-          : `Your swap with ${targetName} on ${dateLabel} has been rejected.`,
-        data: { swapId, date: swap.swap_date },
-      } as never)
-    }
-  } catch { /* notification failure is non-blocking */ }
 }
 
 // ── Notify managers (in-app) ─────────────────────────────────────────────────
+// Swap notifications are handled exclusively in the Swap menu, not the notification panel.
 
-export async function notifySwapManagers(swapId: string, orgId: string) {
-  const ctx = await getSwapContext(swapId, orgId)
-  if (!ctx || !ctx.initiator) return
-
-  const { swap, locale, initiator } = ctx
-  const initiatorName = `${initiator.first_name} ${initiator.last_name}`
-  const dateLabel = formatDate(swap.swap_date, locale)
-
-  const admin = createAdminClient()
-  const { data: members } = await admin
-    .from("organisation_members")
-    .select("user_id, role")
-    .eq("organisation_id", orgId)
-    .in("role", ["admin", "manager"]) as { data: Array<{ user_id: string; role: string }> | null }
-
-  if (!members || members.length === 0) return
-
-  const notifications = members.map(m => ({
-    organisation_id: orgId,
-    user_id: m.user_id,
-    type: "swap_request",
-    title: "New swap request",
-    message: `${initiatorName} requested a shift swap on ${dateLabel}.`,
-    data: { swapId, date: swap.swap_date },
-  }))
-
-  await admin.from("notifications").insert(notifications as never)
+export async function notifySwapManagers(_swapId: string, _orgId: string) {
+  // No-op: swap notifications live in the Swap menu only
 }
 
 // ── Notify target (in-app) ───────────────────────────────────────────────────
 
-export async function notifySwapTarget(swapId: string, orgId: string) {
-  const ctx = await getSwapContext(swapId, orgId)
-  if (!ctx || !ctx.target || !ctx.initiator) return
-
-  const { swap, locale, initiator, target } = ctx
-  const initiatorName = `${initiator.first_name} ${initiator.last_name}`
-  const dateLabel = formatDate(swap.swap_date, locale)
-
-  const admin = createAdminClient()
-  const { data: member } = await admin
-    .from("organisation_members")
-    .select("user_id")
-    .eq("organisation_id", orgId)
-    .eq("linked_staff_id", target.id)
-    .maybeSingle() as { data: { user_id: string } | null }
-
-  if (!member) return
-
-  await admin.from("notifications").insert({
-    organisation_id: orgId,
-    user_id: member.user_id,
-    type: "swap_pending_target",
-    title: "Swap request for you",
-    message: `${initiatorName} wants to swap shifts with you on ${dateLabel}. Check your email to accept or decline.`,
-    data: { swapId, date: swap.swap_date },
-  } as never)
+export async function notifySwapTarget(_swapId: string, _orgId: string) {
+  // No-op: swap notifications live in the Swap menu only
 }
 
 // ── Resend rota email with swap notice ───────────────────────────────────────
