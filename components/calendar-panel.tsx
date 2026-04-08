@@ -418,7 +418,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
-  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId })
+  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, setLiveDays, fetchWeekSilent, lastFetchId })
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
