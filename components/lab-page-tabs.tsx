@@ -55,13 +55,9 @@ export function LabPageTabs({
         ))}
       </div>
 
-      {/* Tab content — all pre-rendered, inactive hidden */}
+      {/* Tab content — only active tab rendered */}
       <div className="w-full">
-        {TAB_KEYS.map((key) => (
-          <div key={key} className={key !== active ? "hidden" : undefined}>
-            {content[key]}
-          </div>
-        ))}
+        {content[active]}
       </div>
     </div>
   )
