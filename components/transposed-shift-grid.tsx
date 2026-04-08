@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { moveAssignment, moveAssignmentShift, removeAssignment, upsertAssignment } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { StaffWithSkills, ShiftType, Tecnica } from "@/lib/types/database"
-import type { RotaWeekData, ShiftTimes } from "@/app/(clinic)/rota/actions"
+import type { RotaWeekData, RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 
 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 const ROLE_BORDER: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
@@ -43,6 +43,7 @@ interface TransposedShiftGridProps {
   onChipClick?: (assignment: { staff_id: string }, date: string) => void
   onRefresh?: () => void
   swapStaffId?: string | null
+  gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }
 
 // Draggable pill
@@ -68,7 +69,7 @@ function DroppableCell({ id, children, className, style }: { id: string; childre
 export function TransposedShiftGrid({
   data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
   compact, colorChips = true, timeFormat = "24h", loading, onCellClick, onChipClick, onRefresh,
-  swapStaffId,
+  swapStaffId, gridSetDaysRef,
 }: TransposedShiftGridProps) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -147,6 +148,8 @@ export function TransposedShiftGrid({
   // Local optimistic state — mirrors data.days but allows instant UI updates
   type DayData = NonNullable<typeof data>["days"][0]
   const [localDays, setLocalDays] = useState<DayData[]>(data?.days ?? [])
+  // Register this grid's day setter for direct undo/redo updates
+  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays as (days: RotaDay[]) => void
 
   // Sync from server — set-during-render avoids one-frame lag vs useEffect
   const [prevData, setPrevData] = useState(data)

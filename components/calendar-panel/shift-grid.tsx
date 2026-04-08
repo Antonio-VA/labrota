@@ -39,7 +39,7 @@ export function ShiftGrid({
   onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
   ratioOptimal, ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
-  swapStaffId,
+  swapStaffId, gridSetDaysRef,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -73,6 +73,7 @@ export function ShiftGrid({
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
   swapStaffId?: string | null
+  gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -117,6 +118,9 @@ export function ShiftGrid({
       return next
     })
   }
+
+  // Register this grid's day setter for direct undo/redo updates
+  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDaysRaw
 
   // Sync local state whenever server data arrives — set-during-render avoids one-frame lag
   const [prevData, setPrevData] = useState(data)

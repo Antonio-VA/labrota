@@ -644,6 +644,7 @@ export function TaskGrid({
   showPuncBiopsy = true,
   onDateClick,
   onChipClick,
+  gridSetDaysRef,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -668,9 +669,12 @@ export function TaskGrid({
   showPuncBiopsy?: boolean
   onDateClick?: (date: string) => void
   onChipClick?: (staffId: string) => void
+  gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
+  // Register this grid's day setter for direct undo/redo updates
+  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
   // Local whole_team state: "tecnicaCode:date" → boolean
   const [localWholeTeam, setLocalWholeTeam] = useState<Record<string, boolean>>({})
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
-import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
+import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 
 export type UndoEntry = {
   snapshot: RotaWeekData
@@ -17,9 +17,11 @@ interface UseUndoRedoOptions {
   setWeekData: (d: RotaWeekData) => void
   fetchWeekSilent: (ws: string) => void
   lastFetchId: React.RefObject<number>
+  /** Direct setter for the active grid's localDays — bypasses full tree re-render */
+  gridSetDaysRef: React.RefObject<((days: RotaDay[]) => void) | null>
 }
 
-export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId }: UseUndoRedoOptions) {
+export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef }: UseUndoRedoOptions) {
   const undoStack = useRef<UndoEntry[]>([])
   const redoStack = useRef<UndoEntry[]>([])
   const [undoLen, setUndoLen] = useState(0)
@@ -57,14 +59,17 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
       redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
     }
     lastFetchId.current++
-    // flushSync forces React to render + commit to DOM synchronously
-    // before the server action fires, making the visual update instant
-    flushSync(() => {
-      setWeekData(entry.snapshot)
-      setUndoLen(undoStack.current.length)
-      setRedoLen(redoStack.current.length)
-    })
-    // Fire-and-forget: persist to server without blocking UI
+    // 1. Direct grid update — same path as drag-and-drop, renders only the grid
+    if (gridSetDaysRef.current) {
+      flushSync(() => {
+        gridSetDaysRef.current!(entry.snapshot.days)
+        setUndoLen(undoStack.current.length)
+        setRedoLen(redoStack.current.length)
+      })
+    }
+    // 2. Update weekData for toolbar/coverage (normal batched render)
+    setWeekData(entry.snapshot)
+    // 3. Fire-and-forget: persist to server
     entry.inverse().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
       fetchWeekSilent(weekStart)
@@ -77,18 +82,24 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
   function handleRedo() {
     const entry = redoStack.current.pop()
     if (!entry) return
+    const targetSnapshot = entry.forwardSnapshot
+    if (!targetSnapshot) return
     const currentData = weekData
     if (currentData) {
-      undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: entry.forwardSnapshot, inverse: entry.inverse, forward: entry.forward }]
+      undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: targetSnapshot, inverse: entry.inverse, forward: entry.forward }]
     }
     lastFetchId.current++
-    // flushSync forces React to render + commit to DOM synchronously
-    flushSync(() => {
-      if (entry.forwardSnapshot) setWeekData(entry.forwardSnapshot)
-      setUndoLen(undoStack.current.length)
-      setRedoLen(redoStack.current.length)
-    })
-    // Fire-and-forget: persist to server without blocking UI
+    // 1. Direct grid update
+    if (gridSetDaysRef.current) {
+      flushSync(() => {
+        gridSetDaysRef.current!(targetSnapshot.days)
+        setUndoLen(undoStack.current.length)
+        setRedoLen(redoStack.current.length)
+      })
+    }
+    // 2. Update weekData for toolbar/coverage
+    setWeekData(targetSnapshot)
+    // 3. Fire-and-forget: persist to server
     entry.forward().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
       fetchWeekSilent(weekStart)

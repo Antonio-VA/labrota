@@ -6,7 +6,7 @@ import { AlertTriangle, Check, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { removeAssignment, upsertAssignment, type RotaWeekData, type ShiftTimes } from "@/app/(clinic)/rota/actions"
+import { removeAssignment, upsertAssignment, type RotaWeekData, type RotaDay, type ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { PersonShiftSelector } from "./person-shift-selector"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -16,7 +16,7 @@ import { ROLE_ORDER, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
 export function TransposedPersonGrid({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
   onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
-  swapStaffId,
+  swapStaffId, gridSetDaysRef,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -34,6 +34,7 @@ export function TransposedPersonGrid({
   punctionsOverride?: Record<string, number>
   onPunctionsChange?: (date: string, value: number | null) => void
   swapStaffId?: string | null
+  gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t = useTranslations("schedule")
   const { enabled: highlightEnabled } = useStaffHover()
@@ -53,6 +54,8 @@ export function TransposedPersonGrid({
     })
 
   const [localDays, setLocalDays] = useState(data.days)
+  // Register this grid's day setter for direct undo/redo updates
+  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
   const [prevData, setPrevData] = useState(data)
   if (data !== prevData) {
     setPrevData(data)

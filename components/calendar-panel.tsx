@@ -415,10 +415,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
   // ── Undo/Redo (extracted to hook) ───────────────────────────────────────────
+  // gridSetDaysRef lets undo/redo update the active grid's localDays directly
+  // (same path as drag-and-drop), bypassing the full CalendarPanelInner re-render
+  const gridSetDaysRef = useRef<((days: import("@/app/(clinic)/rota/actions").RotaDay[]) => void) | null>(null)
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
-  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId })
+  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef })
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
@@ -1214,6 +1217,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onAfterMutation={canEdit ? pushUndo : undefined}
                   onCancelUndo={canEdit ? cancelLastUndo : undefined}
                   onSaved={canEdit ? triggerSaved : undefined}
+                  gridSetDaysRef={gridSetDaysRef}
                   taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
                   punctionsDefault={weekData?.punctionsDefault ?? {}}
                   punctionsOverride={punctionsOverride}
@@ -1299,6 +1303,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onChipClick={handleDesktopChipClick}
                   onRefresh={handleRefresh}
                   swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+                  gridSetDaysRef={gridSetDaysRef}
                 />
               ) : calendarLayout === "shift" ? (
                 <ShiftGrid
@@ -1334,6 +1339,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   biopsyDay5Pct={weekData?.biopsyDay5Pct}
                   biopsyDay6Pct={weekData?.biopsyDay6Pct}
                   swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+                  gridSetDaysRef={gridSetDaysRef}
                 />
               ) : calendarLayout === "person" && daysAsRows ? (
                 <TransposedPersonGrid
@@ -1353,6 +1359,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                   swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+                  gridSetDaysRef={gridSetDaysRef}
                 />
               ) : (
                 <PersonGrid
@@ -1374,6 +1381,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
                   simplified={personSimplified}
                   swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+                  gridSetDaysRef={gridSetDaysRef}
                 />
               ))}
             </div>

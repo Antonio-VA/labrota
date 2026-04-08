@@ -6,7 +6,7 @@ import { ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { removeAssignment, upsertAssignment, setFunctionLabel, setTecnica, type RotaWeekData, type ShiftTimes } from "@/app/(clinic)/rota/actions"
+import { removeAssignment, upsertAssignment, setFunctionLabel, setTecnica, type RotaWeekData, type RotaDay, type ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { PersonShiftSelector } from "./person-shift-selector"
 import { PersonShiftPill } from "./person-shift-pill"
@@ -22,7 +22,7 @@ export function PersonGrid({
   data, staffList, loading, locale,
   isPublished, shiftTimes, onLeaveByDate, publicHolidays,
   onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
-  isGenerating, swapStaffId,
+  isGenerating, swapStaffId, gridSetDaysRef,
 }: {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
@@ -42,10 +42,13 @@ export function PersonGrid({
   onDateClick?: (date: string) => void
   isGenerating?: boolean
   swapStaffId?: string | null
+  gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const [localDays, setLocalDays] = useState(data?.days ?? [])
+  // Register this grid's day setter for direct undo/redo updates
+  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
   const [prevData, setPrevData] = useState(data)
   if (data && data !== prevData) {
     setPrevData(data)
