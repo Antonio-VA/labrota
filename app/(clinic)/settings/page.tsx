@@ -1,14 +1,14 @@
 import dynamic from "next/dynamic"
 import { requireEditor } from "@/lib/require-editor"
 import { MobileGate } from "@/components/mobile-gate"
-import { OrgUsersTable } from "@/components/org-users-table"
-import { OrgSettingsForm } from "@/components/org-settings-form"
 import { SettingsTabs } from "@/components/settings-tabs"
-import { SettingsImplementation } from "@/components/settings-implementation"
 import { CardSkeleton } from "@/components/ui/skeleton"
 
 const TabSkeleton = () => <div className="rounded-lg border border-border bg-background px-5 py-4"><CardSkeleton /></div>
 
+const OrgUsersTable = dynamic(() => import("@/components/org-users-table").then((m) => m.OrgUsersTable), { loading: TabSkeleton })
+const OrgSettingsForm = dynamic(() => import("@/components/org-settings-form").then((m) => m.OrgSettingsForm), { loading: TabSkeleton })
+const SettingsImplementation = dynamic(() => import("@/components/settings-implementation").then((m) => m.SettingsImplementation), { loading: TabSkeleton })
 const AuditLogViewer = dynamic(() => import("@/components/audit-log-viewer").then((m) => m.AuditLogViewer), { loading: TabSkeleton })
 const SettingsFuncionalidades = dynamic(() => import("@/components/settings-funcionalidades").then((m) => m.SettingsFuncionalidades), { loading: TabSkeleton })
 const SettingsFacturacion = dynamic(() => import("@/components/settings-facturacion").then((m) => m.SettingsFacturacion), { loading: TabSkeleton })
