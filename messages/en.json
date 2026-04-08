@@ -1402,7 +1402,9 @@
     "byTask": "By task",
     "byTaskDesc": "Rows are tasks, columns are days",
     "byPerson": "By person",
-    "byPersonDesc": "Rows are staff, columns are days"
+    "byPersonDesc": "Rows are staff, columns are days",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications"
   },
   "mobileEdit": {
     "editMode": "Edit mode",
@@ -1523,11 +1525,6 @@
     "shiftRotationDaily": "Daily",
     "adminOnWeekends": "Admin on weekends",
     "doneDescriptionWithSettings": "We imported {staff} staff, {shifts} shifts, {techniques} techniques and {rules} rules. Coverage and parameters configured."
-  },
-  "notifications": {
-    "title": "Notifications",
-    "markAllRead": "Mark all read",
-    "empty": "No notifications"
   },
   "adminBackups": {
     "title": "Backups",

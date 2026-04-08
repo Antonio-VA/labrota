@@ -1402,7 +1402,9 @@
     "byTask": "Por tarea",
     "byTaskDesc": "Filas por tarea, columnas por día",
     "byPerson": "Por persona",
-    "byPersonDesc": "Filas por persona, columnas por día"
+    "byPersonDesc": "Filas por persona, columnas por día",
+    "markAllRead": "Marcar todas leídas",
+    "empty": "Sin notificaciones"
   },
   "mobileEdit": {
     "editMode": "Modo edicion",
@@ -1523,11 +1525,6 @@
     "shiftRotationDaily": "Diaria",
     "adminOnWeekends": "Admin en fines de semana",
     "doneDescriptionWithSettings": "Hemos importado {staff} personas, {shifts} turnos, {techniques} técnicas y {rules} reglas. Cobertura y parámetros configurados."
-  },
-  "notifications": {
-    "title": "Notificaciones",
-    "markAllRead": "Marcar todas leídas",
-    "empty": "Sin notificaciones"
   },
   "adminBackups": {
     "title": "Copias de seguridad",
