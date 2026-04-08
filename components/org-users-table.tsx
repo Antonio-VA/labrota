@@ -128,15 +128,15 @@ export function OrgUsersTable({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-lg border border-border">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted border-b border-border">
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("userColumn")}</th>
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground rounded-tl-lg">{t("userColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("roleColumn")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("linkedStaff")}</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("lastLogin")}</th>
-              <th className="px-3 py-2 w-10" />
+              <th className="px-3 py-2 w-10 rounded-tr-lg" />
             </tr>
           </thead>
           <tbody>

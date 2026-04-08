@@ -110,12 +110,12 @@ export default async function ClinicLayout({
       )
     }
 
-    // Resolve viewer's staff_id
-    if (userRole === "viewer" && activeOrgId) {
+    // Resolve staff_id — for viewers always, for managers/admins when linked
+    if (activeOrgId) {
       const activeMembership = memberships?.find((m) => m.organisation_id === activeOrgId)
       if (activeMembership?.linked_staff_id) {
         viewerStaffId = activeMembership.linked_staff_id
-      } else if (user.email) {
+      } else if (userRole === "viewer" && user.email) {
         round2.push(
           admin
             .from("staff")

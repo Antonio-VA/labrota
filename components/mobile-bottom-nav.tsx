@@ -30,8 +30,9 @@ export function MobileBottomNav() {
 
   const showLeaves = canEdit || !!viewerStaffId
   const showMyRota = !!viewerStaffId
+  const showAI = canEdit
   const navItems: NavItem[] = [
-    ...(canEdit ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
+    ...(showAI ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
     ...(showLeaves ? [LEAVES_ITEM] : []),
     ...BASE_ITEMS,
     ...(showMyRota ? [MY_ROTA_ITEM] : []),
