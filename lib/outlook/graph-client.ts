@@ -139,7 +139,7 @@ export async function fetchOOFEvents(
 
   const res = await fetch(
     `${GRAPH_BASE_URL}/me/calendarView?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${accessToken}`, Prefer: 'outlook.timezone="UTC"' } },
+    { headers: { Authorization: `Bearer ${accessToken}`, Prefer: 'outlook.timezone="UTC", IdType="immutable"' } },
   )
   if (!res.ok) throw new Error(`Graph calendarView failed: ${await res.text()}`)
 

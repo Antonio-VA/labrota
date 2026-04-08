@@ -295,7 +295,7 @@ export function AccountPanel({ open, onClose, user }: {
                       startTransition(async () => {
                         const r = await syncOutlookForStaff(outlook.staffId!)
                         if (r.errors.length > 0) toast.error(r.errors[0])
-                        else toast.success(to("syncSuccess", { count: r.created + r.updated }))
+                        else toast.success(to("syncSuccess", { count: r.created + r.updated + r.deleted }))
                         getUserOutlookStatus().then(setOutlook)
                       })
                     }}

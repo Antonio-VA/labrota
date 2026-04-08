@@ -97,7 +97,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
   const avatarUrl = !avatarError ? initialUser.avatarUrl : null
 
   return (
-    <div ref={ref} className="relative flex items-center">
+    <div ref={ref} className="relative size-10 flex items-center justify-center">
       {avatarUrl ? (
         <button
           onClick={() => setOpen((o) => !o)}

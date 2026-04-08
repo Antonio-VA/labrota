@@ -50,7 +50,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   // Use end_date >= today (not start_date) so we also find leaves that started
   // before today but are still active — otherwise removing those events from
   // Outlook would never cascade into LabRota.
-  const { data: existingLeaves } = await admin
+  const existingQuery = await admin
     .from("leaves")
     .select("id, outlook_event_id, start_date, end_date, type")
     .eq("staff_id", staffId)
@@ -59,7 +59,14 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     .gte("end_date", today) as { data: Array<{
       id: string; outlook_event_id: string | null
       start_date: string; end_date: string; type: string
-    }> | null }
+    }> | null; error: { message: string } | null }
+
+  if (existingQuery.error) {
+    result.errors.push(`Failed to load existing leaves: ${existingQuery.error.message}`)
+    return result
+  }
+
+  const existingLeaves = existingQuery.data
 
   const existingMap = new Map(
     (existingLeaves ?? [])

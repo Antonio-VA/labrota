@@ -47,7 +47,7 @@ export function DroppableCell({ id, children, isOver, isPublished, onClick, clas
       ref={setNodeRef}
       onClick={onClick}
       style={style}
-      className={cn(className, (isOver || dndIsOver) && !isPublished && "bg-blue-50")}
+      className={cn(className, (isOver || dndIsOver) && !isPublished && "bg-blue-50 dark:bg-blue-950/30")}
     >
       {children}
     </div>
