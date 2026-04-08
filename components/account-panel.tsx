@@ -279,7 +279,12 @@ export function AccountPanel({ open, onClose, user }: {
           </div>
 
           {/* Outlook sync — only show when feature is available AND user is linked to staff */}
-          {outlook.available && outlook.staffId && (
+          {loading ? (
+            <div className="px-5 py-4 border-b border-border">
+              <div className="h-3 w-32 rounded bg-muted/50 animate-pulse mb-3" />
+              <div className="h-12 rounded-lg bg-muted/50 animate-pulse" />
+            </div>
+          ) : outlook.available && outlook.staffId ? (
             <div className="px-5 py-4 border-b border-border">
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{to("panelTitle")}</p>
               {outlook.connected ? (
@@ -337,7 +342,7 @@ export function AccountPanel({ open, onClose, user }: {
                 </button>
               )}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Footer */}
