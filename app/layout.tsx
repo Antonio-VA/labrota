@@ -114,8 +114,8 @@ export default async function RootLayout({
           <TooltipProvider delay={600}>{children}</TooltipProvider>
           <Toaster position="top-right" richColors closeButton />
         </NextIntlClientProvider>
-        <SpeedInsights />
-        <Analytics />
+        {process.env.NODE_ENV === "production" && <SpeedInsights />}
+        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   )

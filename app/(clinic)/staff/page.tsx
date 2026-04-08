@@ -1,8 +1,13 @@
+import dynamic from "next/dynamic"
 import { requireEditor } from "@/lib/require-editor"
 import { createClient } from "@/lib/supabase/server"
 import { MobileGate } from "@/components/mobile-gate"
-import { StaffList } from "@/components/staff-list"
+import { TableSkeleton } from "@/components/ui/skeleton"
 import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition } from "@/lib/types/database"
+
+const StaffList = dynamic(() => import("@/components/staff-list").then((m) => m.StaffList), {
+  loading: () => <TableSkeleton />,
+})
 
 export default async function StaffPage() {
   await requireEditor()

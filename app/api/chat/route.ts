@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { StaffRole, SkillName, PunctionsByDay } from "@/lib/types/database"
 
 const SKILL_LABEL: Record<string, string> = {
@@ -31,9 +32,14 @@ const RULE_TYPE_LABEL: Record<string, string> = {
 }
 
 export async function POST(req: Request) {
-  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
-
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { success } = rateLimit(`chat:${user.id}`, 20) // 20 req/min per user
+  if (!success) return rateLimitResponse()
+
+  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
 
   // Page context — helps the AI understand what the user is looking at
   const pageLabels: Record<string, string> = {

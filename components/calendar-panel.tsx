@@ -1,6 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment } from "react"
+import { useUndoRedo } from "@/hooks/use-undo-redo"
+import { useDepartmentFilter } from "@/hooks/use-department-filter"
+import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
+import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -122,7 +126,7 @@ import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
 
 // ── Override dialog ───────────────────────────────────────────────────────────
 
-import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal } from "./calendar-panel/generation-modals"
+import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
@@ -147,21 +151,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     return (sessionStorage.getItem("labrota_view") as ViewMode) || "week"
   })
   const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
-  const [calendarLayout, setCalendarLayoutState] = useState<CalendarLayout>("shift")
+  const [calendarLayout, setCalendarLayout] = usePersistedState<CalendarLayout>("labrota_calendar_layout", "shift")
   const [compact, setCompact] = useState(false)
-  const [personSimplified, setPersonSimplified] = useState(() => {
-    if (typeof window === "undefined") return true
-    const stored = localStorage.getItem("labrota_person_simplified")
-    return stored === null ? true : stored === "true" // default true
-  })
-  const [daysAsRows, setDaysAsRows] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("labrota_days_as_rows") === "true"
-  })
-  const [colorChips, setColorChips] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_color_chips") !== "false"
-  })
+  const [personSimplified, togglePersonSimplified, setPersonSimplified] = usePersistedToggle("labrota_person_simplified", true)
+  const [daysAsRows, toggleDaysAsRows, setDaysAsRows] = usePersistedToggle("labrota_days_as_rows", false)
+  const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
   // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
@@ -194,19 +188,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }
   const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
 
-  // ── Undo / Redo ────────────────────────────────────────────────────────────
-  type UndoEntry = {
-    snapshot: RotaWeekData
-    forwardSnapshot?: RotaWeekData // snapshot to restore on redo (optimistic)
-    inverse: () => Promise<{ error?: string }>
-    forward: () => Promise<{ error?: string }>
-  }
-  const undoStack = useRef<UndoEntry[]>([])
-  const redoStack = useRef<UndoEntry[]>([])
-  const [undoLen, setUndoLen] = useState(0)
-  const [redoLen, setRedoLen] = useState(0)
-  const [showSaved, setShowSaved] = useState(false)
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingWeek, setLoadingWeek]   = useState(!initialData)
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
@@ -244,57 +225,19 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
   const [dayWarningsOpen, setDayWarningsOpen] = useState(false)
-  const [mobileCompact, setMobileCompact] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_mobile_compact") !== "false"
-  })
-  const [mobileDeptColor, setMobileDeptColor] = useState(() => {
-    if (typeof window === "undefined") return true
-    return localStorage.getItem("labrota_mobile_dept_color") !== "false"
-  })
+  const [mobileCompact, toggleMobileCompact, setMobileCompact] = usePersistedToggle("labrota_mobile_compact", true)
+  const [mobileDeptColor, toggleMobileDeptColor, setMobileDeptColor] = usePersistedToggle("labrota_mobile_dept_color", true)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [monthViewMode, setMonthViewMode] = useState<"shift" | "person">(() => {
-    if (typeof window === "undefined") return "shift"
-    return (localStorage.getItem("labrota_month_view") as "shift" | "person") ?? "shift"
-  })
+  const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
 
-  // Department filter — persisted in localStorage
-  // Dynamic department data from weekData (or defaults) — memoised to avoid re-creating every render
-  const departments = weekData?.departments ?? []
-  const globalDeptMaps = useMemo(() => buildDeptMaps(departments), [departments])
-  const ALL_DEPTS = useMemo(() =>
-    departments.length > 0 ? departments.map((d) => d.code) : ["lab", "andrology", "admin"],
-    [departments]
-  )
-  const deptAbbrMap = useMemo(() => Object.fromEntries(
-    departments.length > 0
-      ? departments.map((d) => [d.code, d.abbreviation || d.name.slice(0, 3)])
-      : [["lab", "Emb"], ["andrology", "And"], ["admin", "Adm"]]
-  ), [departments])
-  const [deptFilter, setDeptFilter] = useState<Set<string>>(new Set(ALL_DEPTS))
-  // Reset filter when org departments change
-  useEffect(() => { setDeptFilter(new Set(ALL_DEPTS)) }, [ALL_DEPTS])
-  const allDeptsSelected = deptFilter.size >= ALL_DEPTS.length
-  function toggleDept(dept: string) {
-    setDeptFilter((prev) => {
-      const next = new Set(prev)
-      next.has(dept) ? next.delete(dept) : next.add(dept)
-      return next
-    })
-  }
-  function setAllDepts() {
-    setDeptFilter(new Set(ALL_DEPTS))
-  }
-  function setOnlyDept(dept: string) {
-    const next = new Set([dept])
-    setDeptFilter(next)
-    localStorage.setItem("labrota_dept_filter", JSON.stringify([dept]))
-  }
-
-  // Filtered staff list based on department filter
-  const filteredStaffList = allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role))
+  // Department filter (extracted to hook)
+  const {
+    departments, globalDeptMaps, ALL_DEPTS, deptAbbrMap,
+    deptFilter, allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
+    filteredStaffList,
+  } = useDepartmentFilter(weekData, staffList)
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
   // Swap state for desktop viewers
@@ -303,25 +246,26 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
 
-  function openProfile(staffId: string) {
+  const openProfile = useCallback((staffId: string) => {
     setProfileStaffId(staffId)
     setProfileOpen(true)
-  }
+  }, [])
 
   // For desktop viewers: intercept chip click on their own assignments to open swap dialog
-  function handleDesktopChipClick(assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) {
+  const handleDesktopChipClick = useCallback((assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) => {
     if (desktopSwapEnabled && assignment.staff_id === viewerStaffId && assignment.id && assignment.shift_type && date) {
       setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date })
       setSwapDialogOpen(true)
     } else {
-      openProfile(assignment.staff_id)
+      setProfileStaffId(assignment.staff_id)
+      setProfileOpen(true)
     }
-  }
+  }, [desktopSwapEnabled, viewerStaffId])
 
-  // DnD state
-  const [draggingId, setDraggingId]     = useState<string | null>(null)
-  const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
-  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const handleOpenSheet = useCallback((date: string) => {
+    setSheetDate(date)
+    setSheetOpen(true)
+  }, [])
 
   // Local punctions override
   const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(initialData?.rota?.punctions_override ?? {})
@@ -355,17 +299,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   // Derived
   const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
   const monthStart = getMonthStart(currentDate)
-
-  // Persist calendar layout preference
-  useEffect(() => {
-    const saved = localStorage.getItem("labrota_calendar_layout") as CalendarLayout | null
-    if (saved === "shift" || saved === "person") setCalendarLayoutState(saved)
-  }, [])
-
-  function setCalendarLayout(layout: CalendarLayout) {
-    setCalendarLayoutState(layout)
-    localStorage.setItem("labrota_calendar_layout", layout)
-  }
 
   // Fetch week data
   const fetchVersionRef = useRef(0)
@@ -470,89 +403,22 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     }).catch(() => {/* ignore — grid stays as-is */})
   }, [])
 
-  // ── Undo/Redo helpers ──────────────────────────────────────────────────────
-  function triggerSaved() {
-    setShowSaved(true)
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setShowSaved(false), 2000)
-  }
-
-  function cancelLastUndo() {
-    undoStack.current.pop()
-    setUndoLen(undoStack.current.length)
-  }
-
-  function pushUndo(
-    snapshot: RotaWeekData,
-    inverse: () => Promise<{ error?: string }>,
-    forward: () => Promise<{ error?: string }>,
-  ) {
-    undoStack.current = [...undoStack.current.slice(-19), { snapshot, inverse, forward }]
-    redoStack.current = []
-    setUndoLen(undoStack.current.length)
-    setRedoLen(0)
-  }
-
-  async function handleUndo() {
-    const entry = undoStack.current.pop()
-    if (!entry) return
-    const currentData = weekData
-    if (currentData) {
-      // Store current state so redo can apply it optimistically
-      redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
-      setRedoLen(redoStack.current.length)
-    }
-    // Bump lastFetchId so any pending debounced refresh is discarded
-    lastFetchId.current++
-    setWeekData(entry.snapshot)
-    setUndoLen(undoStack.current.length)
-    const result = await entry.inverse()
-    if (result?.error) {
-      toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
-    }
-    // Always re-fetch after inverse to get authoritative server state
+  const handleRefresh = useCallback(() => {
     fetchWeekSilent(weekStart)
-  }
+  }, [fetchWeekSilent, weekStart])
 
-  async function handleRedo() {
-    const entry = redoStack.current.pop()
-    if (!entry) return
-    const currentData = weekData
-    // Apply optimistic forward snapshot immediately (like undo does)
-    if (entry.forwardSnapshot) {
-      lastFetchId.current++
-      setWeekData(entry.forwardSnapshot)
-    }
-    if (currentData) {
-      undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: entry.forwardSnapshot, inverse: entry.inverse, forward: entry.forward }]
-      setUndoLen(undoStack.current.length)
-    }
-    setRedoLen(redoStack.current.length)
-    const result = await entry.forward()
-    if (result?.error) {
-      toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
-    }
-    fetchWeekSilent(weekStart)
-  }
+  // DnD (extracted to hook)
+  const {
+    draggingId, draggingFrom, dragOverDate,
+    handleChipDragStart, handleChipDragEnd,
+    handleColumnDragOver, handleColumnDragLeave, handleColumnDrop,
+  } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
-  // Clear stacks when navigating weeks
-  useEffect(() => {
-    undoStack.current = []
-    redoStack.current = []
-    setUndoLen(0)
-    setRedoLen(0)
-  }, [weekStart])
-
-  // Keyboard shortcuts — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey)) return
-      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo() }
-      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); handleRedo() }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }) // intentionally no deps — closures must see latest stack state
+  // ── Undo/Redo (extracted to hook) ───────────────────────────────────────────
+  const {
+    undoLen, redoLen, showSaved,
+    triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
+  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId })
 
   // Fetch 4-week rolling summary
   const fetchMonth = useCallback((ms: string, ws?: string) => {
@@ -614,8 +480,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if previous week has a rota (for "copy previous week" button)
-  // Don't reset to false while loading — keep the last known value
+  // Only fetch for editors in week view — button is hidden otherwise
   useEffect(() => {
+    if (!canEdit || view !== "week") return
     let cancelled = false
     const prev = new Date(weekStart + "T12:00:00")
     prev.setDate(prev.getDate() - 7)
@@ -624,7 +491,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
     }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
     return () => { cancelled = true }
-  }, [weekStart])
+  }, [weekStart, canEdit, view])
   useEffect(() => {
     if (view === "month") fetchMonth(monthStart, weekStart)
   }, [monthStart, weekStart, view, fetchMonth])
@@ -781,40 +648,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setSheetOpen(true)
   }
 
-  // Drag and drop
-  function handleChipDragStart(assignmentId: string, fromDate: string) {
-    setDraggingId(assignmentId)
-    setDraggingFrom(fromDate)
-  }
-
-  function handleChipDragEnd() {
-    setDraggingId(null)
-    setDraggingFrom(null)
-    setDragOverDate(null)
-  }
-
-  function handleColumnDragOver(date: string, e: React.DragEvent) {
-    e.preventDefault()
-    setDragOverDate(date)
-  }
-
-  function handleColumnDragLeave() {
-    setDragOverDate(null)
-  }
-
-  function handleColumnDrop(toDate: string) {
-    if (!draggingId || !draggingFrom || toDate === draggingFrom) {
-      handleChipDragEnd()
-      return
-    }
-    const id = draggingId
-    handleChipDragEnd()
-    startTransition(async () => {
-      const result = await moveAssignment(id, toDate)
-      if (result.error) setError(result.error)
-      else fetchWeek(weekStart)
-    })
-  }
 
   function handlePunctionsChange(date: string, value: number | null) {
     if (!weekData?.rota) return
@@ -858,23 +691,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
-  // Stable callbacks for child components — avoid re-creating on every render
-  const toggleMobileCompact = useCallback(() => {
-    setMobileCompact((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_compact", String(next)); return next })
-  }, [])
-  const toggleMobileDeptColor = useCallback(() => {
-    setMobileDeptColor((prev) => { const next = !prev; localStorage.setItem("labrota_mobile_dept_color", String(next)); return next })
-  }, [])
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
-  const togglePersonSimplified = useCallback(() => {
-    setPersonSimplified((prev) => { const next = !prev; localStorage.setItem("labrota_person_simplified", String(next)); return next })
-  }, [])
-  const toggleColorChips = useCallback(() => {
-    setColorChips((prev) => { const next = !prev; localStorage.setItem("labrota_color_chips", String(next)); return next })
-  }, [])
-  const toggleDaysAsRows = useCallback(() => {
-    setDaysAsRows((prev) => { const next = !prev; localStorage.setItem("labrota_days_as_rows", String(next)); return next })
-  }, [])
 
   // On first load, show inline skeleton so the panel occupies space
   // and the chat panel doesn't appear alone before the calendar.
@@ -972,7 +789,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift"); localStorage.setItem("labrota_month_view", "shift") }}
+                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift") }}
                       className={cn(
                         "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
@@ -991,7 +808,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 <Tooltip>
                   <TooltipTrigger render={
                     <button
-                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person"); localStorage.setItem("labrota_month_view", "person") }}
+                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person") }}
                       className={cn(
                         "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
                         (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
@@ -1377,10 +1194,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                       )
                     }
                   }}
-                  onCellClick={(date, tecCode) => {
-                    setSheetDate(date)
-                    setSheetOpen(true)
-                  }}
+                  onCellClick={handleOpenSheet}
                   onChipClick={openProfile}
                   onDateClick={handleMonthDayClick}
                 />
@@ -1392,7 +1206,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   loading={false}
                   locale={locale}
                   isPublished={!!isPublished || !canEdit}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onRefresh={handleRefresh}
                   onAfterMutation={canEdit ? pushUndo : undefined}
                   onCancelUndo={canEdit ? cancelLastUndo : undefined}
                   onSaved={canEdit ? triggerSaved : undefined}
@@ -1477,9 +1291,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   compact={compact}
                   colorChips={colorChips}
                   timeFormat={weekData?.timeFormat}
-                  onCellClick={(date) => { setSheetDate(date); setSheetOpen(true) }}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onCellClick={handleOpenSheet}
+                  onChipClick={handleDesktopChipClick}
+                  onRefresh={handleRefresh}
                   swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
                 />
               ) : calendarLayout === "shift" ? (
@@ -1490,7 +1304,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   isGenerating={isPending}
                   locale={locale}
                   onCellClick={() => {}}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
+                  onChipClick={handleDesktopChipClick}
                   isPublished={!!isPublished || !canEdit}
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
@@ -1499,7 +1313,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   punctionsOverride={punctionsOverride}
                   onPunctionsChange={handlePunctionsChange}
                   onBiopsyChange={handleBiopsyChange}
-                  onRefresh={() => fetchWeekSilent(weekStart)}
+                  onRefresh={handleRefresh}
                   onAfterMutation={canEdit ? pushUndo : undefined}
                   onCancelUndo={canEdit ? cancelLastUndo : undefined}
                   onSaved={canEdit ? triggerSaved : undefined}
@@ -1526,7 +1340,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
+                  onChipClick={handleDesktopChipClick}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -1547,7 +1361,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftTimes={weekData?.shiftTimes ?? null}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={(a, date) => handleDesktopChipClick(a, date)}
+                  onChipClick={handleDesktopChipClick}
                   onDateClick={handleMonthDayClick}
                   colorChips={colorChips}
                   compact={compact}
@@ -1886,102 +1700,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       />
 
       {/* Multi-week generation scope dialog */}
-      {showMultiWeekDialog && monthSummary && (() => {
-        const allWeekStarts: string[] = []
-        for (let i = 0; i < monthSummary.days.length; i += 7) {
-          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-        }
-        const publishedSet = new Set(
-          monthSummary.weekStatuses.filter((ws) => ws.status === "published").map((ws) => ws.weekStart)
-        )
-        const withRota = new Set(
-          monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
-        )
-        const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
-        // "Remaining" = weeks whose start date is >= today AND not published
-        const remaining = allWeekStarts.filter((ws) => ws >= TODAY && !publishedSet.has(ws))
-        const nonPublished = allWeekStarts.filter((ws) => !publishedSet.has(ws))
-        const hasOptions = withoutRota.length > 0 || remaining.length > 0 || nonPublished.length > 0
-
-        return (
-          <>
-            <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowMultiWeekDialog(false)} />
-            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
-              <p className="text-[15px] font-medium">
-                {t("generate4WeeksTitle")}
-              </p>
-
-              {!hasOptions ? (
-                <p className="text-[13px] text-muted-foreground">
-                  {locale === "es" ? "Todas las semanas están publicadas." : "All weeks are published."}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {/* Option 1: Generate only weeks without rota */}
-                  {withoutRota.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(withoutRota)
-                        setShowStrategyModal(true)
-                      }}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="text-[14px] font-medium">{t("generateWeeksWithout")}</p>
-                        <p className="text-[12px] text-muted-foreground">{t("weeksWithoutSchedule", { count: withoutRota.length })}</p>
-                      </div>
-                    </button>
-                  )}
-                  {/* Option 2: Regenerate remaining (current + future) weeks */}
-                  {remaining.length > 0 && remaining.length < nonPublished.length && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(remaining)
-                        setShowStrategyModal(true)
-                      }}
-                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
-                    >
-                      {remaining.some((ws) => withRota.has(ws)) && (
-                        <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
-                      )}
-                      <p className="text-[14px] font-medium">{t("generateRemainingWeeks")}</p>
-                      <p className="text-[12px] text-muted-foreground">{t("remainingWeeksDescription", { count: remaining.length })}</p>
-                    </button>
-                  )}
-                  {/* Option 3: Regenerate all non-published weeks */}
-                  {nonPublished.length > 0 && nonPublished.length > withoutRota.length && (
-                    <button
-                      onClick={() => {
-                        setShowMultiWeekDialog(false)
-                        setMultiWeekScope(nonPublished)
-                        setShowStrategyModal(true)
-                      }}
-                      className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
-                    >
-                      <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
-                      <p className="text-[14px] font-medium">{t("regenerateAllWeeks")}</p>
-                      <p className="text-[12px] text-muted-foreground">
-                        {nonPublished.length === allWeekStarts.length
-                          ? t("weeksOverwrite")
-                          : (locale === "es"
-                            ? `${nonPublished.length} semana(s) — sobreescribirá horarios existentes`
-                            : `${nonPublished.length} week(s) — will overwrite existing rotas`)}
-                      </p>
-                    </button>
-                  )}
-                </div>
-              )}
-              <div className="flex justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setShowMultiWeekDialog(false)}>
-                  {tc("cancel")}
-                </Button>
-              </div>
-            </div>
-          </>
-        )
-      })()}
+      {showMultiWeekDialog && monthSummary && (
+        <MultiWeekScopeDialog
+          monthSummary={monthSummary}
+          onClose={() => setShowMultiWeekDialog(false)}
+          onSelectScope={(weeks) => { setMultiWeekScope(weeks); setShowStrategyModal(true) }}
+        />
+      )}
 
       {/* Staff profile panel */}
       <StaffProfilePanel

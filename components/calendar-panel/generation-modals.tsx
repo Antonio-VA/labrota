@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { BrainCircuit, X } from "lucide-react"
+import { AlertTriangle, BrainCircuit, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,9 +12,11 @@ import {
   applyTemplate,
   saveAsTemplate,
   getHybridUsage,
+  type RotaMonthSummary,
 } from "@/app/(clinic)/rota/actions"
 import { formatDate } from "@/lib/format-date"
 import { buildStrategyCards, parseHybridInsights, type GenerationStrategy } from "./utils"
+import { TODAY } from "./constants"
 
 export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, onGenerate, rotaDisplayMode, engineConfig }: {
   open: boolean; weekStart: string; weekLabel: string
@@ -343,5 +345,94 @@ export function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
         </div>
       </div>
     </div>
+  )
+}
+
+export function MultiWeekScopeDialog({ monthSummary, onClose, onSelectScope }: {
+  monthSummary: RotaMonthSummary
+  onClose: () => void
+  onSelectScope: (weekStarts: string[]) => void
+}) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
+  const locale = useLocale()
+
+  const allWeekStarts: string[] = []
+  for (let i = 0; i < monthSummary.days.length; i += 7) {
+    if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
+  }
+  const publishedSet = new Set(
+    monthSummary.weekStatuses.filter((ws) => ws.status === "published").map((ws) => ws.weekStart)
+  )
+  const withRota = new Set(
+    monthSummary.weekStatuses.filter((ws) => ws.status !== null).map((ws) => ws.weekStart)
+  )
+  const withoutRota = allWeekStarts.filter((ws) => !withRota.has(ws))
+  const remaining = allWeekStarts.filter((ws) => ws >= TODAY && !publishedSet.has(ws))
+  const nonPublished = allWeekStarts.filter((ws) => !publishedSet.has(ws))
+  const hasOptions = withoutRota.length > 0 || remaining.length > 0 || nonPublished.length > 0
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/30" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background border border-border rounded-xl shadow-xl w-[380px] p-5 flex flex-col gap-4">
+        <p className="text-[15px] font-medium">
+          {t("generate4WeeksTitle")}
+        </p>
+
+        {!hasOptions ? (
+          <p className="text-[13px] text-muted-foreground">
+            {locale === "es" ? "Todas las semanas están publicadas." : "All weeks are published."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {withoutRota.length > 0 && (
+              <button
+                onClick={() => { onClose(); onSelectScope(withoutRota) }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-primary bg-primary/5 text-left hover:bg-primary/10 transition-colors"
+              >
+                <div className="flex-1">
+                  <p className="text-[14px] font-medium">{t("generateWeeksWithout")}</p>
+                  <p className="text-[12px] text-muted-foreground">{t("weeksWithoutSchedule", { count: withoutRota.length })}</p>
+                </div>
+              </button>
+            )}
+            {remaining.length > 0 && remaining.length < nonPublished.length && (
+              <button
+                onClick={() => { onClose(); onSelectScope(remaining) }}
+                className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
+              >
+                {remaining.some((ws) => withRota.has(ws)) && (
+                  <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
+                )}
+                <p className="text-[14px] font-medium">{t("generateRemainingWeeks")}</p>
+                <p className="text-[12px] text-muted-foreground">{t("remainingWeeksDescription", { count: remaining.length })}</p>
+              </button>
+            )}
+            {nonPublished.length > 0 && nonPublished.length > withoutRota.length && (
+              <button
+                onClick={() => { onClose(); onSelectScope(nonPublished) }}
+                className="relative w-full px-4 py-3 rounded-lg border border-border text-left hover:bg-muted/50 transition-colors"
+              >
+                <AlertTriangle className="size-4 text-amber-500 absolute top-2.5 right-2.5" />
+                <p className="text-[14px] font-medium">{t("regenerateAllWeeks")}</p>
+                <p className="text-[12px] text-muted-foreground">
+                  {nonPublished.length === allWeekStarts.length
+                    ? t("weeksOverwrite")
+                    : (locale === "es"
+                      ? `${nonPublished.length} semana(s) — sobreescribirá horarios existentes`
+                      : `${nonPublished.length} week(s) — will overwrite existing rotas`)}
+                </p>
+              </button>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            {tc("cancel")}
+          </Button>
+        </div>
+      </div>
+    </>
   )
 }
