@@ -59,6 +59,9 @@ export function OutlookSyncPanel({
       } else {
         toast.success(t("syncSuccess", { count: result.created + result.updated + result.deleted }))
       }
+      if (result.created > 0 || result.deleted > 0) {
+        window.dispatchEvent(new CustomEvent("labrota:notifications:refresh"))
+      }
       await loadStatus()
     })
   }
@@ -70,6 +73,9 @@ export function OutlookSyncPanel({
         toast.error(`${result.errors.length} errors during sync`)
       } else {
         toast.success(t("syncSuccess", { count: result.created + result.updated + result.deleted }))
+      }
+      if (result.created > 0 || result.deleted > 0) {
+        window.dispatchEvent(new CustomEvent("labrota:notifications:refresh"))
       }
       await loadStatus()
     })

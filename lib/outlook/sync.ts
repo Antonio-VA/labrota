@@ -119,7 +119,18 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
           notes: `Outlook: ${event.subject}`,
         } as never)
       if (error) result.errors.push(`Insert failed for event ${event.eventId}: ${error.message}`)
-      else { result.created++; createdRanges.push({ start: event.startDate, end: event.endDate }) }
+      else {
+        result.created++
+        createdRanges.push({ start: event.startDate, end: event.endDate })
+        // Remove conflicting rota assignments (even published ones)
+        await admin
+          .from("rota_assignments")
+          .delete()
+          .eq("staff_id", staffId)
+          .eq("organisation_id", orgId)
+          .gte("date", event.startDate)
+          .lte("date", event.endDate)
+      }
     }
   }
 

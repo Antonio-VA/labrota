@@ -71,6 +71,16 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
     return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
   }, [scheduleNext, refreshList])
 
+  // Immediately refresh when another component (e.g. Outlook sync panel) signals new notifications
+  useEffect(() => {
+    function handleRefresh() {
+      getUnreadCount().then((n) => { countRef.current = n; setCount(n) })
+      refreshList()
+    }
+    window.addEventListener("labrota:notifications:refresh", handleRefresh)
+    return () => window.removeEventListener("labrota:notifications:refresh", handleRefresh)
+  }, [refreshList])
+
   function handleOpen() {
     setOpen(true)
     // Always refresh on open — show loading only if list is currently empty
