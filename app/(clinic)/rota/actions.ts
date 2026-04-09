@@ -1537,7 +1537,7 @@ export async function generateRotaHybrid(
 
 An algorithm (engine v2) has already produced a VALID base rota that satisfies all Level 1 constraints:
 - L1.1 Leave respected — no one on leave is assigned
-- L1.2 Budget exact — each person works exactly their days_per_week
+- L1.2 Budget exact (UNBREAKABLE) — each person works EXACTLY their days_per_week minus leave days. This is the hardest constraint. Verify by counting assignments per staff member.
 - L1.3 Active shifts only — only valid shifts per day are used
 - L1.4 Days off mode: "${daysOffPref}"
 - L1.6 Coverage minimums met per shift per day per role
@@ -1565,12 +1565,13 @@ RULE TYPE REFERENCE:
 - asignacion_fija: staff always assigned to a fixed shift/day.
 
 CRITICAL RULES:
-1. Do NOT change the number of days any person works — budget must remain exact.
+1. UNBREAKABLE — EXACT SHIFT BUDGET: Every staff member MUST work EXACTLY their days_per_week minus leave days. This is the hardest constraint in the system. If a staff member has days_per_week=6 and 1 leave day, they MUST have exactly 5 shifts — not 4, not 6. If you find the base rota has anyone under-assigned, you MUST fix it by adding them to a day they are missing. Check every staff member's assignment count against their effective budget and flag any mismatch as a critical error.
 2. Do NOT assign anyone on leave.
 3. Do NOT assign to shifts not in activeShifts for that date.
 4. Coverage minimums per role per shift per day must remain met.
 5. If the base rota is already good and you see no improvements, return it unchanged.
-6. Return the COMPLETE rota (all 7 days, all assignments), not just changes.`
+6. Return the COMPLETE rota (all 7 days, all assignments), not just changes.
+7. When reviewing the base rota, COUNT each staff member's total assignments and compare against their effective budget (days_per_week minus leave days). If any staff member is under their budget, this is the HIGHEST PRIORITY issue to fix — above all L2 and L3 optimisations.`
 
   const userPrompt = `## Staff (${staffContext.length} members)
 ${JSON.stringify(staffContext, null, 2)}
@@ -1658,6 +1659,47 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
         budgetByStaff[a.staff_id] = count + 1
       }
       // else: silently drop this assignment (over budget)
+    }
+
+    // L1 safety net: ensure under-budget staff get filled back up
+    // If Claude dropped someone below their effective budget, re-add them from engine base rota
+    for (const s of allStaff) {
+      const cap = staffCaps[s.id] ?? 0
+      if (cap <= 0) continue
+      const current = budgetByStaff[s.id] ?? 0
+      if (current >= cap) continue
+      // Find days this staff was in the engine base rota but not in AI output
+      const aiDates = new Set(budgetCapped.filter((a) => a.staff_id === s.id).map((a) => a.date))
+      const engineDays = engineResult.days
+        .filter((d) => d.assignments.some((a) => a.staff_id === s.id) && !aiDates.has(d.date))
+        .sort((a, b) => a.assignments.length - b.assignments.length)
+      let added = current
+      for (const day of engineDays) {
+        if (added >= cap) break
+        const engineAssign = day.assignments.find((a) => a.staff_id === s.id)
+        if (!engineAssign) continue
+        if (leaveByDate[day.date]?.includes(s.id)) continue
+        budgetCapped.push({ staff_id: s.id, date: day.date, shift_type: engineAssign.shift_type })
+        added++
+      }
+      // If still under budget, add to least-staffed available days
+      if (added < cap) {
+        const usedDates = new Set(budgetCapped.filter((a) => a.staff_id === s.id).map((a) => a.date))
+        const availDays = weekDates
+          .filter((d) => !usedDates.has(d) && !leaveByDate[d]?.includes(s.id))
+          .sort((a, b) => {
+            const countA = budgetCapped.filter((x) => x.date === a).length
+            const countB = budgetCapped.filter((x) => x.date === b).length
+            return countA - countB
+          })
+        for (const d of availDays) {
+          if (added >= cap) break
+          const fallbackShift = shiftCodes[0] ?? "T1"
+          budgetCapped.push({ staff_id: s.id, date: d, shift_type: fallbackShift })
+          added++
+        }
+      }
+      budgetByStaff[s.id] = added
     }
 
     const finalAssignments = budgetCapped
