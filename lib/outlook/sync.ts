@@ -1,6 +1,22 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getValidAccessToken, fetchOOFEvents, type OOFEvent } from "./graph-client"
+import { formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import type { LeaveType } from "@/lib/types/database"
+
+/** Returns the ISO date of the Monday of the week containing dateStr */
+function getMondayOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00")
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split("T")[0]
+}
+
+function formatLeaveRange(start: string, end: string): string {
+  const s = start + "T00:00:00"
+  const e = end + "T00:00:00"
+  return start === end ? formatDateWithYear(s, "en") : formatDateRange(s, e, "en")
+}
 
 // Map Outlook event subject to leave type using keyword heuristics
 function guessLeaveType(subject: string): LeaveType {
@@ -46,13 +62,14 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   }
 
   // Load existing Outlook-synced leaves for this staff
+  // Use end_date >= today so ongoing multi-day leaves (started before today) are also tracked
   const { data: existingLeaves } = await admin
     .from("leaves")
     .select("id, outlook_event_id, start_date, end_date, type")
     .eq("staff_id", staffId)
     .eq("organisation_id", orgId)
     .eq("source", "outlook")
-    .gte("start_date", today) as { data: Array<{
+    .gte("end_date", today) as { data: Array<{
       id: string; outlook_event_id: string | null
       start_date: string; end_date: string; type: string
     }> | null }
@@ -64,6 +81,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   )
 
   const processedEventIds = new Set<string>()
+  const createdRanges: { start: string; end: string }[] = []
+  const deletedRanges: { start: string; end: string }[] = []
 
   // Upsert OOF events
   for (const event of oofEvents) {
@@ -100,13 +119,24 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
           notes: `Outlook: ${event.subject}`,
         } as never)
       if (error) result.errors.push(`Insert failed for event ${event.eventId}: ${error.message}`)
-      else result.created++
+      else {
+        result.created++
+        createdRanges.push({ start: event.startDate, end: event.endDate })
+        // Remove conflicting rota assignments (even published ones)
+        await admin
+          .from("rota_assignments")
+          .delete()
+          .eq("staff_id", staffId)
+          .eq("organisation_id", orgId)
+          .gte("date", event.startDate)
+          .lte("date", event.endDate)
+      }
     }
   }
 
   // Delete future synced leaves whose Outlook events no longer exist
   for (const [eventId, leave] of existingMap) {
-    if (!processedEventIds.has(eventId) && leave.start_date >= today) {
+    if (!processedEventIds.has(eventId) && leave.end_date >= today) {
       // Also remove conflicting rota assignments
       await admin
         .from("rota_assignments")
@@ -121,7 +151,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
         .delete()
         .eq("id", leave.id)
       if (error) result.errors.push(`Delete failed for event ${eventId}: ${error.message}`)
-      else result.deleted++
+      else { result.deleted++; deletedRanges.push({ start: leave.start_date, end: leave.end_date }) }
     }
   }
 
@@ -131,8 +161,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     .update({ last_synced_at: new Date().toISOString() } as never)
     .eq("staff_id", staffId)
 
-  // Notify managers if new leaves were created
-  if (result.created > 0) {
+  // Notify managers if leaves were created or deleted
+  if (result.created > 0 || result.deleted > 0) {
     try {
       const { data: staffData } = await admin
         .from("staff")
@@ -140,6 +170,19 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
         .eq("id", staffId)
         .single() as { data: { first_name: string; last_name: string } | null }
       const staffName = staffData ? `${staffData.first_name} ${staffData.last_name}` : "Staff"
+
+      const parts: string[] = []
+      if (result.created > 0) {
+        const dates = createdRanges.slice(0, 2).map(r => formatLeaveRange(r.start, r.end)).join("; ")
+        parts.push(`${result.created} added (${dates})`)
+      }
+      if (result.deleted > 0) {
+        const dates = deletedRanges.slice(0, 2).map(r => formatLeaveRange(r.start, r.end)).join("; ")
+        parts.push(`${result.deleted} removed (${dates})`)
+      }
+
+      const allStartDates = [...createdRanges, ...deletedRanges].map(r => r.start).sort()
+      const affectedWeeks = allStartDates.length > 0 ? [getMondayOfWeek(allStartDates[0])] : []
 
       const { data: managers } = await admin
         .from("organisation_members")
@@ -153,8 +196,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
           user_id: m.user_id,
           type: "outlook_sync",
           title: "Outlook leave synced",
-          message: `${result.created} new leave(s) synced from ${staffName}'s Outlook calendar.`,
-          data: { staffId, created: result.created },
+          message: `${parts.join(", ")} from ${staffName}'s Outlook calendar.`,
+          data: { staffId, created: result.created, deleted: result.deleted, affectedWeeks },
         }))
         await admin.from("notifications").insert(notifications as never)
       }
