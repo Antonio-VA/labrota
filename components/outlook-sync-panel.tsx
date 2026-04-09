@@ -57,7 +57,7 @@ export function OutlookSyncPanel({
       if (result.errors.length > 0) {
         toast.error(result.errors[0])
       } else {
-        toast.success(t("syncSuccess", { count: result.created + result.updated }))
+        toast.success(t("syncSuccess", { count: result.created + result.updated + result.deleted }))
       }
       await loadStatus()
     })
@@ -69,7 +69,7 @@ export function OutlookSyncPanel({
       if (result.errors.length > 0) {
         toast.error(`${result.errors.length} errors during sync`)
       } else {
-        toast.success(t("syncSuccess", { count: result.created + result.updated }))
+        toast.success(t("syncSuccess", { count: result.created + result.updated + result.deleted }))
       }
       await loadStatus()
     })
