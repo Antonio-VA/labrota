@@ -36,6 +36,7 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
 
   useEffect(() => {
     if (!open) { setSelected(null); setSelectedTplId(null); return }
+    setSelected("ai_optimal")
     setLoadingTpl(true)
     getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
     getHybridUsage().then(setHybridQuota)
