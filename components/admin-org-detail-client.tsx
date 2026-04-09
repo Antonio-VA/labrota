@@ -364,15 +364,15 @@ export function AdminOrgDetailClient({
                 {displayMode === "by_shift" ? t("byShiftDesc") : t("byTaskDesc")}
               </p>
             </div>
-            <div className="flex rounded-lg border border-input overflow-hidden shrink-0">
+            <div className="flex gap-4">
               {([
                 { key: "by_shift" as const, label: t("byShift") },
                 { key: "by_task" as const, label: t("byTask") },
               ]).map(({ key, label }) => (
-                <button key={key} type="button" disabled={isPending} onClick={() => setDisplayMode(key)}
-                  className={cn("px-4 py-1.5 text-[13px] font-medium transition-colors",
-                    displayMode === key ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
-                  )}>{label}</button>
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="displayMode" disabled={isPending} checked={displayMode === key} onChange={() => setDisplayMode(key)} className="accent-primary" />
+                  <span className="text-[13px] font-medium">{label}</span>
+                </label>
               ))}
             </div>
           </div>
@@ -428,22 +428,12 @@ export function AdminOrgDetailClient({
                 <p className="text-[14px] font-medium">Versión del motor</p>
                 <p className="text-[12px] text-muted-foreground">v2 recomendado — mejoras de asignación y restricciones estrictas.</p>
               </div>
-              <div className="flex rounded-lg border border-border overflow-hidden text-[13px]">
+              <div className="flex gap-4">
                 {(["v1", "v2"] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => setAiOptimalVersion(v)}
-                    className={cn(
-                      "px-3 py-1.5 font-medium transition-colors",
-                      aiOptimalVersion === v
-                        ? "bg-primary text-white"
-                        : "bg-background text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {v.toUpperCase()}
-                  </button>
+                  <label key={v} className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="aiOptimalVersion" disabled={isPending} checked={aiOptimalVersion === v} onChange={() => setAiOptimalVersion(v)} className="accent-primary" />
+                    <span className="text-[13px] font-medium">{v.toUpperCase()}</span>
+                  </label>
                 ))}
               </div>
             </div>
@@ -745,29 +735,17 @@ export function AdminOrgDetailClient({
         <div className="px-5 py-3 border-b border-border">
           <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wide">Método de acceso</p>
         </div>
-        <div className="px-5 py-3 flex items-center gap-3">
-          <label className="text-[13px] text-muted-foreground shrink-0">Inicio de sesión</label>
-          <div className="flex rounded-lg border border-input overflow-hidden">
-            {([
-              { key: "password" as const, label: "Contraseña" },
-              { key: "otp" as const, label: "Código (OTP)" },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                disabled={isPending}
-                onClick={() => setAuthMethod(key)}
-                className={cn(
-                  "px-4 py-1.5 text-[13px] font-medium transition-colors",
-                  authMethod === key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-transparent text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="px-5 py-3 flex items-center gap-6">
+          <span className="text-[13px] text-muted-foreground shrink-0">Inicio de sesión</span>
+          {([
+            { key: "password" as const, label: "Contraseña" },
+            { key: "otp" as const, label: "Código (OTP)" },
+          ]).map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="authMethod" disabled={isPending} checked={authMethod === key} onChange={() => setAuthMethod(key)} className="accent-primary" />
+              <span className="text-[13px] font-medium">{label}</span>
+            </label>
+          ))}
         </div>
       </div>
 
