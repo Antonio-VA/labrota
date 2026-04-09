@@ -36,13 +36,23 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const delayRef = useRef(30_000) // start at 30s
+  const countRef = useRef(0)
+
+  const refreshList = useCallback(() => {
+    getNotifications().then((all) => {
+      setNotifications(all.filter(n => !SWAP_TYPES.has(n.type)))
+      setLoading(false)
+    })
+  }, [])
 
   const scheduleNext = useCallback(() => {
     if (intervalRef.current) clearTimeout(intervalRef.current)
     intervalRef.current = setTimeout(() => {
       getUnreadCount().then((n) => {
+        // If new notifications arrived, refresh the list immediately
+        if (n > countRef.current) refreshList()
+        countRef.current = n
         setCount(n)
-        // Reset to 30s on success; back off on zero change
         delayRef.current = 30_000
         scheduleNext()
       }).catch(() => {
@@ -51,28 +61,21 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
         scheduleNext()
       })
     }, delayRef.current)
-  }, [])
+  }, [refreshList])
 
   useEffect(() => {
-    getUnreadCount().then(setCount)
+    getUnreadCount().then((n) => { countRef.current = n; setCount(n) })
     // Prefetch notifications in background so opening is instant
-    getNotifications().then((all) => {
-      const filtered = all.filter(n => !SWAP_TYPES.has(n.type))
-      setNotifications(filtered)
-    })
+    refreshList()
     scheduleNext()
     return () => { if (intervalRef.current) clearTimeout(intervalRef.current) }
-  }, [scheduleNext])
+  }, [scheduleNext, refreshList])
 
   function handleOpen() {
     setOpen(true)
-    if (notifications.length === 0) {
-      setLoading(true)
-      getNotifications().then((all) => {
-        setNotifications(all.filter(n => !SWAP_TYPES.has(n.type)))
-        setLoading(false)
-      })
-    }
+    // Always refresh on open — show loading only if list is currently empty
+    if (notifications.length === 0) setLoading(true)
+    refreshList()
   }
 
   async function handleMarkRead(id: string) {

@@ -8,12 +8,6 @@ import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 
@@ -34,40 +28,26 @@ function NavItem({
 }) {
   if (disabled) {
     return (
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <div className="flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] cursor-not-allowed" />
-          }
-        >
-          <Icon className="size-5 text-slate-300" />
-          <span className="text-[11px] font-medium text-slate-300 leading-none">{label}</span>
-        </TooltipTrigger>
-        <TooltipContent side="right">{label}</TooltipContent>
-      </Tooltip>
+      <div className="flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] cursor-not-allowed">
+        <Icon className="size-5 text-slate-300" />
+        <span className="text-[11px] font-medium text-slate-300 leading-none">{label}</span>
+      </div>
     )
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <a
-            href={href}
-            className={cn(
-              "flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] transition-colors",
-              isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          />
-        }
-      >
-        <Icon className="size-5" />
-        <span className="text-[11px] font-medium leading-none">{label}</span>
-      </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
+    <a
+      href={href}
+      className={cn(
+        "flex flex-col items-center gap-1.5 py-3 mx-2 rounded-[10px] transition-colors",
+        isActive
+          ? "bg-accent text-accent-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      <Icon className="size-5" />
+      <span className="text-[11px] font-medium leading-none">{label}</span>
+    </a>
   )
 }
 
@@ -130,7 +110,6 @@ export function AppSidebar() {
 
   return (
     <nav className="hidden lg:flex flex-col w-20 h-full border-r border-border bg-background shrink-0">
-      <TooltipProvider delay={300}>
         {/* Nav items */}
         <div className="flex flex-col gap-1 py-3 flex-1">
           {navItems.map((item) => {
@@ -149,8 +128,6 @@ export function AppSidebar() {
             )
           })}
         </div>
-
-      </TooltipProvider>
       <div className="py-3 text-center">
         <span className="text-[17px] leading-none" style={{ color: "var(--muted-foreground)", opacity: 0.35, textShadow: "0 1px 0 rgba(255,255,255,0.4), 0 -1px 0 rgba(0,0,0,0.1)" }}>
           <span className="font-light">lab</span><span className="font-medium">rota</span>
