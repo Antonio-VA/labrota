@@ -422,6 +422,34 @@ export function AdminOrgDetailClient({
           </div>
 
           {displayMode === "by_shift" ? (<>
+            {/* Engine version v1 / v2 */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] font-medium">Versión del motor</p>
+                <p className="text-[12px] text-muted-foreground">v2 recomendado — mejoras de asignación y restricciones estrictas.</p>
+              </div>
+              <div className="flex rounded-lg border border-border overflow-hidden text-[13px]">
+                {(["v1", "v2"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setAiOptimalVersion(v)}
+                    className={cn(
+                      "px-3 py-1.5 font-medium transition-colors",
+                      aiOptimalVersion === v
+                        ? "bg-primary text-white"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {v.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
             {/* Híbrido toggle */}
             <div className="flex items-center justify-between gap-4">
               <div>

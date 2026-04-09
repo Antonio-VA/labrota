@@ -135,9 +135,11 @@ export function ClinicTopBar({
         <div className="flex-1" />
 
         {/* Right: swaps + bell + avatar */}
-        <div className="flex items-center gap-2 header-icons">
-          <SwapBell />
-          <NotificationBell />
+        <div className="flex items-center gap-3 header-icons">
+          <div className="flex items-center gap-0.5">
+            <SwapBell />
+            <NotificationBell />
+          </div>
           {initialUser && <UserAvatarMenu initialUser={initialUser} />}
         </div>
       </header>

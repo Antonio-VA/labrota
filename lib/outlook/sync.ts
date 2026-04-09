@@ -62,13 +62,14 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   }
 
   // Load existing Outlook-synced leaves for this staff
+  // Use end_date >= today so ongoing multi-day leaves (started before today) are also tracked
   const { data: existingLeaves } = await admin
     .from("leaves")
     .select("id, outlook_event_id, start_date, end_date, type")
     .eq("staff_id", staffId)
     .eq("organisation_id", orgId)
     .eq("source", "outlook")
-    .gte("start_date", today) as { data: Array<{
+    .gte("end_date", today) as { data: Array<{
       id: string; outlook_event_id: string | null
       start_date: string; end_date: string; type: string
     }> | null }
@@ -124,7 +125,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
 
   // Delete future synced leaves whose Outlook events no longer exist
   for (const [eventId, leave] of existingMap) {
-    if (!processedEventIds.has(eventId) && leave.start_date >= today) {
+    if (!processedEventIds.has(eventId) && leave.end_date >= today) {
       // Also remove conflicting rota assignments
       await admin
         .from("rota_assignments")
