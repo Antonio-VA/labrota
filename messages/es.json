@@ -18,6 +18,7 @@
     "loading": "Cargando…",
     "saving": "Guardando…",
     "generating": "Generando…",
+    "deleting": "Eliminando…",
     "success": "Guardado correctamente",
     "savedSuccessfully": "Guardado correctamente",
     "error": "Se ha producido un error",

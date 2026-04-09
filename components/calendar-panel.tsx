@@ -203,6 +203,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
   const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [isPending, startTransition]    = useTransition()
+  const [pendingAction, setPendingAction] = useState<"generating" | "deleting" | null>(null)
 
   // Staff for assignment sheet
   const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
@@ -564,6 +565,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
     setActiveStrategy(strategy)
     setLoadingWeek(true)
+    setPendingAction(strategy === "manual" ? "deleting" : "generating")
     startTransition(async () => {
       try {
         let successCount = 0
@@ -626,6 +628,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         toast.error(msg)
       } finally {
         setActiveStrategy(null)
+        setPendingAction(null)
       }
     })
   }
@@ -901,7 +904,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
           )}
           {showActions && (view === "month" ? !anyMonthWeekPublished || monthSummary?.weekStatuses?.some((ws) => ws.status !== "published") : !isPublished) && (
             <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
-              {isPending ? tc("generating") : hasAssignments ? t("regenerateRota") : t("generateRota")}
+              {isPending ? (pendingAction === "deleting" ? tc("deleting") : tc("generating")) : hasAssignments ? t("regenerateRota") : t("generateRota")}
             </Button>
           )}
           {(showActions || hasAssignments) && (
@@ -1065,6 +1068,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                     : t("deleteWeekConfirm")
                   if (confirm(msg)) {
                     if (view === "month") setLoadingMonth(true)
+                    setPendingAction("deleting")
                     startTransition(async () => {
                       if (view === "month" && monthSummary) {
                         const allWeekStarts: string[] = []
@@ -1085,6 +1089,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                         if (result.error) toast.error(result.error)
                         else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
                       }
+                      setPendingAction(null)
                     })
                   }
                 },
