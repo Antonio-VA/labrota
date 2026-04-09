@@ -22,11 +22,9 @@ import type { User } from "@supabase/supabase-js"
 const ACCENT_COLORS = [
   { key: "blue",    hex: "#1b4f8a", labelKey: "accentBlue" },
   { key: "royal",   hex: "#2563EB", labelKey: "accentBlue" },
-  { key: "sky",     hex: "#0EA5E9", labelKey: "accentBlue" },
   { key: "teal",    hex: "#0D9488", labelKey: "accentEmerald" },
   { key: "emerald", hex: "#059669", labelKey: "accentEmerald" },
   { key: "green",   hex: "#16A34A", labelKey: "accentEmerald" },
-  { key: "amber",   hex: "#D97706", labelKey: "accentAmber" },
   { key: "orange",  hex: "#EA580C", labelKey: "accentAmber" },
   { key: "red",     hex: "#DC2626", labelKey: "accentRose" },
   { key: "slate",   hex: "#64748B", labelKey: "accentSlate" },

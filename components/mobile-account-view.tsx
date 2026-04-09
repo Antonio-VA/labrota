@@ -13,9 +13,9 @@ import { applyTheme } from "@/components/account-panel"
 import { toast } from "sonner"
 
 const ACCENT_COLORS = [
-  "#1b4f8a", "#2563EB", "#3B82F6", "#0EA5E9",
+  "#1b4f8a", "#2563EB", "#3B82F6",
   "#0D9488", "#059669", "#16A34A", "#65A30D",
-  "#D97706", "#EA580C", "#DC2626", "#64748B",
+  "#EA580C", "#DC2626", "#64748B",
 ]
 
 interface MobileAccountViewProps {
