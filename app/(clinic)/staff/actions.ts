@@ -122,6 +122,23 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
+  // Enforce per-org staff limit
+  const admin = createAdminClient()
+  const { data: orgData } = await admin
+    .from("organisations")
+    .select("max_staff")
+    .eq("id", orgId)
+    .single() as { data: { max_staff: number } | null }
+  const maxStaff = orgData?.max_staff ?? 50
+  const { count: currentCount } = await admin
+    .from("staff")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", orgId)
+    .in("onboarding_status", ["active", "onboarding"]) as { count: number | null }
+  if ((currentCount ?? 0) >= maxStaff) {
+    return { error: `Staff limit reached (${maxStaff}). Contact support to increase your limit.` }
+  }
+
   const { data: newStaff, error } = await supabase
     .from("staff")
     .insert({ ...staff, organisation_id: orgId, onboarding_end_date: onboardingEndDate } as never)

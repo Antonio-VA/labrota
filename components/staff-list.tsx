@@ -1113,7 +1113,7 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [] }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[] }) {
+export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [], maxStaff = 50 }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; maxStaff?: number }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
@@ -1427,10 +1427,15 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
               <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiFullyValidated}</p>
             </div>
 
-            {/* Task Coverage */}
+            {/* Staff vs limit */}
             <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
-              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiCoverage")}</p>
-              <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiCoveredCount}/{kpiAllCodes.length}</p>
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiStaffLimit")}</p>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <p className={`text-[22px] font-semibold leading-tight ${staff.filter(s => s.onboarding_status === "active" || s.onboarding_status === "onboarding").length >= maxStaff ? "text-destructive" : "text-foreground"}`}>
+                  {staff.filter(s => s.onboarding_status === "active" || s.onboarding_status === "onboarding").length}
+                </p>
+                <p className="text-[14px] text-muted-foreground">/ {maxStaff}</p>
+              </div>
             </div>
           </div>
         </div>

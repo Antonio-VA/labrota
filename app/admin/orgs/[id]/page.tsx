@@ -312,6 +312,7 @@ export default async function OrgDetailPage({
             initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
             initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
             initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
+            initialMaxStaff={(org as { max_staff?: number }).max_staff ?? 50}
           />
         }
         usuarios={

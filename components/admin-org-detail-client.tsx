@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
-import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, toggleOrgSwapRequests, toggleOrgOutlookSync, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod } from "@/app/admin/actions"
+import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, toggleOrgSwapRequests, toggleOrgOutlookSync, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod, updateOrgMaxStaff } from "@/app/admin/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRow } from "@/components/admin-users-table"
 import { AdminUsersTable } from "@/components/admin-users-table"
@@ -60,6 +60,7 @@ export function AdminOrgDetailClient({
   initialDailyHybridLimit = 10,
   initialAnnualLeaveDays = 20,
   initialDefaultDaysPerWeek = 5,
+  initialMaxStaff = 50,
   implementationStatus,
   section = "all",
   hideUsers = false,
@@ -89,6 +90,7 @@ export function AdminOrgDetailClient({
   initialDailyHybridLimit?: number
   initialAnnualLeaveDays?: number
   initialDefaultDaysPerWeek?: number
+  initialMaxStaff?: number
   implementationStatus?: {
     hasRegion: boolean
     departmentCount: number
@@ -123,6 +125,7 @@ export function AdminOrgDetailClient({
   const [dailyHybridLimit, setDailyHybridLimit] = useState(initialDailyHybridLimit)
   const [annualLeaveDays, setAnnualLeaveDays] = useState(initialAnnualLeaveDays)
   const [defaultDaysPerWeek, setDefaultDaysPerWeek] = useState(initialDefaultDaysPerWeek)
+  const [maxStaff, setMaxStaff] = useState(initialMaxStaff)
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [billing, setBilling] = useState(initialBilling)
@@ -206,6 +209,10 @@ export function AdminOrgDetailClient({
       if (authMethod !== initialAuthMethod) {
         const r5 = await updateOrgAuthMethod(orgId, authMethod)
         if (r5.error) { toast.error(r5.error); hasError = true }
+      }
+      if (maxStaff !== initialMaxStaff) {
+        const r6 = await updateOrgMaxStaff(orgId, maxStaff)
+        if (r6?.error) { toast.error(r6.error); hasError = true }
       }
       if (!hasError) toast.success(t("configSaved"))
     })
@@ -708,6 +715,22 @@ export function AdminOrgDetailClient({
               className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
             />
             <span className="text-[12px] text-muted-foreground">días/semana para nuevos empleados</span>
+          </div>
+          <div className="px-5 py-3 flex items-center gap-3">
+            <label className="text-[13px] text-muted-foreground shrink-0">Límite de personal</label>
+            <input
+              type="number"
+              min={1}
+              max={500}
+              value={maxStaff}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 1 && v <= 500) setMaxStaff(v)
+              }}
+              disabled={isPending}
+              className="w-16 h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] text-center outline-none focus-visible:border-ring"
+            />
+            <span className="text-[12px] text-muted-foreground">miembros activos máximos</span>
           </div>
         </div>
       </div>

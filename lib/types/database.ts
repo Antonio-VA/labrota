@@ -76,6 +76,7 @@ export interface Organisation {
   daily_hybrid_limit:       number
   auth_method:              'otp' | 'password'
   rota_email_format:        'by_shift' | 'by_person'
+  max_staff:                number
   created_at:               string
 }
 

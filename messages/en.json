@@ -529,7 +529,7 @@
     "membersDeleted": "{count} member(s) permanently deleted.",
     "kpiActive": "Active",
     "kpiTraining": "In training",
-    "kpiCoverage": "Task coverage",
+    "kpiStaffLimit": "Staff",
     "kpiFullValidation": "Fully validated",
     "kpiOptimalHeadcount": "Minimum headcount",
     "bulk": {

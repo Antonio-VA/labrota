@@ -506,6 +506,18 @@ export async function updateOrgEngineConfig(orgId: string, config: {
   return { success: true }
 }
 
+export async function updateOrgMaxStaff(orgId: string, maxStaff: number) {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("organisations")
+    .update({ max_staff: maxStaff } as never)
+    .eq("id", orgId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/orgs/${orgId}`)
+  return { success: true }
+}
+
 export async function toggleOrgNotes(orgId: string, enabled: boolean) {
   await assertSuperAdmin()
   const admin = createAdminClient()
