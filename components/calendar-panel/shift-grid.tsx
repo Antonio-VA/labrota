@@ -280,12 +280,12 @@ export function ShiftGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="rounded-lg border border-border bg-background overflow-hidden w-full flex flex-col">
         {/* Header */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-          <div className="border-r border-border h-[72px]" />
+        <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border" style={{ minHeight: 52 }}>
+          <div className="border-r border-border bg-muted" />
           {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1">
+            <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1 border-l border-border bg-muted">
               <div className="shimmer-bar h-2.5 w-6" />
               <div className="shimmer-bar w-8 h-8 rounded-full" />
               <div className="shimmer-bar h-2.5 w-12 rounded" />

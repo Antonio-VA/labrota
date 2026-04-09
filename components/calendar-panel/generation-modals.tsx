@@ -58,26 +58,24 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
 
         {/* Strategy cards — 2×2 grid */}
         <div className="p-4 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3" style={{ gridTemplateRows: "1fr 1fr", minHeight: "264px" }}>
             {buildStrategyCards(rotaDisplayMode, engineConfig).map((card) => (
               <button
                 key={card.key}
                 type="button"
                 onClick={() => { setSelected(card.key); setSelectedTplId(null) }}
                 className={cn(
-                  "relative flex flex-col items-start gap-2 rounded-lg p-3.5 text-left transition-all",
+                  "relative flex flex-col items-start gap-2 rounded-lg p-3.5 text-left transition-all h-full",
+                  card.speed && "pr-10",
                   selected === card.key
                     ? "bg-primary/10"
                     : "hover:bg-muted"
                 )}
                 style={{ border: `2px solid ${selected === card.key ? "var(--primary)" : "var(--border)"}` }}
               >
-                <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
-                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{t(card.titleKey)}</p>
-                <p className="text-[12px] text-muted-foreground leading-snug">{t(card.descKey)}</p>
                 {card.speed && (
                   <span className={cn(
-                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                    "absolute top-2.5 right-2.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full",
                     card.speed === "fast"
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -87,6 +85,9 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
                       : (locale === "es" ? "Más lento" : "Slower")}
                   </span>
                 )}
+                <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
+                <p className={cn("text-[14px] font-medium leading-tight", selected === card.key && "text-primary")}>{t(card.titleKey)}</p>
+                <p className="text-[12px] text-muted-foreground leading-snug">{t(card.descKey)}</p>
               </button>
             ))}
           </div>
