@@ -555,7 +555,7 @@ export function ShiftGrid({
         ))}
 
         {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-muted">
+        <div className="grid grid-cols-[80px_repeat(7,1fr)]">
           <div className="flex flex-col items-end justify-center px-2.5 py-2">
             <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
@@ -579,7 +579,7 @@ export function ShiftGrid({
                 id={offCellId}
                 isOver={overId === offCellId}
                 isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 border-l border-border"
+                className="p-1.5 flex flex-col gap-1 border-l border-border bg-background"
                 style={{
                   backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
                   backgroundSize: "10px 10px",
