@@ -530,7 +530,7 @@
     "membersDeleted": "{count} miembro(s) borrado(s) definitivamente.",
     "kpiActive": "Activos",
     "kpiTraining": "En formación",
-    "kpiCoverage": "Cobertura tareas",
+    "kpiAvailable": "Disponibles",
     "kpiFullValidation": "Validación completa",
     "kpiOptimalHeadcount": "Plantilla mínima",
     "bulk": {

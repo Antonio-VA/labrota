@@ -161,7 +161,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     .update({ last_synced_at: new Date().toISOString() } as never)
     .eq("staff_id", staffId)
 
-  // Notify managers if leaves were created, updated, or deleted
+  // Notify managers if leaves were created or deleted
   if (result.created > 0 || result.deleted > 0) {
     try {
       const { data: staffData } = await admin
