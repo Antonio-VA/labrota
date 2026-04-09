@@ -328,12 +328,17 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-3 w-full">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[12px] text-muted-foreground">{t("or")}</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
               <button
                 type="button"
                 onClick={handleSendCodeInstead}
                 disabled={loading}
-                className="text-[12px] text-primary hover:underline disabled:opacity-50"
+                className="w-full h-10 rounded-lg border border-border text-[14px] font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {t("sendCodeInstead")}
               </button>

@@ -115,6 +115,7 @@
     "continueButton": "Continue",
     "signingIn": "Signing in...",
     "signInWithPassword": "Sign in",
+    "or": "or",
     "sendCodeInstead": "Sign in without password",
     "forgotPassword": "Forgot password?",
     "sendResetLink": "Send reset link",
