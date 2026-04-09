@@ -292,15 +292,17 @@ export function ShiftGrid({
             </div>
           ))}
         </div>
-        {/* Rows — enough to cover up to 5 shifts + off */}
+        {/* Rows — match real shift row height with multiple name bars */}
         {Array.from({ length: 6 }).map((_, row) => (
           <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             <div className="border-r border-border flex items-center justify-end px-2 py-3">
               <div className="shimmer-bar h-3 w-8" />
             </div>
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="p-2 flex items-center justify-center min-h-[36px] bg-background">
-                <div className="shimmer-bar h-5 w-full rounded" />
+              <div key={i} className="border-l border-border p-2 flex flex-col gap-1.5 justify-center" style={{ minHeight: 80 }}>
+                <div className="shimmer-bar h-4 rounded" style={{ width: `${60 + ((row * 7 + i) % 4) * 10}%` }} />
+                <div className="shimmer-bar h-4 rounded" style={{ width: `${50 + ((row * 7 + i + 2) % 4) * 10}%` }} />
+                <div className="shimmer-bar h-4 rounded" style={{ width: `${55 + ((row * 7 + i + 1) % 3) * 10}%` }} />
               </div>
             ))}
           </div>
