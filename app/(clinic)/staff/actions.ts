@@ -122,23 +122,6 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }
 
-  // Enforce per-org staff limit
-  const admin = createAdminClient()
-  const { data: orgData } = await admin
-    .from("organisations")
-    .select("max_staff")
-    .eq("id", orgId)
-    .single() as { data: { max_staff: number } | null }
-  const maxStaff = orgData?.max_staff ?? 50
-  const { count: currentCount } = await admin
-    .from("staff")
-    .select("id", { count: "exact", head: true })
-    .eq("organisation_id", orgId)
-    .in("onboarding_status", ["active", "onboarding"]) as { count: number | null }
-  if ((currentCount ?? 0) >= maxStaff) {
-    return { error: `Staff limit reached (${maxStaff}). Contact support to increase your limit.` }
-  }
-
   const { data: newStaff, error } = await supabase
     .from("staff")
     .insert({ ...staff, organisation_id: orgId, onboarding_end_date: onboardingEndDate } as never)
@@ -175,6 +158,40 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
       } catch (e) {
         console.error("[staff] Viewer invite error:", e)
       }
+    }
+
+    // Check staff limit and notify info@labrota.app if exceeded
+    try {
+      const adminClient = createAdminClient()
+      const { data: orgRow } = await adminClient
+        .from("organisations")
+        .select("name, max_staff")
+        .eq("id", orgId)
+        .single() as { data: { name: string; max_staff: number } | null }
+      const maxStaff = orgRow?.max_staff ?? 50
+      const orgName = orgRow?.name ?? "Unknown Organisation"
+      const { count: activeCount } = await adminClient
+        .from("staff")
+        .select("id", { count: "exact", head: true })
+        .eq("organisation_id", orgId)
+        .eq("onboarding_status", "active") as { count: number | null }
+      if ((activeCount ?? 0) > maxStaff) {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.RESEND_API_KEY ?? ""}`,
+          },
+          body: JSON.stringify({
+            from: "LabRota <onboarding@resend.dev>",
+            to: "info@labrota.app",
+            subject: `[LabRota] Staff limit exceeded — ${orgName}`,
+            text: `${orgName} has exceeded their contracted staff limit.\n\nContracted limit: ${maxStaff}\nCurrent active staff: ${activeCount}\n\nPlease contact them to discuss upgrading their subscription.`,
+          }),
+        })
+      }
+    } catch (e) {
+      console.error("[staff] Limit notification error:", e)
     }
   })
 

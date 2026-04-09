@@ -1310,6 +1310,9 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
   // KPI metrics (computed once, rendered above toolbar)
   const kpiActiveStaff = staff.filter((s) => s.onboarding_status !== "inactive")
+  const kpiActiveOnly = staff.filter((s) => s.onboarding_status === "active")
+  const kpiAvailable = maxStaff - kpiActiveOnly.length
+  const isOverLimit = kpiActiveOnly.length > maxStaff
   const kpiActiveTecnicas = tecnicas.filter((t) => t.activa)
   const kpiAllCodes = kpiActiveTecnicas.map((t) => t.codigo)
   const kpiCoveredCount = kpiAllCodes.filter((code) =>
@@ -1427,17 +1430,30 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
               <p className="text-[22px] font-semibold text-foreground mt-0.5 leading-tight">{kpiFullyValidated}</p>
             </div>
 
-            {/* Staff vs limit */}
-            <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
-              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiStaffLimit")}</p>
+            {/* Available slots */}
+            <div className={cn("rounded-xl border bg-background px-4 py-3", isOverLimit ? "border-destructive/40" : "border-border/60")}>
+              <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiAvailable")}</p>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <p className={`text-[22px] font-semibold leading-tight ${staff.filter(s => s.onboarding_status === "active" || s.onboarding_status === "onboarding").length >= maxStaff ? "text-destructive" : "text-foreground"}`}>
-                  {staff.filter(s => s.onboarding_status === "active" || s.onboarding_status === "onboarding").length}
+                <p className={cn("text-[22px] font-semibold leading-tight", isOverLimit ? "text-destructive" : "text-foreground")}>
+                  {kpiAvailable}
                 </p>
                 <p className="text-[14px] text-muted-foreground">/ {maxStaff}</p>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Over-limit banner */}
+      {isOverLimit && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 mb-1">
+          <span className="text-destructive mt-0.5">⚠</span>
+          <p className="text-[13px] text-destructive leading-snug">
+            {locale === "es"
+              ? <>Has superado el límite contratado de <strong>{maxStaff}</strong> miembros activos. Contacta con <strong>info@labrota.app</strong> para ampliar tu suscripción.</>
+              : <>You have exceeded your contracted limit of <strong>{maxStaff}</strong> active staff members. Contact <strong>info@labrota.app</strong> to upgrade your subscription.</>
+            }
+          </p>
         </div>
       )}
 
