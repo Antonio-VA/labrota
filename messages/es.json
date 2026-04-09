@@ -117,7 +117,7 @@
     "signingIn": "Iniciando sesión...",
     "signInWithPassword": "Iniciar sesión",
     "or": "o",
-    "sendCodeInstead": "Iniciar sesión sin contraseña",
+    "sendCodeInstead": "Enviarme un código de un solo uso",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "sendResetLink": "Enviar enlace de restablecimiento",
     "checkResetEmail": "Revisa tu correo",

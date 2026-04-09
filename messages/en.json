@@ -117,7 +117,7 @@
     "signingIn": "Signing in...",
     "signInWithPassword": "Sign in",
     "or": "or",
-    "sendCodeInstead": "Sign in without password",
+    "sendCodeInstead": "Send me a one-time code instead",
     "forgotPassword": "Forgot password?",
     "sendResetLink": "Send reset link",
     "checkResetEmail": "Check your email",
