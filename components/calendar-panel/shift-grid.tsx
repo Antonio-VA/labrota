@@ -556,7 +556,7 @@ export function ShiftGrid({
 
         {/* OFF row */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)]">
-          <div className="flex flex-col items-end justify-center px-2.5 py-2">
+          <div className="flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
             <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
           </div>
           {localDays.map((day) => {
