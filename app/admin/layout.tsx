@@ -39,7 +39,7 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
         <div className="max-w-5xl mx-auto px-6 py-8">
           {children}
         </div>
