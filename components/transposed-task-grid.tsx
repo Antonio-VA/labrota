@@ -159,7 +159,7 @@ function TechDayCell({
           <Tooltip key={a.id}>
             <TooltipTrigger render={
               <span
-                className={cn("inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100",
+                className={cn("inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100 text-foreground/70",
                   compact ? "text-[10px] py-0" : "text-[11px] py-0.5", onChipClick && "cursor-pointer")}
                 style={{
                   borderRadius: 4,
@@ -244,7 +244,7 @@ export function TransposedTaskGrid({
 
   if (loading) {
     const skelTecnicas = 5
-    const skelGridCols = `80px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
+    const skelGridCols = `70px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="overflow-auto flex-1 rounded-lg border border-border">
@@ -338,7 +338,7 @@ export function TransposedTaskGrid({
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
   // Narrow technique columns (space for ~2 badges), wider OFF column
-  const gridCols = `80px repeat(${tecnicas.length}, minmax(62px, 88px)) minmax(130px, 1fr)`
+  const gridCols = `70px repeat(${tecnicas.length}, minmax(62px, 88px)) minmax(130px, 1fr)`
 
   return (
     <div className="overflow-auto flex-1 rounded-lg border border-border">
