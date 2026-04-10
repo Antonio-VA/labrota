@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
+import { StaffDetailTabs } from "@/components/staff-detail-tabs"
 import { StaffLeaveBalances } from "@/components/staff-leave-balances"
-import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, HrModule, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
+import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 import { ChevronLeft } from "lucide-react"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 
@@ -70,7 +71,7 @@ export default async function EditStaffPage({
 
     const [configRes, typesRes, leavesRes] = await Promise.all([
       supabase.from("holiday_config").select("*").single() as unknown as Promise<{ data: HolidayConfig | null }>,
-      supabase.from("company_leave_types").select("*").eq("is_archived", false).order("sort_order") as unknown as Promise<{ data: CompanyLeaveType[] | null }>,
+      supabase.from("company_leave_types").select("*").order("sort_order") as unknown as Promise<{ data: CompanyLeaveType[] | null }>,
       supabase.from("leaves").select("*").eq("staff_id", id).in("status", ["approved", "pending", "cancelled"]).order("start_date", { ascending: false }) as unknown as Promise<{ data: Leave[] | null }>,
     ])
 
@@ -96,6 +97,8 @@ export default async function EditStaffPage({
     }
   }
 
+  const staffName = `${staff.first_name} ${staff.last_name}`
+
   return (
     <>
       <div className="flex-1 overflow-auto p-6 md:p-8">
@@ -104,26 +107,29 @@ export default async function EditStaffPage({
             <div>
               <h1 className="text-[18px] font-medium flex items-center gap-1">
                 <Link href="/staff" className="text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="size-5" /></Link>
-                {t("editStaff")}
+                {staffName}
               </h1>
-              <p className="text-[14px] text-muted-foreground mt-1">
-                {staff.first_name} {staff.last_name}
-              </p>
             </div>
-            <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} guardiaMode={guardiaMode} hasViewerAccount={hasViewerAccount} />
-
-            {hrData && (
-              <StaffLeaveBalances
-                staffId={id}
-                staffName={`${staff.first_name} ${staff.last_name}`}
-                leaveTypes={hrData.leaveTypes}
-                balances={hrData.balances}
-                config={hrData.config}
-                leaves={hrData.leaves}
-                year={hrData.year}
-                publicHolidays={[]}
-              />
-            )}
+            <StaffDetailTabs
+              staffName={staffName}
+              profile={
+                <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} guardiaMode={guardiaMode} hasViewerAccount={hasViewerAccount} />
+              }
+              balances={
+                hrData ? (
+                  <StaffLeaveBalances
+                    staffId={id}
+                    staffName={staffName}
+                    leaveTypes={hrData.leaveTypes}
+                    balances={hrData.balances}
+                    config={hrData.config}
+                    leaves={hrData.leaves}
+                    year={hrData.year}
+                    publicHolidays={[]}
+                  />
+                ) : null
+              }
+            />
           </div>
         </MobileGate>
       </div>

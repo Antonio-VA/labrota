@@ -41,6 +41,15 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
   const [showAddType, setShowAddType] = useState(false)
   const [newType, setNewType] = useState({ name: "", name_en: "", has_balance: false, default_days: null as number | null, allows_carry_forward: false, overflow_to_type_id: null as string | null, is_paid: true, color: "#64748b" })
 
+  // Local editable copy of leave types for batch saving
+  const [editedTypes, setEditedTypes] = useState<CompanyLeaveType[]>(initialTypes)
+  const [typesDirty, setTypesDirty] = useState(false)
+
+  const updateTypeField = (id: string, field: string, value: boolean | number | string | null) => {
+    setEditedTypes((prev) => prev.map((lt) => lt.id === id ? { ...lt, [field]: value } : lt))
+    setTypesDirty(true)
+  }
+
   const handleInstall = () => {
     startTransition(async () => {
       const result = await adminInstallHrModule(orgId)
@@ -84,12 +93,43 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
     })
   }
 
-  const handleToggleField = (id: string, field: string, value: boolean | number | string | null) => {
+  const handleSaveAllTypes = () => {
     startTransition(async () => {
-      const result = await adminUpdateCompanyLeaveType(id, { [field]: value })
-      if (result.error) toast.error(result.error)
-      else router.refresh()
+      const changed = editedTypes.filter((lt) => {
+        const original = initialTypes.find((o) => o.id === lt.id)
+        if (!original) return false
+        return (
+          lt.has_balance !== original.has_balance ||
+          lt.default_days !== original.default_days ||
+          lt.allows_carry_forward !== original.allows_carry_forward ||
+          lt.overflow_to_type_id !== original.overflow_to_type_id ||
+          lt.is_paid !== original.is_paid ||
+          lt.is_archived !== original.is_archived
+        )
+      })
+      for (const lt of changed) {
+        const result = await adminUpdateCompanyLeaveType(lt.id, {
+          has_balance: lt.has_balance,
+          default_days: lt.default_days,
+          allows_carry_forward: lt.allows_carry_forward,
+          overflow_to_type_id: lt.overflow_to_type_id,
+          is_paid: lt.is_paid,
+          is_archived: lt.is_archived,
+        })
+        if (result.error) { toast.error(result.error); return }
+      }
+      toast.success("Guardado")
+      setTypesDirty(false)
+      router.refresh()
     })
+  }
+
+  const handleArchive = (id: string) => {
+    updateTypeField(id, "is_archived", true)
+  }
+
+  const handleRestore = (id: string) => {
+    updateTypeField(id, "is_archived", false)
   }
 
   const handleGenerateBalances = () => {
@@ -147,8 +187,8 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
   }
 
   // ── Active ────────────────────────────────────────────────────────────────
-  const activeTypes = initialTypes.filter((lt) => !lt.is_archived)
-  const archivedTypes = initialTypes.filter((lt) => lt.is_archived)
+  const activeTypes = editedTypes.filter((lt) => !lt.is_archived)
+  const archivedTypes = editedTypes.filter((lt) => lt.is_archived)
 
   return (
     <div className="flex flex-col gap-5">
@@ -260,27 +300,27 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
                     </div>
                   </td>
                   <td className="px-2 py-2 text-center">
-                    <input type="checkbox" checked={lt.has_balance} onChange={(e) => handleToggleField(lt.id, "has_balance", e.target.checked)} className="accent-primary" disabled={isPending} />
+                    <input type="checkbox" checked={lt.has_balance} onChange={(e) => updateTypeField(lt.id, "has_balance", e.target.checked)} className="accent-primary" disabled={isPending} />
                   </td>
                   <td className="px-2 py-2 text-center">
                     {lt.has_balance ? (
-                      <input type="number" value={lt.default_days ?? ""} onChange={(e) => handleToggleField(lt.id, "default_days", e.target.value ? parseInt(e.target.value) : null)} className="w-16 border border-border rounded px-2 py-1 text-[14px] text-center bg-background" disabled={isPending} />
+                      <input type="number" value={lt.default_days ?? ""} onChange={(e) => updateTypeField(lt.id, "default_days", e.target.value ? parseInt(e.target.value) : null)} className="w-16 border border-border rounded px-2 py-1 text-[14px] text-center bg-background" disabled={isPending} />
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-2 py-2 text-center">
-                    <input type="checkbox" checked={lt.allows_carry_forward} onChange={(e) => handleToggleField(lt.id, "allows_carry_forward", e.target.checked)} className="accent-primary" disabled={isPending || !lt.has_balance} />
+                    <input type="checkbox" checked={lt.allows_carry_forward} onChange={(e) => updateTypeField(lt.id, "allows_carry_forward", e.target.checked)} className="accent-primary" disabled={isPending || !lt.has_balance} />
                   </td>
                   <td className="px-2 py-2">
-                    <select value={lt.overflow_to_type_id ?? ""} onChange={(e) => handleToggleField(lt.id, "overflow_to_type_id", e.target.value || null)} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
+                    <select value={lt.overflow_to_type_id ?? ""} onChange={(e) => updateTypeField(lt.id, "overflow_to_type_id", e.target.value || null)} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
                       <option value="">—</option>
                       {activeTypes.filter((t) => t.id !== lt.id).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </td>
                   <td className="px-2 py-2 text-center">
-                    <input type="checkbox" checked={lt.is_paid} onChange={(e) => handleToggleField(lt.id, "is_paid", e.target.checked)} className="accent-primary" disabled={isPending} />
+                    <input type="checkbox" checked={lt.is_paid} onChange={(e) => updateTypeField(lt.id, "is_paid", e.target.checked)} className="accent-primary" disabled={isPending} />
                   </td>
                   <td className="px-2 py-2">
-                    <Button variant="ghost" size="icon-xs" onClick={() => handleToggleField(lt.id, "is_archived", true)} disabled={isPending}>
+                    <Button variant="ghost" size="icon-xs" onClick={() => handleArchive(lt.id)} disabled={isPending}>
                       <Archive className="size-4" />
                     </Button>
                   </td>
@@ -300,7 +340,7 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
                   <span className="line-through">{lt.name}</span>
                   <Badge variant="inactive">Archivado</Badge>
                 </div>
-                <Button variant="ghost" size="xs" onClick={() => handleToggleField(lt.id, "is_archived", false)} disabled={isPending}>
+                <Button variant="ghost" size="xs" onClick={() => handleRestore(lt.id)} disabled={isPending}>
                   <RotateCcw className="size-3 mr-1" />Restaurar
                 </Button>
               </div>
@@ -338,6 +378,18 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
               <Button size="sm" onClick={handleAddType} disabled={isPending || !newType.name}>Guardar</Button>
               <Button variant="outline" size="sm" onClick={() => setShowAddType(false)}>Cancelar</Button>
             </div>
+          </div>
+        )}
+
+        {/* Save button for leave type changes */}
+        {typesDirty && (
+          <div className="flex items-center gap-3 pt-2 border-t border-border">
+            <Button onClick={handleSaveAllTypes} disabled={isPending}>
+              {isPending ? "Guardando…" : "Guardar cambios"}
+            </Button>
+            <Button variant="outline" onClick={() => { setEditedTypes(initialTypes); setTypesDirty(false) }} disabled={isPending}>
+              Cancelar
+            </Button>
           </div>
         )}
       </div>
