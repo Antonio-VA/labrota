@@ -436,7 +436,7 @@ export function TransposedTaskGrid({
               {/* OFF column — inline initials badges */}
               <div key={`off-${day.date}`}
                 className="border-b border-border p-1 flex flex-wrap gap-0.5 content-start items-start"
-                style={{ backgroundImage: "radial-gradient(circle, #ccddee 1.5px, transparent 1.5px)", backgroundSize: "8px 8px", backgroundPosition: "4px 4px" }}>
+                style={{ backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px", backgroundPosition: "2px 2px", backgroundClip: "padding-box" }}>
                 {[...leaveIds].map((sid) => {
                   const s = staffList.find((st) => st.id === sid)
                   if (!s) return null
