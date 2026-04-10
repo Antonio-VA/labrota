@@ -1,13 +1,14 @@
 "use client"
 
 import { useMemo, useState, useRef, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Briefcase, Plus } from "lucide-react"
+import { AlertTriangle, Briefcase, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useStaffHover } from "@/components/staff-hover-context"
 import { toast } from "sonner"
-import type { StaffWithSkills } from "@/lib/types/database"
+import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment } from "@/app/(clinic)/rota/actions"
 
@@ -28,17 +29,23 @@ function resolveStaffColor(color: string): string {
   return COLOR_HEX[color] ?? "#94A3B8"
 }
 
-/** Inline popup to pick a staff member to assign to a tecnica cell */
-function StaffPicker({ staffList, assignedIds, leaveIds, colorChips, staffColorMap, onSelect, onClose }: {
-  staffList: StaffWithSkills[]
-  assignedIds: Set<string>
-  leaveIds: Set<string>
-  colorChips: boolean
-  staffColorMap: Record<string, string>
-  onSelect: (staffId: string) => void
+// ── Staff selector popup (portal) ─────────────────────────────────────────────
+
+function StaffSelectorPopup({
+  onClose, tecnica, staffList, assignedStaffIds, leaveIds,
+  onAdd, onRemove,
+}: {
   onClose: () => void
+  tecnica: Tecnica
+  staffList: StaffWithSkills[]
+  assignedStaffIds: Set<string>
+  leaveIds: Set<string>
+  onAdd: (staffId: string) => void
+  onRemove: (staffId: string) => void
 }) {
+  const [search, setSearch] = useState("")
   const ref = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
@@ -47,32 +54,191 @@ function StaffPicker({ staffList, assignedIds, leaveIds, colorChips, staffColorM
     return () => document.removeEventListener("mousedown", handler)
   }, [onClose])
 
-  const available = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id) && s.onboarding_status !== "inactive")
-  if (available.length === 0) return null
+  const tecCode = tecnica.codigo.toUpperCase()
+  const qualified = staffList.filter((s) =>
+    s.staff_skills?.some((sk) => sk.skill.toUpperCase() === tecCode)
+  )
+  const filtered = qualified
+    .filter((s) => {
+      if (!search) return true
+      const name = `${s.first_name} ${s.last_name}`.toLowerCase()
+      const initials = `${s.first_name[0]}${s.last_name[0]}`.toLowerCase()
+      return name.includes(search.toLowerCase()) || initials.includes(search.toLowerCase())
+    })
+    .sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name))
+
+  function toggle(id: string) {
+    if (assignedStaffIds.has(id)) onRemove(id)
+    else onAdd(id)
+  }
 
   return (
-    <div
-      ref={ref}
-      className="absolute left-0 top-full mt-0.5 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[220px] overflow-y-auto"
-    >
-      {available.map((s) => {
-        const sColor = staffColorMap[s.id]
-        return (
-          <button
-            key={s.id}
-            className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
-            onClick={(e) => { e.stopPropagation(); onSelect(s.id); onClose() }}
-          >
-            {colorChips && sColor && (
-              <span className="size-2 rounded-full shrink-0" style={{ background: sColor }} />
-            )}
-            <span className="truncate">{s.first_name} {s.last_name}</span>
-          </button>
-        )
-      })}
+    <div ref={ref} className="bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="p-2 border-b border-border">
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar..."
+          className="w-full text-[12px] px-2 py-1 border border-input rounded outline-none focus:border-primary bg-background"
+        />
+      </div>
+      <div className="max-h-48 overflow-y-auto">
+        {filtered.length === 0 && (
+          <p className="px-3 py-2 text-[11px] text-muted-foreground">Sin personal cualificado</p>
+        )}
+        {filtered.map((s) => {
+          const isSelected = assignedStaffIds.has(s.id)
+          const onLeave = leaveIds.has(s.id)
+          return (
+            <button
+              key={s.id}
+              onClick={() => { if (!onLeave) toggle(s.id) }}
+              disabled={onLeave}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
+                onLeave ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50"
+              )}
+            >
+              <span className={cn(
+                "size-4 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors",
+                isSelected ? "bg-primary border-primary text-primary-foreground" :
+                onLeave ? "border-red-300 bg-red-100" : "border-border bg-background"
+              )}>
+                {(isSelected || onLeave) && "✓"}
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground w-5 shrink-0">
+                {s.first_name[0]}{s.last_name[0]}
+              </span>
+              <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
+              {onLeave && <span className="text-[9px] text-red-500 shrink-0">Baja</span>}
+              {isSelected && !onLeave && <span className="text-[9px] text-muted-foreground shrink-0">Asignado</span>}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
+
+// ── Individual tecnica×day cell ───────────────────────────────────────────────
+
+type AssignmentLike = {
+  id: string; staff_id: string; function_label: string | null; tecnica_id: string | null
+  staff: { first_name: string; last_name: string }; whole_team: boolean; shift_type: string
+}
+
+function TechDayCell({
+  tec, dayDate, assignments, staffList, leaveIds, isPublished, colorChips, staffColorMap, compact,
+  isWeekend, isSat, onAdd, onRemoveById, onChipClick,
+}: {
+  tec: Tecnica; dayDate: string
+  assignments: AssignmentLike[]
+  staffList: StaffWithSkills[]; leaveIds: Set<string>
+  isPublished: boolean; colorChips: boolean; staffColorMap: Record<string, string>
+  compact: boolean; isWeekend: boolean; isSat: boolean
+  onAdd: (staffId: string, date: string, tecnicaCodigo: string) => void
+  onRemoveById: (assignmentId: string) => void
+  onChipClick?: (staffId: string) => void
+}) {
+  const [selectorOpen, setSelectorOpen] = useState(false)
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null)
+  const cellRef = useRef<HTMLDivElement>(null)
+  const { hoveredStaffId, setHovered } = useStaffHover()
+
+  const assignedStaffIds = new Set(assignments.map((a) => a.staff_id))
+  const isCellHighlighted = hoveredStaffId !== null && assignments.some((a) => a.staff_id === hoveredStaffId)
+
+  function openSelector() {
+    if (isPublished) return
+    const rect = cellRef.current?.getBoundingClientRect()
+    if (rect) {
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 260)
+      const left = Math.min(rect.left, window.innerWidth - 232)
+      setPopupPos({ top, left })
+    }
+    setSelectorOpen(true)
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className={cn(
+        "border-b border-r border-border relative flex items-center gap-0.5 group/cell transition-colors",
+        isSat && "border-t border-dashed border-t-border",
+        isWeekend && !isCellHighlighted && "bg-muted/30",
+        isCellHighlighted && "bg-primary/10",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5",
+      )}
+    >
+      {assignments.map((a) => {
+        const sColor = staffColorMap[a.staff_id]
+        const isHov = hoveredStaffId === a.staff_id
+        return (
+          <Tooltip key={a.id}>
+            <TooltipTrigger render={
+              <span
+                className={cn(
+                  "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 text-[10px] font-semibold group/chip transition-colors duration-100",
+                  compact ? "py-0" : "py-0.5",
+                  onChipClick && "cursor-pointer",
+                )}
+                style={colorChips && sColor ? {
+                  borderLeft: `3px solid ${sColor}`,
+                  borderRadius: 4,
+                  ...(isHov ? { backgroundColor: sColor, color: "#1e293b" } : {}),
+                } : { borderRadius: 4 }}
+                onMouseEnter={() => setHovered(a.staff_id)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={(e) => { e.stopPropagation(); onChipClick?.(a.staff_id) }}
+              >
+                {a.staff.first_name[0]}{a.staff.last_name[0]}
+                {!isPublished && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemoveById(a.id) }}
+                    className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity ml-0.5"
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                )}
+              </span>
+            } />
+            <TooltipContent side="top">
+              {a.staff.first_name} {a.staff.last_name} · {tec.nombre_es}
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+      {!isPublished && (
+        <div
+          onClick={openSelector}
+          className="flex-1 min-w-[12px] h-full min-h-[inherit] flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity"
+        >
+          <Plus className="size-3 text-muted-foreground" />
+        </div>
+      )}
+      {selectorOpen && popupPos && createPortal(
+        <div style={{ position: "fixed", top: popupPos.top, left: popupPos.left, zIndex: 200 }}>
+          <StaffSelectorPopup
+            onClose={() => { setSelectorOpen(false); setPopupPos(null) }}
+            tecnica={tec}
+            staffList={staffList}
+            assignedStaffIds={assignedStaffIds}
+            leaveIds={leaveIds}
+            onAdd={(staffId) => onAdd(staffId, dayDate, tec.codigo)}
+            onRemove={(staffId) => {
+              const a = assignments.find((x) => x.staff_id === staffId)
+              if (a) onRemoveById(a.id)
+            }}
+          />
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface TransposedTaskGridProps {
   data: RotaWeekData | null
@@ -91,13 +257,11 @@ interface TransposedTaskGridProps {
 }
 
 export function TransposedTaskGrid({
-  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact,
-  colorChips = true, loading, onRemoveAssignment, onCellClick, onChipClick, onDateClick,
+  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact = false,
+  colorChips = true, loading, onRemoveAssignment, onChipClick, onDateClick,
 }: TransposedTaskGridProps) {
-  const t = useTranslations("schedule")
   const tc = useTranslations("common")
 
-  // Loading skeleton
   if (loading) {
     const skelTecnicas = 5
     const skelGridCols = `100px repeat(${skelTecnicas}, minmax(80px, 1fr)) minmax(80px, 1fr)`
@@ -137,8 +301,6 @@ export function TransposedTaskGrid({
     )
   }
 
-  const { hoveredStaffId, setHovered } = useStaffHover()
-
   const tecnicas = useMemo(() => (data?.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data?.tecnicas])
   const today = new Date().toISOString().split("T")[0]
 
@@ -146,7 +308,6 @@ export function TransposedTaskGrid({
   const staffColorMap = useMemo(() =>
     Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveStaffColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
   , [staffList])
-  const staffMap = useMemo(() => Object.fromEntries(staffList.map((s) => [s.id, s])), [staffList])
 
   // Local state for optimistic updates
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -156,13 +317,10 @@ export function TransposedTaskGrid({
     setLocalDays(data?.days ?? [])
   }
 
-  // picker state: { date, tecnicaCodigo }
-  const [pickerState, setPickerState] = useState<{ date: string; tecnicaCodigo: string } | null>(null)
-
   async function handleAdd(staffId: string, date: string, tecnicaCodigo: string) {
     const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
     const tempId = `temp-${Date.now()}-${Math.random()}`
-    const staffMember = staffMap[staffId]
+    const staffMember = staffList.find((s) => s.id === staffId)
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
       ...d,
       assignments: [...d.assignments, {
@@ -193,22 +351,23 @@ export function TransposedTaskGrid({
 
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
-  // Grid: day label + técnica columns + OFF column
   const gridCols = `100px repeat(${tecnicas.length}, minmax(80px, 1fr)) minmax(80px, 1fr)`
 
   return (
     <div className="overflow-auto flex-1 rounded-lg border border-border">
       <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: gridCols }}>
-        {/* Header row: corner + técnica columns + OFF */}
+
+        {/* Header row: corner + técnica columns (colored bottom border) + OFF */}
         <div className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2" />
         {tecnicas.map((tec) => {
           const dotColor = resolveColor(tec.color)
           return (
-            <div key={tec.id} className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2 text-center">
-              <div className="flex items-center justify-center gap-1.5">
-                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
-                <span className="text-[12px] font-semibold text-foreground">{tec.codigo}</span>
-              </div>
+            <div
+              key={tec.id}
+              className="sticky top-0 z-10 border-r border-border bg-muted px-2 py-2 text-center"
+              style={{ borderBottom: `3px solid ${dotColor}` }}
+            >
+              <span className="text-[12px] font-semibold text-foreground">{tec.codigo}</span>
               <p className="text-[9px] text-muted-foreground truncate mt-0.5">{tec.nombre_es}</p>
             </div>
           )
@@ -229,13 +388,12 @@ export function TransposedTaskGrid({
           const leaveIds = new Set(onLeaveByDate[day.date] ?? [])
           const hasWarnings = day.warnings.length > 0
 
-          // Off staff: not assigned AND not on leave
           const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
           const offStaff = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id) && visibleStaffIds.has(s.id) && s.onboarding_status !== "inactive")
 
           return (
             <>
-              {/* Row header: day */}
+              {/* Row header: day label */}
               <div
                 key={`header-${day.date}`}
                 onClick={() => onDateClick?.(day.date)}
@@ -266,85 +424,34 @@ export function TransposedTaskGrid({
 
               {/* Técnica cells */}
               {tecnicas.map((tec) => {
-                const assignments = day.assignments.filter(
+                const cellAssignments = day.assignments.filter(
                   (a) => (a.function_label === tec.codigo || a.tecnica_id === tec.id) && visibleStaffIds.has(a.staff_id)
                 )
-                const assignedInCell = new Set(assignments.map((a) => a.staff_id))
-                const isPickerOpen = pickerState?.date === day.date && pickerState?.tecnicaCodigo === tec.codigo
-
                 return (
-                  <div
+                  <TechDayCell
                     key={`${day.date}-${tec.codigo}`}
-                    className={cn(
-                      "border-b border-r border-border px-1 py-1 relative flex flex-wrap gap-0.5 content-start",
-                      isSat && "border-t border-dashed",
-                      isWeekend && "bg-muted/30",
-                    )}
-                  >
-                    {assignments.map((a) => {
-                      const sColor = staffColorMap[a.staff_id]
-                      const isHov = hoveredStaffId === a.staff_id
-                      return (
-                        <Tooltip key={a.id}>
-                          <TooltipTrigger render={
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-0.5 rounded font-semibold bg-background group/chip transition-colors duration-100 cursor-pointer",
-                                compact ? "text-[9px] px-1 py-0.5 min-h-[20px]" : "text-[10px] px-1.5 py-0.5 min-h-[24px]"
-                              )}
-                              style={colorChips ? {
-                                border: `1px solid ${sColor}40`,
-                                borderLeft: `3px solid ${sColor}`,
-                                borderRadius: 4,
-                                ...(isHov ? { backgroundColor: `${sColor}20` } : {}),
-                              } : {
-                                border: "1px solid var(--border)",
-                                borderRadius: 4,
-                              }}
-                              onMouseEnter={() => setHovered(a.staff_id)}
-                              onMouseLeave={() => setHovered(null)}
-                              onClick={(e) => { e.stopPropagation(); onChipClick?.(a.staff_id) }}
-                            >
-                              {a.staff.first_name[0]}{a.staff.last_name[0]}
-                              {!isPublished && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleRemove(a.id) }}
-                                  className="text-[8px] text-muted-foreground/0 group-hover/chip:text-destructive transition-colors ml-0.5"
-                                >×</button>
-                              )}
-                            </span>
-                          } />
-                          <TooltipContent side="top">
-                            {a.staff.first_name} {a.staff.last_name} · {a.shift_type}
-                          </TooltipContent>
-                        </Tooltip>
-                      )
-                    })}
-                    {!isPublished && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPickerState(isPickerOpen ? null : { date: day.date, tecnicaCodigo: tec.codigo }) }}
-                        className="inline-flex items-center justify-center size-5 rounded border border-dashed border-primary/30 text-primary text-[10px] hover:bg-primary/5 active:bg-primary/10 transition-colors"
-                      ><Plus className="size-3" /></button>
-                    )}
-                    {isPickerOpen && (
-                      <StaffPicker
-                        staffList={staffList}
-                        assignedIds={assignedInCell}
-                        leaveIds={leaveIds}
-                        colorChips={colorChips}
-                        staffColorMap={staffColorMap}
-                        onSelect={(staffId) => handleAdd(staffId, day.date, tec.codigo)}
-                        onClose={() => setPickerState(null)}
-                      />
-                    )}
-                  </div>
+                    tec={tec}
+                    dayDate={day.date}
+                    assignments={cellAssignments}
+                    staffList={staffList}
+                    leaveIds={leaveIds}
+                    isPublished={isPublished}
+                    colorChips={colorChips}
+                    staffColorMap={staffColorMap}
+                    compact={compact}
+                    isWeekend={isWeekend}
+                    isSat={isSat}
+                    onAdd={handleAdd}
+                    onRemoveById={handleRemove}
+                    onChipClick={onChipClick}
+                  />
                 )
               })}
 
               {/* OFF column — inline initials badges */}
               <div
                 key={`off-${day.date}`}
-                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start bg-muted/20", isSat && "border-t border-dashed")}
+                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start bg-muted/20", isSat && "border-t border-dashed border-t-border")}
               >
                 {[...leaveIds].map((sid) => {
                   const s = staffList.find((st) => st.id === sid)
@@ -361,25 +468,17 @@ export function TransposedTaskGrid({
                     </Tooltip>
                   )
                 })}
-                {offStaff.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  const sColor = staffColorMap[s.id]
-                  return (
-                    <Tooltip key={s.id}>
-                      <TooltipTrigger render={
-                        <span
-                          className={cn("inline-flex items-center rounded border border-border/50 font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[9px] px-1 py-0" : "text-[10px] px-1 py-0.5")}
-                          onMouseEnter={() => setHovered(s.id)}
-                          onMouseLeave={() => setHovered(null)}
-                          style={isHov && colorChips && sColor ? { backgroundColor: `${sColor}30`, color: "#1e293b", borderColor: `${sColor}60` } : undefined}
-                        >
-                          {s.first_name[0]}{s.last_name[0]}
-                        </span>
-                      } />
-                      <TooltipContent side="top">{s.first_name} {s.last_name}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
+                {offStaff.map((s) => (
+                  <Tooltip key={s.id}>
+                    <TooltipTrigger render={
+                      <span className={cn("inline-flex items-center rounded border border-border/50 font-medium text-muted-foreground", compact ? "text-[9px] px-1 py-0" : "text-[10px] px-1 py-0.5")}
+                      >
+                        {s.first_name[0]}{s.last_name[0]}
+                      </span>
+                    } />
+                    <TooltipContent side="top">{s.first_name} {s.last_name}</TooltipContent>
+                  </Tooltip>
+                ))}
               </div>
             </>
           )
