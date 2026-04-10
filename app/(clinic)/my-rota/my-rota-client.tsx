@@ -97,6 +97,7 @@ export function MyRotaClient() {
       onDateChange={setCurrentDate}
       onWeekChange={handleWeekChange}
       loading={loading}
+      weekData={weekData}
     />
   )
 }

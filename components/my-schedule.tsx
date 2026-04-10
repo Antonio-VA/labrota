@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react"
+import { Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
@@ -81,11 +81,14 @@ interface MyScheduleProps {
   onDateChange?: (date: string) => void
   onWeekChange?: (dir: -1 | 1) => void
   loading?: boolean
+  weekData?: import("@/app/(clinic)/rota/actions").RotaWeekData | null
+  orgName?: string
 }
 
 export function MySchedule({
   staffId, days, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat, initialDate,
   swapEnabled = false, rotaPublished = false, onDateChange, onWeekChange, loading = false,
+  weekData, orgName,
 }: MyScheduleProps) {
   const t = useTranslations("mySchedule")
   const tc = useTranslations("common")
@@ -206,6 +209,21 @@ export function MySchedule({
           <span className="text-[13px] text-muted-foreground truncate">
             {locale === "es" ? `Turnos de ${staffFirstName}` : `${staffFirstName}'s shifts`}
           </span>
+        )}
+        {weekData && !loading && (
+          <button
+            onClick={() => {
+              const on = orgName ?? document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+              const name = staffFirstName ?? "staff"
+              import("@/lib/export-pdf").then(({ exportPdfMySchedule }) => {
+                exportPdfMySchedule(staffId, name, weekData, tecnicas, on, locale)
+              })
+            }}
+            className="shrink-0 size-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:bg-accent transition-colors"
+            title={locale === "es" ? "Descargar PDF" : "Download PDF"}
+          >
+            <FileDown className="size-4" />
+          </button>
         )}
       </div>
 

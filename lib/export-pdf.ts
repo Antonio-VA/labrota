@@ -411,3 +411,90 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
   renderFooter(doc, locale, notes)
   await sharePdf(doc, `${slugify(orgName)}-rota-${data.weekStart}.pdf`)
 }
+
+// ── My Rota export (single staff, compact portrait) ──────────────────────────
+
+export async function exportPdfMySchedule(
+  staffId: string,
+  staffName: string,
+  data: RotaWeekData,
+  tecnicas: Tecnica[],
+  orgName: string,
+  locale: string,
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const timeFormat = data.timeFormat ?? "24h"
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  // Header
+  doc.setFontSize(14)
+  doc.setFont(FONT, "bold")
+  doc.setTextColor(...COLORS.black)
+  doc.text(orgName, MARGIN, 14)
+
+  doc.setFontSize(9)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.gray)
+  doc.text(fmtWeekRange(data.weekStart, locale), MARGIN, 20)
+
+  doc.setFontSize(11)
+  doc.setFont(FONT, "bold")
+  doc.setTextColor(...COLORS.darkGray)
+  doc.text(staffName, MARGIN, 28)
+
+  doc.setFontSize(8)
+  doc.setFont(FONT, "normal")
+  doc.setTextColor(...COLORS.lightGray)
+  doc.text(locale === "es" ? "Mi rota" : "My rota", pageWidth - MARGIN, 14, { align: "right" })
+
+  const tecnicaByCode = Object.fromEntries(tecnicas.map((t) => [t.codigo, t]))
+  const onLeaveLabel = locale === "es" ? "Ausencia" : "On leave"
+  const freeLabel = locale === "es" ? "Libre" : "Off"
+
+  const body: (string | { content: string; styles: object })[][] = []
+  for (const day of data.days) {
+    const dateLabel = fmtDate(day.date, locale)
+    const isOnLeave = (data.onLeaveByDate?.[day.date] ?? []).includes(staffId)
+    const myAssignments = day.assignments.filter((a) => a.staff_id === staffId)
+
+    if (isOnLeave) {
+      body.push([dateLabel, { content: onLeaveLabel, styles: { textColor: [180, 100, 0], fontStyle: "italic" } }, "", ""])
+    } else if (myAssignments.length === 0) {
+      body.push([dateLabel, { content: freeLabel, styles: { textColor: COLORS.lightGray, fontStyle: "italic" } }, "", ""])
+    } else {
+      const shiftCodes = [...new Set(myAssignments.map((a) => a.shift_type))]
+      const times = shiftCodes.map((code) => {
+        const st = data.shiftTimes?.[code]
+        return st ? `${formatTime(st.start, timeFormat)}–${formatTime(st.end, timeFormat)}` : ""
+      }).filter(Boolean).join(", ")
+      const tasks = myAssignments
+        .filter((a) => a.function_label)
+        .map((a) => tecnicaByCode[a.function_label!]?.nombre_es ?? a.function_label!)
+      const uniqueTasks = [...new Set(tasks)]
+      body.push([dateLabel, shiftCodes.join(", "), times, uniqueTasks.join(", ") || "—"])
+    }
+  }
+
+  autoTable(doc, {
+    startY: 33,
+    head: [[
+      locale === "es" ? "Día" : "Day",
+      locale === "es" ? "Turno" : "Shift",
+      locale === "es" ? "Horario" : "Hours",
+      locale === "es" ? "Tareas" : "Tasks",
+    ]],
+    body,
+    ...tableStyles(),
+    tableWidth: pageWidth - MARGIN * 2,
+    columnStyles: {
+      0: { cellWidth: 36, fontStyle: "bold" },
+      1: { cellWidth: 22, halign: "center" },
+      2: { cellWidth: 34, halign: "center", textColor: COLORS.gray },
+      3: { cellWidth: "auto" as unknown as number },
+    },
+    alternateRowStyles: { fillColor: [248, 250, 253] as [number, number, number] },
+  })
+
+  renderFooter(doc, locale)
+  await sharePdf(doc, `${slugify(staffName)}-my-rota-${data.weekStart}.pdf`)
+}
