@@ -888,7 +888,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             </div>
           )}
           {weekData && hasAssignments && (
-            <WarningsPill days={weekData.days} staffList={filteredStaffList} />
+            <WarningsPill days={weekData.days} staffList={filteredStaffList} onLeaveByDate={weekData.onLeaveByDate} />
           )}
           {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
             <Button

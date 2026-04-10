@@ -62,7 +62,7 @@ export function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) 
 }
 
 /** Toolbar pill summarising all warnings for the week. Click to expand. */
-export function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?: StaffWithSkills[] }) {
+export function WarningsPill({ days, staffList, onLeaveByDate }: { days: RotaDay[]; staffList?: StaffWithSkills[]; onLeaveByDate?: Record<string, string[]> }) {
   const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -94,16 +94,30 @@ export function WarningsPill({ days, staffList }: { days: RotaDay[]; staffList?:
 
   // Compute shift budget warnings (over/under for the week)
   if (staffList && staffList.length > 0) {
-    const shiftCounts: Record<string, number> = {}
+    // Count unique days per staff (not individual task assignments)
+    const staffDaysSeen: Record<string, Set<string>> = {}
     for (const day of days) {
       for (const a of day.assignments) {
-        shiftCounts[a.staff_id] = (shiftCounts[a.staff_id] ?? 0) + 1
+        if (!staffDaysSeen[a.staff_id]) staffDaysSeen[a.staff_id] = new Set()
+        staffDaysSeen[a.staff_id].add(day.date)
+      }
+    }
+    // Count leave days per staff within this view
+    const weekDateSet = new Set(days.map((d) => d.date))
+    const leaveDaysPerStaff: Record<string, number> = {}
+    if (onLeaveByDate) {
+      for (const date in onLeaveByDate) {
+        if (!weekDateSet.has(date)) continue
+        for (const staffId of onLeaveByDate[date]) {
+          leaveDaysPerStaff[staffId] = (leaveDaysPerStaff[staffId] ?? 0) + 1
+        }
       }
     }
     const budgetWarnings: string[] = []
     for (const s of staffList) {
-      const count = shiftCounts[s.id] ?? 0
-      const expected = s.days_per_week ?? 5
+      const count = staffDaysSeen[s.id]?.size ?? 0
+      const leaveDays = leaveDaysPerStaff[s.id] ?? 0
+      const expected = Math.min(Math.max(0, days.length - leaveDays), s.days_per_week ?? 5)
       if (count > expected) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (+${count - expected})`)
       else if (count < expected && count > 0) budgetWarnings.push(`${s.first_name} ${s.last_name[0]}. ${count}/${expected} (${count - expected})`)
     }
