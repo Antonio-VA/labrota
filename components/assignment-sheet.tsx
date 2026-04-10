@@ -842,89 +842,17 @@ export function AssignmentSheet({
         >
           <div className="flex-1 overflow-y-auto">
 
-            {/* Task swimlane view (by_task mode) */}
-            {rotaDisplayMode === "by_task" && (() => {
-              const activeTecnicas = (tecnicas ?? []).filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-              const leaveSet = new Set(onLeaveStaffIds)
-
-              // Count technique assignments per staff for conflict detection
-              const techCountByStaff: Record<string, number> = {}
-              for (const a of assignments) {
-                if (a.function_label) techCountByStaff[a.staff_id] = (techCountByStaff[a.staff_id] ?? 0) + 1
-              }
-              const conflictIds = new Set(Object.entries(techCountByStaff).filter(([, c]) => c > taskConflictThreshold).map(([id]) => id))
-
-              return (
-                <div className="flex flex-col">
-                  {activeTecnicas.map((tecnica) => {
-                    const techAssignments = assignments.filter((a) => a.function_label === tecnica.codigo)
-                    const assignedIds = new Set(techAssignments.map((a) => a.staff_id))
-                    const qualifiedStaff = staffList.filter((s) => s.staff_skills.some((sk) => sk.skill === tecnica.codigo))
-                    const isWholeTeam = techAssignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
-
-                    return (
-                      <div key={tecnica.id} className="border-b border-border px-4 py-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ background: tecnica.color === "blue" ? "#60A5FA" : tecnica.color === "green" ? "#34D399" : tecnica.color === "amber" ? "#FBBF24" : tecnica.color === "purple" ? "#A78BFA" : tecnica.color === "coral" ? "#F87171" : tecnica.color === "teal" ? "#2DD4BF" : "#94A3B8" }}
-                          />
-                          <span className="text-[14px] font-medium">{tecnica.nombre_es}</span>
-                          <span className="text-[11px] text-muted-foreground">({techAssignments.length}/3)</span>
-                        </div>
-
-                        {isWholeTeam ? (
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-1 text-[12px] font-semibold">
-                              <Users className="size-3" /> {t("wholeTeam")}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {techAssignments.map((a) => {
-                              const onLeave = leaveSet.has(a.staff_id)
-                              const hasConflict = conflictIds.has(a.staff_id)
-                              return (
-                                <span
-                                  key={a.id}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium",
-                                    onLeave ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
-                                    hasConflict ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
-                                    "bg-muted text-foreground"
-                                  )}
-                                >
-                                  {a.staff.first_name} {a.staff.last_name[0]}.
-                                  {!isPublished && (
-                                    <button onClick={() => handleRemove(a.id)} className="hover:text-destructive">
-                                      <X className="size-3" />
-                                    </button>
-                                  )}
-                                </span>
-                              )
-                            })}
-                            {!isPublished && techAssignments.length < 3 && (
-                              <span className="text-[11px] text-muted-foreground italic">
-                                {techAssignments.length === 0 ? ts("dragHint") : ""}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-
-            {/* Shift sections (by_shift mode) */}
-            {rotaDisplayMode !== "by_task" && <>
+            {/* Shift sections (all modes; by_task = read-only, technique shown as badge) */}
+            <>
             {shiftTypes.map((shiftDef) => {
               const shift = shiftDef.code
               const shiftAssignments = assignments
                 .filter((a) => a.shift_type === shift)
                 .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+              // In by_task mode skip empty shift sections (all assignments share one dummy shift)
+              if (rotaDisplayMode === "by_task" && shiftAssignments.length === 0) return null
               const available = offStaff.filter((s) => !assignedIds.has(s.id))
+              const isTaskMode = rotaDisplayMode === "by_task"
 
               const timeLabel = shiftTimes?.[shift]
                 ? ` · ${formatTime(shiftTimes[shift].start, timeFormat)}–${formatTime(shiftTimes[shift].end, timeFormat)}`
@@ -939,19 +867,21 @@ export function AssignmentSheet({
                   {/* Shift header */}
                   <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
                     <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      {shift.toUpperCase()}{timeLabel}
+                      {isTaskMode ? ts("assigned") : shift.toUpperCase()}{!isTaskMode && timeLabel}
                       {shiftAssignments.length > 0 && (
                         <span className="font-normal normal-case tracking-normal ml-1.5 text-slate-400">
                           · {shiftAssignments.length} {shiftAssignments.length === 1 ? ts("persona") : ts("personas")}
                         </span>
                       )}
                     </span>
-                    <AddPersonButton
-                      shift={shift}
-                      available={available}
-                      onAdd={(sid) => handleAdd(sid, shift)}
-                      disabled={isPublished || !rota}
-                    />
+                    {!isTaskMode && (
+                      <AddPersonButton
+                        shift={shift}
+                        available={available}
+                        onAdd={(sid) => handleAdd(sid, shift)}
+                        disabled={isPublished || !rota}
+                      />
+                    )}
                   </div>
 
                   {/* Staff cards */}
@@ -959,23 +889,30 @@ export function AssignmentSheet({
                     {shiftAssignments.map((a) => {
                       const staffMember = staffList.find((s) => s.id === a.staff_id)
                       const tecnica     = tecnicas.find((t) => t.id === a.tecnica_id) ?? null
+                      // For by_task, resolve function_label to technique name for the pill
+                      const taskTecnica = isTaskMode && a.function_label
+                        ? tecnicas.find((t) => t.codigo === a.function_label) ?? null
+                        : null
+                      const taskAssignment = taskTecnica
+                        ? { ...a, tecnica_id: taskTecnica.id }
+                        : a
                       return (
                         <DraggableCard
                           key={a.id}
-                          assignment={a}
-                          tecnica={tecnica}
+                          assignment={taskAssignment}
+                          tecnica={taskTecnica ?? tecnica}
                           staffSkills={staffMember?.staff_skills ?? []}
                           tecnicas={tecnicas}
                           onRemove={() => handleRemove(a.id)}
-                          disabled={isPublished || a.id.startsWith("temp-")}
-                          isPublished={isPublished}
+                          disabled={isPublished || isTaskMode || a.id.startsWith("temp-")}
+                          isPublished={isPublished || isTaskMode}
                           enableTaskInShift={enableTaskInShift}
                           onFunctionSave={handleFunctionSave}
                           onTecnicaSave={handleTecnicaSave}
                         />
                       )
                     })}
-                    {shiftAssignments.length === 0 && (
+                    {shiftAssignments.length === 0 && !isTaskMode && (
                       <div className="rounded-lg border border-dashed border-border py-3 flex items-center justify-center text-[11px] text-slate-300 select-none">
                         {t("dragHint")}
                       </div>
@@ -1006,7 +943,7 @@ export function AssignmentSheet({
                     staff={s}
                     shiftTypes={shiftTypes}
                     onAddToShift={handleAdd}
-                    disabled={isPublished || !rota}
+                    disabled={isPublished || !rota || rotaDisplayMode === "by_task"}
                     onLeave={false}
                     timeFormat={timeFormat}
                   />
@@ -1028,7 +965,7 @@ export function AssignmentSheet({
               </div>
             </DroppableOffSection>
 
-          </>}
+            </>
           </div>
 
           {/* Sticky footer — regenerate / copy / delete */}
