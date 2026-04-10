@@ -1000,12 +1000,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 onClick: () => setCompact((c) => !c),
                 active: compact,
               },
-              {
+              ...(!(calendarLayout === "person" && weekData?.rotaDisplayMode === "by_task") ? [{
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
               }] : []),
+              ] : []),
               {
                 label: t("staffColors"),
                 icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
@@ -1203,8 +1204,16 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   isPublished={!!isPublished || !canEdit}
                   publicHolidays={weekData?.publicHolidays ?? {}}
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  onLeaveTypeByDate={weekData?.onLeaveTypeByDate}
                   compact={compact}
                   colorChips={colorChips}
+                  simplified={personSimplified}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
                   onChipClick={openProfile}
                   onDateClick={handleMonthDayClick}
                 />

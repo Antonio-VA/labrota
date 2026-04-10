@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Plus, X } from "lucide-react"
+import { AlertTriangle, CalendarDays, Plus, Users, X, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,17 @@ import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "@/components/calendar-panel/types"
 import { ROLE_ORDER, DEFAULT_DEPT_MAPS } from "@/components/calendar-panel/constants"
 import { TODAY } from "@/components/calendar-panel/constants"
+import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
+
+const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
+const LEAVE_LABEL: Record<string, { es: string; en: string }> = {
+  annual:    { es: "Vacaciones", en: "Annual leave" },
+  sick:      { es: "Baja médica", en: "Sick leave" },
+  personal:  { es: "Personal",   en: "Personal" },
+  training:  { es: "Formación",  en: "Training" },
+  maternity: { es: "Maternidad", en: "Maternity" },
+  other:     { es: "Ausencia",   en: "Leave" },
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,18 +55,22 @@ function TaskChip({
       style={{
         borderRadius: 4,
         ...(colorChips && tecColor ? { borderLeft: `3px solid ${tecColor}` } : {}),
-        ...(active && tecColor ? { backgroundColor: `${tecColor}40`, color: "#1e293b" } : {}),
+        ...(active && tecColor ? { backgroundColor: `${tecColor}40`, color: "var(--foreground)" } : {}),
       }}
       onMouseEnter={() => { setHov(true); onHover?.(label) }}
       onMouseLeave={() => { setHov(false); onHover?.(null) }}
     >
       {label}
-      {onRemove && active && (
-        <button className="ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity"
-          onClick={(e) => { e.stopPropagation(); onRemove() }}>
+      {/* Always render X to reserve space — invisible when not active to prevent layout shift */}
+      {onRemove ? (
+        <button
+          className={cn("ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity", !active && "invisible")}
+          tabIndex={active ? 0 : -1}
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+        >
           <X className="size-2.5" />
         </button>
-      )}
+      ) : null}
     </span>
   )
 }
@@ -94,13 +109,14 @@ function TaskPickerPortal({ tecnicas, assigned, pos, onSelect, onClose }: {
 /** One staff × one day task cell — manages its own picker portal */
 function TaskPersonCell({
   staffId, date, assignments, tecnicas, tecnicaByCode, colorChips, compact,
-  isPublished, onLeave, leaveShortText, isLast, showOff,
+  isPublished, onLeave, leaveType, leaveShortText, locale, isLast, showOff,
   hoveredTecnica, highlightEnabled, onHoveredChange, onAdd, onRemove,
 }: {
   staffId: string | null; date: string; assignments: Assignment[]
   tecnicas: Tecnica[]; tecnicaByCode: Record<string, Tecnica>
   colorChips?: boolean; compact?: boolean; isPublished: boolean
-  onLeave?: boolean; leaveShortText: string; isLast?: boolean; showOff?: boolean
+  onLeave?: boolean; leaveType?: string | null; leaveShortText: string
+  locale?: string; isLast?: boolean; showOff?: boolean
   hoveredTecnica: string | null; highlightEnabled: boolean
   onHoveredChange: (code: string | null) => void
   onAdd: (staffId: string | null, date: string, codigo: string) => void
@@ -128,10 +144,26 @@ function TaskPersonCell({
     return (
       <div className={cn(
         "border-b border-r border-border flex items-center justify-center bg-background",
-        compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5",
         isLast && "border-r-0",
       )}>
         <span className={cn("text-muted-foreground/40 font-medium", compact ? "text-[9px]" : "text-[10px]")}>OFF</span>
+      </div>
+    )
+  }
+
+  // Leave cell — show leave type icon + label
+  if (onLeave) {
+    const LeaveIcon = LEAVE_ICON_MAP[leaveType ?? "other"] ?? LEAVE_ICON_MAP.other
+    const leaveLabel = LEAVE_LABEL[leaveType ?? "other"]?.[locale === "en" ? "en" : "es"] ?? leaveShortText
+    return (
+      <div className={cn(
+        "border-b border-r border-border flex items-center justify-center gap-0.5 bg-muted/20",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-1",
+        isLast && "border-r-0",
+      )}>
+        <LeaveIcon className={cn("shrink-0 text-amber-500", compact ? "size-2.5" : "size-3")} />
+        <span className={cn("text-muted-foreground italic truncate", compact ? "text-[8px]" : "text-[9px]")}>{leaveLabel}</span>
       </div>
     )
   }
@@ -140,48 +172,41 @@ function TaskPersonCell({
     <div
       ref={cellRef}
       className={cn(
-        "border-b border-r border-border relative flex flex-wrap gap-0.5 items-start content-start group/cell bg-background",
-        compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5 pb-5",
-        onLeave && "bg-muted/20",
+        "border-b border-r border-border relative flex flex-wrap gap-0.5 items-center content-center group/cell bg-background",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5 pb-4",
         isLast && "border-r-0",
       )}
     >
-      {onLeave ? (
-        <span className={cn("text-muted-foreground italic w-full text-center", compact ? "text-[9px]" : "text-[10px]")}>{leaveShortText}</span>
-      ) : (
-        <>
-          {assignments.map((a) => {
-            const tec = tecnicaByCode[a.function_label!]
-            const tecColor = tec ? resolveColor(tec.color) : "#94A3B8"
-            return (
-              <TaskChip
-                key={a.id}
-                label={a.function_label!}
-                tecColor={tecColor}
-                compact={compact}
-                colorChips={colorChips}
-                forceHover={highlightEnabled && hoveredTecnica === a.function_label}
-                onHover={onHoveredChange}
-                onRemove={!isPublished ? () => onRemove(a.id) : undefined}
-              />
-            )
-          })}
-          {!isPublished && (
-            <div
-              onClick={openPicker}
-              className="absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b"
-            >
-              <Plus className="size-3 text-muted-foreground" />
-            </div>
-          )}
-          {pickerPos && (
-            <TaskPickerPortal
-              tecnicas={tecnicas} assigned={assignedCodes} pos={pickerPos}
-              onSelect={(c) => { onAdd(staffId, date, c); setPickerPos(null) }}
-              onClose={() => setPickerPos(null)}
-            />
-          )}
-        </>
+      {assignments.map((a) => {
+        const tec = tecnicaByCode[a.function_label!]
+        const tecColor = tec ? resolveColor(tec.color) : "#94A3B8"
+        return (
+          <TaskChip
+            key={a.id}
+            label={a.function_label!}
+            tecColor={tecColor}
+            compact={compact}
+            colorChips={colorChips}
+            forceHover={highlightEnabled && hoveredTecnica === a.function_label}
+            onHover={onHoveredChange}
+            onRemove={!isPublished ? () => onRemove(a.id) : undefined}
+          />
+        )
+      })}
+      {!isPublished && (
+        <div
+          onClick={openPicker}
+          className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b"
+        >
+          <Plus className="size-3 text-muted-foreground" />
+        </div>
+      )}
+      {pickerPos && (
+        <TaskPickerPortal
+          tecnicas={tecnicas} assigned={assignedCodes} pos={pickerPos}
+          onSelect={(c) => { onAdd(staffId, date, c); setPickerPos(null) }}
+          onClose={() => setPickerPos(null)}
+        />
       )}
     </div>
   )
@@ -196,9 +221,17 @@ interface TaskPersonGridProps {
   isPublished: boolean
   publicHolidays: Record<string, string>
   onLeaveByDate: Record<string, string[]>
+  onLeaveTypeByDate?: Record<string, Record<string, string>>
   compact?: boolean
   colorChips?: boolean
   loading?: boolean
+  simplified?: boolean
+  punctionsDefault?: Record<string, number>
+  punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
+  biopsyConversionRate?: number
+  biopsyDay5Pct?: number
+  biopsyDay6Pct?: number
   onChipClick?: (staff_id: string) => void
   onDateClick?: (date: string) => void
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
@@ -206,8 +239,10 @@ interface TaskPersonGridProps {
 
 
 export function TaskPersonGrid({
-  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate,
-  compact, colorChips = true, loading, onChipClick, onDateClick, gridSetDaysRef,
+  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, onLeaveTypeByDate,
+  compact, colorChips = true, loading, simplified, punctionsDefault, punctionsOverride,
+  onPunctionsChange, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
+  onChipClick, onDateClick, gridSetDaysRef,
 }: TaskPersonGridProps) {
   const t = useTranslations("schedule")
 
@@ -234,19 +269,18 @@ export function TaskPersonGrid({
               <div className="shimmer-bar h-2.5 w-6" />
             </div>
             {Array.from({ length: skelDays }).map((_, i) => (
-              <div key={i} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-start content-start p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
+              <div key={i} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
                 <div className="shimmer-bar h-4 w-8 rounded" />
               </div>
             ))}
             {/* Staff rows */}
             {Array.from({ length: skelStaff }).map((_, row) => (
               <Fragment key={row}>
-                <div className="border-b border-r border-border bg-background sticky left-0 z-10 flex flex-col justify-center px-2 gap-1" style={{ minHeight: compact ? 28 : 36 }}>
+                <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex flex-col justify-center px-2 gap-1" style={{ minHeight: compact ? 28 : 34 }}>
                   <div className="shimmer-bar h-2.5 w-12" />
-                  <div className="shimmer-bar h-2 w-6" />
                 </div>
                 {Array.from({ length: skelDays }).map((_, col) => (
-                  <div key={col} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-start content-start p-0.5", compact ? "min-h-[22px]" : "min-h-[32px]")}>
+                  <div key={col} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
                     <div className="shimmer-bar h-4 w-7 rounded" />
                     {col % 3 === 0 && <div className="shimmer-bar h-4 w-6 rounded" />}
                   </div>
@@ -274,12 +308,6 @@ export function TaskPersonGrid({
   const tecnicaByCode = useMemo(() => Object.fromEntries(tecnicas.map((t) => [t.codigo, t])), [tecnicas])
   const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
 
-  const deptLabels = useMemo(() => {
-    const m: Record<string, string> = {}
-    for (const d of (data?.departments ?? [])) { if (!d.parent_id) m[d.code] = d.name }
-    return m
-  }, [data?.departments])
-
   // Multi-assignment map: staffId → date → Assignment[]
   const taskAssignMap = useMemo(() => {
     const map: Record<string, Record<string, Assignment[]>> = {}
@@ -293,11 +321,17 @@ export function TaskPersonGrid({
     return map
   }, [localDays])
 
-  // Whole-team by date
+  // Whole-team by date — deduplicated by function_label per day
   const wholeTeamByDate = useMemo(() => {
     const map: Record<string, Assignment[]> = {}
     for (const day of localDays) {
-      map[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
+      const seen = new Set<string>()
+      map[day.date] = day.assignments.filter((a) => {
+        if (!a.whole_team || !a.function_label) return false
+        if (seen.has(a.function_label)) return false
+        seen.add(a.function_label)
+        return true
+      })
     }
     return map
   }, [localDays])
@@ -341,29 +375,67 @@ export function TaskPersonGrid({
       })
   , [staffList])
 
-  // Group staff by role for sub-headers
-  const roleGroups = useMemo(() => {
-    const groups: { role: string; members: StaffWithSkills[] }[] = []
-    for (const s of activeStaff) {
-      const last = groups[groups.length - 1]
-      if (last && last.role === s.role) last.members.push(s)
-      else groups.push({ role: s.role, members: [s] })
-    }
-    return groups
-  }, [activeStaff])
-
   if (!data || localDays.length === 0) return null
+
+  // Empty state — no rota or no assignments yet
+  if (!data.rota || !localDays.some((d) => d.assignments.length > 0)) {
+    return (
+      <div className="flex-1 flex items-start justify-center pt-[18vh]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <CalendarDays className="size-10 text-muted-foreground/40" />
+          <p className="text-[16px] font-medium text-muted-foreground">
+            {locale === "es" ? "No hay horario para esta semana" : "No schedule for this week"}
+          </p>
+          <p className="text-[14px] text-muted-foreground/60">
+            {locale === "es" ? "Genera un horario para ver las asignaciones de tareas" : "Generate a schedule to see task assignments"}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const colW = compact ? "60px" : "80px"
   const gridCols = `80px repeat(${localDays.length}, minmax(${colW}, 1fr))`
   const minWidth = localDays.length * (compact ? 65 : 85) + 80
 
+  // Shift times from data for corner display
+  const shiftTimes = data.shiftTimes
+  const shiftEntries = shiftTimes ? Object.entries(shiftTimes).slice(0, 3) : []
+
+  // Punctions helpers
+  const cr = biopsyConversionRate ?? 0.5
+  const d5pct = biopsyDay5Pct ?? 0.5
+  const d6pct = biopsyDay6Pct ?? 0.5
+
+  function getDayStats(date: string) {
+    const effectiveP = punctionsOverride?.[date] ?? punctionsDefault?.[date] ?? 0
+    const defaultP = punctionsDefault?.[date] ?? 0
+    const isOverride = punctionsOverride?.[date] !== undefined
+    const d5ago = new Date(date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+    const d6ago = new Date(date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+    const d5str = d5ago.toISOString().split("T")[0]
+    const d6str = d6ago.toISOString().split("T")[0]
+    const p5 = punctionsOverride?.[d5str] ?? punctionsDefault?.[d5str] ?? 0
+    const p6 = punctionsOverride?.[d6str] ?? punctionsDefault?.[d6str] ?? 0
+    const bForecast = Math.round(p5 * cr * d5pct + p6 * cr * d6pct)
+    return { effectiveP, defaultP, isOverride, bForecast }
+  }
+
   return (
     <div className="rounded-lg border border-border overflow-auto w-full">
       <div style={{ display: "grid", gridTemplateColumns: gridCols, minWidth }}>
 
-        {/* Header row: corner + day date headers */}
-        <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
+        {/* Top-left corner — shift time legend */}
+        <div className="border-b border-r border-border bg-muted sticky left-0 z-20 flex flex-col items-start justify-center px-2 py-1 gap-0.5" style={{ minHeight: simplified === false ? 72 : 48 }}>
+          {shiftEntries.map(([code, time]) => (
+            <span key={code} className="text-[9px] text-muted-foreground/70 leading-tight tabular-nums">
+              <span className="font-semibold" style={{ color: "var(--pref-bg, var(--primary))" }}>{code}</span>
+              {" "}{time.start}–{time.end}
+            </span>
+          ))}
+        </div>
+
+        {/* Day column headers */}
         {localDays.map((day, dayIdx) => {
           const d = new Date(day.date + "T12:00:00")
           const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
@@ -371,16 +443,21 @@ export function TaskPersonGrid({
           const isToday = day.date === TODAY
           const holiday = publicHolidays[day.date]
           const isLast = dayIdx === localDays.length - 1
+          const hasWarning = (day.skillGaps?.length ?? 0) > 0 || (day.warnings?.length ?? 0) > 0
+          const stats = simplified === false ? getDayStats(day.date) : null
           return (
             <div key={day.date}
               className={cn(
                 "border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1 cursor-pointer hover:bg-muted/80 transition-colors",
-                holiday && "bg-amber-100/80",
+                holiday && "bg-amber-100/80 dark:bg-amber-900/20",
                 isLast && "border-r-0",
               )}
               onClick={() => onDateClick?.(day.date)}
             >
-              <span className={cn("uppercase text-muted-foreground", compact ? "text-[8px]" : "text-[9px]")}>{wday}</span>
+              <div className="flex items-center gap-0.5">
+                {hasWarning && <AlertTriangle className="size-2.5 text-amber-500 shrink-0" />}
+                <span className={cn("uppercase text-muted-foreground", compact ? "text-[8px]" : "text-[9px]")}>{wday}</span>
+              </div>
               <span className={cn(
                 "font-semibold leading-none",
                 isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
@@ -391,12 +468,28 @@ export function TaskPersonGrid({
                   <TooltipContent side="bottom">{holiday}</TooltipContent>
                 </Tooltip>
               )}
+              {stats && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <DayStatsInput
+                    date={day.date}
+                    value={stats.effectiveP}
+                    defaultValue={stats.defaultP}
+                    isOverride={stats.isOverride}
+                    onChange={onPunctionsChange ?? (() => {})}
+                    disabled={!onPunctionsChange}
+                    biopsyForecast={stats.bForecast}
+                    biopsyTooltip={locale === "es" ? `${stats.bForecast} biopsias previstas` : `${stats.bForecast} biopsy forecast`}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           )
         })}
 
         {/* ALL row — whole-team assignments */}
-        <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center px-2">
+        <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center gap-1 px-2">
+          <Users className={cn("shrink-0 text-muted-foreground/60", compact ? "size-2.5" : "size-3")} />
           <span className={cn("font-semibold text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}>ALL</span>
         </div>
         {localDays.map((day, dayIdx) => (
@@ -410,6 +503,7 @@ export function TaskPersonGrid({
             colorChips={colorChips}
             compact={compact}
             isPublished={isPublished}
+            locale={locale}
             leaveShortText={t("leaveShort")}
             hoveredTecnica={hoveredTecnica}
             highlightEnabled={highlightEnabled}
@@ -423,14 +517,14 @@ export function TaskPersonGrid({
 
         {/* Staff rows: one row per person, day cells across */}
         {activeStaff.map((s) => {
-          const roleColor = DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"
+          const roleColor = (colorChips && s.color) ? s.color : DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"
           return (
             <Fragment key={s.id}>
-              {/* Staff name — sticky left */}
+              {/* Staff name — sticky left, bg-muted like the ALL row */}
               <div
                 className={cn(
-                  "border-b border-r border-border bg-background sticky left-0 z-10 flex items-center px-2 cursor-pointer hover:bg-muted/50 transition-colors",
-                  compact ? "min-h-[28px] py-0.5" : "min-h-[36px] py-1",
+                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center px-2 cursor-pointer hover:bg-muted/80 transition-colors",
+                  compact ? "min-h-[28px] py-0.5" : "min-h-[34px] py-1",
                 )}
                 style={colorChips ? { borderLeft: `3px solid ${roleColor}` } : {}}
                 onClick={() => onChipClick?.(s.id)}
@@ -442,6 +536,7 @@ export function TaskPersonGrid({
               {/* Day cells */}
               {localDays.map((day, dayIdx) => {
                 const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
+                const leaveType = onLeave ? (onLeaveTypeByDate?.[day.date]?.[s.id] ?? null) : null
                 const taskAssigns = (taskAssignMap[s.id]?.[day.date] ?? []).filter(
                   (a) => a.function_label && !a.function_label.startsWith("dept_") && !a.whole_team
                 )
@@ -457,6 +552,8 @@ export function TaskPersonGrid({
                     compact={compact}
                     isPublished={isPublished}
                     onLeave={onLeave}
+                    leaveType={leaveType}
+                    locale={locale}
                     leaveShortText={t("leaveShort")}
                     isLast={dayIdx === localDays.length - 1}
                     hoveredTecnica={hoveredTecnica}

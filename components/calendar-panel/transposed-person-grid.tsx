@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, ArrowRightLeft, Plus, X } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Plus, Users, X } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -43,19 +43,21 @@ function TaskChip({
       )}
       style={{
         borderRadius: 4,
-        ...(colorChips && tecColor ? { borderLeft: `3px solid ${tecColor}` } : {}),
-        ...(active && tecColor ? { backgroundColor: `${tecColor}40`, color: "#1e293b" } : {}),
+          ...(active && tecColor ? { backgroundColor: `${tecColor}40` } : {}),
       }}
       onMouseEnter={() => { setHov(true); onHover?.(label) }}
       onMouseLeave={() => { setHov(false); onHover?.(null) }}
     >
       {label}
-      {onRemove && active && (
-        <button className="ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity"
-          onClick={(e) => { e.stopPropagation(); onRemove() }}>
+      {onRemove ? (
+        <button
+          className={cn("ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity", !active && "invisible")}
+          tabIndex={active ? 0 : -1}
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+        >
           <X className="size-2.5" />
         </button>
-      )}
+      ) : null}
     </span>
   )
 }
@@ -252,12 +254,18 @@ export function TransposedPersonGrid({
     return map
   }, [localDays, isTaskMode])
 
-  // Whole-team by date
+  // Whole-team by date (deduplicated by function_label)
   const wholeTeamByDate = useMemo(() => {
     if (!isTaskMode) return {} as Record<string, Assignment[]>
     const map: Record<string, Assignment[]> = {}
     for (const day of localDays) {
-      map[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
+      const seen = new Set<string>()
+      map[day.date] = day.assignments.filter((a) => {
+        if (!a.whole_team || !a.function_label) return false
+        if (seen.has(a.function_label)) return false
+        seen.add(a.function_label)
+        return true
+      })
     }
     return map
   }, [localDays, isTaskMode])
@@ -307,23 +315,25 @@ export function TransposedPersonGrid({
 
   return (
     <div className="rounded-lg border border-border overflow-auto w-full">
-      <div style={{ display: "grid", gridTemplateColumns: `80px ${isTaskMode ? `minmax(${compact ? "48px" : "60px"}, 1fr) ` : ""}repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: totalCols * (compact ? 53 : 65) + 80 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `96px ${isTaskMode ? `minmax(${compact ? "48px" : "60px"}, 1fr) ` : ""}repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: totalCols * (compact ? 53 : 65) + 96 }}>
 
         {/* Header: corner + ALL column (task mode) + staff names */}
-        <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
+        <div className="border-b border-r border-border bg-muted sticky left-0 z-20 top-0" style={{ minHeight: 48 }} />
         {isTaskMode && (
-          <div className="border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1">
+          <div className="border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1 sticky top-0 z-10">
+            <Users className={cn("text-muted-foreground mb-0.5", compact ? "size-2.5" : "size-3")} />
             <span className={cn("font-semibold text-muted-foreground text-center", compact ? "text-[9px]" : "text-[10px]")}>ALL</span>
           </div>
         )}
-        {allMembers.map((s, i) => {
+        {allMembers.map((s) => {
+          const staffColor = colorChips ? (s.color || DEFAULT_DEPT_MAPS.border[s.role] || "#94A3B8") : undefined
           return (
             <div
               key={s.id}
               className={cn(
-                "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
+                "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1 sticky top-0 z-10",
               )}
-              style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : { borderTop: "none" }}
+              style={staffColor ? { borderBottom: `3px solid ${staffColor}` } : undefined}
             >
               <button
                 onClick={() => onChipClick({ staff_id: s.id }, "")}
