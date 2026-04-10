@@ -629,6 +629,15 @@ export function MobileWeekClient() {
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
   const timeFormat = data?.timeFormat ?? "24h"
 
+  // Widen the sticky row-header column for task mode so task names fit
+  const isTaskMode = weekViewMode !== "person" && data?.rotaDisplayMode === "by_task" && !!data?.tecnicas?.length
+  const gridHdrW = isTaskMode ? "80px" : "52px"
+
+  const TASK_NAMED_COLORS: Record<string, string> = {
+    amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6",
+    coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444",
+  }
+
   // Build staff role/name map from staffList for the Off row
   const fullStaffMap = useMemo(() => {
     const m: Record<string, { fn: string; ln: string; role: string; dpw: number }> = {}
@@ -764,7 +773,7 @@ export function MobileWeekClient() {
         ) : (
           <div className="min-w-[600px] pb-[100px]">
             {/* Header: days */}
-            <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+            <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
               <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
               {days.map((day) => {
                 const date = new Date(day.date + "T12:00:00")
@@ -811,7 +820,7 @@ export function MobileWeekClient() {
                   const roleColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
                   const hlColor = staffColorLookup[s.id] ?? roleColor
                   return (
-                    <div key={s.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+                    <div key={s.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
                       <div
                         className="border-r border-border bg-muted sticky left-0 z-[5] flex items-center pl-1.5 pr-1 py-1.5 gap-1 cursor-pointer min-w-0"
                         style={mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : undefined}
@@ -863,17 +872,15 @@ export function MobileWeekClient() {
               </>
             ) : data.rotaDisplayMode === "by_task" && data.tecnicas ? (
               data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden).map((tec) => {
-                const NAMED_COLORS: Record<string, string> = { amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6", coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444" }
-                const dotColor = tec.color?.startsWith("#") ? tec.color : (NAMED_COLORS[tec.color] ?? "#3B82F6")
+                const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
+                const tecLabel = locale === "en" ? tec.nombre_en : tec.nombre_es
                 return (
-                  <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+                  <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
                     <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
                       <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
-                      <div className="px-1 py-2 flex flex-col items-end justify-center flex-1">
-                        <span className="text-[11px] font-semibold text-foreground">{tec.codigo}</span>
-                        {tec.typical_shifts?.[0] && shiftTypeMap[tec.typical_shifts[0]] && (
-                          <span className="text-[8px] text-muted-foreground tabular-nums">{formatTime(shiftTypeMap[tec.typical_shifts[0]].start_time, timeFormat)}</span>
-                        )}
+                      <div className="px-1 py-1.5 flex flex-col justify-center flex-1 min-w-0">
+                        <span className="text-[11px] font-semibold text-foreground leading-tight">{tec.codigo}</span>
+                        <span className="text-[9px] text-muted-foreground truncate leading-tight">{tecLabel}</span>
                       </div>
                     </div>
                     {days.map((day) => {
@@ -916,7 +923,7 @@ export function MobileWeekClient() {
               })
             ) : (
               shiftTypes.map((st) => (
-                <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+                <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
                   <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex flex-col items-end justify-center">
                     <span className="text-[13px] font-bold text-foreground">{st.code}</span>
                     <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(st.start_time, timeFormat)}</span>
@@ -970,7 +977,7 @@ export function MobileWeekClient() {
             )}
 
             {/* Off / Libres row — hidden in person view */}
-            {weekViewMode !== "person" && <div className="grid border-b border-border" style={{ gridTemplateColumns: `52px repeat(${days.length}, 1fr)` }}>
+            {weekViewMode !== "person" && <div className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">{locale === "es" ? "Lib" : "Off"}</span>
               </div>

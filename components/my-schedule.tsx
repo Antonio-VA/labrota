@@ -149,6 +149,12 @@ export function MySchedule({
     isNextShift: nextShift ? d.date === nextShift.date : false,
   }))
 
+  const isTaskOrg = weekData?.rotaDisplayMode === "by_task"
+  const TASK_COLORS: Record<string, string> = {
+    amber: "#F59E0B", blue: "#3B82F6", green: "#10B981", purple: "#8B5CF6",
+    coral: "#EF4444", teal: "#14B8A6", slate: "#64748B", red: "#EF4444",
+  }
+
   function renderSwapMenu(dayDate: string, assignmentId: string, shiftType: string, iconColor: string, hoverBg: string) {
     if (!canSwap) return null
     return (
@@ -249,6 +255,13 @@ export function MySchedule({
               const isToday = day.date === today
               const isPast = day.date < today
               const dateLabel = formatCardDate(day.date, locale)
+              const tecnica = isTaskOrg && assignment?.function_label
+                ? tecnicas.find((t) => t.codigo === assignment.function_label) ?? null
+                : null
+              const tecColor = tecnica?.color?.startsWith("#")
+                ? tecnica.color
+                : (TASK_COLORS[tecnica?.color ?? ""] ?? "#3B82F6")
+              const tecLabel = tecnica ? (locale === "en" ? tecnica.nombre_en : tecnica.nombre_es) : null
 
               // ── Next shift card ──
               if (day.isNextShift && assignment) {
@@ -258,9 +271,16 @@ export function MySchedule({
                     <div className="flex items-center">
                       <span className="text-[14px] font-semibold capitalize w-[100px] shrink-0">{dateLabel}</span>
                       <div className="flex items-center justify-center gap-2 flex-1">
-                        <span className="text-[13px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                          {assignment.shift_type}
-                        </span>
+                        {tecnica ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tecColor }} />
+                            <span className="text-[13px] font-semibold text-emerald-700">{tecLabel}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[13px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                            {assignment.shift_type}
+                          </span>
+                        )}
                         {times && (
                           <span className="text-[12px] text-emerald-600/70">
                             {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
@@ -295,9 +315,16 @@ export function MySchedule({
                   <div key={day.date} className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}>
                     <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>
                     <div className="flex items-center justify-center gap-2 flex-1">
-                      <span className={cn("text-[13px] font-semibold px-2 py-0.5 rounded", isPast ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
-                        {assignment.shift_type}
-                      </span>
+                      {tecnica ? (
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isPast ? "#94A3B8" : tecColor }} />
+                          <span className={cn("text-[13px] font-medium", isPast ? "text-muted-foreground" : "text-foreground")}>{tecLabel}</span>
+                        </span>
+                      ) : (
+                        <span className={cn("text-[13px] font-semibold px-2 py-0.5 rounded", isPast ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
+                          {assignment.shift_type}
+                        </span>
+                      )}
                       {times && (
                         <span className={cn("text-[12px]", isPast ? "text-muted-foreground" : "text-muted-foreground")}>
                           {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
