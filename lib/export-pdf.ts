@@ -359,19 +359,20 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
   const headers = dayHeaders(data, locale)
   const activeTecnicas = tecnicas.filter((t) => t.activa).sort((a, b) => a.orden - b.orden)
 
-  function staffForTechDay(tc: Tecnica, dayIdx: number): string {
+  function staffForTechDay(tc: Tecnica, dayIdx: number, initials = false): string {
     const day = data.days[dayIdx]
     const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
     const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
     // Include ALL individual assignments (even those with whole_team=true, since setWholeTeam marks all rows)
-    const names = assignments
-      .filter((a) => a.staff?.first_name && a.staff.first_name !== "All" && a.staff_id)
-      .map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+    const realAssignments = assignments.filter((a) => a.staff?.first_name && a.staff.first_name !== "All" && a.staff_id)
+    const labels = initials
+      ? realAssignments.map((a) => `${a.staff.first_name[0]}${a.staff.last_name[0]}`)
+      : realAssignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
     if (isWholeTeam) {
       const allLabel = locale === "es" ? "Todo" : "All"
-      return names.length > 0 ? `${allLabel} / ${names.join(" / ")}` : allLabel
+      return labels.length > 0 ? `${allLabel} / ${labels.join(" ")}` : allLabel
     }
-    return names.join(" / ") || "—"
+    return labels.join(initials ? " " : " / ") || "—"
   }
 
   const base = tableStyles()
@@ -389,7 +390,7 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
     for (let i = 0; i < data.days.length; i++) {
       const row = [headers[i]]
       for (const tc of activeTecnicas) {
-        row.push(staffForTechDay(tc, i))
+        row.push(staffForTechDay(tc, i, true))
       }
       body.push(row)
     }

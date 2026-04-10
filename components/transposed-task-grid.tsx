@@ -128,9 +128,9 @@ function TechDayCell({
   const cellRef = useRef<HTMLDivElement>(null)
 
   const isWholeTeam = assignments.some((a) => a.whole_team)
-  const regularAssignments = assignments.filter((a) => !a.whole_team || a.staff_id)
+  // Show ALL individual staff regardless of whole_team flag (setWholeTeam marks all rows whole_team=true)
+  const individualAssignments = assignments.filter((a) => a.staff_id)
   const assignedStaffIds = new Set(assignments.map((a) => a.staff_id).filter(Boolean))
-  const isCellHighlighted = hoveredStaffId !== null && assignments.some((a) => a.staff_id === hoveredStaffId)
 
   function openSelector() {
     if (isPublished) return
@@ -147,16 +147,15 @@ function TechDayCell({
     <div
       ref={cellRef}
       className={cn(
-        "border-b border-r border-border relative flex flex-wrap gap-0.5 items-start content-start group/cell transition-colors",
+        "border-b border-r border-border relative flex flex-wrap gap-0.5 items-start content-start group/cell",
         isSat && "border-t border-dashed border-t-border",
-        isWeekend && !isCellHighlighted && "bg-muted/30",
-        isCellHighlighted && "bg-primary/10",
-        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5",
+        isWeekend && "bg-muted/30",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5 pb-5",
       )}
     >
       {isWholeTeam && (
         <span
-          className={cn("inline-flex items-center gap-0.5 rounded pl-1 pr-0.5 text-[10px] font-semibold group/chip transition-colors duration-100 bg-primary/10 text-primary", compact ? "py-0" : "py-0.5")}
+          className={cn("inline-flex items-center gap-0.5 rounded pl-1 pr-0.5 font-semibold group/chip transition-colors duration-100 bg-primary/10 text-primary", compact ? "text-[10px] py-0" : "text-[11px] py-0.5")}
         >
           <Users className="size-2.5" />
           All
@@ -168,19 +167,20 @@ function TechDayCell({
           )}
         </span>
       )}
-      {assignments.filter((a) => a.staff_id && !a.whole_team).map((a) => {
+      {individualAssignments.map((a) => {
         const sColor = staffColorMap[a.staff_id]
         const isHov = hoveredStaffId === a.staff_id
         return (
           <Tooltip key={a.id}>
             <TooltipTrigger render={
               <span
-                className={cn("inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 text-[10px] font-semibold group/chip transition-colors duration-100",
-                  compact ? "py-0" : "py-0.5", onChipClick && "cursor-pointer")}
-                style={colorChips && sColor ? {
-                  borderLeft: `3px solid ${sColor}`, borderRadius: 4,
-                  ...(isHov ? { backgroundColor: sColor, color: "#1e293b" } : {}),
-                } : { borderRadius: 4 }}
+                className={cn("inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100",
+                  compact ? "text-[10px] py-0" : "text-[11px] py-0.5", onChipClick && "cursor-pointer")}
+                style={{
+                  borderRadius: 4,
+                  ...(colorChips && sColor ? { borderLeft: `3px solid ${sColor}` } : {}),
+                  ...(isHov && sColor ? { backgroundColor: `${sColor}40`, color: "#1e293b" } : {}),
+                }}
                 onMouseEnter={() => setHovered(a.staff_id)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={(e) => { e.stopPropagation(); onChipClick?.(a.staff_id) }}
@@ -200,7 +200,7 @@ function TechDayCell({
       })}
       {!isPublished && (
         <div onClick={openSelector}
-          className="flex-none w-4 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity">
+          className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b">
           <Plus className="size-3 text-muted-foreground" />
         </div>
       )}
