@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Briefcase, Plus, X, Users } from "lucide-react"
+import { AlertTriangle, Briefcase, CalendarDays, Plus, X, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -335,7 +335,24 @@ export function TransposedTaskGrid({
     if (result.error) toast.error(result.error)
   }
 
-  if (!data || localDays.length === 0 || tecnicas.length === 0) return null
+  // Empty state — no rota generated yet
+  if (!data || localDays.length === 0 || !data.rota || !localDays.some((d) => d.assignments.length > 0)) {
+    return (
+      <div className="flex-1 flex items-start justify-center pt-[18vh]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <CalendarDays className="size-10 text-muted-foreground/40" />
+          <p className="text-[16px] font-medium text-muted-foreground">
+            {locale === "es" ? "No hay horario para esta semana" : "No schedule for this week"}
+          </p>
+          <p className="text-[14px] text-muted-foreground/60">
+            {locale === "es" ? "Genera un horario para ver las asignaciones de tareas" : "Generate a schedule to see task assignments"}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (tecnicas.length === 0) return null
 
   // Narrow technique columns (space for ~2 badges), wider OFF column
   const gridCols = `75px repeat(${tecnicas.length}, minmax(62px, 88px)) minmax(130px, 1fr)`

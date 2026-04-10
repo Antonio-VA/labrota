@@ -1000,7 +1000,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 onClick: () => setCompact((c) => !c),
                 active: compact,
               },
-              ...(!(calendarLayout === "person" && weekData?.rotaDisplayMode === "by_task") ? [{
+              ...(weekData?.rotaDisplayMode !== "by_task" ? [{
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
@@ -1136,7 +1136,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         {/* Week view */}
         {view === "week" && (
           <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" style={{ minHeight: 400 }}>
+            <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative" style={{ minHeight: 400 }}>
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
                 <div className="absolute inset-0 z-10 bg-background flex flex-col">

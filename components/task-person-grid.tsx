@@ -250,12 +250,11 @@ export function TaskPersonGrid({
   if (loading) {
     const skelDays = 7
     const skelStaff = 8
-    const colW = compact ? "60px" : "80px"
-    const skelCols = `80px repeat(${skelDays}, minmax(${colW}, 1fr))`
+    const skelCols = `80px repeat(${skelDays}, 1fr)`
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="rounded-lg border border-border overflow-auto w-full">
-          <div style={{ display: "grid", gridTemplateColumns: skelCols, minWidth: skelDays * (compact ? 65 : 85) + 80 }}>
+        <div className="rounded-lg border border-border overflow-hidden w-full">
+          <div style={{ display: "grid", gridTemplateColumns: skelCols }}>
             {/* Header */}
             <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
             {Array.from({ length: skelDays }).map((_, i) => (
@@ -394,9 +393,7 @@ export function TaskPersonGrid({
     )
   }
 
-  const colW = compact ? "60px" : "80px"
-  const gridCols = `80px repeat(${localDays.length}, minmax(${colW}, 1fr))`
-  const minWidth = localDays.length * (compact ? 65 : 85) + 80
+  const gridCols = `80px repeat(${localDays.length}, 1fr)`
 
   // Shift times from data for corner display
   const shiftTimes = data.shiftTimes
@@ -422,8 +419,8 @@ export function TaskPersonGrid({
   }
 
   return (
-    <div className="rounded-lg border border-border overflow-auto w-full">
-      <div style={{ display: "grid", gridTemplateColumns: gridCols, minWidth }}>
+    <div className="rounded-lg border border-border overflow-hidden w-full">
+      <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
 
         {/* Top-left corner — shift time legend */}
         <div className="border-b border-r border-border bg-muted sticky left-0 z-20 flex flex-col items-start justify-center px-2 py-1 gap-0.5" style={{ minHeight: simplified === false ? 72 : 48 }}>
