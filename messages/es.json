@@ -702,7 +702,7 @@
       "ratioOptimalHint": "Por encima de este valor el indicador es verde",
       "ratioMinimum": "Ratio mínimo (ámbar)",
       "ratioMinimumHint": "Por debajo = rojo. Entre mínimo y óptimo = ámbar",
-      "ratioDescription": "Embriólogos certificados por punción. Se muestra en la cabecera del calendario.",
+      "ratioDescription": "Personal de lab por punción + biopsia. Se muestra en el panel lateral.",
       "firstDay": "Día de inicio",
       "firstDayHint": "Afecta el orden de columnas en el calendario",
       "firstDayMon": "Lunes (predeterminado)",

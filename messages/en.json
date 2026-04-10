@@ -702,7 +702,7 @@
       "ratioOptimalHint": "Above this value the indicator is green",
       "ratioMinimum": "Minimum ratio (amber)",
       "ratioMinimumHint": "Below = red. Between minimum and optimal = amber",
-      "ratioDescription": "Certified embryologists per pick-up. Shown in the calendar header.",
+      "ratioDescription": "Lab staff per pick-up + biopsy. Shown in the side panel.",
       "firstDay": "Start day",
       "firstDayHint": "Affects column order in the calendar",
       "firstDayMon": "Monday (default)",
