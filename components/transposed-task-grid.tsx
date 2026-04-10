@@ -148,7 +148,6 @@ function TechDayCell({
       ref={cellRef}
       className={cn(
         "border-b border-r border-border relative flex flex-wrap gap-0.5 items-start content-start group/cell",
-        isSat && "border-t border-dashed border-t-border",
         isWeekend && "bg-muted/30",
         compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5 pb-5",
       )}
@@ -165,7 +164,7 @@ function TechDayCell({
                 style={{
                   borderRadius: 4,
                   ...(colorChips && sColor ? { borderLeft: `3px solid ${sColor}` } : {}),
-                  ...(isHov && sColor ? { backgroundColor: `${sColor}40`, color: "#1e293b" } : {}),
+                  ...(isHov && sColor ? { backgroundColor: `${sColor}80`, color: "#1e293b" } : {}),
                 }}
                 onMouseEnter={() => setHovered(a.staff_id)}
                 onMouseLeave={() => setHovered(null)}
@@ -357,8 +356,8 @@ export function TransposedTaskGrid({
             </div>
           )
         })}
-        <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center"
-          style={{ borderLeft: "1px dashed var(--border)" }}>
+        <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 text-center"
+          style={{ backgroundImage: "radial-gradient(circle, #ccddee 1.5px, transparent 1.5px)", backgroundSize: "8px 8px", backgroundPosition: "4px 4px" }}>
           <p className={cn("font-semibold text-muted-foreground", compact ? "text-[9px]" : "text-[11px]")}>OFF</p>
         </div>
 
@@ -382,7 +381,7 @@ export function TransposedTaskGrid({
               <div key={`header-${day.date}`} onClick={() => onDateClick?.(day.date)}
                 className={cn("border-b border-r border-border px-2 py-1.5 flex items-center justify-end gap-1.5 bg-muted sticky left-0 z-10",
                   onDateClick && "cursor-pointer hover:bg-muted/80", holiday && "bg-amber-50/60")}
-                style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}>
+>
                 {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
@@ -420,8 +419,8 @@ export function TransposedTaskGrid({
 
               {/* OFF column — inline initials badges */}
               <div key={`off-${day.date}`}
-                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start items-start bg-muted/20", isSat && "border-t border-dashed border-t-border")}
-                style={{ borderLeft: "1px dashed var(--border)" }}>
+                className="border-b border-l border-border p-1 flex flex-wrap gap-0.5 content-start items-start"
+                style={{ backgroundImage: "radial-gradient(circle, #ccddee 1.5px, transparent 1.5px)", backgroundSize: "8px 8px", backgroundPosition: "4px 4px" }}>
                 {[...leaveIds].map((sid) => {
                   const s = staffList.find((st) => st.id === sid)
                   if (!s) return null
@@ -447,7 +446,7 @@ export function TransposedTaskGrid({
                           className={cn("inline-flex items-center rounded border border-border/50 font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[8px] px-1 py-0" : "text-[9px] px-1 py-0.5")}
                           onMouseEnter={() => setHovered(s.id)}
                           onMouseLeave={() => setHovered(null)}
-                          style={isHov && colorChips && sColor ? { backgroundColor: `${sColor}30`, color: "#1e293b", borderColor: `${sColor}60` } : undefined}
+                          style={isHov && colorChips && sColor ? { backgroundColor: `${sColor}70`, color: "#1e293b", borderColor: `${sColor}99` } : undefined}
                         >
                           {s.first_name[0]}{s.last_name[0]}
                         </span>
