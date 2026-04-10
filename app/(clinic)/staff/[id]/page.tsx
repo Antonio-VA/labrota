@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
-import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition } from "@/lib/types/database"
+import { StaffLeaveBalances } from "@/components/staff-leave-balances"
+import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, HrModule, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 import { ChevronLeft } from "lucide-react"
+import { getLeaveYear } from "@/lib/hr-balance-engine"
 
 export default async function EditStaffPage({
   params,
@@ -37,14 +39,61 @@ export default async function EditStaffPage({
 
   // Check if this staff member already has a linked viewer account
   let hasViewerAccount = false
+  const admin = createAdminClient()
   if (staff.email) {
-    const admin = createAdminClient()
     const { data: member } = await admin
       .from("organisation_members")
       .select("id")
       .eq("linked_staff_id", id)
       .maybeSingle() as { data: { id: string } | null }
     hasViewerAccount = !!member
+  }
+
+  // Check if HR module is active
+  const { data: hrModule } = await supabase
+    .from("hr_module")
+    .select("status")
+    .maybeSingle() as { data: { status: string } | null }
+
+  const hrActive = hrModule?.status === "active"
+
+  let hrData: {
+    leaveTypes: CompanyLeaveType[]
+    balances: HolidayBalance[]
+    config: HolidayConfig
+    leaves: Leave[]
+    year: number
+  } | null = null
+
+  if (hrActive) {
+    const today = new Date().toISOString().slice(0, 10)
+
+    const [configRes, typesRes, leavesRes] = await Promise.all([
+      supabase.from("holiday_config").select("*").single() as unknown as Promise<{ data: HolidayConfig | null }>,
+      supabase.from("company_leave_types").select("*").eq("is_archived", false).order("sort_order") as unknown as Promise<{ data: CompanyLeaveType[] | null }>,
+      supabase.from("leaves").select("*").eq("staff_id", id).in("status", ["approved", "pending", "cancelled"]).order("start_date", { ascending: false }) as unknown as Promise<{ data: Leave[] | null }>,
+    ])
+
+    const hConfig = configRes.data
+    const currentYear = hConfig
+      ? getLeaveYear(today, hConfig.leave_year_start_month, hConfig.leave_year_start_day)
+      : new Date().getFullYear()
+
+    const { data: balancesData } = await supabase
+      .from("holiday_balance")
+      .select("*")
+      .eq("staff_id", id)
+      .eq("year", currentYear) as { data: HolidayBalance[] | null }
+
+    if (hConfig) {
+      hrData = {
+        leaveTypes: typesRes.data ?? [],
+        balances: balancesData ?? [],
+        config: hConfig,
+        leaves: (leavesRes.data ?? []) as Leave[],
+        year: currentYear,
+      }
+    }
   }
 
   return (
@@ -62,6 +111,19 @@ export default async function EditStaffPage({
               </p>
             </div>
             <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} guardiaMode={guardiaMode} hasViewerAccount={hasViewerAccount} />
+
+            {hrData && (
+              <StaffLeaveBalances
+                staffId={id}
+                staffName={`${staff.first_name} ${staff.last_name}`}
+                leaveTypes={hrData.leaveTypes}
+                balances={hrData.balances}
+                config={hrData.config}
+                leaves={hrData.leaves}
+                year={hrData.year}
+                publicHolidays={[]}
+              />
+            )}
           </div>
         </MobileGate>
       </div>

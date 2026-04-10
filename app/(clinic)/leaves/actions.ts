@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
+import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry } from "@/lib/hr-leave-integration"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
@@ -29,11 +30,57 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
   if (!leave.staff_id) return { error: "Staff member is required." }
   if (leave.end_date < leave.start_date) return { error: "End date must be on or after start date." }
 
-  const { error } = await supabase
+  // Compute HR module fields if active
+  const leaveTypeId = formData.get("leave_type_id") as string | null
+  let hrFields: Record<string, unknown> = {}
+  if (leaveTypeId && await isHrModuleActive(orgId)) {
+    const hrResult = await computeHrLeaveFields({
+      orgId,
+      staffId: leave.staff_id,
+      leaveTypeId,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+    })
+    hrFields = {
+      leave_type_id: hrResult.leave_type_id,
+      days_counted: hrResult.overflow.needed ? hrResult.overflow.mainDays : hrResult.days_counted,
+      balance_year: hrResult.balance_year,
+      uses_cf_days: hrResult.uses_cf_days,
+      cf_days_used: hrResult.cf_days_used,
+    }
+  }
+
+  const { error, data: insertedLeave } = await supabase
     .from("leaves")
-    .insert({ ...leave, organisation_id: orgId } as never)
+    .insert({ ...leave, ...hrFields, organisation_id: orgId } as never)
+    .select("id")
+    .single() as { error: { message: string } | null; data: { id: string } | null }
 
   if (error) return { error: error.message }
+
+  // Create overflow companion entry if needed
+  if (leaveTypeId && insertedLeave && hrFields.leave_type_id) {
+    const hrResult = await computeHrLeaveFields({
+      orgId,
+      staffId: leave.staff_id,
+      leaveTypeId,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+    })
+    if (hrResult.overflow.needed && hrResult.overflow.overflowTypeId) {
+      await createOverflowEntry({
+        orgId,
+        staffId: leave.staff_id,
+        parentLeaveId: insertedLeave.id,
+        overflowTypeId: hrResult.overflow.overflowTypeId,
+        startDate: leave.start_date,
+        endDate: leave.end_date,
+        overflowDays: hrResult.overflow.overflowDays,
+        balanceYear: hrResult.balance_year ?? new Date().getFullYear(),
+        notes: `Overflow from ${leave.type}`,
+      })
+    }
+  }
 
   // Auto-remove conflicting rota assignments for this staff during leave period
   await supabase
@@ -103,6 +150,7 @@ export async function quickCreateLeave(params: {
   startDate: string
   endDate: string
   notes?: string
+  leaveTypeId?: string
 }): Promise<{ error?: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
@@ -111,7 +159,26 @@ export async function quickCreateLeave(params: {
   if (!params.staffId) return { error: "Staff member is required." }
   if (params.endDate < params.startDate) return { error: "End date must be on or after start date." }
 
-  const { error } = await supabase
+  // Compute HR module fields if active
+  let hrFields: Record<string, unknown> = {}
+  if (params.leaveTypeId && await isHrModuleActive(orgId)) {
+    const hrResult = await computeHrLeaveFields({
+      orgId,
+      staffId: params.staffId,
+      leaveTypeId: params.leaveTypeId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+    })
+    hrFields = {
+      leave_type_id: hrResult.leave_type_id,
+      days_counted: hrResult.overflow.needed ? hrResult.overflow.mainDays : hrResult.days_counted,
+      balance_year: hrResult.balance_year,
+      uses_cf_days: hrResult.uses_cf_days,
+      cf_days_used: hrResult.cf_days_used,
+    }
+  }
+
+  const { error, data: insertedLeave } = await supabase
     .from("leaves")
     .insert({
       staff_id: params.staffId,
@@ -121,9 +188,36 @@ export async function quickCreateLeave(params: {
       status: "approved",
       notes: params.notes?.trim() || null,
       organisation_id: orgId,
+      ...hrFields,
     } as never)
+    .select("id")
+    .single() as { error: { message: string } | null; data: { id: string } | null }
 
   if (error) return { error: error.message }
+
+  // Create overflow companion entry if needed
+  if (params.leaveTypeId && insertedLeave && hrFields.leave_type_id) {
+    const hrResult = await computeHrLeaveFields({
+      orgId,
+      staffId: params.staffId,
+      leaveTypeId: params.leaveTypeId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+    })
+    if (hrResult.overflow.needed && hrResult.overflow.overflowTypeId) {
+      await createOverflowEntry({
+        orgId,
+        staffId: params.staffId,
+        parentLeaveId: insertedLeave.id,
+        overflowTypeId: hrResult.overflow.overflowTypeId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        overflowDays: hrResult.overflow.overflowDays,
+        balanceYear: hrResult.balance_year ?? new Date().getFullYear(),
+        notes: `Overflow from ${params.type}`,
+      })
+    }
+  }
 
   // Auto-remove conflicting rota assignments
   await supabase

@@ -1,0 +1,334 @@
+"use client"
+
+import { useState, useTransition } from "react"
+import { useTranslations, useLocale } from "next-intl"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Pencil } from "lucide-react"
+import { formatDateWithYear } from "@/lib/format-date"
+import { calculateBalance } from "@/lib/hr-balance-engine"
+import { upsertHolidayBalance } from "@/app/(clinic)/settings/hr-module-actions"
+import type {
+  CompanyLeaveType,
+  HolidayBalance,
+  HolidayConfig,
+  Leave,
+} from "@/lib/types/database"
+import type { DayCountConfig } from "@/lib/hr-balance-engine"
+
+interface Props {
+  staffId: string
+  staffName: string
+  leaveTypes: CompanyLeaveType[]
+  balances: HolidayBalance[]
+  config: HolidayConfig
+  leaves: Leave[]
+  year: number
+  publicHolidays: string[]
+}
+
+export function StaffLeaveBalances({
+  staffId,
+  staffName,
+  leaveTypes,
+  balances,
+  config,
+  leaves,
+  year,
+  publicHolidays,
+}: Props) {
+  const t = useTranslations("hr")
+  const tc = useTranslations("common")
+  const locale = useLocale()
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [selectedYear, setSelectedYear] = useState(year)
+  const [editingBalance, setEditingBalance] = useState<{
+    leaveTypeId: string
+    entitlement: number
+    manual_adjustment: number
+    manual_adjustment_notes: string
+  } | null>(null)
+
+  const dayCountConfig: DayCountConfig = {
+    counting_method: config.counting_method,
+    weekends_deducted: config.weekends_deducted,
+    public_holidays_deducted: config.public_holidays_deducted,
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  const trackedTypes = leaveTypes.filter((lt) => lt.has_balance && !lt.is_archived)
+  const untrackedTypes = leaveTypes.filter((lt) => !lt.has_balance && !lt.is_archived)
+
+  const getBalance = (leaveTypeId: string) => {
+    const balanceRecord = balances.find(
+      (b) => b.leave_type_id === leaveTypeId && b.year === selectedYear
+    )
+
+    const typeLeaves = leaves.filter(
+      (l) =>
+        l.leave_type_id === leaveTypeId &&
+        (l.balance_year === selectedYear || (!l.balance_year && l.start_date.startsWith(String(selectedYear))))
+    )
+
+    const lt = leaveTypes.find((t) => t.id === leaveTypeId)
+
+    return calculateBalance({
+      entitlement: balanceRecord?.entitlement ?? lt?.default_days ?? 0,
+      carried_forward: balanceRecord?.carried_forward ?? 0,
+      cf_expiry_date: balanceRecord?.cf_expiry_date ?? null,
+      manual_adjustment: balanceRecord?.manual_adjustment ?? 0,
+      today,
+      leaveEntries: typeLeaves.map((l) => ({
+        start_date: l.start_date,
+        end_date: l.end_date,
+        status: l.status,
+        days_counted: l.days_counted,
+      })),
+      config: dayCountConfig,
+      publicHolidays,
+    })
+  }
+
+  const handleSaveEntitlement = () => {
+    if (!editingBalance) return
+    startTransition(async () => {
+      const result = await upsertHolidayBalance({
+        staff_id: staffId,
+        leave_type_id: editingBalance.leaveTypeId,
+        year: selectedYear,
+        entitlement: editingBalance.entitlement,
+        manual_adjustment: editingBalance.manual_adjustment,
+        manual_adjustment_notes: editingBalance.manual_adjustment_notes || null,
+      })
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(t("saveSuccess"))
+        setEditingBalance(null)
+        router.refresh()
+      }
+    })
+  }
+
+  // Leave history for this year
+  const yearLeaves = leaves
+    .filter((l) => {
+      const matchYear = l.balance_year === selectedYear ||
+        (!l.balance_year && l.start_date.startsWith(String(selectedYear)))
+      return matchYear && l.status !== "rejected"
+    })
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Year selector */}
+      <div className="flex items-center gap-3">
+        <h2 className="text-[14px] font-medium">{t("balances")}</h2>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+          className="border border-border rounded px-2 py-1 text-[14px] bg-background"
+        >
+          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Balance strips */}
+      <div className="grid gap-4">
+        {trackedTypes.map((lt) => {
+          const bal = getBalance(lt.id)
+          const overflowType = lt.overflow_to_type_id
+            ? leaveTypes.find((t) => t.id === lt.overflow_to_type_id)
+            : null
+
+          return (
+            <div key={lt.id} className="rounded-lg border border-border bg-background px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lt.color }} />
+                  <span className="text-[14px] font-medium">{lt.name} {selectedYear}</span>
+                </div>
+                <button
+                  type="button"
+                  className="text-[13px] text-primary hover:underline flex items-center gap-1"
+                  onClick={() => {
+                    const balRecord = balances.find(
+                      (b) => b.leave_type_id === lt.id && b.year === selectedYear
+                    )
+                    setEditingBalance({
+                      leaveTypeId: lt.id,
+                      entitlement: balRecord?.entitlement ?? lt.default_days ?? 0,
+                      manual_adjustment: balRecord?.manual_adjustment ?? 0,
+                      manual_adjustment_notes: balRecord?.manual_adjustment_notes ?? "",
+                    })
+                  }}
+                >
+                  <Pencil className="size-3" />
+                  {t("editEntitlement")}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-5 gap-4 text-center">
+                <div>
+                  <div className="text-[13px] text-muted-foreground">{t("entitlement")}</div>
+                  <div className="text-[18px] font-medium">{bal.entitlement}</div>
+                </div>
+                <div>
+                  <div className="text-[13px] text-muted-foreground">{t("carriedForward")}</div>
+                  <div className="text-[18px] font-medium">
+                    {bal.carried_forward > 0 && (
+                      <span className={bal.cf_expired ? "line-through text-muted-foreground" : ""}>
+                        {bal.carried_forward}
+                      </span>
+                    )}
+                    {bal.carried_forward === 0 && <span className="text-muted-foreground">0</span>}
+                  </div>
+                  {bal.cf_expiry_date && (
+                    <div className={`text-[12px] ${bal.cf_expired ? "text-muted-foreground" : "text-amber-600"}`}>
+                      {bal.cf_expired ? t("expired") : t("expiresOn", { date: formatDateWithYear(bal.cf_expiry_date, locale as "es" | "en") })}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[13px] text-muted-foreground">{t("booked")}</div>
+                  <div className="text-[18px] font-medium">{bal.booked}</div>
+                </div>
+                <div>
+                  <div className="text-[13px] text-muted-foreground">{t("taken")}</div>
+                  <div className="text-[18px] font-medium">{bal.taken}</div>
+                </div>
+                <div>
+                  <div className="text-[13px] text-muted-foreground">{t("available")}</div>
+                  <div className={`text-[18px] font-medium ${bal.available <= 0 ? "text-destructive" : ""}`}>
+                    {bal.available}
+                  </div>
+                </div>
+              </div>
+
+              {overflowType && bal.in_overflow && (
+                <div className="mt-2 text-[13px] text-amber-600">
+                  {t("overflow")}: {bal.overflow_days} {t("days", { count: bal.overflow_days })} → {overflowType.name}
+                </div>
+              )}
+
+              {bal.manual_adjustment !== 0 && (
+                <div className="mt-1 text-[13px] text-muted-foreground">
+                  {t("manualAdjustment")}: {bal.manual_adjustment > 0 ? "+" : ""}{bal.manual_adjustment}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Entitlement edit modal (inline) */}
+      {editingBalance && (
+        <div className="rounded-lg border border-border bg-muted/50 p-4 flex flex-col gap-3">
+          <h3 className="text-[14px] font-medium">{t("editEntitlement")}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[13px] text-muted-foreground">{t("entitlement")}</label>
+              <input
+                type="number"
+                value={editingBalance.entitlement}
+                onChange={(e) => setEditingBalance((p) => p ? { ...p, entitlement: parseInt(e.target.value) || 0 } : null)}
+                className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-[13px] text-muted-foreground">{t("manualAdjustment")}</label>
+              <input
+                type="number"
+                value={editingBalance.manual_adjustment}
+                onChange={(e) => setEditingBalance((p) => p ? { ...p, manual_adjustment: parseInt(e.target.value) || 0 } : null)}
+                className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[13px] text-muted-foreground">{t("adjustmentNotes")}</label>
+            <input
+              type="text"
+              value={editingBalance.manual_adjustment_notes}
+              onChange={(e) => setEditingBalance((p) => p ? { ...p, manual_adjustment_notes: e.target.value } : null)}
+              className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={handleSaveEntitlement} disabled={isPending}>
+              {isPending ? tc("saving") : tc("save")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setEditingBalance(null)}>
+              {tc("cancel")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Leave history table */}
+      <div>
+        <h3 className="text-[14px] font-medium mb-3">{t("leaveHistory")}</h3>
+        {yearLeaves.length === 0 ? (
+          <p className="text-[14px] text-muted-foreground">—</p>
+        ) : (
+          <div className="rounded-lg border border-border bg-background overflow-hidden">
+            <table className="w-full text-[14px]">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-3 py-2 font-medium">{tc("from")}</th>
+                  <th className="text-left px-3 py-2 font-medium">{tc("to")}</th>
+                  <th className="text-center px-3 py-2 font-medium">{t("days", { count: 0 }).replace("0 ", "")}</th>
+                  <th className="text-left px-3 py-2 font-medium">{tc("role")}</th>
+                  <th className="text-left px-3 py-2 font-medium">{tc("status")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {yearLeaves.map((leave) => {
+                  const leaveType = leaveTypes.find((t) => t.id === leave.leave_type_id)
+                  const isCancelled = leave.status === "cancelled"
+
+                  return (
+                    <tr
+                      key={leave.id}
+                      className={`border-b border-border last:border-0 ${isCancelled ? "opacity-50" : ""}`}
+                    >
+                      <td className="px-3 py-2">{formatDateWithYear(leave.start_date, locale as "es" | "en")}</td>
+                      <td className="px-3 py-2">{formatDateWithYear(leave.end_date, locale as "es" | "en")}</td>
+                      <td className="px-3 py-2 text-center">{leave.days_counted ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          {leaveType && (
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: leaveType.color }} />
+                          )}
+                          <span>{leaveType?.name ?? leave.type}</span>
+                          {leave.parent_leave_id && (
+                            <Badge variant="outline" className="text-[11px]">{t("overflowSource")}</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant={
+                          leave.status === "approved" ? "active" :
+                          leave.status === "pending" ? "onboarding" :
+                          "inactive"
+                        }>
+                          {leave.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

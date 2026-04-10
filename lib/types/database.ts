@@ -140,6 +140,12 @@ export interface Leave {
   created_by:       string | null
   reviewed_by:      string | null
   reviewed_at:      string | null
+  leave_type_id:    string | null
+  days_counted:     number | null
+  balance_year:     number | null
+  uses_cf_days:     boolean
+  cf_days_used:     number
+  parent_leave_id:  string | null
   created_at:       string
   updated_at:       string
 }
@@ -309,6 +315,76 @@ export interface SwapRequest {
   created_at:              string
   updated_at:              string
 }
+
+// ── HR Module types ──────────────────────────────────────────────────────────
+
+export type HrModuleStatus = 'active' | 'inactive'
+export type CountingMethod = 'working_days' | 'calendar_days'
+
+export interface HrModule {
+  id:              string
+  organisation_id: string
+  status:          HrModuleStatus
+  installed_at:    string
+  installed_by:    string | null
+  removed_at:      string | null
+  removed_by:      string | null
+  created_at:      string
+  updated_at:      string
+}
+
+export interface CompanyLeaveType {
+  id:                    string
+  organisation_id:       string
+  name:                  string
+  name_en:               string | null
+  has_balance:           boolean
+  default_days:          number | null
+  allows_carry_forward:  boolean
+  overflow_to_type_id:   string | null
+  is_paid:               boolean
+  color:                 string
+  is_archived:           boolean
+  sort_order:            number
+  created_at:            string
+  updated_at:            string
+}
+
+export interface HolidayConfig {
+  id:                          string
+  organisation_id:             string
+  leave_year_start_month:      number
+  leave_year_start_day:        number
+  counting_method:             CountingMethod
+  weekends_deducted:           boolean
+  public_holidays_deducted:    boolean
+  carry_forward_allowed:       boolean
+  max_carry_forward_days:      number
+  carry_forward_expiry_month:  number
+  carry_forward_expiry_day:    number
+  created_at:                  string
+  updated_at:                  string
+}
+
+export interface HolidayBalance {
+  id:                      string
+  organisation_id:         string
+  staff_id:                string
+  leave_type_id:           string
+  year:                    number
+  entitlement:             number
+  carried_forward:         number
+  cf_expiry_date:          string | null
+  manual_adjustment:       number
+  manual_adjustment_notes: string | null
+  created_at:              string
+  updated_at:              string
+}
+
+export type CompanyLeaveTypeInsert = Omit<CompanyLeaveType, 'id' | 'created_at' | 'updated_at'>
+export type CompanyLeaveTypeUpdate = Partial<Omit<CompanyLeaveTypeInsert, 'organisation_id'>>
+export type HolidayBalanceInsert = Omit<HolidayBalance, 'id' | 'created_at' | 'updated_at'>
+export type HolidayBalanceUpdate = Partial<Omit<HolidayBalanceInsert, 'organisation_id'>>
 
 // ── Insert types (omit server-generated fields) ───────────────────────────────
 export type StaffInsert = Omit<Staff, 'id' | 'created_at' | 'updated_at'>
@@ -560,6 +636,30 @@ export interface Database {
         Row:    OrganisationMember
         Insert: { organisation_id: string; user_id: string; role?: string; display_name?: string | null }
         Update: { role?: string; display_name?: string | null }
+        Relationships: []
+      }
+      hr_module: {
+        Row:    HrModule
+        Insert: { organisation_id: string; status?: HrModuleStatus; installed_by?: string | null }
+        Update: { status?: HrModuleStatus; removed_at?: string | null; removed_by?: string | null }
+        Relationships: []
+      }
+      company_leave_types: {
+        Row:    CompanyLeaveType
+        Insert: CompanyLeaveTypeInsert
+        Update: CompanyLeaveTypeUpdate
+        Relationships: []
+      }
+      holiday_config: {
+        Row:    HolidayConfig
+        Insert: { organisation_id: string } & Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
+        Update: Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
+        Relationships: []
+      }
+      holiday_balance: {
+        Row:    HolidayBalance
+        Insert: HolidayBalanceInsert
+        Update: HolidayBalanceUpdate
         Relationships: []
       }
     }
