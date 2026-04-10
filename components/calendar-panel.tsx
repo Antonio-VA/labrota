@@ -51,6 +51,7 @@ import {
   clearWeek,
   copyPreviousWeek,
   generateRotaHybrid,
+  generateTaskHybrid,
   getHybridUsage,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
@@ -581,7 +582,10 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             if (result.error) { errorMsg = result.error; break }
             successCount++
           } else if (strategy === "ai_hybrid") {
-            const result = await generateRotaHybrid(ws, false)
+            const isTask = weekData?.rotaDisplayMode === "by_task"
+            const result = isTask
+              ? await generateTaskHybrid(ws, false)
+              : await generateRotaHybrid(ws, false)
             if (result.error) { errorMsg = result.error; break }
             if (result.reasoning) {
               aiReasoningRef.current = result.reasoning

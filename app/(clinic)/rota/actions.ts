@@ -1828,6 +1828,479 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
   }
 }
 
+// ── generateTaskHybrid ────────────────────────────────────────────────────────
+// By-task hybrid: task engine base + Claude optimisation of technique assignments.
+// Key difference from generateRotaHybrid: assignments carry function_label; budget
+// is counted by DISTINCT WORKING DAYS per staff (not assignment count).
+
+export async function generateTaskHybrid(
+  weekStart: string,
+  preserveOverrides: boolean,
+): Promise<{ error?: string; assignmentCount?: number; reasoning?: string }> {
+  const { anthropic } = await import("@ai-sdk/anthropic")
+  const { generateObject } = await import("ai")
+  const { z } = await import("zod")
+
+  const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No organisation found." }
+
+  // ── 0. Check daily quota ─────────────────────────────────────────────────────
+  const quota = await getHybridUsage()
+  if (quota.remaining <= 0) {
+    return { error: `Daily hybrid generation limit reached (${quota.limit}/day). Try again tomorrow.` }
+  }
+
+  const weekDates = getWeekDates(weekStart)
+  const fourWeeksAgo = new Date(weekStart + "T12:00:00")
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
+  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+
+  // ── 1. Fetch all data ────────────────────────────────────────────────────────
+  const [staffRes, leavesRes, recentRes, labConfigRes, rulesRes, shiftTypesRes, tecnicasRes, recentTaskRes] = await Promise.all([
+    supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
+    supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
+    supabase.from("rota_assignments").select("staff_id, date, shift_type").gte("date", fourWeeksAgoStr).lt("date", weekStart),
+    supabase.from("lab_config").select("*").single(),
+    supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
+    supabase.from("shift_types").select("code, name_es, start_time, end_time, sort_order, active, active_days").order("sort_order"),
+    supabase.from("tecnicas").select("id, codigo, nombre_es, department, typical_shifts, avoid_shifts, required_skill, orden").eq("activa", true).order("orden") as unknown as Promise<{ data: { id: string; codigo: string; nombre_es: string; department: string; typical_shifts: string[]; avoid_shifts: string[]; required_skill: string | null; orden: number }[] | null }>,
+    supabase.from("rota_assignments").select("staff_id, function_label, date").gte("date", fourWeeksAgoStr).lt("date", weekStart).neq("function_label", "").not("function_label", "is", null) as unknown as Promise<{ data: { staff_id: string; function_label: string; date: string }[] | null }>,
+  ])
+
+  const labConfig = labConfigRes.data as LabConfig | null
+  if (!labConfig) return { error: "Lab configuration not found." }
+  if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
+
+  const hybridYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
+  const hybridHolidays: Record<string, string> = Object.assign({}, ...hybridYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
+
+  const allStaff = (staffRes.data ?? []) as StaffWithSkills[]
+  const leaves = (leavesRes.data ?? []) as Leave[]
+  const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
+  const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || r.expires_at > weekStart)
+  const shiftTypes = ((shiftTypesRes.data ?? []) as ShiftTypeDefinition[]).filter((st) => st.active !== false)
+  const tecnicas = (tecnicasRes.data ?? []) as { id: string; codigo: string; nombre_es: string; department: string; typical_shifts: string[]; avoid_shifts: string[]; required_skill: string | null; orden: number }[]
+  const recentTaskAssignments = (recentTaskRes.data ?? []).map((r) => ({
+    staff_id: r.staff_id,
+    tecnica_code: r.function_label,
+    date: r.date,
+  }))
+
+  const validShiftCodes = new Set(shiftTypes.map((st) => st.code))
+  const validTecnicaCodes = new Set(tecnicas.map((t) => t.codigo))
+
+  const validEngineCodes = new Set(shiftTypes.map((st) => st.code))
+  const normalizedStaff = allStaff.map((s) =>
+    validEngineCodes.size > 0 && s.preferred_shift && !validEngineCodes.has(s.preferred_shift)
+      ? { ...s, preferred_shift: null } : s
+  )
+  const engineTecnicas = tecnicas.map((t) => ({
+    codigo: t.codigo, department: t.department ?? "lab",
+    typical_shifts: t.typical_shifts ?? [], avoid_shifts: t.avoid_shifts ?? [],
+  }))
+
+  // ── 2. Upsert rota & clear old assignments ───────────────────────────────────
+  const { data: rotaRow, error: rotaError } = await supabase
+    .from("rotas")
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .select("id").single()
+  if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
+  const rotaId = (rotaRow as { id: string }).id
+
+  await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId)
+
+  const overrideKeys = new Set<string>()
+  let overrideAssignments: { staff_id: string; date: string; shift_type: string; function_label: string }[] = []
+  if (preserveOverrides) {
+    const { data: overrides } = await supabase
+      .from("rota_assignments").select("staff_id, date, shift_type, function_label")
+      .eq("rota_id", rotaId).eq("is_manual_override", true) as { data: { staff_id: string; date: string; shift_type: string; function_label: string }[] | null }
+    overrideAssignments = overrides ?? []
+    for (const o of overrideAssignments) overrideKeys.add(`${o.staff_id}:${o.date}:${o.function_label ?? ""}`)
+  }
+
+  captureWeekSnapshot(rotaId, weekStart)
+  if (preserveOverrides) {
+    await supabase.from("rota_assignments").delete().eq("rota_id", rotaId).eq("is_manual_override", false)
+  } else {
+    await supabase.from("rota_assignments").delete().eq("rota_id", rotaId)
+  }
+
+  // ── 3. Run task engine for base rota ─────────────────────────────────────────
+  const taskResult = runTaskEngine({
+    weekStart, staff: normalizedStaff, leaves, recentAssignments, labConfig,
+    shiftTypes, rules: activeRules, tecnicas: engineTecnicas,
+    taskRotation: (labConfig.shift_rotation as "stable" | "weekly" | "daily") ?? "stable",
+    taskCoverageEnabled: labConfig.task_coverage_enabled ?? false,
+    taskCoverageByDay: labConfig.task_coverage_by_day as Record<string, Record<string, number>> | null,
+    recentTaskAssignments,
+  })
+
+  // Pre-build equipo_completo lookup
+  const wholeTeamByDate: Record<string, Set<string>> = {}
+  for (const rule of activeRules.filter((r) => r.type === "equipo_completo")) {
+    const codes = (rule.params.tecnica_codes as string[] | undefined) ?? []
+    const ruleDays = (rule.params.days as string[] | undefined) ?? []
+    for (const d of weekDates) {
+      const dayCode = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(d + "T12:00:00").getDay()]
+      if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) continue
+      if (!wholeTeamByDate[d]) wholeTeamByDate[d] = new Set()
+      for (const c of codes) wholeTeamByDate[d].add(c)
+    }
+  }
+
+  // Skill maps
+  const staffSkillMap = new Map(allStaff.map((s) => [s.id, new Set(s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill))]))
+  const tecnicaSkillMap = new Map(tecnicas.map((t) => [t.codigo, t.required_skill]))
+
+  // ── 4. Serialize context for Claude ─────────────────────────────────────────
+  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+
+  const leaveByDate: Record<string, string[]> = {}
+  for (const l of leaves) {
+    for (const d of weekDates) {
+      if (d >= l.start_date && d <= l.end_date) {
+        if (!leaveByDate[d]) leaveByDate[d] = []
+        leaveByDate[d].push(l.staff_id)
+      }
+    }
+  }
+
+  const recentWorkload: Record<string, number> = {}
+  for (const a of recentAssignments) recentWorkload[a.staff_id] = (recentWorkload[a.staff_id] ?? 0) + 1
+
+  const recentTaskCounts: Record<string, Record<string, number>> = {}
+  for (const a of recentTaskAssignments) {
+    if (!recentTaskCounts[a.staff_id]) recentTaskCounts[a.staff_id] = {}
+    recentTaskCounts[a.staff_id][a.tecnica_code] = (recentTaskCounts[a.staff_id][a.tecnica_code] ?? 0) + 1
+  }
+
+  const staffContext = allStaff.map((s) => ({
+    id: s.id,
+    name: `${s.first_name} ${s.last_name}`,
+    role: s.role,
+    days_per_week: s.days_per_week,
+    avoid_days: s.avoid_days,
+    certified_skills: s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill),
+    recent_days_worked: recentWorkload[s.id] ?? 0,
+    recent_top_tasks: Object.entries(recentTaskCounts[s.id] ?? {})
+      .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([code, cnt]) => `${code}(×${cnt})`),
+  }))
+
+  const rulesContext = activeRules.map((r) => ({
+    type: r.type, is_hard: r.is_hard,
+    staff: r.staff_ids.map((id) => { const s = allStaff.find((st) => st.id === id); return s ? `${s.first_name} ${s.last_name} (${id})` : id }),
+    params: r.params, notes: r.notes,
+  }))
+
+  const taskCoverage = labConfig.task_coverage_enabled && labConfig.task_coverage_by_day
+    ? labConfig.task_coverage_by_day as Record<string, Record<string, number>>
+    : null
+
+  const tecnicasContext = tecnicas.map((t) => ({
+    code: t.codigo, name: t.nombre_es, department: t.department,
+    required_skill: t.required_skill, typical_shifts: t.typical_shifts,
+    coverage_by_day: taskCoverage
+      ? Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [
+          day, (taskCoverage[t.codigo] as Record<string, number> | undefined)?.[day] ?? 0,
+        ]))
+      : null,
+  }))
+
+  const datesWithInfo = weekDates.map((d) => ({
+    date: d,
+    dayOfWeek: dayNames[new Date(d + "T12:00:00").getDay()],
+    onLeave: (leaveByDate[d] ?? []).map((id) => { const s = allStaff.find((st) => st.id === id); return s ? `${s.first_name} ${s.last_name}` : id }),
+  }))
+
+  // Serialize base rota — grouped per day, then per staff with their task list
+  const baseRota = taskResult.days.map((day) => {
+    const byStaff: Record<string, { name: string; role: string; tasks: { code: string; shift: string }[] }> = {}
+    for (const a of day.assignments) {
+      const s = allStaff.find((st) => st.id === a.staff_id)
+      if (!byStaff[a.staff_id]) byStaff[a.staff_id] = { name: s ? `${s.first_name} ${s.last_name}` : a.staff_id, role: s?.role ?? "unknown", tasks: [] }
+      byStaff[a.staff_id].tasks.push({ code: a.function_label, shift: a.shift_type })
+    }
+    return {
+      date: day.date,
+      dayOfWeek: dayNames[new Date(day.date + "T12:00:00").getDay()],
+      staff: Object.entries(byStaff).map(([id, info]) => ({ id, ...info })),
+      offStaff: day.offStaff.map((id) => { const s = allStaff.find((st) => st.id === id); return s ? `${s.first_name} ${s.last_name} (${id})` : id }),
+    }
+  })
+
+  const engineWarningsSummary = taskResult.warnings
+    .filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
+    .slice(0, 20)
+
+  const systemPrompt = `You are an expert IVF lab scheduler reviewing a computer-generated task assignment rota.
+
+An algorithm (task engine) has already produced a VALID base rota that satisfies all Level 1 constraints:
+- L1.1 Leave respected — no one on leave is assigned to any task
+- L1.2 Budget exact (UNBREAKABLE) — each person works on EXACTLY days_per_week minus leave DISTINCT DAYS. Important: one person may perform MULTIPLE tasks in one day — that still counts as 1 working day.
+- L1.3 Skill gate — only staff with the required certified skill are assigned to each technique
+- L1.4 Technique coverage — each active technique+day meets its required minimum staffing
+
+YOUR JOB: Review the base rota and IMPROVE it by optimising Level 2 and Level 3 constraints. You may swap task assignments between staff but you MUST NOT violate any Level 1 constraint.
+
+In by-task mode, the key unit is: which qualified staff member performs which technique on which day.
+
+═══ LEVEL 2 — MANDATORY (your primary focus) ═══
+L2.1 TECHNIQUE ROTATION: Do not assign the same demanding technique to the same person every day. Rotate qualified staff so each person's weekly task profile varies. Use recent_top_tasks to see who is overloaded — give relief to those with high counts on specific techniques.
+L2.2 HARD RULES (is_hard=true): no_coincidir, supervisor_requerido, max_dias_consecutivos.
+L2.3 PREFERRED DAYS OFF: avoid_days is a STRONG signal — swap to give these days off if possible.
+L2.4 INTRA-DAY LOAD BALANCE: Avoid piling many tasks on one person while another qualified person handles one. Aim for similar task counts within the same department per day.
+
+═══ LEVEL 3 — OPTIMISATION (secondary) ═══
+L3.1 TASK FAIRNESS: Distribute high-demand and less-desirable techniques fairly across all qualified staff over the week.
+L3.2 WEEKLY VARIETY: Each person's task profile should differ day-to-day — variety reduces fatigue.
+L3.3 SOFT RULES (is_hard=false): Respect when possible.
+L3.4 EQUIPO_COMPLETO: Techniques designated equipo_completo should be flagged in whole_team_dates — do not enumerate every staff member for them.
+
+RULE TYPE REFERENCE:
+- no_coincidir: listed staff cannot work same day (scope=same_day) or same shift (scope=same_shift)
+- supervisor_requerido: supervisor must be on same day as supervised staff
+- max_dias_consecutivos: max consecutive working days
+- equipo_completo: technique done by all qualified staff on specified days (use whole_team_dates)
+- asignacion_fija: staff always on a specific task/day
+
+CRITICAL RULES:
+1. UNBREAKABLE — EXACT DAY BUDGET: Each person must appear on EXACTLY days_per_week minus leave DISTINCT DAYS. Count unique dates per person. One person with 3 tasks on Monday = 1 working day.
+2. Do NOT assign anyone on leave.
+3. For each technique, only assign staff who have the required certified skill (check required_skill vs certified_skills).
+4. Every active technique+day must maintain at least its coverage_by_day minimum.
+5. Return ALL assignments for ALL 7 days — not just changes.
+6. If you see no improvements to make, return the base rota unchanged.`
+
+  const userPrompt = `## Staff (${staffContext.length} members)
+${JSON.stringify(staffContext, null, 2)}
+
+## Techniques (${tecnicasContext.length} active)
+${JSON.stringify(tecnicasContext, null, 2)}
+
+## Dates (with leave)
+${JSON.stringify(datesWithInfo, null, 2)}
+
+## Rules (${rulesContext.length})
+${JSON.stringify(rulesContext, null, 2)}
+
+## Task Engine Base Rota
+${JSON.stringify(baseRota, null, 2)}
+
+## Engine Warnings
+${engineWarningsSummary.length > 0 ? engineWarningsSummary.join("\n") : "None — engine reports no issues."}
+
+Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intra-day load imbalances, hard rule violations, avoid_days violations) and return the optimised version. Explain what you changed and why in the assessment field.`
+
+  // ── 5. Call Claude ───────────────────────────────────────────────────────────
+  const assignmentSchema = z.object({
+    assessment: z.string().describe("One or two short sentences summarising rota quality and what was improved. Be concise."),
+    assignments: z.array(z.object({
+      staff_id: z.string(),
+      date: z.string().describe("ISO date YYYY-MM-DD"),
+      shift_type: z.string().describe("Shift code"),
+      function_label: z.string().describe("Technique code (codigo)"),
+    })),
+    whole_team_dates: z.array(z.object({
+      date: z.string(),
+      function_label: z.string(),
+    })).optional().describe("Techniques to mark as whole_team on these dates (equipo_completo)"),
+    warnings: z.array(z.string()).describe("Unresolved hard constraints only — one short phrase each."),
+  })
+
+  try {
+    const result = await generateObject({
+      model: anthropic("claude-sonnet-4-6"),
+      schema: assignmentSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+      maxOutputTokens: 16000,
+    })
+
+    const { assessment, assignments: aiAssignments, whole_team_dates, warnings: aiWarnings } = result.object
+
+    // ── Validate ────────────────────────────────────────────────────────────────
+    const validStaffIds = new Set(allStaff.map((s) => s.id))
+    const validDates = new Set(weekDates)
+    const validAssignments = aiAssignments.filter((a) => {
+      if (!validStaffIds.has(a.staff_id)) return false
+      if (!validDates.has(a.date)) return false
+      if (!validTecnicaCodes.has(a.function_label)) return false
+      if (!validShiftCodes.has(a.shift_type)) return false
+      if (leaveByDate[a.date]?.includes(a.staff_id)) return false
+      const reqSkill = tecnicaSkillMap.get(a.function_label)
+      if (reqSkill && !staffSkillMap.get(a.staff_id)?.has(reqSkill)) return false
+      return true
+    })
+
+    // Deduplicate by staff+date+function_label
+    const seen = new Set<string>()
+    const deduped = validAssignments.filter((a) => {
+      const key = `${a.staff_id}:${a.date}:${a.function_label}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    // ── Budget cap by DISTINCT WORKING DAYS ─────────────────────────────────────
+    const staffCaps: Record<string, number> = {}
+    for (const s of allStaff) {
+      const leaveDays = weekDates.filter((d) => leaveByDate[d]?.includes(s.id)).length
+      staffCaps[s.id] = Math.max(0, (s.days_per_week ?? 5) - leaveDays)
+    }
+
+    // Count distinct days per staff from deduped
+    const workingDays: Record<string, Set<string>> = {}
+    for (const a of deduped) {
+      if (!workingDays[a.staff_id]) workingDays[a.staff_id] = new Set()
+      workingDays[a.staff_id].add(a.date)
+    }
+    // Build allowed-dates per staff (trim to cap if over)
+    const allowedDates: Record<string, Set<string>> = {}
+    for (const [staffId, days] of Object.entries(workingDays)) {
+      const cap = staffCaps[staffId] ?? 5
+      allowedDates[staffId] = new Set([...days].sort().slice(0, cap))
+    }
+    const budgetCapped = deduped.filter((a) => allowedDates[a.staff_id]?.has(a.date))
+
+    // ── Under-budget rescue ─────────────────────────────────────────────────────
+    const finalWorkingDays: Record<string, Set<string>> = {}
+    for (const a of budgetCapped) {
+      if (!finalWorkingDays[a.staff_id]) finalWorkingDays[a.staff_id] = new Set()
+      finalWorkingDays[a.staff_id].add(a.date)
+    }
+    const finalAssignments = [...budgetCapped]
+
+    for (const s of allStaff) {
+      const cap = staffCaps[s.id] ?? 0
+      if (cap <= 0) continue
+      const current = finalWorkingDays[s.id]?.size ?? 0
+      if (current >= cap) continue
+
+      const aiDates = finalWorkingDays[s.id] ?? new Set<string>()
+      // Restore missing days from engine base (prefer days engine had this staff)
+      const engineDays = taskResult.days
+        .filter((d) => d.assignments.some((a) => a.staff_id === s.id) && !aiDates.has(d.date))
+        .sort((a, b) => a.assignments.length - b.assignments.length)
+
+      let added = current
+      for (const day of engineDays) {
+        if (added >= cap) break
+        for (const ta of day.assignments.filter((a) => a.staff_id === s.id)) {
+          finalAssignments.push({ staff_id: s.id, date: day.date, shift_type: ta.shift_type, function_label: ta.function_label })
+        }
+        if (!finalWorkingDays[s.id]) finalWorkingDays[s.id] = new Set()
+        finalWorkingDays[s.id].add(day.date)
+        added++
+      }
+
+      // Still under — fill least-staffed available days
+      if (added < cap) {
+        const usedDates = finalWorkingDays[s.id] ?? new Set<string>()
+        const availDays = weekDates
+          .filter((d) => !usedDates.has(d) && !leaveByDate[d]?.includes(s.id))
+          .sort((a, b) => finalAssignments.filter((x) => x.date === a).length - finalAssignments.filter((x) => x.date === b).length)
+        for (const d of availDays) {
+          if (added >= cap) break
+          const engineDay = taskResult.days.find((day) => day.date === d)
+          const engineTasks = engineDay?.assignments.filter((a) => a.staff_id === s.id) ?? []
+          if (engineTasks.length > 0) {
+            for (const ta of engineTasks) {
+              finalAssignments.push({ staff_id: s.id, date: d, shift_type: ta.shift_type, function_label: ta.function_label })
+            }
+          } else {
+            const qualifiedTec = tecnicas.find((t) => {
+              const rs = t.required_skill; return !rs || staffSkillMap.get(s.id)?.has(rs)
+            })
+            if (qualifiedTec) {
+              finalAssignments.push({ staff_id: s.id, date: d, shift_type: shiftTypes[0]?.code ?? "T1", function_label: qualifiedTec.codigo })
+            }
+          }
+          if (!finalWorkingDays[s.id]) finalWorkingDays[s.id] = new Set()
+          finalWorkingDays[s.id].add(d)
+          added++
+        }
+      }
+    }
+
+    // ── Technique coverage rescue ───────────────────────────────────────────────
+    if (taskCoverage) {
+      for (const [tecCode, coverageByDay] of Object.entries(taskCoverage)) {
+        for (const [dayCode, minCount] of Object.entries(coverageByDay as Record<string, number>)) {
+          if (minCount <= 0) continue
+          const date = weekDates.find((d) => dayNames[new Date(d + "T12:00:00").getDay()] === dayCode)
+          if (!date) continue
+          const current = finalAssignments.filter((a) => a.date === date && a.function_label === tecCode).length
+          if (current >= minCount) continue
+          const engineDay = taskResult.days.find((d) => d.date === date)
+          for (const ea of engineDay?.assignments.filter((a) => a.function_label === tecCode) ?? []) {
+            if (!finalAssignments.some((a) => a.staff_id === ea.staff_id && a.date === date && a.function_label === tecCode)) {
+              finalAssignments.push({ staff_id: ea.staff_id, date, shift_type: ea.shift_type, function_label: ea.function_label })
+            }
+          }
+        }
+      }
+    }
+
+    // ── Build DB rows ────────────────────────────────────────────────────────────
+    const wholeTeamAI = new Set((whole_team_dates ?? []).map((wt) => `${wt.date}:${wt.function_label}`))
+    const toInsert = finalAssignments
+      .filter((a) => !overrideKeys.has(`${a.staff_id}:${a.date}:${a.function_label ?? ""}`))
+      .map((a) => ({
+        organisation_id: orgId, rota_id: rotaId,
+        staff_id: a.staff_id, date: a.date, shift_type: a.shift_type,
+        is_manual_override: false, function_label: a.function_label,
+        tecnica_id: tecnicas.find((t) => t.codigo === a.function_label)?.id ?? null,
+        whole_team: wholeTeamByDate[a.date]?.has(a.function_label) || wholeTeamAI.has(`${a.date}:${a.function_label}`) || false,
+      }))
+
+    if (toInsert.length === 0 && overrideAssignments.length === 0) {
+      return { error: "Hybrid task generation produced 0 valid assignments." }
+    }
+
+    const { error: insertError } = await supabase
+      .from("rota_assignments")
+      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    if (insertError) return { error: insertError.message }
+
+    const warningsStr = aiWarnings.length > 0 ? `\n\nRemaining issues:\n${aiWarnings.map((w) => `• ${w}`).join("\n")}` : ""
+    const fullReasoning = `${assessment}${warningsStr}`
+    await supabase.from("rotas").update({ engine_warnings: [...aiWarnings, `[ai-reasoning] ${fullReasoning}`] } as never).eq("id", rotaId)
+
+    const { data: { user: auditUser } } = await supabase.auth.getUser()
+    logAuditEvent({ orgId, userId: auditUser?.id, userEmail: auditUser?.email, action: "rota_generated", entityType: "rota", entityId: rotaId, metadata: { weekStart, method: "ai_hybrid_task", assignmentCount: toInsert.length, preserveOverrides } })
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+
+    revalidatePath("/")
+    return { assignmentCount: toInsert.length, reasoning: fullReasoning }
+
+  } catch (e) {
+    // Fallback: store task engine base result
+    const engineAssignments = taskResult.days.flatMap((d) =>
+      d.assignments
+        .filter((a) => !overrideKeys.has(`${a.staff_id}:${d.date}:${a.function_label ?? ""}`))
+        .map((a) => ({
+          organisation_id: orgId, rota_id: rotaId,
+          staff_id: a.staff_id, date: d.date, shift_type: a.shift_type,
+          is_manual_override: false, function_label: a.function_label,
+          tecnica_id: tecnicas.find((t) => t.codigo === a.function_label)?.id ?? null,
+          whole_team: wholeTeamByDate[d.date]?.has(a.function_label) ?? false,
+        }))
+    )
+    if (engineAssignments.length > 0) {
+      await supabase.from("rota_assignments")
+        .upsert(engineAssignments as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    }
+    const userWarnings = taskResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
+    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+    revalidatePath("/")
+    const msg = e instanceof Error ? e.message : "AI optimisation failed"
+    return { assignmentCount: engineAssignments.length, reasoning: `⚠ Claude optimisation failed (${msg}). Showing task engine base rota instead.` }
+  }
+}
+
 // ── getActiveStaff ────────────────────────────────────────────────────────────
 
 export async function getActiveStaff(): Promise<StaffWithSkills[]> {
