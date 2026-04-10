@@ -502,11 +502,11 @@ export function AdminOrgDetailClient({
           </>) : (<>
             <div className="h-px bg-border" />
 
-            {/* Task Híbrido — coming soon */}
+            {/* Task Híbrido */}
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[14px] font-medium text-muted-foreground">Híbrido por Técnica <span className="text-[11px] font-normal">(próximamente)</span></p>
-                <p className="text-[12px] text-muted-foreground/60">Motor híbrido adaptado para organizaciones por tarea</p>
+                <p className="text-[14px] font-medium">Híbrido por Técnica</p>
+                <p className="text-[12px] text-muted-foreground">Motor híbrido adaptado para organizaciones por tarea</p>
               </div>
               <button type="button" disabled={isPending} onClick={() => setTaskHybridEnabled(!taskHybridEnabled)}
                 className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
