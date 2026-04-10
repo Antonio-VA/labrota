@@ -436,8 +436,7 @@ export function TaskPersonGrid({
                 onClick={() => onChipClick?.(s.id)}
               >
                 <div className="min-w-0">
-                  <p className={cn("font-medium leading-tight truncate text-foreground/80", compact ? "text-[9px]" : "text-[10px]")}>{s.first_name}</p>
-                  <p className={cn("text-muted-foreground truncate leading-none", compact ? "text-[8px]" : "text-[9px]")}>{s.last_name[0]}.</p>
+                  <p className={cn("font-medium leading-tight truncate text-foreground/80", compact ? "text-[9px]" : "text-[10px]")}>{s.first_name} {s.last_name[0]}.</p>
                 </div>
               </div>
               {/* Day cells */}
