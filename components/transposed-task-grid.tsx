@@ -153,20 +153,6 @@ function TechDayCell({
         compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5 pb-5",
       )}
     >
-      {isWholeTeam && (
-        <span
-          className={cn("inline-flex items-center gap-0.5 rounded pl-1 pr-0.5 font-semibold group/chip transition-colors duration-100 bg-primary/10 text-primary", compact ? "text-[10px] py-0" : "text-[11px] py-0.5")}
-        >
-          <Users className="size-2.5" />
-          All
-          {!isPublished && (
-            <button onClick={(e) => { e.stopPropagation(); onToggleWholeTeam(dayDate, tec.codigo, true) }}
-              className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity ml-0.5">
-              <X className="size-2.5" />
-            </button>
-          )}
-        </span>
-      )}
       {individualAssignments.map((a) => {
         const sColor = staffColorMap[a.staff_id]
         const isHov = hoveredStaffId === a.staff_id
@@ -198,9 +184,23 @@ function TechDayCell({
           </Tooltip>
         )
       })}
+      {isWholeTeam && (
+        <span
+          className={cn("inline-flex items-center gap-0.5 rounded pl-1 pr-0.5 font-semibold group/chip transition-colors duration-100 bg-primary/10 text-primary", compact ? "text-[10px] py-0" : "text-[11px] py-0.5")}
+        >
+          <Users className="size-2.5" />
+          All
+          {!isPublished && (
+            <button onClick={(e) => { e.stopPropagation(); onToggleWholeTeam(dayDate, tec.codigo, true) }}
+              className="opacity-0 group-hover/chip:opacity-100 hover:text-destructive transition-opacity ml-0.5">
+              <X className="size-2.5" />
+            </button>
+          )}
+        </span>
+      )}
       {!isPublished && (
         <div onClick={openSelector}
-          className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b">
+          className="absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b">
           <Plus className="size-3 text-muted-foreground" />
         </div>
       )}
@@ -357,7 +357,8 @@ export function TransposedTaskGrid({
             </div>
           )
         })}
-        <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
+        <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center"
+          style={{ borderLeft: "1px dashed var(--border)" }}>
           <p className={cn("font-semibold text-muted-foreground", compact ? "text-[9px]" : "text-[11px]")}>OFF</p>
         </div>
 
@@ -419,7 +420,8 @@ export function TransposedTaskGrid({
 
               {/* OFF column — inline initials badges */}
               <div key={`off-${day.date}`}
-                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start items-start bg-muted/20", isSat && "border-t border-dashed border-t-border")}>
+                className={cn("border-b border-border p-1 flex flex-wrap gap-0.5 content-start items-start bg-muted/20", isSat && "border-t border-dashed border-t-border")}
+                style={{ borderLeft: "1px dashed var(--border)" }}>
                 {[...leaveIds].map((sid) => {
                   const s = staffList.find((st) => st.id === sid)
                   if (!s) return null
