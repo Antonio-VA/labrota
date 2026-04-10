@@ -244,7 +244,7 @@ export function TransposedTaskGrid({
 
   if (loading) {
     const skelTecnicas = 5
-    const skelGridCols = `100px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
+    const skelGridCols = `80px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
     return (
       <div className="flex flex-col flex-1 min-h-0 gap-3">
         <div className="overflow-auto flex-1 rounded-lg border border-border">
@@ -338,7 +338,7 @@ export function TransposedTaskGrid({
   if (!data || localDays.length === 0 || tecnicas.length === 0) return null
 
   // Narrow technique columns (space for ~2 badges), wider OFF column
-  const gridCols = `100px repeat(${tecnicas.length}, minmax(62px, 88px)) minmax(130px, 1fr)`
+  const gridCols = `80px repeat(${tecnicas.length}, minmax(62px, 88px)) minmax(130px, 1fr)`
 
   return (
     <div className="overflow-auto flex-1 rounded-lg border border-border">
@@ -356,8 +356,7 @@ export function TransposedTaskGrid({
             </div>
           )
         })}
-        <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 text-center"
-          style={{ backgroundImage: "radial-gradient(circle, #ccddee 1.5px, transparent 1.5px)", backgroundSize: "8px 8px", backgroundPosition: "4px 4px" }}>
+        <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 text-center">
           <p className={cn("font-semibold text-muted-foreground", compact ? "text-[9px]" : "text-[11px]")}>OFF</p>
         </div>
 
@@ -379,7 +378,7 @@ export function TransposedTaskGrid({
             <>
               {/* Row label */}
               <div key={`header-${day.date}`} onClick={() => onDateClick?.(day.date)}
-                className={cn("border-b border-r border-border px-2 py-1.5 flex items-center justify-end gap-1.5 bg-muted sticky left-0 z-10",
+                className={cn("border-b border-r border-border px-1.5 py-1.5 flex items-center justify-end gap-1 bg-muted sticky left-0 z-10",
                   onDateClick && "cursor-pointer hover:bg-muted/80", holiday && "bg-amber-50/60")}
 >
                 {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
@@ -419,7 +418,7 @@ export function TransposedTaskGrid({
 
               {/* OFF column — inline initials badges */}
               <div key={`off-${day.date}`}
-                className="border-b border-l border-border p-1 flex flex-wrap gap-0.5 content-start items-start"
+                className="border-b border-border p-1 flex flex-wrap gap-0.5 content-start items-start"
                 style={{ backgroundImage: "radial-gradient(circle, #ccddee 1.5px, transparent 1.5px)", backgroundSize: "8px 8px", backgroundPosition: "4px 4px" }}>
                 {[...leaveIds].map((sid) => {
                   const s = staffList.find((st) => st.id === sid)
@@ -443,7 +442,7 @@ export function TransposedTaskGrid({
                     <Tooltip key={s.id}>
                       <TooltipTrigger render={
                         <span
-                          className={cn("inline-flex items-center rounded border border-border/50 font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[8px] px-1 py-0" : "text-[9px] px-1 py-0.5")}
+                          className={cn("inline-flex items-center rounded border border-border/50 bg-background font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[8px] px-1 py-0" : "text-[9px] px-1 py-0.5")}
                           onMouseEnter={() => setHovered(s.id)}
                           onMouseLeave={() => setHovered(null)}
                           style={isHov && colorChips && sColor ? { backgroundColor: `${sColor}70`, color: "#1e293b", borderColor: `${sColor}99` } : undefined}
