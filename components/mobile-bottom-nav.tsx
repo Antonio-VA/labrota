@@ -2,10 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange, Briefcase, ClipboardList, Sparkles } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase, ClipboardList } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
+import { useViewerStaffId, useCanEdit } from "@/lib/role-context"
 
 type NavItem = { key: string; icon: React.ElementType; href: string }
 
@@ -18,8 +18,8 @@ const MY_ROTA_ITEM: NavItem = { key: "myRota", icon: ClipboardList, href: "/my-r
 const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
 const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias", ai: "AI" },
-  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave", ai: "AI" },
+  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias" },
+  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave" },
 }
 
 export function MobileBottomNav() {
@@ -30,9 +30,7 @@ export function MobileBottomNav() {
 
   const showLeaves = canEdit || !!viewerStaffId
   const showMyRota = !!viewerStaffId
-  const showAI = canEdit
   const navItems: NavItem[] = [
-    ...(showAI ? [{ key: "ai", icon: Sparkles, href: "" }] : []),
     ...(showLeaves ? [LEAVES_ITEM] : []),
     ...BASE_ITEMS,
     ...(showMyRota ? [MY_ROTA_ITEM] : []),
@@ -68,10 +66,6 @@ export function MobileBottomNav() {
   useEffect(() => { setActiveKey(null) }, [pathname])
 
   const handleTap = useCallback((key: string, href: string) => {
-    if (key === "ai") {
-      window.dispatchEvent(new Event("labrota:toggle-chat"))
-      return
-    }
     setActiveKey(key)
     router.push(href)
   }, [router])
@@ -86,19 +80,6 @@ export function MobileBottomNav() {
     >
       <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
         {navItems.map((item) => {
-          if (item.key === "ai") {
-            return (
-              <button
-                key="ai"
-                onTouchStart={() => handleTap("ai", "")}
-                onClick={() => handleTap("ai", "")}
-                className="flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full text-muted-foreground"
-              >
-                <Sparkles className="size-[26px]" strokeWidth={1.5} />
-                <span className="text-[11px] leading-none font-medium">AI</span>
-              </button>
-            )
-          }
           const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
           const isActive = activeKey ? activeKey === item.key : routeActive
           return (
