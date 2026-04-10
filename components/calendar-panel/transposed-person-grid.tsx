@@ -133,7 +133,7 @@ export function TransposedPersonGrid({
   // Task mode
   const isTaskMode = data?.rotaDisplayMode === "by_task"
   const tecnicaByCodeT = Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
-  const defaultShiftCodeT = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/app/(clinic)/rota/actions").ShiftType
+  const defaultShiftCodeT = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
 
   // Multi-assignment map: staffId → date → Assignment[]
   const taskAssignMapT: Record<string, Record<string, Assignment[]>> = {}

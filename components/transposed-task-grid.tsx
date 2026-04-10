@@ -160,7 +160,7 @@ export function TransposedTaskGrid({
   const [pickerState, setPickerState] = useState<{ date: string; tecnicaCodigo: string } | null>(null)
 
   async function handleAdd(staffId: string, date: string, tecnicaCodigo: string) {
-    const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/app/(clinic)/rota/actions").ShiftType
+    const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const staffMember = staffMap[staffId]
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {

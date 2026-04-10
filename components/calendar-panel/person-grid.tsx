@@ -198,7 +198,7 @@ export function PersonGrid({
   // Task mode — multi-assignment map and helpers
   const isTaskMode = data?.rotaDisplayMode === "by_task"
   const tecnicaByCode = useMemo(() => Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t])), [data?.tecnicas])
-  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/app/(clinic)/rota/actions").ShiftType
+  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
 
   // Multi-assignment map: staffId → date → Assignment[]
   const taskAssignMap = useMemo(() => {
