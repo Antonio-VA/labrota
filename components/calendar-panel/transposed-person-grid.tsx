@@ -25,21 +25,24 @@ function resolveColorT(color: string): string {
   return COLOR_HEX_T[color] ?? "#94A3B8"
 }
 
-function TaskChipT({ label, color, onRemove }: { label: string; color: string; onRemove?: () => void }) {
+function TaskChipT({ label, color, onRemove, forceHover, onHover }: {
+  label: string; color: string; onRemove?: () => void; forceHover?: boolean; onHover?: (code: string | null) => void
+}) {
   const [hov, setHov] = useState(false)
+  const active = hov || forceHover
   return (
     <span
       className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold border transition-all duration-100 cursor-default leading-none"
       style={{
-        borderColor: hov ? color + "60" : "transparent",
-        background: hov ? color + "18" : "transparent",
-        color: hov ? color : "inherit",
+        borderColor: active ? color + "60" : "transparent",
+        background: active ? color + "18" : "transparent",
+        color: active ? color : "inherit",
       }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseEnter={() => { setHov(true); onHover?.(label) }}
+      onMouseLeave={() => { setHov(false); onHover?.(null) }}
     >
       {label}
-      {onRemove && hov && (
+      {onRemove && active && (
         <button className="ml-0.5 leading-none opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); onRemove() }}>×</button>
       )}
     </span>
@@ -98,6 +101,7 @@ export function TransposedPersonGrid({
   const t = useTranslations("schedule")
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
+  const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
 
   if (!data) return null
 
@@ -306,10 +310,14 @@ export function TransposedPersonGrid({
                   const assignedCodes = new Set(taskAssigns.map((a) => a.function_label!))
                   const isOpen = pickerStateT?.staffId === s.id && pickerStateT?.date === day.date
                   const isLast = i === allMembers.length - 1
+                  // Highlight cell if it contains the hovered tecnica
+                  const isTecHighlighted = highlightEnabled && hoveredTecnica !== null && taskAssigns.some((a) => a.function_label === hoveredTecnica)
                   return (
                     <div
                       key={s.id}
-                      className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", isLast && "last:border-r-0", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]", onLeave && "bg-muted/20", !isPublished && !onLeave && "cursor-pointer hover:bg-muted/30")}
+                      className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center transition-colors", isLast && "last:border-r-0", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]",
+                        onLeave ? "bg-muted/20" : isTecHighlighted ? "bg-primary/10" : "bg-background",
+                        !isPublished && !onLeave && "cursor-pointer hover:bg-muted/30")}
                       onClick={!isPublished && !onLeave ? () => setPickerStateT(isOpen ? null : { staffId: s.id, date: day.date }) : undefined}
                     >
                       {onLeave ? (
@@ -318,7 +326,15 @@ export function TransposedPersonGrid({
                         <>
                           {taskAssigns.map((a) => {
                             const tec = tecnicaByCodeT[a.function_label!]
-                            return <TaskChipT key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"} onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined} />
+                            const isThisHov = a.function_label === hoveredTecnica
+                            return (
+                              <TaskChipT
+                                key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"}
+                                forceHover={isThisHov && highlightEnabled}
+                                onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined}
+                                onHover={(code) => setHoveredTecnica(code)}
+                              />
+                            )
                           })}
                           {!isPublished && !isOpen && <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"><Plus className="size-3" /></span>}
                           {isOpen && <TaskPickerT tecnicas={data?.tecnicas ?? []} assigned={assignedCodes} onSelect={(c) => handleTaskAddT(s.id, day.date, c)} onClose={() => setPickerStateT(null)} />}

@@ -363,14 +363,22 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
     const day = data.days[dayIdx]
     const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
     const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
+    // Include ALL individual assignments (even those with whole_team=true, since setWholeTeam marks all rows)
     const names = assignments
-      .filter((a) => !(a as unknown as { whole_team?: boolean }).whole_team)
+      .filter((a) => a.staff?.first_name && a.staff.first_name !== "All" && a.staff_id)
       .map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
     if (isWholeTeam) {
       const allLabel = locale === "es" ? "Todo" : "All"
       return names.length > 0 ? `${allLabel} / ${names.join(" / ")}` : allLabel
     }
     return names.join(" / ") || "—"
+  }
+
+  const base = tableStyles()
+  const compactStyles = {
+    ...base,
+    styles: { ...base.styles, fontSize: 7, cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, minCellHeight: 7 },
+    headStyles: { ...base.headStyles, fontSize: 7, cellPadding: { top: 2, right: 2, bottom: 2, left: 2 } },
   }
 
   if (daysAsRows) {
@@ -390,7 +398,7 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
       startY,
       head: [["", ...techHeaders]],
       body,
-      ...tableStyles(),
+      ...compactStyles,
       columnStyles: { 0: { cellWidth: 22, fontStyle: "bold", halign: "center", fillColor: COLORS.white, textColor: COLORS.black } },
     })
   } else {
@@ -408,7 +416,7 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
       startY,
       head: [[locale === "es" ? "Técnica" : "Technique", ...headers]],
       body,
-      ...tableStyles(),
+      ...compactStyles,
       columnStyles: { 0: { cellWidth: 30, fontStyle: "bold", fillColor: COLORS.white, textColor: COLORS.black } },
     })
   }

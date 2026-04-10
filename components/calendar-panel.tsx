@@ -1169,7 +1169,27 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   )}
                 </div>
               )}
-              {weekData && (weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" ? (
+              {weekData && (weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" && daysAsRows ? (
+                <TransposedPersonGrid
+                  data={weekData}
+                  staffList={filteredStaffList}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  shiftTimes={weekData?.shiftTimes ?? null}
+                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
+                  publicHolidays={weekData?.publicHolidays ?? {}}
+                  onChipClick={handleDesktopChipClick}
+                  onDateClick={handleMonthDayClick}
+                  colorChips={colorChips}
+                  compact={compact}
+                  simplified={personSimplified}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+                  gridSetDaysRef={gridSetDaysRef}
+                />
+              ) : weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" ? (
                 <TaskPersonGrid
                   data={weekData}
                   staffList={filteredStaffList}
