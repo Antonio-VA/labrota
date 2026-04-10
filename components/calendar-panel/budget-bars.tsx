@@ -72,14 +72,9 @@ export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDa
       if (isByTask && !a.function_label) continue
       // Skip assignments from inactive/deactivated staff not in active list
       if (!staffMap[a.staff_id]) continue
-      if (isByTask) {
-        // Count unique days, not individual task assignments
-        if (!staffDaySeen[a.staff_id].has(day.date)) {
-          staffDaySeen[a.staff_id].add(day.date)
-          if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
-          else staffMap[a.staff_id].count++
-        }
-      } else {
+      // Always count unique days — never count multiple assignments on the same day twice
+      if (!staffDaySeen[a.staff_id].has(day.date)) {
+        staffDaySeen[a.staff_id].add(day.date)
         if (isGuardiaMode && isWeekend) staffMap[a.staff_id].guardiaCount++
         else staffMap[a.staff_id].count++
       }
