@@ -117,7 +117,17 @@ export function buildStrategyCards(rotaDisplayMode: string, engineConfig: import
       key: "ai_optimal", icon: <Sparkles className="size-5" />,
       titleKey: "taskOptimal", descKey: "taskOptimalDesc",
       badge: "IA", badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      speed: "fast",
     })
+    // 2. Task hybrid (if enabled for org)
+    if (engineConfig?.taskHybridEnabled ?? false) {
+      cards.push({
+        key: "ai_hybrid", icon: <BrainCircuit className="size-5" />,
+        titleKey: "aiHybrid", descKey: "aiHybridDesc",
+        badge: "HYBRID", badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        speed: "slow",
+      })
+    }
   } else {
     // 1. Shift-based optimal
     cards.push({
