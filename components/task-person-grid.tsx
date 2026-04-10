@@ -173,7 +173,7 @@ function TaskPersonCell({
       ref={cellRef}
       className={cn(
         "border-b border-r border-border relative flex flex-wrap gap-0.5 items-center content-center group/cell bg-background",
-        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5 pb-4",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[28px] p-0.5",
         isLast && "border-r-0",
       )}
     >
