@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { MobileGate } from "@/components/mobile-gate"
 import { StaffForm } from "@/components/staff-form"
-import { StaffDetailTabs } from "@/components/staff-detail-tabs"
 import { StaffLeaveBalances } from "@/components/staff-leave-balances"
 import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 import { ChevronLeft } from "lucide-react"
@@ -58,13 +57,7 @@ export default async function EditStaffPage({
 
   const hrActive = hrModule?.status === "active"
 
-  let hrData: {
-    leaveTypes: CompanyLeaveType[]
-    balances: HolidayBalance[]
-    config: HolidayConfig
-    leaves: Leave[]
-    year: number
-  } | null = null
+  let balancesTab: React.ReactNode = null
 
   if (hrActive) {
     const today = new Date().toISOString().slice(0, 10)
@@ -76,28 +69,29 @@ export default async function EditStaffPage({
     ])
 
     const hConfig = configRes.data
-    const currentYear = hConfig
-      ? getLeaveYear(today, hConfig.leave_year_start_month, hConfig.leave_year_start_day)
-      : new Date().getFullYear()
-
-    const { data: balancesData } = await supabase
-      .from("holiday_balance")
-      .select("*")
-      .eq("staff_id", id)
-      .eq("year", currentYear) as { data: HolidayBalance[] | null }
-
     if (hConfig) {
-      hrData = {
-        leaveTypes: typesRes.data ?? [],
-        balances: balancesData ?? [],
-        config: hConfig,
-        leaves: (leavesRes.data ?? []) as Leave[],
-        year: currentYear,
-      }
+      const currentYear = getLeaveYear(today, hConfig.leave_year_start_month, hConfig.leave_year_start_day)
+
+      const { data: balancesData } = await supabase
+        .from("holiday_balance")
+        .select("*")
+        .eq("staff_id", id)
+        .eq("year", currentYear) as { data: HolidayBalance[] | null }
+
+      balancesTab = (
+        <StaffLeaveBalances
+          staffId={id}
+          staffName={`${staff.first_name} ${staff.last_name}`}
+          leaveTypes={typesRes.data ?? []}
+          balances={balancesData ?? []}
+          config={hConfig}
+          leaves={(leavesRes.data ?? []) as Leave[]}
+          year={currentYear}
+          publicHolidays={[]}
+        />
+      )
     }
   }
-
-  const staffName = `${staff.first_name} ${staff.last_name}`
 
   return (
     <>
@@ -107,28 +101,21 @@ export default async function EditStaffPage({
             <div>
               <h1 className="text-[18px] font-medium flex items-center gap-1">
                 <Link href="/staff" className="text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="size-5" /></Link>
-                {staffName}
+                {t("editStaff")}
               </h1>
+              <p className="text-[14px] text-muted-foreground mt-1">
+                {staff.first_name} {staff.last_name}
+              </p>
             </div>
-            <StaffDetailTabs
-              staffName={staffName}
-              profile={
-                <StaffForm mode="edit" staff={staff} tecnicas={tecnicas} departments={departments} shiftTypes={shiftTypes} guardiaMode={guardiaMode} hasViewerAccount={hasViewerAccount} />
-              }
-              balances={
-                hrData ? (
-                  <StaffLeaveBalances
-                    staffId={id}
-                    staffName={staffName}
-                    leaveTypes={hrData.leaveTypes}
-                    balances={hrData.balances}
-                    config={hrData.config}
-                    leaves={hrData.leaves}
-                    year={hrData.year}
-                    publicHolidays={[]}
-                  />
-                ) : null
-              }
+            <StaffForm
+              mode="edit"
+              staff={staff}
+              tecnicas={tecnicas}
+              departments={departments}
+              shiftTypes={shiftTypes}
+              guardiaMode={guardiaMode}
+              hasViewerAccount={hasViewerAccount}
+              balancesTab={balancesTab}
             />
           </div>
         </MobileGate>

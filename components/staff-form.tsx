@@ -256,6 +256,7 @@ export function StaffForm({
   defaultDaysPerWeek = 5,
   guardiaMode = false,
   hasViewerAccount = false,
+  balancesTab,
 }: {
   mode: "create" | "edit"
   staff?: StaffWithSkills
@@ -265,6 +266,7 @@ export function StaffForm({
   defaultDaysPerWeek?: number
   guardiaMode?: boolean
   hasViewerAccount?: boolean
+  balancesTab?: React.ReactNode
 }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
@@ -373,15 +375,19 @@ export function StaffForm({
     })
   }
 
-  const STEPS = ["datos", "disponibilidad", "tareas"] as const
-  type Step = typeof STEPS[number]
+  const thr = useTranslations("hr")
+  type Step = "datos" | "disponibilidad" | "tareas" | "balances"
+  const STEPS: Step[] = balancesTab
+    ? ["datos", "disponibilidad", "tareas", "balances"]
+    : ["datos", "disponibilidad", "tareas"]
   const [tab, setTab] = useState<Step>("datos")
   const stepIndex = STEPS.indexOf(tab)
   const isWizard = mode === "create"
-  const stepLabels = {
+  const stepLabels: Record<string, string> = {
     datos: t("wizardStep1"),
     disponibilidad: t("wizardStep2"),
     tareas: t("wizardStep3"),
+    balances: thr("balances"),
   }
 
   return (
@@ -743,6 +749,13 @@ export function StaffForm({
       </Section>
 
       </div>
+
+      {/* === TAB: Balances === */}
+      {balancesTab && (
+        <div className={cn("flex flex-col gap-6", tab !== "balances" && "hidden")}>
+          {balancesTab}
+        </div>
+      )}
 
       {/* Notes — always visible */}
       <Section label={t("fields.notes")}>
