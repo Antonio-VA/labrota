@@ -15,7 +15,10 @@ import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 // AdminHistoryUpload and AdminImplementation moved to implementation tab via AdminOrgDetailClient
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { AdminBackups } from "@/components/admin-backups"
+import { AdminHrModule } from "@/components/admin-hr-module"
 import { updateOrgRegional } from "@/app/admin/actions"
+import { getAdminHrModuleStatus, adminGetHolidayConfig, adminGetCompanyLeaveTypes } from "@/app/admin/hr-module-actions"
+import type { CompanyLeaveType, HolidayConfig, HrModule } from "@/lib/types/database"
 
 export default async function OrgDetailPage({
   params,
@@ -59,6 +62,12 @@ export default async function OrgDetailPage({
   if (!orgRes.data) notFound()
 
   const org = orgRes.data as Organisation
+
+  // HR Module data
+  const hrStatus = await getAdminHrModuleStatus(id)
+  const [hrConfig, hrLeaveTypes] = hrStatus.active
+    ? await Promise.all([adminGetHolidayConfig(id), adminGetCompanyLeaveTypes(id)])
+    : [null, [] as CompanyLeaveType[]]
 
   // Rota count by generation method
   const rotaTypes = rotasByTypeRes.data ?? []
@@ -337,6 +346,16 @@ export default async function OrgDetailPage({
               hasRota: (assignmentRes.count ?? 0) > 0,
               rotaCount: rotasRes.count ?? 0,
             }}
+          />
+        }
+        rrhh={
+          <AdminHrModule
+            orgId={id}
+            installed={hrStatus.installed}
+            active={hrStatus.active}
+            installedAt={hrStatus.installedAt}
+            config={hrConfig}
+            leaveTypes={hrLeaveTypes}
           />
         }
         backups={<AdminBackups orgId={id} />}

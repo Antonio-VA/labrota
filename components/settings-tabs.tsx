@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
-const BASE_TAB_KEYS = ["organizacion", "funcionalidades", "facturacion", "usuarios", "notificaciones", "rrhh", "implementacion", "historial"] as const
+const BASE_TAB_KEYS = ["organizacion", "funcionalidades", "facturacion", "usuarios", "notificaciones", "implementacion", "historial"] as const
 type TabKey = typeof BASE_TAB_KEYS[number]
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
@@ -13,26 +13,24 @@ const TAB_LABEL_KEYS: Record<TabKey, string> = {
   facturacion:      "billing",
   usuarios:         "users",
   notificaciones:   "notifications",
-  rrhh:             "hr",
   implementacion:   "implementation",
   historial:        "history",
 }
 
 export function SettingsTabs({
-  organizacion, funcionalidades, facturacion, usuarios, notificaciones, rrhh, implementacion, historial,
+  organizacion, funcionalidades, facturacion, usuarios, notificaciones, implementacion, historial,
 }: {
   organizacion:     React.ReactNode
   funcionalidades:  React.ReactNode
   facturacion:      React.ReactNode
   usuarios:         React.ReactNode
   notificaciones?:  React.ReactNode
-  rrhh?:            React.ReactNode
   implementacion:   React.ReactNode
   historial:        React.ReactNode
 }) {
   const t = useTranslations("settingsTabs")
   const [active, setActive] = useState<TabKey>("organizacion")
-  const content: Record<TabKey, React.ReactNode> = { organizacion, funcionalidades, facturacion, usuarios, notificaciones: notificaciones ?? null, rrhh: rrhh ?? null, implementacion, historial }
+  const content: Record<TabKey, React.ReactNode> = { organizacion, funcionalidades, facturacion, usuarios, notificaciones: notificaciones ?? null, implementacion, historial }
 
   // Filter out tabs with no content (e.g. notificaciones for non-admins)
   const tabKeys = BASE_TAB_KEYS.filter((key) => content[key] !== null)

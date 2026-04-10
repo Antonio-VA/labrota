@@ -10,19 +10,17 @@ const OrgUsersTable = dynamic(() => import("@/components/org-users-table").then(
 const OrgSettingsForm = dynamic(() => import("@/components/org-settings-form").then((m) => m.OrgSettingsForm), { loading: TabSkeleton })
 const SettingsImplementation = dynamic(() => import("@/components/settings-implementation").then((m) => m.SettingsImplementation), { loading: TabSkeleton })
 const AuditLogViewer = dynamic(() => import("@/components/audit-log-viewer").then((m) => m.AuditLogViewer), { loading: TabSkeleton })
-const HrModuleSettings = dynamic(() => import("@/components/hr-module-settings").then((m) => m.HrModuleSettings), { loading: TabSkeleton })
 const SettingsFuncionalidades = dynamic(() => import("@/components/settings-funcionalidades").then((m) => m.SettingsFuncionalidades), { loading: TabSkeleton })
 const SettingsFacturacion = dynamic(() => import("@/components/settings-facturacion").then((m) => m.SettingsFacturacion), { loading: TabSkeleton })
 const SettingsNotifications = dynamic(() => import("@/components/settings-notifications").then((m) => m.SettingsNotifications), { loading: TabSkeleton })
 import { getOrgUsers, getOrgSettings, getOrgId, type OrgUser } from "./actions"
 import { getStepCompletions, syncStepCompletions, type StepCompletion } from "./implementation-actions"
 import { getPublishRecipients, getRotaEmailFormat } from "@/app/(clinic)/notifications-actions"
-import { getHrModuleStatus } from "./hr-module-actions"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getAuthUser } from "@/lib/auth-cache"
 import { getTranslations } from "next-intl/server"
-import type { Staff, HrModule } from "@/lib/types/database"
+import type { Staff } from "@/lib/types/database"
 
 export default async function SettingsPage() {
   await requireEditor()
@@ -39,7 +37,6 @@ export default async function SettingsPage() {
   let isAdmin = false
   let notificationRecipients: Awaited<ReturnType<typeof getPublishRecipients>> = []
   let emailFormat: "by_shift" | "by_person" = "by_shift"
-  let hrStatus = { installed: false, active: false, installedAt: null as string | null, record: null as HrModule | null }
 
   if (orgId) {
     const supabase = await createClient()
@@ -81,9 +78,6 @@ export default async function SettingsPage() {
     // Sync step completions (records newly completed steps) then fetch all
     await syncStepCompletions()
     stepCompletions = await getStepCompletions()
-
-    // Fetch HR module status
-    hrStatus = await getHrModuleStatus()
 
     // Fetch notification recipients (admin only)
     if (isAdmin) {
@@ -142,16 +136,6 @@ export default async function SettingsPage() {
             notificaciones={
               isAdmin ? (
                 <SettingsNotifications initialRecipients={notificationRecipients} initialEmailFormat={emailFormat} displayMode={orgSettings?.displayMode ?? "by_shift"} />
-              ) : undefined
-            }
-            rrhh={
-              isAdmin ? (
-                <HrModuleSettings
-                  installed={hrStatus.installed}
-                  active={hrStatus.active}
-                  installedAt={hrStatus.installedAt}
-                  record={hrStatus.record}
-                />
               ) : undefined
             }
             implementacion={
