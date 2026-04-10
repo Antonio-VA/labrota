@@ -1,17 +1,76 @@
 "use client"
 
-import { useState, Fragment } from "react"
+import { useState, useRef, useEffect, Fragment } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Check, ArrowRightLeft } from "lucide-react"
+import { AlertTriangle, Check, ArrowRightLeft, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { removeAssignment, upsertAssignment, type RotaWeekData, type RotaDay, type ShiftTimes } from "@/app/(clinic)/rota/actions"
-import type { StaffWithSkills } from "@/lib/types/database"
+import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import { PersonShiftSelector } from "./person-shift-selector"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
 import { ROLE_ORDER, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
+
+// ── Task-mode helpers (mirrored from person-grid) ─────────────────────────────
+
+const COLOR_HEX_T: Record<string, string> = {
+  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
+  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
+}
+function resolveColorT(color: string): string {
+  if (!color) return "#94A3B8"
+  if (color.startsWith("#")) return color
+  return COLOR_HEX_T[color] ?? "#94A3B8"
+}
+
+function TaskChipT({ label, color, onRemove }: { label: string; color: string; onRemove?: () => void }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold border transition-all duration-100 cursor-default leading-none"
+      style={{
+        borderColor: hov ? color + "60" : "transparent",
+        background: hov ? color + "18" : "transparent",
+        color: hov ? color : "inherit",
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      {label}
+      {onRemove && hov && (
+        <button className="ml-0.5 leading-none opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); onRemove() }}>×</button>
+      )}
+    </span>
+  )
+}
+
+function TaskPickerT({ tecnicas, assigned, onSelect, onClose }: {
+  tecnicas: Tecnica[]; assigned: Set<string>; onSelect: (codigo: string) => void; onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [onClose])
+  const available = tecnicas.filter((t) => t.activa && !assigned.has(t.codigo))
+  if (available.length === 0) return null
+  return (
+    <div ref={ref} className="absolute left-0 top-full mt-0.5 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto">
+      {available.map((t) => (
+        <button key={t.id} className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSelect(t.codigo); onClose() }}>
+          <span className="size-2 rounded-full shrink-0" style={{ background: resolveColorT(t.color) }} />
+          <span className="truncate">{t.nombre_es}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function TransposedPersonGrid({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
@@ -71,6 +130,61 @@ export function TransposedPersonGrid({
     }
   }
 
+  // Task mode
+  const isTaskMode = data?.rotaDisplayMode === "by_task"
+  const tecnicaByCodeT = Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
+  const defaultShiftCodeT = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/app/(clinic)/rota/actions").ShiftType
+
+  // Multi-assignment map: staffId → date → Assignment[]
+  const taskAssignMapT: Record<string, Record<string, Assignment[]>> = {}
+  if (isTaskMode) {
+    for (const day of localDays) {
+      for (const a of day.assignments) {
+        if (!taskAssignMapT[a.staff_id]) taskAssignMapT[a.staff_id] = {}
+        if (!taskAssignMapT[a.staff_id][day.date]) taskAssignMapT[a.staff_id][day.date] = []
+        taskAssignMapT[a.staff_id][day.date].push(a)
+      }
+    }
+  }
+
+  // Whole-team by date
+  const wholeTeamByDateT: Record<string, Assignment[]> = {}
+  if (isTaskMode) {
+    for (const day of localDays) {
+      wholeTeamByDateT[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
+    }
+  }
+
+  const [pickerStateT, setPickerStateT] = useState<{ staffId: string | null; date: string } | null>(null)
+
+  async function handleTaskRemoveT(assignmentId: string) {
+    setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) })))
+    const result = await removeAssignment(assignmentId)
+    if (result.error) toast.error(result.error)
+  }
+
+  async function handleTaskAddT(staffId: string | null, date: string, tecnicaCodigo: string) {
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const staffMember = staffId ? allMembers.find((s) => s.id === staffId) : null
+    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
+      ...d,
+      assignments: [...d.assignments, {
+        id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCodeT,
+        is_manual_override: true, trainee_staff_id: null, notes: null,
+        function_label: tecnicaCodigo, tecnica_id: null, whole_team: staffId === null,
+        staff: staffMember ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never } : { id: "", first_name: "All", last_name: "", role: "lab" as never },
+      }],
+    }))
+    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCodeT, functionLabel: tecnicaCodigo })
+    if (result.error) toast.error(result.error)
+    else {
+      setLocalDays((prev) => prev.map((d) => ({
+        ...d,
+        assignments: d.assignments.map((a) => a.id === tempId ? { ...a, id: result.id ?? tempId } : a),
+      })))
+    }
+  }
+
   // Group staff by role for sub-headers
   const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
   for (const s of activeStaff) {
@@ -82,12 +196,21 @@ export function TransposedPersonGrid({
   const allMembers = roleGroups.flatMap((g) => g.members)
   const days = localDays
 
+  // Task mode: prepend an ALL column
+  const extraCols = isTaskMode ? 1 : 0
+  const totalCols = allMembers.length + extraCols
+
   return (
     <div className="rounded-lg border border-border overflow-auto w-full">
-      <div style={{ display: "grid", gridTemplateColumns: `80px repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: allMembers.length * (compact ? 53 : 65) + 80 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `80px ${isTaskMode ? `minmax(${compact ? "48px" : "60px"}, 1fr) ` : ""}repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: totalCols * (compact ? 53 : 65) + 80 }}>
 
-        {/* Header: empty corner + staff names */}
+        {/* Header: empty corner + ALL column (task mode) + staff names */}
         <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
+        {isTaskMode && (
+          <div className="border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1">
+            <span className={cn("font-semibold text-muted-foreground text-center", compact ? "text-[9px]" : "text-[10px]")}>ALL</span>
+          </div>
+        )}
         {allMembers.map((s, i) => {
           // Check if this is the first in a new role group
           const prevRole = i > 0 ? allMembers[i - 1].role : null
@@ -153,15 +276,62 @@ export function TransposedPersonGrid({
                 )}
               </div>
 
+              {/* ALL cell (task mode) */}
+              {isTaskMode && (() => {
+                const assigns = wholeTeamByDateT[day.date] ?? []
+                const assignedCodes = new Set(assigns.map((a) => a.function_label!).filter(Boolean))
+                const isOpen = pickerStateT?.staffId === null && pickerStateT?.date === day.date
+                return (
+                  <div
+                    className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]", !isPublished && "cursor-pointer hover:bg-muted/30")}
+                    onClick={!isPublished ? () => setPickerStateT(isOpen ? null : { staffId: null, date: day.date }) : undefined}
+                  >
+                    {assigns.map((a) => {
+                      const tec = tecnicaByCodeT[a.function_label!]
+                      return <TaskChipT key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"} onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined} />
+                    })}
+                    {!isPublished && !isOpen && <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"><Plus className="size-3" /></span>}
+                    {isOpen && <TaskPickerT tecnicas={data?.tecnicas ?? []} assigned={assignedCodes} onSelect={(c) => handleTaskAddT(null, day.date, c)} onClose={() => setPickerStateT(null)} />}
+                  </div>
+                )
+              })()}
+
               {/* Staff cells for this day */}
               {allMembers.map((s, i) => {
-                const assignment = assignMap[s.id]?.[day.date]
                 const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
+
+                // ── Task mode cell ──────────────────────────────────────────
+                if (isTaskMode) {
+                  const taskAssigns = (taskAssignMapT[s.id]?.[day.date] ?? []).filter((a) => a.function_label && !a.function_label.startsWith("dept_") && !a.whole_team)
+                  const assignedCodes = new Set(taskAssigns.map((a) => a.function_label!))
+                  const isOpen = pickerStateT?.staffId === s.id && pickerStateT?.date === day.date
+                  const isLast = i === allMembers.length - 1
+                  return (
+                    <div
+                      key={s.id}
+                      className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", isLast && "last:border-r-0", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]", onLeave && "bg-muted/20", !isPublished && !onLeave && "cursor-pointer hover:bg-muted/30")}
+                      onClick={!isPublished && !onLeave ? () => setPickerStateT(isOpen ? null : { staffId: s.id, date: day.date }) : undefined}
+                    >
+                      {onLeave ? (
+                        <span className={cn("text-muted-foreground italic w-full text-center", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
+                      ) : (
+                        <>
+                          {taskAssigns.map((a) => {
+                            const tec = tecnicaByCodeT[a.function_label!]
+                            return <TaskChipT key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"} onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined} />
+                          })}
+                          {!isPublished && !isOpen && <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"><Plus className="size-3" /></span>}
+                          {isOpen && <TaskPickerT tecnicas={data?.tecnicas ?? []} assigned={assignedCodes} onSelect={(c) => handleTaskAddT(s.id, day.date, c)} onClose={() => setPickerStateT(null)} />}
+                        </>
+                      )}
+                    </div>
+                  )
+                }
+
+                // ── Shift mode cell (existing logic) ────────────────────────
+                const assignment = assignMap[s.id]?.[day.date]
                 const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
                 const isHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
-                const prevRole = i > 0 ? allMembers[i - 1].role : null
-                const isNewGroup = s.role !== prevRole
-
                 const isOffCell = !assignment && !onLeave && isPublished
                 const isViewerCell = !!swapStaffId && s.id === swapStaffId && !!assignment && isPublished
                 return (

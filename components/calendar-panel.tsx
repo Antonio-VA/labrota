@@ -1234,7 +1234,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
                   compact={compact}
                   colorBorders={colorChips}
-                  showPuncBiopsy={!compact}
+                  showPuncBiopsy={!compact && !personSimplified}
                   onDateClick={handleMonthDayClick}
                   onChipClick={openProfile}
                 />

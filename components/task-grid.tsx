@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { X, Plus, Users, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
+import { X, Plus, Users, Plane, Cross, User, GraduationCap, Baby, CalendarX, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -934,12 +934,17 @@ export function TaskGrid({
             <div
               key={day.date}
               className={cn(
-                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px]",
+                "border-b border-r last:border-r-0 border-border flex flex-col items-center justify-center gap-[2px] relative",
                 compact ? "py-1" : "py-1.5",
                 holidayName ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-muted",
               )}
               style={d.getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
             >
+              {day.warnings.length > 0 && (
+                <span className="absolute top-1 right-1">
+                  <AlertTriangle className="size-3 text-amber-500" />
+                </span>
+              )}
               <button
                 onClick={() => onDateClick?.(day.date)}
                 className={cn("flex flex-col items-center gap-[2px] cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
