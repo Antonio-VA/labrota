@@ -50,6 +50,30 @@ export async function adminSwitchToOrg(orgId: string) {
   return { success: true }
 }
 
+// ── Coverage presets for new organisations ────────────────────────────────────
+const COVERAGE_PRESETS: Record<string, object> = {
+  standard: {
+    mon: { lab: 3, andrology: 1, admin: 1 }, tue: { lab: 3, andrology: 1, admin: 1 },
+    wed: { lab: 3, andrology: 1, admin: 1 }, thu: { lab: 3, andrology: 1, admin: 1 },
+    fri: { lab: 3, andrology: 1, admin: 1 }, sat: { lab: 1, andrology: 0, admin: 0 },
+    sun: { lab: 0, andrology: 0, admin: 0 },
+  },
+  minimal: {
+    mon: { lab: 2, andrology: 1, admin: 1 }, tue: { lab: 2, andrology: 1, admin: 1 },
+    wed: { lab: 2, andrology: 1, admin: 1 }, thu: { lab: 2, andrology: 1, admin: 1 },
+    fri: { lab: 2, andrology: 1, admin: 1 }, sat: { lab: 1, andrology: 0, admin: 0 },
+    sun: { lab: 0, andrology: 0, admin: 0 },
+  },
+  andrology: {
+    mon: { lab: 3, andrology: 2, admin: 1 }, tue: { lab: 3, andrology: 2, admin: 1 },
+    wed: { lab: 3, andrology: 2, admin: 1 }, thu: { lab: 3, andrology: 2, admin: 1 },
+    fri: { lab: 3, andrology: 2, admin: 1 }, sat: { lab: 1, andrology: 1, admin: 0 },
+    sun: { lab: 0, andrology: 0, admin: 0 },
+  },
+}
+
+const DEFAULT_PUNCTIONS_BY_DAY = { mon: 6, tue: 6, wed: 6, thu: 6, fri: 6, sat: 2, sun: 0 }
+
 // ── createOrganisation ────────────────────────────────────────────────────────
 export async function createOrganisation(formData: FormData) {
   await assertSuperAdmin()
@@ -59,12 +83,26 @@ export async function createOrganisation(formData: FormData) {
 
   if (!name || !slug) return { error: "Name and slug are required." }
 
+  // Setup configuration (with sensible defaults if not provided)
+  const coveragePreset = (formData.get("coverage_preset") as string) || "standard"
+  const rotaDisplayMode = (formData.get("rota_display_mode") as string) || "by_shift"
+  const country = ((formData.get("country") as string) || "").trim()
+  const authMethod = (formData.get("auth_method") as string) === "password" ? "password" : "otp"
+  const firstUserEmail = ((formData.get("first_user_email") as string) || "").trim()
+  const firstUserName = ((formData.get("first_user_name") as string) || "").trim()
+
   const admin = createAdminClient()
 
-  // Create org
+  // Create org with key settings applied upfront
   const { data: org, error: orgError } = await admin
     .from("organisations")
-    .insert({ name, slug, is_active: true } as never)
+    .insert({
+      name,
+      slug,
+      is_active: true,
+      rota_display_mode: rotaDisplayMode,
+      auth_method: authMethod,
+    } as never)
     .select()
     .single()
 
@@ -75,19 +113,40 @@ export async function createOrganisation(formData: FormData) {
 
   const orgId = (org as { id: string }).id
 
-  // Seed lab_config row for the new org
-  await admin.from("lab_config").insert({ organisation_id: orgId } as never)
-
-  // Seed a single default shift type (T1)
-  await admin.from("shift_types").insert({
+  // Seed lab_config row with coverage defaults + regional config
+  const coverageByDay = COVERAGE_PRESETS[coveragePreset] ?? COVERAGE_PRESETS.standard
+  await admin.from("lab_config").insert({
     organisation_id: orgId,
-    code: "T1",
-    name_es: "Mañana",
-    name_en: "Morning",
-    start_time: "07:30",
-    end_time: "15:30",
-    sort_order: 0,
+    coverage_by_day: coverageByDay,
+    punctions_by_day: DEFAULT_PUNCTIONS_BY_DAY,
+    country,
   } as never)
+
+  // Seed default shift types (T1–T4)
+  await admin.from("shift_types").insert([
+    { organisation_id: orgId, code: "T1", name_es: "Mañana",      name_en: "Morning",         start_time: "07:30", end_time: "15:30", sort_order: 0 },
+    { organisation_id: orgId, code: "T2", name_es: "Tarde",       name_en: "Afternoon",        start_time: "08:30", end_time: "16:30", sort_order: 1 },
+    { organisation_id: orgId, code: "T3", name_es: "Tarde-tarde", name_en: "Late afternoon",   start_time: "09:00", end_time: "17:00", sort_order: 2 },
+    { organisation_id: orgId, code: "T4", name_es: "Noche",       name_en: "Evening",          start_time: "09:30", end_time: "17:30", sort_order: 3 },
+  ] as never[])
+
+  // Optionally invite first admin user
+  if (firstUserEmail) {
+    const redirectTo = authMethod === "password"
+      ? "https://www.labrota.app/auth/callback?next=/set-password"
+      : "https://www.labrota.app/auth/callback"
+    const { data: userData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(firstUserEmail, {
+      data: { full_name: firstUserName || undefined },
+      redirectTo,
+    })
+    if (!inviteError && userData?.user) {
+      const userId = userData.user.id
+      await admin.from("organisation_members").insert({
+        organisation_id: orgId, user_id: userId, role: "admin",
+      } as never)
+      await admin.from("profiles").update({ organisation_id: orgId, full_name: firstUserName || null } as never).eq("id", userId)
+    }
+  }
 
   revalidatePath("/admin")
   return { success: true, orgId }
