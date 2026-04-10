@@ -718,8 +718,8 @@ export function AssignmentSheet({
             )
           })()}
 
-          {/* P+B section — procedures, ratio, staff count (hidden in by_task mode) */}
-          {rotaDisplayMode !== "by_task" && (() => {
+          {/* P+B section — procedures, ratio, staff count */}
+          {(() => {
             const p = effectiveP
             const b = biopsyForecast ?? 0
             const totalProc = p + b
@@ -886,26 +886,46 @@ export function AssignmentSheet({
 
                   {/* Staff cards */}
                   <div className="px-3 flex flex-col gap-1.5 pb-3 min-h-[40px]">
-                    {shiftAssignments.map((a) => {
+                    {isTaskMode ? (() => {
+                      // Group by staff_id so each person appears once with all their techniques
+                      const byStaff: Record<string, { assignment: Assignment; tecnicaLabels: string[] }> = {}
+                      for (const a of shiftAssignments) {
+                        if (!byStaff[a.staff_id]) byStaff[a.staff_id] = { assignment: a, tecnicaLabels: [] }
+                        if (a.function_label) byStaff[a.staff_id].tecnicaLabels.push(a.function_label)
+                      }
+                      return Object.values(byStaff).map(({ assignment: a, tecnicaLabels }) => (
+                        <div
+                          key={a.staff_id}
+                          className="flex items-center gap-2 pl-3 pr-2 py-1.5 min-h-[34px] text-[13px] bg-background border border-border"
+                          style={{ borderLeft: `3px solid ${ROLE_BORDER[a.staff.role] ?? "#94A3B8"}`, borderRadius: 4 }}
+                        >
+                          <span className="font-medium truncate flex-1 text-foreground/80">{a.staff.first_name} {a.staff.last_name}</span>
+                          <div className="flex flex-wrap gap-1">
+                            {tecnicaLabels.map((code) => {
+                              const tec = tecnicas.find((t) => t.codigo === code)
+                              const color = tec ? (TECNICA_PILL[tec.color] ?? TECNICA_PILL.blue) : "bg-blue-50 border-blue-200 text-blue-700"
+                              return (
+                                <span key={code} className={cn("text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 leading-tight", color)}>
+                                  {code}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    })() : shiftAssignments.map((a) => {
                       const staffMember = staffList.find((s) => s.id === a.staff_id)
                       const tecnica     = tecnicas.find((t) => t.id === a.tecnica_id) ?? null
-                      // For by_task, resolve function_label to technique name for the pill
-                      const taskTecnica = isTaskMode && a.function_label
-                        ? tecnicas.find((t) => t.codigo === a.function_label) ?? null
-                        : null
-                      const taskAssignment = taskTecnica
-                        ? { ...a, tecnica_id: taskTecnica.id }
-                        : a
                       return (
                         <DraggableCard
                           key={a.id}
-                          assignment={taskAssignment}
-                          tecnica={taskTecnica ?? tecnica}
+                          assignment={a}
+                          tecnica={tecnica}
                           staffSkills={staffMember?.staff_skills ?? []}
                           tecnicas={tecnicas}
                           onRemove={() => handleRemove(a.id)}
-                          disabled={isPublished || isTaskMode || a.id.startsWith("temp-")}
-                          isPublished={isPublished || isTaskMode}
+                          disabled={isPublished || a.id.startsWith("temp-")}
+                          isPublished={isPublished}
                           enableTaskInShift={enableTaskInShift}
                           onFunctionSave={handleFunctionSave}
                           onTecnicaSave={handleTecnicaSave}
