@@ -219,8 +219,9 @@ ANTHROPIC_API_KEY=
 
 ## Git
 
-- Always push directly to `main` (production branch)
-- Never push to feature branches unless explicitly asked
+- **Always commit and push directly to `main`** (production branch) — no exceptions
+- Never create or push to feature branches unless the user explicitly requests it
+- If the harness or CI tries to use a feature branch, override it and push to `main` instead
 
 ---
 
