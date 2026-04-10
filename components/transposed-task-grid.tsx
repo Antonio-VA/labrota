@@ -426,8 +426,8 @@ export function TransposedTaskGrid({
                   return (
                     <Tooltip key={sid}>
                       <TooltipTrigger render={
-                        <span className={cn("inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1 font-medium text-amber-700", compact ? "text-[8px] py-0" : "text-[9px] py-0.5")}>
-                          <Briefcase className="size-2 text-amber-500 shrink-0" />
+                        <span className={cn("inline-flex items-center gap-0.5 rounded border border-amber-200 bg-amber-50 px-1 font-medium text-amber-700", compact ? "text-[9px] py-0" : "text-[10px] py-0.5")}>
+                          <Briefcase className="size-2.5 text-amber-500 shrink-0" />
                           {s.first_name[0]}{s.last_name[0]}
                         </span>
                       } />
@@ -442,10 +442,10 @@ export function TransposedTaskGrid({
                     <Tooltip key={s.id}>
                       <TooltipTrigger render={
                         <span
-                          className={cn("inline-flex items-center rounded border border-border/50 bg-background font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[8px] px-1 py-0" : "text-[9px] px-1 py-0.5")}
+                          className={cn("inline-flex items-center rounded border border-border/50 bg-background font-medium text-muted-foreground transition-colors duration-100 cursor-default", compact ? "text-[9px] px-1 py-0" : "text-[10px] px-1 py-0.5")}
                           onMouseEnter={() => setHovered(s.id)}
                           onMouseLeave={() => setHovered(null)}
-                          style={isHov && colorChips && sColor ? { backgroundColor: `${sColor}70`, color: "#1e293b", borderColor: `${sColor}99` } : undefined}
+                          style={isHov && sColor ? { backgroundColor: `${sColor}70`, color: "#1e293b", borderColor: `${sColor}99` } : undefined}
                         >
                           {s.first_name[0]}{s.last_name[0]}
                         </span>
