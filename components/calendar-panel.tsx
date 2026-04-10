@@ -1234,34 +1234,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onChipClick={openProfile}
                   onDateClick={handleMonthDayClick}
                 />
-              ) : weekData.rotaDisplayMode === "by_task" ? (
-                /* By task: always show TaskGrid — it handles its own empty state */
-                <TaskGrid
-                  data={weekData}
-                  staffList={staffList}
-                  loading={false}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  onRefresh={handleRefresh}
-                  onAfterMutation={canEdit ? pushUndo : undefined}
-                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
-                  onSaved={canEdit ? triggerSaved : undefined}
-                  gridSetDaysRef={gridSetDaysRef}
-                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={handlePunctionsChange}
-                  onBiopsyChange={handleBiopsyChange}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
-                  compact={compact}
-                  colorBorders={colorChips}
-                  showPuncBiopsy={!compact && !personSimplified}
-                  onDateClick={handleMonthDayClick}
-                  onChipClick={openProfile}
-                />
               ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
                 <div className="flex-1 flex items-start justify-center pt-[18vh]">
                   {!canEdit ? (
@@ -1316,6 +1288,33 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   </div>
                   )}
                 </div>
+              ) : weekData.rotaDisplayMode === "by_task" ? (
+                <TaskGrid
+                  data={weekData}
+                  staffList={staffList}
+                  loading={false}
+                  locale={locale}
+                  isPublished={!!isPublished || !canEdit}
+                  onRefresh={handleRefresh}
+                  onAfterMutation={canEdit ? pushUndo : undefined}
+                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
+                  onSaved={canEdit ? triggerSaved : undefined}
+                  gridSetDaysRef={gridSetDaysRef}
+                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={handlePunctionsChange}
+                  onBiopsyChange={handleBiopsyChange}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
+                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
+                  compact={compact}
+                  colorBorders={colorChips}
+                  showPuncBiopsy={!compact && !personSimplified}
+                  onDateClick={handleMonthDayClick}
+                  onChipClick={openProfile}
+                />
               ) : calendarLayout === "shift" && daysAsRows ? (
                 <TransposedShiftGrid
                   data={weekData}
