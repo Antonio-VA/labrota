@@ -57,7 +57,7 @@ export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDa
     const leaveDays = leaveDaysPerStaff[s.id] ?? 0
     staffMap[s.id] = {
       first: s.first_name, last: s.last_name, role: s.role,
-      count: 0, guardiaCount: 0, daysPerWeek: Math.max(0, (s.days_per_week ?? 5) - leaveDays),
+      count: 0, guardiaCount: 0, daysPerWeek: Math.min(Math.max(0, days.length - leaveDays), s.days_per_week ?? 5),
       leaveDays, leaveType: leaveTypePerStaff[s.id] ?? null,
     }
     staffDaySeen[s.id] = new Set()
