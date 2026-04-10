@@ -268,8 +268,14 @@ export function exportWeekByTask(data: RotaWeekData, tecnicas: Tecnica[], locale
     const day = data.days[dayIdx]
     const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
     const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
-    if (isWholeTeam) return locale === "es" ? "Todo" : "All"
-    return assignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`).join("\n")
+    const names = assignments
+      .filter((a) => !(a as unknown as { whole_team?: boolean }).whole_team)
+      .map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+    if (isWholeTeam) {
+      const allLabel = locale === "es" ? "Todo" : "All"
+      return names.length > 0 ? `${allLabel}\n${names.join("\n")}` : allLabel
+    }
+    return names.join("\n") || "—"
   }
 
   if (daysAsRows) {

@@ -363,8 +363,13 @@ export async function exportPdfByTask(data: RotaWeekData, tecnicas: Tecnica[], o
     const day = data.days[dayIdx]
     const assignments = day.assignments.filter((a) => a.function_label === tc.codigo)
     const isWholeTeam = assignments.some((a) => (a as unknown as { whole_team?: boolean }).whole_team)
-    if (isWholeTeam) return locale === "es" ? "Todo" : "All"
-    const names = assignments.map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+    const names = assignments
+      .filter((a) => !(a as unknown as { whole_team?: boolean }).whole_team)
+      .map((a) => `${a.staff.first_name} ${a.staff.last_name[0]}.`)
+    if (isWholeTeam) {
+      const allLabel = locale === "es" ? "Todo" : "All"
+      return names.length > 0 ? `${allLabel} / ${names.join(" / ")}` : allLabel
+    }
     return names.join(" / ") || "—"
   }
 
