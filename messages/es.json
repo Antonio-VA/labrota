@@ -384,9 +384,9 @@
     "copyAssignments": "{count} asignaciones copiadas",
     "copy": "Copiar",
     "shareImage": "Compartir imagen",
-    "saveFavoriteView": "Fijar vista favorita",
-    "goToFavoriteView": "Ir a vista favorita",
-    "favoriteViewSaved": "Vista favorita guardada"
+    "saveFavoriteView": "Establecer vista por defecto",
+    "goToFavoriteView": "Ir a vista por defecto",
+    "favoriteViewSaved": "Vista por defecto guardada"
   },
   "staff": {
     "title": "Equipo",
