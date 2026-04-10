@@ -1139,7 +1139,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
               {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
               {(loadingWeek || !staffLoaded) && (
                 <div className="absolute inset-0 z-10 bg-background flex flex-col">
-                  {weekData?.rotaDisplayMode === "by_task" ? (
+                  {weekData?.rotaDisplayMode === "by_task" && daysAsRows ? (
+                    <TransposedTaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} publicHolidays={{}} onLeaveByDate={{}} compact={compact} colorChips={colorChips} />
+                  ) : weekData?.rotaDisplayMode === "by_task" ? (
                     <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
                   ) : calendarLayout === "person" ? (
                     <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />

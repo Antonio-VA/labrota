@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect, Fragment } from "react"
+import { useMemo, useState, useRef, useEffect, Fragment } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Check, ArrowRightLeft, Plus } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -13,44 +14,56 @@ import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
 import { ROLE_ORDER, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
 
-// ── Task-mode helpers (mirrored from person-grid) ─────────────────────────────
+// ── Task-mode helpers ─────────────────────────────────────────────────────────
 
-const COLOR_HEX_T: Record<string, string> = {
+const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
   coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
 }
-function resolveColorT(color: string): string {
+function resolveColor(color: string): string {
   if (!color) return "#94A3B8"
   if (color.startsWith("#")) return color
-  return COLOR_HEX_T[color] ?? "#94A3B8"
+  return COLOR_HEX[color] ?? "#94A3B8"
 }
 
-function TaskChipT({ label, color, onRemove, forceHover, onHover }: {
-  label: string; color: string; onRemove?: () => void; forceHover?: boolean; onHover?: (code: string | null) => void
+/** Pill showing a task technique code — left border in technique color, cross-cell hover */
+function TaskChip({
+  label, tecColor, compact, colorChips, forceHover, onHover, onRemove,
+}: {
+  label: string; tecColor: string; compact?: boolean; colorChips?: boolean
+  forceHover?: boolean; onHover?: (code: string | null) => void; onRemove?: () => void
 }) {
   const [hov, setHov] = useState(false)
   const active = hov || forceHover
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold border transition-all duration-100 cursor-default leading-none"
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100",
+        compact ? "text-[10px] py-0" : "text-[11px] py-0.5",
+      )}
       style={{
-        borderColor: active ? color + "60" : "transparent",
-        background: active ? color + "18" : "transparent",
-        color: active ? color : "inherit",
+        borderRadius: 4,
+        ...(colorChips && tecColor ? { borderLeft: `3px solid ${tecColor}` } : {}),
+        ...(active && tecColor ? { backgroundColor: `${tecColor}40`, color: "#1e293b" } : {}),
       }}
       onMouseEnter={() => { setHov(true); onHover?.(label) }}
       onMouseLeave={() => { setHov(false); onHover?.(null) }}
     >
       {label}
       {onRemove && active && (
-        <button className="ml-0.5 leading-none opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); onRemove() }}>×</button>
+        <button className="ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity"
+          onClick={(e) => { e.stopPropagation(); onRemove() }}>
+          <X className="size-2.5" />
+        </button>
       )}
     </span>
   )
 }
 
-function TaskPickerT({ tecnicas, assigned, onSelect, onClose }: {
-  tecnicas: Tecnica[]; assigned: Set<string>; onSelect: (codigo: string) => void; onClose: () => void
+/** Portal-based task technique picker */
+function TaskPickerPortal({ tecnicas, assigned, pos, onSelect, onClose }: {
+  tecnicas: Tecnica[]; assigned: Set<string>
+  pos: { top: number; left: number }; onSelect: (codigo: string) => void; onClose: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -62,15 +75,101 @@ function TaskPickerT({ tecnicas, assigned, onSelect, onClose }: {
   }, [onClose])
   const available = tecnicas.filter((t) => t.activa && !assigned.has(t.codigo))
   if (available.length === 0) return null
-  return (
-    <div ref={ref} className="absolute left-0 top-full mt-0.5 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto">
+  return createPortal(
+    <div ref={ref} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 200 }}
+      className="bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto">
       {available.map((t) => (
-        <button key={t.id} className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
+        <button key={t.id}
+          className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
           onClick={(e) => { e.stopPropagation(); onSelect(t.codigo); onClose() }}>
-          <span className="size-2 rounded-full shrink-0" style={{ background: resolveColorT(t.color) }} />
+          <span className="size-2 rounded-full shrink-0 flex-none" style={{ background: resolveColor(t.color) }} />
           <span className="truncate">{t.nombre_es}</span>
         </button>
       ))}
+    </div>,
+    document.body
+  )
+}
+
+/** One staff member × one day task cell (transposed layout) — manages its own picker portal */
+function TransposedTaskCell({
+  staffId, date, assignments, tecnicas, tecnicaByCode, colorChips, compact,
+  isPublished, onLeave, leaveShortText, isLast,
+  hoveredTecnica, highlightEnabled, onHoveredChange, onAdd, onRemove,
+}: {
+  staffId: string | null; date: string; assignments: Assignment[]
+  tecnicas: Tecnica[]; tecnicaByCode: Record<string, Tecnica>
+  colorChips?: boolean; compact?: boolean; isPublished: boolean
+  onLeave?: boolean; leaveShortText: string; isLast?: boolean
+  hoveredTecnica: string | null; highlightEnabled: boolean
+  onHoveredChange: (code: string | null) => void
+  onAdd: (staffId: string | null, date: string, codigo: string) => void
+  onRemove: (assignmentId: string) => void
+}) {
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null)
+  const cellRef = useRef<HTMLDivElement>(null)
+  const assignedCodes = useMemo(
+    () => new Set(assignments.map((a) => a.function_label!).filter(Boolean)),
+    [assignments]
+  )
+
+  function openPicker() {
+    if (isPublished || onLeave) return
+    const rect = cellRef.current?.getBoundingClientRect()
+    if (rect) {
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 220)
+      const left = Math.min(rect.left, window.innerWidth - 160)
+      setPickerPos({ top, left })
+    }
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className={cn(
+        "border-b border-r border-border relative flex flex-wrap gap-0.5 items-start content-start group/cell bg-background",
+        compact ? "min-h-[22px] p-0.5" : "min-h-[32px] p-0.5 pb-5",
+        onLeave && "bg-muted/20",
+        isLast && "border-r-0",
+      )}
+    >
+      {onLeave ? (
+        <span className={cn("text-muted-foreground italic w-full text-center", compact ? "text-[9px]" : "text-[10px]")}>{leaveShortText}</span>
+      ) : (
+        <>
+          {assignments.map((a) => {
+            const tec = tecnicaByCode[a.function_label!]
+            const tecColor = tec ? resolveColor(tec.color) : "#94A3B8"
+            return (
+              <TaskChip
+                key={a.id}
+                label={a.function_label!}
+                tecColor={tecColor}
+                compact={compact}
+                colorChips={colorChips}
+                forceHover={highlightEnabled && hoveredTecnica === a.function_label}
+                onHover={onHoveredChange}
+                onRemove={!isPublished ? () => onRemove(a.id) : undefined}
+              />
+            )
+          })}
+          {!isPublished && (
+            <div
+              onClick={openPicker}
+              className="absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b"
+            >
+              <Plus className="size-3 text-muted-foreground" />
+            </div>
+          )}
+          {pickerPos && (
+            <TaskPickerPortal
+              tecnicas={tecnicas} assigned={assignedCodes} pos={pickerPos}
+              onSelect={(c) => { onAdd(staffId, date, c); setPickerPos(null) }}
+              onClose={() => setPickerPos(null)}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -105,7 +204,6 @@ export function TransposedPersonGrid({
 
   if (!data) return null
 
-  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
   const ROLE_LABEL_MAP: Record<string, string> = {}
   for (const d of data.departments ?? []) { if (!d.parent_id) ROLE_LABEL_MAP[d.code] = d.name }
 
@@ -117,7 +215,6 @@ export function TransposedPersonGrid({
     })
 
   const [localDays, setLocalDays] = useState(data.days)
-  // Register this grid's day setter for direct undo/redo updates
   if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
   const [prevData, setPrevData] = useState(data)
   if (data !== prevData) {
@@ -134,52 +231,56 @@ export function TransposedPersonGrid({
     }
   }
 
-  // Task mode
   const isTaskMode = data?.rotaDisplayMode === "by_task"
-  const tecnicaByCodeT = Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
-  const defaultShiftCodeT = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
+  const tecnicaByCode = useMemo(
+    () => Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t])),
+    [data?.tecnicas]
+  )
+  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
 
   // Multi-assignment map: staffId → date → Assignment[]
-  const taskAssignMapT: Record<string, Record<string, Assignment[]>> = {}
-  if (isTaskMode) {
+  const taskAssignMap = useMemo(() => {
+    if (!isTaskMode) return {} as Record<string, Record<string, Assignment[]>>
+    const map: Record<string, Record<string, Assignment[]>> = {}
     for (const day of localDays) {
       for (const a of day.assignments) {
-        if (!taskAssignMapT[a.staff_id]) taskAssignMapT[a.staff_id] = {}
-        if (!taskAssignMapT[a.staff_id][day.date]) taskAssignMapT[a.staff_id][day.date] = []
-        taskAssignMapT[a.staff_id][day.date].push(a)
+        if (!map[a.staff_id]) map[a.staff_id] = {}
+        if (!map[a.staff_id][day.date]) map[a.staff_id][day.date] = []
+        map[a.staff_id][day.date].push(a)
       }
     }
-  }
+    return map
+  }, [localDays, isTaskMode])
 
   // Whole-team by date
-  const wholeTeamByDateT: Record<string, Assignment[]> = {}
-  if (isTaskMode) {
+  const wholeTeamByDate = useMemo(() => {
+    if (!isTaskMode) return {} as Record<string, Assignment[]>
+    const map: Record<string, Assignment[]> = {}
     for (const day of localDays) {
-      wholeTeamByDateT[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
+      map[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
     }
-  }
+    return map
+  }, [localDays, isTaskMode])
 
-  const [pickerStateT, setPickerStateT] = useState<{ staffId: string | null; date: string } | null>(null)
-
-  async function handleTaskRemoveT(assignmentId: string) {
+  async function handleTaskRemove(assignmentId: string) {
     setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) })))
     const result = await removeAssignment(assignmentId)
     if (result.error) toast.error(result.error)
   }
 
-  async function handleTaskAddT(staffId: string | null, date: string, tecnicaCodigo: string) {
+  async function handleTaskAdd(staffId: string | null, date: string, tecnicaCodigo: string) {
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const staffMember = staffId ? allMembers.find((s) => s.id === staffId) : null
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
       ...d,
       assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCodeT,
+        id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCode,
         is_manual_override: true, trainee_staff_id: null, notes: null,
         function_label: tecnicaCodigo, tecnica_id: null, whole_team: staffId === null,
         staff: staffMember ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never } : { id: "", first_name: "All", last_name: "", role: "lab" as never },
       }],
     }))
-    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCodeT, functionLabel: tecnicaCodigo })
+    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
     if (result.error) toast.error(result.error)
     else {
       setLocalDays((prev) => prev.map((d) => ({
@@ -208,7 +309,7 @@ export function TransposedPersonGrid({
     <div className="rounded-lg border border-border overflow-auto w-full">
       <div style={{ display: "grid", gridTemplateColumns: `80px ${isTaskMode ? `minmax(${compact ? "48px" : "60px"}, 1fr) ` : ""}repeat(${allMembers.length}, minmax(${compact ? "48px" : "60px"}, 1fr))`, minWidth: totalCols * (compact ? 53 : 65) + 80 }}>
 
-        {/* Header: empty corner + ALL column (task mode) + staff names */}
+        {/* Header: corner + ALL column (task mode) + staff names */}
         <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
         {isTaskMode && (
           <div className="border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1">
@@ -216,15 +317,12 @@ export function TransposedPersonGrid({
           </div>
         )}
         {allMembers.map((s, i) => {
-          // Check if this is the first in a new role group
-          const prevRole = i > 0 ? allMembers[i - 1].role : null
-          const isNewGroup = s.role !== prevRole
           return (
             <div
               key={s.id}
               className={cn(
                 "border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1",
-                              )}
+              )}
               style={colorChips ? { borderTop: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : { borderTop: "none" }}
             >
               <button
@@ -253,13 +351,12 @@ export function TransposedPersonGrid({
 
           return (
             <Fragment key={day.date}>
-              {/* Day label cell — click opens day view */}
+              {/* Day label cell */}
               <div
                 className={cn(
-                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1.5 px-2 cursor-pointer hover:bg-muted/80",
+                  "border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center justify-end gap-1 px-1.5 cursor-pointer hover:bg-muted/80",
                   holiday && "bg-amber-50/60"
                 )}
-                style={isSat ? { borderTop: "1px dashed var(--border)" } : undefined}
                 onClick={() => onDateClick?.(day.date)}
               >
                 {day.warnings?.length > 0 && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
@@ -281,70 +378,57 @@ export function TransposedPersonGrid({
               </div>
 
               {/* ALL cell (task mode) */}
-              {isTaskMode && (() => {
-                const assigns = wholeTeamByDateT[day.date] ?? []
-                const assignedCodes = new Set(assigns.map((a) => a.function_label!).filter(Boolean))
-                const isOpen = pickerStateT?.staffId === null && pickerStateT?.date === day.date
-                return (
-                  <div
-                    className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]", !isPublished && "cursor-pointer hover:bg-muted/30")}
-                    onClick={!isPublished ? () => setPickerStateT(isOpen ? null : { staffId: null, date: day.date }) : undefined}
-                  >
-                    {assigns.map((a) => {
-                      const tec = tecnicaByCodeT[a.function_label!]
-                      return <TaskChipT key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"} onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined} />
-                    })}
-                    {!isPublished && !isOpen && <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"><Plus className="size-3" /></span>}
-                    {isOpen && <TaskPickerT tecnicas={data?.tecnicas ?? []} assigned={assignedCodes} onSelect={(c) => handleTaskAddT(null, day.date, c)} onClose={() => setPickerStateT(null)} />}
-                  </div>
-                )
-              })()}
+              {isTaskMode && (
+                <TransposedTaskCell
+                  staffId={null}
+                  date={day.date}
+                  assignments={wholeTeamByDate[day.date] ?? []}
+                  tecnicas={data?.tecnicas ?? []}
+                  tecnicaByCode={tecnicaByCode}
+                  colorChips={colorChips}
+                  compact={compact}
+                  isPublished={isPublished}
+                  leaveShortText={t("leaveShort")}
+                  hoveredTecnica={hoveredTecnica}
+                  highlightEnabled={highlightEnabled}
+                  onHoveredChange={setHoveredTecnica}
+                  onAdd={handleTaskAdd}
+                  onRemove={handleTaskRemove}
+                />
+              )}
 
               {/* Staff cells for this day */}
               {allMembers.map((s, i) => {
                 const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
+                const isLast = i === allMembers.length - 1
 
                 // ── Task mode cell ──────────────────────────────────────────
                 if (isTaskMode) {
-                  const taskAssigns = (taskAssignMapT[s.id]?.[day.date] ?? []).filter((a) => a.function_label && !a.function_label.startsWith("dept_") && !a.whole_team)
-                  const assignedCodes = new Set(taskAssigns.map((a) => a.function_label!))
-                  const isOpen = pickerStateT?.staffId === s.id && pickerStateT?.date === day.date
-                  const isLast = i === allMembers.length - 1
-                  // Highlight cell if it contains the hovered tecnica
-                  const isTecHighlighted = highlightEnabled && hoveredTecnica !== null && taskAssigns.some((a) => a.function_label === hoveredTecnica)
+                  const taskAssigns = (taskAssignMap[s.id]?.[day.date] ?? []).filter((a) => a.function_label && !a.function_label.startsWith("dept_") && !a.whole_team)
                   return (
-                    <div
+                    <TransposedTaskCell
                       key={s.id}
-                      className={cn("border-b border-r border-border relative flex flex-wrap gap-0.5 items-center transition-colors", isLast && "last:border-r-0", compact ? "px-0.5 py-0 min-h-[22px]" : "px-0.5 py-0.5 min-h-[28px]",
-                        onLeave ? "bg-muted/20" : isTecHighlighted ? "bg-primary/10" : "bg-background",
-                        !isPublished && !onLeave && "cursor-pointer hover:bg-muted/30")}
-                      onClick={!isPublished && !onLeave ? () => setPickerStateT(isOpen ? null : { staffId: s.id, date: day.date }) : undefined}
-                    >
-                      {onLeave ? (
-                        <span className={cn("text-muted-foreground italic w-full text-center", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
-                      ) : (
-                        <>
-                          {taskAssigns.map((a) => {
-                            const tec = tecnicaByCodeT[a.function_label!]
-                            const isThisHov = a.function_label === hoveredTecnica
-                            return (
-                              <TaskChipT
-                                key={a.id} label={a.function_label!} color={tec ? resolveColorT(tec.color) : "#94A3B8"}
-                                forceHover={isThisHov && highlightEnabled}
-                                onRemove={!isPublished ? () => handleTaskRemoveT(a.id) : undefined}
-                                onHover={(code) => setHoveredTecnica(code)}
-                              />
-                            )
-                          })}
-                          {!isPublished && !isOpen && <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"><Plus className="size-3" /></span>}
-                          {isOpen && <TaskPickerT tecnicas={data?.tecnicas ?? []} assigned={assignedCodes} onSelect={(c) => handleTaskAddT(s.id, day.date, c)} onClose={() => setPickerStateT(null)} />}
-                        </>
-                      )}
-                    </div>
+                      staffId={s.id}
+                      date={day.date}
+                      assignments={taskAssigns}
+                      tecnicas={data?.tecnicas ?? []}
+                      tecnicaByCode={tecnicaByCode}
+                      colorChips={colorChips}
+                      compact={compact}
+                      isPublished={isPublished}
+                      onLeave={onLeave}
+                      leaveShortText={t("leaveShort")}
+                      isLast={isLast}
+                      hoveredTecnica={hoveredTecnica}
+                      highlightEnabled={highlightEnabled}
+                      onHoveredChange={setHoveredTecnica}
+                      onAdd={handleTaskAdd}
+                      onRemove={handleTaskRemove}
+                    />
                   )
                 }
 
-                // ── Shift mode cell (existing logic) ────────────────────────
+                // ── Shift mode cell ─────────────────────────────────────────
                 const assignment = assignMap[s.id]?.[day.date]
                 const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
                 const isHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
