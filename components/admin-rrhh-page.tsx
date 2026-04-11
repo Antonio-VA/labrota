@@ -46,7 +46,14 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
 
   const updateConfig = (updates: Partial<NonNullable<typeof config>>) => {
     setConfig((p) => p ? { ...p, ...updates } : p)
-    setConfigDirty(true)
+    if (config && initialConfig) {
+      const next = { ...config, ...updates }
+      const { id: _1, organisation_id: _2, created_at: _3, updated_at: _4, ...origRest } = initialConfig
+      const { id: _5, organisation_id: _6, created_at: _7, updated_at: _8, ...nextRest } = next
+      setConfigDirty(JSON.stringify(origRest) !== JSON.stringify(nextRest))
+    } else {
+      setConfigDirty(true)
+    }
   }
 
   const handleSaveConfig = () => {
@@ -66,8 +73,16 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
   const [newType, setNewType] = useState({ name: "", name_en: "", has_balance: false, default_days: null as number | null, allows_carry_forward: false, overflow_to_type_id: null as string | null, is_paid: true, color: "#64748b" })
 
   const updateTypeField = (id: string, field: string, value: boolean | number | string | null) => {
-    setEditedTypes((prev) => prev.map((lt) => lt.id === id ? { ...lt, [field]: value } : lt))
-    setTypesDirty(true)
+    const next = editedTypes.map((lt) => lt.id === id ? { ...lt, [field]: value } : lt)
+    setEditedTypes(next)
+    const anyChanged = next.some((lt) => {
+      const orig = initialTypes.find((o) => o.id === lt.id)
+      if (!orig) return true
+      return lt.has_balance !== orig.has_balance || lt.default_days !== orig.default_days ||
+        lt.allows_carry_forward !== orig.allows_carry_forward || lt.overflow_to_type_id !== orig.overflow_to_type_id ||
+        lt.is_paid !== orig.is_paid || lt.is_archived !== orig.is_archived
+    })
+    setTypesDirty(anyChanged)
   }
 
   const handleSaveTypes = () => {
