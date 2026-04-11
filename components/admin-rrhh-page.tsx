@@ -407,7 +407,7 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
                     <tr key={lt.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: lt.color }} />
+                          <div className="w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: lt.color + "55", borderColor: lt.color }} />
                           <span className="font-medium">{lt.name}</span>
                         </div>
                       </td>
