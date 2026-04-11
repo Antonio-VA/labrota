@@ -80,19 +80,18 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year,
         const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
 
         return (
-          <div key={lt.id} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 flex-1 min-w-0">
+          <div key={lt.id} className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 flex-1 min-w-0">
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lt.color }} />
-            <span className="text-[13px] text-muted-foreground truncate">{displayName}</span>
-            <span className={`text-[18px] font-semibold ml-auto ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
+            <span className="text-[12px] text-muted-foreground truncate">{displayName}</span>
+            <span className={`text-[16px] font-semibold ml-auto tabular-nums ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
               {bal.available}
             </span>
-            <span className="text-[11px] text-muted-foreground shrink-0">{t("available")}</span>
           </div>
         )
       })}
       {enableLeaveRequests && pendingCount > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-          <span className="text-[18px] font-semibold text-amber-600 dark:text-amber-400">{pendingCount}</span>
+        <div className="flex items-center gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-1.5">
+          <span className="text-[16px] font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{pendingCount}</span>
           <span className="text-[11px] text-muted-foreground">{t("pending")}</span>
         </div>
       )}
