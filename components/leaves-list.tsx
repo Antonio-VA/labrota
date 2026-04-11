@@ -463,10 +463,10 @@ function LeaveForm({
 // ── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof useTranslations<"leaves">> }) {
   const cfg: Record<string, { bg: string; text: string }> = {
-    pending:   { bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400" },
-    approved:  { bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-400" },
-    rejected:  { bg: "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-400" },
-    cancelled: { bg: "bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700", text: "text-slate-500 dark:text-slate-400" },
+    pending:   { bg: "bg-amber-500/10 border-amber-500/30",   text: "text-amber-700 dark:text-amber-400" },
+    approved:  { bg: "bg-emerald-500/10 border-emerald-500/30", text: "text-emerald-700 dark:text-emerald-400" },
+    rejected:  { bg: "bg-red-500/10 border-red-500/30",       text: "text-red-700 dark:text-red-400" },
+    cancelled: { bg: "bg-slate-500/10 border-slate-500/30",   text: "text-slate-600 dark:text-slate-400" },
   }
   const c = cfg[leave.status] ?? cfg.pending
 
