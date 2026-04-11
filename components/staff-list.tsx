@@ -716,8 +716,8 @@ type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftP
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
-  email: "minmax(140px,1.5fr)",
-  capacidades: "minmax(0,3fr)",
+  email: "minmax(110px,1fr)",
+  capacidades: "minmax(0,4fr)",
   training: "minmax(200px,2.5fr)",
   status: "minmax(100px,0.8fr)",
   shiftPrefs: "minmax(120px,1.2fr)",

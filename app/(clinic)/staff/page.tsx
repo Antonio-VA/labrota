@@ -99,9 +99,10 @@ export default async function StaffPage() {
         return names.includes(lt.name.toLowerCase()) || names.includes((lt.name_en ?? "").toLowerCase())
       }
 
-      leaveBalances = {}
+      leaveBalances = undefined
       const primaryType = trackedTypes[0]
       if (primaryType) {
+        leaveBalances = {}
         for (const s of staff) {
           const staffBalances = balancesByStaff.get(s.id) ?? []
           const staffLeaves = leavesByStaff.get(s.id) ?? []
