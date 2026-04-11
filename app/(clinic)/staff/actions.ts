@@ -172,8 +172,8 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
       if (hrMod?.status === "active") {
         const [configRes, typesRes] = await Promise.all([
-          adminClient.from("holiday_config").select("leave_year_start_month, leave_year_start_day").eq("organisation_id", orgId).maybeSingle() as Promise<{ data: { leave_year_start_month: number; leave_year_start_day: number } | null }>,
-          adminClient.from("company_leave_types").select("id, default_days").eq("organisation_id", orgId).eq("has_balance", true).eq("is_archived", false) as Promise<{ data: Array<{ id: string; default_days: number | null }> | null }>,
+          adminClient.from("holiday_config").select("leave_year_start_month, leave_year_start_day").eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { leave_year_start_month: number; leave_year_start_day: number } | null }>,
+          adminClient.from("company_leave_types").select("id, default_days").eq("organisation_id", orgId).eq("has_balance", true).eq("is_archived", false) as unknown as Promise<{ data: Array<{ id: string; default_days: number | null }> | null }>,
         ])
         const config = configRes.data
         const leaveTypes = typesRes.data
