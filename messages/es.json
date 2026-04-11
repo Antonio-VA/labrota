@@ -1747,6 +1747,7 @@
     "installSuccess": "Modulo RRHH instalado correctamente",
     "removeSuccess": "Modulo RRHH desinstalado",
     "deleteSuccess": "Todos los datos de RRHH eliminados",
+    "pending": "Solicitadas",
     "saveSuccess": "Configuracion guardada"
   }
 }

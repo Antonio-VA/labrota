@@ -16,6 +16,7 @@ interface Props {
   config: HolidayConfig
   leaves: Leave[]
   year: number
+  enableLeaveRequests?: boolean
 }
 
 const LEGACY_MAP: Record<string, string[]> = {
@@ -30,7 +31,7 @@ function matchesLeaveType(leave: Leave, lt: CompanyLeaveType): boolean {
   return names.includes(lt.name.toLowerCase()) || names.includes((lt.name_en ?? "").toLowerCase())
 }
 
-export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year }: Props) {
+export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year, enableLeaveRequests }: Props) {
   const t = useTranslations("hr")
   const locale = useLocale() as "es" | "en"
 
@@ -44,6 +45,10 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year 
   const trackedTypes = leaveTypes.filter((lt) => lt.has_balance && !lt.is_archived)
 
   if (trackedTypes.length === 0) return null
+
+  const pendingCount = enableLeaveRequests
+    ? leaves.filter((l) => l.status === "pending").length
+    : 0
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -85,6 +90,12 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year 
           </div>
         )
       })}
+      {enableLeaveRequests && pendingCount > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+          <span className="text-[18px] font-semibold text-amber-600 dark:text-amber-400">{pendingCount}</span>
+          <span className="text-[11px] text-muted-foreground">{t("pending")}</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -165,6 +165,7 @@ export default async function LeavesPage() {
             config={viewerBalanceData.config}
             leaves={viewerBalanceData.leaves}
             year={viewerBalanceData.year}
+            enableLeaveRequests={enableLeaveRequests}
           />
           <LeaveCalendar
             leaves={viewerBalanceData.leaves}
