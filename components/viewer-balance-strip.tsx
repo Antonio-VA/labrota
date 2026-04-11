@@ -1,8 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { calculateBalance } from "@/lib/hr-balance-engine"
-import { formatDate } from "@/lib/format-date"
 import type {
   CompanyLeaveType,
   HolidayBalance,
@@ -32,9 +32,10 @@ function matchesLeaveType(leave: Leave, lt: CompanyLeaveType): boolean {
   return names.includes(lt.name.toLowerCase()) || names.includes((lt.name_en ?? "").toLowerCase())
 }
 
-export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year, enableLeaveRequests }: Props) {
+export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year: initialYear }: Props) {
   const t = useTranslations("hr")
   const locale = useLocale() as "es" | "en"
+  const [selectedYear, setSelectedYear] = useState(initialYear)
 
   const dayCountConfig: DayCountConfig = {
     counting_method: config.counting_method,
@@ -47,98 +48,96 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year,
   if (trackedTypes.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-border bg-background overflow-hidden">
-      <div className="grid divide-x divide-border" style={{ gridTemplateColumns: `repeat(${trackedTypes.length}, 1fr)` }}>
-        {trackedTypes.map((lt) => {
-          const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === year)
-
-          const typeLeaves = leaves.filter(
-            (l) =>
-              matchesLeaveType(l, lt) &&
-              (l.balance_year === year || (!l.balance_year && l.start_date.startsWith(String(year))))
-          )
-
-          // Count pending separately
-          const pendingLeaves = enableLeaveRequests
-            ? typeLeaves.filter((l) => l.status === "pending")
-            : []
-          const pendingDays = pendingLeaves.reduce((s, l) => s + (l.days_counted ?? 0), 0)
-
-          const bal = calculateBalance({
-            entitlement: balanceRecord?.entitlement ?? lt.default_days ?? 0,
-            carried_forward: balanceRecord?.carried_forward ?? 0,
-            cf_expiry_date: balanceRecord?.cf_expiry_date ?? null,
-            manual_adjustment: balanceRecord?.manual_adjustment ?? 0,
-            today,
-            leaveEntries: typeLeaves.map((l) => ({
-              start_date: l.start_date,
-              end_date: l.end_date,
-              status: l.status,
-              days_counted: l.days_counted,
-            })),
-            config: dayCountConfig,
-            publicHolidays: [],
-          })
-
-          const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
-          const total = bal.entitlement + bal.cf_available + bal.manual_adjustment
-          const pct = total > 0 ? Math.min((bal.total_used / total) * 100, 100) : 0
-
-          return (
-            <div key={lt.id} className="px-5 py-4 flex flex-col gap-3">
-              {/* Header */}
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: lt.color }} />
-                <span className="text-[13px] font-medium text-muted-foreground">{displayName}</span>
-              </div>
-
-              {/* Available — big number */}
-              <div>
-                <span className={`text-[28px] font-semibold tabular-nums leading-none ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
-                  {bal.available}
-                </span>
-                <span className="text-[13px] text-muted-foreground ml-1.5">
-                  {locale === "es" ? `de ${total} disponibles` : `of ${total} available`}
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${pct}%`,
-                    backgroundColor: pct > 80 ? "var(--destructive)" : lt.color,
-                  }}
-                />
-              </div>
-
-              {/* Breakdown */}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-                {bal.taken > 0 && (
-                  <span>{bal.taken} {t("taken")}</span>
-                )}
-                {bal.booked > 0 && (
-                  <span>{bal.booked} {t("booked")}</span>
-                )}
-                {pendingDays > 0 && (
-                  <span className="text-amber-600 dark:text-amber-400">{pendingDays} {t("pending")}</span>
-                )}
-              </div>
-
-              {/* Carry forward info */}
-              {bal.carried_forward > 0 && (
-                <div className={`text-[11px] ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600 dark:text-amber-400"}`}>
-                  +{bal.carried_forward} {t("carriedForward")} {year - 1}
-                  {bal.cf_expiry_date && !bal.cf_expired && (
-                    <span className="text-muted-foreground"> · {t("expiresOn", { date: formatDate(bal.cf_expiry_date, locale) })}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+    <div className="flex flex-col gap-4">
+      {/* Header with year selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-medium">{t("balanceStrip")}</h2>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+          className="border border-border rounded-md px-3 py-1.5 text-[14px] bg-background"
+        >
+          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
+
+      {/* Balance cards */}
+      {trackedTypes.map((lt) => {
+        const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
+
+        const typeLeaves = leaves.filter(
+          (l) =>
+            matchesLeaveType(l, lt) &&
+            (l.balance_year === selectedYear || (!l.balance_year && l.start_date.startsWith(String(selectedYear))))
+        )
+
+        const bal = calculateBalance({
+          entitlement: balanceRecord?.entitlement ?? lt.default_days ?? 0,
+          carried_forward: balanceRecord?.carried_forward ?? 0,
+          cf_expiry_date: balanceRecord?.cf_expiry_date ?? null,
+          manual_adjustment: balanceRecord?.manual_adjustment ?? 0,
+          today,
+          leaveEntries: typeLeaves.map((l) => ({
+            start_date: l.start_date,
+            end_date: l.end_date,
+            status: l.status,
+            days_counted: l.days_counted,
+          })),
+          config: dayCountConfig,
+          publicHolidays: [],
+        })
+
+        const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
+
+        return (
+          <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: lt.color }} />
+                <span className="text-[14px] font-medium">{displayName}</span>
+                <span className="text-[13px] text-muted-foreground">{selectedYear}</span>
+              </div>
+            </div>
+
+            {/* Balance figures */}
+            <div className="px-5 py-4">
+              <div className="grid grid-cols-5 gap-2 text-center">
+                <div>
+                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("entitlement")}</div>
+                  <div className="text-[22px] font-semibold mt-1">{bal.entitlement}</div>
+                </div>
+                <div>
+                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("carriedForward")}</div>
+                  <div className="text-[22px] font-semibold mt-1">
+                    {bal.carried_forward > 0 ? (
+                      <span className={bal.cf_expired ? "line-through text-muted-foreground" : ""}>{bal.carried_forward}</span>
+                    ) : (
+                      <span className="text-muted-foreground/40">0</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("booked")}</div>
+                  <div className="text-[22px] font-semibold mt-1">{bal.booked}</div>
+                </div>
+                <div>
+                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("taken")}</div>
+                  <div className="text-[22px] font-semibold mt-1">{bal.taken}</div>
+                </div>
+                <div>
+                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("available")}</div>
+                  <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : ""}`}>
+                    {bal.available}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
