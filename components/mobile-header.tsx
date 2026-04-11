@@ -6,6 +6,7 @@ import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-
 import { NotificationBell } from "@/components/notification-panel"
 import { SwapBell } from "@/components/swap-panel"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { MobileAccountSheet } from "@/components/mobile-account-sheet"
 import { cn } from "@/lib/utils"
 
 interface MobileHeaderProps {
@@ -25,6 +26,7 @@ export function MobileHeader({
   dateLabel, onPrev, onNext,
 }: MobileHeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [isSwitching, startSwitch] = useTransition()
   const [switchingTo, setSwitchingTo] = useState<string | null>(null)
   const [localDefault, setLocalDefault] = useState(defaultOrgId ?? null)
@@ -71,12 +73,12 @@ export function MobileHeader({
         <div className="flex items-center gap-3 [&_button]:text-white/70 [&_button:hover]:text-white">
           <SwapBell large />
           <NotificationBell large />
-          <a
-            href="/mobile-account"
+          <button
+            onClick={() => setAccountSheetOpen(true)}
             className="size-11 flex items-center justify-center rounded-full text-white/70 hover:text-white active:bg-white/10 transition-colors"
           >
             <User className="size-6" />
-          </a>
+          </button>
         </div>
       </header>
 
@@ -145,6 +147,8 @@ export function MobileHeader({
           </div>
         </SheetContent>
       </Sheet>
+
+      <MobileAccountSheet open={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} />
 
       {/* Full-screen loading overlay when switching org */}
       {switchingTo && (

@@ -30,6 +30,17 @@ export interface UserPreferences {
   mobileFavoriteView?: MobileFavoriteView
 }
 
+export async function getUserProfile(): Promise<{ email: string | null; fullName: string | null; avatarUrl: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { email: null, fullName: null, avatarUrl: null }
+  return {
+    email: user.email ?? null,
+    fullName: (user.user_metadata?.full_name as string) ?? null,
+    avatarUrl: (user.user_metadata?.avatar_url as string) ?? null,
+  }
+}
+
 export async function getUserDepartment(): Promise<string | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

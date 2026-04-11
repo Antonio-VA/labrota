@@ -73,6 +73,7 @@ const content = {
         { title: "AI Smart Rotas", body: "One click and LabRota's AI organises your entire shift schedule — balancing workload, respecting approved leave, and ensuring every procedure has the right certified staff assigned." },
         { title: "Competency Enforcement", body: "LabRota knows which procedures each staff member is certified for and flags gaps in real time — no more guessing who can cover what." },
         { title: "Leave Management", body: "Staff request time off in the app, managers approve with one click — leave balances update automatically." },
+        { title: "Holiday Balance", body: "Track entitlement and real-time leave balances for every staff member. Managers see team-wide holiday accruals at a glance — automatically updated as leave is requested, approved, and taken." },
         { title: "Drag & Drop Editing", body: "Fine-tune any AI-generated rota with a simple drag and drop. Skill gap warnings and coverage alerts update live as you move shifts around." },
         { title: "Shift Swap Requests", body: "Staff can request shift swaps directly from the app. Managers review and approve — coverage is maintained automatically and everyone is notified instantly." },
         { title: "Outlook Calendar Sync", body: "Connect staff Outlook calendars and out-of-office events automatically become leaves in LabRota — no manual entry, no missed absences." },
@@ -106,7 +107,7 @@ const content = {
         "AI-powered rota generation",
         "Shift swap requests",
         "Competency enforcement & skill gap detection",
-        "Leave management",
+        "Leave management & holiday balance tracking",
         "Outlook calendar sync",
         "PDF & XLS export",
         "AI-assisted lab setup from your existing rotas",
@@ -179,6 +180,7 @@ const content = {
         { title: "Rotas Inteligentes con IA", body: "Un clic y la IA de LabRota organiza todo el horario de turnos — equilibrando carga, respetando ausencias aprobadas y asegurando que cada procedimiento tiene asignado el personal certificado correcto." },
         { title: "Control de Competencias", body: "LabRota sabe qué procedimientos domina cada miembro del equipo y señala las brechas en tiempo real — sin adivinanzas sobre quién puede cubrir qué." },
         { title: "Gestión de Ausencias", body: "El equipo solicita ausencias en la app, los managers aprueban con un clic — los saldos se actualizan automáticamente en la rota." },
+        { title: "Saldo de Vacaciones", body: "Consulta la liquidación y los saldos de vacaciones en tiempo real de cada persona. Los managers ven el estado del equipo de un vistazo — actualización automática cuando se solicita, aprueba o disfruta una ausencia." },
         { title: "Edición con Arrastrar y Soltar", body: "Ajusta cualquier rota generada por IA con un simple arrastrar y soltar. Las alertas de brechas y cobertura se actualizan en tiempo real mientras mueves los turnos." },
         { title: "Cambios de Turno", body: "El equipo puede solicitar cambios de turno directamente desde la app. Los managers revisan y aprueban — la cobertura se mantiene automáticamente y todos reciben la notificación al instante." },
         { title: "Sincronización Outlook", body: "Conecta los calendarios de Outlook del equipo y los eventos de fuera de oficina se convierten automáticamente en ausencias en LabRota — sin entrada manual, sin ausencias olvidadas." },
@@ -212,7 +214,7 @@ const content = {
         "Generación de rotas con IA",
         "Solicitudes de cambio de turno",
         "Control de competencias y detección de brechas",
-        "Gestión de ausencias",
+        "Gestión de ausencias y saldo de vacaciones",
         "Sincronización calendario Outlook",
         "Exportación PDF y XLS",
         "Configuración asistida por IA desde tus rotas actuales",
@@ -245,9 +247,20 @@ const content = {
 
 type Lang = keyof typeof content
 
-// ─── Feature icons ────────────────────────────────────────────────────────────
+// ─── Feature cards ────────────────────────────────────────────────────────────
 
-const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, GripVertical, ArrowLeftRight, Cloud]
+const featureIcons = [Wand2, Calendar, ShieldCheck, Palmtree, BarChart3, GripVertical, ArrowLeftRight, Cloud]
+
+const featureAccents = [
+  { color: "#7c3aed", bg: "#f5f3ff" }, // AI Setup — purple
+  { color: "#1b4f8a", bg: "#eff6ff" }, // AI Rotas — brand blue
+  { color: "#059669", bg: "#ecfdf5" }, // Competency — emerald
+  { color: "#d97706", bg: "#fffbeb" }, // Leave — amber
+  { color: "#6d28d9", bg: "#f5f3ff" }, // Holiday Balance — violet
+  { color: "#475569", bg: "#f1f5f9" }, // Drag & Drop — slate
+  { color: "#0891b2", bg: "#ecfeff" }, // Shift Swap — cyan
+  { color: "#0284c7", bg: "#e0f2fe" }, // Outlook — sky
+]
 
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -537,22 +550,30 @@ export default function MarketingPage() {
       </div>
 
       {/* ── FEATURES ── */}
-      <section id="features" className="bg-[#f8fafc] border-y border-[#eef2f7] py-20">
+      <section id="features" className="py-24 border-y border-[#eef2f7]" style={{ background: "linear-gradient(180deg, #eef4ff 0%, #f8fafc 50%, #f0f9ff 100%)" }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-14">
-            <h2 className="text-[clamp(28px,3.5vw,38px)] font-bold tracking-tight text-[#0f172a] mb-3">{t.features.title}</h2>
-            <p className="text-[17px] text-[#64748b] max-w-xl mx-auto">{t.features.sub}</p>
+            <span className="inline-block text-[12px] font-semibold text-[#1b4f8a] bg-white border border-[#dbeafe] px-4 py-1.5 rounded-full mb-5 shadow-sm">
+              {lang === "es" ? "Funciones" : "Features"}
+            </span>
+            <h2 className="text-[clamp(28px,3.5vw,42px)] font-extrabold tracking-tight text-[#0f172a] mb-4">{t.features.title}</h2>
+            <p className="text-[17px] text-[#64748b] max-w-xl mx-auto leading-relaxed">{t.features.sub}</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
             {t.features.items.map((f, i) => {
               const Icon = featureIcons[i]
+              const accent = featureAccents[i]
               return (
-                <div key={f.title} className="rounded-xl border border-[#ccddee] bg-white p-7 hover:shadow-lg hover:shadow-[#1b4f8a]/08 hover:-translate-y-0.5 transition-all cursor-default">
-                  <div className="w-12 h-12 rounded-xl bg-[#eff6ff] text-[#1b4f8a] flex items-center justify-center mb-5">
-                    <Icon className="w-5 h-5" />
+                <div key={f.title} className="rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#1b4f8a]/10 hover:-translate-y-1.5 transition-all duration-200 cursor-default border border-white" style={{ boxShadow: "0 1px 4px rgba(27,79,138,0.08), 0 0 0 1px rgba(27,79,138,0.06)" }}>
+                  {/* Colored top bar */}
+                  <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${accent.color}, ${accent.color}cc)` }} />
+                  <div className="p-5 md:p-6">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: accent.bg, color: accent.color }}>
+                      <Icon className="w-[18px] h-[18px]" />
+                    </div>
+                    <h3 className="text-[14px] md:text-[15px] font-bold mb-2 leading-snug">{f.title}</h3>
+                    <p className="text-[12px] md:text-[13px] text-[#64748b] leading-relaxed">{f.body}</p>
                   </div>
-                  <h3 className="text-[16px] font-bold mb-2">{f.title}</h3>
-                  <p className="text-[14px] text-[#64748b] leading-relaxed">{f.body}</p>
                 </div>
               )
             })}
