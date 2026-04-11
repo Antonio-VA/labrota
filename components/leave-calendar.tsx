@@ -114,9 +114,9 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
     .map((lt) => ({ color: lt.color, name: locale === "en" && lt.name_en ? lt.name_en : lt.name }))
 
   return (
-    <div className="rounded-lg border border-border bg-background overflow-hidden">
+    <div className="rounded-lg border border-border bg-background overflow-hidden lg:h-full lg:flex lg:flex-col">
       {/* Month header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <button type="button" onClick={prevMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
           <ChevronLeft className="size-4 text-muted-foreground" />
         </button>
@@ -129,7 +129,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 shrink-0">
         {dayHeaders.map((d, i) => (
           <div key={i} className={cn(
             "text-center py-2 text-[12px] font-medium",
@@ -141,7 +141,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 lg:flex-1" style={{ gridAutoRows: "1fr" }}>
         {cells.map(({ day, dateStr }, i) => {
           const leaveInfo = dateStr ? leaveDays.get(dateStr) : null
           const isToday = dateStr === todayStr
@@ -156,7 +156,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
             <div
               key={i}
               className={cn(
-                "relative h-10 md:h-11 flex items-center justify-center text-[13px]",
+                "relative h-10 lg:h-full flex items-center justify-center text-[13px]",
                 !day && "bg-muted/10",
                 isWeekend && day && !leaveInfo && "text-muted-foreground/40",
               )}
@@ -188,7 +188,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
 
       {/* Legend */}
       {legendTypes.length > 0 && (
-        <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-border">
+        <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-border shrink-0">
           {legendTypes.map((info) => (
             <div key={info.name} className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: info.color + "55", borderColor: info.color }} />
