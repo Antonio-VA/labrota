@@ -1212,11 +1212,16 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const STORAGE_KEY = "labrota_staff_columns"
+  const hrActive = !!leaveBalances
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) return new Set(JSON.parse(saved) as ColKey[])
+        if (saved) {
+          const cols = new Set(JSON.parse(saved) as ColKey[])
+          if (!hrActive) cols.delete("leaveBalance")
+          return cols
+        }
       } catch { /* ignore */ }
     }
     return new Set(DEFAULT_COLS)
@@ -1247,7 +1252,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     { key: "dayPrefs", label: t("columnMenu.dayPrefs") },
     { key: "daysPerWeek", label: t("columnMenu.daysPerWeek") },
     { key: "workingPattern", label: t("columnMenu.workingPattern") },
-    { key: "leaveBalance", label: t("columnMenu.leaveBalance") },
+    ...(hrActive ? [{ key: "leaveBalance" as ColKey, label: t("columnMenu.leaveBalance") }] : []),
   ]
 
   // Inline edit mode
