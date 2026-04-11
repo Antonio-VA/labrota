@@ -79,18 +79,12 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <SheetContent
-        side="bottom"
+        side="right"
         showCloseButton={false}
-        className="rounded-t-2xl p-0 flex flex-col"
-        style={{ maxHeight: "92dvh" }}
+        className="p-0 flex flex-col w-full max-w-sm"
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-2.5 pb-1 shrink-0">
-          <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
-        </div>
-
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-2 shrink-0">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0 border-b border-border">
           <button
             onClick={onClose}
             className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-muted"
@@ -118,7 +112,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
               <div className="h-24 rounded-xl bg-muted" />
             </div>
           ) : prefs ? (
-            <div className="flex flex-col gap-3 px-4 py-2 pb-28">
+            <div className="flex flex-col gap-3 px-4 py-3 pb-10">
 
               {/* Profile */}
               <div className="flex items-center gap-3 py-1">
