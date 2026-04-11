@@ -104,20 +104,40 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
 
   // ── Year balance management ─────────────────────────────────────────────
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [lastGenerateResult, setLastGenerateResult] = useState<string | null>(null)
+  const [lastRollOverResult, setLastRollOverResult] = useState<string | null>(null)
 
   const handleGenerateBalances = () => {
+    setLastGenerateResult(null)
     startTransition(async () => {
       const result = await adminGenerateBalancesForYear(orgId, selectedYear)
-      if (result.error) toast.error(result.error)
-      else toast.success(`${result.created} saldos creados, ${result.skipped} omitidos`)
+      if (result.error) { toast.error(result.error); return }
+      if (result.created === 0 && result.skipped > 0) {
+        const msg = `Todos los saldos ya existían (${result.skipped} empleados). No se realizaron cambios.`
+        setLastGenerateResult(msg)
+        toast(msg)
+      } else {
+        const msg = `✓ ${result.created} saldos creados` + (result.skipped > 0 ? `, ${result.skipped} ya existentes` : "")
+        setLastGenerateResult(msg)
+        toast.success(msg)
+      }
     })
   }
 
   const handleRollOver = () => {
+    setLastRollOverResult(null)
     startTransition(async () => {
       const result = await adminRollOverCarryForward(orgId, selectedYear - 1)
-      if (result.error) toast.error(result.error)
-      else toast.success(`${result.processed} registros de arrastre procesados`)
+      if (result.error) { toast.error(result.error); return }
+      if (result.processed === 0) {
+        const msg = "No hay días restantes que traspasar."
+        setLastRollOverResult(msg)
+        toast(msg)
+      } else {
+        const msg = `✓ ${result.processed} registros de arrastre traspasados`
+        setLastRollOverResult(msg)
+        toast.success(msg)
+      }
     })
   }
 
@@ -263,22 +283,50 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
       {/* ── Tab: Gestión de saldos ──────────────────────────────────────── */}
       {tab === "saldos" && (
         <div className="flex flex-col gap-5">
-          <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-            <h3 className="text-[13px] font-medium text-muted-foreground uppercase">Gestión de saldos anuales</h3>
-            <div className="flex items-center gap-3">
-              <span className="text-[14px]">Año</span>
-              <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="border border-border rounded px-2 py-1 text-[14px] bg-background">
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
+          {/* Year selector */}
+          <div className="rounded-lg border border-border bg-background px-5 py-4 flex items-center gap-3">
+            <span className="text-[14px] font-medium">Año</span>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="border border-border rounded px-2 py-1 text-[14px] bg-background">
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          {/* Generate balances */}
+          <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
+            <h3 className="text-[14px] font-medium">Generar saldos para {selectedYear}</h3>
+            <p className="text-[13px] text-muted-foreground">
+              Crea registros de saldo para todo el personal activo con los días por defecto de cada tipo de ausencia controlado.
+              Si un empleado ya tiene saldo para ese año, se mantiene sin cambios.
+            </p>
+            <div>
               <Button variant="outline" size="sm" onClick={handleGenerateBalances} disabled={isPending}>
-                Generar saldos para {selectedYear}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleRollOver} disabled={isPending}>
-                Traspasar arrastre de {selectedYear - 1}
+                {isPending ? "Generando…" : "Generar saldos"}
               </Button>
             </div>
+            {lastGenerateResult && (
+              <p className="text-[13px] text-muted-foreground">
+                {lastGenerateResult}
+              </p>
+            )}
+          </div>
+
+          {/* Roll over carry-forward */}
+          <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
+            <h3 className="text-[14px] font-medium">Traspasar arrastre de {selectedYear - 1} a {selectedYear}</h3>
+            <p className="text-[13px] text-muted-foreground">
+              Calcula los días no consumidos en {selectedYear - 1} para cada empleado y los añade como arrastre en {selectedYear},
+              respetando el máximo configurado. Si el empleado no tiene saldo en {selectedYear}, se crea automáticamente.
+            </p>
+            <div>
+              <Button variant="outline" size="sm" onClick={handleRollOver} disabled={isPending}>
+                {isPending ? "Procesando…" : "Traspasar arrastre"}
+              </Button>
+            </div>
+            {lastRollOverResult && (
+              <p className="text-[13px] text-muted-foreground">
+                {lastRollOverResult}
+              </p>
+            )}
           </div>
         </div>
       )}
