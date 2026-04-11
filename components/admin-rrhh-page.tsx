@@ -144,6 +144,19 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
   // ── Danger zone ─────────────────────────────────────────────────────────
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
 
+  // Unsaved changes guard for tab switching
+  const handleTabChange = (newTab: Tab) => {
+    if (newTab === tab) return
+    if (configDirty || typesDirty) {
+      if (!window.confirm("Hay cambios sin guardar. ¿Deseas salir sin guardar?")) return
+      setConfig(initialConfig)
+      setConfigDirty(false)
+      setEditedTypes(initialTypes)
+      setTypesDirty(false)
+    }
+    setTab(newTab)
+  }
+
   const handleRemove = () => {
     startTransition(async () => {
       const result = await adminRemoveHrModule(orgId)
@@ -163,7 +176,7 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            onClick={() => handleTabChange(key)}
             className={cn(
               "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
               tab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
