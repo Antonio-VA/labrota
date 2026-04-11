@@ -135,7 +135,7 @@ export async function installHrModule(): Promise<{ error?: string }> {
   // Link overflow types (Sick Leave → Unpaid Sick Leave)
   if (insertedTypes) {
     const sickType = insertedTypes.find((t) => t.name === "Baja por enfermedad")
-    const unpaidSickType = insertedTypes.find((t) => t.name === "Baja por enfermedad no remunerada")
+    const unpaidSickType = insertedTypes.find((t) => t.name === "Baja no remunerada")
     if (sickType && unpaidSickType) {
       await admin
         .from("company_leave_types")

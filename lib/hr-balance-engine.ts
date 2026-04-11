@@ -233,8 +233,8 @@ export function getCarryForwardExpiryDate(
 
 export const DEFAULT_LEAVE_TYPES = [
   { name: "Vacaciones", name_en: "Annual Leave", has_balance: true, default_days: 25, allows_carry_forward: true, overflow_to: null, is_paid: true, color: "#3b82f6", sort_order: 0 },
-  { name: "Baja por enfermedad", name_en: "Sick Leave", has_balance: true, default_days: 10, allows_carry_forward: false, overflow_to: "Baja por enfermedad no remunerada", is_paid: true, color: "#ef4444", sort_order: 1 },
-  { name: "Baja por enfermedad no remunerada", name_en: "Unpaid Sick Leave", has_balance: false, default_days: null, allows_carry_forward: false, overflow_to: null, is_paid: false, color: "#f97316", sort_order: 2 },
+  { name: "Baja por enfermedad", name_en: "Sick Leave", has_balance: true, default_days: 10, allows_carry_forward: false, overflow_to: "Baja no remunerada", is_paid: true, color: "#ef4444", sort_order: 1 },
+  { name: "Baja no remunerada", name_en: "Unpaid Sick Leave", has_balance: false, default_days: null, allows_carry_forward: false, overflow_to: null, is_paid: false, color: "#f97316", sort_order: 2 },
   { name: "Permiso no remunerado", name_en: "Unpaid Leave", has_balance: false, default_days: null, allows_carry_forward: false, overflow_to: null, is_paid: false, color: "#a855f7", sort_order: 3 },
   { name: "Festivo", name_en: "Public Holiday", has_balance: false, default_days: null, allows_carry_forward: false, overflow_to: null, is_paid: true, color: "#06b6d4", sort_order: 4 },
   { name: "Formacion", name_en: "Training", has_balance: false, default_days: null, allows_carry_forward: false, overflow_to: null, is_paid: true, color: "#8b5cf6", sort_order: 5 },
