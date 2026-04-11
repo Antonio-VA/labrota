@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Archive, RotateCcw, AlertTriangle } from "lucide-react"
+import { Plus, Archive, RotateCcw, AlertTriangle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CompanyLeaveType, HolidayConfig } from "@/lib/types/database"
 import {
@@ -17,12 +17,12 @@ import {
   adminRemoveHrModule,
 } from "@/app/admin/hr-module-actions"
 
-type Tab = "configuracion" | "saldos" | "tipos"
+type Tab = "configuracion" | "tipos" | "saldos"
 
 const TAB_LABELS: Record<Tab, string> = {
   configuracion: "Configuración",
-  saldos: "Gestión de saldos",
   tipos: "Tipos de ausencia",
+  saldos: "Gestión de saldos",
 }
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -361,46 +361,60 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
             <div className="overflow-x-auto">
               <table className="w-full text-[14px]">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-3 py-2 font-medium">Nombre</th>
-                    <th className="text-center px-2 py-2 font-medium">Controlado</th>
-                    <th className="text-center px-2 py-2 font-medium">Días</th>
-                    <th className="text-center px-2 py-2 font-medium">Arrastre</th>
-                    <th className="text-left px-2 py-2 font-medium">Desbord.</th>
-                    <th className="text-center px-2 py-2 font-medium">Remunerado</th>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="text-left px-3 py-2.5 font-medium w-64 min-w-48">Nombre</th>
+                    <th className="text-center px-2 py-2.5 font-medium w-24">
+                      <span className="inline-flex items-center gap-1">
+                        Controlado
+                        <span title="Indica si este tipo de ausencia descuenta días del saldo del empleado. Los tipos controlados tienen un límite anual de días." className="cursor-help">
+                          <Info className="size-3 text-muted-foreground/60" />
+                        </span>
+                      </span>
+                    </th>
+                    <th className="text-center px-2 py-2.5 font-medium w-16">Días</th>
+                    <th className="text-center px-2 py-2.5 font-medium w-24">
+                      <span className="inline-flex items-center gap-1">
+                        Arrastre
+                        <span title="Permite traspasar los días no consumidos al año siguiente, hasta el máximo configurado en las reglas de arrastre." className="cursor-help">
+                          <Info className="size-3 text-muted-foreground/60" />
+                        </span>
+                      </span>
+                    </th>
+                    <th className="text-left px-2 py-2.5 font-medium w-36">Desborde</th>
+                    <th className="text-center px-2 py-2.5 font-medium w-24">Remunerado</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody>
                   {activeTypes.map((lt) => (
-                    <tr key={lt.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2">
+                    <tr key={lt.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: lt.color }} />
-                          <span>{lt.name}</span>
+                          <span className="font-medium">{lt.name}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2.5 text-center">
                         <input type="checkbox" checked={lt.has_balance} onChange={(e) => updateTypeField(lt.id, "has_balance", e.target.checked)} className="accent-primary" disabled={isPending} />
                       </td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2.5 text-center">
                         {lt.has_balance ? (
-                          <input type="number" value={lt.default_days ?? ""} onChange={(e) => updateTypeField(lt.id, "default_days", e.target.value ? parseInt(e.target.value) : null)} className="w-16 border border-border rounded px-2 py-1 text-[14px] text-center bg-background" disabled={isPending} />
+                          <input type="number" value={lt.default_days ?? ""} onChange={(e) => updateTypeField(lt.id, "default_days", e.target.value ? parseInt(e.target.value) : null)} className="w-14 border border-border rounded px-2 py-1 text-[14px] text-center bg-background" disabled={isPending} />
                         ) : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2.5 text-center">
                         <input type="checkbox" checked={lt.allows_carry_forward} onChange={(e) => updateTypeField(lt.id, "allows_carry_forward", e.target.checked)} className="accent-primary" disabled={isPending || !lt.has_balance} />
                       </td>
-                      <td className="px-2 py-2">
-                        <select value={lt.overflow_to_type_id ?? ""} onChange={(e) => updateTypeField(lt.id, "overflow_to_type_id", e.target.value || null)} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
+                      <td className="px-2 py-2.5">
+                        <select value={lt.overflow_to_type_id ?? ""} onChange={(e) => updateTypeField(lt.id, "overflow_to_type_id", e.target.value || null)} className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
                           <option value="">—</option>
                           {activeTypes.filter((t) => t.id !== lt.id).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2.5 text-center">
                         <input type="checkbox" checked={lt.is_paid} onChange={(e) => updateTypeField(lt.id, "is_paid", e.target.checked)} className="accent-primary" disabled={isPending} />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2.5">
                         <Button variant="ghost" size="icon-xs" onClick={() => updateTypeField(lt.id, "is_archived", true)} disabled={isPending}>
                           <Archive className="size-4" />
                         </Button>
