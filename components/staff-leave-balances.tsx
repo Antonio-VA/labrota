@@ -240,7 +240,7 @@ export function StaffLeaveBalances({
           description={t("noExistingLeaves")}
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-3">
           {trackedTypes.map((lt) => {
             const bal = getBalance(lt.id)
             const overflowType = lt.overflow_to_type_id
@@ -248,12 +248,34 @@ export function StaffLeaveBalances({
               : null
             const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
 
+            const cfValue = lt.allows_carry_forward ? bal.carried_forward : null
+
+            const rows: Array<{ label: string; value: number | string | null; highlight: boolean; extra?: React.ReactNode }> = [
+              { label: t("entitlement"), value: bal.entitlement, highlight: false },
+              {
+                label: t("carriedForward"),
+                value: cfValue,
+                highlight: false,
+                extra: bal.cf_expiry_date && cfValue !== null ? (
+                  <span className={`text-[11px] ml-1 ${bal.cf_expired ? "line-through text-muted-foreground" : "text-amber-600"}`}>
+                    {bal.cf_expired ? t("expired") : t("expiresOn", { date: formatDate(bal.cf_expiry_date, locale) })}
+                  </span>
+                ) : undefined,
+              },
+              { label: t("booked"), value: bal.booked, highlight: false },
+              { label: t("taken"), value: bal.taken, highlight: false },
+              { label: t("available"), value: bal.available, highlight: true },
+            ]
+
             return (
-              <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
+              <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden w-full md:w-[calc(50%-0.375rem)] lg:max-w-[calc(25%-0.5625rem)] lg:flex-1">
                 {/* Card header */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: lt.color }} />
+                    <div
+                      className="w-2.5 h-2.5 rounded-full border"
+                      style={{ backgroundColor: lt.color + "55", borderColor: lt.color }}
+                    />
                     <span className="text-[14px] font-medium">{displayName}</span>
                     <span className="text-[13px] text-muted-foreground">{selectedYear}</span>
                   </div>
@@ -262,9 +284,7 @@ export function StaffLeaveBalances({
                     className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
                     title={t("editEntitlement")}
                     onClick={() => {
-                      const balRecord = balances.find(
-                        (b) => b.leave_type_id === lt.id && b.year === selectedYear
-                      )
+                      const balRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
                       setEditingBalance({
                         leaveTypeId: lt.id,
                         leaveTypeName: displayName,
@@ -278,54 +298,32 @@ export function StaffLeaveBalances({
                   </button>
                 </div>
 
-                {/* Balance figures */}
-                <div className="px-5 py-4">
-                  <div className="grid grid-cols-5 gap-2 text-center">
-                    <div>
-                      <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("entitlement")}</div>
-                      <div className="text-[22px] font-semibold mt-1 text-foreground">{bal.entitlement}</div>
+                {/* Key-value rows */}
+                <div className="divide-y divide-border">
+                  {rows.map(({ label, value, highlight, extra }) => (
+                    <div key={label} className={`flex items-center justify-between px-4 py-2.5 ${highlight ? "bg-muted/20" : ""}`}>
+                      <span className={`text-[13px] ${highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                        {label}
+                      </span>
+                      <span className={`text-[14px] font-semibold tabular-nums flex items-center gap-1 ${
+                        highlight && typeof value === "number" && value <= 0 ? "text-destructive" : ""
+                      } ${value !== null && !highlight && typeof value === "number" && value === 0 ? "text-muted-foreground/40" : ""}`}
+                        style={highlight && typeof value === "number" && value > 0 ? { color: lt.color } : undefined}
+                      >
+                        {value === null
+                          ? <span className="text-muted-foreground/40">—</span>
+                          : value}
+                        {extra}
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("carriedForward")}</div>
-                      <div className="text-[22px] font-semibold mt-1">
-                        {bal.carried_forward > 0 ? (
-                          <span className={bal.cf_expired ? "line-through text-muted-foreground" : "text-amber-600 dark:text-amber-400"}>
-                            {bal.carried_forward}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/40">0</span>
-                        )}
-                      </div>
-                      {bal.cf_expiry_date && (
-                        <div className={`text-[11px] mt-0.5 ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600 dark:text-amber-400"}`}>
-                          {bal.cf_expired ? t("expired") : t("expiresOn", { date: formatDate(bal.cf_expiry_date, locale) })}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("booked")}</div>
-                      <div className="text-[22px] font-semibold mt-1 text-foreground">{bal.booked}</div>
-                    </div>
-                    <div>
-                      <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("taken")}</div>
-                      <div className="text-[22px] font-semibold mt-1 text-foreground">{bal.taken}</div>
-                    </div>
-                    <div>
-                      <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("available")}</div>
-                      <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
-                        {bal.available}
-                      </div>
-                    </div>
-                  </div>
-
+                  ))}
                   {overflowType && bal.in_overflow && (
-                    <div className="mt-3 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[13px] text-amber-600 dark:text-amber-400">
-                      {t("overflow")}: {bal.overflow_days} {t("days", { count: bal.overflow_days })} → {overflowType.name}
+                    <div className="px-4 py-2 bg-amber-500/5 text-[12px] text-amber-600">
+                      {bal.overflow_days}d → {overflowType.name}
                     </div>
                   )}
-
                   {bal.manual_adjustment !== 0 && (
-                    <div className="mt-2 text-[12px] text-muted-foreground">
+                    <div className="px-4 py-2 text-[12px] text-muted-foreground">
                       {t("manualAdjustment")}: <span className="font-medium">{bal.manual_adjustment > 0 ? "+" : ""}{bal.manual_adjustment}</span>
                     </div>
                   )}
