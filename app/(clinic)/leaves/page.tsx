@@ -158,7 +158,7 @@ export default async function LeavesPage() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8">
       {viewerBalanceData && viewerStaffId && (
-        <div className="flex flex-col gap-3 mb-4">
+        <div className="mb-4">
           <ViewerBalanceStrip
             leaveTypes={viewerBalanceData.leaveTypes}
             balances={viewerBalanceData.balances}
@@ -167,22 +167,42 @@ export default async function LeavesPage() {
             year={viewerBalanceData.year}
             enableLeaveRequests={enableLeaveRequests}
           />
-          <LeaveCalendar
-            leaves={viewerBalanceData.leaves}
-            leaveTypes={viewerBalanceData.leaveTypes}
-            year={viewerBalanceData.year}
-          />
         </div>
       )}
-      <LeavesList
-        leaves={leaves}
-        staff={staff}
-        userRole={userRole}
-        viewerStaffId={viewerStaffId}
-        enableLeaveRequests={enableLeaveRequests}
-        enableOutlookSync={enableOutlookSync}
-        orgId={orgId ?? undefined}
-      />
+      {viewerBalanceData && viewerStaffId ? (
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
+          {/* Calendar — fixed width on desktop, full width on mobile */}
+          <div className="lg:w-[320px] lg:shrink-0 lg:sticky lg:top-4">
+            <LeaveCalendar
+              leaves={viewerBalanceData.leaves}
+              leaveTypes={viewerBalanceData.leaveTypes}
+              year={viewerBalanceData.year}
+            />
+          </div>
+          {/* Leave list — takes remaining space */}
+          <div className="flex-1 min-w-0">
+            <LeavesList
+              leaves={leaves}
+              staff={staff}
+              userRole={userRole}
+              viewerStaffId={viewerStaffId}
+              enableLeaveRequests={enableLeaveRequests}
+              enableOutlookSync={enableOutlookSync}
+              orgId={orgId ?? undefined}
+            />
+          </div>
+        </div>
+      ) : (
+        <LeavesList
+          leaves={leaves}
+          staff={staff}
+          userRole={userRole}
+          viewerStaffId={viewerStaffId}
+          enableLeaveRequests={enableLeaveRequests}
+          enableOutlookSync={enableOutlookSync}
+          orgId={orgId ?? undefined}
+        />
+      )}
     </div>
   )
 }
