@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { getUserPreferences, saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
+import { saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import { applyTheme } from "@/components/account-panel"
 import { toast } from "sonner"
@@ -20,32 +20,20 @@ const ACCENT_COLORS = [
 
 interface MobileAccountViewProps {
   initialUser: { email: string | null; fullName: string | null; avatarUrl: string | null } | null
+  initialPrefs: UserPreferences
+  initialOutlook: UserOutlookStatus
 }
 
-export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
+export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }: MobileAccountViewProps) {
   const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()
-  const [loading, setLoading] = useState(true)
   const [avatarImgError, setAvatarImgError] = useState(false)
   const [prefs, setPrefs] = useState<UserPreferences>({
-    theme: "light",
-    accentColor: "#1b4f8a",
-    locale: "browser",
+    theme: initialPrefs.theme ?? "light",
+    accentColor: initialPrefs.accentColor ?? "#1b4f8a",
+    locale: initialPrefs.locale ?? "browser",
   })
-  const [outlook, setOutlook] = useState<UserOutlookStatus>({ available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null })
-
-  // Load preferences from DB on mount — DB is authoritative
-  useEffect(() => {
-    Promise.all([getUserPreferences(), getUserOutlookStatus()]).then(([p, ol]) => {
-      setPrefs({
-        theme: p.theme ?? "light",
-        accentColor: p.accentColor ?? "#1b4f8a",
-        locale: p.locale ?? "browser",
-      })
-      setOutlook(ol)
-      setLoading(false)
-    })
-  }, [])
+  const [outlook, setOutlook] = useState<UserOutlookStatus>(initialOutlook)
 
   async function signOut() {
     const supabase = createClient()
@@ -101,15 +89,7 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex flex-col gap-3 animate-pulse">
-          <div className="h-20 rounded-xl bg-muted" />
-          <div className="h-24 rounded-xl bg-muted" />
-          <div className="h-20 rounded-xl bg-muted" />
-        </div>
-      ) : (
-        <>
-          {/* Theme */}
+      {/* Theme */}
           <div className="rounded-xl border border-border bg-background">
             <p className="px-4 pt-3 pb-1 text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
               {locale === "es" ? "Apariencia" : "Appearance"}
@@ -252,8 +232,6 @@ export function MobileAccountView({ initialUser }: MobileAccountViewProps) {
           >
             {isPending ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar" : "Save")}
           </button>
-        </>
-      )}
 
       {/* Support */}
       <a
