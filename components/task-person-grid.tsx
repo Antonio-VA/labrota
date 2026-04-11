@@ -196,7 +196,7 @@ function TaskPersonCell({
       {!isPublished && (
         <div
           onClick={openPicker}
-          className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-b"
+          className="absolute top-0 right-0 bottom-0 w-4 flex items-center justify-center cursor-pointer opacity-0 group-hover/cell:opacity-100 transition-opacity hover:bg-muted/40 rounded-r"
         >
           <Plus className="size-3 text-muted-foreground" />
         </div>
