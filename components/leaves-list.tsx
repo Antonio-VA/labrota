@@ -486,6 +486,7 @@ function LeaveCard({
   muted,
   showStatus,
   canCancel,
+  hideStaffName,
 }: {
   leave: LeaveWithStaff
   locale: "es" | "en"
@@ -495,6 +496,7 @@ function LeaveCard({
   muted: boolean
   showStatus?: boolean
   canCancel?: boolean
+  hideStaffName?: boolean
 }) {
   const days = daysBetween(leave.start_date, leave.end_date)
   return (
@@ -503,9 +505,11 @@ function LeaveCard({
       onClick={() => onEdit(leave)}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <p className={cn("text-[14px] font-medium leading-tight", muted && "text-muted-foreground")}>
-          {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
-        </p>
+        {!hideStaffName && (
+          <p className={cn("text-[14px] font-medium leading-tight", muted && "text-muted-foreground")}>
+            {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
+          </p>
+        )}
         {showStatus && <StatusBadge leave={leave} t={t} />}
       </div>
       <div className="flex items-center gap-2 flex-wrap">
@@ -543,6 +547,7 @@ function LeavesTable({
   muted,
   showStatus,
   canCancel,
+  hideStaffColumn,
 }: {
   rows: LeaveWithStaff[]
   locale: "es" | "en"
@@ -552,6 +557,7 @@ function LeavesTable({
   muted: boolean
   showStatus?: boolean
   canCancel?: (leave: LeaveWithStaff) => boolean
+  hideStaffColumn?: boolean
 }) {
   const cellClass = muted ? "text-muted-foreground" : ""
 
@@ -570,6 +576,7 @@ function LeavesTable({
             muted={muted}
             showStatus={showStatus}
             canCancel={canCancel?.(leave)}
+            hideStaffName={hideStaffColumn}
           />
         ))}
       </div>
@@ -579,7 +586,7 @@ function LeavesTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-background">
-              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>
+              {!hideStaffColumn && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>}
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
@@ -594,9 +601,11 @@ function LeavesTable({
                 className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                 onClick={() => onEdit(leave)}
               >
-                <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
-                  {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
-                </td>
+                {!hideStaffColumn && (
+                  <td className={`px-4 py-2.5 font-medium ${cellClass}`}>
+                    {leave.staff ? `${leave.staff.first_name} ${leave.staff.last_name}` : "—"}
+                  </td>
+                )}
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-1.5">
                     <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
@@ -974,7 +983,7 @@ export function LeavesList({
       {/* Upcoming / active leaves */}
       {filteredUpcoming.length > 0 && (
         <>
-          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
+          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} />
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-1">
               <p className="text-[12px] text-muted-foreground">
@@ -1013,7 +1022,7 @@ export function LeavesList({
 
       {/* Past leaves */}
       {showHistory && filteredPast.length > 0 && (
-        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} />
+        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} />
       )}
 
       {/* Cancelled toggle */}
@@ -1031,7 +1040,7 @@ export function LeavesList({
 
       {/* Cancelled leaves */}
       {showCancelled && cancelledFiltered.length > 0 && (
-        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} />
+        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} hideStaffColumn={isViewer} />
       )}
 
       {/* Sheet */}

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/format-date"
 import type { Leave, CompanyLeaveType } from "@/lib/types/database"
 
 interface Props {
@@ -17,7 +18,6 @@ function getDaysInMonth(year: number, month: number): number {
 }
 
 function getFirstDayOfWeek(year: number, month: number): number {
-  // 0=Sun ... 6=Sat → shift to 0=Mon ... 6=Sun
   const day = new Date(year, month, 1).getDay()
   return day === 0 ? 6 : day - 1
 }
@@ -50,8 +50,8 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
     else setViewMonth((m) => m + 1)
   }
 
-  // Build a map: dateStr → leave type info
-  const leaveDays = new Map<string, { color: string; name: string; status: string }>()
+  // Build leave day map: dateStr → leave info
+  const leaveDays = new Map<string, { color: string; name: string; status: string; startDate: string; endDate: string; days: number | null }>()
 
   for (const leave of leaves) {
     if (leave.status === "rejected" || leave.status === "cancelled") continue
@@ -67,7 +67,14 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
     while (cursor <= end) {
       const dateStr = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
       if (!leaveDays.has(dateStr)) {
-        leaveDays.set(dateStr, { color, name, status: leave.status })
+        leaveDays.set(dateStr, {
+          color,
+          name,
+          status: leave.status,
+          startDate: leave.start_date,
+          endDate: leave.end_date,
+          days: leave.days_counted,
+        })
       }
       cursor.setDate(cursor.getDate() + 1)
     }
@@ -77,7 +84,6 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
   const firstDay = getFirstDayOfWeek(viewYear, viewMonth)
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
-  // Build grid cells
   const cells: Array<{ day: number | null; dateStr: string | null }> = []
   for (let i = 0; i < firstDay; i++) cells.push({ day: null, dateStr: null })
   for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, dateStr: toDateStr(viewYear, viewMonth, d) })
@@ -89,28 +95,35 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
       monthLeaveTypes.set(info.name, { color: info.color, name: info.name })
     }
   }
+  // Always show tracked types in legend for consistency
+  for (const lt of leaveTypes.filter((t) => t.has_balance && !t.is_archived)) {
+    const name = locale === "en" && lt.name_en ? lt.name_en : lt.name
+    if (!monthLeaveTypes.has(name)) {
+      monthLeaveTypes.set(name, { color: lt.color, name })
+    }
+  }
 
   return (
     <div className="rounded-lg border border-border bg-background overflow-hidden">
       {/* Month header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <button type="button" onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <button type="button" onClick={prevMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
           <ChevronLeft className="size-4 text-muted-foreground" />
         </button>
         <span className="text-[14px] font-medium">
           {monthNames[viewMonth]} {viewYear}
         </span>
-        <button type="button" onClick={nextMonth} className="p-1 rounded hover:bg-muted transition-colors">
+        <button type="button" onClick={nextMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
           <ChevronRight className="size-4 text-muted-foreground" />
         </button>
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7">
         {dayHeaders.map((d, i) => (
           <div key={i} className={cn(
-            "text-center py-2 text-[12px] font-medium text-muted-foreground",
-            i >= 5 && "text-muted-foreground/50"
+            "text-center py-2 text-[12px] font-medium",
+            i >= 5 ? "text-muted-foreground/40" : "text-muted-foreground"
           )}>
             {d}
           </div>
@@ -123,32 +136,37 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
           const leaveInfo = dateStr ? leaveDays.get(dateStr) : null
           const isToday = dateStr === todayStr
           const isWeekend = i % 7 >= 5
-          const isCancelled = leaveInfo?.status === "cancelled"
+
+          // Build tooltip
+          const tooltip = leaveInfo
+            ? `${leaveInfo.name}\n${formatDate(leaveInfo.startDate, locale)} – ${formatDate(leaveInfo.endDate, locale)}${leaveInfo.days ? ` (${leaveInfo.days}d)` : ""}${leaveInfo.status === "pending" ? "\n⏳ " + (locale === "es" ? "Pendiente" : "Pending") : ""}`
+            : undefined
 
           return (
             <div
               key={i}
               className={cn(
-                "relative h-8 md:h-10 flex items-center justify-center text-[12px] md:text-[13px] border-b border-r border-border",
-                !day && "bg-muted/20",
-                isWeekend && day && !leaveInfo && "bg-muted/10 text-muted-foreground/60",
+                "relative h-10 md:h-11 flex items-center justify-center text-[13px]",
+                !day && "bg-muted/10",
+                isWeekend && day && !leaveInfo && "text-muted-foreground/40",
               )}
-              title={leaveInfo ? `${leaveInfo.name}${isCancelled ? " (cancelled)" : ""}` : undefined}
+              title={tooltip}
             >
               {day && (
                 <>
                   {leaveInfo && (
                     <div
-                      className="absolute inset-0.5 rounded-md"
-                      style={{ backgroundColor: leaveInfo.color + "25" }}
+                      className="absolute inset-1 rounded-md"
+                      style={{ backgroundColor: leaveInfo.color + "22" }}
                     />
                   )}
                   <span className={cn(
-                    "relative z-10",
-                    isToday && "font-bold",
-                    isToday && !leaveInfo && "text-primary",
-                    leaveInfo && "font-medium",
-                  )}>
+                    "relative z-10 size-7 flex items-center justify-center rounded-full text-[13px]",
+                    isToday && !leaveInfo && "bg-primary text-primary-foreground font-bold",
+                    isToday && leaveInfo && "font-bold",
+                    leaveInfo && !isToday && "font-medium",
+                    leaveInfo && leaveInfo.status === "pending" && "opacity-60",
+                  )} style={leaveInfo && isToday ? { color: leaveInfo.color } : undefined}>
                     {day}
                   </span>
                 </>
@@ -160,11 +178,11 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
 
       {/* Legend */}
       {monthLeaveTypes.size > 0 && (
-        <div className="flex flex-wrap gap-3 px-4 py-2.5 border-t border-border bg-muted/20">
+        <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-border">
           {[...monthLeaveTypes.values()].map((info) => (
-            <div key={info.name} className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: info.color }} />
-              <span className="text-[12px] text-muted-foreground">{info.name}</span>
+            <div key={info.name} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info.color }} />
+              <span className="text-[13px] text-muted-foreground">{info.name}</span>
             </div>
           ))}
         </div>

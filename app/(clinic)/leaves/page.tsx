@@ -158,7 +158,7 @@ export default async function LeavesPage() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8">
       {viewerBalanceData && viewerStaffId && (
-        <div className="mb-4">
+        <div className="mb-6 pb-6 border-b border-border">
           <ViewerBalanceStrip
             leaveTypes={viewerBalanceData.leaveTypes}
             balances={viewerBalanceData.balances}
