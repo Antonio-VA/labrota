@@ -14,6 +14,7 @@ interface Org { id: string; name: string; slug: string; is_active: boolean; logo
 
 export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" }: { org: Org; hrActive?: boolean; activeModule?: "labrota" | "rrhh" }) {
   const router = useRouter()
+  const [isNavigating, startNavigation] = useTransition()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [isSuspending, startSuspend] = useTransition()
@@ -40,6 +41,13 @@ export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" 
 
   return (
     <>
+      {isNavigating && (
+        <div className="fixed inset-0 z-50 bg-background/60 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         {/* Name + badge + module switcher */}
         <div className="flex items-center gap-2">
@@ -52,8 +60,10 @@ export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" 
               value={activeModule}
               onChange={(e) => {
                 const target = e.target.value
-                if (target === "labrota") router.push(`/orgs/${org.id}`)
-                else if (target === "rrhh") router.push(`/orgs/${org.id}/rrhh`)
+                startNavigation(() => {
+                  if (target === "labrota") router.push(`/orgs/${org.id}`)
+                  else if (target === "rrhh") router.push(`/orgs/${org.id}/rrhh`)
+                })
               }}
               className="border border-border rounded-md px-2 py-1 text-[13px] bg-background font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ml-1"
             >
