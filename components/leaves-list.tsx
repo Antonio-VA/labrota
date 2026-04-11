@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud, AlertCircle, CheckCircle2, AlertTriangle,
 } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
 import { countDays } from "@/lib/hr-balance-engine"
@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave } from "@/app/(clinic)/leaves/actions"
+import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave, previewLeaveBalance } from "@/app/(clinic)/leaves/actions"
 import { OutlookSyncPanel } from "@/components/outlook-sync-panel"
 import { formatDateWithYear } from "@/lib/format-date"
 import { toast } from "sonner"
@@ -283,8 +283,26 @@ function LeaveForm({
   const [requestError, setRequestError] = useState<string | null>(null)
   const [startDate, setStartDate] = useState<string | null>(editing?.start_date ?? null)
   const [endDate, setEndDate] = useState<string | null>(editing?.end_date ?? null)
+  const [leaveType, setLeaveType] = useState<string>(editing?.type ?? "annual")
+  const [balancePreview, setBalancePreview] = useState<Awaited<ReturnType<typeof previewLeaveBalance>>>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const locale = useLocale() as "es" | "en"
   const router = useRouter()
+
+  // Live balance preview — debounced, only in request mode
+  useEffect(() => {
+    if (!useRequestFlow || !viewerStaffId || !startDate || !endDate || endDate < startDate) {
+      setBalancePreview(null)
+      return
+    }
+    setPreviewLoading(true)
+    const timer = setTimeout(async () => {
+      const result = await previewLeaveBalance({ staffId: viewerStaffId, type: leaveType, startDate, endDate })
+      setBalancePreview(result)
+      setPreviewLoading(false)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [useRequestFlow, viewerStaffId, startDate, endDate, leaveType])
 
   useEffect(() => {
     if ((state as { success?: boolean } | null)?.success) {
@@ -365,7 +383,8 @@ function LeaveForm({
         <label className="text-[14px] font-medium">{t("fields.type")}</label>
         <select
           name="type"
-          defaultValue={editing?.type ?? "annual"}
+          value={leaveType}
+          onChange={(e) => setLeaveType(e.target.value)}
           disabled={isPending}
           className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
         >
@@ -386,6 +405,48 @@ function LeaveForm({
         locale={locale}
         label={t("fields.dates")}
       />
+
+      {/* Balance preview */}
+      {useRequestFlow && (balancePreview || previewLoading) && (
+        <div className={cn(
+          "flex items-center gap-2 rounded-lg border px-3 py-2.5 text-[13px] transition-all",
+          previewLoading
+            ? "border-border bg-muted/40 text-muted-foreground"
+            : balancePreview?.blocked
+              ? "border-destructive/40 bg-destructive/5 text-destructive"
+              : balancePreview?.overflow?.needed
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-emerald-300 bg-emerald-50 text-emerald-800"
+        )}>
+          {previewLoading ? (
+            <div className="size-4 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin shrink-0" />
+          ) : balancePreview?.blocked ? (
+            <AlertCircle className="size-4 shrink-0" />
+          ) : balancePreview?.overflow?.needed ? (
+            <AlertTriangle className="size-4 shrink-0" />
+          ) : (
+            <CheckCircle2 className="size-4 shrink-0" />
+          )}
+          <span>
+            {previewLoading
+              ? (locale === "es" ? "Comprobando saldo…" : "Checking balance…")
+              : balancePreview?.blocked
+                ? (locale === "es"
+                    ? `Saldo insuficiente: ${balancePreview.available}d disponibles, ${balancePreview.daysCounted}d solicitados`
+                    : `Insufficient balance: ${balancePreview.available}d available, ${balancePreview.daysCounted}d requested`)
+                : balancePreview?.overflow?.needed
+                  ? (locale === "es"
+                      ? `${balancePreview.overflow.mainDays}d de ${balancePreview.leaveTypeName ?? leaveType} + ${balancePreview.overflow.overflowDays}d de ${balancePreview.overflow.overflowTypeName}`
+                      : `${balancePreview.overflow.mainDays}d from ${balancePreview.leaveTypeName ?? leaveType} + ${balancePreview.overflow.overflowDays}d from ${balancePreview.overflow.overflowTypeName}`)
+                  : balancePreview?.found
+                    ? (locale === "es"
+                        ? `${balancePreview.daysCounted}d solicitados · ${balancePreview.available - balancePreview.daysCounted}d restantes`
+                        : `${balancePreview.daysCounted}d requested · ${balancePreview.available - balancePreview.daysCounted}d remaining`)
+                    : null
+            }
+          </span>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="flex flex-col gap-1.5">
@@ -411,7 +472,7 @@ function LeaveForm({
       <SheetFooter className="px-0 mt-auto">
         <div className="flex items-center justify-between gap-2 w-full">
           <div className="flex gap-2">
-            <Button type="submit" disabled={pending || isDeleting}>
+            <Button type="submit" disabled={pending || isDeleting || (useRequestFlow && !!balancePreview?.blocked)}>
               {pending ? tc("saving") : useRequestFlow ? t("submitRequest") : editing ? tc("save") : tc("create")}
             </Button>
             <Button type="button" variant="outline" disabled={pending} onClick={onSuccess}>
