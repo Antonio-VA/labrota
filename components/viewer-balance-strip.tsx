@@ -72,7 +72,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year 
               </div>
               <div className="flex items-baseline gap-3">
                 <div>
-                  <span className={`text-[22px] font-semibold ${bal.available <= 0 ? "text-destructive" : "text-emerald-600"}`}>
+                  <span className={`text-[22px] font-semibold ${bal.available <= 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>
                     {bal.available}
                   </span>
                   <span className="text-[12px] text-muted-foreground ml-1">{t("available")}</span>
@@ -83,7 +83,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year 
                 </div>
               </div>
               {bal.carried_forward > 0 && (
-                <div className={`text-[11px] mt-1 ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600"}`}>
+                <div className={`text-[11px] mt-1 ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600 dark:text-amber-400"}`}>
                   {bal.carried_forward} {t("carriedForward")}
                   {bal.cf_expiry_date && !bal.cf_expired && (
                     <span> · {t("expiresOn", { date: formatDate(bal.cf_expiry_date, locale) })}</span>

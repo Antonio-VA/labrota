@@ -279,7 +279,7 @@ export function StaffLeaveBalances({
                       <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("carriedForward")}</div>
                       <div className="text-[22px] font-semibold mt-1">
                         {bal.carried_forward > 0 ? (
-                          <span className={bal.cf_expired ? "line-through text-muted-foreground" : "text-amber-600"}>
+                          <span className={bal.cf_expired ? "line-through text-muted-foreground" : "text-amber-600 dark:text-amber-400"}>
                             {bal.carried_forward}
                           </span>
                         ) : (
@@ -287,7 +287,7 @@ export function StaffLeaveBalances({
                         )}
                       </div>
                       {bal.cf_expiry_date && (
-                        <div className={`text-[11px] mt-0.5 ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600"}`}>
+                        <div className={`text-[11px] mt-0.5 ${bal.cf_expired ? "text-muted-foreground line-through" : "text-amber-600 dark:text-amber-400"}`}>
                           {bal.cf_expired ? t("expired") : t("expiresOn", { date: formatDate(bal.cf_expiry_date, locale) })}
                         </div>
                       )}
@@ -302,14 +302,14 @@ export function StaffLeaveBalances({
                     </div>
                     <div>
                       <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("available")}</div>
-                      <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : "text-emerald-600"}`}>
+                      <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>
                         {bal.available}
                       </div>
                     </div>
                   </div>
 
                   {overflowType && bal.in_overflow && (
-                    <div className="mt-3 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-[13px] text-amber-700">
+                    <div className="mt-3 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[13px] text-amber-600 dark:text-amber-400">
                       {t("overflow")}: {bal.overflow_days} {t("days", { count: bal.overflow_days })} → {overflowType.name}
                     </div>
                   )}

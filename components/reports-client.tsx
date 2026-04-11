@@ -872,7 +872,7 @@ export function ReportsClient({ orgDisplayMode, orgName, hrModuleActive = false 
       {hrModuleActive && (
         <div className="rounded-lg border border-border bg-background p-5 flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-amber-50 flex items-center justify-center">
+            <div className="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
               <Banknote className="size-5 text-amber-600" />
             </div>
             <div>
