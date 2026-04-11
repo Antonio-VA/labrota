@@ -597,6 +597,7 @@
     "leaveDetails": "Detalle de ausencia",
     "approveLeave": "Aprobar",
     "rejectLeave": "Rechazar",
+    "upcoming": "Próximas",
     "noLeaves": "Sin ausencias",
     "noLeavesDescription": "No hay ausencias registradas para este período.",
     "noPendingLeaves": "Sin solicitudes pendientes",
@@ -607,6 +608,8 @@
       "from": "Desde",
       "to": "Hasta",
       "days": "Días",
+      "leaveDays": "Días hábiles",
+      "leaveDaysTooltip": "Días laborables descontados de tu saldo. Puede diferir de los días naturales si se excluyen fines de semana o festivos.",
       "status": "Estado",
       "notes": "Notas"
     },

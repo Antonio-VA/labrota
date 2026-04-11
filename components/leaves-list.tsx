@@ -585,21 +585,30 @@ function LeavesTable({
       <div className={`hidden md:block rounded-lg border border-border overflow-hidden mb-3 bg-background ${muted ? "opacity-70" : ""}`}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-background">
-              {!hideStaffColumn && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>}
-              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
-              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
-              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
-              <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
-              {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
+            <tr className="border-b border-border bg-muted/40">
+              {!hideStaffColumn && <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.staff")}</th>}
+              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.type")}</th>
+              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
+              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
+              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
+              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  {t("columns.leaveDays")}
+                  <span title={t("columns.leaveDaysTooltip")} className="cursor-help"><Info className="size-3 text-muted-foreground/60" /></span>
+                </span>
+              </th>
+              {showStatus && <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
               {onCancel && <th className="w-16" />}
             </tr>
           </thead>
           <tbody>
-            {rows.map((leave) => (
+            {rows.map((leave, idx) => (
               <tr
                 key={leave.id}
-                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                className={cn(
+                  "border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer",
+                  idx % 2 === 1 && "bg-muted/15"
+                )}
                 onClick={() => onEdit(leave)}
               >
                 {!hideStaffColumn && (
@@ -618,6 +627,7 @@ function LeavesTable({
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
+                <td className={`px-4 py-2.5 font-medium ${cellClass}`}>{leave.days_counted ?? "—"}</td>
                 {showStatus && (
                   <td className="px-4 py-2.5">
                     <StatusBadge leave={leave} t={t} />
@@ -986,6 +996,7 @@ export function LeavesList({
       {/* Upcoming / active leaves */}
       {filteredUpcoming.length > 0 && (
         <>
+          <h3 className="text-[14px] font-medium mb-2">{t("upcoming")}</h3>
           <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} />
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-1">

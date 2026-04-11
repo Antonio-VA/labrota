@@ -158,7 +158,7 @@ export default async function LeavesPage() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8">
       {viewerBalanceData && viewerStaffId && (
-        <div className="mb-6 pb-6 border-b border-border">
+        <div className="mb-6 pb-6 rounded-lg border border-border bg-muted/20 p-4 md:p-5">
           <ViewerBalanceStrip
             leaveTypes={viewerBalanceData.leaveTypes}
             balances={viewerBalanceData.balances}
@@ -172,7 +172,7 @@ export default async function LeavesPage() {
       {viewerBalanceData && viewerStaffId ? (
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
           {/* Calendar — fixed width on desktop, full width on mobile */}
-          <div className="lg:w-[380px] lg:shrink-0 lg:sticky lg:top-4">
+          <div className="lg:w-1/4 lg:shrink-0 lg:sticky lg:top-4">
             <LeaveCalendar
               leaves={viewerBalanceData.leaves}
               leaveTypes={viewerBalanceData.leaveTypes}

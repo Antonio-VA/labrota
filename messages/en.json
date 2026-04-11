@@ -597,6 +597,7 @@
     "leaveDetails": "Leave details",
     "approveLeave": "Approve",
     "rejectLeave": "Reject",
+    "upcoming": "Upcoming",
     "noLeaves": "No leave records",
     "noLeavesDescription": "No leave has been recorded for this period.",
     "noPendingLeaves": "No pending requests",
@@ -607,6 +608,8 @@
       "from": "From",
       "to": "To",
       "days": "Days",
+      "leaveDays": "Leave days",
+      "leaveDaysTooltip": "Working days deducted from your balance. May differ from calendar days if weekends or public holidays are excluded.",
       "status": "Status",
       "notes": "Notes"
     },
