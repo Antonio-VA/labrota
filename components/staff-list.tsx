@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect, useTransition } from "react"
+import React, { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check, RefreshCw, Info } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check, RefreshCw, Info, GripVertical } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -729,9 +729,9 @@ const COL_WIDTHS: Record<ColKey, string> = {
 
 const ALL_COL_ORDER: ColKey[] = ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern", "leaveBalance"]
 
-function buildGrid(cols: Set<ColKey>) {
+function buildGrid(cols: Set<ColKey>, order: ColKey[] = ALL_COL_ORDER) {
   const parts = ["32px", "minmax(0,1.5fr)"]
-  for (const key of ALL_COL_ORDER) {
+  for (const key of order) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
   return parts.join(" ")
@@ -747,6 +747,7 @@ function StaffTable({
   sortCol, onSortChange,
   visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
   leaveBalances,
+  colOrder,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -768,14 +769,29 @@ function StaffTable({
   setEditValue?: (staffId: string, field: string, value: unknown) => void
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
   leaveBalances?: Record<string, Array<{ name: string; color: string; available: number }>>
+  colOrder?: ColKey[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
+  const effectiveOrder = colOrder ?? ALL_COL_ORDER
+
+  const headerCells: Record<ColKey, React.ReactNode> = {
+    role: <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>,
+    email: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>,
+    capacidades: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>,
+    training: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>,
+    status: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>,
+    shiftPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>,
+    dayPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>,
+    daysPerWeek: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>,
+    workingPattern: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>,
+    leaveBalance: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>,
+  }
 
   return (
     <div className={cn("rounded-lg border border-border bg-background", muted && "opacity-60")}>
       {/* Header — sticky below toolbar */}
-      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols) }}>
+      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -787,16 +803,9 @@ function StaffTable({
         <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           {t("columns.name")} {sortCol === "name" && "↓"}
         </button>
-        {visibleCols.has("role") && <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>}
-        {visibleCols.has("email") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>}
-        {visibleCols.has("capacidades") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>}
-        {visibleCols.has("training") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>}
-        {visibleCols.has("status") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>}
-        {visibleCols.has("shiftPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>}
-        {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>}
-        {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>}
-        {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>}
-        {visibleCols.has("leaveBalance") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>}
+        {effectiveOrder.filter(k => visibleCols.has(k)).map(k => (
+          <React.Fragment key={k}>{headerCells[k]}</React.Fragment>
+        ))}
       </div>
 
       {/* Rows */}
@@ -817,7 +826,7 @@ function StaffTable({
               "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
               isSelected ? "bg-primary/5" : memberIdx % 2 === 1 ? "bg-muted/30 hover:bg-accent" : "hover:bg-accent"
             )}
-            style={{ gridTemplateColumns: buildGrid(visibleCols) }}
+            style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}
           >
             {/* Checkbox */}
             <input
@@ -898,232 +907,229 @@ function StaffTable({
               </div>
             </div>
 
-            {/* Department */}
-            {visibleCols.has("role") && (
-              <div className="hidden md:flex items-center gap-1.5">
-                <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
-                <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
-              </div>
-            )}
-
-            {/* Email */}
-            {visibleCols.has("email") && (
-              <div className="hidden md:flex items-center min-w-0">
-                {editMode && setEditValue ? (
-                  <input
-                    type="email"
-                    value={String(getVal?.(member, "email") ?? member.email ?? "")}
-                    onChange={(e) => setEditValue(member.id, "email", e.target.value || null)}
-                    placeholder="—"
-                    className="h-7 w-full rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
-                  />
-                ) : (
-                  <span className={cn("text-[13px] truncate", member.email ? "text-foreground" : "text-muted-foreground/40")}>{member.email ?? "—"}</span>
-                )}
-              </div>
-            )}
-
-            {/* Técnicas (certified) */}
-            {visibleCols.has("capacidades") && (
-              <div className="hidden md:flex items-center gap-1 overflow-hidden">
-                {certifiedSkills.length === 0 ? (
-                  <span className="text-[13px] text-muted-foreground/40">—</span>
-                ) : (
-                  <SkillOverflow
-                    skills={certifiedSkills}
-                    skillLabel={skillLabel}
-                    maxVisible={4}
-                    variant="certified"
-                    skillOrder={skillOrder}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* En formación (training) */}
-            {visibleCols.has("training") && (
-              <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
-                {trainingSkills.length === 0 ? (
-                  <span className="text-[13px] text-muted-foreground/40">—</span>
-                ) : (
-                  <SkillOverflow
-                    skills={trainingSkills}
-                    skillLabel={skillLabel}
-                    maxVisible={3}
-                    variant="training"
-                    skillOrder={skillOrder}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Status */}
-            {visibleCols.has("status") && (
-              <div className="hidden md:flex items-center">
-                {editMode && setEditValue ? (
-                  <select
-                    value={String(getVal?.(member, "onboarding_status") ?? member.onboarding_status)}
-                    onChange={(e) => setEditValue(member.id, "onboarding_status", e.target.value)}
-                    className={cn("h-7 rounded border border-input bg-transparent px-1.5 text-[12px] outline-none font-medium",
-                      (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "active" ? "text-emerald-600" :
-                      (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "onboarding" ? "text-amber-600" : "text-muted-foreground"
-                    )}
-                  >
-                    <option value="active">{t("onboardingStatus.active")}</option>
-                    <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-                    <option value="inactive">{t("onboardingStatus.inactive")}</option>
-                  </select>
-                ) : (
-                  <span className={cn(
-                    "text-[13px] font-medium",
-                    member.onboarding_status === "active"      && "text-emerald-600",
-                    member.onboarding_status === "onboarding"  && "text-amber-600",
-                    member.onboarding_status === "inactive"    && "text-muted-foreground",
-                  )}>
-                    {t(`onboardingStatus.${member.onboarding_status}`)}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Shift preferences (combined: neutral/prefer/avoid) */}
-            {visibleCols.has("shiftPrefs") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {(() => {
-                  const rawPref = getVal?.(member, "preferred_shift") ?? member.preferred_shift
-                  const prefs = (rawPref ? String(rawPref) : "").split(",").filter(Boolean)
-                  const avoids = (getVal?.(member, "avoid_shifts") ?? member.avoid_shifts ?? []) as string[]
-                  return editMode && setEditValue ? (
-                    shiftTypes.filter((st) => st.active !== false).map((st) => {
-                      const isPref = prefs.includes(st.code)
-                      const isAvoid = avoids.includes(st.code)
-                      return (
-                        <button key={st.code} type="button" onClick={() => {
-                          if (!isPref && !isAvoid) {
-                            // neutral → prefer
-                            setEditValue(member.id, "preferred_shift", [...prefs, st.code].join(","))
-                          } else if (isPref) {
-                            // prefer → avoid
-                            setEditValue(member.id, "preferred_shift", prefs.filter((c) => c !== st.code).join(","))
-                            setEditValue(member.id, "avoid_shifts", [...avoids, st.code])
-                          } else {
-                            // avoid → neutral
-                            setEditValue(member.id, "avoid_shifts", avoids.filter((c) => c !== st.code))
-                          }
-                        }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
-                          {st.code}
-                        </button>
-                      )
-                    })
-                  ) : (
-                    <span className="text-[12px] text-muted-foreground">
-                      {prefs.length > 0 || avoids.length > 0 ? (
-                        <>
-                          {prefs.map((c) => <span key={c} className="text-[var(--pref-bg)] font-medium">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
-                          {prefs.length > 0 && avoids.length > 0 && " · "}
-                          {avoids.map((c) => <span key={c} className="text-[var(--avoid-text)]">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
-                        </>
-                      ) : "—"}
-                    </span>
-                  )
-                })()}
-              </div>
-            )}
-
-            {/* Day preferences (combined: neutral/prefer/avoid) */}
-            {visibleCols.has("dayPrefs") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {(() => {
-                  const pDays = (getVal?.(member, "preferred_days") ?? member.preferred_days ?? []) as string[]
-                  const aDays = (getVal?.(member, "avoid_days") ?? member.avoid_days ?? []) as string[]
-                  return editMode && setEditValue ? (
-                    ALL_DAYS_TABLE.map((d) => {
-                      const isPref = pDays.includes(d)
-                      const isAvoid = aDays.includes(d)
-                      return (
-                        <button key={d} type="button" onClick={() => {
-                          if (!isPref && !isAvoid) {
-                            setEditValue(member.id, "preferred_days", [...pDays, d])
-                          } else if (isPref) {
-                            setEditValue(member.id, "preferred_days", pDays.filter((x) => x !== d))
-                            setEditValue(member.id, "avoid_days", [...aDays, d])
-                          } else {
-                            setEditValue(member.id, "avoid_days", aDays.filter((x) => x !== d))
-                          }
-                        }} className={cn("size-5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
-                          {DAY_LABELS[d]}
-                        </button>
-                      )
-                    })
-                  ) : (
-                    <span className="text-[12px] text-muted-foreground">
-                      {pDays.length > 0 || aDays.length > 0 ? (
-                        <>
-                          {pDays.map((d) => <span key={d} className="text-[var(--pref-bg)] font-medium">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
-                          {pDays.length > 0 && aDays.length > 0 && " · "}
-                          {aDays.map((d) => <span key={d} className="text-[var(--avoid-text)]">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
-                        </>
-                      ) : "—"}
-                    </span>
-                  )
-                })()}
-              </div>
-            )}
-
-            {/* Days per week */}
-            {visibleCols.has("daysPerWeek") && (
-              <div className="hidden md:flex items-center">
-                {editMode && setEditValue ? (
-                  <input
-                    type="number" min={1} max={7}
-                    value={Number(getVal?.(member, "days_per_week") ?? member.days_per_week)}
-                    onChange={(e) => setEditValue(member.id, "days_per_week", Math.min(7, Math.max(1, parseInt(e.target.value) || 5)))}
-                    className="h-7 w-12 rounded border border-input bg-transparent px-1.5 text-[12px] text-center outline-none"
-                  />
-                ) : (
-                  <span className="text-[13px] text-muted-foreground">{member.days_per_week}</span>
-                )}
-              </div>
-            )}
-
-            {/* Working Pattern */}
-            {visibleCols.has("workingPattern") && (
-              <div className="hidden md:flex items-center gap-0.5 flex-wrap">
-                {editMode && setEditValue ? (
-                  ALL_DAYS_TABLE.map((d) => {
-                    const wp = (getVal?.(member, "working_pattern") as string[] | null) ?? []
-                    const active = wp.includes(d)
+            {/* Columns rendered in effectiveOrder */}
+            {effectiveOrder.filter(k => visibleCols.has(k)).map(k => {
+              function cell(): React.ReactNode {
+                switch (k) {
+                  case "role":
                     return (
-                      <button key={d} type="button" onClick={() => {
-                        const next = active ? wp.filter((x) => x !== d) : [...wp, d]
-                        setEditValue(member.id, "working_pattern", next)
-                      }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground")}>
-                        {DAY_LABELS[d]}
-                      </button>
+                      <div className="hidden md:flex items-center gap-1.5">
+                        <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
+                        <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
+                      </div>
                     )
-                  })
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">
-                    {(member.working_pattern ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {visibleCols.has("leaveBalance") && (
-              <div className="hidden md:flex items-center gap-2 flex-wrap">
-                {leaveBalances?.[member.id] ? (
-                  leaveBalances[member.id].map((b) => (
-                    <span key={b.name} className="inline-flex items-center gap-1 text-[12px]">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: b.color }} />
-                      <span className={b.available <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}>{b.available}</span>
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">—</span>
-                )}
-              </div>
-            )}
+                  case "email":
+                    return (
+                      <div className="hidden md:flex items-center min-w-0">
+                        {editMode && setEditValue ? (
+                          <input
+                            type="email"
+                            value={String(getVal?.(member, "email") ?? member.email ?? "")}
+                            onChange={(e) => setEditValue(member.id, "email", e.target.value || null)}
+                            placeholder="—"
+                            className="h-7 w-full rounded border border-input bg-transparent px-1.5 text-[13px] outline-none"
+                          />
+                        ) : (
+                          <span className={cn("text-[13px] truncate", member.email ? "text-foreground" : "text-muted-foreground/40")}>{member.email ?? "—"}</span>
+                        )}
+                      </div>
+                    )
+                  case "capacidades":
+                    return (
+                      <div className="hidden md:flex items-center gap-1 overflow-hidden">
+                        {certifiedSkills.length === 0 ? (
+                          <span className="text-[13px] text-muted-foreground/40">—</span>
+                        ) : (
+                          <SkillOverflow
+                            skills={certifiedSkills}
+                            skillLabel={skillLabel}
+                            maxVisible={4}
+                            variant="certified"
+                            skillOrder={skillOrder}
+                          />
+                        )}
+                      </div>
+                    )
+                  case "training":
+                    return (
+                      <div className="hidden md:flex items-center gap-1 overflow-hidden pr-6">
+                        {trainingSkills.length === 0 ? (
+                          <span className="text-[13px] text-muted-foreground/40">—</span>
+                        ) : (
+                          <SkillOverflow
+                            skills={trainingSkills}
+                            skillLabel={skillLabel}
+                            maxVisible={3}
+                            variant="training"
+                            skillOrder={skillOrder}
+                          />
+                        )}
+                      </div>
+                    )
+                  case "status":
+                    return (
+                      <div className="hidden md:flex items-center">
+                        {editMode && setEditValue ? (
+                          <select
+                            value={String(getVal?.(member, "onboarding_status") ?? member.onboarding_status)}
+                            onChange={(e) => setEditValue(member.id, "onboarding_status", e.target.value)}
+                            className={cn("h-7 rounded border border-input bg-transparent px-1.5 text-[12px] outline-none font-medium",
+                              (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "active" ? "text-emerald-600" :
+                              (getVal?.(member, "onboarding_status") ?? member.onboarding_status) === "onboarding" ? "text-amber-600" : "text-muted-foreground"
+                            )}
+                          >
+                            <option value="active">{t("onboardingStatus.active")}</option>
+                            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
+                            <option value="inactive">{t("onboardingStatus.inactive")}</option>
+                          </select>
+                        ) : (
+                          <span className={cn(
+                            "text-[13px] font-medium",
+                            member.onboarding_status === "active"      && "text-emerald-600",
+                            member.onboarding_status === "onboarding"  && "text-amber-600",
+                            member.onboarding_status === "inactive"    && "text-muted-foreground",
+                          )}>
+                            {t(`onboardingStatus.${member.onboarding_status}`)}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  case "shiftPrefs": {
+                    const rawPref = getVal?.(member, "preferred_shift") ?? member.preferred_shift
+                    const prefs = (rawPref ? String(rawPref) : "").split(",").filter(Boolean)
+                    const avoids = (getVal?.(member, "avoid_shifts") ?? member.avoid_shifts ?? []) as string[]
+                    return (
+                      <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                        {editMode && setEditValue ? (
+                          shiftTypes.filter((st) => st.active !== false).map((st) => {
+                            const isPref = prefs.includes(st.code)
+                            const isAvoid = avoids.includes(st.code)
+                            return (
+                              <button key={st.code} type="button" onClick={() => {
+                                if (!isPref && !isAvoid) {
+                                  setEditValue(member.id, "preferred_shift", [...prefs, st.code].join(","))
+                                } else if (isPref) {
+                                  setEditValue(member.id, "preferred_shift", prefs.filter((c) => c !== st.code).join(","))
+                                  setEditValue(member.id, "avoid_shifts", [...avoids, st.code])
+                                } else {
+                                  setEditValue(member.id, "avoid_shifts", avoids.filter((c) => c !== st.code))
+                                }
+                              }} className={cn("h-5 px-1.5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
+                                {st.code}
+                              </button>
+                            )
+                          })
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">
+                            {prefs.length > 0 || avoids.length > 0 ? (
+                              <>
+                                {prefs.map((c) => <span key={c} className="text-[var(--pref-bg)] font-medium">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                                {prefs.length > 0 && avoids.length > 0 && " · "}
+                                {avoids.map((c) => <span key={c} className="text-[var(--avoid-text)]">{c}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                              </>
+                            ) : "—"}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  }
+                  case "dayPrefs": {
+                    const pDays = (getVal?.(member, "preferred_days") ?? member.preferred_days ?? []) as string[]
+                    const aDays = (getVal?.(member, "avoid_days") ?? member.avoid_days ?? []) as string[]
+                    return (
+                      <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                        {editMode && setEditValue ? (
+                          ALL_DAYS_TABLE.map((d) => {
+                            const isPref = pDays.includes(d)
+                            const isAvoid = aDays.includes(d)
+                            return (
+                              <button key={d} type="button" onClick={() => {
+                                if (!isPref && !isAvoid) {
+                                  setEditValue(member.id, "preferred_days", [...pDays, d])
+                                } else if (isPref) {
+                                  setEditValue(member.id, "preferred_days", pDays.filter((x) => x !== d))
+                                  setEditValue(member.id, "avoid_days", [...aDays, d])
+                                } else {
+                                  setEditValue(member.id, "avoid_days", aDays.filter((x) => x !== d))
+                                }
+                              }} className={cn("size-5 rounded text-[9px] font-medium border", isPref ? "bg-[var(--pref-bg)] text-white border-[var(--pref-border)]" : isAvoid ? "bg-[var(--avoid-bg)] text-[var(--avoid-text)] border-[var(--avoid-border)]" : "border-border text-muted-foreground")}>
+                                {DAY_LABELS[d]}
+                              </button>
+                            )
+                          })
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">
+                            {pDays.length > 0 || aDays.length > 0 ? (
+                              <>
+                                {pDays.map((d) => <span key={d} className="text-[var(--pref-bg)] font-medium">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                                {pDays.length > 0 && aDays.length > 0 && " · "}
+                                {aDays.map((d) => <span key={d} className="text-[var(--avoid-text)]">{DAY_LABELS[d]}</span>).reduce<React.ReactNode[]>((a, b, i) => i > 0 ? [...a, " ", b] : [b], [])}
+                              </>
+                            ) : "—"}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  }
+                  case "daysPerWeek":
+                    return (
+                      <div className="hidden md:flex items-center">
+                        {editMode && setEditValue ? (
+                          <input
+                            type="number" min={1} max={7}
+                            value={Number(getVal?.(member, "days_per_week") ?? member.days_per_week)}
+                            onChange={(e) => setEditValue(member.id, "days_per_week", Math.min(7, Math.max(1, parseInt(e.target.value) || 5)))}
+                            className="h-7 w-12 rounded border border-input bg-transparent px-1.5 text-[12px] text-center outline-none"
+                          />
+                        ) : (
+                          <span className="text-[13px] text-muted-foreground">{member.days_per_week}</span>
+                        )}
+                      </div>
+                    )
+                  case "workingPattern":
+                    return (
+                      <div className="hidden md:flex items-center gap-0.5 flex-wrap">
+                        {editMode && setEditValue ? (
+                          ALL_DAYS_TABLE.map((d) => {
+                            const wp = (getVal?.(member, "working_pattern") as string[] | null) ?? []
+                            const active = wp.includes(d)
+                            return (
+                              <button key={d} type="button" onClick={() => {
+                                const next = active ? wp.filter((x) => x !== d) : [...wp, d]
+                                setEditValue(member.id, "working_pattern", next)
+                              }} className={cn("size-5 rounded text-[9px] font-medium border", active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground")}>
+                                {DAY_LABELS[d]}
+                              </button>
+                            )
+                          })
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">
+                            {(member.working_pattern ?? []).map((d) => DAY_LABELS[d] ?? d).join(" ") || "—"}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  case "leaveBalance":
+                    return (
+                      <div className="hidden md:flex items-center gap-2 flex-wrap">
+                        {leaveBalances?.[member.id] ? (
+                          leaveBalances[member.id].map((b) => (
+                            <span key={b.name} className="inline-flex items-center gap-1 text-[12px]">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: b.color }} />
+                              <span className={b.available <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}>{b.available}</span>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    )
+                  default:
+                    return null
+                }
+              }
+              return <React.Fragment key={k}>{cell()}</React.Fragment>
+            })}
 
           </div>
         )
@@ -1212,6 +1218,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const STORAGE_KEY = "labrota_staff_columns"
+  const ORDER_KEY = "labrota_staff_col_order"
   const hrActive = !!leaveBalances
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
     if (typeof window !== "undefined") {
@@ -1226,22 +1233,41 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     }
     return new Set(DEFAULT_COLS)
   })
-  const [showColMenu, setShowColMenu] = useState(false)
-  const colMenuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!showColMenu) return
-    function h(e: MouseEvent) { if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setShowColMenu(false) }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
-  }, [showColMenu])
-  function toggleCol(col: ColKey) {
-    setVisibleCols((prev) => {
-      const next = new Set(prev)
-      next.has(col) ? next.delete(col) : next.add(col)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
-      return next
-    })
+  const [colOrder, setColOrder] = useState<ColKey[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(ORDER_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved) as ColKey[]
+          // Append any new keys from ALL_COL_ORDER that aren't in saved order
+          const extra = ALL_COL_ORDER.filter((k) => !parsed.includes(k))
+          return [...parsed, ...extra]
+        }
+      } catch { /* ignore */ }
+    }
+    return [...ALL_COL_ORDER]
+  })
+  const [showColDialog, setShowColDialog] = useState(false)
+  const [draftOrder, setDraftOrder] = useState<ColKey[]>([])
+  const [draftVisible, setDraftVisible] = useState<Set<ColKey>>(new Set())
+  const dragColIdx = useRef<number | null>(null)
+
+  function openColDialog() {
+    setDraftOrder([...colOrder])
+    setDraftVisible(new Set(visibleCols))
+    setShowColDialog(true)
   }
+
+  function saveColPrefs() {
+    setColOrder(draftOrder)
+    setVisibleCols(draftVisible)
+    try {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(draftOrder))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...draftVisible]))
+    } catch { /* ignore */ }
+    setShowColDialog(false)
+  }
+
   const ALL_COLUMNS: { key: ColKey; label: string }[] = [
     { key: "role", label: t("columnMenu.role") },
     { key: "email", label: t("columnMenu.email") },
@@ -1531,26 +1557,12 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
         </div>
         <div className="flex items-center gap-2">
           {/* Column toggle */}
-          <div className="relative" ref={colMenuRef}>
-            <button
-              onClick={() => setShowColMenu((v) => !v)}
-              className={cn("h-9 px-2.5 rounded-lg border text-[13px] flex items-center gap-1.5 transition-colors", visibleCols.size !== DEFAULT_COLS.length || !DEFAULT_COLS.every((c) => visibleCols.has(c)) ? "border-primary/30 text-primary bg-primary/5" : "border-input text-muted-foreground hover:text-foreground")}
-            >
-              <Columns3 className="size-4" />
-            </button>
-            {showColMenu && (
-              <div className="absolute right-0 top-10 z-50 w-48 rounded-lg border border-border bg-background shadow-lg py-1 max-h-[60vh] overflow-y-auto">
-                {ALL_COLUMNS.map(({ key, label }) => (
-                  <button key={key} onClick={() => toggleCol(key)} className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors">
-                    <span className={cn("size-4 rounded border flex items-center justify-center shrink-0", visibleCols.has(key) ? "bg-primary border-primary text-white" : "border-border")}>
-                      {visibleCols.has(key) && <Check className="size-3" />}
-                    </span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={openColDialog}
+            className={cn("h-9 px-2.5 rounded-lg border text-[13px] flex items-center gap-1.5 transition-colors", visibleCols.size !== DEFAULT_COLS.length || !DEFAULT_COLS.every((c) => visibleCols.has(c)) ? "border-primary/30 text-primary bg-primary/5" : "border-input text-muted-foreground hover:text-foreground")}
+          >
+            <Columns3 className="size-4" />
+          </button>
           {/* Edit mode toggle */}
           {editMode ? (
             <>
@@ -1626,6 +1638,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           setEditValue={setEditValue}
           shiftTypes={shiftTypes}
           leaveBalances={leaveBalances}
+          colOrder={colOrder}
         />
       )}
 
@@ -1657,6 +1670,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           deptLabel={deptLabel}
           skillOrder={skillOrder}
           tecnicas={tecnicas}
+          colOrder={colOrder}
         />
       )}
 
