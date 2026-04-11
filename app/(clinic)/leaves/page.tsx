@@ -172,7 +172,7 @@ export default async function LeavesPage() {
       {viewerBalanceData && viewerStaffId ? (
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
           {/* Calendar — fixed width on desktop, full width on mobile */}
-          <div className="lg:w-[320px] lg:shrink-0 lg:sticky lg:top-4">
+          <div className="lg:w-[380px] lg:shrink-0 lg:sticky lg:top-4">
             <LeaveCalendar
               leaves={viewerBalanceData.leaves}
               leaveTypes={viewerBalanceData.leaveTypes}

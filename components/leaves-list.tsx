@@ -592,6 +592,7 @@ function LeavesTable({
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
               <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
               {showStatus && <th className="text-left px-4 py-2 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
+              {onCancel && <th className="w-16" />}
             </tr>
           </thead>
           <tbody>
@@ -619,17 +620,19 @@ function LeavesTable({
                 <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
                 {showStatus && (
                   <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge leave={leave} t={t} />
-                      {onCancel && canCancel?.(leave) && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
-                          className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline decoration-dotted underline-offset-2"
-                        >
-                          {t("cancelLeave")}
-                        </button>
-                      )}
-                    </div>
+                    <StatusBadge leave={leave} t={t} />
+                  </td>
+                )}
+                {onCancel && (
+                  <td className="px-4 py-2.5">
+                    {canCancel?.(leave) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onCancel(leave.id) }}
+                        className="text-[12px] text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        {t("cancelLeave")}
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>

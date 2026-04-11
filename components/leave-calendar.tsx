@@ -53,13 +53,33 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
   // Build leave day map: dateStr → leave info
   const leaveDays = new Map<string, { color: string; name: string; status: string; startDate: string; endDate: string; days: number | null }>()
 
+  // Map legacy type names to company leave types
+  const LEGACY_MAP: Record<string, string[]> = {
+    annual: ["vacaciones", "annual leave"],
+    sick: ["baja por enfermedad", "sick leave"],
+    personal: ["personal"],
+    training: ["formacion", "training"],
+    maternity: ["baja por maternidad", "maternity leave"],
+  }
+
+  function resolveLeaveType(leave: Leave) {
+    if (leave.leave_type_id) {
+      const lt = leaveTypes.find((t) => t.id === leave.leave_type_id)
+      if (lt) return { color: lt.color, name: locale === "en" && lt.name_en ? lt.name_en : lt.name }
+    }
+    // Try matching legacy type to a company leave type
+    const legacyNames = LEGACY_MAP[leave.type] ?? []
+    for (const lt of leaveTypes) {
+      if (legacyNames.includes(lt.name.toLowerCase()) || legacyNames.includes((lt.name_en ?? "").toLowerCase())) {
+        return { color: lt.color, name: locale === "en" && lt.name_en ? lt.name_en : lt.name }
+      }
+    }
+    return { color: "#3b82f6", name: leave.type }
+  }
+
   for (const leave of leaves) {
     if (leave.status === "rejected" || leave.status === "cancelled") continue
-    const lt = leave.leave_type_id
-      ? leaveTypes.find((t) => t.id === leave.leave_type_id)
-      : null
-    const color = lt?.color ?? "#3b82f6"
-    const name = lt ? (locale === "en" && lt.name_en ? lt.name_en : lt.name) : leave.type
+    const { color, name } = resolveLeaveType(leave)
 
     const start = new Date(leave.start_date + "T00:00:00")
     const end = new Date(leave.end_date + "T00:00:00")
@@ -88,20 +108,10 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
   for (let i = 0; i < firstDay; i++) cells.push({ day: null, dateStr: null })
   for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, dateStr: toDateStr(viewYear, viewMonth, d) })
 
-  // Legend: unique leave types used this month
-  const monthLeaveTypes = new Map<string, { color: string; name: string }>()
-  for (const [dateStr, info] of leaveDays) {
-    if (dateStr.startsWith(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`)) {
-      monthLeaveTypes.set(info.name, { color: info.color, name: info.name })
-    }
-  }
-  // Always show tracked types in legend for consistency
-  for (const lt of leaveTypes.filter((t) => t.has_balance && !t.is_archived)) {
-    const name = locale === "en" && lt.name_en ? lt.name_en : lt.name
-    if (!monthLeaveTypes.has(name)) {
-      monthLeaveTypes.set(name, { color: lt.color, name })
-    }
-  }
+  // Legend: show all tracked leave types
+  const legendTypes = leaveTypes
+    .filter((t) => t.has_balance && !t.is_archived)
+    .map((lt) => ({ color: lt.color, name: locale === "en" && lt.name_en ? lt.name_en : lt.name }))
 
   return (
     <div className="rounded-lg border border-border bg-background overflow-hidden">
@@ -177,9 +187,9 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
       </div>
 
       {/* Legend */}
-      {monthLeaveTypes.size > 0 && (
+      {legendTypes.length > 0 && (
         <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-border">
-          {[...monthLeaveTypes.values()].map((info) => (
+          {legendTypes.map((info) => (
             <div key={info.name} className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info.color }} />
               <span className="text-[13px] text-muted-foreground">{info.name}</span>
