@@ -827,7 +827,7 @@ function StaffTable({
           <div
             key={member.id}
             className={cn(
-              "grid items-center px-4 py-2.5 min-h-[52px] border-b border-border last:border-0 transition-colors",
+              "grid items-center px-4 py-1.5 min-h-[44px] border-b border-border last:border-0 transition-colors",
               isSelected ? "bg-primary/5" : memberIdx % 2 === 1 ? "bg-muted/30 hover:bg-accent" : "hover:bg-accent"
             )}
             style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}
