@@ -191,7 +191,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
         <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-border">
           {legendTypes.map((info) => (
             <div key={info.name} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info.color }} />
+              <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: info.color + "55", borderColor: info.color }} />
               <span className="text-[13px] text-muted-foreground">{info.name}</span>
             </div>
           ))}

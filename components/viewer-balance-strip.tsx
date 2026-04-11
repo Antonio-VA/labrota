@@ -63,81 +63,80 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
         </select>
       </div>
 
-      {/* Balance cards */}
-      {trackedTypes.map((lt) => {
-        const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
+      {/* Balance cards — 2-up on desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {trackedTypes.map((lt) => {
+          const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
 
-        const typeLeaves = leaves.filter(
-          (l) =>
-            matchesLeaveType(l, lt) &&
-            (l.balance_year === selectedYear || (!l.balance_year && l.start_date.startsWith(String(selectedYear))))
-        )
+          const typeLeaves = leaves.filter(
+            (l) =>
+              matchesLeaveType(l, lt) &&
+              (l.balance_year === selectedYear || (!l.balance_year && l.start_date.startsWith(String(selectedYear))))
+          )
 
-        const bal = calculateBalance({
-          entitlement: balanceRecord?.entitlement ?? lt.default_days ?? 0,
-          carried_forward: balanceRecord?.carried_forward ?? 0,
-          cf_expiry_date: balanceRecord?.cf_expiry_date ?? null,
-          manual_adjustment: balanceRecord?.manual_adjustment ?? 0,
-          today,
-          leaveEntries: typeLeaves.map((l) => ({
-            start_date: l.start_date,
-            end_date: l.end_date,
-            status: l.status,
-            days_counted: l.days_counted,
-          })),
-          config: dayCountConfig,
-          publicHolidays: [],
-        })
+          const bal = calculateBalance({
+            entitlement: balanceRecord?.entitlement ?? lt.default_days ?? 0,
+            carried_forward: balanceRecord?.carried_forward ?? 0,
+            cf_expiry_date: balanceRecord?.cf_expiry_date ?? null,
+            manual_adjustment: balanceRecord?.manual_adjustment ?? 0,
+            today,
+            leaveEntries: typeLeaves.map((l) => ({
+              start_date: l.start_date,
+              end_date: l.end_date,
+              status: l.status,
+              days_counted: l.days_counted,
+            })),
+            config: dayCountConfig,
+            publicHolidays: [],
+          })
 
-        const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
+          const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
 
-        return (
-          <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
-            {/* Card header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: lt.color }} />
+          const rows = [
+            { label: t("entitlement"), value: bal.entitlement, highlight: false },
+            {
+              label: t("carriedForward"),
+              value: bal.carried_forward,
+              highlight: false,
+              expired: bal.cf_expired && bal.carried_forward > 0,
+            },
+            { label: t("booked"), value: bal.booked, highlight: false },
+            { label: t("taken"), value: bal.taken, highlight: false },
+            { label: t("available"), value: bal.available, highlight: true },
+          ]
+
+          return (
+            <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
+              {/* Card header */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                <div
+                  className="w-2.5 h-2.5 rounded-full border"
+                  style={{ backgroundColor: lt.color + "55", borderColor: lt.color }}
+                />
                 <span className="text-[14px] font-medium">{displayName}</span>
                 <span className="text-[13px] text-muted-foreground">{selectedYear}</span>
               </div>
-            </div>
 
-            {/* Balance figures */}
-            <div className="px-5 py-4">
-              <div className="grid grid-cols-5 gap-2 text-center">
-                <div>
-                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("entitlement")}</div>
-                  <div className="text-[22px] font-semibold mt-1">{bal.entitlement}</div>
-                </div>
-                <div>
-                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("carriedForward")}</div>
-                  <div className="text-[22px] font-semibold mt-1">
-                    {bal.carried_forward > 0 ? (
-                      <span className={bal.cf_expired ? "line-through text-muted-foreground" : ""}>{bal.carried_forward}</span>
-                    ) : (
-                      <span className="text-muted-foreground/40">0</span>
-                    )}
+              {/* Key-value rows */}
+              <div className="divide-y divide-border">
+                {rows.map(({ label, value, highlight, expired }) => (
+                  <div key={label} className={`flex items-center justify-between px-4 py-2.5 ${highlight ? "bg-muted/20" : ""}`}>
+                    <span className={`text-[13px] ${highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                      {label}
+                    </span>
+                    <span
+                      className={`text-[14px] font-semibold tabular-nums ${expired ? "line-through text-muted-foreground" : ""} ${highlight && value <= 0 ? "text-destructive" : ""}`}
+                      style={highlight && value > 0 ? { color: lt.color } : undefined}
+                    >
+                      {value === 0 && !highlight ? <span className="text-muted-foreground/40">0</span> : value}
+                    </span>
                   </div>
-                </div>
-                <div>
-                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("booked")}</div>
-                  <div className="text-[22px] font-semibold mt-1">{bal.booked}</div>
-                </div>
-                <div>
-                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("taken")}</div>
-                  <div className="text-[22px] font-semibold mt-1">{bal.taken}</div>
-                </div>
-                <div>
-                  <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("available")}</div>
-                  <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : ""}`}>
-                    {bal.available}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

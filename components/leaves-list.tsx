@@ -835,7 +835,6 @@ export function LeavesList({
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<LeaveWithStaff | null>(null)
-  const [typeFilter, setTypeFilter] = useState<LeaveType | "all">("all")
   const [showHistory, setShowHistory] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
@@ -902,15 +901,10 @@ export function LeavesList({
     ? leaves.filter((l) => l.staff_id === viewerStaffId)
     : leaves
 
-  const filtered = visibleLeaves.filter((l) => {
-    if (typeFilter !== "all" && l.type !== typeFilter) return false
-    return true
-  })
-
   // Separate cancelled/rejected from active leaves
   const inactiveStatuses = ["cancelled", "rejected"]
-  const activeFiltered    = filtered.filter((l) => !inactiveStatuses.includes(l.status ?? "approved"))
-  const cancelledFiltered = filtered.filter((l) => inactiveStatuses.includes(l.status ?? "approved"))
+  const activeFiltered    = visibleLeaves.filter((l) => !inactiveStatuses.includes(l.status ?? "approved"))
+  const cancelledFiltered = visibleLeaves.filter((l) => inactiveStatuses.includes(l.status ?? "approved"))
 
   const filteredUpcoming = activeFiltered
     .filter((l) => l.end_date >= TODAY)
@@ -961,34 +955,6 @@ export function LeavesList({
 
       {/* Content section */}
       <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 md:gap-3 mb-4 flex-wrap">
-        <select
-          value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value as LeaveType | "all"); setPage(1) }}
-          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <option value="all">{t("columns.type")}: —</option>
-          {ALL_LEAVE_TYPES.map((lt) => (
-            <option key={lt} value={lt}>{t(`types.${lt}`)}</option>
-          ))}
-        </select>
-        <div className="flex items-center gap-2">
-          <Button size="lg" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
-          {!isViewer && (
-            <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setFileImportOpen(true)}>
-              <FileUp className="size-4" />
-              {t("addFromFile")}
-            </Button>
-          )}
-          {userRole === "manager" && enableOutlookSync && orgId && (
-            <Button size="lg" variant="outline" className="hidden md:inline-flex" onClick={() => setOutlookPanelOpen(true)}>
-              <Cloud className="size-4" />
-              {to("outlook")}
-            </Button>
-          )}
-        </div>
-      </div>
 
       {/* Empty state — no leaves at all */}
       {visibleLeaves.length === 0 && (
@@ -1000,14 +966,28 @@ export function LeavesList({
         />
       )}
 
-      {visibleLeaves.length > 0 && filtered.length === 0 && (
-        <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
-      )}
+      {/* Upcoming section */}
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-[14px] font-medium">{t("upcoming")}</h3>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
+          {!isViewer && (
+            <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => setFileImportOpen(true)}>
+              <FileUp className="size-4" />
+              {t("addFromFile")}
+            </Button>
+          )}
+          {userRole === "manager" && enableOutlookSync && orgId && (
+            <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => setOutlookPanelOpen(true)}>
+              <Cloud className="size-4" />
+              {to("outlook")}
+            </Button>
+          )}
+        </div>
+      </div>
 
-      {/* Upcoming / active leaves */}
-      {filteredUpcoming.length > 0 && (
+      {filteredUpcoming.length > 0 ? (
         <>
-          <h3 className="text-[14px] font-medium mb-2">{t("upcoming")}</h3>
           <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-1">
@@ -1026,9 +1006,7 @@ export function LeavesList({
             </div>
           )}
         </>
-      )}
-
-      {filteredUpcoming.length === 0 && filteredPast.length > 0 && (
+      ) : (
         <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
       )}
 
