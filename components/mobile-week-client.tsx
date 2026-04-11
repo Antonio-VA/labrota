@@ -240,13 +240,13 @@ function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData
 
 // ── Overflow menu ───────────────────────────────────────────────────────────
 
-function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, onSaveFavourite, taskDaysAsRows, onToggleTaskDaysAsRows }: {
+function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, hasFavourite, onSaveFavourite, onGoToFavourite, taskDaysAsRows, onToggleTaskDaysAsRows }: {
   weekStart: string; data: RotaWeekData | null; onRefresh?: () => void
   highlightEnabled?: boolean; onToggleHighlight?: () => void
   onGenerateWeek?: () => void
   weekViewMode?: "task" | "person"; onToggleViewMode?: () => void
   deptColor?: boolean; onToggleDeptColor?: () => void
-  isFavourite?: boolean; onSaveFavourite?: () => void
+  isFavourite?: boolean; hasFavourite?: boolean; onSaveFavourite?: () => void; onGoToFavourite?: () => void
   taskDaysAsRows?: boolean; onToggleTaskDaysAsRows?: () => void
 }) {
   const t = useTranslations("schedule")
@@ -320,48 +320,50 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
             <FileDown className="size-4" />
             {t("exportPdf")}
           </button>
+          <div className="h-px bg-border mx-3 my-0.5" />
+          {onToggleTaskDaysAsRows && data?.rotaDisplayMode === "by_task" && weekViewMode !== "person" && (
+            <button onClick={() => { onToggleTaskDaysAsRows(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <Grid3X3 className="size-4 shrink-0" />
+              {locale === "es" ? "Días como filas" : "Days as rows"}
+              {taskDaysAsRows && <Check className="size-4 text-primary ml-auto" />}
+            </button>
+          )}
           {onToggleViewMode && data?.rotaDisplayMode !== "by_task" && (
-            <>
-              <div className="h-px bg-border mx-3 my-0.5" />
-              <button onClick={() => { onToggleViewMode(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <Users className="size-4" />
-                {locale === "es" ? "Por persona" : "By person"}
-                {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
-              </button>
-              {onToggleDeptColor && (
-                <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                  <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
-                  {locale === "es" ? "Colores personal" : "Staff colors"}
-                  {deptColor && <Check className="size-4 text-primary ml-auto" />}
-                </button>
-              )}
-              {onToggleTaskDaysAsRows && weekViewMode !== "person" && data?.rotaDisplayMode === "by_task" && (
-                <button onClick={() => { onToggleTaskDaysAsRows(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                  <Grid3X3 className="size-4 shrink-0" />
-                  {locale === "es" ? "Días como filas" : "Days as rows"}
-                  {taskDaysAsRows && <Check className="size-4 text-primary ml-auto" />}
-                </button>
-              )}
-            </>
+            <button onClick={() => { onToggleViewMode(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <Users className="size-4" />
+              {locale === "es" ? "Por persona" : "By person"}
+              {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
+            </button>
+          )}
+          {onToggleDeptColor && data?.rotaDisplayMode !== "by_task" && (
+            <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
+              {locale === "es" ? "Colores personal" : "Staff colors"}
+              {deptColor && <Check className="size-4 text-primary ml-auto" />}
+            </button>
           )}
           {onToggleHighlight && weekViewMode !== "person" && (
-            <>
-              <div className="h-px bg-border mx-3 my-0.5" />
-              <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
-                {locale === "es" ? "Resaltar" : "Highlights"}
-                {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
-              </button>
-            </>
+            <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+              <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
+              {locale === "es" ? "Resaltar" : "Highlights"}
+              {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
+            </button>
           )}
-          {onSaveFavourite && (
+          {(onSaveFavourite || (hasFavourite && !isFavourite && onGoToFavourite)) && (
             <>
               <div className="h-px bg-border mx-3 my-0.5" />
-              <button onClick={() => { onSaveFavourite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className={cn("size-4", isFavourite ? "fill-amber-400 text-amber-400" : "")} />
-                {locale === "es" ? "Guardar vista fav." : "Save as favorite"}
-                {isFavourite && <Check className="size-4 text-primary ml-auto" />}
-              </button>
+              {hasFavourite && !isFavourite && onGoToFavourite && (
+                <button onClick={() => { onGoToFavourite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Star className="size-4 fill-amber-400 text-amber-400" />
+                  {t("goToFavoriteView")}
+                </button>
+              )}
+              {onSaveFavourite && (
+                <button onClick={() => { onSaveFavourite(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Star className={cn("size-4", isFavourite ? "fill-amber-400 text-amber-400" : "")} />
+                  {t("saveFavoriteView")}
+                </button>
+              )}
             </>
           )}
         </div>,
@@ -632,6 +634,15 @@ export function MobileWeekClient() {
     toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favorite")
   }
 
+  function goToFavourite() {
+    if (!weekFavourite) return
+    setWeekViewMode(weekFavourite.weekViewMode as "task" | "person")
+    setMobileDeptColor(weekFavourite.mobileDeptColor)
+    setTaskDaysAsRows(weekFavourite.taskDaysAsRows ?? false)
+  }
+
+  const hasFavourite = weekFavourite !== null
+
   useEffect(() => {
     setLoading(true)
     Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
@@ -753,7 +764,9 @@ export function MobileWeekClient() {
           deptColor={mobileDeptColor}
           onToggleDeptColor={toggleMobileDeptColor}
           isFavourite={isFavourite}
+          hasFavourite={hasFavourite}
           onSaveFavourite={saveFavourite}
+          onGoToFavourite={goToFavourite}
           taskDaysAsRows={taskDaysAsRows}
           onToggleTaskDaysAsRows={toggleTaskDaysAsRows}
           onRefresh={() => {
