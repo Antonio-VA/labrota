@@ -62,23 +62,23 @@ export function MobileOverflow({ onGenerateWeek, onGenerateDay, onShare, isPendi
               )}
             </>
           )}
-          {!isFavorite && (hasFavorite && onGoToFavorite ? (
+          {!isFavorite && (onGoToFavorite || onSaveFavorite) && (
             <>
               <div className="h-px bg-border mx-3 my-1" />
-              <button onClick={() => { onGoToFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className="size-4.5 shrink-0 text-amber-400 fill-amber-400" />
-                {t("goToFavoriteView")}
-              </button>
+              {hasFavorite && onGoToFavorite && (
+                <button onClick={() => { onGoToFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Star className="size-4.5 shrink-0 text-amber-400 fill-amber-400" />
+                  {t("goToFavoriteView")}
+                </button>
+              )}
+              {onSaveFavorite && (
+                <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Star className="size-4.5 shrink-0" />
+                  {t("saveFavoriteView")}
+                </button>
+              )}
             </>
-          ) : onSaveFavorite ? (
-            <>
-              <div className="h-px bg-border mx-3 my-1" />
-              <button onClick={() => { onSaveFavorite(); setOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3.5 text-[14px] text-left hover:bg-accent transition-colors">
-                <Star className="size-4.5 shrink-0" />
-                {t("saveFavoriteView")}
-              </button>
-            </>
-          ) : null)}
+          )}
         </div>
       )}
     </div>
