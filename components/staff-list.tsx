@@ -1244,18 +1244,26 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
   // Column visibility
   type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance" | "leaveTaken" | "leaveBooked"
-  const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const STORAGE_KEY = "labrota_staff_columns"
   const ORDER_KEY = "labrota_staff_col_order"
   const hrActive = !!leaveBalances
   const HR_KEYS: ColKey[] = ["leaveBalance", "leaveTaken", "leaveBooked"]
+  const DEFAULT_COLS: ColKey[] = hrActive
+    ? ["role", "capacidades", "training", "status", "leaveBalance", "leaveTaken", "leaveBooked"]
+    : ["role", "capacidades", "training", "status"]
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem(STORAGE_KEY)
         if (saved) {
-          const cols = new Set(JSON.parse(saved) as ColKey[])
-          if (!hrActive) HR_KEYS.forEach((k) => cols.delete(k))
+          const savedArr = JSON.parse(saved) as ColKey[]
+          const cols = new Set(savedArr)
+          if (!hrActive) {
+            HR_KEYS.forEach((k) => cols.delete(k))
+          } else {
+            // Auto-show any HR columns not yet in saved prefs (newly added columns)
+            HR_KEYS.forEach((k) => { if (!savedArr.includes(k)) cols.add(k) })
+          }
           return cols
         }
       } catch { /* ignore */ }
