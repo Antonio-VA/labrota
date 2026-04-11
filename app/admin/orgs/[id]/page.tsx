@@ -125,13 +125,9 @@ export default async function OrgDetailPage({
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-4">
-            <AdminOrgHeaderActions org={org} />
-            {hrStatus.active && (
-              <AdminModuleSwitcher orgId={id} orgName={org.name} active="labrota" hrActive={true} />
-            )}
-          </div>
+          <AdminOrgHeaderActions org={org} />
         </div>
+        <AdminModuleSwitcher orgId={id} active="labrota" hrActive={hrStatus.active} />
       </div>
 
       <AdminOrgTabs

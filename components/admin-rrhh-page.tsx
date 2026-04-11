@@ -455,17 +455,17 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
               </div>
             )}
 
-            {/* Save button for type changes */}
-            {typesDirty && (
-              <div className="flex items-center gap-3 pt-3 border-t border-border">
-                <Button onClick={handleSaveTypes} disabled={isPending}>
-                  {isPending ? "Guardando…" : "Guardar cambios"}
-                </Button>
+            {/* Save button — always visible */}
+            <div className="flex items-center gap-3 pt-3 border-t border-border">
+              <Button onClick={handleSaveTypes} disabled={isPending || !typesDirty}>
+                {isPending ? "Guardando…" : "Guardar cambios"}
+              </Button>
+              {typesDirty && (
                 <Button variant="outline" onClick={() => { setEditedTypes(initialTypes); setTypesDirty(false) }} disabled={isPending}>
                   Cancelar
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
