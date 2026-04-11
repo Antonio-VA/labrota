@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
+import { createStaff, updateStaff, deleteStaff, bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
 
 const STAFF_PASTEL_COLORS = [
   "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
@@ -81,7 +81,6 @@ function AutosaveNotes({ staffId, initialValue }: { staffId: string; initialValu
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
       setSaveStatus("saving")
-      const { bulkUpdateStaffField } = await import("@/app/(clinic)/staff/actions")
       const result = await bulkUpdateStaffField([{ id: staffId, field: "notes", value: newValue }])
       setSaveStatus(result.error ? "" : "saved")
       if (!result.error) setTimeout(() => setSaveStatus(""), 2000)
