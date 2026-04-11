@@ -924,8 +924,9 @@ export function MobileWeekClient() {
 
                 if (taskDaysAsRows) {
                   // ── Transposed: days as rows, tasks as columns ───────────────
+                  const dayColW = "44px"  // narrower than task-label column (80px)
                   const tecColW = `minmax(44px, 1fr)`
-                  const colTemplate = `${gridHdrW} repeat(${activeTecnicas.length}, ${tecColW})`
+                  const colTemplate = `${dayColW} repeat(${activeTecnicas.length}, ${tecColW})`
                   return (
                     <>
                       {/* Sticky header: corner + task columns */}
@@ -951,11 +952,11 @@ export function MobileWeekClient() {
                         const isHoliday = !!data?.publicHolidays?.[day.date]
                         return (
                           <div key={day.date} className="grid border-b border-border" style={{ gridTemplateColumns: colTemplate }}>
-                            <div className="border-r border-border bg-muted sticky left-0 z-[5] px-1.5 py-1 flex flex-col items-end justify-center" style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : undefined}>
-                              <span className={cn("text-[9px] uppercase", isToday ? "text-primary font-semibold" : isWknd ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
+                            <div className="border-r border-border bg-muted sticky left-0 z-[5] px-1 py-1 flex flex-col items-center justify-center" style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : undefined}>
+                              <span className={cn("text-[8px] uppercase leading-none", isToday ? "text-primary font-semibold" : isWknd ? "text-muted-foreground/40" : "text-muted-foreground")}>{wday}</span>
                               {isToday
-                                ? <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">{num}</span>
-                                : <span className={cn("text-[13px] font-semibold leading-none", isWknd ? "text-muted-foreground" : "text-primary")}>{num}</span>
+                                ? <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold mt-0.5">{num}</span>
+                                : <span className={cn("text-[13px] font-semibold leading-none mt-0.5", isWknd ? "text-muted-foreground" : "text-primary")}>{num}</span>
                               }
                             </div>
                             {activeTecnicas.map((tec) => {
