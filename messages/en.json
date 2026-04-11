@@ -420,7 +420,9 @@
       "dayPrefs": "Day pref.",
       "daysPerWeek": "Days/wk",
       "workingPattern": "Pattern",
-      "leaveBalance": "Balance"
+      "leaveBalance": "Available",
+      "leaveTaken": "Taken",
+      "leaveBooked": "Booked"
     },
     "selectAll": "Select all",
     "columnMenu": {
@@ -433,7 +435,9 @@
       "dayPrefs": "Day preference",
       "daysPerWeek": "Days/week",
       "workingPattern": "Working pattern",
-      "leaveBalance": "Leave balance"
+      "leaveBalance": "Available days",
+      "leaveTaken": "Days taken",
+      "leaveBooked": "Days booked"
     },
     "roles": {
       "lab": "Lab",

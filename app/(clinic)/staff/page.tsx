@@ -40,7 +40,7 @@ export default async function StaffPage() {
   }
 
   // Compute leave balances if HR module is active
-  let leaveBalances: Record<string, Array<{ name: string; color: string; available: number }>> | undefined
+  let leaveBalances: Record<string, { name: string; color: string; available: number; taken: number; booked: number }> | undefined
 
   const { data: hrMod } = await supabase
     .from("hr_module")
@@ -100,20 +100,20 @@ export default async function StaffPage() {
       }
 
       leaveBalances = {}
-      for (const s of staff) {
-        const staffBalances = balancesByStaff.get(s.id) ?? []
-        const staffLeaves = leavesByStaff.get(s.id) ?? []
+      const primaryType = trackedTypes[0]
+      if (primaryType) {
+        for (const s of staff) {
+          const staffBalances = balancesByStaff.get(s.id) ?? []
+          const staffLeaves = leavesByStaff.get(s.id) ?? []
 
-        const balArr: Array<{ name: string; color: string; available: number }> = []
-        for (const lt of trackedTypes) {
-          const balRecord = staffBalances.find((b) => b.leave_type_id === lt.id)
+          const balRecord = staffBalances.find((b) => b.leave_type_id === primaryType.id)
           const typeLeaves = staffLeaves.filter(
-            (l) => matchesType(l, lt) &&
+            (l) => matchesType(l, primaryType) &&
               (l.balance_year === currentYear || (!l.balance_year && l.start_date.startsWith(String(currentYear))))
           )
 
           const bal = calculateBalance({
-            entitlement: balRecord?.entitlement ?? lt.default_days ?? 0,
+            entitlement: balRecord?.entitlement ?? primaryType.default_days ?? 0,
             carried_forward: balRecord?.carried_forward ?? 0,
             cf_expiry_date: balRecord?.cf_expiry_date ?? null,
             manual_adjustment: balRecord?.manual_adjustment ?? 0,
@@ -128,9 +128,14 @@ export default async function StaffPage() {
             publicHolidays: [],
           })
 
-          balArr.push({ name: lt.name, color: lt.color, available: bal.available })
+          leaveBalances[s.id] = {
+            name: primaryType.name,
+            color: primaryType.color,
+            available: bal.available,
+            taken: bal.taken,
+            booked: bal.booked,
+          }
         }
-        leaveBalances[s.id] = balArr
       }
     }
   }

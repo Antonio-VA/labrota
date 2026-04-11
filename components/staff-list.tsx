@@ -712,7 +712,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
+type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance" | "leaveTaken" | "leaveBooked"
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
@@ -724,10 +724,12 @@ const COL_WIDTHS: Record<ColKey, string> = {
   dayPrefs: "minmax(120px,1.2fr)",
   daysPerWeek: "minmax(55px,0.5fr)",
   workingPattern: "minmax(100px,1fr)",
-  leaveBalance: "minmax(120px,1.5fr)",
+  leaveBalance: "minmax(80px,0.8fr)",
+  leaveTaken: "minmax(70px,0.7fr)",
+  leaveBooked: "minmax(70px,0.7fr)",
 }
 
-const ALL_COL_ORDER: ColKey[] = ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern", "leaveBalance"]
+const ALL_COL_ORDER: ColKey[] = ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern", "leaveBalance", "leaveTaken", "leaveBooked"]
 
 function buildGrid(cols: Set<ColKey>, order: ColKey[] = ALL_COL_ORDER) {
   const parts = ["32px", "minmax(0,1.5fr)"]
@@ -768,7 +770,7 @@ function StaffTable({
   getVal?: (s: StaffWithSkills, field: string) => unknown
   setEditValue?: (staffId: string, field: string, value: unknown) => void
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
-  leaveBalances?: Record<string, Array<{ name: string; color: string; available: number }>>
+  leaveBalances?: Record<string, { name: string; color: string; available: number; taken: number; booked: number }>
   colOrder?: ColKey[]
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
@@ -786,6 +788,8 @@ function StaffTable({
     daysPerWeek: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>,
     workingPattern: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>,
     leaveBalance: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>,
+    leaveTaken: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveTaken")}</span>,
+    leaveBooked: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBooked")}</span>,
   }
 
   return (
@@ -1109,21 +1113,45 @@ function StaffTable({
                         )}
                       </div>
                     )
-                  case "leaveBalance":
+                  case "leaveBalance": {
+                    const b = leaveBalances?.[member.id]
                     return (
-                      <div className="hidden md:flex items-center gap-2 flex-wrap">
-                        {leaveBalances?.[member.id] ? (
-                          leaveBalances[member.id].map((b) => (
-                            <span key={b.name} className="inline-flex items-center gap-1 text-[12px]">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: b.color }} />
-                              <span className={b.available <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}>{b.available}</span>
-                            </span>
-                          ))
+                      <div className="hidden md:flex items-center gap-1.5">
+                        {b ? (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                            <span className={cn("text-[13px] tabular-nums", b.available <= 0 ? "text-destructive font-medium" : "text-foreground")}>{b.available}</span>
+                          </>
                         ) : (
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}
                       </div>
                     )
+                  }
+                  case "leaveTaken": {
+                    const b = leaveBalances?.[member.id]
+                    return (
+                      <div className="hidden md:flex items-center">
+                        {b !== undefined ? (
+                          <span className="text-[13px] tabular-nums text-muted-foreground">{b.taken}</span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    )
+                  }
+                  case "leaveBooked": {
+                    const b = leaveBalances?.[member.id]
+                    return (
+                      <div className="hidden md:flex items-center">
+                        {b !== undefined ? (
+                          <span className="text-[13px] tabular-nums text-muted-foreground">{b.booked}</span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    )
+                  }
                   default:
                     return null
                 }
@@ -1140,7 +1168,7 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [], maxStaff = 50, leaveBalances }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; maxStaff?: number; leaveBalances?: Record<string, Array<{ name: string; color: string; available: number }>> }) {
+export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [], maxStaff = 50, leaveBalances }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; maxStaff?: number; leaveBalances?: Record<string, { name: string; color: string; available: number; taken: number; booked: number }> }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
@@ -1215,18 +1243,19 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   // Column visibility
-  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
+  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance" | "leaveTaken" | "leaveBooked"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
   const STORAGE_KEY = "labrota_staff_columns"
   const ORDER_KEY = "labrota_staff_col_order"
   const hrActive = !!leaveBalances
+  const HR_KEYS: ColKey[] = ["leaveBalance", "leaveTaken", "leaveBooked"]
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem(STORAGE_KEY)
         if (saved) {
           const cols = new Set(JSON.parse(saved) as ColKey[])
-          if (!hrActive) cols.delete("leaveBalance")
+          if (!hrActive) HR_KEYS.forEach((k) => cols.delete(k))
           return cols
         }
       } catch { /* ignore */ }
@@ -1278,7 +1307,11 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     { key: "dayPrefs", label: t("columnMenu.dayPrefs") },
     { key: "daysPerWeek", label: t("columnMenu.daysPerWeek") },
     { key: "workingPattern", label: t("columnMenu.workingPattern") },
-    ...(hrActive ? [{ key: "leaveBalance" as ColKey, label: t("columnMenu.leaveBalance") }] : []),
+    ...(hrActive ? [
+      { key: "leaveBalance" as ColKey, label: t("columnMenu.leaveBalance") },
+      { key: "leaveTaken" as ColKey, label: t("columnMenu.leaveTaken") },
+      { key: "leaveBooked" as ColKey, label: t("columnMenu.leaveBooked") },
+    ] : []),
   ]
 
   // Inline edit mode
