@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 interface Org { id: string; name: string; slug: string; is_active: boolean; logo_url: string | null }
 
-export function AdminOrgHeaderActions({ org }: { org: Org }) {
+export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" }: { org: Org; hrActive?: boolean; activeModule?: "labrota" | "rrhh" }) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -41,12 +41,26 @@ export function AdminOrgHeaderActions({ org }: { org: Org }) {
   return (
     <>
       <div className="flex items-center justify-between gap-4">
-        {/* Name + badge */}
+        {/* Name + badge + module switcher */}
         <div className="flex items-center gap-2">
           <h1 className="text-[18px] font-medium">{org.name}</h1>
           <Badge variant={org.is_active ? "active" : "inactive"}>
             {org.is_active ? "Activa" : "Suspendida"}
           </Badge>
+          {hrActive && (
+            <select
+              value={activeModule}
+              onChange={(e) => {
+                const target = e.target.value
+                if (target === "labrota") router.push(`/orgs/${org.id}`)
+                else if (target === "rrhh") router.push(`/orgs/${org.id}/rrhh`)
+              }}
+              className="border border-border rounded-md px-2 py-1 text-[13px] bg-background font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ml-1"
+            >
+              <option value="labrota">LabRota</option>
+              <option value="rrhh">RRHH</option>
+            </select>
+          )}
         </div>
 
         {/* Three-dot menu — all actions */}
