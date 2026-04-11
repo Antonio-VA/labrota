@@ -1116,12 +1116,9 @@ function StaffTable({
                   case "leaveBalance": {
                     const b = leaveBalances?.[member.id]
                     return (
-                      <div className="hidden md:flex items-center gap-1.5">
-                        {b ? (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-                            <span className={cn("text-[13px] tabular-nums", b.available <= 0 ? "text-destructive font-medium" : "text-foreground")}>{b.available}</span>
-                          </>
+                      <div className="hidden md:flex items-center">
+                        {b !== undefined ? (
+                          <span className={cn("text-[13px] tabular-nums", b.available <= 0 ? "text-destructive font-medium" : "text-muted-foreground")}>{b.available}</span>
                         ) : (
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}

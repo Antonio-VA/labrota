@@ -423,6 +423,7 @@
       "leaveBalance": "Disponible",
       "leaveTaken": "Disfrutado",
       "leaveBooked": "Reservado"
+
     },
     "selectAll": "Seleccionar todos",
     "columnMenu": {
@@ -435,9 +436,9 @@
       "dayPrefs": "Preferencia días",
       "daysPerWeek": "Días/semana",
       "workingPattern": "Patrón trabajo",
-      "leaveBalance": "Días disponibles",
-      "leaveTaken": "Días disfrutados",
-      "leaveBooked": "Días reservados"
+      "leaveBalance": "Vacaciones disponibles",
+      "leaveTaken": "Vacaciones disfrutadas",
+      "leaveBooked": "Vacaciones reservadas"
     },
     "roles": {
       "lab": "Embriología",
