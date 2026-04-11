@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedOrgId } from "@/lib/auth-cache"
 import { ONE_DAY_MS, RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
@@ -131,16 +132,7 @@ function getPublicHolidays(year: number, country = "ES", region?: string | null)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase
-    .from("profiles")
-    .select("organisation_id")
-    .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
-  return data?.organisation_id ?? null
-}
+// getOrgId removed — use getCachedOrgId() (deduped via React.cache within a request)
 
 function isWeekendDate(isoDate: string): boolean {
   const day = new Date(isoDate + "T12:00:00").getDay()
@@ -644,7 +636,7 @@ export async function generateRota(
   generationType: import("@/lib/types/database").GenerationType = "ai_optimal"
 ): Promise<{ error?: string; assignmentCount?: number; _coverageModel?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const weekDates = getWeekDates(weekStart)
@@ -956,7 +948,7 @@ export async function generateRotaWithAI(
   const { z } = await import("zod")
 
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const weekDates = getWeekDates(weekStart)
@@ -1283,7 +1275,7 @@ Use staff IDs (not names) and shift codes exactly as provided.`
 
 export async function getHybridUsage(): Promise<{ used: number; limit: number; remaining: number }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { used: 0, limit: 10, remaining: 10 }
 
   const today = new Date().toISOString().split("T")[0]
@@ -1316,7 +1308,7 @@ export async function generateRotaHybrid(
   const { z } = await import("zod")
 
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // ── 0. Check daily quota ───────────────────────────────────────────────────
@@ -1842,7 +1834,7 @@ export async function generateTaskHybrid(
   const { z } = await import("zod")
 
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // ── 0. Check daily quota ─────────────────────────────────────────────────────
@@ -2331,7 +2323,7 @@ export async function upsertAssignment(params: {
   functionLabel?: string | null
 }): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // Upsert rota record (create if this week has no rota yet)
@@ -2406,7 +2398,7 @@ export async function upsertAssignment(params: {
 
 export async function deleteAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   // Snapshot before deletion
   const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).eq("organisation_id", orgId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
@@ -2429,7 +2421,7 @@ export async function updateAssignmentShift(
   shiftType: ShiftType,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2450,7 +2442,7 @@ export async function deleteAllDayAssignments(
   date: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2470,7 +2462,7 @@ export async function regenerateDay(
   date: string,
 ): Promise<{ error?: string; count?: number }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const weekDates = getWeekDates(weekStart)
@@ -2566,7 +2558,7 @@ export async function moveAssignment(
   newDate: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2586,7 +2578,7 @@ export async function setPunctionsOverride(
   value: number | null,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
 
   // Fetch existing override map
@@ -2620,7 +2612,7 @@ export async function setPunctionsOverride(
 
 export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { data: { user } } = await supabase.auth.getUser()
   const publisherName = (user?.user_metadata?.full_name as string) ?? user?.email ?? "—"
@@ -2680,7 +2672,7 @@ async function sendPublishNotifications(orgId: string, weekStart: string, publis
 
 export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rotas")
@@ -2696,7 +2688,7 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
 
 export async function moveAssignmentShift(assignmentId: string, newShiftType: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2712,7 +2704,7 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
 
 export async function removeAssignment(assignmentId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   // Snapshot before removal
   const { data: asg } = await supabase.from("rota_assignments").select("rota_id, date, rota:rota_id(week_start)").eq("id", assignmentId).eq("organisation_id", orgId).maybeSingle() as { data: { rota_id: string; date: string; rota: { week_start: string } | null } | null }
@@ -2732,7 +2724,7 @@ export async function removeAssignment(assignmentId: string): Promise<{ error?: 
 
 export async function setTecnica(assignmentId: string, tecnicaId: string | null): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2748,7 +2740,7 @@ export async function setTecnica(assignmentId: string, tecnicaId: string | null)
 
 export async function setFunctionLabel(assignmentId: string, label: string | null): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
@@ -2769,7 +2761,7 @@ export async function setWholeTeam(
   wholeTeam: boolean
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // Find rota for this week
@@ -3198,7 +3190,7 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
 
 export async function copyDayFromLastWeek(weekStart: string, date: string): Promise<{ error?: string; count?: number }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // Get the same weekday from last week
@@ -3255,7 +3247,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
 
 export async function copyPreviousWeek(weekStart: string): Promise<{ error?: string; count?: number }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // Previous week start
@@ -3333,7 +3325,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
 
 export async function clearWeek(weekStart: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const { data: rotaRow, error: upsertErr } = await supabase
@@ -3362,7 +3354,7 @@ import type { RotaTemplate, RotaTemplateAssignment } from "@/lib/types/database"
 
 export async function saveAsTemplate(weekStart: string, name: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const dates = getWeekDates(weekStart)
@@ -3403,7 +3395,7 @@ export async function getTemplates(): Promise<RotaTemplate[]> {
 
 export async function applyTemplate(templateId: string, weekStart: string, strict = true): Promise<{ error?: string; skipped?: string[] }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   // Fetch template
@@ -3491,7 +3483,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
 
 export async function renameTemplate(id: string, name: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase.from("rota_templates").update({ name } as never).eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -3501,7 +3493,7 @@ export async function renameTemplate(id: string, name: string): Promise<{ error?
 
 export async function deleteTemplate(id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  const orgId = await getOrgId(supabase)
+  const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase.from("rota_templates").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }

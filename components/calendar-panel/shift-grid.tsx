@@ -108,6 +108,27 @@ export function ShiftGrid({
     return dates
   }, [weekStart])
 
+  // O(1) tecnica lookups — avoids O(n) .find() calls inside render loops
+  const tecnicaByCode = useMemo(() =>
+    Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
+  , [data?.tecnicas])
+  const tecnicaById = useMemo(() =>
+    Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.id, t]))
+  , [data?.tecnicas])
+
+  // O(1) skill-level lookups per staff — avoids repeated .find() on skill arrays
+  const staffSkillLevelMap = useMemo(() => {
+    const m: Record<string, Record<string, string>> = {}
+    for (const s of staffList) {
+      m[s.id] = {}
+      for (const sk of s.staff_skills ?? []) m[s.id][sk.skill] = sk.level
+    }
+    return m
+  }, [staffList])
+
+  // Department maps — memoized so buildDeptMaps doesn't run on every render
+  const deptMapsMemo = useMemo(() => buildDeptMaps(data?.departments ?? []), [data?.departments])
+
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
   const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
@@ -326,11 +347,10 @@ export function ShiftGrid({
   // Staff IDs visible based on department filter
   const visibleStaffIds = new Set(staffList.map((s) => s.id))
 
-  // Dynamic department maps from DB
-  const deptMaps = buildDeptMaps(data.departments ?? [])
-  const ROLE_BORDER = deptMaps.border
-  const ROLE_LABEL = deptMaps.label
-  const ROLE_ORDER = deptMaps.order
+  // Dynamic department maps from DB (memoized above)
+  const ROLE_BORDER = deptMapsMemo.border
+  const ROLE_LABEL = deptMapsMemo.label
+  const ROLE_ORDER = deptMapsMemo.order
 
   // Find the active assignment for drag overlay
   const activeAssignment = activeId
@@ -493,8 +513,8 @@ export function ShiftGrid({
                     const cleanFn = a.function_label?.startsWith("dept_") ? null : a.function_label
                     const tecnica = taskDisabled ? null
                       : cleanFn
-                      ? (data?.tecnicas ?? []).find((t) => t.codigo === cleanFn) ?? null
-                      : (data?.tecnicas ?? []).find((t) => t.id === a.tecnica_id) ?? null
+                      ? tecnicaByCode[cleanFn] ?? null
+                      : (a.tecnica_id ? tecnicaById[a.tecnica_id] ?? null : null)
                     const isViewerChip = !!swapStaffId && a.staff_id === swapStaffId
                     return (
                       <AssignmentPopover
@@ -523,7 +543,7 @@ export function ShiftGrid({
                                 tecnica={tecnica}
                                 compact={compact}
                                 borderColor={ROLE_BORDER[a.staff.role]}
-                                isTrainingTecnica={!!(cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training")}
+                                isTrainingTecnica={!!(cleanFn && staffSkillLevelMap[a.staff_id]?.[cleanFn] === "training")}
                                 colorChips={colorChips}
                                 readOnly={isPublished || taskDisabled}
                                 staffId={a.staff_id}
@@ -541,7 +561,7 @@ export function ShiftGrid({
                           <TooltipContent side="right">
                             {isViewerChip
                               ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap")
-                              : `${a.staff.first_name} ${a.staff.last_name} · ${ROLE_LABEL[a.staff.role] ?? a.staff.role}${tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}${data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffMember?.staff_skills?.find((sk) => sk.skill === cleanFn)?.level === "training" ? ` · ${t("inTraining")}` : ""}`}
+                              : `${a.staff.first_name} ${a.staff.last_name} · ${ROLE_LABEL[a.staff.role] ?? a.staff.role}${tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}${data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffSkillLevelMap[a.staff_id]?.[cleanFn] === "training" ? ` · ${t("inTraining")}` : ""}`}
                           </TooltipContent>
                         </Tooltip>
                       </AssignmentPopover>
@@ -639,8 +659,8 @@ export function ShiftGrid({
               readOnly
               departments={data?.departments ?? []}
               tecnica={activeAssignment.function_label
-                ? (data?.tecnicas ?? []).find((t) => t.codigo === activeAssignment.function_label) ?? null
-                : (data?.tecnicas ?? []).find((t) => t.id === activeAssignment.tecnica_id) ?? null}
+                ? tecnicaByCode[activeAssignment.function_label] ?? null
+                : (activeAssignment.tecnica_id ? tecnicaById[activeAssignment.tecnica_id] ?? null : null)}
             />
           </div>
         ) : activeOffStaff ? (
