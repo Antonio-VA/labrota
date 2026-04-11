@@ -143,7 +143,7 @@ export default async function StaffPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-auto p-6 md:p-8">
+      <div className="flex-1 overflow-auto p-6 md:p-8" style={{ scrollbarGutter: "stable" }}>
         <MobileGate>
           <StaffList staff={staff} tecnicas={tecnicas} departments={depts} shiftTypes={shiftTypes} maxStaff={maxStaff} leaveBalances={leaveBalances} />
         </MobileGate>
