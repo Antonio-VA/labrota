@@ -12,6 +12,7 @@ import { ArrowLeft, Users, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
+import { AdminModuleSwitcher } from "@/components/admin-module-switcher"
 // AdminHistoryUpload and AdminImplementation moved to implementation tab via AdminOrgDetailClient
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { AdminBackups } from "@/components/admin-backups"
@@ -124,13 +125,13 @@ export default async function OrgDetailPage({
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <AdminOrgHeaderActions org={org} />
+          <div className="flex items-center gap-4">
+            <AdminOrgHeaderActions org={org} />
+            {hrStatus.active && (
+              <AdminModuleSwitcher orgId={id} orgName={org.name} active="labrota" hrActive={true} />
+            )}
+          </div>
         </div>
-        {hrStatus.active && (
-          <Button variant="outline" size="sm" render={<Link href={`/orgs/${id}/rrhh`} />}>
-            RRHH
-          </Button>
-        )}
       </div>
 
       <AdminOrgTabs

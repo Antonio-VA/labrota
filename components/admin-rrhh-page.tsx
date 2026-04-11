@@ -179,28 +179,40 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
         <div className="flex flex-col gap-5">
           {/* Leave Year */}
           <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-            <h3 className="text-[13px] font-medium text-muted-foreground uppercase">Año de vacaciones</h3>
+            <div>
+              <h3 className="text-[14px] font-medium">Año de vacaciones</h3>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Define cuándo empieza el ciclo anual de vacaciones. Los saldos se calculan dentro de este periodo.</p>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-[14px]">El año comienza</span>
+              <span className="text-[14px]">El año comienza el</span>
+              <input type="number" min={1} max={31} value={config.leave_year_start_day} onChange={(e) => updateConfig({ leave_year_start_day: parseInt(e.target.value) || 1 })} className="w-14 border border-border rounded px-2 py-1 text-[14px] bg-background text-center" disabled={isPending} />
+              <span className="text-[14px]">de</span>
               <select value={config.leave_year_start_month} onChange={(e) => updateConfig({ leave_year_start_month: parseInt(e.target.value) })} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
                 {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-              <span>/</span>
-              <input type="number" min={1} max={31} value={config.leave_year_start_day} onChange={(e) => updateConfig({ leave_year_start_day: parseInt(e.target.value) || 1 })} className="w-16 border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending} />
             </div>
           </div>
 
           {/* Day counting */}
           <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-            <h3 className="text-[13px] font-medium text-muted-foreground uppercase">Conteo de días</h3>
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-[14px]">
-                <input type="radio" name="counting" checked={config.counting_method === "working_days"} onChange={() => updateConfig({ counting_method: "working_days" })} className="accent-primary" disabled={isPending} />
-                Días laborables (lun–vie)
+            <div>
+              <h3 className="text-[14px] font-medium">Conteo de días</h3>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Cómo se cuentan los días de ausencia. Afecta al cálculo del saldo disponible.</p>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <label className="flex items-start gap-2 text-[14px]">
+                <input type="radio" name="counting" checked={config.counting_method === "working_days"} onChange={() => updateConfig({ counting_method: "working_days" })} className="accent-primary mt-1" disabled={isPending} />
+                <div>
+                  <span className="font-medium">Días laborables</span>
+                  <p className="text-[12px] text-muted-foreground">Solo lunes a viernes. Los fines de semana no se descuentan.</p>
+                </div>
               </label>
-              <label className="flex items-center gap-2 text-[14px]">
-                <input type="radio" name="counting" checked={config.counting_method === "calendar_days"} onChange={() => updateConfig({ counting_method: "calendar_days" })} className="accent-primary" disabled={isPending} />
-                Días naturales
+              <label className="flex items-start gap-2 text-[14px]">
+                <input type="radio" name="counting" checked={config.counting_method === "calendar_days"} onChange={() => updateConfig({ counting_method: "calendar_days" })} className="accent-primary mt-1" disabled={isPending} />
+                <div>
+                  <span className="font-medium">Días naturales</span>
+                  <p className="text-[12px] text-muted-foreground">Todos los días del calendario, incluidos fines de semana.</p>
+                </div>
               </label>
               {config.counting_method === "calendar_days" && (
                 <label className="flex items-center gap-2 text-[14px] ml-6">
@@ -210,49 +222,52 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
               )}
               <label className="flex items-center gap-2 text-[14px]">
                 <input type="checkbox" checked={config.public_holidays_deducted} onChange={(e) => updateConfig({ public_holidays_deducted: e.target.checked })} className="accent-primary" disabled={isPending} />
-                Descontar festivos
+                Descontar festivos oficiales del recuento
               </label>
             </div>
           </div>
 
           {/* Carry forward */}
           <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-4">
-            <h3 className="text-[13px] font-medium text-muted-foreground uppercase">Arrastre de días</h3>
-            <div className="flex flex-col gap-2">
+            <div>
+              <h3 className="text-[14px] font-medium">Arrastre de días</h3>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Permite traspasar días no consumidos al año siguiente, con un máximo y una fecha de caducidad.</p>
+            </div>
+            <div className="flex flex-col gap-2.5">
               <label className="flex items-center gap-2 text-[14px]">
                 <input type="checkbox" checked={config.carry_forward_allowed} onChange={(e) => updateConfig({ carry_forward_allowed: e.target.checked })} className="accent-primary" disabled={isPending} />
-                Permitir arrastre
+                Permitir arrastre de días no consumidos
               </label>
               {config.carry_forward_allowed && (
-                <>
-                  <div className="flex items-center gap-2 ml-6">
-                    <span className="text-[14px]">Máximo días</span>
-                    <input type="number" min={0} value={config.max_carry_forward_days} onChange={(e) => updateConfig({ max_carry_forward_days: parseInt(e.target.value) || 0 })} className="w-16 border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending} />
+                <div className="ml-6 flex flex-col gap-2.5 rounded-md bg-muted/30 border border-border px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px]">Máximo de días a arrastrar</span>
+                    <input type="number" min={0} value={config.max_carry_forward_days} onChange={(e) => updateConfig({ max_carry_forward_days: parseInt(e.target.value) || 0 })} className="w-16 border border-border rounded px-2 py-1 text-[14px] bg-background text-center" disabled={isPending} />
                   </div>
-                  <div className="flex items-center gap-2 ml-6">
-                    <span className="text-[14px]">Caduca</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px]">Los días arrastrados caducan el</span>
+                    <input type="number" min={1} max={31} value={config.carry_forward_expiry_day} onChange={(e) => updateConfig({ carry_forward_expiry_day: parseInt(e.target.value) || 1 })} className="w-14 border border-border rounded px-2 py-1 text-[14px] bg-background text-center" disabled={isPending} />
+                    <span className="text-[14px]">de</span>
                     <select value={config.carry_forward_expiry_month} onChange={(e) => updateConfig({ carry_forward_expiry_month: parseInt(e.target.value) })} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
                       {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
-                    <span>/</span>
-                    <input type="number" min={1} max={31} value={config.carry_forward_expiry_day} onChange={(e) => updateConfig({ carry_forward_expiry_day: parseInt(e.target.value) || 1 })} className="w-16 border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending} />
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Save button */}
-          {configDirty && (
-            <div className="flex items-center gap-3">
-              <Button onClick={handleSaveConfig} disabled={isPending}>
-                {isPending ? "Guardando…" : "Guardar cambios"}
-              </Button>
+          {/* Save button — always visible */}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSaveConfig} disabled={isPending || !configDirty}>
+              {isPending ? "Guardando…" : "Guardar cambios"}
+            </Button>
+            {configDirty && (
               <Button variant="outline" onClick={() => { setConfig(initialConfig); setConfigDirty(false) }} disabled={isPending}>
                 Cancelar
               </Button>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Danger zone */}
           <div className="rounded-lg border border-destructive/30 bg-background px-5 py-4 flex flex-col gap-4 mt-4">
