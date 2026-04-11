@@ -548,6 +548,7 @@ function LeavesTable({
   showStatus,
   canCancel,
   hideStaffColumn,
+  showLeaveDays,
 }: {
   rows: LeaveWithStaff[]
   locale: "es" | "en"
@@ -558,6 +559,7 @@ function LeavesTable({
   showStatus?: boolean
   canCancel?: (leave: LeaveWithStaff) => boolean
   hideStaffColumn?: boolean
+  showLeaveDays?: boolean
 }) {
   const cellClass = muted ? "text-muted-foreground" : ""
 
@@ -591,12 +593,14 @@ function LeavesTable({
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.from")}</th>
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.to")}</th>
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.days")}</th>
-              <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  {t("columns.leaveDays")}
-                  <span title={t("columns.leaveDaysTooltip")} className="cursor-help"><Info className="size-3 text-muted-foreground/60" /></span>
-                </span>
-              </th>
+              {showLeaveDays && (
+                <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    {t("columns.leaveDays")}
+                    <span title={t("columns.leaveDaysTooltip")} className="cursor-help"><Info className="size-3 text-muted-foreground/60" /></span>
+                  </span>
+                </th>
+              )}
               {showStatus && <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">{t("columns.status")}</th>}
               {onCancel && <th className="w-16" />}
             </tr>
@@ -627,7 +631,9 @@ function LeavesTable({
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.start_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
-                <td className={`px-4 py-2.5 font-medium ${cellClass}`}>{leave.days_counted ?? "—"}</td>
+                {showLeaveDays && (
+                  <td className={`px-4 py-2.5 font-medium ${cellClass}`}>{leave.days_counted ?? "—"}</td>
+                )}
                 {showStatus && (
                   <td className="px-4 py-2.5">
                     <StatusBadge leave={leave} t={t} />
@@ -806,6 +812,7 @@ export function LeavesList({
   enableLeaveRequests = false,
   enableOutlookSync = false,
   orgId,
+  holidayConfig,
 }: {
   leaves: LeaveWithStaff[]
   staff: Staff[]
@@ -814,8 +821,12 @@ export function LeavesList({
   enableLeaveRequests?: boolean
   enableOutlookSync?: boolean
   orgId?: string
+  holidayConfig?: { counting_method: string; public_holidays_deducted: boolean } | null
 }) {
   const isViewer = userRole === "viewer"
+  const showLeaveDays = holidayConfig
+    ? holidayConfig.counting_method === "working_days" || holidayConfig.public_holidays_deducted
+    : false
   const t      = useTranslations("leaves")
   const to     = useTranslations("outlook")
   const tc     = useTranslations("common")
@@ -997,7 +1008,7 @@ export function LeavesList({
       {filteredUpcoming.length > 0 && (
         <>
           <h3 className="text-[14px] font-medium mb-2">{t("upcoming")}</h3>
-          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} />
+          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-1">
               <p className="text-[12px] text-muted-foreground">
@@ -1036,7 +1047,7 @@ export function LeavesList({
 
       {/* Past leaves */}
       {showHistory && filteredPast.length > 0 && (
-        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} />
+        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
       )}
 
       {/* Cancelled toggle */}
@@ -1054,7 +1065,7 @@ export function LeavesList({
 
       {/* Cancelled leaves */}
       {showCancelled && cancelledFiltered.length > 0 && (
-        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} hideStaffColumn={isViewer} />
+        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
       )}
 
       {/* Sheet */}

@@ -17,10 +17,11 @@ export default async function LeavesPage() {
   let viewerStaffId: string | null = null
   let enableLeaveRequests = false
   let enableOutlookSync = false
+  let sharedHolidayConfig: { counting_method: string; public_holidays_deducted: boolean } | null = null
 
   if (user && orgId) {
     const admin = createAdminClient()
-    const [memberRes, labConfigRes] = await Promise.all([
+    const [memberRes, labConfigRes, holidayConfigRes] = await Promise.all([
       admin
         .from("organisation_members")
         .select("role, linked_staff_id")
@@ -32,10 +33,16 @@ export default async function LeavesPage() {
         .select("enable_leave_requests, enable_outlook_sync")
         .eq("organisation_id", orgId)
         .maybeSingle() as unknown as Promise<{ data: LabConfigData | null }>,
+      admin
+        .from("holiday_config")
+        .select("counting_method, public_holidays_deducted")
+        .eq("organisation_id", orgId)
+        .maybeSingle() as unknown as Promise<{ data: { counting_method: string; public_holidays_deducted: boolean } | null }>,
     ])
 
     enableLeaveRequests = labConfigRes.data?.enable_leave_requests ?? false
     enableOutlookSync = labConfigRes.data?.enable_outlook_sync ?? false
+    sharedHolidayConfig = holidayConfigRes.data ?? null
 
     if (memberRes.data?.role === "viewer") {
       userRole = "viewer"
@@ -189,6 +196,7 @@ export default async function LeavesPage() {
               enableLeaveRequests={enableLeaveRequests}
               enableOutlookSync={enableOutlookSync}
               orgId={orgId ?? undefined}
+              holidayConfig={sharedHolidayConfig}
             />
           </div>
         </div>
@@ -201,6 +209,7 @@ export default async function LeavesPage() {
           enableLeaveRequests={enableLeaveRequests}
           enableOutlookSync={enableOutlookSync}
           orgId={orgId ?? undefined}
+          holidayConfig={sharedHolidayConfig}
         />
       )}
     </div>

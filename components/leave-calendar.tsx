@@ -156,7 +156,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
             <div
               key={i}
               className={cn(
-                "relative h-10 md:h-11 flex items-center justify-center text-[13px]",
+                "relative aspect-square flex items-center justify-center text-[13px]",
                 !day && "bg-muted/10",
                 isWeekend && day && !leaveInfo && "text-muted-foreground/40",
               )}
