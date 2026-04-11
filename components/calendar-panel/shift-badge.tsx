@@ -90,7 +90,7 @@ export function ShiftBadge({ first, last, role, isOverride, functionLabel, tecni
       className={cn(
         "group flex items-center gap-1.5 rounded border font-medium w-full text-foreground transition-all duration-100",
         compact ? "py-0.5 px-1.5 min-h-[24px] text-[11px]" : "py-1 px-2 min-h-[28px] text-[13px]",
-        showPill ? "border-border bg-background" : "border-transparent bg-transparent",
+        showPill ? (colorChips ? "border-border bg-background" : "border-transparent bg-background") : "border-transparent bg-transparent",
       )}
       style={{
         borderLeft: colorChips
