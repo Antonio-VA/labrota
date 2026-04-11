@@ -1569,7 +1569,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       {/* KPI summary band */}
       {staff.length > 0 && (
         <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 px-6 md:px-8 pt-6 md:pt-8 pb-5 bg-muted/40 border-b border-border mb-5">
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 xl:grid-cols-5 gap-3">
             {/* Active headcount */}
             <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
               <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">{t("kpiActive")}</p>
