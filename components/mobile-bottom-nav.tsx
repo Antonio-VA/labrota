@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { CalendarDays, CalendarRange, Briefcase, ClipboardList } from "lucide-react"
+import { CalendarDays, CalendarRange, Briefcase, ClipboardList, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useViewerStaffId, useCanEdit } from "@/lib/role-context"
@@ -30,6 +30,9 @@ export function MobileBottomNav() {
 
   const showLeaves = canEdit || !!viewerStaffId
   const showMyRota = !!viewerStaffId
+  // Only show AI FAB when editor without a viewer role (editors have 3 items; 4-item nav would overflow)
+  const showAiFab = canEdit && !showMyRota
+
   const navItems: NavItem[] = [
     ...(showLeaves ? [LEAVES_ITEM] : []),
     ...BASE_ITEMS,
@@ -78,46 +81,59 @@ export function MobileBottomNav() {
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
-        {navItems.map((item) => {
-          const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
-          const isActive = activeKey ? activeKey === item.key : routeActive
-          return (
-            <button
-              key={item.key}
-              onTouchStart={() => handleTap(item.key, item.href)}
-              onClick={(e) => {
-                if (activeKey === item.key) return
-                handleTap(item.key, item.href)
-              }}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full transition-none",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
-              )}
-            >
-              {item.key === "day" ? (
-                <div className="relative size-[26px]">
-                  <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.7 : 1.3} strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3.5" width="20" height="20" rx="3" />
-                    <line x1="3" y1="10" x2="23" y2="10" />
-                  </svg>
-                  <span className={cn(
-                    "absolute left-0 right-0 flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )} style={{ top: "10px", height: "13.5px" }}>
-                    {new Date().getDate()}
-                  </span>
-                </div>
-              ) : (
-                <item.icon className="size-[26px]" strokeWidth={isActive ? 2 : 1.5} />
-              )}
-              <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
-                {LABELS[locale]?.[item.key] ?? item.key}
-              </span>
-            </button>
-          )
-        })}
-      </nav>
+      <div className="flex items-center gap-3">
+        <nav className="flex items-center gap-0 px-4 py-2 rounded-full glass-nav-pop">
+          {navItems.map((item) => {
+            const routeActive = item.href === "/schedule" ? pathname === "/schedule" : item.href === "/my-rota" ? pathname === "/my-rota" : pathname.startsWith(item.href)
+            const isActive = activeKey ? activeKey === item.key : routeActive
+            return (
+              <button
+                key={item.key}
+                onTouchStart={() => handleTap(item.key, item.href)}
+                onClick={(e) => {
+                  if (activeKey === item.key) return
+                  handleTap(item.key, item.href)
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 w-[80px] py-1.5 rounded-full transition-none",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                )}
+              >
+                {item.key === "day" ? (
+                  <div className="relative size-[26px]">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth={isActive ? 1.7 : 1.3} strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3.5" width="20" height="20" rx="3" />
+                      <line x1="3" y1="10" x2="23" y2="10" />
+                    </svg>
+                    <span className={cn(
+                      "absolute left-0 right-0 flex items-center justify-center text-[10px] font-bold leading-none tabular-nums",
+                      isActive ? "text-primary" : "text-muted-foreground"
+                    )} style={{ top: "10px", height: "13.5px" }}>
+                      {new Date().getDate()}
+                    </span>
+                  </div>
+                ) : (
+                  <item.icon className="size-[26px]" strokeWidth={isActive ? 2 : 1.5} />
+                )}
+                <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
+                  {LABELS[locale]?.[item.key] ?? item.key}
+                </span>
+              </button>
+            )
+          })}
+        </nav>
+
+        {showAiFab && (
+          <button
+            onTouchStart={() => window.dispatchEvent(new CustomEvent("labrota:toggle-chat"))}
+            onClick={() => window.dispatchEvent(new CustomEvent("labrota:toggle-chat"))}
+            className="size-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform duration-150"
+            aria-label="AI"
+          >
+            <Sparkles className="size-6" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

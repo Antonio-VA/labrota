@@ -341,24 +341,6 @@ export function ChatPanel({
         <Sparkles className="size-6" />
       </button>
 
-      {/* ── FAB — mobile (floats above nav bar, morphs to close button) ── */}
-      <button
-        onClick={onToggle}
-        className={cn(
-          "fixed bottom-24 right-4 z-[60] size-14 rounded-full shadow-lg lg:hidden",
-          "flex items-center justify-center overflow-hidden",
-          "bg-primary text-primary-foreground active:scale-95 transition-transform duration-200",
-        )}
-        aria-label={open ? tc("close") : t("title")}
-      >
-        <span className={cn("absolute transition-all duration-200", open ? "opacity-100 scale-100" : "opacity-0 scale-50")}>
-          <X className="size-6" />
-        </span>
-        <span className={cn("absolute transition-all duration-200", open ? "opacity-0 scale-50" : "opacity-100 scale-100")}>
-          <Sparkles className="size-6" />
-        </span>
-      </button>
-
       {/* ── Overlay backdrop ── */}
       {open && (
         <div
