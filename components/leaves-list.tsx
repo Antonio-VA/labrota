@@ -463,10 +463,10 @@ function LeaveForm({
 // ── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof useTranslations<"leaves">> }) {
   const cfg: Record<string, { bg: string; text: string }> = {
-    pending:   { bg: "bg-amber-50 border-amber-200", text: "text-amber-700" },
-    approved:  { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700" },
-    rejected:  { bg: "bg-red-50 border-red-200", text: "text-red-700" },
-    cancelled: { bg: "bg-slate-50 border-slate-200", text: "text-slate-500" },
+    pending:   { bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400" },
+    approved:  { bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-400" },
+    rejected:  { bg: "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-400" },
+    cancelled: { bg: "bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700", text: "text-slate-500 dark:text-slate-400" },
   }
   const c = cfg[leave.status] ?? cfg.pending
 
@@ -765,8 +765,8 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
   if (pending.length === 0 || !isAdmin) return null
 
   return (
-    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
-      <p className="text-[13px] font-medium text-amber-800 mb-3">
+    <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+      <p className="text-[13px] font-medium text-amber-800 dark:text-amber-300 mb-3">
         {t("pendingRequests")} ({pending.length})
       </p>
       <div className="flex flex-col gap-2">
@@ -775,7 +775,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
           const typeConf = LEAVE_TYPE_CONFIG[l.type as LeaveType]
           const days = daysBetween(l.start_date, l.end_date)
           return (
-            <div key={l.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-amber-200">
+            <div key={l.id} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-800">
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-medium">{staffName}</p>
                 <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
@@ -792,7 +792,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
                     await approveLeave(l.id)
                     router.refresh()
                   })}
-                  className="text-[12px] font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                  className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
                 >
                   {t("approveLeave")}
                 </button>
@@ -802,7 +802,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
                     await rejectLeave(l.id)
                     router.refresh()
                   })}
-                  className="text-[12px] font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                  className="text-[12px] font-medium text-red-600 dark:text-red-400 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-50"
                 >
                   {t("rejectLeave")}
                 </button>
