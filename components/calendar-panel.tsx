@@ -1000,12 +1000,12 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                 onClick: () => setCompact((c) => !c),
                 active: compact,
               },
-              ...(weekData?.rotaDisplayMode !== "by_task" ? [{
+              {
                 label: locale === "es" ? "Vista simplificada" : "Simplified view",
                 icon: <LayoutList className="size-3.5" />,
                 onClick: togglePersonSimplified,
                 active: personSimplified,
-              }] : []),
+              },
               ] : []),
               {
                 label: t("staffColors"),
@@ -1227,6 +1227,13 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
                   onLeaveByDate={weekData?.onLeaveByDate ?? {}}
                   compact={compact}
                   colorChips={colorChips}
+                  simplified={personSimplified}
+                  punctionsDefault={weekData?.punctionsDefault ?? {}}
+                  punctionsOverride={punctionsOverride}
+                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
+                  biopsyConversionRate={weekData?.biopsyConversionRate}
+                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
+                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
                   onRemoveAssignment={async (id) => {
                     const snapshot = weekData
                     const assignment = weekData?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === id)

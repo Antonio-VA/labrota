@@ -446,25 +446,25 @@ export function TaskPersonGrid({
             <div key={day.date}
               className={cn(
                 "border-b border-r border-border bg-muted flex flex-col items-center justify-center py-1.5 px-1 cursor-pointer hover:bg-muted/80 transition-colors",
-                holiday && "bg-amber-100/80 dark:bg-amber-900/20",
+                holiday && "bg-amber-50/60",
                 isLast && "border-r-0",
               )}
               onClick={() => onDateClick?.(day.date)}
             >
-              <div className="flex items-center gap-0.5">
-                {hasWarning && <AlertTriangle className="size-2.5 text-amber-500 shrink-0" />}
-                <span className={cn("uppercase text-muted-foreground", compact ? "text-[8px]" : "text-[9px]")}>{wday}</span>
+              <div className="flex items-center justify-center gap-1">
+                {hasWarning && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
+                <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                <span className={cn(
+                  "font-semibold leading-none",
+                  isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
+                )}>{dayN}</span>
+                {holiday && (
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="text-[10px] leading-none cursor-default">🏖️</span>} />
+                    <TooltipContent side="bottom">{holiday}</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
-              <span className={cn(
-                "font-semibold leading-none",
-                isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary"
-              )}>{dayN}</span>
-              {holiday && (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="text-[8px] leading-none mt-0.5 cursor-default">🏖️</span>} />
-                  <TooltipContent side="bottom">{holiday}</TooltipContent>
-                </Tooltip>
-              )}
               {stats && (
                 <div onClick={(e) => e.stopPropagation()}>
                   <DayStatsInput

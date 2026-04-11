@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
+import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
@@ -228,7 +229,11 @@ function TechDayCell({
 interface TransposedTaskGridProps {
   data: RotaWeekData | null; staffList: StaffWithSkills[]; locale: string
   isPublished: boolean; publicHolidays: Record<string, string>; onLeaveByDate: Record<string, string[]>
-  compact?: boolean; colorChips?: boolean; loading?: boolean
+  compact?: boolean; colorChips?: boolean; loading?: boolean; simplified?: boolean
+  punctionsDefault?: Record<string, number>
+  punctionsOverride?: Record<string, number>
+  onPunctionsChange?: (date: string, value: number | null) => void
+  biopsyConversionRate?: number; biopsyDay5Pct?: number; biopsyDay6Pct?: number
   onRemoveAssignment?: (id: string) => void
   onCellClick?: (date: string, tecnicaCode: string) => void
   onChipClick?: (staff_id: string) => void; onDateClick?: (date: string) => void
@@ -236,7 +241,9 @@ interface TransposedTaskGridProps {
 
 export function TransposedTaskGrid({
   data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact = false,
-  colorChips = true, loading, onRemoveAssignment, onChipClick, onDateClick,
+  colorChips = true, loading, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
+  biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
+  onRemoveAssignment, onChipClick, onDateClick,
 }: TransposedTaskGridProps) {
   const tc = useTranslations("common")
   // Subscribe to staff hover context at parent level — ensures all TechDayCell props update on hover
@@ -291,6 +298,22 @@ export function TransposedTaskGrid({
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
   const [prevData, setPrevData] = useState(data)
   if (data !== prevData) { setPrevData(data); setLocalDays(data?.days ?? []) }
+
+  // P/B stats helpers (same logic as TaskPersonGrid)
+  const cr = biopsyConversionRate ?? 0.5
+  const d5pct = biopsyDay5Pct ?? 0.5
+  const d6pct = biopsyDay6Pct ?? 0.5
+  function getDayStats(date: string) {
+    const effectiveP = punctionsOverride?.[date] ?? punctionsDefault?.[date] ?? 0
+    const defaultP = punctionsDefault?.[date] ?? 0
+    const isOverride = punctionsOverride?.[date] !== undefined
+    const d5ago = new Date(date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
+    const d6ago = new Date(date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
+    const p5 = punctionsOverride?.[d5ago.toISOString().split("T")[0]] ?? punctionsDefault?.[d5ago.toISOString().split("T")[0]] ?? 0
+    const p6 = punctionsOverride?.[d6ago.toISOString().split("T")[0]] ?? punctionsDefault?.[d6ago.toISOString().split("T")[0]] ?? 0
+    const bForecast = Math.round(p5 * cr * d5pct + p6 * cr * d6pct)
+    return { effectiveP, defaultP, isOverride, bForecast }
+  }
 
   async function handleAdd(staffId: string, date: string, tecnicaCodigo: string) {
     const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
@@ -394,25 +417,45 @@ export function TransposedTaskGrid({
           return (
             <>
               {/* Row label */}
-              <div key={`header-${day.date}`} onClick={() => onDateClick?.(day.date)}
-                className={cn("border-b border-r border-border px-1.5 py-1.5 flex items-center justify-end gap-1 bg-muted sticky left-0 z-10",
-                  onDateClick && "cursor-pointer hover:bg-muted/80", holiday && "bg-amber-50/60")}
->
-                {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
-                  <span className={cn("font-semibold leading-none",
-                    isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary")}>
-                    {dayNum}
-                  </span>
-                </div>
-                {holiday && (
-                  <Tooltip>
-                    <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
-                    <TooltipContent side="right">{holiday}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
+              {(() => {
+                const stats = simplified === false ? getDayStats(day.date) : null
+                return (
+                  <div key={`header-${day.date}`} onClick={() => onDateClick?.(day.date)}
+                    className={cn("border-b border-r border-border px-1.5 py-1.5 flex flex-col items-end justify-center gap-0.5 bg-muted sticky left-0 z-10",
+                      onDateClick && "cursor-pointer hover:bg-muted/80", holiday && "bg-amber-50/60")}
+                  >
+                    <div className="flex items-center gap-1">
+                      {hasWarnings && <AlertTriangle className="size-3 text-amber-500 shrink-0" />}
+                      <span className="text-[10px] text-muted-foreground uppercase">{wday}</span>
+                      <span className={cn("font-semibold leading-none",
+                        isToday ? "size-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[11px]" : "text-[14px] text-primary")}>
+                        {dayNum}
+                      </span>
+                      {holiday && (
+                        <Tooltip>
+                          <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
+                          <TooltipContent side="right">{holiday}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {stats && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DayStatsInput
+                          date={day.date}
+                          value={stats.effectiveP}
+                          defaultValue={stats.defaultP}
+                          isOverride={stats.isOverride}
+                          onChange={onPunctionsChange ?? (() => {})}
+                          disabled={!onPunctionsChange}
+                          biopsyForecast={stats.bForecast}
+                          biopsyTooltip={locale === "es" ? `${stats.bForecast} biopsias previstas` : `${stats.bForecast} biopsy forecast`}
+                          compact
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Technique cells */}
               {tecnicas.map((tec) => {
