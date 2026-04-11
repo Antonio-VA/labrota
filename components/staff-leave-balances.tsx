@@ -72,18 +72,29 @@ export function StaffLeaveBalances({
 
   const trackedTypes = leaveTypes.filter((lt) => lt.has_balance && !lt.is_archived)
 
+  // Map legacy leave type names to company leave type IDs for unmapped leaves
+  const LEGACY_MAP: Record<string, string[]> = {
+    annual: ["vacaciones", "annual leave"],
+    sick: ["baja por enfermedad", "sick leave"],
+  }
+  function matchesLeaveType(leave: Leave, lt: CompanyLeaveType): boolean {
+    if (leave.leave_type_id === lt.id) return true
+    if (leave.leave_type_id) return false
+    const legacyNames = LEGACY_MAP[leave.type] ?? []
+    return legacyNames.includes(lt.name.toLowerCase()) || legacyNames.includes((lt.name_en ?? "").toLowerCase())
+  }
+
   const getBalance = (leaveTypeId: string) => {
     const balanceRecord = balances.find(
       (b) => b.leave_type_id === leaveTypeId && b.year === selectedYear
     )
 
+    const lt = leaveTypes.find((t) => t.id === leaveTypeId)!
     const typeLeaves = leaves.filter(
       (l) =>
-        l.leave_type_id === leaveTypeId &&
+        matchesLeaveType(l, lt) &&
         (l.balance_year === selectedYear || (!l.balance_year && l.start_date.startsWith(String(selectedYear))))
     )
-
-    const lt = leaveTypes.find((t) => t.id === leaveTypeId)
 
     return calculateBalance({
       entitlement: balanceRecord?.entitlement ?? lt?.default_days ?? 0,
@@ -302,7 +313,7 @@ export function StaffLeaveBalances({
                     </div>
                     <div>
                       <div className="text-[12px] text-muted-foreground uppercase tracking-wide">{t("available")}</div>
-                      <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <div className={`text-[22px] font-semibold mt-1 ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
                         {bal.available}
                       </div>
                     </div>

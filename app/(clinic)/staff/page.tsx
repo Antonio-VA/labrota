@@ -53,7 +53,7 @@ export default async function StaffPage() {
     const [configRes, typesRes, leavesRes] = await Promise.all([
       supabase.from("holiday_config").select("*").single() as unknown as Promise<{ data: HolidayConfig | null }>,
       supabase.from("company_leave_types").select("*").eq("has_balance", true).eq("is_archived", false).order("sort_order") as unknown as Promise<{ data: CompanyLeaveType[] | null }>,
-      supabase.from("leaves").select("staff_id, leave_type_id, start_date, end_date, status, days_counted, balance_year").in("status", ["approved", "pending"]) as unknown as Promise<{ data: Array<Pick<Leave, "staff_id" | "leave_type_id" | "start_date" | "end_date" | "status" | "days_counted" | "balance_year">> | null }>,
+      supabase.from("leaves").select("staff_id, leave_type_id, type, start_date, end_date, status, days_counted, balance_year").in("status", ["approved", "pending"]) as unknown as Promise<{ data: Array<Pick<Leave, "staff_id" | "leave_type_id" | "type" | "start_date" | "end_date" | "status" | "days_counted" | "balance_year">> | null }>,
     ])
 
     const hConfig = configRes.data
@@ -87,8 +87,20 @@ export default async function StaffPage() {
         public_holidays_deducted: hConfig.public_holidays_deducted,
       }
 
+      // Map legacy leave type names for unmapped leaves
+      const LEGACY_MAP: Record<string, string[]> = {
+        annual: ["vacaciones", "annual leave"],
+        sick: ["baja por enfermedad", "sick leave"],
+      }
+
+      function matchesType(leave: { leave_type_id: string | null; type?: string }, lt: { id: string; name: string; name_en: string | null }) {
+        if (leave.leave_type_id === lt.id) return true
+        if (leave.leave_type_id) return false
+        const names = LEGACY_MAP[leave.type ?? ""] ?? []
+        return names.includes(lt.name.toLowerCase()) || names.includes((lt.name_en ?? "").toLowerCase())
+      }
+
       leaveBalances = {}
-      const locale = "es" // server-side default
       for (const s of staff) {
         const staffBalances = balancesByStaff.get(s.id) ?? []
         const staffLeaves = leavesByStaff.get(s.id) ?? []
@@ -97,7 +109,7 @@ export default async function StaffPage() {
         for (const lt of trackedTypes) {
           const balRecord = staffBalances.find((b) => b.leave_type_id === lt.id)
           const typeLeaves = staffLeaves.filter(
-            (l) => l.leave_type_id === lt.id &&
+            (l) => matchesType(l, lt) &&
               (l.balance_year === currentYear || (!l.balance_year && l.start_date.startsWith(String(currentYear))))
           )
 

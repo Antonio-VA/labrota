@@ -54,7 +54,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
   const leaveDays = new Map<string, { color: string; name: string; status: string }>()
 
   for (const leave of leaves) {
-    if (leave.status === "rejected") continue
+    if (leave.status === "rejected" || leave.status === "cancelled") continue
     const lt = leave.leave_type_id
       ? leaveTypes.find((t) => t.id === leave.leave_type_id)
       : null
@@ -139,16 +139,15 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
                 <>
                   {leaveInfo && (
                     <div
-                      className={cn("absolute inset-0.5 rounded-md", isCancelled && "opacity-30")}
-                      style={{ backgroundColor: leaveInfo.color + "20", borderLeft: `3px solid ${leaveInfo.color}` }}
+                      className="absolute inset-0.5 rounded-md"
+                      style={{ backgroundColor: leaveInfo.color + "25" }}
                     />
                   )}
                   <span className={cn(
                     "relative z-10",
                     isToday && "font-bold",
                     isToday && !leaveInfo && "text-primary",
-                    leaveInfo && !isCancelled && "font-medium",
-                    isCancelled && "line-through text-muted-foreground",
+                    leaveInfo && "font-medium",
                   )}>
                     {day}
                   </span>

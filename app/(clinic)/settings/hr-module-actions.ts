@@ -108,6 +108,9 @@ export async function installHrModule(): Promise<{ error?: string }> {
   })
   if (configError) return { error: configError.message }
 
+  // Auto-enable leave requests
+  await admin.from("lab_config").update({ enable_leave_requests: true }).eq("organisation_id", orgId)
+
   // Seed default leave types
   const leaveTypeInserts = DEFAULT_LEAVE_TYPES.map((lt) => ({
     organisation_id: orgId,
