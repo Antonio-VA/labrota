@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { logAuditEvent } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
+import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffRole, OnboardingStatus, ContractType, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -158,6 +159,39 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
       } catch (e) {
         console.error("[staff] Viewer invite error:", e)
       }
+    }
+
+    // Auto-create holiday balance records if HR module is active
+    try {
+      const adminClient = createAdminClient()
+      const { data: hrMod } = await adminClient
+        .from("hr_module")
+        .select("status")
+        .eq("organisation_id", orgId)
+        .maybeSingle() as { data: { status: string } | null }
+
+      if (hrMod?.status === "active") {
+        const [configRes, typesRes] = await Promise.all([
+          adminClient.from("holiday_config").select("leave_year_start_month, leave_year_start_day").eq("organisation_id", orgId).maybeSingle() as Promise<{ data: { leave_year_start_month: number; leave_year_start_day: number } | null }>,
+          adminClient.from("company_leave_types").select("id, default_days").eq("organisation_id", orgId).eq("has_balance", true).eq("is_archived", false) as Promise<{ data: Array<{ id: string; default_days: number | null }> | null }>,
+        ])
+        const config = configRes.data
+        const leaveTypes = typesRes.data
+        if (config && leaveTypes?.length) {
+          const today = new Date().toISOString().slice(0, 10)
+          const currentYear = getLeaveYear(today, config.leave_year_start_month, config.leave_year_start_day)
+          const inserts = leaveTypes.map((lt) => ({
+            organisation_id: orgId,
+            staff_id: newStaffId,
+            leave_type_id: lt.id,
+            year: currentYear,
+            entitlement: lt.default_days ?? 0,
+          }))
+          await adminClient.from("holiday_balance").insert(inserts)
+        }
+      }
+    } catch (e) {
+      console.error("[staff] HR balance creation error:", e)
     }
 
     // Check staff limit and notify info@labrota.app if exceeded

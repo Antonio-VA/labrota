@@ -343,9 +343,22 @@ export async function requestLeave(params: {
           totalActiveStaff: totalActive,
         })
       }
+
+      // In-app notifications for each admin/manager
+      const inAppNotifs = managers.map(({ user_id }) => ({
+        organisation_id: orgId,
+        user_id,
+        type: "leave_request",
+        title: locale === "es" ? "Nueva solicitud de ausencia" : "New leave request",
+        message: locale === "es"
+          ? `${staffName} ha solicitado ausencia del ${formatDateWithYear(params.startDate + "T12:00:00", locale)} al ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.`
+          : `${staffName} has requested leave from ${formatDateWithYear(params.startDate + "T12:00:00", locale)} to ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.`,
+        data: { leaveId: insertedLeave.id, staffId: params.staffId, startDate: params.startDate, endDate: params.endDate },
+      }))
+      await admin.from("notifications").insert(inAppNotifs as never)
     }
   } catch {
-    // Email failure should not block the request
+    // Notification/email failure should not block the request
   }
 
   revalidatePath("/leaves")
