@@ -1696,7 +1696,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       )}
 
       {/* Content section */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-0">
       {/* Toolbar — sticky */}
       <div className="flex items-center justify-between gap-3 sticky top-0 z-20 bg-background pt-1 pb-3 -mx-6 px-6 md:-mx-8 md:px-8 border-b border-border">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1722,7 +1722,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 onClick={() => { setEditDirty(new Map()); setEditMode(false) }}
                 className="h-9 px-3 rounded-lg border border-input text-[13px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5"
               >
-                Cancelar
+                {tc("cancel")}
               </button>
               <button
                 onClick={saveEdits}
@@ -1730,7 +1730,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
                 className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 disabled:opacity-50"
               >
                 <Save className="size-3.5" />
-                {isSaving ? "Guardando..." : "Guardar"}
+                {isSaving ? tc("saving") : tc("save")}
               </button>
             </>
           ) : (
@@ -1750,21 +1750,25 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
       {/* Empty state — no staff at all */}
       {staff.length === 0 && (
-        <EmptyState
-          icon={Users}
-          title={t("noStaff")}
-          description={t("noStaffDescription")}
-          action={{ label: t("addStaff"), onClick: () => router.push("/staff/new") }}
-        />
+        <div className="mt-4">
+          <EmptyState
+            icon={Users}
+            title={t("noStaff")}
+            description={t("noStaffDescription")}
+            action={{ label: t("addStaff"), onClick: () => router.push("/staff/new") }}
+          />
+        </div>
       )}
 
       {/* Empty state — no results after filtering */}
       {staff.length > 0 && activeFiltered.length === 0 && inactiveFiltered.length === 0 && hasFilters && (
-        <EmptyState
-          icon={Users}
-          title={t("noResults")}
-          description={t("noResultsDescription")}
-        />
+        <div className="mt-4">
+          <EmptyState
+            icon={Users}
+            title={t("noResults")}
+            description={t("noResultsDescription")}
+          />
+        </div>
       )}
 
       {/* Active / onboarding table */}
@@ -1807,7 +1811,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
       {inactiveFiltered.length > 0 && (
         <button
           onClick={() => setShowHistory((v) => !v)}
-          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-4"
         >
           {showHistory ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           {showHistory
@@ -1818,6 +1822,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
       {/* Inactive table */}
       {showHistory && inactiveFiltered.length > 0 && (
+        <div className="mt-4">
         <StaffTable
           members={inactiveFiltered}
           t={t}
@@ -1833,6 +1838,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           tecnicas={tecnicas}
           colOrder={colOrder}
         />
+        </div>
       )}
 
       {/* Bulk toolbar */}
@@ -1896,10 +1902,10 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
             </div>
             <div className="px-3 py-3 border-t border-border flex items-center gap-2">
               <button onClick={saveColPrefs} className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 transition-colors">
-                {locale === "es" ? "Guardar" : "Save"}
+                {tc("save")}
               </button>
               <button onClick={() => setShowColDialog(false)} className="h-8 px-3 rounded-lg border border-input text-[13px] text-muted-foreground hover:text-foreground transition-colors">
-                {locale === "es" ? "Cancelar" : "Cancel"}
+                {tc("cancel")}
               </button>
             </div>
           </div>
