@@ -315,6 +315,7 @@ function LeaveForm({
       })
       if (result.error) { setRequestError(result.error); return }
       toast.success(t("requestSent"))
+      if (result.info) toast.info(result.info)
       router.refresh()
       onSuccess()
     })

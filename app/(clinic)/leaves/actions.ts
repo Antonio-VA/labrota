@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
-import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry } from "@/lib/hr-leave-integration"
+import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry, checkLeaveRequestBalance } from "@/lib/hr-leave-integration"
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
@@ -243,14 +243,14 @@ export async function deleteLeave(id: string): Promise<{ error?: string }> {
   return {}
 }
 
-/** Employee submits a leave request (status = pending). */
+/** Employee submits a leave request (status = pending). Can also return { info? } for balance overflow notes. */
 export async function requestLeave(params: {
   staffId: string
   type: string
   startDate: string
   endDate: string
   notes?: string
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; info?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated." }
@@ -267,6 +267,31 @@ export async function requestLeave(params: {
     .single() as { data: { linked_staff_id: string | null } | null }
   if (!member?.linked_staff_id || member.linked_staff_id !== params.staffId) {
     return { error: "You can only request leave for yourself." }
+  }
+
+  // Balance check — block if controlled type with no overflow and insufficient balance
+  let overflowInfo: { mainDays: number; mainTypeName: string; overflowDays: number; overflowTypeName: string } | null = null
+  if (await isHrModuleActive(orgId)) {
+    const bal = await checkLeaveRequestBalance({
+      orgId,
+      staffId: params.staffId,
+      legacyType: params.type,
+      startDate: params.startDate,
+      endDate: params.endDate,
+    })
+    if (bal.blocked) {
+      return {
+        error: `No tienes suficientes días disponibles de ${bal.leaveTypeName ?? "este tipo de ausencia"}. Disponibles: ${bal.available}d, solicitados: ${bal.daysCounted}d.`
+      }
+    }
+    if (bal.overflow.needed && bal.overflow.overflowTypeName) {
+      overflowInfo = {
+        mainDays: bal.overflow.mainDays,
+        mainTypeName: bal.leaveTypeName ?? params.type,
+        overflowDays: bal.overflow.overflowDays,
+        overflowTypeName: bal.overflow.overflowTypeName,
+      }
+    }
   }
 
   // Use admin client to bypass RLS — viewers don't have INSERT on leaves
@@ -341,6 +366,11 @@ export async function requestLeave(params: {
           overlapNames,
           sameRoleOverlapCount: sameRoleCount,
           totalActiveStaff: totalActive,
+          overflowNote: overflowInfo
+            ? (locale === "es"
+                ? `${overflowInfo.mainDays}d de ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d de ${overflowInfo.overflowTypeName}.`
+                : `${overflowInfo.mainDays}d from ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d from ${overflowInfo.overflowTypeName}.`)
+            : undefined,
         })
       }
 
@@ -351,8 +381,8 @@ export async function requestLeave(params: {
         type: "leave_request",
         title: locale === "es" ? "Nueva solicitud de ausencia" : "New leave request",
         message: locale === "es"
-          ? `${staffName} ha solicitado ausencia del ${formatDateWithYear(params.startDate + "T12:00:00", locale)} al ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.`
-          : `${staffName} has requested leave from ${formatDateWithYear(params.startDate + "T12:00:00", locale)} to ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.`,
+          ? `${staffName} ha solicitado ausencia del ${formatDateWithYear(params.startDate + "T12:00:00", locale)} al ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.${overflowInfo ? ` (${overflowInfo.mainDays}d ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d ${overflowInfo.overflowTypeName})` : ""}`
+          : `${staffName} has requested leave from ${formatDateWithYear(params.startDate + "T12:00:00", locale)} to ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.${overflowInfo ? ` (${overflowInfo.mainDays}d ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d ${overflowInfo.overflowTypeName})` : ""}`,
         data: { leaveId: insertedLeave.id, staffId: params.staffId, startDate: params.startDate, endDate: params.endDate },
       }))
       await admin.from("notifications").insert(inAppNotifs as never)
@@ -361,8 +391,12 @@ export async function requestLeave(params: {
     // Notification/email failure should not block the request
   }
 
+  const infoMessage = overflowInfo
+    ? `Nota: ${overflowInfo.mainDays}d de ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d de ${overflowInfo.overflowTypeName}.`
+    : undefined
+
   revalidatePath("/leaves")
-  return {}
+  return infoMessage ? { info: infoMessage } : {}
 }
 
 async function sendLeaveRequestEmail(params: {
@@ -379,6 +413,7 @@ async function sendLeaveRequestEmail(params: {
   overlapNames: string[]
   sameRoleOverlapCount: number
   totalActiveStaff: number
+  overflowNote?: string
 }) {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return
@@ -436,6 +471,16 @@ async function sendLeaveRequestEmail(params: {
         <p style="margin:0 0 4px;color:#78350f;font-size:13px;">${alsoOff}</p>
         <p style="margin:0 0 4px;color:#78350f;font-size:13px;font-weight:500;">${params.overlapNames.join(", ")}</p>
         ${sameRoleNote ? `<p style="margin:6px 0 0;color:#92400e;font-size:12px;font-weight:600;">${sameRoleNote}</p>` : ""}
+      </div>`
+  }
+
+  let overflowNoteHtml = ""
+  if (params.overflowNote) {
+    const overflowTitle = isEs ? "Desborde de saldo" : "Balance overflow"
+    overflowNoteHtml = `
+      <div style="background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;padding:12px 16px;margin:16px 0;">
+        <p style="margin:0 0 4px;font-weight:600;color:#1e40af;font-size:14px;">ℹ️ ${overflowTitle}</p>
+        <p style="margin:0;color:#1e3a8a;font-size:13px;">${params.overflowNote}</p>
       </div>`
   }
 
@@ -533,6 +578,7 @@ async function sendLeaveRequestEmail(params: {
       </table>
 
       ${warningHtml}
+      ${overflowNoteHtml}
 
       <!-- Action buttons -->
       <div style="text-align:center;margin:24px 0 8px;">

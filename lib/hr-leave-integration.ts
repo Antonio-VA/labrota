@@ -198,6 +198,137 @@ export async function computeHrLeaveFields(params: {
   }
 }
 
+/** LEGACY type string → name fragments to match against company_leave_type names */
+const LEGACY_NAME_MAP: Record<string, string[]> = {
+  annual:    ["vacaciones", "annual", "vacation", "holiday"],
+  sick:      ["enfermedad", "sick", "illness"],
+  personal:  ["personal"],
+  training:  ["formaci", "training"],
+  maternity: ["maternidad", "maternity", "paternidad", "paternity"],
+}
+
+function legacyTypeMatchesCompanyType(lt: CompanyLeaveType, legacyType: string): boolean {
+  const frags = LEGACY_NAME_MAP[legacyType] ?? []
+  if (!frags.length) return false
+  const n = lt.name.toLowerCase()
+  const ne = (lt.name_en ?? "").toLowerCase()
+  return frags.some((f) => n.includes(f) || ne.includes(f))
+}
+
+export interface BalanceCheckResult {
+  found: boolean
+  leaveTypeId: string | null
+  leaveTypeName: string | null
+  available: number
+  daysCounted: number
+  overflow: OverflowResult
+  /** true = controlled, no overflow type, request exceeds available → block */
+  blocked: boolean
+}
+
+/**
+ * Check whether a leave request from a viewer would exceed the available balance.
+ * Uses the legacy `type` string to find the matching company_leave_type.
+ */
+export async function checkLeaveRequestBalance(params: {
+  orgId: string
+  staffId: string
+  legacyType: string
+  startDate: string
+  endDate: string
+}): Promise<BalanceCheckResult> {
+  const empty: BalanceCheckResult = {
+    found: false, leaveTypeId: null, leaveTypeName: null,
+    available: 0, daysCounted: 0,
+    overflow: { needed: false, overflowDays: 0, overflowTypeId: null, overflowTypeName: null, mainDays: 0 },
+    blocked: false,
+  }
+
+  const admin = createAdminClient()
+
+  const { data: config } = await admin
+    .from("holiday_config")
+    .select("*")
+    .eq("organisation_id", params.orgId)
+    .single() as { data: HolidayConfig | null }
+  if (!config) return empty
+
+  const { data: leaveTypes } = await admin
+    .from("company_leave_types")
+    .select("*")
+    .eq("organisation_id", params.orgId)
+    .eq("has_balance", true)
+    .eq("is_archived", false)
+    .order("sort_order") as { data: CompanyLeaveType[] | null }
+  if (!leaveTypes?.length) return empty
+
+  const leaveType = leaveTypes.find((lt) => legacyTypeMatchesCompanyType(lt, params.legacyType))
+  if (!leaveType) return empty
+
+  const dayConfig: DayCountConfig = {
+    counting_method: config.counting_method,
+    public_holidays_deducted: config.public_holidays_deducted,
+  }
+  const daysCounted = countDays(params.startDate, params.endDate, dayConfig, [])
+  const balanceYear = getLeaveYear(params.startDate, config.leave_year_start_month, config.leave_year_start_day)
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [{ data: balance }, { data: existingLeaves }] = await Promise.all([
+    admin.from("holiday_balance").select("*")
+      .eq("organisation_id", params.orgId).eq("staff_id", params.staffId)
+      .eq("leave_type_id", leaveType.id).eq("year", balanceYear)
+      .maybeSingle() as unknown as Promise<{ data: HolidayBalance | null }>,
+    admin.from("leaves").select("start_date, end_date, status, days_counted")
+      .eq("organisation_id", params.orgId).eq("staff_id", params.staffId)
+      .eq("leave_type_id", leaveType.id).eq("balance_year", balanceYear)
+      .in("status", ["approved", "pending"]) as unknown as Promise<{ data: Array<{ start_date: string; end_date: string; status: string; days_counted: number | null }> | null }>,
+  ])
+
+  const currentBalance = calculateBalance({
+    entitlement: balance?.entitlement ?? leaveType.default_days ?? 0,
+    carried_forward: balance?.carried_forward ?? 0,
+    cf_expiry_date: balance?.cf_expiry_date ?? null,
+    manual_adjustment: balance?.manual_adjustment ?? 0,
+    today,
+    leaveEntries: existingLeaves ?? [],
+    config: dayConfig,
+    publicHolidays: [],
+  })
+
+  const available = currentBalance.available
+  const shortfall = daysCounted - available
+
+  let overflow: OverflowResult = {
+    needed: false, overflowDays: 0, overflowTypeId: null, overflowTypeName: null, mainDays: daysCounted,
+  }
+
+  if (shortfall > 0 && leaveType.overflow_to_type_id) {
+    const { data: overflowType } = await admin
+      .from("company_leave_types").select("id, name")
+      .eq("id", leaveType.overflow_to_type_id)
+      .single() as { data: { id: string; name: string } | null }
+    if (overflowType) {
+      overflow = {
+        needed: true,
+        overflowDays: shortfall,
+        overflowTypeId: overflowType.id,
+        overflowTypeName: overflowType.name,
+        mainDays: Math.max(daysCounted - shortfall, 0),
+      }
+    }
+  }
+
+  return {
+    found: true,
+    leaveTypeId: leaveType.id,
+    leaveTypeName: leaveType.name,
+    available,
+    daysCounted,
+    overflow,
+    blocked: shortfall > 0 && !leaveType.overflow_to_type_id,
+  }
+}
+
 /**
  * Create an overflow companion leave entry.
  */
