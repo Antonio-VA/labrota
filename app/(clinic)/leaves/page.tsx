@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getAuthUser, getCachedOrgId } from "@/lib/auth-cache"
 import { LeavesList } from "@/components/leaves-list"
 import { ViewerBalanceStrip } from "@/components/viewer-balance-strip"
+import { LeaveCalendar } from "@/components/leave-calendar"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { LeaveWithStaff, Staff, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 
@@ -157,13 +158,20 @@ export default async function LeavesPage() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8">
       {viewerBalanceData && viewerStaffId && (
-        <ViewerBalanceStrip
-          leaveTypes={viewerBalanceData.leaveTypes}
-          balances={viewerBalanceData.balances}
-          config={viewerBalanceData.config}
-          leaves={viewerBalanceData.leaves}
-          year={viewerBalanceData.year}
-        />
+        <div className="flex flex-col gap-4 mb-6">
+          <ViewerBalanceStrip
+            leaveTypes={viewerBalanceData.leaveTypes}
+            balances={viewerBalanceData.balances}
+            config={viewerBalanceData.config}
+            leaves={viewerBalanceData.leaves}
+            year={viewerBalanceData.year}
+          />
+          <LeaveCalendar
+            leaves={viewerBalanceData.leaves}
+            leaveTypes={viewerBalanceData.leaveTypes}
+            year={viewerBalanceData.year}
+          />
+        </div>
       )}
       <LeavesList
         leaves={leaves}

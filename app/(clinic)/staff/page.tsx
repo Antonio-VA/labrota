@@ -5,7 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { MobileGate } from "@/components/mobile-gate"
 import { TableSkeleton } from "@/components/ui/skeleton"
-import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition } from "@/lib/types/database"
+import { calculateBalance } from "@/lib/hr-balance-engine"
+import { getLeaveYear } from "@/lib/hr-balance-engine"
+import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 
 const StaffList = dynamic(() => import("@/components/staff-list").then((m) => m.StaffList), {
   loading: () => <TableSkeleton />,
@@ -37,11 +39,96 @@ export default async function StaffPage() {
     maxStaff = orgData?.max_staff ?? 50
   }
 
+  // Compute leave balances if HR module is active
+  let leaveBalances: Record<string, Array<{ name: string; color: string; available: number }>> | undefined
+
+  const { data: hrMod } = await supabase
+    .from("hr_module")
+    .select("status")
+    .maybeSingle() as { data: { status: string } | null }
+
+  if (hrMod?.status === "active") {
+    const today = new Date().toISOString().slice(0, 10)
+
+    const [configRes, typesRes, leavesRes] = await Promise.all([
+      supabase.from("holiday_config").select("*").single() as unknown as Promise<{ data: HolidayConfig | null }>,
+      supabase.from("company_leave_types").select("*").eq("has_balance", true).eq("is_archived", false).order("sort_order") as unknown as Promise<{ data: CompanyLeaveType[] | null }>,
+      supabase.from("leaves").select("staff_id, leave_type_id, start_date, end_date, status, days_counted, balance_year").in("status", ["approved", "pending"]) as unknown as Promise<{ data: Array<Pick<Leave, "staff_id" | "leave_type_id" | "start_date" | "end_date" | "status" | "days_counted" | "balance_year">> | null }>,
+    ])
+
+    const hConfig = configRes.data
+    const trackedTypes = typesRes.data ?? []
+
+    if (hConfig && trackedTypes.length > 0) {
+      const currentYear = getLeaveYear(today, hConfig.leave_year_start_month, hConfig.leave_year_start_day)
+
+      const { data: allBalances } = await supabase
+        .from("holiday_balance")
+        .select("*")
+        .eq("year", currentYear) as { data: HolidayBalance[] | null }
+
+      const balancesByStaff = new Map<string, HolidayBalance[]>()
+      for (const b of allBalances ?? []) {
+        const arr = balancesByStaff.get(b.staff_id) ?? []
+        arr.push(b)
+        balancesByStaff.set(b.staff_id, arr)
+      }
+
+      const leavesByStaff = new Map<string, typeof leavesRes.data>()
+      for (const l of leavesRes.data ?? []) {
+        const arr = leavesByStaff.get(l.staff_id) ?? []
+        arr.push(l)
+        leavesByStaff.set(l.staff_id, arr)
+      }
+
+      const dayConfig = {
+        counting_method: hConfig.counting_method,
+        weekends_deducted: hConfig.weekends_deducted,
+        public_holidays_deducted: hConfig.public_holidays_deducted,
+      }
+
+      leaveBalances = {}
+      const locale = "es" // server-side default
+      for (const s of staff) {
+        const staffBalances = balancesByStaff.get(s.id) ?? []
+        const staffLeaves = leavesByStaff.get(s.id) ?? []
+
+        const balArr: Array<{ name: string; color: string; available: number }> = []
+        for (const lt of trackedTypes) {
+          const balRecord = staffBalances.find((b) => b.leave_type_id === lt.id)
+          const typeLeaves = staffLeaves.filter(
+            (l) => l.leave_type_id === lt.id &&
+              (l.balance_year === currentYear || (!l.balance_year && l.start_date.startsWith(String(currentYear))))
+          )
+
+          const bal = calculateBalance({
+            entitlement: balRecord?.entitlement ?? lt.default_days ?? 0,
+            carried_forward: balRecord?.carried_forward ?? 0,
+            cf_expiry_date: balRecord?.cf_expiry_date ?? null,
+            manual_adjustment: balRecord?.manual_adjustment ?? 0,
+            today,
+            leaveEntries: typeLeaves.map((l) => ({
+              start_date: l.start_date,
+              end_date: l.end_date,
+              status: l.status,
+              days_counted: l.days_counted,
+            })),
+            config: dayConfig,
+            publicHolidays: [],
+          })
+
+          balArr.push({ name: lt.name, color: lt.color, available: bal.available })
+        }
+        leaveBalances[s.id] = balArr
+      }
+    }
+  }
+
   return (
     <>
       <div className="flex-1 overflow-auto p-6 md:p-8">
         <MobileGate>
-          <StaffList staff={staff} tecnicas={tecnicas} departments={depts} shiftTypes={shiftTypes} maxStaff={maxStaff} />
+          <StaffList staff={staff} tecnicas={tecnicas} departments={depts} shiftTypes={shiftTypes} maxStaff={maxStaff} leaveBalances={leaveBalances} />
         </MobileGate>
       </div>
     </>

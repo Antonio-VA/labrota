@@ -57,6 +57,8 @@ export default async function EditStaffPage({
 
   const hrActive = hrModule?.status === "active"
 
+  const staffName = `${staff.first_name} ${staff.last_name}`
+
   let balancesTab: React.ReactNode = null
 
   if (hrActive) {
@@ -98,15 +100,10 @@ export default async function EditStaffPage({
       <div className="flex-1 overflow-auto p-6 md:p-8">
         <MobileGate>
           <div className="max-w-2xl mx-auto flex flex-col gap-6">
-            <div>
-              <h1 className="text-[18px] font-medium flex items-center gap-1">
-                <Link href="/staff" className="text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="size-5" /></Link>
-                {t("editStaff")}
-              </h1>
-              <p className="text-[14px] text-muted-foreground mt-1">
-                {staff.first_name} {staff.last_name}
-              </p>
-            </div>
+            <h1 className="text-[18px] font-medium flex items-center gap-1">
+              <Link href="/staff" className="text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="size-5" /></Link>
+              {staffName}
+            </h1>
             <StaffForm
               mode="edit"
               staff={staff}

@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx"
-import type { StaffReportData, TechReportData } from "@/app/(clinic)/reports/actions"
+import type { StaffReportData, TechReportData, UnpaidLeaveReportData } from "@/app/(clinic)/reports/actions"
 
 function autoFit(ws: XLSX.WorkSheet, data: string[][]) {
   const cols = data[0]?.map((_, i) => ({
@@ -73,4 +73,41 @@ export function exportTechReportExcel(data: TechReportData) {
 
   const slug = data.orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
   XLSX.writeFile(wb, `${slug}-cobertura-tareas-${data.from}-${data.to}.xlsx`)
+}
+
+export function exportUnpaidLeaveExcel(data: UnpaidLeaveReportData) {
+  const header = [
+    ["Permisos no remunerados"],
+    [`${data.orgName} · ${data.periodLabel}`],
+    [`Personal con ausencias: ${data.totalStaff}  ·  Total días: ${data.totalUnpaidDays}`],
+    [],
+    ["Empleado", "Departamento", "Permiso no remunerado", "Baja no remunerada", "Total"],
+  ]
+
+  const rows = data.rows.map((r) => [
+    r.staffName,
+    r.department,
+    r.unpaidLeaveDays,
+    r.unpaidSickDays,
+    r.totalUnpaid,
+  ])
+
+  rows.push([
+    "Total",
+    "",
+    data.rows.reduce((s, r) => s + r.unpaidLeaveDays, 0),
+    data.rows.reduce((s, r) => s + r.unpaidSickDays, 0),
+    data.totalUnpaidDays,
+  ] as unknown as (string | number)[])
+
+  const allData = [...header, ...rows.map((r) => r.map(String))]
+  const ws = XLSX.utils.aoa_to_sheet([...header, ...rows])
+  autoFit(ws, allData)
+  ws["!freeze"] = { xSplit: 0, ySplit: 5 }
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Permisos no remunerados")
+
+  const slug = data.orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  XLSX.writeFile(wb, `${slug}-permisos-no-remunerados-${data.from}-${data.to}.xlsx`)
 }

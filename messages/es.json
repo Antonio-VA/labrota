@@ -419,7 +419,8 @@
       "shiftPrefs": "Turnos",
       "dayPrefs": "Días pref.",
       "daysPerWeek": "Días/sem",
-      "workingPattern": "Patrón"
+      "workingPattern": "Patrón",
+      "leaveBalance": "Saldo"
     },
     "selectAll": "Seleccionar todos",
     "columnMenu": {
@@ -431,7 +432,8 @@
       "shiftPrefs": "Preferencia turno",
       "dayPrefs": "Preferencia días",
       "daysPerWeek": "Días/semana",
-      "workingPattern": "Patrón trabajo"
+      "workingPattern": "Patrón trabajo",
+      "leaveBalance": "Saldo vacaciones"
     },
     "roles": {
       "lab": "Embriología",
@@ -994,7 +996,17 @@
       "training": "Formación",
       "maternity": "Maternidad/paternidad",
       "other": "Otro"
-    }
+    },
+    "unpaidLeave": "Resumen de permisos no remunerados",
+    "unpaidLeaveDescription": "Resumen mensual de permisos no remunerados y bajas no remuneradas por empleado",
+    "staffWithUnpaid": "Personal con ausencias no remuneradas",
+    "totalUnpaidDays": "Total dias no remunerados",
+    "unpaidLeaveDays": "Permiso no remunerado",
+    "unpaidSickDays": "Baja no remunerada",
+    "totalUnpaidCol": "Total",
+    "total": "Total",
+    "staffName": "Empleado",
+    "department": "Departamento"
   },
   "settings": {
     "title": "Configuración",

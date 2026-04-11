@@ -712,7 +712,7 @@ function SkillOverflow({ skills, skillLabel, maxVisible, variant, skillOrder }: 
 
 // ── Staff table ────────────────────────────────────────────────────────────────
 
-type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
 
 const COL_WIDTHS: Record<ColKey, string> = {
   role: "minmax(0,1fr)",
@@ -724,11 +724,14 @@ const COL_WIDTHS: Record<ColKey, string> = {
   dayPrefs: "minmax(120px,1.2fr)",
   daysPerWeek: "minmax(55px,0.5fr)",
   workingPattern: "minmax(100px,1fr)",
+  leaveBalance: "minmax(120px,1.5fr)",
 }
+
+const ALL_COL_ORDER: ColKey[] = ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern", "leaveBalance"]
 
 function buildGrid(cols: Set<ColKey>) {
   const parts = ["32px", "minmax(0,1.5fr)"]
-  for (const key of ["role", "email", "capacidades", "training", "status", "shiftPrefs", "dayPrefs", "daysPerWeek", "workingPattern"] as ColKey[]) {
+  for (const key of ALL_COL_ORDER) {
     if (cols.has(key)) parts.push(COL_WIDTHS[key])
   }
   return parts.join(" ")
@@ -743,6 +746,7 @@ function StaffTable({
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,
   visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
+  leaveBalances,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -763,6 +767,7 @@ function StaffTable({
   getVal?: (s: StaffWithSkills, field: string) => unknown
   setEditValue?: (staffId: string, field: string, value: unknown) => void
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
+  leaveBalances?: Record<string, Array<{ name: string; color: string; available: number }>>
 }) {
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
@@ -791,6 +796,7 @@ function StaffTable({
         {visibleCols.has("dayPrefs") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>}
         {visibleCols.has("daysPerWeek") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>}
         {visibleCols.has("workingPattern") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>}
+        {visibleCols.has("leaveBalance") && <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>}
       </div>
 
       {/* Rows */}
@@ -1104,6 +1110,21 @@ function StaffTable({
               </div>
             )}
 
+            {visibleCols.has("leaveBalance") && (
+              <div className="hidden md:flex items-center gap-2 flex-wrap">
+                {leaveBalances?.[member.id] ? (
+                  leaveBalances[member.id].map((b) => (
+                    <span key={b.name} className="inline-flex items-center gap-1 text-[12px]">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: b.color }} />
+                      <span className={b.available <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}>{b.available}</span>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">—</span>
+                )}
+              </div>
+            )}
+
           </div>
         )
       })}
@@ -1113,7 +1134,7 @@ function StaffTable({
 
 // ── Staff list ─────────────────────────────────────────────────────────────────
 
-export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [], maxStaff = 50 }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; maxStaff?: number }) {
+export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], shiftTypes = [], maxStaff = 50, leaveBalances }: { staff: StaffWithSkills[]; tecnicas?: Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; maxStaff?: number; leaveBalances?: Record<string, Array<{ name: string; color: string; available: number }>> }) {
   const t  = useTranslations("staff")
   const tc = useTranslations("common")
   const ts = useTranslations("skills")
@@ -1188,9 +1209,18 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
 
   // Column visibility
-  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern"
+  type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance"
   const DEFAULT_COLS: ColKey[] = ["role", "capacidades", "training", "status"]
-  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => new Set(DEFAULT_COLS))
+  const STORAGE_KEY = "labrota_staff_columns"
+  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) return new Set(JSON.parse(saved) as ColKey[])
+      } catch { /* ignore */ }
+    }
+    return new Set(DEFAULT_COLS)
+  })
   const [showColMenu, setShowColMenu] = useState(false)
   const colMenuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -1200,7 +1230,12 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     return () => document.removeEventListener("mousedown", h)
   }, [showColMenu])
   function toggleCol(col: ColKey) {
-    setVisibleCols((prev) => { const next = new Set(prev); next.has(col) ? next.delete(col) : next.add(col); return next })
+    setVisibleCols((prev) => {
+      const next = new Set(prev)
+      next.has(col) ? next.delete(col) : next.add(col)
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
+      return next
+    })
   }
   const ALL_COLUMNS: { key: ColKey; label: string }[] = [
     { key: "role", label: t("columnMenu.role") },
@@ -1212,6 +1247,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     { key: "dayPrefs", label: t("columnMenu.dayPrefs") },
     { key: "daysPerWeek", label: t("columnMenu.daysPerWeek") },
     { key: "workingPattern", label: t("columnMenu.workingPattern") },
+    { key: "leaveBalance", label: t("columnMenu.leaveBalance") },
   ]
 
   // Inline edit mode
@@ -1584,6 +1620,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           getVal={getVal}
           setEditValue={setEditValue}
           shiftTypes={shiftTypes}
+          leaveBalances={leaveBalances}
         />
       )}
 

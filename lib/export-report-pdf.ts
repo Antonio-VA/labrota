@@ -130,3 +130,43 @@ export function exportTechReportPdf(data: TechReportData) {
   const slug = data.orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
   doc.save(`${slug}-cobertura-tareas-${data.from}-${data.to}.pdf`)
 }
+
+export function exportUnpaidLeavePdf(data: import("@/app/(clinic)/reports/actions").UnpaidLeaveReportData) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const margin = 14
+
+  doc.setFontSize(14)
+  doc.text("Permisos no remunerados", margin, 20)
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text(`${data.orgName} · ${data.periodLabel}`, margin, 27)
+  doc.text(`Personal con ausencias: ${data.totalStaff}  ·  Total días: ${data.totalUnpaidDays}`, margin, 34)
+  doc.setTextColor(0)
+
+  const head = [["Empleado", "Departamento", "Permiso no remunerado", "Baja no remunerada", "Total"]]
+  const body = data.rows.map((r) => [
+    r.staffName,
+    r.department,
+    String(r.unpaidLeaveDays || "—"),
+    String(r.unpaidSickDays || "—"),
+    String(r.totalUnpaid),
+  ])
+  body.push(["Total", "", String(data.rows.reduce((s, r) => s + r.unpaidLeaveDays, 0)), String(data.rows.reduce((s, r) => s + r.unpaidSickDays, 0)), String(data.totalUnpaidDays)])
+
+  autoTable(doc, {
+    startY: 38,
+    head,
+    body,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [241, 245, 251], textColor: [80, 80, 80], fontStyle: "bold" },
+  })
+
+  const pageH = doc.internal.pageSize.getHeight()
+  doc.setFontSize(7)
+  doc.setTextColor(150)
+  doc.text(`Generado en LabRota · ${TIMESTAMP()}`, margin, pageH - 8)
+
+  const slug = data.orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  doc.save(`${slug}-permisos-no-remunerados-${data.from}-${data.to}.pdf`)
+}

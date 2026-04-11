@@ -419,7 +419,8 @@
       "shiftPrefs": "Shifts",
       "dayPrefs": "Day pref.",
       "daysPerWeek": "Days/wk",
-      "workingPattern": "Pattern"
+      "workingPattern": "Pattern",
+      "leaveBalance": "Balance"
     },
     "selectAll": "Select all",
     "columnMenu": {
@@ -431,7 +432,8 @@
       "shiftPrefs": "Shift preference",
       "dayPrefs": "Day preference",
       "daysPerWeek": "Days/week",
-      "workingPattern": "Working pattern"
+      "workingPattern": "Working pattern",
+      "leaveBalance": "Leave balance"
     },
     "roles": {
       "lab": "Lab",
@@ -994,7 +996,17 @@
       "training": "Training",
       "maternity": "Maternity/paternity",
       "other": "Other"
-    }
+    },
+    "unpaidLeave": "Unpaid Leave Summary",
+    "unpaidLeaveDescription": "Monthly summary of unpaid leave and unpaid sick leave per staff member",
+    "staffWithUnpaid": "Staff with unpaid leave",
+    "totalUnpaidDays": "Total unpaid days",
+    "unpaidLeaveDays": "Unpaid leave",
+    "unpaidSickDays": "Unpaid sick",
+    "totalUnpaidCol": "Total",
+    "total": "Total",
+    "staffName": "Staff member",
+    "department": "Department"
   },
   "settings": {
     "title": "Settings",

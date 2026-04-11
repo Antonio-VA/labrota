@@ -376,10 +376,10 @@ export function StaffForm({
   }
 
   const thr = useTranslations("hr")
-  type Step = "datos" | "disponibilidad" | "tareas" | "balances"
+  type Step = "datos" | "disponibilidad" | "tareas" | "balances" | "notes"
   const STEPS: Step[] = balancesTab
-    ? ["datos", "disponibilidad", "tareas", "balances"]
-    : ["datos", "disponibilidad", "tareas"]
+    ? ["datos", "disponibilidad", "tareas", "balances", "notes"]
+    : ["datos", "disponibilidad", "tareas", "notes"]
   const [tab, setTab] = useState<Step>("datos")
   const stepIndex = STEPS.indexOf(tab)
   const isWizard = mode === "create"
@@ -388,6 +388,7 @@ export function StaffForm({
     disponibilidad: t("wizardStep2"),
     tareas: t("wizardStep3"),
     balances: thr("balances"),
+    notes: t("fields.notes"),
   }
 
   return (
@@ -506,10 +507,10 @@ export function StaffForm({
               <p className="text-[11px] text-muted-foreground/70 mt-1">{t(`contractTypeHint.${contractType}`)}</p>
             )}
           </Field>
+          <Field label={t("fields.startDate")} required>
+            <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
+          </Field>
         </div>
-        <Field label={t("fields.startDate")} required>
-          <Input name="start_date" type="date" defaultValue={staff?.start_date} disabled={isPending} required className="rounded-[8px]" />
-        </Field>
         <OnboardingPeriodField
           initialValue={(staff as any)?.onboarding_end_date ?? null}
           disabled={isPending}
@@ -757,17 +758,19 @@ export function StaffForm({
         </div>
       )}
 
-      {/* Notes — always visible */}
-      <Section label={t("fields.notes")}>
-        <textarea
-          name="notes"
-          defaultValue={staff?.notes ?? ""}
-          disabled={isPending}
-          rows={3}
-          className="w-full rounded-[8px] border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 resize-none"
-          placeholder={tc("optional")}
-        />
-      </Section>
+      {/* === TAB: Notes === */}
+      <div className={cn("flex flex-col gap-6", tab !== "notes" && "hidden")}>
+        <Section label={t("fields.notes")}>
+          <textarea
+            name="notes"
+            defaultValue={staff?.notes ?? ""}
+            disabled={isPending}
+            rows={5}
+            className="w-full rounded-[8px] border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 resize-none"
+            placeholder={tc("optional")}
+          />
+        </Section>
+      </div>
 
       {/* Error */}
       {state?.error && (
