@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check, RefreshCw, Info, GripVertical } from "lucide-react"
+import { Users, Pencil, Plus, X, ChevronDown, ChevronRight, Trash2, Hourglass, Star, Columns3, Save, Check, RefreshCw, Info, GripVertical, ArrowUp, ArrowDown } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -127,6 +127,43 @@ function DropdownPanel({
       )}
     >
       {children}
+    </div>
+  )
+}
+
+// ── Header popover ─────────────────────────────────────────────────────────────
+
+function HeaderPopover({
+  label, active, children,
+}: {
+  label: string
+  active?: boolean
+  children: (close: () => void) => React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+  return (
+    <div ref={ref} className="relative group/hdr flex items-center gap-0.5 min-w-0">
+      <span className={cn("text-[13px] font-medium truncate", active ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={cn("shrink-0 p-0.5 rounded transition-opacity", active ? "opacity-100 text-primary" : "opacity-0 group-hover/hdr:opacity-100 text-muted-foreground hover:text-foreground")}
+      >
+        <ChevronDown className={cn("size-3 transition-transform duration-150", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
+          {children(() => setOpen(false))}
+        </div>
+      )}
     </div>
   )
 }
@@ -750,6 +787,11 @@ function StaffTable({
   visibleCols = new Set(["role", "capacidades", "training", "status"] as ColKey[]), editMode = false, getVal, setEditValue, shiftTypes = [],
   leaveBalances,
   colOrder,
+  roleFilter, onRoleFilterChange,
+  statusFilter, onStatusFilterChange,
+  skillFilter, onSkillFilterChange,
+  allSkillCodes,
+  sortDir, onSortWithDir,
 }: {
   members: StaffWithSkills[]
   t: ReturnType<typeof useTranslations<"staff">>
@@ -772,17 +814,83 @@ function StaffTable({
   shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]
   leaveBalances?: Record<string, { name: string; color: string; available: number; taken: number; booked: number }>
   colOrder?: ColKey[]
+  roleFilter?: StaffRole | "all"
+  onRoleFilterChange?: (v: StaffRole | "all") => void
+  statusFilter?: OnboardingStatus | "all"
+  onStatusFilterChange?: (v: OnboardingStatus | "all") => void
+  skillFilter?: string
+  onSkillFilterChange?: (v: string) => void
+  allSkillCodes?: string[]
+  sortDir?: "asc" | "desc"
+  onSortWithDir?: (col: "name" | "role", dir: "asc" | "desc") => void
 }) {
+  const locale = useLocale() as "es" | "en"
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
   const effectiveOrder = colOrder ?? ALL_COL_ORDER
 
   const headerCells: Record<ColKey, React.ReactNode> = {
-    role: <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>,
+    role: roleFilter !== undefined ? (
+      <HeaderPopover label={t("columns.role")} active={roleFilter !== "all"}>
+        {(close) => (
+          <>
+            {(["all", "lab", "andrology", "admin"] as const).map((v) => (
+              <button key={v} onClick={() => { onRoleFilterChange?.(v); close() }}
+                className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors",
+                  roleFilter === v && "text-primary font-medium")}>
+                {roleFilter === v && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
+                {roleFilter !== v && <span className="size-1.5 shrink-0" />}
+                {v === "all" ? (locale === "es" ? "Todos" : "All") : t(`roles.${v}`)}
+              </button>
+            ))}
+          </>
+        )}
+      </HeaderPopover>
+    ) : (
+      <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
+    ),
     email: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>,
-    capacidades: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>,
+    capacidades: skillFilter !== undefined && allSkillCodes !== undefined ? (
+      <HeaderPopover label={t("columns.capacidades")} active={skillFilter !== "all"}>
+        {(close) => (
+          <>
+            <button onClick={() => { onSkillFilterChange?.("all"); close() }}
+              className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors", skillFilter === "all" && "text-primary font-medium")}>
+              <span className={cn("size-1.5 rounded-full shrink-0", skillFilter === "all" ? "bg-primary" : "")} />
+              {locale === "es" ? "Todas" : "All"}
+            </button>
+            {allSkillCodes.map((code) => (
+              <button key={code} onClick={() => { onSkillFilterChange?.(code); close() }}
+                className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors", skillFilter === code && "text-primary font-medium")}>
+                <span className={cn("size-1.5 rounded-full shrink-0", skillFilter === code ? "bg-primary" : "")} />
+                {skillLabel(code)}
+              </button>
+            ))}
+          </>
+        )}
+      </HeaderPopover>
+    ) : (
+      <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
+    ),
     training: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>,
-    status: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>,
+    status: statusFilter !== undefined ? (
+      <HeaderPopover label={t("columns.status")} active={statusFilter !== "all"}>
+        {(close) => (
+          <>
+            {(["all", "active", "onboarding", "inactive"] as const).map((v) => (
+              <button key={v} onClick={() => { onStatusFilterChange?.(v as OnboardingStatus | "all"); close() }}
+                className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors",
+                  statusFilter === v && "text-primary font-medium")}>
+                <span className={cn("size-1.5 rounded-full shrink-0", statusFilter === v ? "bg-primary" : "")} />
+                {v === "all" ? (locale === "es" ? "Todos" : "All") : t(`onboardingStatus.${v}`)}
+              </button>
+            ))}
+          </>
+        )}
+      </HeaderPopover>
+    ) : (
+      <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+    ),
     shiftPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>,
     dayPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>,
     daysPerWeek: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>,
@@ -804,9 +912,30 @@ function StaffTable({
           className="size-4 rounded border-border cursor-pointer accent-primary"
           aria-label={t("selectAll")}
         />
-        <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          {t("columns.name")} {sortCol === "name" && "↓"}
-        </button>
+        {onSortWithDir ? (
+          <HeaderPopover label={t("columns.name")} active={sortCol === "name"}>
+            {(close) => (
+              <>
+                <button onClick={() => { onSortWithDir("name", "asc"); close() }}
+                  className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors",
+                    sortCol === "name" && sortDir === "asc" && "text-primary font-medium")}>
+                  <ArrowUp className="size-3 shrink-0" />
+                  A → Z
+                </button>
+                <button onClick={() => { onSortWithDir("name", "desc"); close() }}
+                  className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors",
+                    sortCol === "name" && sortDir === "desc" && "text-primary font-medium")}>
+                  <ArrowDown className="size-3 shrink-0" />
+                  Z → A
+                </button>
+              </>
+            )}
+          </HeaderPopover>
+        ) : (
+          <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            {t("columns.name")} {sortCol === "name" && "↓"}
+          </button>
+        )}
         {effectiveOrder.filter(k => visibleCols.has(k)).map(k => (
           <React.Fragment key={k}>{headerCells[k]}</React.Fragment>
         ))}
@@ -1238,6 +1367,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [showHistory,  setShowHistory]  = useState(false)
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set())
   const [sortCol,      setSortCol]      = useState<"name" | "role">("name")
+  const [sortDir,      setSortDir]      = useState<"asc" | "desc">("asc")
 
   // Column visibility
   type ColKey = "role" | "email" | "capacidades" | "training" | "status" | "shiftPrefs" | "dayPrefs" | "daysPerWeek" | "workingPattern" | "leaveBalance" | "leaveTaken" | "leaveBooked"
@@ -1365,7 +1495,10 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
     return true
   })
 
-  const sortFn = sortCol === "name" ? sortByName : sortByRole
+  const sortFn = (a: StaffWithSkills, b: StaffWithSkills) => {
+    const base = sortCol === "name" ? sortByName(a, b) : sortByRole(a, b)
+    return sortDir === "desc" ? -base : base
+  }
   const activeFiltered   = filtered.filter((s) => s.onboarding_status !== "inactive").sort(sortFn)
   const inactiveFiltered = filtered.filter((s) => s.onboarding_status === "inactive").sort(sortFn)
 
@@ -1573,25 +1706,6 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-48 h-8 text-[13px]"
           />
-          {/* Compact filter chips */}
-          <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value as StaffRole | "all"); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
-            <option value="all">{t("allRoles")}</option>
-            <option value="lab">{t("roles.lab")}</option>
-            <option value="andrology">{t("roles.andrology")}</option>
-            <option value="admin">{t("roles.admin")}</option>
-          </select>
-          {allSkillCodes.length > 0 && (
-            <select value={skillFilter} onChange={(e) => { setSkillFilter(e.target.value); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
-              <option value="all">{t("allSkills")}</option>
-              {allSkillCodes.map((code) => <option key={code} value={code}>{skillLabel(code)}</option>)}
-            </select>
-          )}
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as OnboardingStatus | "all"); clearSelection() }} className="h-8 rounded-md border border-input bg-transparent px-2 text-[12px] outline-none">
-            <option value="all">{t("allStatuses")}</option>
-            <option value="active">{t("onboardingStatus.active")}</option>
-            <option value="onboarding">{t("onboardingStatus.onboarding")}</option>
-            <option value="inactive">{t("onboardingStatus.inactive")}</option>
-          </select>
         </div>
         <div className="flex items-center gap-2">
           {/* Column toggle */}
@@ -1677,6 +1791,15 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           shiftTypes={shiftTypes}
           leaveBalances={leaveBalances}
           colOrder={colOrder}
+          roleFilter={roleFilter}
+          onRoleFilterChange={(v) => { setRoleFilter(v); clearSelection() }}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(v) => { setStatusFilter(v); clearSelection() }}
+          skillFilter={skillFilter}
+          onSkillFilterChange={(v) => { setSkillFilter(v); clearSelection() }}
+          allSkillCodes={allSkillCodes}
+          sortDir={sortDir}
+          onSortWithDir={(col, dir) => { setSortCol(col); setSortDir(dir) }}
         />
       )}
 
