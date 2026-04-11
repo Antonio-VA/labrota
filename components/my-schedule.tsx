@@ -255,6 +255,18 @@ export function MySchedule({
               const isToday = day.date === today
               const isPast = day.date < today
               const dateLabel = formatCardDate(day.date, locale)
+
+              // For by-task: resolve all assigned tecnicas
+              const myTecnicas = isTaskOrg
+                ? day.myAssignments
+                    .map((a) => {
+                      const tec = a.function_label ? tecnicas.find((t) => t.codigo === a.function_label) ?? null : null
+                      return { assignment: a, tec }
+                    })
+                    .filter((x) => x.tec !== null)
+                : []
+
+              // Single-assignment helpers (by-shift or fallback)
               const tecnica = isTaskOrg && assignment?.function_label
                 ? tecnicas.find((t) => t.codigo === assignment.function_label) ?? null
                 : null
@@ -270,8 +282,20 @@ export function MySchedule({
                     <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider mb-1.5">{t("nextShift")}</p>
                     <div className="flex items-center">
                       <span className="text-[14px] font-semibold capitalize w-[100px] shrink-0">{dateLabel}</span>
-                      <div className="flex items-center justify-center gap-2 flex-1">
-                        {tecnica ? (
+                      <div className="flex items-center justify-center gap-2 flex-1 flex-wrap">
+                        {isTaskOrg && myTecnicas.length > 0 ? (
+                          myTecnicas.map(({ tec, assignment: a }) => {
+                            const tc = tec!
+                            const c = tc.color?.startsWith("#") ? tc.color : (TASK_COLORS[tc.color ?? ""] ?? "#3B82F6")
+                            const lbl = locale === "en" ? tc.nombre_en : tc.nombre_es
+                            return (
+                              <span key={a.id} className="flex items-center gap-1">
+                                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: c }} />
+                                <span className="text-[12px] font-semibold text-emerald-700">{lbl}</span>
+                              </span>
+                            )
+                          })
+                        ) : tecnica ? (
                           <span className="flex items-center gap-1.5">
                             <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tecColor }} />
                             <span className="text-[13px] font-semibold text-emerald-700">{tecLabel}</span>
@@ -281,14 +305,14 @@ export function MySchedule({
                             {assignment.shift_type}
                           </span>
                         )}
-                        {times && (
+                        {times && !isTaskOrg && (
                           <span className="text-[12px] text-emerald-600/70">
                             {formatTime(times.start, timeFormat)} — {formatTime(times.end, timeFormat)}
                           </span>
                         )}
                       </div>
                       <div className="w-7 shrink-0 flex justify-end">
-                        {renderSwapMenu(day.date, assignment.id, assignment.shift_type, "text-emerald-600", "hover:bg-emerald-100 active:bg-emerald-200")}
+                        {!isTaskOrg && renderSwapMenu(day.date, assignment.id, assignment.shift_type, "text-emerald-600", "hover:bg-emerald-100 active:bg-emerald-200")}
                       </div>
                     </div>
                   </div>
@@ -311,6 +335,27 @@ export function MySchedule({
 
               // ── Has assignment ──
               if (assignment) {
+                // By-task: may have multiple tasks — stack them in the card
+                if (isTaskOrg && myTecnicas.length > 0) {
+                  return (
+                    <div key={day.date} className={cn("rounded-lg border px-4 py-2.5 flex items-start gap-3", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}>
+                      <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0 pt-0.5", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        {myTecnicas.map(({ tec, assignment: a }) => {
+                          const tc = tec!
+                          const c = tc.color?.startsWith("#") ? tc.color : (TASK_COLORS[tc.color ?? ""] ?? "#3B82F6")
+                          const lbl = locale === "en" ? tc.nombre_en : tc.nombre_es
+                          return (
+                            <span key={a.id} className="flex items-center gap-1.5">
+                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: isPast ? "#94A3B8" : c }} />
+                              <span className={cn("text-[13px] font-medium", isPast ? "text-muted-foreground" : "text-foreground")}>{lbl}</span>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                }
                 return (
                   <div key={day.date} className={cn("rounded-lg border px-4 flex items-center", CARD_H, isPast ? "border-border bg-muted/40" : "border-border")}>
                     <span className={cn("text-[14px] font-medium capitalize w-[100px] shrink-0", isPast ? "text-muted-foreground" : isToday ? "text-primary" : "")}>{dateLabel}</span>

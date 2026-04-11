@@ -240,13 +240,14 @@ function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData
 
 // ── Overflow menu ───────────────────────────────────────────────────────────
 
-function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, onSaveFavourite }: {
+function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, onSaveFavourite, taskDaysAsRows, onToggleTaskDaysAsRows }: {
   weekStart: string; data: RotaWeekData | null; onRefresh?: () => void
   highlightEnabled?: boolean; onToggleHighlight?: () => void
   onGenerateWeek?: () => void
   weekViewMode?: "task" | "person"; onToggleViewMode?: () => void
   deptColor?: boolean; onToggleDeptColor?: () => void
   isFavourite?: boolean; onSaveFavourite?: () => void
+  taskDaysAsRows?: boolean; onToggleTaskDaysAsRows?: () => void
 }) {
   const t = useTranslations("schedule")
   const locale = useLocale()
@@ -332,6 +333,13 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
                   <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
                   {locale === "es" ? "Colores personal" : "Staff colors"}
                   {deptColor && <Check className="size-4 text-primary ml-auto" />}
+                </button>
+              )}
+              {onToggleTaskDaysAsRows && weekViewMode !== "person" && data?.rotaDisplayMode === "by_task" && (
+                <button onClick={() => { onToggleTaskDaysAsRows(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
+                  <Grid3X3 className="size-4 shrink-0" />
+                  {locale === "es" ? "Días como filas" : "Days as rows"}
+                  {taskDaysAsRows && <Check className="size-4 text-primary ml-auto" />}
                 </button>
               )}
             </>
@@ -576,7 +584,14 @@ export function MobileWeekClient() {
     } catch {}
     return localStorage.getItem("labrota_mobile_dept_color") !== "false"
   })
-  const [weekFavourite, setWeekFavourite] = useState<{ weekViewMode: string; mobileDeptColor: boolean } | null>(() => {
+  const [taskDaysAsRows, setTaskDaysAsRows] = useState(() => {
+    if (typeof window === "undefined") return false
+    try {
+      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
+      return fav.taskDaysAsRows === true
+    } catch { return false }
+  })
+  const [weekFavourite, setWeekFavourite] = useState<{ weekViewMode: string; mobileDeptColor: boolean; taskDaysAsRows?: boolean } | null>(() => {
     if (typeof window === "undefined") return null
     try { return JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "null") } catch { return null }
   })
@@ -594,12 +609,17 @@ export function MobileWeekClient() {
     localStorage.setItem("labrota_mobile_dept_color", String(next))
   }
 
+  function toggleTaskDaysAsRows() {
+    setTaskDaysAsRows((v) => !v)
+  }
+
   const isFavourite = weekFavourite !== null &&
     weekFavourite.weekViewMode === weekViewMode &&
-    weekFavourite.mobileDeptColor === mobileDeptColor
+    weekFavourite.mobileDeptColor === mobileDeptColor &&
+    (weekFavourite.taskDaysAsRows ?? false) === taskDaysAsRows
 
   function saveFavourite() {
-    const fav = { weekViewMode, mobileDeptColor }
+    const fav = { weekViewMode, mobileDeptColor, taskDaysAsRows }
     setWeekFavourite(fav)
     localStorage.setItem("labrota_week_favourite", JSON.stringify(fav))
     toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favorite")
@@ -727,6 +747,8 @@ export function MobileWeekClient() {
           onToggleDeptColor={toggleMobileDeptColor}
           isFavourite={isFavourite}
           onSaveFavourite={saveFavourite}
+          taskDaysAsRows={taskDaysAsRows}
+          onToggleTaskDaysAsRows={toggleTaskDaysAsRows}
           onRefresh={() => {
             setLoading(true)
             Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
@@ -772,8 +794,8 @@ export function MobileWeekClient() {
           </div>
         ) : (
           <div className="min-w-[600px] pb-[100px]">
-            {/* Header: days */}
-            <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
+            {/* Header: days — hidden in transposed by-task mode (it renders its own header) */}
+            {!(isTaskMode && taskDaysAsRows) && <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
               <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
               {days.map((day) => {
                 const date = new Date(day.date + "T12:00:00")
@@ -800,7 +822,7 @@ export function MobileWeekClient() {
                   </div>
                 )
               })}
-            </div>
+            </div>}
 
             {/* Rows */}
             {weekViewMode === "person" ? (
@@ -871,56 +893,111 @@ export function MobileWeekClient() {
                 )}
               </>
             ) : data.rotaDisplayMode === "by_task" && data.tecnicas ? (
-              data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden).map((tec) => {
-                const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
-                const tecLabel = locale === "en" ? tec.nombre_en : tec.nombre_es
-                return (
-                  <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
-                    <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
-                      <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
-                      <div className="px-1 py-1.5 flex flex-col justify-center flex-1 min-w-0">
-                        <span className="text-[11px] font-semibold text-foreground leading-tight">{tec.codigo}</span>
-                        <span className="text-[9px] text-muted-foreground truncate leading-tight">{tecLabel}</span>
+              (() => {
+                const activeTecnicas = data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+                const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+                function renderStaffChip(a: { id: string; staff_id: string; staff: { first_name: string; last_name: string; role: string } }) {
+                  const isHL = highlightEnabled && highlightedStaff === a.staff_id
+                  const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
+                  const hlColor = staffColorLookup[a.staff_id] ?? roleColor
+                  const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
+                  const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
+                  return (
+                    <TapPopover key={a.id} trigger={
+                      <span
+                        className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
+                        style={isHL
+                          ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) }
+                          : mobileDeptColor
+                            ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
+                            : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                        onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
+                      >
+                        {a.staff.first_name[0]}{a.staff.last_name[0]}
+                      </span>
+                    }>
+                      <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
+                      <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[a.staff.role] ?? a.staff.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
+                    </TapPopover>
+                  )
+                }
+
+                if (taskDaysAsRows) {
+                  // ── Transposed: days as rows, tasks as columns ───────────────
+                  const tecColW = `minmax(44px, 1fr)`
+                  const colTemplate = `${gridHdrW} repeat(${activeTecnicas.length}, ${tecColW})`
+                  return (
+                    <>
+                      {/* Sticky header: corner + task columns */}
+                      <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: colTemplate }}>
+                        <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
+                        {activeTecnicas.map((tec) => {
+                          const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
+                          return (
+                            <div key={tec.id} className="px-1 py-1.5 text-center border-r border-border last:border-r-0" style={{ borderBottom: `3px solid ${dotColor}` }}>
+                              <span className="text-[9px] font-semibold text-foreground block leading-tight">{tec.codigo}</span>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </div>
-                    {days.map((day) => {
-                      const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
-                      const dow = new Date(day.date + "T12:00:00").getDay()
-                      const isSat = dow === 6; const isSun = dow === 0
-                      return (
-                        <div key={day.date} className="px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start">
-                          {assignments.map((a) => {
-                            const isHL = highlightEnabled && highlightedStaff === a.staff_id
-                            const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
-                            const hlColor = staffColorLookup[a.staff_id] ?? roleColor
-                            const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
-                            const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                            const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
-                            return (
-                              <TapPopover key={a.id} trigger={
-                                <span
-                                  className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
-                                  style={isHL
-                                    ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) }
-                                    : mobileDeptColor
-                                      ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
-                                      : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-                                  onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
-                                >
-                                  {a.staff.first_name[0]}{a.staff.last_name[0]}
-                                </span>
-                              }>
-                                <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                                <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[a.staff.role] ?? a.staff.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
-                              </TapPopover>
-                            )
-                          })}
+                      {/* Day rows */}
+                      {days.map((day) => {
+                        const date = new Date(day.date + "T12:00:00")
+                        const dow = date.getDay()
+                        const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date)
+                        const num = date.getDate()
+                        const isToday = day.date === today
+                        const isWknd = dow === 0 || dow === 6
+                        const isHoliday = !!data?.publicHolidays?.[day.date]
+                        return (
+                          <div key={day.date} className="grid border-b border-border" style={{ gridTemplateColumns: colTemplate }}>
+                            <div className="border-r border-border bg-muted sticky left-0 z-[5] px-1.5 py-1 flex flex-col items-end justify-center" style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : undefined}>
+                              <span className={cn("text-[9px] uppercase", isToday ? "text-primary font-semibold" : isWknd ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
+                              {isToday
+                                ? <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">{num}</span>
+                                : <span className={cn("text-[13px] font-semibold leading-none", isWknd ? "text-muted-foreground" : "text-primary")}>{num}</span>
+                              }
+                            </div>
+                            {activeTecnicas.map((tec) => {
+                              const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
+                              return (
+                                <div key={tec.id} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start">
+                                  {assignments.map((a) => renderStaffChip(a))}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })}
+                    </>
+                  )
+                }
+
+                // ── Default: tasks as rows, days as columns ─────────────────
+                return activeTecnicas.map((tec) => {
+                  const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
+                  const tecLabel = locale === "en" ? tec.nombre_en : tec.nombre_es
+                  return (
+                    <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
+                      <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
+                        <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
+                        <div className="px-1 py-1.5 flex flex-col justify-center flex-1 min-w-0">
+                          <span className="text-[11px] font-semibold text-foreground leading-tight">{tec.codigo}</span>
+                          <span className="text-[9px] text-muted-foreground truncate leading-tight">{tecLabel}</span>
                         </div>
-                      )
-                    })}
-                  </div>
-                )
-              })
+                      </div>
+                      {days.map((day) => {
+                        const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
+                        return (
+                          <div key={day.date} className="px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start">
+                            {assignments.map((a) => renderStaffChip(a))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })
+              })()
             ) : (
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
@@ -976,8 +1053,8 @@ export function MobileWeekClient() {
               ))
             )}
 
-            {/* Off / Libres row — hidden in person view */}
-            {weekViewMode !== "person" && <div className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
+            {/* Off / Libres row — hidden in person view and transposed by-task mode */}
+            {weekViewMode !== "person" && !(isTaskMode && taskDaysAsRows) && <div className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
                 <span className="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">{locale === "es" ? "Lib" : "Off"}</span>
               </div>
