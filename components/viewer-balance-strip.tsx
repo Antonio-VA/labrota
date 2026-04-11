@@ -63,8 +63,8 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
         </select>
       </div>
 
-      {/* Balance cards — max 1/4 width each on desktop */}
-      <div className="flex flex-wrap gap-3">
+      {/* Balance cards — 2 cols on mobile, up to 4 on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
         {trackedTypes.map((lt) => {
           const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
 
@@ -106,7 +106,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
           ]
 
           return (
-            <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden w-full md:w-[calc(50%-0.375rem)] lg:max-w-[calc(25%-0.5625rem)] lg:flex-1">
+            <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
               {/* Card header */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <div

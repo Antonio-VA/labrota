@@ -178,18 +178,8 @@ export default async function LeavesPage() {
       )}
       {viewerBalanceData && viewerStaffId ? (
         <div className="flex flex-col lg:flex-row lg:items-start">
-          {/* Calendar — 1/4 width square on desktop, full width on mobile */}
-          <div className="lg:w-1/4 lg:shrink-0 lg:sticky lg:top-4 lg:aspect-square lg:overflow-hidden">
-            <LeaveCalendar
-              leaves={viewerBalanceData.leaves}
-              leaveTypes={viewerBalanceData.leaveTypes}
-              year={viewerBalanceData.year}
-            />
-          </div>
-          {/* Vertical divider */}
-          <div className="hidden lg:block w-px bg-border self-stretch mx-5" />
-          {/* Leave list — takes remaining space */}
-          <div className="flex-1 min-w-0">
+          {/* Leave list — first on mobile, after calendar on desktop */}
+          <div className="flex-1 min-w-0 order-1 lg:order-3">
             <LeavesList
               leaves={leaves}
               staff={staff}
@@ -199,6 +189,16 @@ export default async function LeavesPage() {
               enableOutlookSync={enableOutlookSync}
               orgId={orgId ?? undefined}
               holidayConfig={sharedHolidayConfig}
+            />
+          </div>
+          {/* Vertical divider — desktop only */}
+          <div className="hidden lg:block lg:order-2 w-px bg-border self-stretch mx-5" />
+          {/* Calendar — below list on mobile, 1/4 width square on desktop */}
+          <div className="lg:w-1/4 lg:shrink-0 lg:sticky lg:top-4 lg:aspect-square lg:overflow-hidden order-2 lg:order-1 mt-6 lg:mt-0">
+            <LeaveCalendar
+              leaves={viewerBalanceData.leaves}
+              leaveTypes={viewerBalanceData.leaveTypes}
+              year={viewerBalanceData.year}
             />
           </div>
         </div>
