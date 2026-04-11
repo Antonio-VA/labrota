@@ -136,7 +136,12 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
     startTransition(async () => {
       const result = await adminGenerateBalancesForYear(orgId, selectedYear)
       if (result.error) toast.error(result.error)
-      else toast.success(`${result.created} saldos creados, ${result.skipped} omitidos`)
+      else {
+        const parts = []
+        if (result.created > 0) parts.push(`${result.created} creados`)
+        if (result.updated > 0) parts.push(`${result.updated} actualizados`)
+        toast.success(parts.length > 0 ? parts.join(", ") : "Sin cambios")
+      }
     })
   }
 

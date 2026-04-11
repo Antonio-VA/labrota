@@ -129,15 +129,12 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
     startTransition(async () => {
       const result = await adminGenerateBalancesForYear(orgId, selectedYear)
       if (result.error) { toast.error(result.error); return }
-      if (result.created === 0 && result.skipped > 0) {
-        const msg = `Todos los saldos ya existían (${result.skipped} empleados). No se realizaron cambios.`
-        setLastGenerateResult(msg)
-        toast(msg)
-      } else {
-        const msg = `✓ ${result.created} saldos creados` + (result.skipped > 0 ? `, ${result.skipped} ya existentes` : "")
-        setLastGenerateResult(msg)
-        toast.success(msg)
-      }
+      const parts = []
+      if (result.created > 0) parts.push(`${result.created} creados`)
+      if (result.updated > 0) parts.push(`${result.updated} actualizados`)
+      const msg = parts.length > 0 ? `✓ ${parts.join(", ")}` : "No hay personal activo con saldos configurados."
+      setLastGenerateResult(msg)
+      toast.success(msg)
     })
   }
 
@@ -334,8 +331,8 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
           <div className="rounded-lg border border-border bg-background px-5 py-4 flex flex-col gap-3">
             <h3 className="text-[14px] font-medium">Generar saldos para {selectedYear}</h3>
             <p className="text-[13px] text-muted-foreground">
-              Crea registros de saldo para todo el personal activo con los días por defecto de cada tipo de ausencia controlado.
-              Si un empleado ya tiene saldo para ese año, se mantiene sin cambios.
+              Crea o actualiza los saldos de todo el personal activo con los días por defecto de cada tipo de ausencia controlado.
+              Los registros existentes se actualizan con la dotación base actual; el arrastre y los ajustes manuales no se modifican.
             </p>
             <div>
               <Button variant="outline" size="sm" onClick={handleGenerateBalances} disabled={isPending}>

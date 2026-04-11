@@ -240,40 +240,55 @@ export async function adminUpdateCompanyLeaveType(
 
 // ── Generate Balances ────────────────────────────────────────────────────────
 
-export async function adminGenerateBalancesForYear(orgId: string, year: number): Promise<{ created: number; skipped: number; error?: string }> {
+export async function adminGenerateBalancesForYear(orgId: string, year: number): Promise<{ created: number; updated: number; error?: string }> {
   const admin = createAdminClient()
 
   const { data: staffList } = await admin
     .from("staff").select("id").eq("organisation_id", orgId).neq("onboarding_status", "inactive") as { data: Array<{ id: string }> | null }
-  if (!staffList?.length) return { created: 0, skipped: 0 }
+  if (!staffList?.length) return { created: 0, updated: 0 }
 
   const { data: leaveTypes } = await admin
     .from("company_leave_types").select("id, default_days").eq("organisation_id", orgId).eq("has_balance", true).eq("is_archived", false) as { data: Array<{ id: string; default_days: number | null }> | null }
-  if (!leaveTypes?.length) return { created: 0, skipped: 0 }
+  if (!leaveTypes?.length) return { created: 0, updated: 0 }
 
   const { data: existing } = await admin
-    .from("holiday_balance").select("staff_id, leave_type_id").eq("organisation_id", orgId).eq("year", year) as { data: Array<{ staff_id: string; leave_type_id: string }> | null }
+    .from("holiday_balance").select("id, staff_id, leave_type_id").eq("organisation_id", orgId).eq("year", year) as { data: Array<{ id: string; staff_id: string; leave_type_id: string }> | null }
 
-  const existingSet = new Set((existing ?? []).map((b) => `${b.staff_id}:${b.leave_type_id}`))
+  const existingMap = new Map((existing ?? []).map((b) => [`${b.staff_id}:${b.leave_type_id}`, b.id]))
 
-  let created = 0, skipped = 0
+  let created = 0, updated = 0
   const inserts: Array<{ organisation_id: string; staff_id: string; leave_type_id: string; year: number; entitlement: number }> = []
+  const updatePromises: PromiseLike<unknown>[] = []
 
   for (const staff of staffList) {
     for (const lt of leaveTypes) {
-      if (existingSet.has(`${staff.id}:${lt.id}`)) { skipped++; continue }
-      inserts.push({ organisation_id: orgId, staff_id: staff.id, leave_type_id: lt.id, year, entitlement: lt.default_days ?? 0 })
-      created++
+      const key = `${staff.id}:${lt.id}`
+      const existingId = existingMap.get(key)
+      const entitlement = lt.default_days ?? 0
+      if (existingId) {
+        updatePromises.push(
+          admin.from("holiday_balance").update({ entitlement }).eq("id", existingId).then()
+        )
+        updated++
+      } else {
+        inserts.push({ organisation_id: orgId, staff_id: staff.id, leave_type_id: lt.id, year, entitlement })
+        created++
+      }
     }
   }
 
+  // Run updates in parallel, inserts in batches
+  const results = await Promise.all(updatePromises)
+  const updateError = (results as Array<{ error?: { message: string } | null }>).find((r) => r.error)?.error
+  if (updateError) return { created: 0, updated: 0, error: updateError.message }
+
   for (let i = 0; i < inserts.length; i += 100) {
     const { error } = await admin.from("holiday_balance").insert(inserts.slice(i, i + 100))
-    if (error) return { created: 0, skipped: 0, error: error.message }
+    if (error) return { created, updated: 0, error: error.message }
   }
 
   revalidatePath(`/orgs/${orgId}`)
-  return { created, skipped }
+  return { created, updated }
 }
 
 // ── Roll Over Carry-Forward ──────────────────────────────────────────────────
