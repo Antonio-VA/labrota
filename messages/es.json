@@ -598,6 +598,7 @@
     "approveLeave": "Aprobar",
     "rejectLeave": "Rechazar",
     "upcoming": "Próximas",
+    "pastLeaves": "Pasadas",
     "noLeaves": "Sin ausencias",
     "noLeavesDescription": "No hay ausencias registradas para este período.",
     "noPendingLeaves": "Sin solicitudes pendientes",

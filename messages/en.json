@@ -598,6 +598,7 @@
     "approveLeave": "Approve",
     "rejectLeave": "Reject",
     "upcoming": "Upcoming",
+    "pastLeaves": "Past",
     "noLeaves": "No leave records",
     "noLeavesDescription": "No leave has been recorded for this period.",
     "noPendingLeaves": "No pending requests",

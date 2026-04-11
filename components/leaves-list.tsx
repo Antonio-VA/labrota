@@ -8,6 +8,7 @@ import {
   CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud,
 } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
+import { countDays } from "@/lib/hr-balance-engine"
 import { LeaveFileImport } from "@/components/leave-file-import"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -549,6 +550,7 @@ function LeavesTable({
   canCancel,
   hideStaffColumn,
   showLeaveDays,
+  holidayConfig,
 }: {
   rows: LeaveWithStaff[]
   locale: "es" | "en"
@@ -560,8 +562,18 @@ function LeavesTable({
   canCancel?: (leave: LeaveWithStaff) => boolean
   hideStaffColumn?: boolean
   showLeaveDays?: boolean
+  holidayConfig?: { counting_method: string; public_holidays_deducted: boolean } | null
 }) {
   const cellClass = muted ? "text-muted-foreground" : ""
+
+  function getLeaveDays(leave: LeaveWithStaff): number {
+    if (leave.days_counted != null) return leave.days_counted
+    if (!holidayConfig) return 0
+    return countDays(leave.start_date, leave.end_date, {
+      counting_method: holidayConfig.counting_method as "working_days" | "calendar_days",
+      public_holidays_deducted: holidayConfig.public_holidays_deducted,
+    })
+  }
 
   return (
     <>
@@ -632,7 +644,7 @@ function LeavesTable({
                 <td className={`px-4 py-2.5 ${cellClass}`}>{formatDateWithYear(leave.end_date, locale)}</td>
                 <td className={`px-4 py-2.5 ${cellClass}`}>{daysBetween(leave.start_date, leave.end_date)}</td>
                 {showLeaveDays && (
-                  <td className={`px-4 py-2.5 font-medium ${cellClass}`}>{leave.days_counted ?? "—"}</td>
+                  <td className={`px-4 py-2.5 font-medium ${cellClass}`}>{getLeaveDays(leave)}</td>
                 )}
                 {showStatus && (
                   <td className="px-4 py-2.5">
@@ -835,7 +847,6 @@ export function LeavesList({
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<LeaveWithStaff | null>(null)
-  const [showHistory, setShowHistory] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [fileImportOpen, setFileImportOpen] = useState(false)
   const [outlookPanelOpen, setOutlookPanelOpen] = useState(false)
@@ -988,7 +999,7 @@ export function LeavesList({
 
       {filteredUpcoming.length > 0 ? (
         <>
-          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
+          <LeavesTable rows={paginatedUpcoming} locale={locale} onEdit={openEdit} t={t} muted={false} showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} holidayConfig={holidayConfig} />
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-1">
               <p className="text-[12px] text-muted-foreground">
@@ -1010,22 +1021,12 @@ export function LeavesList({
         <EmptyState icon={CalendarOff} title={t("noLeaves")} description={t("noLeavesDescription")} />
       )}
 
-      {/* History toggle */}
+      {/* Past leaves — always visible */}
       {filteredPast.length > 0 && (
-        <button
-          onClick={() => setShowHistory((v) => !v)}
-          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mt-1"
-        >
-          <span>{showHistory ? "▾" : "▸"}</span>
-          {showHistory
-            ? t("hideHistory")
-            : t("showHistory", { count: filteredPast.length })}
-        </button>
-      )}
-
-      {/* Past leaves */}
-      {showHistory && filteredPast.length > 0 && (
-        <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
+        <>
+          <h3 className="text-[14px] font-medium mt-2">{t("pastLeaves")}</h3>
+          <LeavesTable rows={filteredPast} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} onCancel={handleCancel} canCancel={canCancelLeave} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} holidayConfig={holidayConfig} />
+        </>
       )}
 
       {/* Cancelled toggle */}
@@ -1043,7 +1044,7 @@ export function LeavesList({
 
       {/* Cancelled leaves */}
       {showCancelled && cancelledFiltered.length > 0 && (
-        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} />
+        <LeavesTable rows={cancelledFiltered} locale={locale} onEdit={openEdit} t={t} muted showStatus={enableLeaveRequests} hideStaffColumn={isViewer} showLeaveDays={showLeaveDays} holidayConfig={holidayConfig} />
       )}
 
       {/* Sheet */}

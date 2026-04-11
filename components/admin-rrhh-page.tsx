@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useLocale } from "next-intl"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +36,7 @@ interface Props {
 
 export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initialTypes }: Props) {
   const router = useRouter()
+  const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<Tab>("configuracion")
 
@@ -449,15 +451,14 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
               </Button>
             ) : (
               <div className="border border-border rounded-lg p-4 flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[13px] text-muted-foreground">Nombre (ES)</label>
-                    <input type="text" value={newType.name} onChange={(e) => setNewType((p) => ({ ...p, name: e.target.value }))} className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-[13px] text-muted-foreground">Name (EN)</label>
-                    <input type="text" value={newType.name_en} onChange={(e) => setNewType((p) => ({ ...p, name_en: e.target.value }))} className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1" />
-                  </div>
+                <div>
+                  <label className="text-[13px] text-muted-foreground">{locale === "en" ? "Name" : "Nombre"}</label>
+                  <input
+                    type="text"
+                    value={newType.name}
+                    onChange={(e) => setNewType((p) => ({ ...p, name: e.target.value, name_en: e.target.value }))}
+                    className="w-full border border-border rounded px-2 py-1 text-[14px] bg-background mt-1"
+                  />
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" checked={newType.has_balance} onChange={(e) => setNewType((p) => ({ ...p, has_balance: e.target.checked }))} className="accent-primary" />Controlado</label>

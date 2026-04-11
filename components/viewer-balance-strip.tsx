@@ -63,8 +63,8 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
         </select>
       </div>
 
-      {/* Balance cards — 2-up on desktop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Balance cards — max 1/4 width each on desktop */}
+      <div className="flex flex-wrap gap-3">
         {trackedTypes.map((lt) => {
           const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === selectedYear)
 
@@ -92,11 +92,11 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
 
           const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
 
-          const rows = [
+          const rows: Array<{ label: string; value: number | null; highlight: boolean; expired?: boolean }> = [
             { label: t("entitlement"), value: bal.entitlement, highlight: false },
             {
               label: t("carriedForward"),
-              value: bal.carried_forward,
+              value: lt.allows_carry_forward ? bal.carried_forward : null,
               highlight: false,
               expired: bal.cf_expired && bal.carried_forward > 0,
             },
@@ -106,7 +106,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
           ]
 
           return (
-            <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
+            <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden w-full md:w-[calc(50%-0.375rem)] lg:max-w-[calc(25%-0.5625rem)] lg:flex-1">
               {/* Card header */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <div
@@ -125,10 +125,14 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
                       {label}
                     </span>
                     <span
-                      className={`text-[14px] font-semibold tabular-nums ${expired ? "line-through text-muted-foreground" : ""} ${highlight && value <= 0 ? "text-destructive" : ""}`}
-                      style={highlight && value > 0 ? { color: lt.color } : undefined}
+                      className={`text-[14px] font-semibold tabular-nums ${expired ? "line-through text-muted-foreground" : ""} ${highlight && value !== null && value <= 0 ? "text-destructive" : ""}`}
+                      style={highlight && value !== null && value > 0 ? { color: lt.color } : undefined}
                     >
-                      {value === 0 && !highlight ? <span className="text-muted-foreground/40">0</span> : value}
+                      {value === null
+                        ? <span className="text-muted-foreground/40">—</span>
+                        : value === 0 && !highlight
+                          ? <span className="text-muted-foreground/40">0</span>
+                          : value}
                     </span>
                   </div>
                 ))}
