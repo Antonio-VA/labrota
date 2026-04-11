@@ -50,7 +50,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year:
   return (
     <div className="flex flex-col gap-4">
       {/* Header with year selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <h2 className="text-[14px] font-medium">{t("balanceStrip")}</h2>
         <select
           value={selectedYear}

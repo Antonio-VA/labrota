@@ -219,7 +219,7 @@ export function StaffLeaveBalances({
   return (
     <div className="flex flex-col gap-6">
       {/* Year selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <h2 className="text-[14px] font-medium">{t("balanceStrip")}</h2>
         <select
           value={selectedYear}
