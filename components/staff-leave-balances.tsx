@@ -152,7 +152,7 @@ export function StaffLeaveBalances({
     try { return tl(`status.${status}`) } catch { return status }
   }
 
-  // Leave history for this year
+  // Leave history for this year — split into past and upcoming
   const yearLeaves = leaves
     .filter((l) => {
       const matchYear = l.balance_year === selectedYear ||
@@ -160,6 +160,51 @@ export function StaffLeaveBalances({
       return matchYear && l.status !== "rejected"
     })
     .sort((a, b) => b.start_date.localeCompare(a.start_date))
+
+  const pastLeaves = yearLeaves.filter((l) => l.end_date < today)
+  const upcomingLeaves = yearLeaves.filter((l) => l.end_date >= today)
+
+  function renderLeaveTable(entries: Leave[]) {
+    return (
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <table className="w-full text-[14px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("from")}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("to")}</th>
+              <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">{tc("day")}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tl("fields.type")}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("status")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((leave) => {
+              const isCancelled = leave.status === "cancelled"
+              const color = getLeaveTypeColor(leave)
+              const days = getDisplayDays(leave)
+              return (
+                <tr key={leave.id} className={`border-b border-border last:border-0 ${isCancelled ? "opacity-40" : ""}`}>
+                  <td className="px-4 py-2.5">{formatDate(leave.start_date, locale)}</td>
+                  <td className="px-4 py-2.5">{formatDate(leave.end_date, locale)}</td>
+                  <td className="px-4 py-2.5 text-center font-medium">{days}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {color && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
+                      <span>{getLeaveTypeName(leave)}</span>
+                      {leave.parent_leave_id && <Badge variant="outline" className="text-[11px] py-0">{t("overflowSource")}</Badge>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge variant={STATUS_VARIANT[leave.status] ?? "inactive"}>{getStatusLabel(leave.status)}</Badge>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -204,7 +249,8 @@ export function StaffLeaveBalances({
                   </div>
                   <button
                     type="button"
-                    className="text-[13px] text-primary hover:underline flex items-center gap-1"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                    title={t("editEntitlement")}
                     onClick={() => {
                       const balRecord = balances.find(
                         (b) => b.leave_type_id === lt.id && b.year === selectedYear
@@ -218,8 +264,7 @@ export function StaffLeaveBalances({
                       })
                     }}
                   >
-                    <Pencil className="size-3" />
-                    {t("editEntitlement")}
+                    <Pencil className="size-3.5" />
                   </button>
                 </div>
 
@@ -326,60 +371,22 @@ export function StaffLeaveBalances({
         </div>
       )}
 
-      {/* Leave history */}
+      {/* Upcoming leaves */}
+      {upcomingLeaves.length > 0 && (
+        <div>
+          <h3 className="text-[14px] font-medium mb-3">{t("booked")}</h3>
+          {renderLeaveTable(upcomingLeaves)}
+        </div>
+      )}
+
+      {/* Past leaves */}
       <div>
         <h3 className="text-[14px] font-medium mb-3">{t("leaveHistory")}</h3>
-        {yearLeaves.length === 0 ? (
+        {pastLeaves.length === 0 ? (
           <div className="rounded-lg border border-border bg-background px-5 py-8 text-center">
             <p className="text-[14px] text-muted-foreground">—</p>
           </div>
-        ) : (
-          <div className="rounded-lg border border-border bg-background overflow-hidden">
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("from")}</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("to")}</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">{tc("day")}</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tl("fields.type")}</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{tc("status")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {yearLeaves.map((leave) => {
-                  const isCancelled = leave.status === "cancelled"
-                  const color = getLeaveTypeColor(leave)
-                  const days = getDisplayDays(leave)
-
-                  return (
-                    <tr
-                      key={leave.id}
-                      className={`border-b border-border last:border-0 ${isCancelled ? "opacity-40" : ""}`}
-                    >
-                      <td className="px-4 py-2.5">{formatDate(leave.start_date, locale)}</td>
-                      <td className="px-4 py-2.5">{formatDate(leave.end_date, locale)}</td>
-                      <td className="px-4 py-2.5 text-center font-medium">{days}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          {color && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
-                          <span>{getLeaveTypeName(leave)}</span>
-                          {leave.parent_leave_id && (
-                            <Badge variant="outline" className="text-[11px] py-0">{t("overflowSource")}</Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Badge variant={STATUS_VARIANT[leave.status] ?? "inactive"}>
-                          {getStatusLabel(leave.status)}
-                        </Badge>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        ) : renderLeaveTable(pastLeaves)}
       </div>
     </div>
   )
