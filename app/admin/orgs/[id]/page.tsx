@@ -309,21 +309,18 @@ export default async function OrgDetailPage({
           />
         }
         configuracion={
-          <>
-            <AdminOrgDetailClient
-              orgId={id} userRows={userRows} section="configuracion" hideUsers
-              initialName={org.name}
-              initialSlug={org.slug}
-              initialLogoUrl={org.logo_url}
-              initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
-              initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
-              initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
-              initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
-              initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
-              initialMaxStaff={(org as { max_staff?: number }).max_staff ?? 50}
-            />
-            <AdminHrInstallCard orgId={id} installed={hrStatus.installed} active={hrStatus.active} installedAt={hrStatus.installedAt} />
-          </>
+          <AdminOrgDetailClient
+            orgId={id} userRows={userRows} section="configuracion" hideUsers
+            initialName={org.name}
+            initialSlug={org.slug}
+            initialLogoUrl={org.logo_url}
+            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+            initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
+            initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
+            initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
+            initialMaxStaff={(org as { max_staff?: number }).max_staff ?? 50}
+          />
         }
         usuarios={
           <AdminOrgDetailClient
@@ -334,20 +331,23 @@ export default async function OrgDetailPage({
           />
         }
         implementacion={
-          <AdminOrgDetailClient
-            orgId={id} userRows={userRows} section="implementacion" hideUsers
-            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
-            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
-            implementationStatus={{
-              hasRegion: !!(labConfigRes.data as { country?: string } | null)?.country,
-              departmentCount: deptRes.count ?? 0,
-              shiftCount: shiftRes.count ?? 0,
-              taskCount: tecnicaRes.count ?? 0,
-              staffCount: staffRes.count ?? 0,
-              hasRota: (assignmentRes.count ?? 0) > 0,
-              rotaCount: rotasRes.count ?? 0,
-            }}
-          />
+          <>
+            <AdminOrgDetailClient
+              orgId={id} userRows={userRows} section="implementacion" hideUsers
+              initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+              initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+              implementationStatus={{
+                hasRegion: !!(labConfigRes.data as { country?: string } | null)?.country,
+                departmentCount: deptRes.count ?? 0,
+                shiftCount: shiftRes.count ?? 0,
+                taskCount: tecnicaRes.count ?? 0,
+                staffCount: staffRes.count ?? 0,
+                hasRota: (assignmentRes.count ?? 0) > 0,
+                rotaCount: rotasRes.count ?? 0,
+              }}
+            />
+            <AdminHrInstallCard orgId={id} installed={hrStatus.installed} active={hrStatus.active} installedAt={hrStatus.installedAt} />
+          </>
         }
         backups={<AdminBackups orgId={id} />}
       />
