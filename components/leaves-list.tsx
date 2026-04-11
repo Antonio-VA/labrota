@@ -923,14 +923,6 @@ export function LeavesList({
         </div>
       )}
 
-      {/* Viewer info banner */}
-      {isViewer && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-[13px] text-sky-700 mb-4">
-          <Info className="size-4 mt-0.5 shrink-0" />
-          <span>{enableLeaveRequests ? t("viewerRequestInfo") : t("viewerApprovalInfo")}</span>
-        </div>
-      )}
-
       {/* Pending leave requests (admins only) */}
       <PendingRequests leaves={visibleLeaves} isAdmin={!isViewer} locale={locale} />
 

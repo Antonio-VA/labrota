@@ -51,7 +51,7 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year,
     : 0
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(trackedTypes.length + (pendingCount > 0 ? 1 : 0), 4)}, 1fr)` }}>
       {trackedTypes.map((lt) => {
         const balanceRecord = balances.find((b) => b.leave_type_id === lt.id && b.year === year)
 
@@ -78,21 +78,41 @@ export function ViewerBalanceStrip({ leaveTypes, balances, config, leaves, year,
         })
 
         const displayName = locale === "en" && lt.name_en ? lt.name_en : lt.name
+        const total = bal.entitlement + bal.cf_available + bal.manual_adjustment
+        const pct = total > 0 ? Math.min((bal.total_used / total) * 100, 100) : 0
 
         return (
-          <div key={lt.id} className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 flex-1 min-w-0">
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lt.color }} />
-            <span className="text-[12px] text-muted-foreground truncate">{displayName}</span>
-            <span className={`text-[16px] font-semibold ml-auto tabular-nums ${bal.available <= 0 ? "text-destructive" : "text-foreground"}`}>
-              {bal.available}
-            </span>
+          <div key={lt.id} className="rounded-lg border border-border bg-muted/30 px-4 py-3 flex flex-col gap-2">
+            <span className="text-[13px] text-muted-foreground">{displayName}</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[22px] font-semibold tabular-nums">{bal.total_used}</span>
+              <span className="text-[13px] text-muted-foreground">
+                {locale === "es" ? `de ${total} usados` : `of ${total} used`}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1.5 rounded-full bg-border/60 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: pct > 80 ? "var(--destructive)" : lt.color,
+                }}
+              />
+            </div>
           </div>
         )
       })}
+
       {enableLeaveRequests && pendingCount > 0 && (
-        <div className="flex items-center gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-1.5">
-          <span className="text-[16px] font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{pendingCount}</span>
-          <span className="text-[11px] text-muted-foreground">{t("pending")}</span>
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex flex-col gap-2 items-center justify-center text-center">
+          <span className="text-[13px] text-muted-foreground">{t("pending")}</span>
+          <span className="text-[22px] font-semibold tabular-nums text-amber-600 dark:text-amber-400">{pendingCount}</span>
+          <span className="text-[12px] text-muted-foreground">
+            {pendingCount === 1
+              ? (locale === "es" ? "solicitud" : "request")
+              : (locale === "es" ? "solicitudes" : "requests")}
+          </span>
         </div>
       )}
     </div>
