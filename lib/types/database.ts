@@ -137,6 +137,7 @@ export interface Leave {
   source:           LeaveSource
   outlook_event_id: string | null
   notes:            string | null
+  attachment_url:   string | null
   created_by:       string | null
   reviewed_by:      string | null
   reviewed_at:      string | null

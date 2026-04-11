@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import {
-  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud, AlertCircle, CheckCircle2, AlertTriangle,
+  CalendarOff, Plane, Cross, User, GraduationCap, Baby, CalendarX, FileUp, Info, UserX, ChevronLeft, ChevronRight, CalendarDays, Cloud, AlertCircle, CheckCircle2, AlertTriangle, Paperclip, X as XIcon,
 } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
 import { countDays } from "@/lib/hr-balance-engine"
@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave, previewLeaveBalance } from "@/app/(clinic)/leaves/actions"
+import { createLeave, updateLeave, deleteLeave, approveLeave, rejectLeave, requestLeave, cancelLeave, previewLeaveBalance, uploadLeaveAttachment } from "@/app/(clinic)/leaves/actions"
 import { OutlookSyncPanel } from "@/components/outlook-sync-panel"
 import { formatDateWithYear } from "@/lib/format-date"
 import { toast } from "sonner"
@@ -286,6 +286,7 @@ function LeaveForm({
   const [leaveType, setLeaveType] = useState<string>(editing?.type ?? "annual")
   const [balancePreview, setBalancePreview] = useState<Awaited<ReturnType<typeof previewLeaveBalance>>>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const locale = useLocale() as "es" | "en"
   const router = useRouter()
 
@@ -324,12 +325,21 @@ function LeaveForm({
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     startRequest(async () => {
+      let attachmentUrl: string | undefined
+      if (attachmentFile) {
+        const uploadFd = new FormData()
+        uploadFd.set("file", attachmentFile)
+        const up = await uploadLeaveAttachment(uploadFd)
+        if (up.error) { setRequestError(up.error); return }
+        attachmentUrl = up.url
+      }
       const result = await requestLeave({
         staffId: fd.get("staff_id") as string,
         type: fd.get("type") as string,
         startDate: fd.get("start_date") as string,
         endDate: fd.get("end_date") as string,
         notes: (fd.get("notes") as string) || undefined,
+        attachmentUrl,
       })
       if (result.error) { setRequestError(result.error); return }
       toast.success(t("requestSent"))
@@ -463,6 +473,43 @@ function LeaveForm({
         />
       </div>
 
+      {/* Attachment — only in request mode */}
+      {useRequestFlow && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[14px] font-medium">
+            {locale === "es" ? "Adjunto" : "Attachment"}
+            <span className="ml-1 text-[12px] font-normal text-muted-foreground">({tc("optional")})</span>
+          </label>
+          {attachmentFile ? (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <Paperclip className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="text-[13px] flex-1 truncate">{attachmentFile.name}</span>
+              <button type="button" onClick={() => setAttachmentFile(null)} className="text-muted-foreground hover:text-foreground">
+                <XIcon className="size-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors">
+              <Paperclip className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="text-[13px] text-muted-foreground">
+                {locale === "es" ? "PDF, imagen u otro archivo (máx. 10 MB)" : "PDF, image or other file (max 10 MB)"}
+              </span>
+              <input
+                type="file"
+                className="sr-only"
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  if (f.size > 10 * 1024 * 1024) { toast.error(locale === "es" ? "El archivo supera los 10 MB" : "File exceeds 10 MB"); return }
+                  setAttachmentFile(f)
+                }}
+              />
+            </label>
+          )}
+        </div>
+      )}
+
       {/* Error */}
       {((state as { error?: string } | null)?.error || requestError) && (
         <p className="text-[14px] text-destructive">{(state as { error?: string } | null)?.error ?? requestError}</p>
@@ -587,6 +634,11 @@ function LeaveCard({
           {formatDateWithYear(leave.start_date, locale)} — {formatDateWithYear(leave.end_date, locale)}
         </span>
         <span className="text-[12px] text-muted-foreground">({days}d)</span>
+        {leave.attachment_url && (
+          <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+            <Paperclip className="size-3" />
+          </a>
+        )}
       </div>
       {onCancel && canCancel && (
         <button
@@ -699,6 +751,11 @@ function LeavesTable({
                     <LeaveTypeBadge type={leave.type} label={t(`types.${leave.type}`)} />
                     {leave.source === "outlook" && (
                       <span title="Synced from Outlook"><Cloud className="size-3.5 text-blue-500" /></span>
+                    )}
+                    {leave.attachment_url && (
+                      <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={locale === "es" ? "Ver adjunto" : "View attachment"}>
+                        <Paperclip className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
+                      </a>
                     )}
                   </div>
                 </td>

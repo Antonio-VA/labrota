@@ -243,6 +243,29 @@ export async function deleteLeave(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+/** Upload a leave attachment file (PDF, image, doc). Returns the public URL or an error. */
+export async function uploadLeaveAttachment(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated." }
+
+  const file = formData.get("file") as File
+  if (!file || file.size === 0) return { error: "No file provided." }
+  if (file.size > 10 * 1024 * 1024) return { error: "File exceeds 10 MB limit." }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin"
+  const path = `${user.id}/${Date.now()}.${ext}`
+
+  const admin = createAdminClient()
+  const { error: uploadError } = await admin.storage
+    .from("leave-attachments")
+    .upload(path, file, { upsert: false, contentType: file.type })
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: urlData } = admin.storage.from("leave-attachments").getPublicUrl(path)
+  return { url: urlData.publicUrl }
+}
+
 /** Client-side live preview: returns balance info for the given staff/type/dates, or null if HR module is inactive. */
 export async function previewLeaveBalance(params: {
   staffId: string
@@ -273,6 +296,7 @@ export async function requestLeave(params: {
   startDate: string
   endDate: string
   notes?: string
+  attachmentUrl?: string
 }): Promise<{ error?: string; info?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -329,6 +353,7 @@ export async function requestLeave(params: {
       end_date: params.endDate,
       status: "pending",
       notes: params.notes?.trim() || null,
+      attachment_url: params.attachmentUrl ?? null,
       organisation_id: orgId,
     } as never)
     .select("id")

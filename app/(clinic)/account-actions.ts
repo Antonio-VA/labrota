@@ -144,7 +144,7 @@ export async function getUserOutlookStatus(): Promise<UserOutlookStatus> {
 
   const admin = createAdminClient()
 
-  // Get user's active org
+  // Get org id first (needed for all subsequent queries)
   const { data: profile } = await admin
     .from("profiles")
     .select("organisation_id")
@@ -153,38 +153,18 @@ export async function getUserOutlookStatus(): Promise<UserOutlookStatus> {
   const orgId = profile?.organisation_id
   if (!orgId) return none
 
-  // Check if feature is enabled
-  const { data: config } = await admin
-    .from("lab_config")
-    .select("enable_outlook_sync")
-    .eq("organisation_id", orgId)
-    .maybeSingle() as { data: { enable_outlook_sync: boolean } | null }
-  if (!config?.enable_outlook_sync) return none
+  // Fetch feature flag, linked staff member, and email-fallback staff in parallel
+  const [configRes, memberRes, staffRes] = await Promise.all([
+    admin.from("lab_config").select("enable_outlook_sync").eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { enable_outlook_sync: boolean } | null }>,
+    admin.from("organisation_members").select("linked_staff_id").eq("user_id", user.id).eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { linked_staff_id: string | null } | null }>,
+    admin.from("staff").select("id").eq("email", user.email ?? "").eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { id: string } | null }>,
+  ])
 
-  // Find linked staff
-  const { data: member } = await admin
-    .from("organisation_members")
-    .select("linked_staff_id")
-    .eq("user_id", user.id)
-    .eq("organisation_id", orgId)
-    .maybeSingle() as { data: { linked_staff_id: string | null } | null }
+  if (!configRes.data?.enable_outlook_sync) return none
 
-  let staffId = member?.linked_staff_id ?? null
-
-  // Fallback: match by email
-  if (!staffId) {
-    const { data: staffMatch } = await admin
-      .from("staff")
-      .select("id")
-      .eq("email", user.email ?? "")
-      .eq("organisation_id", orgId)
-      .maybeSingle() as { data: { id: string } | null }
-    staffId = staffMatch?.id ?? null
-  }
-
+  const staffId = memberRes.data?.linked_staff_id ?? staffRes.data?.id ?? null
   if (!staffId) return { available: true, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId }
 
-  // Check connection
   const { data: conn } = await admin
     .from("outlook_connections")
     .select("email, last_synced_at")
