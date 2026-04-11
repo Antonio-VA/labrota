@@ -320,7 +320,7 @@ function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHi
             <FileDown className="size-4" />
             {t("exportPdf")}
           </button>
-          {onToggleViewMode && (
+          {onToggleViewMode && data?.rotaDisplayMode !== "by_task" && (
             <>
               <div className="h-px bg-border mx-3 my-0.5" />
               <button onClick={() => { onToggleViewMode(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
@@ -595,6 +595,13 @@ export function MobileWeekClient() {
     if (typeof window === "undefined") return null
     try { return JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "null") } catch { return null }
   })
+
+  // Force task view for by-task orgs — "by person" is not available
+  useEffect(() => {
+    if (data?.rotaDisplayMode === "by_task" && weekViewMode === "person") {
+      setWeekViewMode("task")
+    }
+  }, [data?.rotaDisplayMode, weekViewMode])
 
   function toggleHighlight() {
     const next = !highlightEnabled
