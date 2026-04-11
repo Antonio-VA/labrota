@@ -77,7 +77,6 @@ export async function computeHrLeaveFields(params: {
 
   const dayConfig: DayCountConfig = {
     counting_method: config.counting_method,
-    weekends_deducted: config.weekends_deducted,
     public_holidays_deducted: config.public_holidays_deducted,
   }
 

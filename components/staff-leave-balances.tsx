@@ -64,7 +64,6 @@ export function StaffLeaveBalances({
 
   const dayCountConfig: DayCountConfig = {
     counting_method: config.counting_method,
-    weekends_deducted: config.weekends_deducted,
     public_holidays_deducted: config.public_holidays_deducted,
   }
 

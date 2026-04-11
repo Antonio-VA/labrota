@@ -7,26 +7,17 @@ import type { DayCountConfig } from "../hr-balance-engine"
 describe("countDays", () => {
   const workingDays: DayCountConfig = {
     counting_method: "working_days",
-    weekends_deducted: true,
     public_holidays_deducted: true,
   }
 
   const calendarDays: DayCountConfig = {
     counting_method: "calendar_days",
-    weekends_deducted: true,
     public_holidays_deducted: true,
   }
 
   const calendarNoPH: DayCountConfig = {
     counting_method: "calendar_days",
-    weekends_deducted: true,
     public_holidays_deducted: false,
-  }
-
-  const calendarNoWeekends: DayCountConfig = {
-    counting_method: "calendar_days",
-    weekends_deducted: false,
-    public_holidays_deducted: true,
   }
 
   // Working days tests
@@ -63,32 +54,19 @@ describe("countDays", () => {
 
   // Calendar days tests
 
-  it("counts calendar days with weekends deducted", () => {
-    // Mon 2026-03-16 to Sun 2026-03-22 = 7 calendar days - 2 weekend = 5
-    expect(countDays("2026-03-16", "2026-03-22", calendarDays)).toBe(5)
+  it("counts all calendar days including weekends", () => {
+    // Mon 2026-03-16 to Sun 2026-03-22 = 7 calendar days
+    expect(countDays("2026-03-16", "2026-03-22", calendarDays)).toBe(7)
   })
 
   it("counts calendar days with public holidays deducted", () => {
-    // Mon 2026-03-16 to Fri 2026-03-20, Wed is PH
+    // Mon 2026-03-16 to Fri 2026-03-20 = 5 days, Wed is PH = 4
     expect(countDays("2026-03-16", "2026-03-20", calendarDays, ["2026-03-18"])).toBe(4)
   })
 
-  it("does not double-count public holiday on weekend", () => {
-    // Mon 2026-03-16 to Sun 2026-03-22
-    // Sat 2026-03-21 is public holiday AND weekend
-    // Should still be 5 (not 4) — weekend already excluded, PH not double-counted
-    expect(countDays("2026-03-16", "2026-03-22", calendarDays, ["2026-03-21"])).toBe(5)
-  })
-
-  it("counts all calendar days when weekends NOT deducted", () => {
-    // Mon 2026-03-16 to Sun 2026-03-22 = 7 days
-    expect(countDays("2026-03-16", "2026-03-22", calendarNoWeekends)).toBe(7)
-  })
-
-  it("does not deduct PH on weekend when weekends not deducted", () => {
-    // Mon 2026-03-16 to Sun 2026-03-22 = 7 days, Sat is PH
-    // Weekends are included, but PH on Sat should still deduct = 6
-    expect(countDays("2026-03-16", "2026-03-22", calendarNoWeekends, ["2026-03-21"])).toBe(6)
+  it("deducts public holiday on weekend in calendar mode", () => {
+    // Mon 2026-03-16 to Sun 2026-03-22 = 7 days, Sat is PH = 6
+    expect(countDays("2026-03-16", "2026-03-22", calendarDays, ["2026-03-21"])).toBe(6)
   })
 
   it("ignores public holidays when not configured", () => {
@@ -96,10 +74,14 @@ describe("countDays", () => {
     expect(countDays("2026-03-16", "2026-03-20", calendarNoPH, ["2026-03-18"])).toBe(5)
   })
 
+  it("counts single weekend day in calendar mode", () => {
+    expect(countDays("2026-03-21", "2026-03-21", calendarDays)).toBe(1)
+  })
+
   // Range crossing year boundary
 
   it("counts across year boundary", () => {
-    // Wed 2025-12-31 to Fri 2026-01-02 = 3 calendar days (both PH deducted across years)
+    // Wed 2025-12-31 to Fri 2026-01-02 = 3 calendar days, 2 PH = 1
     const holidays = ["2025-12-31", "2026-01-01"]
     expect(countDays("2025-12-31", "2026-01-02", calendarDays, holidays)).toBe(1)
   })
@@ -119,14 +101,6 @@ describe("countDays", () => {
   it("handles empty public holidays array", () => {
     expect(countDays("2026-03-16", "2026-03-20", workingDays, [])).toBe(5)
   })
-
-  it("handles single weekend day in calendar mode with weekends deducted", () => {
-    expect(countDays("2026-03-21", "2026-03-21", calendarDays)).toBe(0)
-  })
-
-  it("handles single weekend day in calendar mode without weekends deducted", () => {
-    expect(countDays("2026-03-21", "2026-03-21", calendarNoWeekends)).toBe(1)
-  })
 })
 
 // ── calculateBalance ─────────────────────────────────────────────────────────
@@ -134,7 +108,6 @@ describe("countDays", () => {
 describe("calculateBalance", () => {
   const config: DayCountConfig = {
     counting_method: "working_days",
-    weekends_deducted: true,
     public_holidays_deducted: true,
   }
 
@@ -296,7 +269,6 @@ describe("getLeaveYear", () => {
   })
 
   it("returns previous year when date is before leave year start", () => {
-    // Leave year starts April 1. March 15 still belongs to 2025 leave year.
     expect(getLeaveYear("2026-03-15", 4, 1)).toBe(2025)
   })
 

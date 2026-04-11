@@ -25,7 +25,7 @@ const TAB_LABELS: Record<Tab, string> = {
   tipos: "Tipos de ausencia",
 }
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
+const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 interface Props {
   orgId: string
@@ -188,7 +188,7 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
               <input type="number" min={1} max={31} value={config.leave_year_start_day} onChange={(e) => updateConfig({ leave_year_start_day: parseInt(e.target.value) || 1 })} className="w-14 border border-border rounded px-2 py-1 text-[14px] bg-background text-center" disabled={isPending} />
               <span className="text-[14px]">de</span>
               <select value={config.leave_year_start_month} onChange={(e) => updateConfig({ leave_year_start_month: parseInt(e.target.value) })} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
-                {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                {MONTH_NAMES.map((name, i) => <option key={i} value={i + 1}>{name}</option>)}
               </select>
             </div>
           </div>
@@ -214,12 +214,6 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
                   <p className="text-[12px] text-muted-foreground">Todos los días del calendario, incluidos fines de semana.</p>
                 </div>
               </label>
-              {config.counting_method === "calendar_days" && (
-                <label className="flex items-center gap-2 text-[14px] ml-6">
-                  <input type="checkbox" checked={config.weekends_deducted} onChange={(e) => updateConfig({ weekends_deducted: e.target.checked })} className="accent-primary" disabled={isPending} />
-                  Descontar fines de semana
-                </label>
-              )}
               <label className="flex items-center gap-2 text-[14px]">
                 <input type="checkbox" checked={config.public_holidays_deducted} onChange={(e) => updateConfig({ public_holidays_deducted: e.target.checked })} className="accent-primary" disabled={isPending} />
                 Descontar festivos oficiales del recuento
@@ -249,7 +243,7 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
                     <input type="number" min={1} max={31} value={config.carry_forward_expiry_day} onChange={(e) => updateConfig({ carry_forward_expiry_day: parseInt(e.target.value) || 1 })} className="w-14 border border-border rounded px-2 py-1 text-[14px] bg-background text-center" disabled={isPending} />
                     <span className="text-[14px]">de</span>
                     <select value={config.carry_forward_expiry_month} onChange={(e) => updateConfig({ carry_forward_expiry_month: parseInt(e.target.value) })} className="border border-border rounded px-2 py-1 text-[14px] bg-background" disabled={isPending}>
-                      {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                      {MONTH_NAMES.map((name, i) => <option key={i} value={i + 1}>{name}</option>)}
                     </select>
                   </div>
                 </div>

@@ -207,18 +207,6 @@ export function HrModuleSettingsPage({ config: initialConfig, leaveTypes: initia
             />
             {t("calendarDays")}
           </label>
-          {config.counting_method === "calendar_days" && (
-            <label className="flex items-center gap-2 text-[14px] ml-6">
-              <input
-                type="checkbox"
-                checked={config.weekends_deducted}
-                onChange={(e) => saveConfig({ weekends_deducted: e.target.checked })}
-                className="accent-primary"
-                disabled={isPending}
-              />
-              {t("deductWeekends")}
-            </label>
-          )}
           <label className="flex items-center gap-2 text-[14px]">
             <input
               type="checkbox"

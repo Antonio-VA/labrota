@@ -356,7 +356,6 @@ export interface HolidayConfig {
   leave_year_start_month:      number
   leave_year_start_day:        number
   counting_method:             CountingMethod
-  weekends_deducted:           boolean
   public_holidays_deducted:    boolean
   carry_forward_allowed:       boolean
   max_carry_forward_days:      number

@@ -73,7 +73,6 @@ export function HrSetupWizard({ legacyTypes, existingTypes }: HrSetupWizardProps
   // Step 3 — Config defaults
   const [config, setConfig] = useState({
     counting_method: "working_days" as "working_days" | "calendar_days",
-    weekends_deducted: true,
     public_holidays_deducted: true,
     carry_forward_allowed: true,
     max_carry_forward_days: 5,
@@ -362,17 +361,6 @@ export function HrSetupWizard({ legacyTypes, existingTypes }: HrSetupWizardProps
                   />
                   {t("calendarDays")}
                 </label>
-                {config.counting_method === "calendar_days" && (
-                  <label className="flex items-center gap-2 text-[14px] ml-6">
-                    <input
-                      type="checkbox"
-                      checked={config.weekends_deducted}
-                      onChange={(e) => setConfig((p) => ({ ...p, weekends_deducted: e.target.checked }))}
-                      className="accent-primary"
-                    />
-                    {t("deductWeekends")}
-                  </label>
-                )}
                 <label className="flex items-center gap-2 text-[14px]">
                   <input
                     type="checkbox"

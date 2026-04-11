@@ -10,7 +10,6 @@ import type { CountingMethod } from "@/lib/types/database"
 
 export interface DayCountConfig {
   counting_method: CountingMethod
-  weekends_deducted: boolean
   public_holidays_deducted: boolean
 }
 
@@ -97,19 +96,11 @@ export function countDays(
         if (include) count++
       }
     } else {
-      // Calendar days: count all days
+      // Calendar days: count all days, subtract public holidays if configured
       let include = true
-
-      // Subtract weekends if configured
-      if (config.weekends_deducted && weekend) {
+      if (config.public_holidays_deducted && holidays.has(dateStr)) {
         include = false
       }
-
-      // Subtract public holidays if configured (only if not already excluded as weekend)
-      if (include && config.public_holidays_deducted && holidays.has(dateStr)) {
-        include = false
-      }
-
       if (include) count++
     }
 

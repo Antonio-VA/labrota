@@ -231,12 +231,6 @@ export function AdminHrModule({ orgId, installed, active, installedAt, config: i
               <input type="radio" name="counting" checked={config.counting_method === "calendar_days"} onChange={() => saveConfig({ counting_method: "calendar_days" })} className="accent-primary" disabled={isPending} />
               Dias naturales
             </label>
-            {config.counting_method === "calendar_days" && (
-              <label className="flex items-center gap-2 text-[14px] ml-6">
-                <input type="checkbox" checked={config.weekends_deducted} onChange={(e) => saveConfig({ weekends_deducted: e.target.checked })} className="accent-primary" disabled={isPending} />
-                Descontar fines de semana
-              </label>
-            )}
             <label className="flex items-center gap-2 text-[14px]">
               <input type="checkbox" checked={config.public_holidays_deducted} onChange={(e) => saveConfig({ public_holidays_deducted: e.target.checked })} className="accent-primary" disabled={isPending} />
               Descontar festivos

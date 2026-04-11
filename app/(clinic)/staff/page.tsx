@@ -83,7 +83,6 @@ export default async function StaffPage() {
 
       const dayConfig = {
         counting_method: hConfig.counting_method,
-        weekends_deducted: hConfig.weekends_deducted,
         public_holidays_deducted: hConfig.public_holidays_deducted,
       }
 
