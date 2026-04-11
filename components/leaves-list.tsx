@@ -45,7 +45,7 @@ const LEAVE_TYPE_CONFIG: Record<LeaveType, {
   border: string     // subtle border
 }> = {
   annual:    { icon: Plane,          color: "text-sky-600 dark:text-sky-400",       bg: "bg-sky-50 dark:bg-sky-950/40",       border: "border-sky-200 dark:border-sky-800" },
-  sick:      { icon: Cross,         color: "text-red-600 dark:text-red-400",       bg: "bg-red-50 dark:bg-red-950/40",       border: "border-red-200 dark:border-red-800" },
+  sick:      { icon: Cross,         color: "text-rose-600 dark:text-rose-400",     bg: "bg-rose-50 dark:bg-rose-950/40",     border: "border-rose-200 dark:border-rose-800" },
   personal:  { icon: User,          color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-200 dark:border-violet-800" },
   training:  { icon: GraduationCap, color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   border: "border-amber-200 dark:border-amber-800" },
   maternity: { icon: Baby,          color: "text-pink-600 dark:text-pink-400",     bg: "bg-pink-50 dark:bg-pink-950/40",     border: "border-pink-200 dark:border-pink-800" },
@@ -465,7 +465,7 @@ function StatusBadge({ leave, t }: { leave: LeaveWithStaff; t: ReturnType<typeof
   const cfg: Record<string, { bg: string; text: string }> = {
     pending:   { bg: "bg-amber-500/10 border-amber-500/30",   text: "text-amber-700 dark:text-amber-400" },
     approved:  { bg: "bg-emerald-500/10 border-emerald-500/30", text: "text-emerald-700 dark:text-emerald-400" },
-    rejected:  { bg: "bg-red-500/10 border-red-500/30",       text: "text-red-700 dark:text-red-400" },
+    rejected:  { bg: "bg-rose-500/10 border-rose-500/30",     text: "text-rose-700 dark:text-rose-400" },
     cancelled: { bg: "bg-slate-500/10 border-slate-500/30",   text: "text-slate-600 dark:text-slate-400" },
   }
   const c = cfg[leave.status] ?? cfg.pending
@@ -802,7 +802,7 @@ function PendingRequests({ leaves, isAdmin, locale }: { leaves: LeaveWithStaff[]
                     await rejectLeave(l.id)
                     router.refresh()
                   })}
-                  className="text-[12px] font-medium text-red-600 dark:text-red-400 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-50"
+                  className="text-[12px] font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 px-2 py-1 rounded hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors disabled:opacity-50"
                 >
                   {t("rejectLeave")}
                 </button>
