@@ -240,7 +240,7 @@ export function StaffLeaveBalances({
           description={t("noExistingLeaves")}
         />
       ) : (
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {trackedTypes.map((lt) => {
             const bal = getBalance(lt.id)
             const overflowType = lt.overflow_to_type_id
@@ -268,7 +268,7 @@ export function StaffLeaveBalances({
             ]
 
             return (
-              <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden w-full md:w-[calc(50%-0.375rem)] lg:max-w-[calc(25%-0.5625rem)] lg:flex-1">
+              <div key={lt.id} className="rounded-lg border border-border bg-background overflow-hidden">
                 {/* Card header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-2">
