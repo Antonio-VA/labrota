@@ -981,7 +981,7 @@ export function LeavesList({
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[14px] font-medium">{t("upcoming")}</h3>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
+          <Button size="lg" onClick={openCreate}>{isViewer && enableLeaveRequests ? t("sendRequest") : t("addLeave")}</Button>
           {!isViewer && (
             <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => setFileImportOpen(true)}>
               <FileUp className="size-4" />

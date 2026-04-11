@@ -166,7 +166,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
                 <>
                   {leaveInfo && (
                     <div
-                      className="absolute inset-1 rounded-md"
+                      className="absolute inset-[12%] rounded-md"
                       style={{ backgroundColor: leaveInfo.color + "55" }}
                     />
                   )}
