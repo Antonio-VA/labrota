@@ -15,10 +15,9 @@ import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 // AdminHistoryUpload and AdminImplementation moved to implementation tab via AdminOrgDetailClient
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { AdminBackups } from "@/components/admin-backups"
-import { AdminHrModule } from "@/components/admin-hr-module"
+import { AdminHrInstallCard } from "@/components/admin-hr-install-card"
 import { updateOrgRegional } from "@/app/admin/actions"
-import { getAdminHrModuleStatus, adminGetHolidayConfig, adminGetCompanyLeaveTypes } from "@/app/admin/hr-module-actions"
-import type { CompanyLeaveType, HolidayConfig, HrModule } from "@/lib/types/database"
+import { getAdminHrModuleStatus } from "@/app/admin/hr-module-actions"
 
 export default async function OrgDetailPage({
   params,
@@ -63,11 +62,8 @@ export default async function OrgDetailPage({
 
   const org = orgRes.data as Organisation
 
-  // HR Module data
+  // HR Module status
   const hrStatus = await getAdminHrModuleStatus(id)
-  const [hrConfig, hrLeaveTypes] = hrStatus.active
-    ? await Promise.all([adminGetHolidayConfig(id), adminGetCompanyLeaveTypes(id)])
-    : [null, [] as CompanyLeaveType[]]
 
   // Rota count by generation method
   const rotaTypes = rotasByTypeRes.data ?? []
@@ -130,6 +126,11 @@ export default async function OrgDetailPage({
         <div className="flex-1 min-w-0">
           <AdminOrgHeaderActions org={org} />
         </div>
+        {hrStatus.active && (
+          <Button variant="outline" size="sm" render={<Link href={`/orgs/${id}/rrhh`} />}>
+            RRHH
+          </Button>
+        )}
       </div>
 
       <AdminOrgTabs
@@ -311,18 +312,21 @@ export default async function OrgDetailPage({
           />
         }
         configuracion={
-          <AdminOrgDetailClient
-            orgId={id} userRows={userRows} section="configuracion" hideUsers
-            initialName={org.name}
-            initialSlug={org.slug}
-            initialLogoUrl={org.logo_url}
-            initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
-            initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
-            initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
-            initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
-            initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
-            initialMaxStaff={(org as { max_staff?: number }).max_staff ?? 50}
-          />
+          <>
+            <AdminOrgDetailClient
+              orgId={id} userRows={userRows} section="configuracion" hideUsers
+              initialName={org.name}
+              initialSlug={org.slug}
+              initialLogoUrl={org.logo_url}
+              initialCountry={(labConfigRes.data as { country?: string } | null)?.country ?? ""}
+              initialRegion={(labConfigRes.data as { region?: string } | null)?.region ?? ""}
+              initialAnnualLeaveDays={(labConfigRes.data as { annual_leave_days?: number } | null)?.annual_leave_days ?? 20}
+              initialDefaultDaysPerWeek={(labConfigRes.data as { default_days_per_week?: number } | null)?.default_days_per_week ?? 5}
+              initialAuthMethod={(org as { auth_method?: string }).auth_method as "otp" | "password" ?? "password"}
+              initialMaxStaff={(org as { max_staff?: number }).max_staff ?? 50}
+            />
+            <AdminHrInstallCard orgId={id} installed={hrStatus.installed} active={hrStatus.active} installedAt={hrStatus.installedAt} />
+          </>
         }
         usuarios={
           <AdminOrgDetailClient
@@ -346,16 +350,6 @@ export default async function OrgDetailPage({
               hasRota: (assignmentRes.count ?? 0) > 0,
               rotaCount: rotasRes.count ?? 0,
             }}
-          />
-        }
-        rrhh={
-          <AdminHrModule
-            orgId={id}
-            installed={hrStatus.installed}
-            active={hrStatus.active}
-            installedAt={hrStatus.installedAt}
-            config={hrConfig}
-            leaveTypes={hrLeaveTypes}
           />
         }
         backups={<AdminBackups orgId={id} />}
