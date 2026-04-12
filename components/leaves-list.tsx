@@ -67,13 +67,21 @@ function LeaveTypeBadge({ type, label }: { type: LeaveType; label: string }) {
 
 // ── Date range picker (booking.com style) ────────────────────────────────────
 
-const MONTH_NAMES: Record<string, string[]> = {
-  es: ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
-  en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+function getMonthNames(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { month: "long" })
+  return Array.from({ length: 12 }, (_, i) => {
+    const name = fmt.format(new Date(2026, i, 1))
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  })
 }
-const DAY_NAMES: Record<string, string[]> = {
-  es: ["Lu","Ma","Mi","Ju","Vi","Sá","Do"],
-  en: ["Mo","Tu","We","Th","Fr","Sa","Su"],
+
+function getDayNames(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" })
+  // Start from Monday (2026-01-05 is a Monday)
+  return Array.from({ length: 7 }, (_, i) => {
+    const name = fmt.format(new Date(2026, 0, 5 + i))
+    return name.charAt(0).toUpperCase() + name.slice(1, 2).toLowerCase()
+  })
 }
 
 function toISO(d: Date): string {
@@ -104,8 +112,8 @@ function DateRangePicker({
   const [viewYear, setViewYear] = useState(initialMonth.getFullYear())
   const [viewMonth, setViewMonth] = useState(initialMonth.getMonth())
 
-  const months = MONTH_NAMES[locale] ?? MONTH_NAMES.en
-  const days = DAY_NAMES[locale] ?? DAY_NAMES.en
+  const months = getMonthNames(locale)
+  const days = getDayNames(locale)
 
   const prevMonth = useCallback(() => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1) }

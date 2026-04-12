@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { createOrgUser } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +10,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 export function AddUserForm({ orgId }: { orgId: string }) {
   const router = useRouter()
+  const t = useTranslations("adminOrg")
   const [isPending, startTransition] = useTransition()
   const [email, setEmail]         = useState("")
   const [fullName, setFullName]   = useState("")
@@ -49,7 +51,7 @@ export function AddUserForm({ orgId }: { orgId: string }) {
         <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
           <CheckCircle2 className="size-4 text-emerald-600 mt-0.5 shrink-0" />
           <p className="text-[14px] text-emerald-700">
-            Invitation sent. They'll receive an email to access the platform.
+            {t("addUserInviteSent")}
           </p>
         </div>
       )}
@@ -58,19 +60,19 @@ export function AddUserForm({ orgId }: { orgId: string }) {
         <div className="flex flex-col gap-1 flex-1">
           <Input
             name="fullName"
-            placeholder="Full name (optional)"
+            placeholder={t("addUserFullName")}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             disabled={isPending}
           />
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Si este usuario ya existe en otra organización, puedes usar un nombre diferente aquí.
+            {t("addUserExistingHint")}
           </p>
         </div>
         <Input
           name="email"
           type="email"
-          placeholder="Email address"
+          placeholder={t("addUserEmail")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -82,11 +84,11 @@ export function AddUserForm({ orgId }: { orgId: string }) {
           disabled={isPending}
           className="h-8 rounded-lg border border-border bg-background px-2 text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
         >
-          <option value="admin">Admin</option>
-          <option value="viewer">Viewer</option>
+          <option value="admin">{t("addUserRoleAdmin")}</option>
+          <option value="viewer">{t("addUserRoleViewer")}</option>
         </select>
         <Button type="submit" disabled={isPending || !email}>
-          {isPending ? "Adding…" : "Add user"}
+          {isPending ? t("addUserSubmitting") : t("addUserSubmit")}
         </Button>
       </div>
     </form>

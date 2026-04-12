@@ -74,6 +74,9 @@
   },
   "nav": {
     "schedule": "Schedule",
+    "day": "Day",
+    "week": "Week",
+    "myRota": "My Rota",
     "staff": "Team",
     "leaves": "Leave",
     "lab": "Lab",
@@ -1600,7 +1603,15 @@
     "byShiftDesc": "By shift — common in small labs (<10 people)",
     "byTaskDesc": "By task — common in large labs (10+ people)",
     "saveChanges": "Save changes",
-    "namePlaceholder": "Full Name"
+    "namePlaceholder": "Full Name",
+    "addUserFullName": "Full name (optional)",
+    "addUserEmail": "Email address",
+    "addUserExistingHint": "If this user already exists in another organisation, you can use a different name here.",
+    "addUserInviteSent": "Invitation sent. They'll receive an email to access the platform.",
+    "addUserRoleAdmin": "Admin",
+    "addUserRoleViewer": "Viewer",
+    "addUserSubmitting": "Adding…",
+    "addUserSubmit": "Add user"
   },
   "swaps": {
     "requestSwap": "Request swap",

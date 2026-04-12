@@ -74,6 +74,9 @@
   },
   "nav": {
     "schedule": "Horarios",
+    "day": "Día",
+    "week": "Semana",
+    "myRota": "Mi turno",
     "staff": "Equipo",
     "leaves": "Ausencias",
     "lab": "Laboratorio",
@@ -1600,7 +1603,15 @@
     "byShiftDesc": "Por turno — habitual en laboratorios pequeños (<10 personas)",
     "byTaskDesc": "Por tarea — habitual en laboratorios grandes (10+ personas)",
     "saveChanges": "Guardar cambios",
-    "namePlaceholder": "Nombre Apellido"
+    "namePlaceholder": "Nombre Apellido",
+    "addUserFullName": "Nombre completo (opcional)",
+    "addUserEmail": "Correo electrónico",
+    "addUserExistingHint": "Si este usuario ya existe en otra organización, puedes usar un nombre diferente aquí.",
+    "addUserInviteSent": "Invitación enviada. Recibirá un correo para acceder a la plataforma.",
+    "addUserRoleAdmin": "Admin",
+    "addUserRoleViewer": "Visor",
+    "addUserSubmitting": "Añadiendo…",
+    "addUserSubmit": "Añadir usuario"
   },
   "swaps": {
     "requestSwap": "Solicitar cambio",
