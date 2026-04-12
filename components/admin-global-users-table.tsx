@@ -1,20 +1,21 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect, useRef } from "react"
 import { useLocale } from "next-intl"
 import { formatDateWithYear } from "@/lib/format-date"
-import { updateMemberRole, removeMember } from "@/app/admin/users/actions"
+import { updateMemberRole, removeMember, suspendUser, unsuspendUser, deleteUser, resendAccess } from "@/app/admin/users/actions"
 import { cn } from "@/lib/utils"
-import { ChevronDown, Trash2, Building2, X } from "lucide-react"
+import { ChevronDown, Trash2, Building2, X, MoreHorizontal, Ban, ShieldCheck, Send, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 
-type Membership = { orgId: string; orgName: string; orgSlug: string; role: string }
+type Membership = { orgId: string; orgName: string; orgSlug: string; role: string; authMethod: "otp" | "password" }
 export type GlobalUserInfo = {
   id: string
   email: string | null
   fullName: string | null
   avatarUrl: string | null
   lastSignIn: string | null
+  isBanned: boolean
   memberships: Membership[]
 }
 export type GlobalOrgRow = { id: string; name: string; slug: string }
@@ -66,6 +67,103 @@ function RoleSelect({ userId, orgId, currentRole, onDone }: {
   )
 }
 
+function UserActionsMenu({ user }: { user: GlobalUserInfo }) {
+  const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  // Derive auth method: if any org uses password, treat as password user
+  const authMethod = user.memberships.some((m) => m.authMethod === "password") ? "password" : "otp"
+
+  function handleResend() {
+    setOpen(false)
+    if (!user.email) return
+    startTransition(async () => {
+      const res = await resendAccess(user.email!, authMethod)
+      if (res.error) toast.error(res.error)
+      else toast.success(authMethod === "password" ? "Password reset email sent" : "Magic link sent")
+    })
+  }
+
+  function handleSuspend() {
+    setOpen(false)
+    startTransition(async () => {
+      const res = user.isBanned ? await unsuspendUser(user.id) : await suspendUser(user.id)
+      if (res.error) toast.error(res.error)
+      else toast.success(user.isBanned ? "User unsuspended" : "User suspended")
+    })
+  }
+
+  function handleDelete() {
+    setOpen(false)
+    if (!confirm(`Permanently delete ${user.email ?? "this user"}? This cannot be undone.`)) return
+    startTransition(async () => {
+      const res = await deleteUser(user.id)
+      if (res.error) toast.error(res.error)
+      else toast.success("User deleted")
+    })
+  }
+
+  return (
+    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={isPending}
+        className="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+      >
+        <MoreHorizontal className="size-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-9 z-50 w-52 rounded-lg border border-border bg-background shadow-lg py-1 overflow-hidden">
+          {/* Resend access */}
+          <button
+            onClick={handleResend}
+            disabled={!user.email}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[13px] text-left hover:bg-accent transition-colors disabled:opacity-40"
+          >
+            <Send className="size-4 shrink-0 text-muted-foreground" />
+            {authMethod === "password" ? "Send password reset" : "Send magic link"}
+          </button>
+
+          {/* Suspend / Unsuspend */}
+          <button
+            onClick={handleSuspend}
+            className={cn(
+              "flex items-center gap-2.5 w-full px-3 py-2.5 text-[13px] text-left hover:bg-accent transition-colors",
+              user.isBanned ? "text-foreground" : "text-amber-600"
+            )}
+          >
+            {user.isBanned
+              ? <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+              : <Ban className="size-4 shrink-0 text-amber-500" />
+            }
+            {user.isBanned ? "Unsuspend user" : "Suspend user"}
+          </button>
+
+          <div className="h-px bg-border mx-2 my-1" />
+
+          {/* Delete */}
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[13px] text-left text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <AlertTriangle className="size-4 shrink-0" />
+            Delete user
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function UserRow({ user }: { user: GlobalUserInfo }) {
   const locale = useLocale()
   const [expanded, setExpanded] = useState(false)
@@ -88,20 +186,35 @@ function UserRow({ user }: { user: GlobalUserInfo }) {
   return (
     <>
       <tr
-        className="border-b border-border hover:bg-muted/30 cursor-pointer transition-colors"
+        className={cn(
+          "border-b border-border hover:bg-muted/30 cursor-pointer transition-colors",
+          user.isBanned && "opacity-60"
+        )}
         onClick={() => setExpanded((v) => !v)}
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="size-8 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[12px] font-semibold shrink-0">
-                {initials}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+              ) : (
+                <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[12px] font-semibold">
+                  {initials}
+                </div>
+              )}
+              {user.isBanned && (
+                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-amber-500 flex items-center justify-center">
+                  <Ban className="size-2 text-white" />
+                </div>
+              )}
+            </div>
             <div className="min-w-0">
-              {user.fullName && <p className="text-[14px] font-medium truncate">{user.fullName}</p>}
+              <div className="flex items-center gap-2">
+                {user.fullName && <p className="text-[14px] font-medium truncate">{user.fullName}</p>}
+                {user.isBanned && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">Suspended</span>
+                )}
+              </div>
               <p className="text-[13px] text-muted-foreground truncate">{user.email ?? "—"}</p>
             </div>
           </div>
@@ -127,7 +240,10 @@ function UserRow({ user }: { user: GlobalUserInfo }) {
           {user.lastSignIn ? formatDateWithYear(user.lastSignIn.split("T")[0], locale as "es" | "en") : "Never"}
         </td>
         <td className="px-4 py-3">
-          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          <div className="flex items-center gap-1 justify-end">
+            <UserActionsMenu user={user} />
+            <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          </div>
         </td>
       </tr>
 
@@ -142,7 +258,12 @@ function UserRow({ user }: { user: GlobalUserInfo }) {
                   <div key={m.orgId} className="flex items-center gap-3 bg-background border border-border rounded-lg px-4 py-3">
                     <Building2 className="size-4 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium">{m.orgName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[14px] font-medium">{m.orgName}</p>
+                        <span className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px">
+                          {m.authMethod === "password" ? "Password" : "Magic link"}
+                        </span>
+                      </div>
                       <p className="text-[12px] text-muted-foreground">{m.orgSlug}</p>
                     </div>
 
@@ -220,7 +341,7 @@ export function AdminGlobalUsersTable({ users }: { users: GlobalUserInfo[] }) {
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">User</th>
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground">Organisations & roles</th>
               <th className="text-left px-4 py-2.5 text-[12px] font-medium text-muted-foreground whitespace-nowrap">Last login</th>
-              <th className="w-8" />
+              <th className="w-16" />
             </tr>
           </thead>
           <tbody>

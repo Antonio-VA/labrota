@@ -4,7 +4,7 @@ import { AdminGlobalUsersTable } from "@/components/admin-global-users-table"
 import type { GlobalUserInfo, GlobalOrgRow } from "@/components/admin-global-users-table"
 
 type MemberRow = { user_id: string; organisation_id: string; role: string; display_name: string | null }
-type OrgRow = { id: string; name: string; slug: string }
+type OrgRow = { id: string; name: string; slug: string; auth_method: string | null }
 
 export default async function AdminUsersPage() {
   const admin = createAdminClient()
@@ -12,7 +12,7 @@ export default async function AdminUsersPage() {
   // Fetch all org memberships + all orgs in parallel
   const [membersRes, orgsRes] = await Promise.all([
     admin.from("organisation_members").select("user_id, organisation_id, role, display_name") as unknown as Promise<{ data: MemberRow[] | null }>,
-    admin.from("organisations").select("id, name, slug").order("name") as unknown as Promise<{ data: OrgRow[] | null }>,
+    admin.from("organisations").select("id, name, slug, auth_method").order("name") as unknown as Promise<{ data: OrgRow[] | null }>,
   ])
 
   const members = membersRes.data ?? []
@@ -27,12 +27,15 @@ export default async function AdminUsersPage() {
   for (const res of authUsers) {
     const u = res.data?.user
     if (!u) continue
+    const bannedUntil = (u as unknown as { banned_until?: string }).banned_until
+    const isBanned = !!(bannedUntil && new Date(bannedUntil) > new Date())
     userMap[u.id] = {
       id: u.id,
       email: u.email ?? null,
       fullName: (u.user_metadata?.full_name as string) ?? null,
       avatarUrl: (u.user_metadata?.avatar_url as string) ?? null,
       lastSignIn: u.last_sign_in_at ?? null,
+      isBanned,
       memberships: [],
     }
   }
@@ -45,6 +48,7 @@ export default async function AdminUsersPage() {
       orgName: org.name,
       orgSlug: org.slug,
       role: m.role,
+      authMethod: (org.auth_method ?? "otp") as "otp" | "password",
     })
   }
 

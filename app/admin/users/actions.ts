@@ -42,3 +42,52 @@ export async function removeMember(
   revalidatePath("/admin/users")
   return {}
 }
+
+export async function suspendUser(userId: string): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    ban_duration: "876600h", // ~100 years — effectively permanent
+  })
+  if (error) return { error: error.message }
+  revalidatePath("/admin/users")
+  return {}
+}
+
+export async function unsuspendUser(userId: string): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    ban_duration: "none",
+  })
+  if (error) return { error: error.message }
+  revalidatePath("/admin/users")
+  return {}
+}
+
+export async function deleteUser(userId: string): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return { error: error.message }
+  revalidatePath("/admin/users")
+  return {}
+}
+
+// authMethod: "password" sends a recovery/reset link; "otp" sends a magic link
+export async function resendAccess(
+  email: string,
+  authMethod: "password" | "otp"
+): Promise<{ error?: string }> {
+  await assertSuperAdmin()
+  const admin = createAdminClient()
+  const type = authMethod === "password" ? "recovery" : "magiclink"
+  const { error } = await admin.auth.admin.generateLink({
+    type,
+    email,
+    options: { redirectTo: "https://www.labrota.app/auth/callback" },
+  })
+  if (error) return { error: error.message }
+  return {}
+}
+
