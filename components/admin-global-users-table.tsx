@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useTransition, useEffect, useRef } from "react"
+import { useState, useTransition, useEffect, useRef, useLayoutEffect } from "react"
+import { createPortal } from "react-dom"
 import { useLocale } from "next-intl"
 import { formatDateWithYear } from "@/lib/format-date"
 import { updateMemberRole, removeMember, suspendUser, unsuspendUser, deleteUser, resendAccess } from "@/app/admin/users/actions"
@@ -70,11 +71,23 @@ function RoleSelect({ userId, orgId, currentRole, onDone }: {
 function UserActionsMenu({ user }: { user: GlobalUserInfo }) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return
+    const rect = btnRef.current.getBoundingClientRect()
+    setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+  }, [open])
 
   useEffect(() => {
     if (!open) return
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    function h(e: MouseEvent) {
+      if (dropRef.current?.contains(e.target as Node)) return
+      if (btnRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
   }, [open])
@@ -112,8 +125,9 @@ function UserActionsMenu({ user }: { user: GlobalUserInfo }) {
   }
 
   return (
-    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
+    <div onClick={(e) => e.stopPropagation()}>
       <button
+        ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         disabled={isPending}
         className="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
@@ -121,8 +135,8 @@ function UserActionsMenu({ user }: { user: GlobalUserInfo }) {
         <MoreHorizontal className="size-4" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-9 z-50 w-52 rounded-lg border border-border bg-background shadow-lg py-1 overflow-hidden">
+      {open && pos && createPortal(
+        <div ref={dropRef} className="fixed z-[9999] w-52 rounded-lg border border-border bg-background shadow-lg py-1 overflow-hidden" style={{ top: pos.top, right: pos.right }}>
           {/* Resend access */}
           <button
             onClick={handleResend}
@@ -158,7 +172,8 @@ function UserActionsMenu({ user }: { user: GlobalUserInfo }) {
             <AlertTriangle className="size-4 shrink-0" />
             Delete user
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
