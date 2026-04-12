@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { UserAvatarMenu } from "@/components/user-avatar-menu"
+import { AdminNav } from "@/components/admin-nav"
 
 export const metadata = { title: "LabRota Admin" }
 
@@ -38,6 +39,8 @@ export default async function AdminLayout({
           <UserAvatarMenu initialUser={initialUser} variant="light" />
         </div>
       </header>
+
+      <AdminNav />
 
       <main className="flex-1 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
         <div className="max-w-5xl mx-auto px-6 py-8">
