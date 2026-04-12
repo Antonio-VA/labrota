@@ -123,7 +123,7 @@ ${pageContext ? `- ${pageContext}` : ""}
 
   try {
   const result = streamText({
-    model: anthropic("claude-opus-4-6"),
+    model: anthropic("claude-sonnet-4-6"),
     system: systemText,
     abortSignal: AbortSignal.timeout(30_000),
     messages: await convertToModelMessages(messages),
