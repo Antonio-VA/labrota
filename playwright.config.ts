@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   use: {
     baseURL: process.env.E2E_BASE_URL || "https://labrota.app",
     screenshot: "only-on-failure",
