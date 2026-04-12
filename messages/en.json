@@ -1496,6 +1496,7 @@
     "constraintViolation": "Cannot meet {constraint} on {date} — {reason}.",
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
+    "goHome": "Go to homepage",
     "staffDetail": "Failed to load staff profile",
     "staffNew": "Failed to load new staff form",
     "onboardingImport": "Failed to load team import",
