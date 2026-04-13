@@ -126,16 +126,21 @@ export default function LoginPage() {
     setErrorMessage("")
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      })
 
-    if (error) {
+      if (error) {
+        setLoading(false)
+        setErrorMessage(t("invalidCredentials"))
+      } else {
+        window.location.href = "/"
+      }
+    } catch {
       setLoading(false)
       setErrorMessage(t("invalidCredentials"))
-    } else {
-      window.location.href = "/"
     }
   }
 
@@ -177,23 +182,28 @@ export default function LoginPage() {
     setErrorMessage("")
     const supabase = createClient()
 
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: code,
-      type: "email",
-    })
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: code,
+        type: "email",
+      })
 
-    if (error) {
-      setLoading(false)
-      if (error.code === "otp_expired") {
-        setErrorMessage(t("otpExpired"))
-      } else if (error.code === "otp_disabled") {
-        setErrorMessage(t("otpDisabled"))
+      if (error) {
+        setLoading(false)
+        if (error.code === "otp_expired") {
+          setErrorMessage(t("otpExpired"))
+        } else if (error.code === "otp_disabled") {
+          setErrorMessage(t("otpDisabled"))
+        } else {
+          setErrorMessage(t("verifyError"))
+        }
       } else {
-        setErrorMessage(t("verifyError"))
+        window.location.href = "/"
       }
-    } else {
-      window.location.href = "/"
+    } catch {
+      setLoading(false)
+      setErrorMessage(t("verifyError"))
     }
   }
 
