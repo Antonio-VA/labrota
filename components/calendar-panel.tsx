@@ -129,6 +129,7 @@ import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
 
 import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
+import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"
 import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 
@@ -716,358 +717,99 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
   return (
     <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
-      {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
-      <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
-
-        {/* LEFT: Today · ‹ › · date range */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
-            {tc("today")}
-          </Button>
-          <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} aria-label={t("previousPeriod")}>
-              <ChevronLeft />
-            </Button>
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(1)} aria-label={t("nextPeriod")}>
-              <ChevronRight />
-            </Button>
-          </div>
-          <WeekJumpButton
-            currentDate={currentDate}
-            weekStart={weekStart}
-            view={view}
-            locale={locale}
-            onSelect={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
-          />
-        </div>
-
-        {/* CENTRE — absolutely positioned so it stays centred regardless of left/right width */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-            {(["week", "month"] as ViewMode[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1 text-[13px] transition-colors min-w-[72px] text-center",
-                  view === v
-                    ? "bg-background shadow-sm font-medium"
-                    : "text-muted-foreground hover:bg-muted font-medium"
-                )}
-              >
-                {t(`${v}View`)}
-              </button>
-            ))}
-          </div>
-          {(view === "week" || view === "month") && (
-            <>
-              <span className="h-4 border-l border-border" />
-              <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <button
-                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift") }}
-                      className={cn(
-                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
-                        (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {weekData?.rotaDisplayMode === "by_task"
-                        ? <Grid3X3 className="size-[14px]" />
-                        : <Rows3 className="size-[14px]" />
-                      }
-                    </button>
-                  } />
-                  <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? t("byTask") : t("shiftLayout")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <button
-                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person") }}
-                      className={cn(
-                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
-                        (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Users className="size-[14px]" />
-                    </button>
-                  } />
-                  <TooltipContent side="bottom">{t("personLayout")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* RIGHT: saved · undo/redo · dept filter · warnings · generate · overflow ··· */}
-        <div className="flex items-center gap-2 shrink-0">
-          {view === "week" && canEdit && (
-            <div className="flex items-center gap-0.5">
-              <span className={cn(
-                "text-[12px] text-muted-foreground flex items-center gap-1 transition-opacity duration-700 select-none pr-1",
-                showSaved ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}>
-                <Check className="size-3 text-emerald-500" />
-                {locale === "es" ? "Guardado" : "Saved"}
-              </span>
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={handleUndo}
-                    disabled={undoLen === 0}
-                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Undo2 className="size-[14px]" />
-                  </button>
-                } />
-                <TooltipContent side="bottom">Undo (⌘Z)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={handleRedo}
-                    disabled={redoLen === 0}
-                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Redo2 className="size-[14px]" />
-                  </button>
-                } />
-                <TooltipContent side="bottom">Redo (⌘⇧Z)</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-          {view === "week" && hasAssignments && (
-            <div className="hidden lg:block">
-              <DepartmentFilterDropdown
-                selected={deptFilter}
-                allDepts={ALL_DEPTS}
-                onToggle={toggleDept}
-                onSetAll={setAllDepts}
-                onSetOnly={setOnlyDept}
-                deptLabels={globalDeptMaps.label}
-                deptColors={globalDeptMaps.border}
-                deptAbbr={deptAbbrMap}
-              />
-            </div>
-          )}
-          {weekData && hasAssignments && (
-            <WarningsPill days={weekData.days} staffList={filteredStaffList} onLeaveByDate={weekData.onLeaveByDate} />
-          )}
-          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowReasoningModal(true)}
-              title={t("viewAiReasoning")}
-              className="h-8 gap-1.5 shrink-0"
-            >
-              <BrainCircuit className="size-3.5" />
-              <span className="hidden sm:inline">{t("aiInsights")}</span>
-            </Button>
-          )}
-          {showActions && (view === "month" ? !anyMonthWeekPublished || monthSummary?.weekStatuses?.some((ws) => ws.status !== "published") : !isPublished) && (
-            <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
-              {isPending ? (pendingAction === "deleting" ? tc("deleting") : tc("generating")) : hasAssignments ? t("regenerateRota") : t("generateRota")}
-            </Button>
-          )}
-          {(showActions || hasAssignments) && (
-            <OverflowMenu items={[
-              // ── Group 1: Actions (publish) ──
-              ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
-                label: hasNotifications ? t("publishRota") : t("publishOnly"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handlePublish,
-                disabled: isPending,
-              }] : []),
-              ...(canEdit && isPublished && view === "week" ? [{
-                label: t("unlockRota"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handleUnlock,
-                disabled: isPending,
-              }] : []),
-              // ── Export ──
-              ...(hasAssignments && view === "week" ? [{
-                label: t("exportPdf"),
-                icon: <FileText className="size-3.5" />,
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Exportar" : "Export",
-                onClick: () => {
-                  if (!weekData) return
-                  import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
-                    const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-                    const notesEl = document.querySelector("[data-week-notes]")
-                    const noteTexts = notesEl
-                      ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
-                      : []
-                    const n = noteTexts.length > 0 ? noteTexts : undefined
-                    if (weekData.rotaDisplayMode === "by_task") {
-                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
-                    } else if (calendarLayout === "person") {
-                      exportPdfByPerson(weekData, on, locale, n, daysAsRows)
-                    } else {
-                      exportPdfByShift(weekData, on, locale, n, daysAsRows)
-                    }
-                  })
-                },
-              }, {
-                label: t("exportExcel"),
-                icon: <Sheet className="size-3.5" />,
-                onClick: () => {
-                  if (!weekData) return
-                  import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
-                    if (weekData.rotaDisplayMode === "by_task") {
-                      exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
-                    } else if (calendarLayout === "person") {
-                      exportWeekByPerson(weekData, locale, daysAsRows)
-                    } else {
-                      exportWeekByShift(weekData, locale, daysAsRows)
-                    }
-                  })
-                },
-              }] : []),
-              // ── Templates ──
-              ...(view === "week" && canEdit && hasAssignments ? [{
-                label: t("saveAsTemplate"),
-                icon: <BookmarkPlus className="size-3.5" />,
-                onClick: () => setSaveTemplateOpen(true),
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
-              }, ...(!isPublished ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-              }] : [])] : view === "week" && canEdit && !isPublished ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
-              }] : []),
-              // ── View options ──
-              ...((view === "week" || (view === "month" && calendarLayout === "person")) ? [
-              ...(view === "week" ? [{
-                label: t("daysAsRows"),
-                icon: <ArrowRightLeft className="size-3.5" />,
-                onClick: toggleDaysAsRows,
-                active: daysAsRows,
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Personalización" : "View",
-              }] : []),
-              ...(!(view === "month" && calendarLayout === "person") ? [{
-                label: t("compactView"),
-                icon: <Rows3 className="size-3.5" />,
-                onClick: () => setCompact((c) => !c),
-                active: compact,
-              },
-              {
-                label: locale === "es" ? "Vista simplificada" : "Simplified view",
-                icon: <LayoutList className="size-3.5" />,
-                onClick: togglePersonSimplified,
-                active: personSimplified,
-              },
-              ] : []),
-              {
-                label: t("staffColors"),
-                icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
-                onClick: toggleColorChips,
-                active: colorChips,
-                ...(view === "month" && calendarLayout === "person" ? { dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } : {}),
-              }, {
-                label: t("highlightPerson"),
-                icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
-                onClick: toggleHighlightHover,
-                active: highlightHover,
-              }] : []),
-              // ── Favorite view ──
-              ...(() => {
-                const isFav = favoriteView
-                  && favoriteView.view === view
-                  && favoriteView.calendarLayout === calendarLayout
-                  && favoriteView.daysAsRows === daysAsRows
-                  && favoriteView.compact === compact
-                  && favoriteView.colorChips === colorChips
-                  && favoriteView.highlightEnabled === highlightHover
-                const saveFavItem = {
-                  label: t("saveFavoriteView"),
-                  icon: <Star className="size-3.5" />,
-                  onClick: () => {
-                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-                    setFavoriteView(fav)
-                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ favoriteView: fav })
-                    toast.success(t("favoriteViewSaved"))
-                  },
+      {/* Desktop toolbar */}
+      <DesktopToolbar
+        currentDate={currentDate} weekStart={weekStart} view={view} setView={setView}
+        locale={locale} TODAY={TODAY} goToToday={goToToday} navigate={navigate}
+        onWeekJump={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
+        calendarLayout={calendarLayout} setCalendarLayout={setCalendarLayout}
+        monthViewMode={monthViewMode} setMonthViewMode={setMonthViewMode}
+        rotaDisplayMode={weekData?.rotaDisplayMode}
+        compact={compact} setCompact={setCompact} personSimplified={personSimplified}
+        togglePersonSimplified={togglePersonSimplified} daysAsRows={daysAsRows}
+        toggleDaysAsRows={toggleDaysAsRows} colorChips={colorChips} toggleColorChips={toggleColorChips}
+        highlightHover={highlightHover} toggleHighlightHover={toggleHighlightHover}
+        isPending={isPending} pendingAction={pendingAction}
+        hasAssignments={hasAssignments} isPublished={!!isPublished} isDraft={!!isDraft}
+        anyMonthWeekPublished={anyMonthWeekPublished} canEdit={canEdit} hasNotifications={hasNotifications}
+        showSaved={showSaved} undoLen={undoLen} redoLen={redoLen} onUndo={handleUndo} onRedo={handleRedo}
+        deptFilter={deptFilter} allDepts={ALL_DEPTS} onToggleDept={toggleDept}
+        onSetAllDepts={setAllDepts} onSetOnlyDept={setOnlyDept}
+        deptLabels={globalDeptMaps.label} deptColors={globalDeptMaps.border} deptAbbr={deptAbbrMap}
+        weekData={weekData} monthSummary={monthSummary} filteredStaffList={filteredStaffList}
+        aiReasoning={weekData?.aiReasoning || aiReasoningRef.current || null}
+        onGenerateClick={handleGenerateClick} onPublish={handlePublish} onUnlock={handleUnlock}
+        onShowReasoning={() => setShowReasoningModal(true)}
+        onSaveTemplate={() => setSaveTemplateOpen(true)}
+        onApplyTemplate={() => setApplyTemplateOpen(true)}
+        onShowHistory={() => setHistoryOpen(true)}
+        onDelete={() => {
+          const msg = view === "month" ? t("confirm4WeeksDelete") : t("deleteWeekConfirm")
+          if (confirm(msg)) {
+            if (view === "month") setLoadingMonth(true)
+            setPendingAction("deleting")
+            startTransition(async () => {
+              if (view === "month" && monthSummary) {
+                const allWeekStarts: string[] = []
+                for (let i = 0; i < monthSummary.days.length; i += 7) {
+                  if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
                 }
-                // When on favorite → nothing shown. When not on favorite → show go-to (if exists) + save.
-                if (isFav) return []
-                if (favoriteView) return [{
-                  label: t("goToFavoriteView"),
-                  icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
-                  dividerBefore: true,
-                  onClick: () => {
-                    setView(favoriteView.view as ViewMode)
-                    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-                    setDaysAsRows(favoriteView.daysAsRows)
-                    setCompact(favoriteView.compact)
-                    setColorChips(favoriteView.colorChips)
-                    setHighlightHover(favoriteView.highlightEnabled)
-                  },
-                }, saveFavItem]
-                return [{ ...saveFavItem, dividerBefore: true }]
-              })(),
-              // ── History ──
-              ...(view === "week" && hasAssignments ? [{
-                label: t("viewHistory"),
-                icon: <Clock className="size-3.5" />,
-                onClick: () => setHistoryOpen(true),
-                dividerBefore: true,
-              }] : []),
-              // ── Destructive ──
-              ...(canEdit && hasAssignments && !(view === "month" ? anyMonthWeekPublished : isPublished) ? [{
-                label: view === "month" ? t("delete4Weeks") : t("deleteRota"),
-                icon: <Trash2 className="size-3.5" />,
-                onClick: () => {
-                  const msg = view === "month"
-                    ? t("confirm4WeeksDelete")
-                    : t("deleteWeekConfirm")
-                  if (confirm(msg)) {
-                    if (view === "month") setLoadingMonth(true)
-                    setPendingAction("deleting")
-                    startTransition(async () => {
-                      if (view === "month" && monthSummary) {
-                        const allWeekStarts: string[] = []
-                        for (let i = 0; i < monthSummary.days.length; i += 7) {
-                          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-                        }
-                        let errors = 0
-                        for (const ws of allWeekStarts) {
-                          const result = await clearWeek(ws)
-                          if (result.error) errors++
-                        }
-                        if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
-                        else toast.success(t("fourWeeksDeleted"))
-                        fetchWeek(weekStart)
-                        fetchMonth(monthStart, weekStart)
-                      } else {
-                        const result = await clearWeek(weekStart)
-                        if (result.error) toast.error(result.error)
-                        else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
-                      }
-                      setPendingAction(null)
-                    })
-                  }
-                },
-                dividerBefore: true,
-                destructive: true,
-              }] : []),
-            ]} />
-          )}
-        </div>
-      </div>
+                let errors = 0
+                for (const ws of allWeekStarts) {
+                  const result = await clearWeek(ws)
+                  if (result.error) errors++
+                }
+                if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
+                else toast.success(t("fourWeeksDeleted"))
+                fetchWeek(weekStart)
+                fetchMonth(monthStart, weekStart)
+              } else {
+                const result = await clearWeek(weekStart)
+                if (result.error) toast.error(result.error)
+                else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
+              }
+              setPendingAction(null)
+            })
+          }
+        }}
+        onExportPdf={() => {
+          if (!weekData) return
+          import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
+            const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+            const notesEl = document.querySelector("[data-week-notes]")
+            const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
+            const n = noteTexts.length > 0 ? noteTexts : undefined
+            if (weekData.rotaDisplayMode === "by_task") exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
+            else if (calendarLayout === "person") exportPdfByPerson(weekData, on, locale, n, daysAsRows)
+            else exportPdfByShift(weekData, on, locale, n, daysAsRows)
+          })
+        }}
+        onExportExcel={() => {
+          if (!weekData) return
+          import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
+            if (weekData.rotaDisplayMode === "by_task") exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
+            else if (calendarLayout === "person") exportWeekByPerson(weekData, locale, daysAsRows)
+            else exportWeekByShift(weekData, locale, daysAsRows)
+          })
+        }}
+        favoriteView={favoriteView}
+        onSaveFavorite={() => {
+          const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+          setFavoriteView(fav)
+          localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+          saveUserPreferences({ favoriteView: fav })
+          toast.success(t("favoriteViewSaved"))
+        }}
+        onGoToFavorite={favoriteView ? () => {
+          setView(favoriteView.view as ViewMode)
+          setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+          setDaysAsRows(favoriteView.daysAsRows)
+          setCompact(favoriteView.compact)
+          setColorChips(favoriteView.colorChips)
+          setHighlightHover(favoriteView.highlightEnabled)
+        } : undefined}
+        t={t} tc={tc}
+      />
 
       {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
 
