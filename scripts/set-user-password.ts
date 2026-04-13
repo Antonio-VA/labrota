@@ -2,7 +2,7 @@
  * One-time script: set a password for an existing Supabase user.
  *
  * Usage (from project root):
- *   USER_EMAIL=demo@labrota.app USER_PASSWORD=yourpassword npx tsx scripts/set-user-password.ts
+ *   USER_EMAIL=e2e-test@labrota.app USER_PASSWORD=yourpassword npx tsx scripts/set-user-password.ts
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.
  * Reads .env.local automatically if present.
