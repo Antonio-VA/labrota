@@ -80,7 +80,7 @@ export function StaffTable({
         )}
       </HeaderPopover>
     ) : (
-      <button onClick={() => onSortChange?.("role")} className={cn("text-[12px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
+      <button onClick={() => onSortChange?.("role")} className="text-[12px] font-medium text-left text-muted-foreground hover:text-foreground transition-colors">{t("columns.role")}</button>
     ),
     email: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.email")}</span>,
     capacidades: skillFilter !== undefined && allSkillCodes !== undefined ? (
@@ -165,7 +165,7 @@ export function StaffTable({
             )}
           </HeaderPopover>
         ) : (
-          <button onClick={() => onSortChange?.("name")} className={cn("text-[12px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+          <button onClick={() => onSortChange?.("name")} className="text-[12px] font-medium text-left text-muted-foreground hover:text-foreground transition-colors">
             {t("columns.name")} {sortCol === "name" && "↓"}
           </button>
         )}
@@ -218,7 +218,7 @@ export function StaffTable({
                       <input type="text" value={String(getVal?.(member, "last_name") ?? member.last_name)} onChange={(e) => setEditValue(member.id, "last_name", e.target.value)} className="h-7 w-24 rounded border border-input bg-transparent px-1.5 text-[13px] outline-none" />
                     </div>
                   ) : (
-                    <Link href={`/staff/${member.id}`} className="text-[14px] font-medium truncate hover:text-primary transition-colors">
+                    <Link href={`/staff/${member.id}`} className="text-[14px] font-normal truncate hover:text-primary transition-colors">
                       {member.first_name} {member.last_name}
                     </Link>
                   )}

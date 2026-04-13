@@ -396,6 +396,7 @@
     "editStaff": "Edit member",
     "backToList": "Back to team",
     "searchPlaceholder": "Search by name…",
+    "searchPlaceholderGeneral": "Search…",
     "filterByRole": "Filter by role",
     "filterByStatus": "Filter by status",
     "allRoles": "All roles",

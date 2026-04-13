@@ -167,8 +167,14 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   }
 
   const filtered = staff.filter((s) => {
-    const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
-    if (search && !fullName.includes(search.toLowerCase())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
+      const dept = (deptLabel[s.role] ?? s.role).toLowerCase()
+      const skills = s.staff_skills.map((sk) => skillLabel(sk.skill).toLowerCase()).join(" ")
+      const email = (s.email ?? "").toLowerCase()
+      if (!fullName.includes(q) && !dept.includes(q) && !skills.includes(q) && !email.includes(q)) return false
+    }
     if (roleFilter   !== "all" && s.role              !== roleFilter)   return false
     if (statusFilter !== "all" && s.onboarding_status !== statusFilter) return false
     if (skillFilter  !== "all" && !s.staff_skills.some((sk) => sk.skill === skillFilter && sk.level === "certified")) return false
@@ -234,7 +240,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
         <div className="flex items-center justify-between gap-3 sticky top-0 z-20 bg-background pt-1 pb-3 -mx-6 px-6 md:-mx-8 md:px-8">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Input
-              placeholder={t("searchPlaceholder")}
+              placeholder={t("searchPlaceholderGeneral")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-48 h-8 text-[13px]"

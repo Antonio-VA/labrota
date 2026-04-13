@@ -396,6 +396,7 @@
     "editStaff": "Editar miembro",
     "backToList": "Volver al equipo",
     "searchPlaceholder": "Buscar por nombre…",
+    "searchPlaceholderGeneral": "Buscar…",
     "filterByRole": "Filtrar por rol",
     "filterByStatus": "Filtrar por estado",
     "allRoles": "Todos los roles",
