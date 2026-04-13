@@ -24,7 +24,7 @@ test.describe("Public pages", () => {
 // ── Authenticated pages ───────────────────────────────────────────────────────
 
 test.describe("Schedule (authenticated)", () => {
-  test.use({ storageState: "e2e/.auth/demo.json" })
+  test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
   test("schedule page renders toolbar", async ({ page }) => {
     await page.goto("/schedule")

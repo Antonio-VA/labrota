@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("Leaves page (authenticated)", () => {
-  test.use({ storageState: "e2e/.auth/demo.json" })
+  test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
   test("leaves page shows leave stats", async ({ page }) => {
     await page.goto("/leaves")
