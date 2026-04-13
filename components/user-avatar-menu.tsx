@@ -23,6 +23,16 @@ const THEME_OPTION_KEYS = [
   { key: "auto" as const, labelKey: "themeSystem", icon: Monitor },
 ]
 
+// Request a higher-resolution version of known CDN avatar URLs (Google, Gravatar, etc.)
+function hiResAvatarUrl(url: string | null): string | null {
+  if (!url) return null
+  // Google: =s96-c → =s400-c
+  if (url.includes("googleusercontent.com")) return url.replace(/=s\d+-c(\b|$)/, "=s400-c").replace(/=s\d+(\b|$)/, "=s400")
+  // Gravatar: ?s=96 → ?s=400
+  if (url.includes("gravatar.com")) return url.replace(/([?&]s=)\d+/, "$1400")
+  return url
+}
+
 export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser: InitialUser; variant?: "dark" | "light" }) {
   const t = useTranslations("nav")
   const tu = useTranslations("userMenu")
@@ -94,7 +104,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
     ? fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
     : (initialUser.email ?? "").slice(0, 2).toUpperCase()
   const [avatarError, setAvatarError] = useState(false)
-  const avatarUrl = !avatarError ? initialUser.avatarUrl : null
+  const avatarUrl = !avatarError ? hiResAvatarUrl(initialUser.avatarUrl) : null
 
   return (
     <div ref={ref} className="relative flex items-center">
