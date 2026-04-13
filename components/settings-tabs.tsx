@@ -42,6 +42,8 @@ export function SettingsTabs({
           <button
             key={key}
             type="button"
+            role="tab"
+            aria-selected={active === key}
             onClick={() => setActive(key)}
             className={cn(
               "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
