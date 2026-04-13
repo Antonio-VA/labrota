@@ -261,7 +261,7 @@ export function StaffTable({
                   case "role":
                     return (
                       <div className="hidden md:flex items-center gap-1.5">
-                        <span className="w-1 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
+                        <span className="w-[3px] h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
                         <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
                       </div>
                     )
