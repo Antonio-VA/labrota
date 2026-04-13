@@ -5,6 +5,8 @@ import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
 import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
+import { useRotaData } from "@/hooks/use-rota-data"
+import { useFavoriteViews, type FavoriteView, type MobileFavoriteView } from "@/hooks/use-favorite-views"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -19,15 +21,13 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
-import { getUserPreferences, saveUserPreferences } from "@/app/(clinic)/account-actions"
+import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
   getRotaWeek,
-  getRotaMonthSummary,
   generateRota,
   generateRotaWithAI,
   publishRota,
   unlockRota,
-  getActiveStaff,
   moveAssignment,
   setPunctionsOverride,
   moveAssignmentShift,
@@ -109,24 +109,6 @@ import { DayView } from "./calendar-panel/day-view"
 
 
 import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
-
-// ── Person view (Vista por persona) ───────────────────────────────────────────
-
-
-// ── Transposed Person Grid (días como filas) ─────────────────────────────────
-
-
-// ── Shift grid (Vista por turno) ──────────────────────────────────────────────
-
-
-// ── Month view ────────────────────────────────────────────────────────────────
-
-
-// ── Day view ──────────────────────────────────────────────────────────────────
-
-
-// ── Override dialog ───────────────────────────────────────────────────────────
-
 import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
@@ -163,17 +145,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
-  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
-  type FavoriteView = { view: string; calendarLayout: string; daysAsRows: boolean; compact: boolean; colorChips: boolean; highlightEnabled: boolean }
-  type MobileFavoriteView = { viewMode: string; compact: boolean; deptColor: boolean }
-  const [favoriteView, setFavoriteView] = useState<FavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_favorite_view") ?? "null") } catch { return null }
-  })
-  const [mobileFavoriteView, setMobileFavoriteView] = useState<MobileFavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_mobile_favorite_view") ?? "null") } catch { return null }
-  })
   const [currentDate, setCurrentDateState] = useState(() => {
     // When SSR provides initialData, start on that week to avoid a mismatch
     // that would discard the pre-fetched data and trigger a redundant client fetch
@@ -191,28 +162,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       return next
     })
   }
-  const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
 
-  const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
-  const [loadingWeek, setLoadingWeek]   = useState(!initialData)
-  const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(!!initialData)
-  const [loadingMonth, setLoadingMonth] = useState(false)
-  const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [showReasoningModal, setShowReasoningModal] = useState(false)
-  const aiReasoningRef = useRef<string | null>(null) // preserve reasoning across fetches
-  const reasoningSourceRef = useRef<"claude" | "hybrid" | null>(null)
-  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
+  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null)
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
-  const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [isPending, startTransition]    = useTransition()
   const [pendingAction, setPendingAction] = useState<"generating" | "deleting" | null>(null)
-
-  // Staff for assignment sheet
-  const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
-  const [staffLoaded, setStaffLoaded] = useState(false)
 
   // Day edit sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -222,7 +179,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [profileOpen, setProfileOpen]       = useState(false)
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
-  const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
   // Share capture ref
   const mobileContentRef = useRef<HTMLDivElement>(null)
@@ -237,6 +193,45 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [historyOpen, setHistoryOpen] = useState(false)
   const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
+  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
+
+  // Swap state for desktop viewers
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
+
+  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
+  const { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView } = useFavoriteViews({
+    onApplyDesktop: (fav) => {
+      const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
+      if (!sessionView) setView(fav.view as ViewMode)
+      setCalendarLayout(fav.calendarLayout as CalendarLayout)
+      setDaysAsRows(fav.daysAsRows)
+      setCompact(fav.compact)
+      setColorChips(fav.colorChips)
+      setHighlightHover(fav.highlightEnabled)
+    },
+    onApplyMobile: (fav) => {
+      setMobileViewMode(fav.viewMode as "shift" | "person")
+      setMobileCompact(fav.compact)
+      setMobileDeptColor(fav.deptColor)
+    },
+  })
+
+  // Derived
+  const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
+  const monthStart = getMonthStart(currentDate)
+
+  // Data fetching, caching, staff loading (extracted to hook)
+  const {
+    weekData, setWeekData, monthSummary, setMonthSummary,
+    loadingWeek, setLoadingWeek, loadingMonth, setLoadingMonth,
+    error, setError, initialLoaded, staffList, staffLoaded,
+    prevWeekHasRota, punctionsOverride, setPunctionsOverrideLocal,
+    activeStrategy, setActiveStrategy, liveDays, setLiveDays,
+    aiReasoningRef, reasoningSourceRef,
+    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh,
+    handleBiopsyChange, lastFetchId, gridSetDaysRef,
+  } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
 
   // Department filter (extracted to hook)
   const {
@@ -244,13 +239,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     deptFilter, allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
     filteredStaffList,
   } = useDepartmentFilter(weekData, staffList)
-  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
-  // Swap state for desktop viewers
-  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
-  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
-
 
   const openProfile = useCallback((staffId: string) => {
     setProfileStaffId(staffId)
@@ -273,146 +263,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setSheetOpen(true)
   }, [])
 
-  // Local punctions override
-  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(initialData?.rota?.punctions_override ?? {})
-
-  // Handle biopsy override: back-calculate punction adjustments for D-5 and D-6
-  // Formula: since d5Pct + d6Pct = 1, ΔP = ΔBiopsies / conversionRate
-  function handleBiopsyChange(date: string, biopsyNew: number) {
-    const cr = weekData?.biopsyConversionRate ?? monthSummary?.biopsyConversionRate ?? 0.5
-    const d5Pct = weekData?.biopsyDay5Pct ?? monthSummary?.biopsyDay5Pct ?? 0.5
-    const d6Pct = weekData?.biopsyDay6Pct ?? monthSummary?.biopsyDay6Pct ?? 0.5
-    const pd = weekData?.punctionsDefault ?? {}
-
-    const d = new Date(date + "T12:00:00")
-    const d5 = new Date(d); d5.setDate(d5.getDate() - 5); const d5str = d5.toISOString().split("T")[0]
-    const d6 = new Date(d); d6.setDate(d6.getDate() - 6); const d6str = d6.toISOString().split("T")[0]
-
-    const P5 = punctionsOverride[d5str] ?? pd[d5str] ?? monthSummary?.days.find((dd) => dd.date === d5str)?.punctions ?? 0
-    const P6 = punctionsOverride[d6str] ?? pd[d6str] ?? monthSummary?.days.find((dd) => dd.date === d6str)?.punctions ?? 0
-
-    const bForecast = Math.round(P5 * cr * d5Pct + P6 * cr * d6Pct)
-    const delta = biopsyNew - bForecast
-    if (Math.abs(delta) < 0.5 || cr === 0) return
-
-    const pDelta = delta / cr  // distribute equally since d5Pct + d6Pct = 1
-    const P5new = Math.max(0, Math.round(P5 + pDelta))
-    const P6new = Math.max(0, Math.round(P6 + pDelta))
-
-    setPunctionsOverrideLocal((prev) => ({ ...prev, [d5str]: P5new, [d6str]: P6new }))
-  }
-
-  // Derived
-  const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
-  const monthStart = getMonthStart(currentDate)
-
-  // Fetch week data
-  const fetchVersionRef = useRef(0)
-  const initialDataUsed = useRef(false)
-  const weekCache = useRef<Map<string, RotaWeekData>>(new Map())
-  // Stable ref so fetchWeek doesn't depend on initialData prop identity
-  // (avoids double-fetch when streaming causes initialData to change reference)
-  const initialDataRef = useRef<RotaWeekData | undefined>(initialData)
-  useEffect(() => { initialDataRef.current = initialData }, [initialData])
-
-  function weekOffset(ws: string, days: number): string {
-    const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + days); return dt.toISOString().split("T")[0]
-  }
-
-  function prefetchAdjacent(ws: string) {
-    // Defer prefetch to idle time so it doesn't compete with the main render
-    const run = () => {
-      const prev = weekOffset(ws, -7)
-      const next = weekOffset(ws, 7)
-      if (!weekCache.current.has(prev)) {
-        getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
-      }
-      if (!weekCache.current.has(next)) {
-        getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
-      }
-    }
-    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
-    else setTimeout(run, 200)
-  }
-
-  const fetchWeek = useCallback((ws: string) => {
-    // On first call, if the server pre-fetched this exact week, use it directly
-    // (avoids a network round-trip on initial load for new sessions viewing today's week)
-    const initialData = initialDataRef.current
-    if (!initialDataUsed.current && initialData?.weekStart === ws) {
-      initialDataUsed.current = true
-      weekCache.current.set(ws, initialData)
-      setInitialLoaded(true)
-      setWeekData(initialData)
-      setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      prefetchAdjacent(ws)
-      return
-    }
-
-    // Cache hit — show instantly, then silently refresh in background
-    const cached = weekCache.current.get(ws)
-    if (cached) {
-      setInitialLoaded(true)
-      setWeekData(cached)
-      setPunctionsOverrideLocal(cached.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      setLiveDays(null)
-      setError(null)
-      aiReasoningRef.current = null
-      reasoningSourceRef.current = null
-      setActiveStrategy(null)
-      getRotaWeek(ws).then((d) => {
-        weekCache.current.set(ws, d)
-        setWeekData(d)
-        setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-        prefetchAdjacent(ws)
-      }).catch(() => {})
-      return
-    }
-
-    const version = ++fetchVersionRef.current
-    aiReasoningRef.current = null
-    reasoningSourceRef.current = null
-    setActiveStrategy(null)
-    setLoadingWeek(true)
-    setLiveDays(null)
-    setError(null)
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000))
-    Promise.race([getRotaWeek(ws), timeout]).then((d) => {
-      if (fetchVersionRef.current !== version) return
-      weekCache.current.set(ws, d)
-      setInitialLoaded(true)
-      setWeekData(d)
-      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      prefetchAdjacent(ws)
-    }).catch((e: unknown) => {
-      if (fetchVersionRef.current !== version) return
-      setInitialLoaded(true)
-      setWeekData(null)
-      setError(e instanceof Error ? e.message : "Failed to load schedule data.")
-      setLoadingWeek(false)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps — reads initialData via ref to stay stable
-
-  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
-  // lastFetchId lets us discard results from fetches that were superseded (e.g. by Undo)
-  const lastFetchId = useRef(0)
-  const fetchWeekSilent = useCallback((ws: string) => {
-    const id = ++lastFetchId.current
-    getRotaWeek(ws).then((d) => {
-      if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
-      weekCache.current.set(ws, d)
-      setWeekData(d)
-      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-    }).catch(() => {/* ignore — grid stays as-is */})
-  }, [])
-
-  const handleRefresh = useCallback(() => {
-    fetchWeekSilent(weekStart)
-  }, [fetchWeekSilent, weekStart])
-
   // DnD (extracted to hook)
   const {
     draggingId, draggingFrom, dragOverDate,
@@ -420,126 +270,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     handleColumnDragOver, handleColumnDragLeave, handleColumnDrop,
   } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
-  // ── Undo/Redo (extracted to hook) ───────────────────────────────────────────
-  // gridSetDaysRef lets undo/redo update the active grid's localDays directly
-  // (same path as drag-and-drop), bypassing the full CalendarPanelInner re-render
-  const gridSetDaysRef = useRef<((days: import("@/app/(clinic)/rota/actions").RotaDay[]) => void) | null>(null)
+  // Undo/Redo (extracted to hook)
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
   } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef })
-
-  // Fetch 4-week rolling summary
-  const fetchMonth = useCallback((ms: string, ws?: string) => {
-    setMonthSummary(null)
-    setLoadingMonth(true)
-    getRotaMonthSummary(ms, ws).then((d) => {
-      setMonthSummary(d)
-      setLoadingMonth(false)
-    })
-  }, [])
-
-  // Skip initial fetch if server-prefetched data was provided
-  const skipInitialFetch = useRef(!!initialData)
-  useEffect(() => {
-    if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
-    fetchWeek(weekStart)
-  }, [weekStart, fetchWeek])
-
-  // Apply favorite view on first mount — only if no session-stored view exists
-  const favAppliedRef = useRef(false)
-  useEffect(() => {
-    if (favAppliedRef.current || !favoriteView) return
-    favAppliedRef.current = true
-    // Only apply the favorite view mode if there's no session-stored value (i.e. new tab, not a refresh)
-    const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
-    if (!sessionView) setView(favoriteView.view as ViewMode)
-    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-    setDaysAsRows(favoriteView.daysAsRows)
-    setCompact(favoriteView.compact)
-    setColorChips(favoriteView.colorChips)
-    setHighlightHover(favoriteView.highlightEnabled)
-  }, [favoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Apply mobile favorite view on first mount
-  const mobileFavAppliedRef = useRef(false)
-  useEffect(() => {
-    if (mobileFavAppliedRef.current || !mobileFavoriteView) return
-    mobileFavAppliedRef.current = true
-    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
-    setMobileCompact(mobileFavoriteView.compact)
-    setMobileDeptColor(mobileFavoriteView.deptColor)
-  }, [mobileFavoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync favorite views from DB when localStorage is empty (new browser)
-  useEffect(() => {
-    const hasDesktop = localStorage.getItem("labrota_favorite_view")
-    const hasMobile = localStorage.getItem("labrota_mobile_favorite_view")
-    if (hasDesktop && hasMobile) return
-    getUserPreferences().then((prefs) => {
-      if (!hasDesktop && prefs.favoriteView) {
-        localStorage.setItem("labrota_favorite_view", JSON.stringify(prefs.favoriteView))
-        setFavoriteView(prefs.favoriteView as FavoriteView)
-      }
-      if (!hasMobile && prefs.mobileFavoriteView) {
-        localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(prefs.mobileFavoriteView))
-        setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
-      }
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Check if previous week has a rota (for "copy previous week" button)
-  // Only fetch for editors in week view — button is hidden otherwise
-  useEffect(() => {
-    if (!canEdit || view !== "week") return
-    let cancelled = false
-    const prev = new Date(weekStart + "T12:00:00")
-    prev.setDate(prev.getDate() - 7)
-    const prevWs = prev.toISOString().split("T")[0]
-    getRotaWeek(prevWs).then((d) => {
-      if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
-    }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
-    return () => { cancelled = true }
-  }, [weekStart, canEdit, view])
-  useEffect(() => {
-    if (view === "month") fetchMonth(monthStart, weekStart)
-  }, [monthStart, weekStart, view, fetchMonth])
-
-  useEffect(() => {
-    if (refreshKey === 0) return
-    fetchWeek(weekStart)
-    if (view === "month") fetchMonth(monthStart, weekStart)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey])
-
-  // Use activeStaff from weekData (returned by getRotaWeek) — avoids duplicate fetch
-  const initialStaffUsed = useRef(false)
-  useEffect(() => {
-    if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
-      initialStaffUsed.current = true
-      setStaffList(initialStaff)
-      setStaffLoaded(true)
-      return
-    }
-    // Staff will be set from weekData.activeStaff when fetchWeek resolves — no separate call needed
-    if (!staffLoaded && !weekData?.activeStaff) {
-      // Fallback: fetch separately only if weekData doesn't include staff (e.g., older cached data)
-      const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
-      Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
-    }
-  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When weekData arrives with activeStaff, use it (deduplicates the staff fetch)
-  // Compare by staff IDs to avoid cascading re-renders on undo (same staff, new reference)
-  const prevStaffIdsRef = useRef("")
-  useEffect(() => {
-    if (!weekData?.activeStaff || weekData.activeStaff.length === 0) return
-    const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
-    if (ids === prevStaffIdsRef.current) return
-    prevStaffIdsRef.current = ids
-    setStaffList(weekData.activeStaff)
-    setStaffLoaded(true)
-  }, [weekData?.activeStaff])
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
