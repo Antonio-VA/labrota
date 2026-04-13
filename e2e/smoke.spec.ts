@@ -28,8 +28,8 @@ test.describe("Schedule (authenticated)", () => {
 
   test("schedule page renders toolbar", async ({ page }) => {
     await page.goto("/schedule")
-    // Toolbar should render (even before rota data)
-    await expect(page.getByRole("button", { name: /Semana|Week/i })).toBeVisible({ timeout: 45_000 })
+    // Toolbar should render — use exact match to avoid AI chat suggestion buttons containing "week"
+    await expect(page.getByRole("button", { name: /^(Semana|Week)$/i })).toBeVisible({ timeout: 45_000 })
   })
 
   test("schedule loads rota data", async ({ page }) => {
