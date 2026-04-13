@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,6 @@ import Link from "next/link"
 export default function LoginPage() {
   const t = useTranslations("auth")
   const searchParams = useSearchParams()
-  const router = useRouter()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -136,7 +135,7 @@ export default function LoginPage() {
       setLoading(false)
       setErrorMessage(t("invalidCredentials"))
     } else {
-      router.replace("/")
+      window.location.href = "/"
     }
   }
 
@@ -194,7 +193,7 @@ export default function LoginPage() {
         setErrorMessage(t("verifyError"))
       }
     } else {
-      router.replace("/")
+      window.location.href = "/"
     }
   }
 
