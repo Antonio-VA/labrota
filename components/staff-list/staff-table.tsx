@@ -80,9 +80,9 @@ export function StaffTable({
         )}
       </HeaderPopover>
     ) : (
-      <button onClick={() => onSortChange?.("role")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
+      <button onClick={() => onSortChange?.("role")} className={cn("text-[12px] font-medium text-left transition-colors", sortCol === "role" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>{t("columns.role")} {sortCol === "role" && "↓"}</button>
     ),
-    email: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.email")}</span>,
+    email: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.email")}</span>,
     capacidades: skillFilter !== undefined && allSkillCodes !== undefined ? (
       <HeaderPopover label={t("columns.capacidades")} active={skillFilter !== "all"}>
         {(close) => (
@@ -103,9 +103,9 @@ export function StaffTable({
         )}
       </HeaderPopover>
     ) : (
-      <span className="text-[13px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
+      <span className="text-[12px] font-medium text-muted-foreground">{t("columns.capacidades")}</span>
     ),
-    training: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.training")}</span>,
+    training: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.training")}</span>,
     status: statusFilter !== undefined ? (
       <HeaderPopover label={t("columns.status")} active={statusFilter !== "all"}>
         {(close) => (
@@ -122,21 +122,21 @@ export function StaffTable({
         )}
       </HeaderPopover>
     ) : (
-      <span className="text-[13px] font-medium text-muted-foreground">{t("columns.status")}</span>
+      <span className="text-[12px] font-medium text-muted-foreground">{t("columns.status")}</span>
     ),
-    shiftPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>,
-    dayPrefs: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>,
-    daysPerWeek: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>,
-    workingPattern: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>,
-    leaveBalance: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>,
-    leaveTaken: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveTaken")}</span>,
-    leaveBooked: <span className="text-[13px] font-medium text-muted-foreground">{t("columns.leaveBooked")}</span>,
+    shiftPrefs: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.shiftPrefs")}</span>,
+    dayPrefs: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.dayPrefs")}</span>,
+    daysPerWeek: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.daysPerWeek")}</span>,
+    workingPattern: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.workingPattern")}</span>,
+    leaveBalance: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.leaveBalance")}</span>,
+    leaveTaken: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.leaveTaken")}</span>,
+    leaveBooked: <span className="text-[12px] font-medium text-muted-foreground">{t("columns.leaveBooked")}</span>,
   }
 
   return (
     <div className={cn("rounded-lg border border-border bg-background", muted && "opacity-60")}>
       {/* Header */}
-      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}>
+      <div className="hidden md:grid px-4 py-2 bg-muted/30 border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}>
         <input
           type="checkbox"
           checked={allSelected}
@@ -165,7 +165,7 @@ export function StaffTable({
             )}
           </HeaderPopover>
         ) : (
-          <button onClick={() => onSortChange?.("name")} className={cn("text-[13px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+          <button onClick={() => onSortChange?.("name")} className={cn("text-[12px] font-medium text-left transition-colors", sortCol === "name" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
             {t("columns.name")} {sortCol === "name" && "↓"}
           </button>
         )}
@@ -261,7 +261,7 @@ export function StaffTable({
                   case "role":
                     return (
                       <div className="hidden md:flex items-center gap-1.5">
-                        <span className="w-0.5 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
+                        <span className="w-1 h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
                         <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
                       </div>
                     )

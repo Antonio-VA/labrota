@@ -59,7 +59,7 @@ export function HeaderPopover({
 
   return (
     <div ref={ref} className="relative group/hdr flex items-center gap-0.5 min-w-0">
-      <span className={cn("text-[13px] font-medium truncate", active ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+      <span className={cn("text-[12px] font-medium truncate", active ? "text-foreground" : "text-muted-foreground")}>{label}</span>
       <button
         onClick={() => setOpen(v => !v)}
         className={cn("shrink-0 p-0.5 rounded transition-opacity", active ? "opacity-100 text-primary" : "opacity-0 group-hover/hdr:opacity-100 text-muted-foreground hover:text-foreground")}

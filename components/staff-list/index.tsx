@@ -231,7 +231,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
       <div className="flex flex-col gap-0">
         {/* Toolbar */}
-        <div className="flex items-center justify-between gap-3 sticky top-0 z-20 bg-background pt-1 pb-3 -mx-6 px-6 md:-mx-8 md:px-8 border-b border-border">
+        <div className="flex items-center justify-between gap-3 sticky top-0 z-20 bg-background pt-1 pb-3 -mx-6 px-6 md:-mx-8 md:px-8">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Input
               placeholder={t("searchPlaceholder")}
