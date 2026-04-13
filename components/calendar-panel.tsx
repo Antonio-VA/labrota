@@ -5,6 +5,8 @@ import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
 import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
+import { useRotaData } from "@/hooks/use-rota-data"
+import { useFavoriteViews, type FavoriteView, type MobileFavoriteView } from "@/hooks/use-favorite-views"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -19,15 +21,13 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
-import { getUserPreferences, saveUserPreferences } from "@/app/(clinic)/account-actions"
+import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
   getRotaWeek,
-  getRotaMonthSummary,
   generateRota,
   generateRotaWithAI,
   publishRota,
   unlockRota,
-  getActiveStaff,
   moveAssignment,
   setPunctionsOverride,
   moveAssignmentShift,
@@ -109,25 +109,11 @@ import { DayView } from "./calendar-panel/day-view"
 
 
 import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
-
-// ── Person view (Vista por persona) ───────────────────────────────────────────
-
-
-// ── Transposed Person Grid (días como filas) ─────────────────────────────────
-
-
-// ── Shift grid (Vista por turno) ──────────────────────────────────────────────
-
-
-// ── Month view ────────────────────────────────────────────────────────────────
-
-
-// ── Day view ──────────────────────────────────────────────────────────────────
-
-
-// ── Override dialog ───────────────────────────────────────────────────────────
-
 import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
+import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
+import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
+import { WeekContent } from "./calendar-panel/week-content"
+import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
@@ -159,17 +145,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
-  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
-  type FavoriteView = { view: string; calendarLayout: string; daysAsRows: boolean; compact: boolean; colorChips: boolean; highlightEnabled: boolean }
-  type MobileFavoriteView = { viewMode: string; compact: boolean; deptColor: boolean }
-  const [favoriteView, setFavoriteView] = useState<FavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_favorite_view") ?? "null") } catch { return null }
-  })
-  const [mobileFavoriteView, setMobileFavoriteView] = useState<MobileFavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_mobile_favorite_view") ?? "null") } catch { return null }
-  })
   const [currentDate, setCurrentDateState] = useState(() => {
     // When SSR provides initialData, start on that week to avoid a mismatch
     // that would discard the pre-fetched data and trigger a redundant client fetch
@@ -187,28 +162,14 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
       return next
     })
   }
-  const [weekData, setWeekData]         = useState<RotaWeekData | null>(null)
 
-  const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
-  const [loadingWeek, setLoadingWeek]   = useState(!initialData)
-  const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(!!initialData)
-  const [loadingMonth, setLoadingMonth] = useState(false)
-  const [error, setError]               = useState<string | null>(null)
   const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [showReasoningModal, setShowReasoningModal] = useState(false)
-  const aiReasoningRef = useRef<string | null>(null) // preserve reasoning across fetches
-  const reasoningSourceRef = useRef<"claude" | "hybrid" | null>(null)
-  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null) // week starts to generate
+  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null)
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
   const [showCopyConfirm, setShowCopyConfirm] = useState(false)
-  const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [isPending, startTransition]    = useTransition()
   const [pendingAction, setPendingAction] = useState<"generating" | "deleting" | null>(null)
-
-  // Staff for assignment sheet
-  const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
-  const [staffLoaded, setStaffLoaded] = useState(false)
 
   // Day edit sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -218,7 +179,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [profileOpen, setProfileOpen]       = useState(false)
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
-  const [liveDays, setLiveDays] = useState<RotaDay[] | null>(null)
 
   // Share capture ref
   const mobileContentRef = useRef<HTMLDivElement>(null)
@@ -233,6 +193,45 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [historyOpen, setHistoryOpen] = useState(false)
   const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
+  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
+
+  // Swap state for desktop viewers
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
+
+  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
+  const { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView } = useFavoriteViews({
+    onApplyDesktop: (fav) => {
+      const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
+      if (!sessionView) setView(fav.view as ViewMode)
+      setCalendarLayout(fav.calendarLayout as CalendarLayout)
+      setDaysAsRows(fav.daysAsRows)
+      setCompact(fav.compact)
+      setColorChips(fav.colorChips)
+      setHighlightHover(fav.highlightEnabled)
+    },
+    onApplyMobile: (fav) => {
+      setMobileViewMode(fav.viewMode as "shift" | "person")
+      setMobileCompact(fav.compact)
+      setMobileDeptColor(fav.deptColor)
+    },
+  })
+
+  // Derived
+  const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
+  const monthStart = getMonthStart(currentDate)
+
+  // Data fetching, caching, staff loading (extracted to hook)
+  const {
+    weekData, setWeekData, monthSummary, setMonthSummary,
+    loadingWeek, setLoadingWeek, loadingMonth, setLoadingMonth,
+    error, setError, initialLoaded, staffList, staffLoaded,
+    prevWeekHasRota, punctionsOverride, setPunctionsOverrideLocal,
+    activeStrategy, setActiveStrategy, liveDays, setLiveDays,
+    aiReasoningRef, reasoningSourceRef,
+    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh,
+    handleBiopsyChange, lastFetchId, gridSetDaysRef,
+  } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
 
   // Department filter (extracted to hook)
   const {
@@ -240,13 +239,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     deptFilter, allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
     filteredStaffList,
   } = useDepartmentFilter(weekData, staffList)
-  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
-  // Swap state for desktop viewers
-  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
-  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
   const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
-
 
   const openProfile = useCallback((staffId: string) => {
     setProfileStaffId(staffId)
@@ -269,146 +263,6 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     setSheetOpen(true)
   }, [])
 
-  // Local punctions override
-  const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(initialData?.rota?.punctions_override ?? {})
-
-  // Handle biopsy override: back-calculate punction adjustments for D-5 and D-6
-  // Formula: since d5Pct + d6Pct = 1, ΔP = ΔBiopsies / conversionRate
-  function handleBiopsyChange(date: string, biopsyNew: number) {
-    const cr = weekData?.biopsyConversionRate ?? monthSummary?.biopsyConversionRate ?? 0.5
-    const d5Pct = weekData?.biopsyDay5Pct ?? monthSummary?.biopsyDay5Pct ?? 0.5
-    const d6Pct = weekData?.biopsyDay6Pct ?? monthSummary?.biopsyDay6Pct ?? 0.5
-    const pd = weekData?.punctionsDefault ?? {}
-
-    const d = new Date(date + "T12:00:00")
-    const d5 = new Date(d); d5.setDate(d5.getDate() - 5); const d5str = d5.toISOString().split("T")[0]
-    const d6 = new Date(d); d6.setDate(d6.getDate() - 6); const d6str = d6.toISOString().split("T")[0]
-
-    const P5 = punctionsOverride[d5str] ?? pd[d5str] ?? monthSummary?.days.find((dd) => dd.date === d5str)?.punctions ?? 0
-    const P6 = punctionsOverride[d6str] ?? pd[d6str] ?? monthSummary?.days.find((dd) => dd.date === d6str)?.punctions ?? 0
-
-    const bForecast = Math.round(P5 * cr * d5Pct + P6 * cr * d6Pct)
-    const delta = biopsyNew - bForecast
-    if (Math.abs(delta) < 0.5 || cr === 0) return
-
-    const pDelta = delta / cr  // distribute equally since d5Pct + d6Pct = 1
-    const P5new = Math.max(0, Math.round(P5 + pDelta))
-    const P6new = Math.max(0, Math.round(P6 + pDelta))
-
-    setPunctionsOverrideLocal((prev) => ({ ...prev, [d5str]: P5new, [d6str]: P6new }))
-  }
-
-  // Derived
-  const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
-  const monthStart = getMonthStart(currentDate)
-
-  // Fetch week data
-  const fetchVersionRef = useRef(0)
-  const initialDataUsed = useRef(false)
-  const weekCache = useRef<Map<string, RotaWeekData>>(new Map())
-  // Stable ref so fetchWeek doesn't depend on initialData prop identity
-  // (avoids double-fetch when streaming causes initialData to change reference)
-  const initialDataRef = useRef<RotaWeekData | undefined>(initialData)
-  useEffect(() => { initialDataRef.current = initialData }, [initialData])
-
-  function weekOffset(ws: string, days: number): string {
-    const dt = new Date(ws + "T12:00:00"); dt.setDate(dt.getDate() + days); return dt.toISOString().split("T")[0]
-  }
-
-  function prefetchAdjacent(ws: string) {
-    // Defer prefetch to idle time so it doesn't compete with the main render
-    const run = () => {
-      const prev = weekOffset(ws, -7)
-      const next = weekOffset(ws, 7)
-      if (!weekCache.current.has(prev)) {
-        getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
-      }
-      if (!weekCache.current.has(next)) {
-        getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
-      }
-    }
-    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
-    else setTimeout(run, 200)
-  }
-
-  const fetchWeek = useCallback((ws: string) => {
-    // On first call, if the server pre-fetched this exact week, use it directly
-    // (avoids a network round-trip on initial load for new sessions viewing today's week)
-    const initialData = initialDataRef.current
-    if (!initialDataUsed.current && initialData?.weekStart === ws) {
-      initialDataUsed.current = true
-      weekCache.current.set(ws, initialData)
-      setInitialLoaded(true)
-      setWeekData(initialData)
-      setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      prefetchAdjacent(ws)
-      return
-    }
-
-    // Cache hit — show instantly, then silently refresh in background
-    const cached = weekCache.current.get(ws)
-    if (cached) {
-      setInitialLoaded(true)
-      setWeekData(cached)
-      setPunctionsOverrideLocal(cached.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      setLiveDays(null)
-      setError(null)
-      aiReasoningRef.current = null
-      reasoningSourceRef.current = null
-      setActiveStrategy(null)
-      getRotaWeek(ws).then((d) => {
-        weekCache.current.set(ws, d)
-        setWeekData(d)
-        setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-        prefetchAdjacent(ws)
-      }).catch(() => {})
-      return
-    }
-
-    const version = ++fetchVersionRef.current
-    aiReasoningRef.current = null
-    reasoningSourceRef.current = null
-    setActiveStrategy(null)
-    setLoadingWeek(true)
-    setLiveDays(null)
-    setError(null)
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000))
-    Promise.race([getRotaWeek(ws), timeout]).then((d) => {
-      if (fetchVersionRef.current !== version) return
-      weekCache.current.set(ws, d)
-      setInitialLoaded(true)
-      setWeekData(d)
-      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      prefetchAdjacent(ws)
-    }).catch((e: unknown) => {
-      if (fetchVersionRef.current !== version) return
-      setInitialLoaded(true)
-      setWeekData(null)
-      setError(e instanceof Error ? e.message : "Failed to load schedule data.")
-      setLoadingWeek(false)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps — reads initialData via ref to stay stable
-
-  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
-  // lastFetchId lets us discard results from fetches that were superseded (e.g. by Undo)
-  const lastFetchId = useRef(0)
-  const fetchWeekSilent = useCallback((ws: string) => {
-    const id = ++lastFetchId.current
-    getRotaWeek(ws).then((d) => {
-      if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
-      weekCache.current.set(ws, d)
-      setWeekData(d)
-      setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-    }).catch(() => {/* ignore — grid stays as-is */})
-  }, [])
-
-  const handleRefresh = useCallback(() => {
-    fetchWeekSilent(weekStart)
-  }, [fetchWeekSilent, weekStart])
-
   // DnD (extracted to hook)
   const {
     draggingId, draggingFrom, dragOverDate,
@@ -416,126 +270,11 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     handleColumnDragOver, handleColumnDragLeave, handleColumnDrop,
   } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
-  // ── Undo/Redo (extracted to hook) ───────────────────────────────────────────
-  // gridSetDaysRef lets undo/redo update the active grid's localDays directly
-  // (same path as drag-and-drop), bypassing the full CalendarPanelInner re-render
-  const gridSetDaysRef = useRef<((days: import("@/app/(clinic)/rota/actions").RotaDay[]) => void) | null>(null)
+  // Undo/Redo (extracted to hook)
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
   } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef })
-
-  // Fetch 4-week rolling summary
-  const fetchMonth = useCallback((ms: string, ws?: string) => {
-    setMonthSummary(null)
-    setLoadingMonth(true)
-    getRotaMonthSummary(ms, ws).then((d) => {
-      setMonthSummary(d)
-      setLoadingMonth(false)
-    })
-  }, [])
-
-  // Skip initial fetch if server-prefetched data was provided
-  const skipInitialFetch = useRef(!!initialData)
-  useEffect(() => {
-    if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
-    fetchWeek(weekStart)
-  }, [weekStart, fetchWeek])
-
-  // Apply favorite view on first mount — only if no session-stored view exists
-  const favAppliedRef = useRef(false)
-  useEffect(() => {
-    if (favAppliedRef.current || !favoriteView) return
-    favAppliedRef.current = true
-    // Only apply the favorite view mode if there's no session-stored value (i.e. new tab, not a refresh)
-    const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
-    if (!sessionView) setView(favoriteView.view as ViewMode)
-    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-    setDaysAsRows(favoriteView.daysAsRows)
-    setCompact(favoriteView.compact)
-    setColorChips(favoriteView.colorChips)
-    setHighlightHover(favoriteView.highlightEnabled)
-  }, [favoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Apply mobile favorite view on first mount
-  const mobileFavAppliedRef = useRef(false)
-  useEffect(() => {
-    if (mobileFavAppliedRef.current || !mobileFavoriteView) return
-    mobileFavAppliedRef.current = true
-    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
-    setMobileCompact(mobileFavoriteView.compact)
-    setMobileDeptColor(mobileFavoriteView.deptColor)
-  }, [mobileFavoriteView]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync favorite views from DB when localStorage is empty (new browser)
-  useEffect(() => {
-    const hasDesktop = localStorage.getItem("labrota_favorite_view")
-    const hasMobile = localStorage.getItem("labrota_mobile_favorite_view")
-    if (hasDesktop && hasMobile) return
-    getUserPreferences().then((prefs) => {
-      if (!hasDesktop && prefs.favoriteView) {
-        localStorage.setItem("labrota_favorite_view", JSON.stringify(prefs.favoriteView))
-        setFavoriteView(prefs.favoriteView as FavoriteView)
-      }
-      if (!hasMobile && prefs.mobileFavoriteView) {
-        localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(prefs.mobileFavoriteView))
-        setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
-      }
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Check if previous week has a rota (for "copy previous week" button)
-  // Only fetch for editors in week view — button is hidden otherwise
-  useEffect(() => {
-    if (!canEdit || view !== "week") return
-    let cancelled = false
-    const prev = new Date(weekStart + "T12:00:00")
-    prev.setDate(prev.getDate() - 7)
-    const prevWs = prev.toISOString().split("T")[0]
-    getRotaWeek(prevWs).then((d) => {
-      if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
-    }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
-    return () => { cancelled = true }
-  }, [weekStart, canEdit, view])
-  useEffect(() => {
-    if (view === "month") fetchMonth(monthStart, weekStart)
-  }, [monthStart, weekStart, view, fetchMonth])
-
-  useEffect(() => {
-    if (refreshKey === 0) return
-    fetchWeek(weekStart)
-    if (view === "month") fetchMonth(monthStart, weekStart)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey])
-
-  // Use activeStaff from weekData (returned by getRotaWeek) — avoids duplicate fetch
-  const initialStaffUsed = useRef(false)
-  useEffect(() => {
-    if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
-      initialStaffUsed.current = true
-      setStaffList(initialStaff)
-      setStaffLoaded(true)
-      return
-    }
-    // Staff will be set from weekData.activeStaff when fetchWeek resolves — no separate call needed
-    if (!staffLoaded && !weekData?.activeStaff) {
-      // Fallback: fetch separately only if weekData doesn't include staff (e.g., older cached data)
-      const staffTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Staff load timed out")), 15000))
-      Promise.race([getActiveStaff(), staffTimeout]).then((s) => { setStaffList(s); setStaffLoaded(true) }).catch(() => { setStaffLoaded(true) })
-    }
-  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When weekData arrives with activeStaff, use it (deduplicates the staff fetch)
-  // Compare by staff IDs to avoid cascading re-renders on undo (same staff, new reference)
-  const prevStaffIdsRef = useRef("")
-  useEffect(() => {
-    if (!weekData?.activeStaff || weekData.activeStaff.length === 0) return
-    const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
-    if (ids === prevStaffIdsRef.current) return
-    prevStaffIdsRef.current = ids
-    setStaffList(weekData.activeStaff)
-    setStaffLoaded(true)
-  }, [weekData?.activeStaff])
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
@@ -709,402 +448,103 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
   // On first load, show inline skeleton so the panel occupies space
   // and the chat panel doesn't appear alone before the calendar.
-  if (!initialLoaded && !staffLoaded) return (
-    <main className="flex flex-1 flex-col overflow-hidden">
-      <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-7 w-16 rounded" />
-          <Skeleton className="h-7 w-7 rounded" />
-          <Skeleton className="h-7 w-7 rounded" />
-          <Skeleton className="h-4 w-40 rounded" />
-        </div>
-        <div className="flex items-center gap-1">
-          <Skeleton className="h-7 w-20 rounded" />
-          <Skeleton className="h-7 w-20 rounded" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-7 w-7 rounded" />
-          <Skeleton className="h-7 w-7 rounded" />
-        </div>
-      </div>
-      <div className="flex-1 px-4 py-2 overflow-hidden">
-        <div className="grid grid-cols-7 gap-px mb-1">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center py-2">
-              <Skeleton className="h-3 w-8 rounded mb-1" />
-              <Skeleton className="h-6 w-6 rounded-full" />
-            </div>
-          ))}
-        </div>
-        {Array.from({ length: 4 }).map((_, row) => (
-          <div key={row} className="grid grid-cols-7 gap-px mb-2">
-            {Array.from({ length: 7 }).map((_, col) => (
-              <div key={col} className="flex flex-col gap-1 p-1.5">
-                {Array.from({ length: 3 }).map((_, j) => (
-                  <Skeleton key={j} className="h-5 w-full rounded" />
-                ))}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </main>
-  )
+  if (!initialLoaded && !staffLoaded) return <CalendarSkeleton />
 
   return (
     <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
-      {/* Desktop toolbar — LEFT · CENTRE (absolute) · RIGHT */}
-      <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background relative">
-
-        {/* LEFT: Today · ‹ › · date range */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={goToToday} disabled={currentDate === TODAY}>
-            {tc("today")}
-          </Button>
-          <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} aria-label={t("previousPeriod")}>
-              <ChevronLeft />
-            </Button>
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(1)} aria-label={t("nextPeriod")}>
-              <ChevronRight />
-            </Button>
-          </div>
-          <WeekJumpButton
-            currentDate={currentDate}
-            weekStart={weekStart}
-            view={view}
-            locale={locale}
-            onSelect={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
-          />
-        </div>
-
-        {/* CENTRE — absolutely positioned so it stays centred regardless of left/right width */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-            {(["week", "month"] as ViewMode[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1 text-[13px] transition-colors min-w-[72px] text-center",
-                  view === v
-                    ? "bg-background shadow-sm font-medium"
-                    : "text-muted-foreground hover:bg-muted font-medium"
-                )}
-              >
-                {t(`${v}View`)}
-              </button>
-            ))}
-          </div>
-          {(view === "week" || view === "month") && (
-            <>
-              <span className="h-4 border-l border-border" />
-              <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <button
-                      onClick={() => { setCalendarLayout("shift"); setMonthViewMode("shift") }}
-                      className={cn(
-                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
-                        (view === "week" ? calendarLayout === "shift" : monthViewMode === "shift")
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {weekData?.rotaDisplayMode === "by_task"
-                        ? <Grid3X3 className="size-[14px]" />
-                        : <Rows3 className="size-[14px]" />
-                      }
-                    </button>
-                  } />
-                  <TooltipContent side="bottom">{weekData?.rotaDisplayMode === "by_task" ? t("byTask") : t("shiftLayout")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <button
-                      onClick={() => { setCalendarLayout("person"); setMonthViewMode("person") }}
-                      className={cn(
-                        "rounded-md w-[36px] h-[28px] flex items-center justify-center transition-colors",
-                        (view === "week" ? calendarLayout === "person" : monthViewMode === "person")
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Users className="size-[14px]" />
-                    </button>
-                  } />
-                  <TooltipContent side="bottom">{t("personLayout")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* RIGHT: saved · undo/redo · dept filter · warnings · generate · overflow ··· */}
-        <div className="flex items-center gap-2 shrink-0">
-          {view === "week" && canEdit && (
-            <div className="flex items-center gap-0.5">
-              <span className={cn(
-                "text-[12px] text-muted-foreground flex items-center gap-1 transition-opacity duration-700 select-none pr-1",
-                showSaved ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}>
-                <Check className="size-3 text-emerald-500" />
-                {locale === "es" ? "Guardado" : "Saved"}
-              </span>
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={handleUndo}
-                    disabled={undoLen === 0}
-                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Undo2 className="size-[14px]" />
-                  </button>
-                } />
-                <TooltipContent side="bottom">Undo (⌘Z)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger render={
-                  <button
-                    onClick={handleRedo}
-                    disabled={redoLen === 0}
-                    className="rounded-md w-[30px] h-[28px] flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Redo2 className="size-[14px]" />
-                  </button>
-                } />
-                <TooltipContent side="bottom">Redo (⌘⇧Z)</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-          {view === "week" && hasAssignments && (
-            <div className="hidden lg:block">
-              <DepartmentFilterDropdown
-                selected={deptFilter}
-                allDepts={ALL_DEPTS}
-                onToggle={toggleDept}
-                onSetAll={setAllDepts}
-                onSetOnly={setOnlyDept}
-                deptLabels={globalDeptMaps.label}
-                deptColors={globalDeptMaps.border}
-                deptAbbr={deptAbbrMap}
-              />
-            </div>
-          )}
-          {weekData && hasAssignments && (
-            <WarningsPill days={weekData.days} staffList={filteredStaffList} onLeaveByDate={weekData.onLeaveByDate} />
-          )}
-          {(weekData?.aiReasoning || aiReasoningRef.current) && hasAssignments && view !== "month" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowReasoningModal(true)}
-              title={t("viewAiReasoning")}
-              className="h-8 gap-1.5 shrink-0"
-            >
-              <BrainCircuit className="size-3.5" />
-              <span className="hidden sm:inline">{t("aiInsights")}</span>
-            </Button>
-          )}
-          {showActions && (view === "month" ? !anyMonthWeekPublished || monthSummary?.weekStatuses?.some((ws) => ws.status !== "published") : !isPublished) && (
-            <Button variant="outline" size="sm" onClick={handleGenerateClick} disabled={isPending} className="h-8 shrink-0">
-              {isPending ? (pendingAction === "deleting" ? tc("deleting") : tc("generating")) : hasAssignments ? t("regenerateRota") : t("generateRota")}
-            </Button>
-          )}
-          {(showActions || hasAssignments) && (
-            <OverflowMenu items={[
-              // ── Group 1: Actions (publish) ──
-              ...(canEdit && isDraft && hasAssignments && view === "week" ? [{
-                label: hasNotifications ? t("publishRota") : t("publishOnly"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handlePublish,
-                disabled: isPending,
-              }] : []),
-              ...(canEdit && isPublished && view === "week" ? [{
-                label: t("unlockRota"),
-                icon: <Lock className="size-3.5" />,
-                onClick: handleUnlock,
-                disabled: isPending,
-              }] : []),
-              // ── Export ──
-              ...(hasAssignments && view === "week" ? [{
-                label: t("exportPdf"),
-                icon: <FileText className="size-3.5" />,
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Exportar" : "Export",
-                onClick: () => {
-                  if (!weekData) return
-                  import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
-                    const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-                    const notesEl = document.querySelector("[data-week-notes]")
-                    const noteTexts = notesEl
-                      ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean)
-                      : []
-                    const n = noteTexts.length > 0 ? noteTexts : undefined
-                    if (weekData.rotaDisplayMode === "by_task") {
-                      exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
-                    } else if (calendarLayout === "person") {
-                      exportPdfByPerson(weekData, on, locale, n, daysAsRows)
-                    } else {
-                      exportPdfByShift(weekData, on, locale, n, daysAsRows)
-                    }
-                  })
-                },
-              }, {
-                label: t("exportExcel"),
-                icon: <Sheet className="size-3.5" />,
-                onClick: () => {
-                  if (!weekData) return
-                  import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
-                    if (weekData.rotaDisplayMode === "by_task") {
-                      exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
-                    } else if (calendarLayout === "person") {
-                      exportWeekByPerson(weekData, locale, daysAsRows)
-                    } else {
-                      exportWeekByShift(weekData, locale, daysAsRows)
-                    }
-                  })
-                },
-              }] : []),
-              // ── Templates ──
-              ...(view === "week" && canEdit && hasAssignments ? [{
-                label: t("saveAsTemplate"),
-                icon: <BookmarkPlus className="size-3.5" />,
-                onClick: () => setSaveTemplateOpen(true),
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
-              }, ...(!isPublished ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-              }] : [])] : view === "week" && canEdit && !isPublished ? [{
-                label: t("applyTemplate"),
-                icon: <BookmarkCheck className="size-3.5" />,
-                onClick: () => setApplyTemplateOpen(true),
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Plantillas" : "Templates",
-              }] : []),
-              // ── View options ──
-              ...((view === "week" || (view === "month" && calendarLayout === "person")) ? [
-              ...(view === "week" ? [{
-                label: t("daysAsRows"),
-                icon: <ArrowRightLeft className="size-3.5" />,
-                onClick: toggleDaysAsRows,
-                active: daysAsRows,
-                dividerBefore: true,
-                sectionLabel: locale === "es" ? "Personalización" : "View",
-              }] : []),
-              ...(!(view === "month" && calendarLayout === "person") ? [{
-                label: t("compactView"),
-                icon: <Rows3 className="size-3.5" />,
-                onClick: () => setCompact((c) => !c),
-                active: compact,
-              },
-              {
-                label: locale === "es" ? "Vista simplificada" : "Simplified view",
-                icon: <LayoutList className="size-3.5" />,
-                onClick: togglePersonSimplified,
-                active: personSimplified,
-              },
-              ] : []),
-              {
-                label: t("staffColors"),
-                icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
-                onClick: toggleColorChips,
-                active: colorChips,
-                ...(view === "month" && calendarLayout === "person" ? { dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } : {}),
-              }, {
-                label: t("highlightPerson"),
-                icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,
-                onClick: toggleHighlightHover,
-                active: highlightHover,
-              }] : []),
-              // ── Favorite view ──
-              ...(() => {
-                const isFav = favoriteView
-                  && favoriteView.view === view
-                  && favoriteView.calendarLayout === calendarLayout
-                  && favoriteView.daysAsRows === daysAsRows
-                  && favoriteView.compact === compact
-                  && favoriteView.colorChips === colorChips
-                  && favoriteView.highlightEnabled === highlightHover
-                const saveFavItem = {
-                  label: t("saveFavoriteView"),
-                  icon: <Star className="size-3.5" />,
-                  onClick: () => {
-                    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-                    setFavoriteView(fav)
-                    localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ favoriteView: fav })
-                    toast.success(t("favoriteViewSaved"))
-                  },
+      {/* Desktop toolbar */}
+      <DesktopToolbar
+        currentDate={currentDate} weekStart={weekStart} view={view} setView={setView}
+        locale={locale} TODAY={TODAY} goToToday={goToToday} navigate={navigate}
+        onWeekJump={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
+        calendarLayout={calendarLayout} setCalendarLayout={setCalendarLayout}
+        monthViewMode={monthViewMode} setMonthViewMode={setMonthViewMode}
+        rotaDisplayMode={weekData?.rotaDisplayMode}
+        compact={compact} setCompact={setCompact} personSimplified={personSimplified}
+        togglePersonSimplified={togglePersonSimplified} daysAsRows={daysAsRows}
+        toggleDaysAsRows={toggleDaysAsRows} colorChips={colorChips} toggleColorChips={toggleColorChips}
+        highlightHover={highlightHover} toggleHighlightHover={toggleHighlightHover}
+        isPending={isPending} pendingAction={pendingAction}
+        hasAssignments={hasAssignments} isPublished={!!isPublished} isDraft={!!isDraft}
+        anyMonthWeekPublished={anyMonthWeekPublished} canEdit={canEdit} hasNotifications={hasNotifications}
+        showSaved={showSaved} undoLen={undoLen} redoLen={redoLen} onUndo={handleUndo} onRedo={handleRedo}
+        deptFilter={deptFilter} allDepts={ALL_DEPTS} onToggleDept={toggleDept}
+        onSetAllDepts={setAllDepts} onSetOnlyDept={setOnlyDept}
+        deptLabels={globalDeptMaps.label} deptColors={globalDeptMaps.border} deptAbbr={deptAbbrMap}
+        weekData={weekData} monthSummary={monthSummary} filteredStaffList={filteredStaffList}
+        aiReasoning={weekData?.aiReasoning || aiReasoningRef.current || null}
+        onGenerateClick={handleGenerateClick} onPublish={handlePublish} onUnlock={handleUnlock}
+        onShowReasoning={() => setShowReasoningModal(true)}
+        onSaveTemplate={() => setSaveTemplateOpen(true)}
+        onApplyTemplate={() => setApplyTemplateOpen(true)}
+        onShowHistory={() => setHistoryOpen(true)}
+        onDelete={() => {
+          const msg = view === "month" ? t("confirm4WeeksDelete") : t("deleteWeekConfirm")
+          if (confirm(msg)) {
+            if (view === "month") setLoadingMonth(true)
+            setPendingAction("deleting")
+            startTransition(async () => {
+              if (view === "month" && monthSummary) {
+                const allWeekStarts: string[] = []
+                for (let i = 0; i < monthSummary.days.length; i += 7) {
+                  if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
                 }
-                // When on favorite → nothing shown. When not on favorite → show go-to (if exists) + save.
-                if (isFav) return []
-                if (favoriteView) return [{
-                  label: t("goToFavoriteView"),
-                  icon: <Star className="size-3.5 text-amber-400 fill-amber-400" />,
-                  dividerBefore: true,
-                  onClick: () => {
-                    setView(favoriteView.view as ViewMode)
-                    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-                    setDaysAsRows(favoriteView.daysAsRows)
-                    setCompact(favoriteView.compact)
-                    setColorChips(favoriteView.colorChips)
-                    setHighlightHover(favoriteView.highlightEnabled)
-                  },
-                }, saveFavItem]
-                return [{ ...saveFavItem, dividerBefore: true }]
-              })(),
-              // ── History ──
-              ...(view === "week" && hasAssignments ? [{
-                label: t("viewHistory"),
-                icon: <Clock className="size-3.5" />,
-                onClick: () => setHistoryOpen(true),
-                dividerBefore: true,
-              }] : []),
-              // ── Destructive ──
-              ...(canEdit && hasAssignments && !(view === "month" ? anyMonthWeekPublished : isPublished) ? [{
-                label: view === "month" ? t("delete4Weeks") : t("deleteRota"),
-                icon: <Trash2 className="size-3.5" />,
-                onClick: () => {
-                  const msg = view === "month"
-                    ? t("confirm4WeeksDelete")
-                    : t("deleteWeekConfirm")
-                  if (confirm(msg)) {
-                    if (view === "month") setLoadingMonth(true)
-                    setPendingAction("deleting")
-                    startTransition(async () => {
-                      if (view === "month" && monthSummary) {
-                        const allWeekStarts: string[] = []
-                        for (let i = 0; i < monthSummary.days.length; i += 7) {
-                          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-                        }
-                        let errors = 0
-                        for (const ws of allWeekStarts) {
-                          const result = await clearWeek(ws)
-                          if (result.error) errors++
-                        }
-                        if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
-                        else toast.success(t("fourWeeksDeleted"))
-                        fetchWeek(weekStart)
-                        fetchMonth(monthStart, weekStart)
-                      } else {
-                        const result = await clearWeek(weekStart)
-                        if (result.error) toast.error(result.error)
-                        else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
-                      }
-                      setPendingAction(null)
-                    })
-                  }
-                },
-                dividerBefore: true,
-                destructive: true,
-              }] : []),
-            ]} />
-          )}
-        </div>
-      </div>
+                let errors = 0
+                for (const ws of allWeekStarts) {
+                  const result = await clearWeek(ws)
+                  if (result.error) errors++
+                }
+                if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
+                else toast.success(t("fourWeeksDeleted"))
+                fetchWeek(weekStart)
+                fetchMonth(monthStart, weekStart)
+              } else {
+                const result = await clearWeek(weekStart)
+                if (result.error) toast.error(result.error)
+                else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
+              }
+              setPendingAction(null)
+            })
+          }
+        }}
+        onExportPdf={() => {
+          if (!weekData) return
+          import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
+            const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+            const notesEl = document.querySelector("[data-week-notes]")
+            const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
+            const n = noteTexts.length > 0 ? noteTexts : undefined
+            if (weekData.rotaDisplayMode === "by_task") exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
+            else if (calendarLayout === "person") exportPdfByPerson(weekData, on, locale, n, daysAsRows)
+            else exportPdfByShift(weekData, on, locale, n, daysAsRows)
+          })
+        }}
+        onExportExcel={() => {
+          if (!weekData) return
+          import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
+            if (weekData.rotaDisplayMode === "by_task") exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
+            else if (calendarLayout === "person") exportWeekByPerson(weekData, locale, daysAsRows)
+            else exportWeekByShift(weekData, locale, daysAsRows)
+          })
+        }}
+        favoriteView={favoriteView}
+        onSaveFavorite={() => {
+          const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+          setFavoriteView(fav)
+          localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
+          saveUserPreferences({ favoriteView: fav })
+          toast.success(t("favoriteViewSaved"))
+        }}
+        onGoToFavorite={favoriteView ? () => {
+          setView(favoriteView.view as ViewMode)
+          setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+          setDaysAsRows(favoriteView.daysAsRows)
+          setCompact(favoriteView.compact)
+          setColorChips(favoriteView.colorChips)
+          setHighlightHover(favoriteView.highlightEnabled)
+        } : undefined}
+        t={t} tc={tc}
+      />
 
       {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
 
@@ -1135,303 +575,38 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
 
         {/* Week view */}
         {view === "week" && (
-          <div className="hidden lg:flex flex-col flex-1 min-h-0 px-4 py-2 gap-0 overflow-hidden">
-            <div data-calendar-content className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative" style={{ minHeight: 400 }}>
-              {/* Shimmer — replaces content during loading (also wait for staffList on first load) */}
-              {(loadingWeek || !staffLoaded) && (
-                <div className="absolute inset-0 z-10 bg-background flex flex-col">
-                  {weekData?.rotaDisplayMode === "by_task" && daysAsRows ? (
-                    <TransposedTaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} publicHolidays={{}} onLeaveByDate={{}} compact={compact} colorChips={colorChips} />
-                  ) : weekData?.rotaDisplayMode === "by_task" ? (
-                    <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
-                  ) : calendarLayout === "person" ? (
-                    <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
-                  ) : (
-                    <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
-                  )}
-                  {activeStrategy === "ai_hybrid" && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="size-6 text-primary animate-pulse" />
-                        <span className="text-muted-foreground">+</span>
-                        <BrainCircuit className="size-6 text-purple-500 animate-pulse" />
-                      </div>
-                      <p className="text-[14px] font-medium text-foreground">{t("hybridGenerating")}</p>
-                      <p className="text-[12px] text-muted-foreground max-w-xs text-center">{t("hybridGeneratingDesc")}</p>
-                    </div>
-                  )}
-                  {activeStrategy === "ai_reasoning" && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
-                      <BrainCircuit className="size-8 text-amber-500 animate-pulse" />
-                      <p className="text-[14px] font-medium text-foreground">{t("claudeThinking")}</p>
-                      <p className="text-[12px] text-muted-foreground max-w-xs text-center">{t("claudeThinkingDesc")}</p>
-                    </div>
-                  )}
-                  {(activeStrategy === "ai_optimal" || activeStrategy === "ai_optimal_v2") && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
-                      <Sparkles className="size-8 text-primary animate-pulse" />
-                      <p className="text-[14px] font-medium text-foreground">{t("engineGenerating")}</p>
-                      <p className="text-[12px] text-muted-foreground">{t("engineGeneratingDesc")}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              {weekData && (weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" && daysAsRows ? (
-                <TransposedPersonGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  shiftTimes={weekData?.shiftTimes ?? null}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={handleDesktopChipClick}
-                  onDateClick={handleMonthDayClick}
-                  colorChips={colorChips}
-                  compact={compact}
-                  simplified={personSimplified}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
-                  gridSetDaysRef={gridSetDaysRef}
-                />
-              ) : weekData.rotaDisplayMode === "by_task" && calendarLayout === "person" ? (
-                <TaskPersonGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  onLeaveTypeByDate={weekData?.onLeaveTypeByDate}
-                  compact={compact}
-                  colorChips={colorChips}
-                  simplified={personSimplified}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  onChipClick={openProfile}
-                  onDateClick={handleMonthDayClick}
-                />
-              ) : weekData.rotaDisplayMode === "by_task" && daysAsRows ? (
-                <TransposedTaskGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  compact={compact}
-                  colorChips={colorChips}
-                  simplified={personSimplified}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  onRemoveAssignment={async (id) => {
-                    const snapshot = weekData
-                    const assignment = weekData?.days.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === id)
-                    const result = await removeAssignment(id)
-                    if (result.error) { toast.error(result.error); return }
-                    fetchWeekSilent(weekStart)
-                    if (snapshot && assignment && canEdit) {
-                      pushUndo(
-                        snapshot,
-                        () => upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined }),
-                        () => removeAssignment(id),
-                      )
-                    }
-                  }}
-                  onCellClick={handleOpenSheet}
-                  onChipClick={openProfile}
-                  onDateClick={handleMonthDayClick}
-                />
-              ) : (!weekData.rota || !weekData.days.some((d) => d.assignments.length > 0)) ? (
-                <div className="flex-1 flex items-start justify-center pt-[18vh]">
-                  {!canEdit ? (
-                    <div className="flex flex-col items-center gap-3 w-full max-w-[380px] text-center">
-                      <CalendarDays className="size-10 text-muted-foreground/40" />
-                      <p className="text-[16px] font-medium text-muted-foreground">{t("noRotaYet")}</p>
-                      <p className="text-[14px] text-muted-foreground/70">{t("noRotaYetDescription")}</p>
-                    </div>
-                  ) : (
-                  <div className="flex flex-col items-center gap-5 w-full max-w-[420px]">
-                    <Sparkles className="size-12" style={{ color: "var(--pref-bg)" }} />
-                    <div className="text-center">
-                      <p className="text-[18px] font-semibold" style={{ color: "var(--pref-bg)" }}>{t("emptyWeekTitle")}</p>
-                      <p className="text-[14px] text-muted-foreground mt-2 max-w-[380px] mx-auto leading-relaxed">
-                        {t("emptyWeekDesc")}
-                      </p>
-                    </div>
-                    {!showCopyConfirm ? (
-                      <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={handleGenerateClick} className="gap-1.5">
-                          <Sparkles className="size-3.5" />
-                          {t("generateRota")}
-                        </Button>
-                        {prevWeekHasRota && (
-                          <Button variant="outline" onClick={() => setShowCopyConfirm(true)} className="gap-1.5">
-                            <Copy className="size-3.5" />
-                            {t("copyPrevWeek")}
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 w-full">
-                        <p className="text-[13px] text-amber-600 dark:text-amber-400 font-medium mb-1">{t("copyPrevWeekConfirmTitle")}</p>
-                        <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-3">{t("copyPrevWeekConfirmBody")}</p>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => {
-                            setShowCopyConfirm(false)
-                            setLoadingWeek(true)
-                            startTransition(async () => {
-                              const result = await copyPreviousWeek(weekStart)
-                              if (result.error) { toast.error(result.error); return }
-                              toast.success(t("copyAssignments", { count: result.count ?? 0 }))
-                              fetchWeek(weekStart)
-                            })
-                          }}>
-                            {t("copy")}
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setShowCopyConfirm(false)}>{tc("cancel")}</Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  )}
-                </div>
-              ) : weekData.rotaDisplayMode === "by_task" ? (
-                <TaskGrid
-                  data={weekData}
-                  staffList={staffList}
-                  loading={false}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  onRefresh={handleRefresh}
-                  onAfterMutation={canEdit ? pushUndo : undefined}
-                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
-                  onSaved={canEdit ? triggerSaved : undefined}
-                  gridSetDaysRef={gridSetDaysRef}
-                  taskConflictThreshold={weekData?.taskConflictThreshold ?? 3}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={handlePunctionsChange}
-                  onBiopsyChange={handleBiopsyChange}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
-                  compact={compact}
-                  colorBorders={colorChips}
-                  showPuncBiopsy={!compact && !personSimplified}
-                  onDateClick={handleMonthDayClick}
-                  onChipClick={openProfile}
-                />
-              ) : calendarLayout === "shift" && daysAsRows ? (
-                <TransposedShiftGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  shiftTimes={weekData?.shiftTimes ?? null}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  compact={compact}
-                  colorChips={colorChips}
-                  timeFormat={weekData?.timeFormat}
-                  onCellClick={handleOpenSheet}
-                  onChipClick={handleDesktopChipClick}
-                  onRefresh={handleRefresh}
-                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
-                  gridSetDaysRef={gridSetDaysRef}
-                />
-              ) : calendarLayout === "shift" ? (
-                <ShiftGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  loading={false}
-                  isGenerating={isPending}
-                  locale={locale}
-                  onCellClick={() => {}}
-                  onChipClick={handleDesktopChipClick}
-                  isPublished={!!isPublished || !canEdit}
-                  shiftTimes={weekData?.shiftTimes ?? null}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={handlePunctionsChange}
-                  onBiopsyChange={handleBiopsyChange}
-                  onRefresh={handleRefresh}
-                  onAfterMutation={canEdit ? pushUndo : undefined}
-                  onCancelUndo={canEdit ? cancelLastUndo : undefined}
-                  onSaved={canEdit ? triggerSaved : undefined}
-                  weekStart={weekStart}
-                  compact={compact}
-                  colorChips={colorChips}
-                  simplified={personSimplified}
-                  onDateClick={handleMonthDayClick}
-                  onLocalDaysChange={setLiveDays}
-                  ratioOptimal={weekData?.ratioOptimal}
-                  ratioMinimum={weekData?.ratioMinimum}
-                  timeFormat={weekData?.timeFormat}
-                  biopsyConversionRate={weekData?.biopsyConversionRate}
-                  biopsyDay5Pct={weekData?.biopsyDay5Pct}
-                  biopsyDay6Pct={weekData?.biopsyDay6Pct}
-                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
-                  gridSetDaysRef={gridSetDaysRef}
-                />
-              ) : calendarLayout === "person" && daysAsRows ? (
-                <TransposedPersonGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  shiftTimes={weekData?.shiftTimes ?? null}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={handleDesktopChipClick}
-                  onDateClick={handleMonthDayClick}
-                  colorChips={colorChips}
-                  compact={compact}
-                  simplified={personSimplified}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
-                  gridSetDaysRef={gridSetDaysRef}
-                />
-              ) : (
-                <PersonGrid
-                  data={weekData}
-                  staffList={filteredStaffList}
-                  loading={false}
-                  isGenerating={isPending}
-                  locale={locale}
-                  isPublished={!!isPublished || !canEdit}
-                  shiftTimes={weekData?.shiftTimes ?? null}
-                  onLeaveByDate={weekData?.onLeaveByDate ?? {}}
-                  publicHolidays={weekData?.publicHolidays ?? {}}
-                  onChipClick={handleDesktopChipClick}
-                  onDateClick={handleMonthDayClick}
-                  colorChips={colorChips}
-                  compact={compact}
-                  punctionsDefault={weekData?.punctionsDefault ?? {}}
-                  punctionsOverride={punctionsOverride}
-                  onPunctionsChange={canEdit ? handlePunctionsChange : undefined}
-                  simplified={personSimplified}
-                  swapStaffId={desktopSwapEnabled ? viewerStaffId : null}
-                  gridSetDaysRef={gridSetDaysRef}
-                />
-              ))}
-            </div>
-          </div>
+          <WeekContent
+            weekData={weekData} staffList={staffList} filteredStaffList={filteredStaffList}
+            calendarLayout={calendarLayout} daysAsRows={daysAsRows} compact={compact}
+            colorChips={colorChips} personSimplified={personSimplified}
+            isPublished={!!isPublished || false} canEdit={canEdit} isPending={isPending}
+            loading={loadingWeek} staffLoaded={staffLoaded}
+            weekStart={weekStart} locale={locale} activeStrategy={activeStrategy}
+            punctionsOverride={punctionsOverride}
+            onPunctionsChange={handlePunctionsChange} onBiopsyChange={handleBiopsyChange}
+            openProfile={openProfile} onDesktopChipClick={handleDesktopChipClick}
+            onOpenSheet={handleOpenSheet} onMonthDayClick={handleMonthDayClick}
+            pushUndo={canEdit ? pushUndo : undefined}
+            cancelLastUndo={canEdit ? cancelLastUndo : undefined}
+            triggerSaved={canEdit ? triggerSaved : undefined}
+            fetchWeekSilent={fetchWeekSilent} setLiveDays={setLiveDays}
+            onGenerateClick={handleGenerateClick}
+            showCopyConfirm={showCopyConfirm} setShowCopyConfirm={setShowCopyConfirm}
+            prevWeekHasRota={prevWeekHasRota}
+            onCopyPreviousWeek={() => {
+              setShowCopyConfirm(false)
+              setLoadingWeek(true)
+              startTransition(async () => {
+                const result = await copyPreviousWeek(weekStart)
+                if (result.error) { toast.error(result.error); return }
+                toast.success(t("copyAssignments", { count: result.count ?? 0 }))
+                fetchWeek(weekStart)
+              })
+            }}
+            desktopSwapStaffId={desktopSwapEnabled ? viewerStaffId : null}
+            gridSetDaysRef={gridSetDaysRef}
+            t={t} tc={tc}
+          />
         )}
 
         {/* Month view */}
@@ -1455,267 +630,36 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
         )}
 
         {/* Mobile: day view (all users) */}
-        <div className={cn("flex flex-col overflow-auto lg:hidden flex-1")}>
-          {/* Date carousel — hidden in edit mode */}
-          {!mobileEditMode && weekData && (
-            <WeeklyStrip
-              days={weekData.days.map((d) => ({
-                date: d.date,
-                staffCount: d.assignments.length,
-                hasSkillGaps: d.skillGaps.length > 0 || d.warnings.length > 0,
-              }))}
-              currentDate={currentDate}
-              onSelectDay={(date) => { setCurrentDate(date); setMobileEditMode(false) }}
-              locale={locale as "es" | "en"}
-            />
-          )}
-          {/* Sticky toolbar */}
-          {mobileEditMode ? (
-            <div data-mobile-toolbar className="flex items-center justify-between h-[68px] px-4 bg-primary text-primary-foreground border-b border-primary lg:hidden sticky top-0 z-20">
-              <span className="text-[16px] font-semibold">
-                {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : ""}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    // Undo: restore snapshot and re-fetch server state
-                    if (preEditSnapshot) {
-                      setWeekData(preEditSnapshot)
-                    }
-                    setMobileEditMode(false)
-                    setPreEditSnapshot(null)
-                    fetchWeekSilent(weekStart)
-                  }}
-                  className="h-10 px-4 text-[13px] font-medium text-primary-foreground/70 active:text-primary-foreground rounded-lg"
-                >
-                  {tc("cancel")}
-                </button>
-                <Button size="sm" variant="secondary" onClick={() => { setMobileEditMode(false); setPreEditSnapshot(null) }} className="h-10 px-5 text-[14px]">
-                  {locale === "es" ? "Listo" : "Done"}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div data-mobile-toolbar className="flex items-center gap-1 h-14 px-2 border-b border-border bg-background lg:hidden sticky top-0 z-20">
-              {/* Left: date selector */}
-              <button onClick={() => setCurrentDate((d) => addDays(d, -1))} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronLeft className="size-[18px] text-muted-foreground" />
-              </button>
-              <div className="relative shrink-0">
-                <input
-                  type="date"
-                  value={currentDate}
-                  onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-                <span className="text-[14px] font-semibold capitalize pointer-events-none">
-                  {currentDayData ? formatDate(currentDayData.date, locale as "es" | "en") : formatDate(currentDate, locale as "es" | "en")}
-                </span>
-              </div>
-              <button onClick={() => setCurrentDate((d) => addDays(d, 1))} className="size-9 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                <ChevronRight className="size-[18px] text-muted-foreground" />
-              </button>
-              <button
-                onClick={goToToday}
-                disabled={currentDate === TODAY}
-                className={cn("text-[12px] font-medium px-1.5 py-1 rounded-md transition-colors shrink-0", currentDate === TODAY ? "text-muted-foreground/30" : "text-primary active:bg-primary/10")}
-              >
-                {tc("today")}
-              </button>
-              <div className="flex-1" />
-              {/* Day status icon — tappable, opens warnings panel */}
-              {currentDayData && currentDayData.assignments.length > 0 && (
-                <button onClick={() => setDayWarningsOpen(true)} className="size-10 flex items-center justify-center rounded-full active:bg-accent shrink-0">
-                  {currentDayData.skillGaps.length > 0 || currentDayData.warnings.length > 0
-                    ? <AlertTriangle className="size-[18px] text-amber-500" />
-                    : <Check className="size-[18px] text-emerald-500" />}
-                </button>
-              )}
-              {canEdit && (
-                <button onClick={() => { setPreEditSnapshot(weekData ? JSON.parse(JSON.stringify(weekData)) : null); setMobileEditMode(true) }} className="size-10 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent shrink-0">
-                  <Pencil className="size-[18px]" />
-                </button>
-              )}
-              {canEdit && (
-                <MobileOverflow
-                  onGenerateWeek={() => setShowStrategyModal(true)}
-                  onGenerateDay={currentDayData ? async () => {
-                    const result = await regenerateDay(weekStart, currentDate)
-                    if (result.error) toast.error(result.error)
-                    else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeekSilent(weekStart) }
-                  } : undefined}
-                  onShare={undefined}
-                  isPending={isPending}
-                  compact={mobileCompact}
-                  onToggleCompact={toggleMobileCompact}
-                  deptColor={mobileDeptColor}
-                  onToggleDeptColor={toggleMobileDeptColor}
-                  isFavorite={!!(mobileFavoriteView && mobileFavoriteView.viewMode === mobileViewMode && mobileFavoriteView.compact === mobileCompact && mobileFavoriteView.deptColor === mobileDeptColor)}
-                  hasFavorite={!!mobileFavoriteView}
-                  onSaveFavorite={() => {
-                    const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
-                    setMobileFavoriteView(fav)
-                    localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(fav))
-                    saveUserPreferences({ mobileFavoriteView: fav })
-                    toast.success(t("favoriteViewSaved"))
-                  }}
-                  onGoToFavorite={mobileFavoriteView ? () => {
-                    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
-                    setMobileCompact(mobileFavoriteView.compact)
-                    setMobileDeptColor(mobileFavoriteView.deptColor)
-                  } : undefined}
-                />
-              )}
-            </div>
-          )}
-          <div
-            ref={mobileContentRef}
-            className="flex flex-col gap-4 px-4 py-3 flex-1 pb-32"
-            onTouchStart={(e) => { (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX) }}
-            onTouchEnd={(e) => {
-              const startX = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0)
-              const dx = e.changedTouches[0].clientX - startX
-              if (Math.abs(dx) > 80) setCurrentDate((d) => addDays(d, dx < 0 ? 1 : -1))
-            }}
-          >
-            {weekData?.rotaDisplayMode === "by_task" && weekData.tecnicas ? (
-              <MobileTaskDayView
-                day={currentDayData}
-                tecnicas={weekData.tecnicas}
-                departments={weekData.departments ?? []}
-                data={weekData}
-                staffList={staffList}
-                isEditMode={mobileEditMode}
-                onRemoveAssignment={async (id) => {
-                  // Optimistic remove
-                  setWeekData((prev) => {
-                    if (!prev) return prev
-                    return { ...prev, days: prev.days.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== id) })) }
-                  })
-                  const result = await removeAssignment(id)
-                  if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
-                }}
-                onAddToTask={(tecCode) => setMobileAddSheet({ open: true, role: "lab" })}
-                loading={loadingWeek || !staffLoaded || !currentDayData}
-                locale={locale}
-              />
-            ) : (
-              <DayView
-                day={currentDayData}
-                loading={loadingWeek || !staffLoaded || !currentDayData}
-                locale={locale}
-                departments={weekData?.departments ?? []}
-                data={weekData}
-                isEditMode={mobileEditMode}
-                onRemoveAssignment={async (id) => {
-                  // Optimistic: remove from local state immediately
-                  setWeekData((prev) => {
-                    if (!prev) return prev
-                    return { ...prev, days: prev.days.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== id) })) }
-                  })
-                  const result = await removeAssignment(id)
-                  if (result.error) { toast.error(result.error); fetchWeekSilent(weekStart) }
-                }}
-                onAddStaff={(role) => setMobileAddSheet({ open: true, role })}
-                staffList={staffList}
-                mobileCompact={mobileCompact}
-                mobileDeptColor={mobileDeptColor}
-                punctions={currentDayData ? (punctionsOverride[currentDayData.date] ?? weekData?.punctionsDefault?.[currentDayData.date] ?? 0) : 0}
-                biopsyForecast={(() => {
-                  if (!currentDayData || !weekData) return 0
-                  const pd = weekData.punctionsDefault ?? {}
-                  const cr = weekData.biopsyConversionRate ?? 0.5
-                  function getPunc(dateStr: string): number {
-                    if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
-                    if (pd[dateStr] !== undefined) return pd[dateStr]
-                    const dow = new Date(dateStr + "T12:00:00").getDay()
-                    const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-                    return sameDow ? sameDow[1] : 0
-                  }
-                  const d5 = new Date(currentDayData.date + "T12:00:00"); d5.setDate(d5.getDate() - 5)
-                  const d6 = new Date(currentDayData.date + "T12:00:00"); d6.setDate(d6.getDate() - 6)
-                  return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
-                })()}
-                ratioOptimal={weekData?.ratioOptimal}
-                ratioMinimum={weekData?.ratioMinimum}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Mobile add staff sheet */}
-        {(() => {
-          const deptMap = Object.fromEntries((weekData?.departments ?? []).filter((d) => !d.parent_id).map((d) => [d.code, d.name]))
-          const assignedIds = new Set(currentDayData?.assignments.map((a) => a.staff_id) ?? [])
-          const leaveIds = new Set(currentDayData ? (weekData?.onLeaveByDate?.[currentDayData.date] ?? []) : [])
-          // Compute weekly assignment counts
-          const weeklyCounts: Record<string, number> = {}
-          for (const d of weekData?.days ?? []) {
-            for (const a of d.assignments) {
-              weeklyCounts[a.staff_id] = (weeklyCounts[a.staff_id] ?? 0) + 1
-            }
-          }
-          return (
-            <MobileAddStaffSheet
-              open={mobileAddSheet.open}
-              onOpenChange={(open) => setMobileAddSheet((s) => ({ ...s, open }))}
-              departmentCode={mobileAddSheet.role}
-              departmentName={deptMap[mobileAddSheet.role] ?? mobileAddSheet.role}
-              date={currentDate}
-              weekStart={weekStart}
-              staffList={staffList}
-              assignedStaffIds={assignedIds}
-              onLeaveStaffIds={leaveIds}
-              shiftTypes={weekData?.shiftTypes ?? []}
-              weeklyAssignmentCounts={weeklyCounts}
-              onAdded={() => fetchWeekSilent(weekStart)}
-            />
-          )
-        })()}
+        <MobileDaySection
+          weekData={weekData} staffList={staffList}
+          currentDate={currentDate} setCurrentDate={setCurrentDate as any}
+          weekStart={weekStart} currentDayData={currentDayData}
+          loading={loadingWeek} staffLoaded={staffLoaded} locale={locale} canEdit={canEdit}
+          mobileEditMode={mobileEditMode} setMobileEditMode={setMobileEditMode}
+          preEditSnapshot={preEditSnapshot} setPreEditSnapshot={setPreEditSnapshot}
+          mobileCompact={mobileCompact} toggleMobileCompact={toggleMobileCompact}
+          mobileDeptColor={mobileDeptColor} toggleMobileDeptColor={toggleMobileDeptColor}
+          mobileViewMode={mobileViewMode} setMobileViewMode={setMobileViewMode}
+          mobileAddSheet={mobileAddSheet} setMobileAddSheet={setMobileAddSheet as any}
+          punctionsOverride={punctionsOverride} TODAY={TODAY}
+          setWeekData={setWeekData} fetchWeekSilent={fetchWeekSilent}
+          setShowStrategyModal={setShowStrategyModal} isPending={isPending}
+          mobileFavoriteView={mobileFavoriteView} setMobileFavoriteView={setMobileFavoriteView}
+          onSaveMobileFavorite={() => {
+            const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
+            setMobileFavoriteView(fav)
+            localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(fav))
+            saveUserPreferences({ mobileFavoriteView: fav })
+            toast.success(t("favoriteViewSaved"))
+          }}
+          onGoToMobileFavorite={mobileFavoriteView ? () => {
+            setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
+            setMobileCompact(mobileFavoriteView.compact)
+            setMobileDeptColor(mobileFavoriteView.deptColor)
+          } : undefined}
+          t={t} tc={tc}
+        />
       </div>
-
-      {/* Day warnings panel */}
-      {dayWarningsOpen && currentDayData && createPortal(
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={() => setDayWarningsOpen(false)}>
-          <div className="absolute inset-0 bg-black/30" />
-          <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[60vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[16px] font-semibold capitalize">{formatDate(currentDayData.date, locale as "es" | "en")}</span>
-              <button onClick={() => setDayWarningsOpen(false)} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
-                <X className="size-4" />
-              </button>
-            </div>
-            {currentDayData.skillGaps.length === 0 && currentDayData.warnings.length === 0 ? (
-              <div className="flex items-center gap-2 py-3">
-                <Check className="size-5 text-emerald-500 shrink-0" />
-                <span className="text-[14px] text-emerald-600">{locale === "es" ? "Sin alertas para este día" : "No issues for this day"}</span>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {currentDayData.skillGaps.map((gap, i) => (
-                  <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
-                    <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[12px] font-medium text-red-700">{locale === "es" ? "Habilidad sin cubrir" : "Uncovered skill"}</p>
-                      <p className="text-[13px] text-red-600">{gap}</p>
-                    </div>
-                  </div>
-                ))}
-                {currentDayData.warnings.map((w, i) => (
-                  <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
-                    <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[12px] font-medium text-amber-700">{w.category === "coverage" ? (locale === "es" ? "Cobertura" : "Coverage") : w.category === "skill_gap" ? (locale === "es" ? "Habilidad" : "Skill") : (locale === "es" ? "Aviso" : "Warning")}</p>
-                      <p className="text-[13px] text-amber-600">{w.message}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Day edit sheet */}
       <AssignmentSheet
