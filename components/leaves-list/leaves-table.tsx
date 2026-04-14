@@ -177,7 +177,7 @@ export function LeavesTable({
                       <span title="Synced from Outlook"><Cloud className="size-3.5 text-blue-500" /></span>
                     )}
                     {leave.attachment_url && (
-                      <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={locale === "es" ? "Ver adjunto" : "View attachment"}>
+                      <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={t("viewAttachment")}>
                         <Paperclip className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
                       </a>
                     )}

@@ -1,6 +1,7 @@
 "use client"
 
 import { createPortal } from "react-dom"
+import { useTranslations } from "next-intl"
 import { AlertTriangle, CheckCircle2, BrainCircuit, X } from "lucide-react"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
@@ -18,6 +19,7 @@ function parseInsights(text: string): { assessment: string; issues: string[] } |
 // ── AI insights bottom sheet ────────────────────────────────────────────────
 
 export function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reasoning: string; locale: "es" | "en"; open: boolean; onClose: () => void }) {
+  const t = useTranslations("schedule")
   if (!open) return null
   const parsed = parseInsights(reasoning)
   return createPortal(
@@ -27,7 +29,7 @@ export function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reason
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <BrainCircuit className="size-4 text-indigo-500" />
-            <span className="text-[16px] font-semibold">{locale === "es" ? "Análisis IA" : "AI Insights"}</span>
+            <span className="text-[16px] font-semibold">{t("aiInsightsTitle")}</span>
           </div>
           <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
             <X className="size-4" />
@@ -40,7 +42,7 @@ export function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reason
             )}
             {parsed.issues.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{locale === "es" ? "Problemas restantes" : "Remaining issues"}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("remainingIssues")}</p>
                 {parsed.issues.map((issue, i) => (
                   <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
                     <span className="mt-1 size-1.5 rounded-full bg-indigo-400 shrink-0" />
@@ -62,6 +64,7 @@ export function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reason
 // ── Week warnings bottom sheet ──────────────────────────────────────────────
 
 export function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaWeekData["days"]; locale: "es" | "en"; open: boolean; onClose: () => void }) {
+  const t = useTranslations("schedule")
   const allWarnings = days.flatMap((d) => d.warnings.map((w) => ({ day: d.date, ...w })))
   const allGaps = days.flatMap((d) => d.skillGaps.map((g) => ({ day: d.date, gap: g })))
   if (!open) return null
@@ -70,7 +73,7 @@ export function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaW
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[65vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[16px] font-semibold">{locale === "es" ? "Alertas de la semana" : "Week alerts"}</span>
+          <span className="text-[16px] font-semibold">{t("weekAlerts")}</span>
           <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
             <X className="size-4" />
           </button>
@@ -78,7 +81,7 @@ export function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaW
         {allWarnings.length === 0 && allGaps.length === 0 ? (
           <div className="flex items-center gap-2 py-3">
             <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
-            <span className="text-[14px] text-emerald-600">{locale === "es" ? "Sin alertas esta semana" : "No issues this week"}</span>
+            <span className="text-[14px] text-emerald-600">{t("noIssuesThisWeek")}</span>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -88,7 +91,7 @@ export function WeekWarningsSheet({ days, locale, open, onClose }: { days: RotaW
                 <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
                   <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[12px] font-medium text-red-700 capitalize">{dayLabel} · {locale === "es" ? "Habilidad sin cubrir" : "Uncovered skill"}</p>
+                    <p className="text-[12px] font-medium text-red-700 capitalize">{dayLabel} · {t("uncoveredSkill")}</p>
                     <p className="text-[13px] text-red-600">{item.gap}</p>
                   </div>
                 </div>

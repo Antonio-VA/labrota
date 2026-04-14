@@ -83,7 +83,7 @@ export function ManagerSwapPanel({ open, onOpenChange, locale, onCountChange }: 
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <ArrowLeftRight className="size-8 text-muted-foreground/30" />
               <p className="text-[13px] text-muted-foreground">
-                {locale === "es" ? "Sin solicitudes pendientes" : "No pending requests"}
+                {t("noPendingRequests")}
               </p>
             </div>
           ) : (
@@ -94,10 +94,10 @@ export function ManagerSwapPanel({ open, onOpenChange, locale, onCountChange }: 
                     <p className="text-[13px] font-medium">
                       {swap.initiatorName}
                       <span className="text-muted-foreground font-normal">
-                        {" "}{locale === "es" ? "→" : "→"}{" "}
+                        {" "}{"→"}{" "}
                         {swap.swap_type === "shift_swap"
-                          ? (locale === "es" ? "intercambiar con" : "swap with")
-                          : (locale === "es" ? "día libre, cubierto por" : "day off, covered by")}
+                          ? t("swapWith")
+                          : t("dayOffCoveredBy")}
                         {" "}{swap.targetName ?? "—"}
                       </span>
                     </p>
@@ -117,7 +117,7 @@ export function ManagerSwapPanel({ open, onOpenChange, locale, onCountChange }: 
                     )}
                   >
                     {isActing && actionId === swap.id ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                    {locale === "es" ? "Aprobar" : "Approve"}
+                    {t("approve")}
                   </button>
                   <button
                     onClick={() => handleReject(swap.id)}
@@ -129,7 +129,7 @@ export function ManagerSwapPanel({ open, onOpenChange, locale, onCountChange }: 
                     )}
                   >
                     {isActing && actionId === swap.id ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
-                    {locale === "es" ? "Rechazar" : "Reject"}
+                    {t("reject")}
                   </button>
                 </div>
               </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
+import { useTranslations } from "next-intl"
 import { Sparkles, Grid3X3, Bookmark, BrainCircuit, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { generateRota, getTemplates, applyTemplate } from "@/app/(clinic)/rota/actions"
@@ -22,55 +23,69 @@ interface StrategyCard {
   speedCls?: string
 }
 
-function buildMobileStrategyCards(rotaDisplayMode: string, engineConfig: EngineConfig | undefined, locale: "es" | "en"): StrategyCard[] {
+function buildMobileStrategyCards(
+  rotaDisplayMode: string,
+  engineConfig: EngineConfig | undefined,
+  tpl: string,
+  tplDesc: string,
+  blank: string,
+  blankDesc: string,
+  aiOptimal: string,
+  aiOptimalDesc: string,
+  aiOptimalDescTask: string,
+  aiHybrid: string,
+  aiHybridDesc: string,
+  speedFast: string,
+  speedSlower: string,
+): StrategyCard[] {
   const isByTask = rotaDisplayMode === "by_task"
   const cards: StrategyCard[] = []
 
   cards.push({
     key: "flexible_template",
     icon: <Bookmark className="size-5" />,
-    label: locale === "es" ? "Plantilla" : "Template",
-    desc: locale === "es" ? "Aplicar una plantilla guardada" : "Apply a saved template",
+    label: tpl,
+    desc: tplDesc,
     badgeLabel: "TPL", badgeCls: "bg-green-500/10 text-green-600 border-green-500/20",
   })
 
   cards.push({
     key: "manual",
     icon: <Grid3X3 className="size-5" />,
-    label: locale === "es" ? "Semana en blanco" : "Blank week",
-    desc: locale === "es" ? "Empezar desde cero" : "Start from scratch",
+    label: blank,
+    desc: blankDesc,
     badgeLabel: "MANUAL", badgeCls: "bg-muted text-muted-foreground border-border",
   })
 
   cards.push({
     key: "ai_optimal",
     icon: <Sparkles className="size-5" />,
-    label: locale === "es" ? "IA Óptima" : "AI Optimal",
-    desc: isByTask
-      ? (locale === "es" ? "Asignación óptima de tareas" : "Optimal task assignment")
-      : (locale === "es" ? "Genera la rota óptima con IA" : "Generate optimal rota with AI"),
+    label: aiOptimal,
+    desc: isByTask ? aiOptimalDescTask : aiOptimalDesc,
     badgeLabel: "IA", badgeCls: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-    speedLabel: locale === "es" ? "Rápido" : "Fast", speedCls: "bg-emerald-500/10 text-emerald-600",
+    speedLabel: speedFast, speedCls: "bg-emerald-500/10 text-emerald-600",
   })
 
   if (!isByTask && (engineConfig?.hybridEnabled ?? true)) {
     cards.push({
       key: "ai_hybrid",
       icon: <BrainCircuit className="size-5" />,
-      label: locale === "es" ? "IA Híbrida" : "AI Hybrid",
-      desc: locale === "es" ? "Mayor precisión, más lento" : "Higher accuracy, slower",
+      label: aiHybrid,
+      desc: aiHybridDesc,
       badgeLabel: "HYBRID", badgeCls: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-      speedLabel: locale === "es" ? "Más lento" : "Slower", speedCls: "bg-amber-500/10 text-amber-600",
+      speedLabel: speedSlower, speedCls: "bg-amber-500/10 text-amber-600",
     })
   }
 
   return cards
 }
 
-export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale, rotaDisplayMode, engineConfig }: {
-  open: boolean; onClose: () => void; weekStart: string; onRefresh: () => void; locale: "es" | "en"
+export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, rotaDisplayMode, engineConfig }: {
+  open: boolean; onClose: () => void; weekStart: string; onRefresh: () => void
   rotaDisplayMode: string; engineConfig?: EngineConfig
 }) {
+  const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const [selected, setSelected] = useState<GenStrategy | null>(null)
   const [generating, setGenerating] = useState(false)
   const [templates, setTemplates] = useState<RotaTemplate[]>([])
@@ -85,7 +100,21 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
 
   if (!open) return null
 
-  const cards = buildMobileStrategyCards(rotaDisplayMode, engineConfig, locale)
+  const cards = buildMobileStrategyCards(
+    rotaDisplayMode,
+    engineConfig,
+    t("strategyTemplate"),
+    t("strategyTemplateDesc"),
+    t("strategyBlank"),
+    t("strategyBlankDesc"),
+    t("strategyAiOptimal"),
+    t("aiOptimalDesc"),
+    t("taskOptimalDesc"),
+    t("strategyAiHybrid"),
+    t("strategyAiHybridDesc"),
+    t("speedFast"),
+    t("speedSlower"),
+  )
   const needsTemplate = selected === "flexible_template"
   const canGenerate = selected && (!needsTemplate || selectedTplId) && !generating
 
@@ -100,10 +129,10 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
       } else {
         await generateRota(weekStart, true, selected as "ai_optimal" | "ai_hybrid")
       }
-      toast.success(locale === "es" ? "Rota generada" : "Rota generated")
+      toast.success(t("rotaGenerated"))
       onRefresh(); onClose()
     } catch {
-      toast.error(locale === "es" ? "Error al generar" : "Generation failed")
+      toast.error(t("generationFailed"))
     } finally { setGenerating(false) }
   }
 
@@ -112,7 +141,7 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-background rounded-t-2xl shadow-xl px-4 pt-4 pb-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[16px] font-semibold">{locale === "es" ? "Generar semana" : "Generate week"}</span>
+          <span className="text-[16px] font-semibold">{t("generateWeek")}</span>
           <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full text-muted-foreground active:bg-accent">
             <X className="size-4" />
           </button>
@@ -150,7 +179,7 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
               <div className="h-10 rounded-lg bg-muted animate-pulse" />
             ) : templates.length === 0 ? (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
-                <p className="text-[12px] text-amber-600">{locale === "es" ? "No hay plantillas guardadas" : "No saved templates"}</p>
+                <p className="text-[12px] text-amber-600">{t("noSavedTemplates")}</p>
               </div>
             ) : (
               <select
@@ -158,7 +187,7 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
                 onChange={(e) => setSelectedTplId(e.target.value || null)}
                 className="w-full rounded-lg border border-border px-3 py-2.5 text-[14px] outline-none bg-background"
               >
-                <option value="">{locale === "es" ? "Seleccionar plantilla…" : "Select template…"}</option>
+                <option value="">{t("selectTemplatePlaceholder")}</option>
                 {templates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                 ))}
@@ -169,14 +198,14 @@ export function WeekGenerateSheet({ open, onClose, weekStart, onRefresh, locale,
 
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-border text-[14px] font-medium text-muted-foreground active:bg-accent transition-colors">
-            {locale === "es" ? "Cancelar" : "Cancel"}
+            {tc("cancel")}
           </button>
           <button
             disabled={!canGenerate}
             onClick={handleGenerate}
             className="flex-1 py-3 rounded-xl bg-primary text-white text-[14px] font-semibold active:bg-primary/90 transition-colors disabled:opacity-40"
           >
-            {generating ? (locale === "es" ? "Generando…" : "Generating…") : (locale === "es" ? "Generar" : "Generate")}
+            {generating ? t("generating") : t("generate")}
           </button>
         </div>
       </div>

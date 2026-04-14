@@ -2,7 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
-import { useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { Star, Hourglass, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -57,7 +57,7 @@ export function StaffTable({
   sortDir?: "asc" | "desc"
   onSortWithDir?: (col: "name" | "role", dir: "asc" | "desc") => void
 }) {
-  const locale = useLocale() as "es" | "en"
+  const tc = useTranslations("common")
   const allSelected = members.length > 0 && members.every((m) => selectedIds.has(m.id))
   const someSelected = members.some((m) => selectedIds.has(m.id))
   const effectiveOrder = colOrder ?? ALL_COL_ORDER
@@ -73,7 +73,7 @@ export function StaffTable({
                   roleFilter === v && "text-primary font-medium")}>
                 {roleFilter === v && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
                 {roleFilter !== v && <span className="size-1.5 shrink-0" />}
-                {v === "all" ? (locale === "es" ? "Todos" : "All") : t(`roles.${v}`)}
+                {v === "all" ? tc("all") : t(`roles.${v}`)}
               </button>
             ))}
           </>
@@ -90,7 +90,7 @@ export function StaffTable({
             <button onClick={() => { onSkillFilterChange?.("all"); close() }}
               className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors", skillFilter === "all" && "text-primary font-medium")}>
               <span className={cn("size-1.5 rounded-full shrink-0", skillFilter === "all" ? "bg-primary" : "")} />
-              {locale === "es" ? "Todas" : "All"}
+              {tc("all")}
             </button>
             {allSkillCodes.map((code) => (
               <button key={code} onClick={() => { onSkillFilterChange?.(code); close() }}
@@ -115,7 +115,7 @@ export function StaffTable({
                 className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] hover:bg-muted/50 text-left transition-colors",
                   statusFilter === v && "text-primary font-medium")}>
                 <span className={cn("size-1.5 rounded-full shrink-0", statusFilter === v ? "bg-primary" : "")} />
-                {v === "all" ? (locale === "es" ? "Todos" : "All") : t(`onboardingStatus.${v}`)}
+                {v === "all" ? tc("all") : t(`onboardingStatus.${v}`)}
               </button>
             ))}
           </>

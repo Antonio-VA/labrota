@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react"
 import { createPortal } from "react-dom"
+import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
@@ -13,6 +14,7 @@ export function addDays(date: string, n: number): string {
 }
 
 export function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string; locale: "es" | "en"; onSelect: (w: string) => void }) {
+  const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -91,7 +93,7 @@ export function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string;
                 )}
               >
                 <span>{w.label}</span>
-                {isThisWeek && <span className="text-[11px] text-primary font-medium">{locale === "es" ? "hoy" : "today"}</span>}
+                {isThisWeek && <span className="text-[11px] text-primary font-medium">{t("todayLabel")}</span>}
               </button>
             )
           })}

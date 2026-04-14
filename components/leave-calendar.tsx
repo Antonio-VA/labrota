@@ -33,6 +33,7 @@ const DAY_HEADERS_EN = ["M", "T", "W", "T", "F", "S", "S"]
 
 export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) {
   const t = useTranslations("hr")
+  const tl = useTranslations("leaves")
   const locale = useLocale() as "es" | "en"
   const today = new Date()
   const [viewYear, setViewYear] = useState(initialYear)
@@ -149,7 +150,7 @@ export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) 
 
           // Build tooltip
           const tooltip = leaveInfo
-            ? `${leaveInfo.name}\n${formatDate(leaveInfo.startDate, locale)} – ${formatDate(leaveInfo.endDate, locale)}${leaveInfo.days ? ` (${leaveInfo.days}d)` : ""}${leaveInfo.status === "pending" ? "\n⏳ " + (locale === "es" ? "Pendiente" : "Pending") : ""}`
+            ? `${leaveInfo.name}\n${formatDate(leaveInfo.startDate, locale)} – ${formatDate(leaveInfo.endDate, locale)}${leaveInfo.days ? ` (${leaveInfo.days}d)` : ""}${leaveInfo.status === "pending" ? "\n⏳ " + tl("status.pending") : ""}`
             : undefined
 
           return (

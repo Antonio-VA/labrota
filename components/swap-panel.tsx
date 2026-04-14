@@ -166,7 +166,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
           ) : swaps.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <ArrowLeftRight className="size-8 opacity-20 mb-2" />
-              <p className="text-[13px]">{locale === "es" ? "No hay solicitudes de cambio" : "No swap requests"}</p>
+              <p className="text-[13px]">{t("noSwapRequests")}</p>
             </div>
           ) : (
             <div className="flex flex-col">
@@ -185,7 +185,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
 
                 const swapLabel = swap.swap_type === "shift_swap"
                   ? `${swap.swap_shift_type} ↔ ${isInitiator ? swap.targetName : swap.initiatorName}`
-                  : `${locale === "es" ? "Libre" : "Off"} → ${isInitiator ? swap.targetName : swap.initiatorName}`
+                  : `${t("off")} → ${isInitiator ? swap.targetName : swap.initiatorName}`
 
                 const a = actioning[swap.id]
 
@@ -219,13 +219,13 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                             onClick={() => handleAction(swap.id, "approve", swap.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
                           >
-                            <Check className="size-3" /> {locale === "es" ? "Aprobar" : "Approve"}
+                            <Check className="size-3" /> {t("approve")}
                           </button>
                           <button
                             onClick={() => handleAction(swap.id, "reject", swap.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"
                           >
-                            <X className="size-3" /> {locale === "es" ? "Rechazar" : "Reject"}
+                            <X className="size-3" /> {t("reject")}
                           </button>
                           <button
                             onClick={() => {
@@ -238,7 +238,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                               window.dispatchEvent(new Event("labrota:toggle-chat"))
                             }}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium text-primary border border-primary/20 hover:bg-primary/5 transition-colors"
-                            title={locale === "es" ? "Analizar impacto con IA" : "Check impact with AI"}
+                            title={t("analyzeWithAi")}
                           >
                             <Sparkles className="size-3" />
                           </button>
@@ -252,13 +252,13 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                             onClick={() => handleAction(swap.id, "accept", swap.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
                           >
-                            <Check className="size-3" /> {locale === "es" ? "Aceptar" : "Accept"}
+                            <Check className="size-3" /> {t("accept")}
                           </button>
                           <button
                             onClick={() => handleAction(swap.id, "cancel", swap.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"
                           >
-                            <X className="size-3" /> {locale === "es" ? "Declinar" : "Decline"}
+                            <X className="size-3" /> {t("decline")}
                           </button>
                         </div>
                       )}
@@ -267,7 +267,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                       {a && (
                         <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground">
                           <Loader2 className="size-3 animate-spin" />
-                          {locale === "es" ? "Procesando..." : "Processing..."}
+                          {t("processing")}
                         </div>
                       )}
                     </div>
@@ -277,7 +277,7 @@ export function SwapBell({ large }: { large?: boolean } = {}) {
                       <button
                         onClick={() => handleAction(swap.id, "cancel", swap.id)}
                         className="shrink-0 size-6 rounded flex items-center justify-center hover:bg-muted transition-colors mt-0.5"
-                        title={locale === "es" ? "Cancelar" : "Cancel"}
+                        title={t("cancel")}
                       >
                         <X className="size-3 text-muted-foreground" />
                       </button>

@@ -71,8 +71,8 @@ export function TransposedShiftGrid({
   compact, colorChips = true, timeFormat = "24h", loading, onCellClick, onChipClick, onRefresh,
   swapStaffId, gridSetDaysRef,
 }: TransposedShiftGridProps) {
-  const t = useTranslations("schedule")
   const tc = useTranslations("common")
+  const tSwaps = useTranslations("swaps")
 
   // Loading skeleton — days as rows, shift codes as columns
   if (loading) {
@@ -421,7 +421,7 @@ export function TransposedShiftGrid({
                                 borderRadius: 4,
                                 ...(isHov && sColor ? { backgroundColor: sColor, color: "#1e293b" } : {}),
                               }}
-                              title={isViewerChip ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap") : undefined}
+                              title={isViewerChip ? tSwaps("requestShiftSwap") : undefined}
                               onMouseEnter={() => setHovered(a.staff_id)}
                               onMouseLeave={() => setHovered(null)}
                               onClick={(e) => { e.stopPropagation(); onChipClick?.({ staff_id: a.staff_id }, day.date) }}

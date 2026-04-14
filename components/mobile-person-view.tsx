@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Search, Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
@@ -21,6 +22,8 @@ interface MobilePersonViewProps {
 export function MobilePersonView({
   days, staffList, onLeaveByDate, shiftTimes, tecnicas, locale, timeFormat,
 }: MobilePersonViewProps) {
+  const t = useTranslations("schedule")
+  const tSwaps = useTranslations("swaps")
   const [search, setSearch] = useState("")
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
 
@@ -42,7 +45,7 @@ export function MobilePersonView({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={locale === "es" ? "Buscar persona..." : "Search person..."}
+              placeholder={t("searchPerson")}
               className="w-full pl-8 pr-3 h-9 rounded-lg border border-input bg-transparent text-[13px] outline-none focus:border-primary"
             />
           </div>
@@ -64,14 +67,14 @@ export function MobilePersonView({
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium truncate">{s.first_name} {s.last_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{weekCount}/{s.days_per_week} {locale === "es" ? "turnos" : "shifts"}</p>
+                    <p className="text-[11px] text-muted-foreground">{weekCount}/{s.days_per_week} {t("shifts")}</p>
                   </div>
                 </button>
               )
             })}
             {filteredStaff.length === 0 && (
               <p className="text-[13px] text-muted-foreground italic text-center py-4">
-                {locale === "es" ? "Sin resultados" : "No results"}
+                {t("noResults")}
               </p>
             )}
           </div>
@@ -88,13 +91,13 @@ export function MobilePersonView({
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-medium">{selectedStaff.first_name} {selectedStaff.last_name}</p>
-              <p className="text-[11px] text-muted-foreground">{selectedStaff.days_per_week}d/{locale === "es" ? "sem" : "wk"}</p>
+              <p className="text-[11px] text-muted-foreground">{selectedStaff.days_per_week}d/{t("weekAbbr")}</p>
             </div>
             <button
               onClick={() => setSelectedStaffId(null)}
               className="text-[12px] text-primary hover:underline shrink-0"
             >
-              {locale === "es" ? "Cambiar" : "Change"}
+              {t("change")}
             </button>
           </div>
 
@@ -124,7 +127,7 @@ export function MobilePersonView({
                   {isOnLeave ? (
                     <div className="flex items-center gap-1.5 flex-1">
                       <Palmtree className="size-3.5 text-amber-500" />
-                      <span className="text-[13px] text-amber-600">{locale === "es" ? "Ausencia" : "Leave"}</span>
+                      <span className="text-[13px] text-amber-600">{t("leaveLabel")}</span>
                     </div>
                   ) : myAssignments.length > 0 ? (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -153,9 +156,9 @@ export function MobilePersonView({
                       )}
                     </div>
                   ) : day.assignments.length > 0 ? (
-                    <span className="text-[13px] text-muted-foreground">{locale === "es" ? "Libre" : "Off"}</span>
+                    <span className="text-[13px] text-muted-foreground">{tSwaps("off")}</span>
                   ) : (
-                    <span className="text-[13px] text-muted-foreground/40 italic">{locale === "es" ? "Sin horario" : "No rota"}</span>
+                    <span className="text-[13px] text-muted-foreground/40 italic">{t("noRota")}</span>
                   )}
                 </div>
               )

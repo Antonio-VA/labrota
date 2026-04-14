@@ -200,6 +200,7 @@ export function TransposedPersonGrid({
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t = useTranslations("schedule")
+  const tSwaps = useTranslations("swaps")
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
   const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
@@ -467,7 +468,7 @@ export function TransposedPersonGrid({
                     onMouseEnter={() => setHoveredShift(cellShift)}
                     onMouseLeave={() => setHoveredShift(null)}
                     onClick={isViewerCell ? (e) => { e.stopPropagation(); onChipClick(assignment!, day.date) } : undefined}
-                    title={isViewerCell ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap") : undefined}
+                    title={isViewerCell ? tSwaps("requestShiftSwap") : undefined}
                   >
                     {isViewerCell && (
                       <span className="absolute -top-1 -right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none z-10">

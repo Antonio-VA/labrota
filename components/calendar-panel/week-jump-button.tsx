@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
@@ -12,6 +13,7 @@ export function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect 
   currentDate: string; weekStart: string; view: ViewMode; locale: string
   onSelect: (date: string) => void
 }) {
+  const t = useTranslations("schedule")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -72,7 +74,7 @@ export function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect 
                 )}
               >
                 <span>{w.label}</span>
-                {isThisWeek && <span className="text-[11px] text-muted-foreground">{locale === "es" ? "hoy" : "today"}</span>}
+                {isThisWeek && <span className="text-[11px] text-muted-foreground">{t("todayLabel")}</span>}
               </button>
             )
           })}

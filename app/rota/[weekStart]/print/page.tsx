@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic"
 
 import { notFound } from "next/navigation"
-import { getLocale } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"
 import { formatDateWithYear, formatDate } from "@/lib/format-date"
 import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL } from "@/lib/department-colors"
@@ -15,6 +15,7 @@ export default async function PrintRotaPage({
 }) {
   const { weekStart } = await params
   const locale = (await getLocale()) as "es" | "en"
+  const t = await getTranslations("schedule")
   const data = await getRotaWeek(weekStart)
 
   // Fetch org name
@@ -84,7 +85,7 @@ export default async function PrintRotaPage({
         {/* Print button */}
         <button className="print-btn" id="print-btn"
           style={{ display: "block", margin: "0 auto 20px", padding: "8px 20px", background: "#1b4f8a", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, cursor: "pointer" }}>
-          🖨 {locale === "es" ? "Imprimir / Guardar como PDF" : "Print / Save as PDF"}
+          🖨 {t("printOrSavePdf")}
         </button>
         <script dangerouslySetInnerHTML={{ __html: `document.getElementById('print-btn').onclick=function(){window.print()}` }} />
 
@@ -95,10 +96,10 @@ export default async function PrintRotaPage({
             <div style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{weekLabel}</div>
           </div>
           <div style={{ textAlign: "right", color: "#64748b", fontSize: 10, lineHeight: 1.6 }}>
-            <div>{locale === "es" ? "Generado el" : "Generated on"}: {today}</div>
+            <div>{t("generatedOn")}: {today}</div>
             {data.rota?.status === "published" && (
               <div style={{ color: "#059669", fontWeight: 600 }}>
-                ✓ {locale === "es" ? "Publicado" : "Published"}
+                ✓ {t("published")}
                 {data.rota.published_by && ` · ${data.rota.published_by}`}
               </div>
             )}

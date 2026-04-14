@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react"
 import Image from "next/image"
-import { useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -27,7 +27,8 @@ interface MobileAccountSheetProps {
 }
 
 export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
-  const locale = useLocale() as "es" | "en"
+  const t = useTranslations("account")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [avatarImgError, setAvatarImgError] = useState(false)
   const [user, setUser] = useState<{ email: string | null; fullName: string | null; avatarUrl: string | null } | null>(null)
@@ -65,7 +66,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
         document.cookie = `locale=${prefs.locale};path=/;max-age=31536000`
       }
       await saveUserPreferences(prefs)
-      toast.success(locale === "es" ? "Preferencias guardadas" : "Preferences saved")
+      toast.success(t("saved"))
       const currentLocaleCookie = document.cookie.split(";")
         .find((c) => c.trim().startsWith("locale="))?.split("=")[1] ?? "browser"
       const localeChanged = currentLocaleCookie !== (prefs.locale ?? "browser")
@@ -93,14 +94,14 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
             <X className="size-4" />
           </button>
           <span className="text-[15px] font-semibold">
-            {locale === "es" ? "Ajustes" : "Settings"}
+            {t("settings")}
           </span>
           <button
             onClick={handleSave}
             disabled={isPending || !prefs}
             className="text-[14px] font-semibold text-primary active:opacity-60 disabled:opacity-30 px-1"
           >
-            {isPending ? "…" : (locale === "es" ? "Guardar" : "Save")}
+            {isPending ? "…" : tc("save")}
           </button>
         </div>
 
@@ -138,12 +139,12 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                 {/* Appearance */}
                 <div className="px-4 pt-3 pb-2.5">
                   <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                    {locale === "es" ? "Apariencia" : "Appearance"}
+                    {t("appearance")}
                   </p>
                   <div className="flex items-center gap-1">
                     {[
-                      { key: "light" as const, icon: Sun, label: locale === "es" ? "Claro" : "Light" },
-                      { key: "dark" as const, icon: Moon, label: locale === "es" ? "Oscuro" : "Dark" },
+                      { key: "light" as const, icon: Sun, label: t("themeLight") },
+                      { key: "dark" as const, icon: Moon, label: t("themeDark") },
                       { key: "auto" as const, icon: Monitor, label: "Auto" },
                     ].map(({ key, icon: Icon, label }) => (
                       <button
@@ -165,7 +166,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                 {/* Accent color */}
                 <div className="px-4 pt-3 pb-2.5">
                   <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                    {locale === "es" ? "Color de acento" : "Accent color"}
+                    {t("accentColor")}
                   </p>
                   <div className="flex items-center gap-2 flex-wrap">
                     {ACCENT_COLORS.map((c) => (
@@ -187,11 +188,11 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                 {/* Language */}
                 <div className="px-4 pt-3 pb-2.5">
                   <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                    {locale === "es" ? "Idioma" : "Language"}
+                    {t("language")}
                   </p>
                   <div className="flex items-center gap-1">
                     {[
-                      { key: "browser" as const, label: locale === "es" ? "Navegador" : "Browser" },
+                      { key: "browser" as const, label: t("browserLocale") },
                       { key: "es" as const, label: "Español" },
                       { key: "en" as const, label: "English" },
                     ].map(({ key, label }) => (
@@ -215,7 +216,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                     <div className="h-px bg-border mx-4" />
                     <div className="px-4 pt-3 pb-2.5">
                       <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                        {locale === "es" ? "Outlook" : "Outlook Sync"}
+                        {t("outlookSyncTitle")}
                       </p>
                       {outlook.connected ? (
                         <div className="flex items-center gap-2">
@@ -223,7 +224,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                             <Cloud className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                           </div>
                           <p className="text-[12px] font-medium flex-1 min-w-0 truncate">
-                            {outlook.email ?? (locale === "es" ? "Conectado" : "Connected")}
+                            {outlook.email ?? t("connected")}
                           </p>
                           <button
                             onClick={() => {
@@ -231,7 +232,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                               startTransition(async () => {
                                 const r = await syncOutlookForStaff(outlook.staffId!)
                                 if (r.errors.length > 0) toast.error(r.errors[0])
-                                else toast.success(`${r.created + r.updated} ${locale === "es" ? "sincronizadas" : "synced"}`)
+                                else toast.success(t("leavesSynced", { count: r.created + r.updated }))
                                 getUserOutlookStatus().then(setOutlook)
                               })
                             }}
@@ -245,7 +246,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                               if (!outlook.staffId) return
                               startTransition(async () => {
                                 await disconnectOutlook(outlook.staffId!, true)
-                                toast.success(locale === "es" ? "Desconectado" : "Disconnected")
+                                toast.success(t("outlookDisconnected"))
                                 getUserOutlookStatus().then(setOutlook)
                               })
                             }}
@@ -266,7 +267,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                         >
                           <Cloud className="size-3.5 text-primary shrink-0" />
                           <p className="text-[12px] font-medium">
-                            {locale === "es" ? "Conectar Outlook" : "Connect Outlook"}
+                            {t("connectOutlook")}
                           </p>
                         </button>
                       )}
@@ -281,14 +282,14 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                   href="mailto:support@labrota.app"
                   className="flex items-center px-4 py-3.5 text-[14px] text-muted-foreground active:bg-muted border-b border-border"
                 >
-                  {locale === "es" ? "Soporte" : "Support"}
+                  {t("support")}
                 </a>
                 <button
                   onClick={signOut}
                   className="flex items-center gap-2 w-full px-4 py-3.5 text-[14px] font-medium text-destructive active:bg-destructive/5"
                 >
                   <LogOut className="size-4" />
-                  {locale === "es" ? "Cerrar sesión" : "Sign out"}
+                  {t("signOut")}
                 </button>
               </div>
 

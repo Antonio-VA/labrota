@@ -55,7 +55,7 @@ export function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onT
                 className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors"
               >
                 <Sparkles className="size-4" />
-                {locale === "es" ? "Generar rota" : "Generate rota"}
+                {t("generateRota")}
               </button>
               <div className="h-px bg-border mx-3 my-0.5" />
             </>
@@ -91,28 +91,28 @@ export function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onT
           {onToggleTaskDaysAsRows && data?.rotaDisplayMode === "by_task" && weekViewMode !== "person" && (
             <button onClick={() => { onToggleTaskDaysAsRows(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
               <Grid3X3 className="size-4 shrink-0" />
-              {locale === "es" ? "Días como filas" : "Days as rows"}
+              {t("daysAsRows")}
               {taskDaysAsRows && <Check className="size-4 text-primary ml-auto" />}
             </button>
           )}
           {onToggleViewMode && data?.rotaDisplayMode !== "by_task" && (
             <button onClick={() => { onToggleViewMode(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
               <Users className="size-4" />
-              {locale === "es" ? "Por persona" : "By person"}
+              {t("byPerson")}
               {weekViewMode === "person" && <Check className="size-4 text-primary ml-auto" />}
             </button>
           )}
           {onToggleDeptColor && (
             <button onClick={() => { onToggleDeptColor(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
               <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />
-              {locale === "es" ? "Colores personal" : "Staff colors"}
+              {t("staffColorsShort")}
               {deptColor && <Check className="size-4 text-primary ml-auto" />}
             </button>
           )}
           {onToggleHighlight && weekViewMode !== "person" && (
             <button onClick={() => { onToggleHighlight(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-[14px] text-left hover:bg-accent transition-colors">
               <span className="size-4 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />
-              {locale === "es" ? "Resaltar" : "Highlights"}
+              {t("highlights")}
               {highlightEnabled && <Check className="size-4 text-primary ml-auto" />}
             </button>
           )}

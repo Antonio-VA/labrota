@@ -96,7 +96,7 @@ export function MobileWeekClient() {
     const fav = { weekViewMode, mobileDeptColor, taskDaysAsRows }
     setWeekFavourite(fav)
     localStorage.setItem("labrota_week_favourite", JSON.stringify(fav))
-    toast.success(locale === "es" ? "Vista guardada como favorita" : "View saved as favorite")
+    toast.success(t("viewSavedFavorite"))
   }
 
   function goToFavourite() {
@@ -259,7 +259,7 @@ export function MobileWeekClient() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white text-[14px] font-semibold active:bg-primary/90 transition-colors"
             >
               <Sparkles className="size-4" />
-              {locale === "es" ? "Generar semana" : "Generate week"}
+              {t("generateWeek")}
             </button>
           </div>
         ) : (
@@ -343,7 +343,7 @@ export function MobileWeekClient() {
                                 <p className="text-[11px] opacity-70">{a.shift_type} · {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}</p>
                               </TapPopover>
                             ) : (
-                              <span className="text-[10px] font-medium text-muted-foreground/40">{locale === "es" ? "Lib" : "Off"}</span>
+                              <span className="text-[10px] font-medium text-muted-foreground/40">{t("offShort")}</span>
                             )}
                           </div>
                         )
@@ -527,7 +527,7 @@ export function MobileWeekClient() {
             {/* Off / Libres row — hidden in person view and transposed by-task mode */}
             {weekViewMode !== "person" && !(isTaskMode && taskDaysAsRows) && <div className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
               <div className="px-1 py-2 border-r border-border bg-muted sticky left-0 z-[5] flex items-center justify-end">
-                <span className="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">{locale === "es" ? "Lib" : "Off"}</span>
+                <span className="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">{t("offShort")}</span>
               </div>
               {days.map((day) => {
                 const leaveIds = new Set(data?.onLeaveByDate?.[day.date] ?? [])
@@ -551,7 +551,7 @@ export function MobileWeekClient() {
                             {s ? `${s.fn[0]}${s.ln[0]}` : "?"}
                           </span>
                         }>
-                          <p className="font-medium">{s ? `${s.fn} ${s.ln}` : (locale === "es" ? "Baja" : "On leave")}</p>
+                          <p className="font-medium">{s ? `${s.fn} ${s.ln}` : t("onLeaveShort")}</p>
                           <p className="text-[11px] opacity-70">{lType}</p>
                         </TapPopover>
                       )
@@ -600,7 +600,6 @@ export function MobileWeekClient() {
         open={generateModalOpen}
         onClose={() => setGenerateModalOpen(false)}
         weekStart={weekStart}
-        locale={locale}
         rotaDisplayMode={data?.rotaDisplayMode ?? "by_shift"}
         engineConfig={data?.engineConfig}
         onRefresh={() => {

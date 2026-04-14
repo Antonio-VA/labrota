@@ -27,7 +27,6 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
-  const locale = useLocale()
   const [selected, setSelected] = useState<GenerationStrategy | null>(null)
   const [templates, setTemplates] = useState<RotaTemplate[]>([])
   const [loadingTpl, setLoadingTpl] = useState(false)
@@ -81,9 +80,7 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   )}>
-                    {card.speed === "fast"
-                      ? (locale === "es" ? "Rápido" : "Fast")
-                      : (locale === "es" ? "Más lento" : "Slower")}
+                    {card.speed === "fast" ? t("speedFast") : t("speedSlower")}
                   </span>
                 )}
                 <div className={selected === card.key ? "text-primary" : "text-muted-foreground"}>{card.icon}</div>
@@ -135,8 +132,10 @@ export function GenerationStrategyModal({ open, weekStart, weekLabel, onClose, o
             )}>
               <span className="shrink-0">⚡</span>
               {hybridQuota.remaining === 0
-                ? (locale === "es" ? `Límite diario alcanzado (${hybridQuota.limit}/día). Vuelve mañana.` : `Daily limit reached (${hybridQuota.limit}/day). Try again tomorrow.`)
-                : (locale === "es" ? `${hybridQuota.remaining} generación${hybridQuota.remaining !== 1 ? "es" : ""} híbrida${hybridQuota.remaining !== 1 ? "s" : ""} restante${hybridQuota.remaining !== 1 ? "s" : ""} hoy` : `${hybridQuota.remaining} hybrid generation${hybridQuota.remaining !== 1 ? "s" : ""} left today`)
+                ? t("hybridDailyLimit", { limit: hybridQuota.limit })
+                : hybridQuota.remaining === 1
+                  ? t("hybridGenerationsLeft", { count: hybridQuota.remaining })
+                  : t("hybridGenerationsLeftPlural", { count: hybridQuota.remaining })
               }
             </div>
           )}
@@ -357,7 +356,6 @@ export function MultiWeekScopeDialog({ monthSummary, onClose, onSelectScope }: {
 }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
-  const locale = useLocale()
 
   const allWeekStarts: string[] = []
   for (let i = 0; i < monthSummary.days.length; i += 7) {
@@ -384,7 +382,7 @@ export function MultiWeekScopeDialog({ monthSummary, onClose, onSelectScope }: {
 
         {!hasOptions ? (
           <p className="text-[13px] text-muted-foreground">
-            {locale === "es" ? "Todas las semanas están publicadas." : "All weeks are published."}
+            {t("allWeeksPublished")}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -421,9 +419,7 @@ export function MultiWeekScopeDialog({ monthSummary, onClose, onSelectScope }: {
                 <p className="text-[12px] text-muted-foreground">
                   {nonPublished.length === allWeekStarts.length
                     ? t("weeksOverwrite")
-                    : (locale === "es"
-                      ? `${nonPublished.length} semana(s) — sobreescribirá horarios existentes`
-                      : `${nonPublished.length} week(s) — will overwrite existing rotas`)}
+                    : t("weeksWillOverwrite", { count: nonPublished.length })}
                 </p>
               </button>
             )}

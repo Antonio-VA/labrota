@@ -560,7 +560,7 @@ export function ShiftGrid({
                           } />
                           <TooltipContent side="right">
                             {isViewerChip
-                              ? (locale === "es" ? "Solicitar cambio de turno" : "Request shift swap")
+                              ? t("requestShiftSwap")
                               : `${a.staff.first_name} ${a.staff.last_name} · ${ROLE_LABEL[a.staff.role] ?? a.staff.role}${tecnica ? ` · ${tecnica.nombre_es}` : cleanFn ? ` · ${cleanFn}` : ""}${data?.trainingByStaff?.[day.date]?.[a.staff_id] ? ` · ⏳ ${data.trainingByStaff[day.date][a.staff_id]}` : cleanFn && staffSkillLevelMap[a.staff_id]?.[cleanFn] === "training" ? ` · ${t("inTraining")}` : ""}`}
                           </TooltipContent>
                         </Tooltip>

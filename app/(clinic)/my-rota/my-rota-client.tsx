@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useViewerStaffId } from "@/lib/role-context"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 import { getRotaWeek, type RotaWeekData } from "@/app/(clinic)/rota/actions"
@@ -18,6 +18,7 @@ function addDaysToDate(date: string, days: number): string {
 
 export function MyRotaClient() {
   const locale = useLocale() as "es" | "en"
+  const tMySchedule = useTranslations("mySchedule")
   const viewerStaffId = useViewerStaffId()
 
   const [currentDate, setCurrentDate] = useState(TODAY)
@@ -62,7 +63,7 @@ export function MyRotaClient() {
   if (!viewerStaffId) {
     return (
       <div className="flex items-center justify-center flex-1 md:hidden">
-        <p className="text-[14px] text-muted-foreground">{locale === "es" ? "No tienes un turno asignado" : "No shift assigned to you"}</p>
+        <p className="text-[14px] text-muted-foreground">{tMySchedule("noShiftAssigned")}</p>
       </div>
     )
   }

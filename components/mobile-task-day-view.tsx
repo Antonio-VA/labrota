@@ -2,7 +2,6 @@
 
 import { Fragment } from "react"
 import { useTranslations } from "next-intl"
-import { useLocale } from "next-intl"
 import { X, AlertTriangle, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TapPopover } from "@/components/tap-popover"
@@ -39,6 +38,7 @@ export function MobileTaskDayView({
   day, tecnicas, departments, data, staffList, isEditMode, onRemoveAssignment, onAddToTask, loading, locale,
 }: MobileTaskDayViewProps) {
   const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   // Build staff color map (individual staff colors with fallbacks)
@@ -174,7 +174,7 @@ export function MobileTaskDayView({
                   <button
                     onClick={() => onAddToTask(tec.codigo)}
                     className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md border border-dashed border-primary/30 text-primary text-[12px] font-medium active:bg-primary/10"
-                  >+ {locale === "es" ? "Añadir" : "Add"}</button>
+                  >+ {tc("add")}</button>
                 )}
               </div>
             </div>

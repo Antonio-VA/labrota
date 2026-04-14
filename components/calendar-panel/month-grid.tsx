@@ -118,7 +118,7 @@ export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, 
 
                 const deptParts: string[] = []
                 if (day.labCount > 0) deptParts.push(`Lab ${day.labCount}`)
-                if (day.andrologyCount > 0) deptParts.push(`${locale === "es" ? "Andr" : "Andr"} ${day.andrologyCount}`)
+                if (day.andrologyCount > 0) deptParts.push(`Andr ${day.andrologyCount}`)
                 if (day.adminCount > 0) deptParts.push(`Admin ${day.adminCount}`)
                 // PB Index — b/pu ratio vs expected conversion rate, shown as colored indicator
                 const tooltipPb = (() => {
@@ -142,13 +142,13 @@ export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, 
                   return { indexPct, color }
                 })()
                 const tooltipParts: string[] = []
-                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${locale === "es" ? "personas" : "staff"}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
-                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${locale === "es" ? "ausencias" : "absences"}`)
+                if (day.staffCount > 0) tooltipParts.push(`${day.staffCount} ${t("people")}${deptParts.length ? " · " + deptParts.join(" · ") : ""}`)
+                if (day.leaveCount > 0) tooltipParts.push(`${day.leaveCount} ${t("absences")}`)
                 if (day.hasSkillGaps) {
                   if ((day.warningMessages?.length ?? 0) > 0) {
                     tooltipParts.push(...day.warningMessages)
                   } else {
-                    tooltipParts.push(locale === "es" ? "Tareas sin cobertura" : "Uncovered tasks")
+                    tooltipParts.push(t("uncoveredTasks"))
                   }
                 }
                 if (day.holidayName) tooltipParts.push(day.holidayName)
@@ -277,7 +277,7 @@ export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, 
                             onBiopsyChange={onBiopsyChange}
                             disabled={!onPunctionsChange}
                             biopsyForecast={bForecast}
-                            biopsyTooltip={locale === "es" ? `${bForecast} biopsias previstas` : `${bForecast} biopsy forecast`}
+                            biopsyTooltip={t("biopsyForecastTooltip", { count: bForecast })}
                           />
                           {day.leaveCount > 0 && (
                             <span className="flex items-center gap-0.5 text-amber-500 ml-auto self-end pb-0.5">

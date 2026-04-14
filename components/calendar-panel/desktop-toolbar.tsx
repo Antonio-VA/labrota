@@ -220,7 +220,7 @@ export function DesktopToolbar(props: DesktopToolbarProps) {
               showSaved ? "opacity-100" : "opacity-0 pointer-events-none"
             )}>
               <Check className="size-3 text-emerald-500" />
-              {locale === "es" ? "Guardado" : "Saved"}
+              {t("saved")}
             </span>
             <Tooltip>
               <TooltipTrigger render={
@@ -298,7 +298,7 @@ function buildOverflowItems(ctx: {
 }): MenuItem[] {
   const {
     canEdit, isDraft, isPublished, hasAssignments, hasNotifications, view, isPending,
-    anyMonthWeekPublished, locale,
+    anyMonthWeekPublished,
     onPublish, onUnlock, onExportPdf, onExportExcel,
     onSaveTemplate, onApplyTemplate,
     daysAsRows, toggleDaysAsRows, compact, setCompact, personSimplified, togglePersonSimplified,
@@ -327,7 +327,7 @@ function buildOverflowItems(ctx: {
       label: t("exportPdf"),
       icon: <FileText className="size-3.5" />,
       dividerBefore: true,
-      sectionLabel: locale === "es" ? "Exportar" : "Export",
+      sectionLabel: t("exportSection"),
       onClick: onExportPdf,
     }, {
       label: t("exportExcel"),
@@ -340,7 +340,7 @@ function buildOverflowItems(ctx: {
       icon: <BookmarkPlus className="size-3.5" />,
       onClick: onSaveTemplate,
       dividerBefore: true,
-      sectionLabel: locale === "es" ? "Plantillas" : "Templates",
+      sectionLabel: t("templatesSection"),
     }, ...(!isPublished ? [{
       label: t("applyTemplate"),
       icon: <BookmarkCheck className="size-3.5" />,
@@ -350,7 +350,7 @@ function buildOverflowItems(ctx: {
       icon: <BookmarkCheck className="size-3.5" />,
       onClick: onApplyTemplate,
       dividerBefore: true,
-      sectionLabel: locale === "es" ? "Plantillas" : "Templates",
+      sectionLabel: t("templatesSection"),
     }] : []),
     // ── View options ──
     ...((view === "week" || (view === "month" && calendarLayout === "person")) ? [
@@ -360,7 +360,7 @@ function buildOverflowItems(ctx: {
         onClick: toggleDaysAsRows,
         active: daysAsRows,
         dividerBefore: true,
-        sectionLabel: locale === "es" ? "Personalización" : "View",
+        sectionLabel: t("viewSection"),
       }] : []),
       ...(!(view === "month" && calendarLayout === "person") ? [{
         label: t("compactView"),
@@ -368,7 +368,7 @@ function buildOverflowItems(ctx: {
         onClick: () => setCompact((c) => !c),
         active: compact,
       }, {
-        label: locale === "es" ? "Vista simplificada" : "Simplified view",
+        label: t("simplifiedView"),
         icon: <LayoutList className="size-3.5" />,
         onClick: togglePersonSimplified,
         active: personSimplified,
@@ -378,7 +378,7 @@ function buildOverflowItems(ctx: {
         icon: <span className="size-3.5 rounded-full bg-gradient-to-br from-amber-400 via-blue-400 to-emerald-400 shrink-0" />,
         onClick: toggleColorChips,
         active: colorChips,
-        ...(view === "month" && calendarLayout === "person" ? { dividerBefore: true, sectionLabel: locale === "es" ? "Personalización" : "View" } : {}),
+        ...(view === "month" && calendarLayout === "person" ? { dividerBefore: true, sectionLabel: t("viewSection") } : {}),
       }, {
         label: t("highlightPerson"),
         icon: <span className="size-3.5 rounded-sm shrink-0" style={{ backgroundColor: "#FDE047" }} />,

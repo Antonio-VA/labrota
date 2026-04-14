@@ -338,8 +338,8 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
         allColumns={ALL_COLUMNS}
         saveLabel={tc("save")}
         cancelLabel={tc("cancel")}
-        title={locale === "es" ? "Columnas" : "Columns"}
-        subtitle={locale === "es" ? "Arrastra para reordenar" : "Drag to reorder"}
+        title={t("columnsTitle")}
+        subtitle={t("dragToReorder")}
       />
     </div>
   )

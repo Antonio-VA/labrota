@@ -202,19 +202,13 @@ export function LeaveForm({
           )}
           <span>
             {previewLoading
-              ? (locale === "es" ? "Comprobando saldo…" : "Checking balance…")
+              ? t("checkingBalance")
               : balancePreview?.blocked
-                ? (locale === "es"
-                    ? `Saldo insuficiente: ${balancePreview.available}d disponibles, ${balancePreview.daysCounted}d solicitados`
-                    : `Insufficient balance: ${balancePreview.available}d available, ${balancePreview.daysCounted}d requested`)
+                ? t("insufficientBalance", { available: balancePreview.available, daysCounted: balancePreview.daysCounted })
                 : balancePreview?.overflow?.needed
-                  ? (locale === "es"
-                      ? `${balancePreview.overflow.mainDays}d de ${balancePreview.leaveTypeName ?? leaveType} + ${balancePreview.overflow.overflowDays}d de ${balancePreview.overflow.overflowTypeName}`
-                      : `${balancePreview.overflow.mainDays}d from ${balancePreview.leaveTypeName ?? leaveType} + ${balancePreview.overflow.overflowDays}d from ${balancePreview.overflow.overflowTypeName}`)
+                  ? t("overflowBalance", { mainDays: balancePreview.overflow.mainDays, mainType: balancePreview.leaveTypeName ?? leaveType, overflowDays: balancePreview.overflow.overflowDays, overflowType: balancePreview.overflow.overflowTypeName ?? "" })
                   : balancePreview?.found
-                    ? (locale === "es"
-                        ? `${balancePreview.daysCounted}d solicitados · ${balancePreview.available - balancePreview.daysCounted}d restantes`
-                        : `${balancePreview.daysCounted}d requested · ${balancePreview.available - balancePreview.daysCounted}d remaining`)
+                    ? t("balanceRequested", { daysCounted: balancePreview.daysCounted, remaining: balancePreview.available - balancePreview.daysCounted })
                     : null
             }
           </span>
@@ -240,7 +234,7 @@ export function LeaveForm({
       {useRequestFlow && (
         <div className="flex flex-col gap-1.5">
           <label className="text-[14px] font-medium">
-            {locale === "es" ? "Adjunto" : "Attachment"}
+            {t("attachment")}
             <span className="ml-1 text-[12px] font-normal text-muted-foreground">({tc("optional")})</span>
           </label>
           {attachmentFile ? (
@@ -255,7 +249,7 @@ export function LeaveForm({
             <label className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors">
               <Paperclip className="size-3.5 text-muted-foreground shrink-0" />
               <span className="text-[13px] text-muted-foreground">
-                {locale === "es" ? "PDF, imagen u otro archivo (máx. 10 MB)" : "PDF, image or other file (max 10 MB)"}
+                {t("attachmentHint")}
               </span>
               <input
                 type="file"
@@ -264,7 +258,7 @@ export function LeaveForm({
                 onChange={(e) => {
                   const f = e.target.files?.[0]
                   if (!f) return
-                  if (f.size > 10 * 1024 * 1024) { toast.error(locale === "es" ? "El archivo supera los 10 MB" : "File exceeds 10 MB"); return }
+                  if (f.size > 10 * 1024 * 1024) { toast.error(t("fileExceedsLimit")); return }
                   setAttachmentFile(f)
                 }}
               />

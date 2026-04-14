@@ -373,7 +373,7 @@ export function PersonGrid({
             >
               <span className="size-1.5 rounded-full bg-slate-400 shrink-0" />
               <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                {locale === "es" ? "Todo el equipo" : "Whole team"}
+                {t("wholeTeam")}
               </span>
             </div>
             <div className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center", compact ? "px-1.5 min-h-[28px]" : "px-2 min-h-[36px]")}>
@@ -537,7 +537,7 @@ export function PersonGrid({
                                 </div>
                               } />
                               <TooltipContent side="right">
-                                {locale === "es" ? "Solicitar cambio de turno" : "Request shift swap"}
+                                {t("requestShiftSwap")}
                               </TooltipContent>
                             </Tooltip>
                           ) : taskOff ? (

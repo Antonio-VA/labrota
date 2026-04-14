@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { RefreshCw, Info } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -24,7 +24,7 @@ export function StaffKpis({
   maxStaff: number
   t: (key: string, values?: Record<string, unknown>) => string
 }) {
-  const locale = useLocale() as "es" | "en"
+  const ts = useTranslations("staff")
 
   const [headcount, setHeadcount] = useState<HeadcountResult | null>(null)
   const [headcountLoading, setHeadcountLoading] = useState(false)
@@ -62,7 +62,7 @@ export function StaffKpis({
     if (res.data) {
       setHeadcount(res.data)
       localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
-      toast.success(locale === "es" ? "Plantilla óptima recalculada" : "Optimal headcount recalculated")
+      toast.success(ts("recalculated"))
     } else {
       toast.error(res.error ?? "Error")
     }
@@ -113,7 +113,7 @@ export function StaffKpis({
           <div ref={headcountRef} className="relative rounded-xl border border-border/60 bg-background px-4 py-3">
             <div className="flex items-center gap-1.5">
               <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wide">
-                {t("kpiOptimalHeadcount")} <span className="normal-case font-normal">({locale === "es" ? "recomendado" : "recommended"})</span>
+                {t("kpiOptimalHeadcount")} <span className="normal-case font-normal">({ts("recommended")})</span>
               </p>
               <button
                 onClick={() => setHeadcountOpen(!headcountOpen)}
@@ -162,7 +162,7 @@ export function StaffKpis({
                   className="flex items-center gap-1.5 text-[12px] text-primary hover:underline self-end disabled:opacity-50"
                 >
                   <RefreshCw className={cn("size-3", headcountLoading && "animate-spin")} />
-                  {locale === "es" ? "Recalcular" : "Recalculate"}
+                  {ts("recalculate")}
                 </button>
               </div>
             )}
@@ -197,10 +197,10 @@ export function StaffKpis({
         <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 mb-1">
           <span className="text-destructive mt-0.5">⚠</span>
           <p className="text-[13px] text-destructive leading-snug">
-            {locale === "es"
-              ? <>Has superado el límite contratado de <strong>{maxStaff}</strong> miembros activos. Contacta con <strong>info@labrota.app</strong> para ampliar tu suscripción.</>
-              : <>You have exceeded your contracted limit of <strong>{maxStaff}</strong> active staff members. Contact <strong>info@labrota.app</strong> to upgrade your subscription.</>
-            }
+            {ts.rich("overLimitMessage", {
+              maxStaff,
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
       )}

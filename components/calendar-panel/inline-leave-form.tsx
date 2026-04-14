@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { useLocale } from "next-intl"
 import { toast } from "sonner"
 import { AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,7 +12,6 @@ export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId
   const t = useTranslations("schedule")
   const tl = useTranslations("leaves")
   const tc = useTranslations("common")
-  const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()
   const [type, setType] = useState("annual")
   const [startDate, setStartDate] = useState("")
@@ -101,11 +99,11 @@ export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId
           }
           <span>
             {balancePreview.blocked
-              ? (locale === "es" ? `Saldo insuf.: ${balancePreview.available}d disp., ${balancePreview.daysCounted}d sol.` : `Low balance: ${balancePreview.available}d avail., ${balancePreview.daysCounted}d req.`)
+              ? t("lowBalanceWarning", { available: balancePreview.available, daysCounted: balancePreview.daysCounted })
               : balancePreview.overflow?.needed
                 ? `${balancePreview.overflow.mainDays}d + ${balancePreview.overflow.overflowDays}d ${balancePreview.overflow.overflowTypeName ?? ""}`
                 : balancePreview.found
-                  ? (locale === "es" ? `${balancePreview.daysCounted}d · ${balancePreview.available - balancePreview.daysCounted}d restantes` : `${balancePreview.daysCounted}d · ${balancePreview.available - balancePreview.daysCounted}d left`)
+                  ? t("balanceRemaining", { daysCounted: balancePreview.daysCounted, remaining: balancePreview.available - balancePreview.daysCounted })
                   : null
             }
           </span>

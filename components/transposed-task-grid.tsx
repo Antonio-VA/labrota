@@ -245,7 +245,7 @@ export function TransposedTaskGrid({
   biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
   onRemoveAssignment, onChipClick, onDateClick,
 }: TransposedTaskGridProps) {
-  const tc = useTranslations("common")
+  const t = useTranslations("schedule")
   // Subscribe to staff hover context at parent level — ensures all TechDayCell props update on hover
   const { hoveredStaffId, setHovered } = useStaffHover()
 
@@ -365,10 +365,10 @@ export function TransposedTaskGrid({
         <div className="flex flex-col items-center gap-3 text-center">
           <CalendarDays className="size-10 text-muted-foreground/40" />
           <p className="text-[16px] font-medium text-muted-foreground">
-            {locale === "es" ? "No hay horario para esta semana" : "No schedule for this week"}
+            {t("noRota")}
           </p>
           <p className="text-[14px] text-muted-foreground/60">
-            {locale === "es" ? "Genera un horario para ver las asignaciones de tareas" : "Generate a schedule to see task assignments"}
+            {t("generateToSeeAssignments")}
           </p>
         </div>
       </div>
@@ -448,7 +448,7 @@ export function TransposedTaskGrid({
                           onChange={onPunctionsChange ?? (() => {})}
                           disabled={!onPunctionsChange}
                           biopsyForecast={stats.bForecast}
-                          biopsyTooltip={locale === "es" ? `${stats.bForecast} biopsias previstas` : `${stats.bForecast} biopsy forecast`}
+                          biopsyTooltip={t("biopsyForecastTooltip", { count: stats.bForecast })}
                           compact
                         />
                       </div>

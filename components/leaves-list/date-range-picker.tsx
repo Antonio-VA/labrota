@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +38,7 @@ export function DateRangePicker({
   locale: "es" | "en"
   label: string
 }) {
+  const t = useTranslations("leaves")
   const [isOpen, setIsOpen] = useState(false)
   const [selecting, setSelecting] = useState<"start" | "end">("start")
   const [tempStart, setTempStart] = useState<string | null>(startDate)
@@ -120,7 +122,7 @@ export function DateRangePicker({
             ? `${fmtDisplay(startDate)} — ${fmtDisplay(endDate)}`
             : startDate
               ? fmtDisplay(startDate)
-              : locale === "es" ? "Seleccionar fechas" : "Select dates"}
+              : t("selectDates")}
         </span>
       </button>
 
@@ -131,8 +133,8 @@ export function DateRangePicker({
               {/* Selection hint */}
               <p className="text-[12px] text-muted-foreground text-center mb-2">
                 {selecting === "start"
-                  ? (locale === "es" ? "Selecciona fecha de inicio" : "Select start date")
-                  : (locale === "es" ? "Selecciona fecha de fin" : "Select end date")}
+                  ? t("selectStartDate")
+                  : t("selectEndDate")}
               </p>
 
               {/* Month nav */}

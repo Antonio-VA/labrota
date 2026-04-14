@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl"
 import { ArrowLeftRight, Check, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
-import { Badge } from "@/components/ui/badge"
 import type { SwapRequestWithNames } from "@/app/(clinic)/swaps/actions"
 
 interface SwapRequestsListProps {
@@ -98,7 +97,7 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
               <p className="text-[13px] font-medium truncate">
                 {swap.swap_type === "shift_swap"
                   ? `${swap.swap_shift_type} ↔ ${otherName ?? "—"}`
-                  : `${locale === "es" ? "Libre" : "Off"} → ${otherName ?? "—"}`}
+                  : `${t("off")} → ${otherName ?? "—"}`}
               </p>
               <p className="text-[11px] text-muted-foreground">{formatDate(swap.swap_date, locale)}</p>
             </div>
@@ -121,7 +120,7 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
                 onClick={() => handleCancel(swap.id)}
                 disabled={cancelling}
                 className="shrink-0 size-6 rounded flex items-center justify-center hover:bg-muted transition-colors"
-                title={locale === "es" ? "Cancelar" : "Cancel"}
+                title={t("cancel")}
               >
                 {cancelling ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3 text-muted-foreground" />}
               </button>

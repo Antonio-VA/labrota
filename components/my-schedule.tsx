@@ -176,7 +176,7 @@ export function MySchedule({
               className="flex items-center gap-2 w-full px-3 py-2 text-[13px] font-medium text-foreground hover:bg-muted active:bg-accent transition-colors"
             >
               <ArrowLeftRight className="size-3.5" />
-              {locale === "es" ? "Solicitar cambio" : "Request swap"}
+              {t("requestSwap")}
             </button>
           </div>
         )}
@@ -213,7 +213,7 @@ export function MySchedule({
         <div className="flex-1" />
         {staffFirstName && (
           <span className="text-[13px] text-muted-foreground truncate">
-            {locale === "es" ? `Turnos de ${staffFirstName}` : `${staffFirstName}'s shifts`}
+            {t("staffShiftsLabel", { name: staffFirstName })}
           </span>
         )}
         {weekData && !loading && (
@@ -226,7 +226,7 @@ export function MySchedule({
               })
             }}
             className="shrink-0 size-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:bg-accent transition-colors"
-            title={locale === "es" ? "Descargar PDF" : "Download PDF"}
+            title={t("downloadPdf")}
           >
             <FileDown className="size-4" />
           </button>
@@ -410,13 +410,13 @@ export function MySchedule({
               className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
             >
               <ChevronLeft className="size-4" />
-              {locale === "es" ? "Semana anterior" : "Previous week"}
+              {t("previousWeek")}
             </button>
             <button
               onClick={() => onWeekChange(1)}
               className="flex items-center gap-1 text-[13px] font-medium text-primary px-3 py-2 rounded-lg active:bg-primary/10 transition-colors"
             >
-              {locale === "es" ? "Semana siguiente" : "Next week"}
+              {t("nextWeek")}
               <ChevronRight className="size-4" />
             </button>
           </div>

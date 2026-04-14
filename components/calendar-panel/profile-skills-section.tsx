@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { Hourglass } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { bulkAddSkill, bulkRemoveSkill } from "@/app/(clinic)/staff/actions"
@@ -19,8 +19,8 @@ export function ProfileSkillsSection({
   dirtyRef?: React.MutableRefObject<boolean>
 }) {
   const t = useTranslations("schedule")
+  const tc = useTranslations("common")
   const ts = useTranslations("skills")
-  const locale = useLocale()
   const [saving, setSaving] = useState(false)
 
   const allSkills = useMemo(() => {
@@ -97,9 +97,7 @@ export function ProfileSkillsSection({
                 type="button"
                 disabled={saving || !canEdit}
                 onClick={() => cycleLevel(skill)}
-                title={canEdit ? (locale === "es"
-                  ? `${skillLabel(skill)} — clic para cambiar (${level === "off" ? "desactivado" : level === "training" ? "en formación" : "certificado"})`
-                  : `${skillLabel(skill)} — click to cycle (${level})`) : skillLabel(skill)}
+                title={skillLabel(skill)}
                 className={cn(
                   "inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors",
                   level === "certified" && "bg-blue-50 border-blue-200 text-blue-700",
@@ -120,7 +118,7 @@ export function ProfileSkillsSection({
 
       {canEdit && allSkills.length > 0 && (
         <p className="mt-1.5 text-[10px] text-muted-foreground/70 italic">
-          {locale === "es" ? "Clic para alternar: desactivado → formación → certificado" : "Click to cycle: off → training → certified"}
+          {t("skillCycleHint")}
         </p>
       )}
 
@@ -131,14 +129,14 @@ export function ProfileSkillsSection({
             disabled={saving}
             className="text-[12px] font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 px-3 py-1.5 rounded-md transition-colors"
           >
-            {saving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar cambios" : "Save changes")}
+            {saving ? tc("saving") : t("saveChanges")}
           </button>
           <button
             onClick={() => setLevels(initialLevels)}
             disabled={saving}
             className="text-[12px] font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-50"
           >
-            {locale === "es" ? "Cancelar" : "Cancel"}
+            {tc("cancel")}
           </button>
         </div>
       )}

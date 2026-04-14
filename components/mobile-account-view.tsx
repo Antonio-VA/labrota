@@ -2,9 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { useLocale } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -26,7 +24,8 @@ interface MobileAccountViewProps {
 }
 
 export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }: MobileAccountViewProps) {
-  const locale = useLocale() as "es" | "en"
+  const t = useTranslations("account")
+  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [avatarImgError, setAvatarImgError] = useState(false)
   const [prefs, setPrefs] = useState<UserPreferences>({
@@ -55,7 +54,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
       }
 
       await saveUserPreferences(prefs)
-      toast.success(locale === "es" ? "Preferencias guardadas" : "Preferences saved")
+      toast.success(t("saved"))
 
       // Reload if locale changed (next-intl needs a fresh page)
       const currentLocaleCookie = document.cookie.split(";")
@@ -93,12 +92,12 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
       {/* Theme */}
           <div className="rounded-xl border border-border bg-background">
             <p className="px-4 pt-3 pb-1 text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
-              {locale === "es" ? "Apariencia" : "Appearance"}
+              {t("appearance")}
             </p>
             <div className="flex items-center gap-1 px-3 pb-3">
               {[
-                { key: "light" as const, icon: Sun, label: locale === "es" ? "Claro" : "Light" },
-                { key: "dark"  as const, icon: Moon, label: locale === "es" ? "Oscuro" : "Dark" },
+                { key: "light" as const, icon: Sun, label: t("themeLight") },
+                { key: "dark"  as const, icon: Moon, label: t("themeDark") },
                 { key: "auto"  as const, icon: Monitor, label: "Auto" },
               ].map(({ key, icon: Icon, label }) => (
                 <button
@@ -119,7 +118,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
           {/* Accent color */}
           <div className="rounded-xl border border-border bg-background px-4 py-3">
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-              {locale === "es" ? "Color de acento" : "Accent color"}
+              {t("accentColor")}
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               {ACCENT_COLORS.map((c) => (
@@ -139,11 +138,11 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
           {/* Language */}
           <div className="rounded-xl border border-border bg-background px-4 py-3">
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-              {locale === "es" ? "Idioma" : "Language"}
+              {t("language")}
             </p>
             <div className="flex items-center gap-1">
               {[
-                { key: "browser" as const, label: locale === "es" ? "Navegador" : "Browser" },
+                { key: "browser" as const, label: t("browserLocale") },
                 { key: "es"      as const, label: "Español" },
                 { key: "en"      as const, label: "English" },
               ].map(({ key, label }) => (
@@ -165,7 +164,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
           {outlook.available && (
             <div className="rounded-xl border border-border bg-background px-4 py-3">
               <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                {locale === "es" ? "Sincronización Outlook" : "Outlook Sync"}
+                {t("outlookSync")}
               </p>
               {outlook.connected ? (
                 <div className="flex items-center gap-3">
@@ -173,7 +172,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
                     <Cloud className="size-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium">{locale === "es" ? "Conectado" : "Connected"}</p>
+                    <p className="text-[13px] font-medium">{t("connected")}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{outlook.email}</p>
                   </div>
                   <button
@@ -182,7 +181,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
                       startTransition(async () => {
                         const r = await syncOutlookForStaff(outlook.staffId!)
                         if (r.errors.length > 0) toast.error(r.errors[0])
-                        else toast.success(locale === "es" ? `${r.created + r.updated} ausencias sincronizadas` : `${r.created + r.updated} leaves synced`)
+                        else toast.success(t("leavesSynced", { count: r.created + r.updated }))
                         getUserOutlookStatus().then(setOutlook)
                       })
                     }}
@@ -196,7 +195,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
                       if (!outlook.staffId) return
                       startTransition(async () => {
                         await disconnectOutlook(outlook.staffId!, true)
-                        toast.success(locale === "es" ? "Outlook desconectado" : "Outlook disconnected")
+                        toast.success(t("outlookDisconnected"))
                         getUserOutlookStatus().then(setOutlook)
                       })
                     }}
@@ -217,8 +216,8 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
                 >
                   <Cloud className="size-4 text-primary shrink-0" />
                   <div className="text-left">
-                    <p className="text-[13px] font-medium">{locale === "es" ? "Conectar Outlook" : "Connect Outlook"}</p>
-                    <p className="text-[11px] text-muted-foreground">{locale === "es" ? "Sincroniza ausencias automáticamente" : "Auto-sync your out-of-office events"}</p>
+                    <p className="text-[13px] font-medium">{t("connectOutlook")}</p>
+                    <p className="text-[11px] text-muted-foreground">{t("outlookSyncDesc")}</p>
                   </div>
                 </button>
               )}
@@ -231,7 +230,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
             disabled={isPending}
             className="py-3 rounded-xl bg-primary text-primary-foreground text-[14px] font-semibold active:opacity-80 disabled:opacity-50 transition-opacity"
           >
-            {isPending ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Guardar" : "Save")}
+            {isPending ? tc("saving") : tc("save")}
           </button>
 
       {/* Support */}
@@ -239,7 +238,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
         href="mailto:support@labrota.app"
         className="flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-muted-foreground active:bg-muted transition-colors"
       >
-        <span className="text-[14px] font-medium">{locale === "es" ? "Soporte" : "Support"}</span>
+        <span className="text-[14px] font-medium">{t("support")}</span>
       </a>
 
       {/* Sign out */}
@@ -248,7 +247,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
         className="flex items-center justify-center gap-2 py-3 rounded-xl border border-destructive/20 text-destructive active:bg-destructive/5 transition-colors"
       >
         <LogOut className="size-4" />
-        <span className="text-[14px] font-medium">{locale === "es" ? "Cerrar sesión" : "Sign out"}</span>
+        <span className="text-[14px] font-medium">{t("signOut")}</span>
       </button>
     </div>
   )

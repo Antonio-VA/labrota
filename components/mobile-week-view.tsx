@@ -45,7 +45,7 @@ export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null;
       <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
         <RotateCcw className="size-4 text-muted-foreground shrink-0" />
         <p className="text-[12px] text-muted-foreground">
-          {locale === "es" ? "Gira tu dispositivo para ver mejor la semana completa" : "Rotate your device for a better view of the full week"}
+          {t("rotateDevice")}
         </p>
       </div>
 

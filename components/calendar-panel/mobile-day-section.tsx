@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef } from "react"
+import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight, AlertTriangle, Check, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -106,7 +107,7 @@ export function MobileDaySection({
                 {tc("cancel")}
               </button>
               <Button size="sm" variant="secondary" onClick={() => { setMobileEditMode(false); setPreEditSnapshot(null) }} className="h-10 px-5 text-[14px]">
-                {locale === "es" ? "Listo" : "Done"}
+                {t("done")}
               </Button>
             </div>
           </div>
@@ -155,7 +156,7 @@ export function MobileDaySection({
                 onGenerateDay={currentDayData ? async () => {
                   const result = await regenerateDay(weekStart, currentDate)
                   if (result.error) toast.error(result.error)
-                  else { toast.success(locale === "es" ? "Día regenerado" : "Day regenerated"); fetchWeekSilent(weekStart) }
+                  else { toast.success(t("regenerateDay")); fetchWeekSilent(weekStart) }
                 } : undefined}
                 onShare={undefined}
                 isPending={isPending}
@@ -289,6 +290,7 @@ export function MobileDaySection({
 
 function MobileDayWarnings({ day, locale, onClose }: { day: RotaDay; locale: string; onClose: () => void }) {
   const { createPortal } = require("react-dom")
+  const t = useTranslations("schedule")
   return createPortal(
     <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
@@ -302,7 +304,7 @@ function MobileDayWarnings({ day, locale, onClose }: { day: RotaDay; locale: str
         {day.skillGaps.length === 0 && day.warnings.length === 0 ? (
           <div className="flex items-center gap-2 py-3">
             <Check className="size-5 text-emerald-500 shrink-0" />
-            <span className="text-[14px] text-emerald-600">{locale === "es" ? "Sin alertas para este día" : "No issues for this day"}</span>
+            <span className="text-[14px] text-emerald-600">{t("noIssuesThisWeek")}</span>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -310,7 +312,7 @@ function MobileDayWarnings({ day, locale, onClose }: { day: RotaDay; locale: str
               <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
                 <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[12px] font-medium text-red-700">{locale === "es" ? "Habilidad sin cubrir" : "Uncovered skill"}</p>
+                  <p className="text-[12px] font-medium text-red-700">{t("uncoveredSkill")}</p>
                   <p className="text-[13px] text-red-600">{gap}</p>
                 </div>
               </div>
@@ -319,7 +321,7 @@ function MobileDayWarnings({ day, locale, onClose }: { day: RotaDay; locale: str
               <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
                 <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[12px] font-medium text-amber-700">{w.category === "coverage" ? (locale === "es" ? "Cobertura" : "Coverage") : w.category === "skill_gap" ? (locale === "es" ? "Habilidad" : "Skill") : (locale === "es" ? "Aviso" : "Warning")}</p>
+                  <p className="text-[12px] font-medium text-amber-700">{w.category === "coverage" ? t("warningCoverage") : w.category === "skill_gap" ? t("warningSkillGap") : t("warnings")}</p>
                   <p className="text-[13px] text-amber-600">{w.message}</p>
                 </div>
               </div>
