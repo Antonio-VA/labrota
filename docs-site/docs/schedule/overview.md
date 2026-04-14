@@ -21,7 +21,7 @@ Switch between views using the toolbar at the top:
 How the grid is organised depends on the display mode configured for your lab.
 
 <Tabs groupId="display-mode">
-  <TabItem value="by-shift" label="By Shift">
+<TabItem value="by-shift" label="By Shift">
 
 The grid has **shift rows** on the left and day columns across the top. Each cell shows which staff members are assigned to that shift on that day.
 
@@ -40,8 +40,8 @@ A coloured dot on a chip means the staff member has a technique assignment withi
 
 Drag a staff chip between shift rows to move someone to a different shift on the same day.
 
-  </TabItem>
-  <TabItem value="by-task" label="By Task">
+</TabItem>
+<TabItem value="by-task" label="By Task">
 
 The grid has **IVF technique rows** on the left and day columns across the top. Each row corresponds to one procedure or technique performed in the lab (e.g. ICSI, FIV, Biopsia, Vitrificación).
 
@@ -61,7 +61,7 @@ Only staff with the matching skill certification appear in a technique row. Unas
 
 Drag a staff chip between technique rows to reassign them to a different procedure on the same day.
 
-  </TabItem>
+</TabItem>
 </Tabs>
 
 ## Navigating weeks

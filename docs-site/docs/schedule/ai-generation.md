@@ -22,7 +22,7 @@ If a rota already exists for the week, generating again will replace it.
 The AI engine works differently depending on your lab's display mode.
 
 <Tabs groupId="display-mode">
-  <TabItem value="by-shift" label="By Shift">
+<TabItem value="by-shift" label="By Shift">
 
 The engine fills each **shift** with the right number of staff for each day, then respects:
 
@@ -34,8 +34,8 @@ The engine fills each **shift** with the right number of staff for each day, the
 
 The **punctions** (egg retrievals) forecast drives headcount targets — higher punction days get more staff assigned.
 
-  </TabItem>
-  <TabItem value="by-task" label="By Task">
+</TabItem>
+<TabItem value="by-task" label="By Task">
 
 The engine fills each **technique row** with certified staff, then respects:
 
@@ -47,7 +47,7 @@ The engine fills each **technique row** with certified staff, then respects:
 
 The **punctions** (egg retrievals) and **biopsies** forecast drives how many staff are needed in each technique row per day.
 
-  </TabItem>
+</TabItem>
 </Tabs>
 
 ## Generation strategies
