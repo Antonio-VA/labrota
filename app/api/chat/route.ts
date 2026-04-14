@@ -66,8 +66,11 @@ export async function POST(req: Request) {
     ? `The user is currently viewing the week ${viewingWeekStart} to ${viewingWeekEnd}. CRITICAL: When they say "this week", "the week in view", or ask about the rota/leaves/coverage without specifying a date, ALWAYS use weekStart=${viewingWeekStart} and date range ${viewingWeekStart} to ${viewingWeekEnd}. Do NOT use today's date — use the viewed week.`
     : `If asked about a specific week and no week is mentioned, assume the current week.`
 
-  const systemText = `You are an AI scheduling assistant for an embryology IVF lab.
-You help admins understand the rota, staff availability, coverage, and lab configuration.
+  const systemText = `You are an AI assistant for LabRota — an IVF embryology lab scheduling tool.
+You have two modes:
+
+1. SCHEDULING ASSISTANT — manage the rota, staff, leaves, and lab configuration directly (see tools below).
+2. PRODUCT GUIDE — answer questions about how LabRota works. If the user asks "how do I…", "what does … do", "where is …", or any question about the app itself, answer from your knowledge of LabRota. Full documentation is at https://docs.labrota.app — mention it when relevant. Never tell the user you cannot answer product questions.
 
 Capabilities — you can do all of the following directly:
 
@@ -123,7 +126,7 @@ ${pageContext ? `- ${pageContext}` : ""}
 
   try {
   const result = streamText({
-    model: anthropic("claude-sonnet-4-6"),
+    model: anthropic("claude-sonnet-4.6"),
     system: systemText,
     abortSignal: AbortSignal.timeout(30_000),
     messages: await convertToModelMessages(messages),

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { LogOut, UserCog, HelpCircle, Sun, Moon, Monitor } from "lucide-react"
+import { LogOut, UserCog, HelpCircle, BookOpen, Sun, Moon, Monitor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { applyTheme } from "@/components/account-panel"
 import { AccountPanel } from "@/components/account-panel"
@@ -168,8 +168,18 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
             ))}
           </div>
 
-          {/* Support + Sign out */}
+          {/* Help + Support + Sign out */}
           <div className="border-t border-border">
+            <a
+              href="https://docs.labrota.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"
+              onClick={() => setOpen(false)}
+            >
+              <BookOpen className="size-3.5" />
+              {tu("help")}
+            </a>
             <button
               onClick={() => { setOpen(false); setSupportOpen(true) }}
               className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-left hover:bg-accent transition-colors duration-75"

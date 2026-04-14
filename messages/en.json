@@ -1285,6 +1285,7 @@
     "outlookDisconnected": "Outlook disconnected",
     "connectOutlook": "Connect Outlook",
     "outlookSyncDesc": "Auto-sync your out-of-office events",
+    "help": "Help",
     "support": "Support",
     "signOut": "Sign out"
   },
