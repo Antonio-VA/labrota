@@ -12,9 +12,15 @@ import {
 import type { StaffWithSkills } from "@/lib/types/database"
 import type { GenerationStrategy } from "@/components/calendar-panel/utils"
 
-// Module-level caches — survive component unmount/remount (navigation away and back)
-const _weekCache = new Map<string, RotaWeekData>()
-let _staffCache: StaffWithSkills[] | null = null
+// Pin cache to window so it survives Next.js HMR module re-evaluation in dev.
+// In production a module-level Map would also work; window makes both envs reliable.
+type _LrCache = { weeks: Map<string, RotaWeekData>; staff: StaffWithSkills[] | null }
+const _cache: _LrCache = (() => {
+  if (typeof window === "undefined") return { weeks: new Map(), staff: null }
+  const win = window as unknown as { __lrCache?: _LrCache }
+  if (!win.__lrCache) win.__lrCache = { weeks: new Map(), staff: null }
+  return win.__lrCache
+})()
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,9 +42,11 @@ export function useRotaData({
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  // Seed from module-level caches so navigation-back is instant (no flash of loading)
-  const cachedWeek = initialData ?? _weekCache.get(weekStart) ?? null
-  const cachedStaff = _staffCache
+  // Seed window cache with server-provided data so navigation away + back is instant
+  if (initialData) _cache.weeks.set(initialData.weekStart, initialData)
+
+  const cachedWeek = initialData ?? _cache.weeks.get(weekStart) ?? null
+  const cachedStaff = _cache.staff
 
   const [weekData, setWeekData]           = useState<RotaWeekData | null>(cachedWeek)
   const [monthSummary, setMonthSummary]   = useState<RotaMonthSummary | null>(null)
@@ -82,11 +90,11 @@ export function useRotaData({
     const run = () => {
       const prev = weekOffset(ws, -7)
       const next = weekOffset(ws, 7)
-      if (!_weekCache.has(prev)) {
-        getRotaWeek(prev).then((d) => { _weekCache.set(prev, d) }).catch(() => {})
+      if (!_cache.weeks.has(prev)) {
+        getRotaWeek(prev).then((d) => { _cache.weeks.set(prev, d) }).catch(() => {})
       }
-      if (!_weekCache.has(next)) {
-        getRotaWeek(next).then((d) => { _weekCache.set(next, d) }).catch(() => {})
+      if (!_cache.weeks.has(next)) {
+        getRotaWeek(next).then((d) => { _cache.weeks.set(next, d) }).catch(() => {})
       }
     }
     if (typeof requestIdleCallback === "function") requestIdleCallback(run)
@@ -100,7 +108,7 @@ export function useRotaData({
     const initialData = initialDataRef.current
     if (!initialDataUsed.current && initialData?.weekStart === ws) {
       initialDataUsed.current = true
-      _weekCache.set(ws, initialData)
+      _cache.weeks.set(ws, initialData)
       setInitialLoaded(true)
       setWeekData(initialData)
       setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
@@ -110,7 +118,7 @@ export function useRotaData({
     }
 
     // Cache hit — show instantly, then silently refresh in background
-    const cached = _weekCache.get(ws)
+    const cached = _cache.weeks.get(ws)
     if (cached) {
       setInitialLoaded(true)
       setWeekData(cached)
@@ -122,7 +130,7 @@ export function useRotaData({
       reasoningSourceRef.current = null
       setActiveStrategy(null)
       getRotaWeek(ws).then((d) => {
-        _weekCache.set(ws, d)
+        _cache.weeks.set(ws, d)
         setWeekData(d)
         setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
         prefetchAdjacent(ws)
@@ -142,7 +150,7 @@ export function useRotaData({
     )
     Promise.race([getRotaWeek(ws), timeout]).then((d) => {
       if (fetchVersionRef.current !== version) return
-      _weekCache.set(ws, d)
+      _cache.weeks.set(ws, d)
       setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -162,7 +170,7 @@ export function useRotaData({
     const id = ++lastFetchId.current
     getRotaWeek(ws).then((d) => {
       if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
-      _weekCache.set(ws, d)
+      _cache.weeks.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
     }).catch(() => {/* ignore — grid stays as-is */})
@@ -210,6 +218,12 @@ export function useRotaData({
 
   // ── Effects ──────────────────────────────────────────────────────────────
 
+  // When server pre-fetches, prime adjacent weeks so clicking next/prev is instant
+  useEffect(() => {
+    if (initialData) prefetchAdjacent(initialData.weekStart)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Initial week fetch (skip if server pre-fetched)
   useEffect(() => {
     if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
@@ -237,13 +251,13 @@ export function useRotaData({
     prev.setDate(prev.getDate() - 7)
     const prevWs = prev.toISOString().split("T")[0]
     // Use cache if available — avoids a redundant server round-trip on every navigation back
-    const cached = _weekCache.get(prevWs)
+    const cached = _cache.weeks.get(prevWs)
     if (cached) {
       setPrevWeekHasRota(cached.days.some((day) => day.assignments.length > 0))
       return () => { cancelled = true }
     }
     getRotaWeek(prevWs).then((d) => {
-      _weekCache.set(prevWs, d)
+      _cache.weeks.set(prevWs, d)
       if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
     }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
     return () => { cancelled = true }
@@ -262,7 +276,7 @@ export function useRotaData({
         setTimeout(() => reject(new Error("Staff load timed out")), 15000),
       )
       Promise.race([getActiveStaff(), staffTimeout])
-        .then((s) => { _staffCache = s; setStaffList(s); setStaffLoaded(true) })
+        .then((s) => { _cache.staff = s; setStaffList(s); setStaffLoaded(true) })
         .catch(() => { setStaffLoaded(true) })
     }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -273,7 +287,7 @@ export function useRotaData({
     const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
     if (ids === prevStaffIdsRef.current) return
     prevStaffIdsRef.current = ids
-    _staffCache = weekData.activeStaff
+    _cache.staff = weekData.activeStaff
     setStaffList(weekData.activeStaff)
     setStaffLoaded(true)
   }, [weekData?.activeStaff])
