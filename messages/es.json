@@ -1470,6 +1470,7 @@
   },
   "userMenu": {
     "preferences": "Preferencias",
+    "help": "Ayuda",
     "support": "Soporte",
     "theme": "Tema",
     "themeLight": "Claro",
