@@ -89,21 +89,9 @@ import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
 import type { ViewMode, CalendarLayout, Assignment, DeptMaps, MenuItem } from "./calendar-panel/types"
 import { DEFAULT_DEPT_MAPS, ROLE_ORDER, ROLE_LABEL, ROLE_BORDER, ROLE_DOT, SHIFT_ORDER, TECNICA_PILL, COVERAGE_SKILLS, LEGACY_SKILL_NAMES, TODAY, DAY_ES_2, WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER, DOW_HEADERS_EN, DOW_HEADERS_ES } from "./calendar-panel/constants"
-import { buildDeptMaps, sortAssignments, addDays, addMonths, getMonthStart, formatToolbarLabel, rotateArray, makeSkillLabel, parseHybridInsights, buildStrategyCards, type GenerationStrategy, type StrategyCardMeta } from "./calendar-panel/utils"
+import { buildDeptMaps, sortAssignments, addDays, addMonths, getMonthStart, formatToolbarLabel, rotateArray, makeSkillLabel, parseHybridInsights, buildStrategyCards, type GenerationStrategy } from "./calendar-panel/utils"
 
-import { ShiftBudgetBar, MonthBudgetBar, LEAVE_ICON_MAP } from "./calendar-panel/budget-bars"
-
-import { WeekJumpButton } from "./calendar-panel/week-jump-button"
-
-import { StaffChip, ShiftBadge, type ShiftBadgeProps } from "./calendar-panel/shift-badge"
-
-import { AssignmentPopover, DEPT_FOR_ROLE } from "./calendar-panel/assignment-popover"
-
-import { DayStatsInput } from "./calendar-panel/day-stats-input"
-import { OverflowMenu } from "./calendar-panel/overflow-menu"
-import { DepartmentFilterDropdown } from "./calendar-panel/department-filter"
-import { MobileOverflow } from "./calendar-panel/mobile-overflow"
-import { InlineLeaveForm } from "./calendar-panel/inline-leave-form"
+import { ShiftBudgetBar, MonthBudgetBar } from "./calendar-panel/budget-bars"
 import { PersonShiftSelector } from "./calendar-panel/person-shift-selector"
 import { ProfileSkillsSection } from "./calendar-panel/profile-skills-section"
 import { PersonShiftPill } from "./calendar-panel/person-shift-pill"
