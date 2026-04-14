@@ -18,15 +18,19 @@ import { WeekInsightsSheet, WeekWarningsSheet } from "./bottom-sheets"
 import { WeekOverflow } from "./week-overflow"
 import { WeekGenerateSheet } from "./generate-sheet"
 
+// Module-level caches — survive navigation away and back
+const _mobileWeekCache = new Map<string, RotaWeekData>()
+let _mobileWeekStaffCache: StaffWithSkills[] | null = null
+
 export function MobileWeekClient() {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const canEdit = useCanEdit()
   const [weekStart, setWeekStart] = useState(() => getMondayOfWeek(new Date()))
-  const [data, setData] = useState<RotaWeekData | null>(null)
-  const [staffList, setStaffList] = useState<StaffWithSkills[]>([])
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<RotaWeekData | null>(() => _mobileWeekCache.get(getMondayOfWeek(new Date())) ?? null)
+  const [staffList, setStaffList] = useState<StaffWithSkills[]>(() => _mobileWeekStaffCache ?? [])
+  const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOfWeek(new Date())))
   const weekGridRef = useRef<HTMLDivElement>(null)
   const [highlightEnabled, setHighlightEnabled] = useState(() => {
     if (typeof window === "undefined") return false
@@ -109,12 +113,32 @@ export function MobileWeekClient() {
   const hasFavourite = weekFavourite !== null
 
   useEffect(() => {
+    const cachedData = _mobileWeekCache.get(weekStart)
+    const cachedStaff = _mobileWeekStaffCache
+    if (cachedData && cachedStaff) {
+      setData(cachedData)
+      setStaffList(cachedStaff)
+      setLoading(false)
+      // Silent refresh in background
+      Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
+        _mobileWeekCache.set(weekStart, rotaData)
+        _mobileWeekStaffCache = staff
+        setData(rotaData)
+        setStaffList(staff)
+      }).catch(() => {})
+      return
+    }
     setLoading(true)
-    Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
+    Promise.all([
+      cachedData ? Promise.resolve(cachedData) : getRotaWeek(weekStart),
+      cachedStaff ? Promise.resolve(cachedStaff) : getActiveStaff(),
+    ]).then(([rotaData, staff]) => {
+      _mobileWeekCache.set(weekStart, rotaData)
+      _mobileWeekStaffCache = staff
       setData(rotaData)
       setStaffList(staff)
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [weekStart])
 
   function navigate(dir: number) {

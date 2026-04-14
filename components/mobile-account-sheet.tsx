@@ -15,6 +15,14 @@ import { applyTheme } from "@/components/account-panel"
 import { toast } from "sonner"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
+// Module-level cache — profile/prefs rarely change within a session
+type AccountCache = {
+  user: { email: string | null; fullName: string | null; avatarUrl: string | null } | null
+  prefs: UserPreferences
+  outlook: UserOutlookStatus | null
+}
+let _accountCache: AccountCache | null = null
+
 const ACCENT_COLORS = [
   "#1b4f8a", "#2563EB", "#3B82F6",
   "#0D9488", "#059669", "#16A34A", "#65A30D",
@@ -31,19 +39,21 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [avatarImgError, setAvatarImgError] = useState(false)
-  const [user, setUser] = useState<{ email: string | null; fullName: string | null; avatarUrl: string | null } | null>(null)
-  const [prefs, setPrefs] = useState<UserPreferences | null>(null)
-  const [outlook, setOutlook] = useState<UserOutlookStatus | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [user, setUser] = useState(_accountCache?.user ?? null)
+  const [prefs, setPrefs] = useState<UserPreferences | null>(_accountCache?.prefs ?? null)
+  const [outlook, setOutlook] = useState(_accountCache?.outlook ?? null)
+  const [loading, setLoading] = useState(!_accountCache)
+  const [loaded, setLoaded] = useState(!!_accountCache)
 
-  // Fetch data when sheet opens (once)
+  // Fetch data when sheet opens (once per session; re-seeds from module cache on remount)
   useEffect(() => {
     if (!open || loaded) return
     setLoading(true)
     Promise.all([getUserProfile(), getUserPreferences(), getUserOutlookStatus()]).then(([u, p, o]) => {
+      const resolvedPrefs = { theme: p.theme ?? "light", accentColor: p.accentColor ?? "#1b4f8a", locale: p.locale ?? "browser" } satisfies UserPreferences
+      _accountCache = { user: u, prefs: resolvedPrefs, outlook: o }
       setUser(u)
-      setPrefs({ theme: p.theme ?? "light", accentColor: p.accentColor ?? "#1b4f8a", locale: p.locale ?? "browser" })
+      setPrefs(resolvedPrefs)
       setOutlook(o)
       setLoading(false)
       setLoaded(true)
@@ -59,6 +69,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   function handleSave() {
     if (!prefs) return
     startTransition(async () => {
+      if (_accountCache) _accountCache.prefs = prefs
       applyTheme(prefs)
       if (prefs.locale === "browser") {
         document.cookie = "locale=;path=/;max-age=0"

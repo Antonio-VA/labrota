@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useViewerStaffId } from "@/lib/role-context"
 import { getMondayOfWeek } from "@/lib/rota-engine"
@@ -9,6 +9,9 @@ import { MySchedule } from "@/components/my-schedule"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const TODAY = new Date().toISOString().split("T")[0]
+
+// Module-level cache — survives navigation away and back
+const _myRotaCache = new Map<string, RotaWeekData>()
 
 function addDaysToDate(date: string, days: number): string {
   const d = new Date(date + "T12:00:00")
@@ -23,22 +26,21 @@ export function MyRotaClient() {
 
   const [currentDate, setCurrentDate] = useState(TODAY)
   const weekStart = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
-  const [weekData, setWeekData] = useState<RotaWeekData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const cache = useRef(new Map<string, RotaWeekData>())
+  const [weekData, setWeekData] = useState<RotaWeekData | null>(() => _myRotaCache.get(getMondayOfWeek(new Date(TODAY + "T12:00:00"))) ?? null)
+  const [loading, setLoading] = useState(() => !_myRotaCache.has(getMondayOfWeek(new Date(TODAY + "T12:00:00"))))
 
   const fetchWeek = useCallback((ws: string) => {
-    const cached = cache.current.get(ws)
+    const cached = _myRotaCache.get(ws)
     if (cached) {
       setWeekData(cached)
       setLoading(false)
       // Refresh silently
-      getRotaWeek(ws).then((d) => { cache.current.set(ws, d); setWeekData(d) }).catch(() => {})
+      getRotaWeek(ws).then((d) => { _myRotaCache.set(ws, d); setWeekData(d) }).catch(() => {})
       return
     }
     setLoading(true)
     getRotaWeek(ws).then((d) => {
-      cache.current.set(ws, d)
+      _myRotaCache.set(ws, d)
       setWeekData(d)
       setLoading(false)
     }).catch(() => setLoading(false))
