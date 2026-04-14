@@ -73,6 +73,14 @@ import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
+// Lazy-load heavy components not needed for initial render
+const MonthGrid = dynamic(() => import("./calendar-panel/month-grid").then((m) => ({ default: m.MonthGrid })), { ssr: false })
+const StaffProfilePanel = dynamic(() => import("./calendar-panel/staff-profile-panel").then((m) => ({ default: m.StaffProfilePanel })), { ssr: false })
+const GenerationStrategyModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.GenerationStrategyModal })), { ssr: false })
+const AIReasoningModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.AIReasoningModal })), { ssr: false })
+const SaveTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.SaveTemplateModal })), { ssr: false })
+const ApplyTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.ApplyTemplateModal })), { ssr: false })
+const MultiWeekScopeDialog = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.MultiWeekScopeDialog })), { ssr: false })
 import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
 import { TaskGrid } from "@/components/task-grid"
@@ -100,16 +108,11 @@ import { PersonShiftSelector } from "./calendar-panel/person-shift-selector"
 import { ProfileSkillsSection } from "./calendar-panel/profile-skills-section"
 import { PersonShiftPill } from "./calendar-panel/person-shift-pill"
 import { DraggableShiftBadge, DraggableOffStaff, DroppableCell } from "./calendar-panel/dnd-wrappers"
-import { StaffProfilePanel } from "./calendar-panel/staff-profile-panel"
 import { PersonGrid } from "./calendar-panel/person-grid"
 import { TransposedPersonGrid } from "./calendar-panel/transposed-person-grid"
 import { ShiftGrid } from "./calendar-panel/shift-grid"
-import { MonthGrid } from "./calendar-panel/month-grid"
 import { DayView } from "./calendar-panel/day-view"
-
-
 import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
-import { GenerationStrategyModal, AIReasoningModal, SaveTemplateModal, ApplyTemplateModal, MultiWeekScopeDialog } from "./calendar-panel/generation-modals"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"

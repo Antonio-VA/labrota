@@ -236,7 +236,14 @@ export function useRotaData({
     const prev = new Date(weekStart + "T12:00:00")
     prev.setDate(prev.getDate() - 7)
     const prevWs = prev.toISOString().split("T")[0]
+    // Use cache if available — avoids a redundant server round-trip on every navigation back
+    const cached = _weekCache.get(prevWs)
+    if (cached) {
+      setPrevWeekHasRota(cached.days.some((day) => day.assignments.length > 0))
+      return () => { cancelled = true }
+    }
     getRotaWeek(prevWs).then((d) => {
+      _weekCache.set(prevWs, d)
       if (!cancelled) setPrevWeekHasRota(d.days.some((day) => day.assignments.length > 0))
     }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
     return () => { cancelled = true }
