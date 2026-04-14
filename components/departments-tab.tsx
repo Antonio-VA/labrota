@@ -214,7 +214,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments = true
     startTransition(async () => {
       const result = await seedDefaultDepartments()
       if (result.error) { setErrorMsg(result.error); setStatus("error"); return }
-      if (result.seeded) window.location.reload()
+      if ("seeded" in result && result.seeded) window.location.reload()
     })
   }
 

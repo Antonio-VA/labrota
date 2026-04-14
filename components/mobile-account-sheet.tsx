@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useEffect } from "react"
+import Image from "next/image"
 import { useLocale } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -117,7 +118,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
               {/* Profile */}
               <div className="flex items-center gap-3 py-1">
                 {user?.avatarUrl && !avatarImgError ? (
-                  <img src={user.avatarUrl} alt="" className="size-11 rounded-full object-cover shrink-0" onError={() => setAvatarImgError(true)} />
+                  <Image src={user.avatarUrl} alt="" width={44} height={44} className="size-11 rounded-full object-cover shrink-0" onError={() => setAvatarImgError(true)} />
                 ) : (
                   <div className="size-11 rounded-full bg-primary/10 text-primary text-[16px] font-bold flex items-center justify-center shrink-0">
                     {initials}

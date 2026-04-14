@@ -285,10 +285,10 @@ export function runRotaEngine({
   }
 
   // Days-off preference: controls when staff get their off days
-  const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | "guardia" | undefined ?? "prefer_weekend"
+  const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
   const guardiaMode = daysOffPref === "guardia"
-  const guardiaMinWeeks  = (labConfig as any).guardia_min_weeks_between as number | undefined ?? 2
-  const guardiaMaxMonth  = (labConfig as any).guardia_max_per_month     as number | undefined ?? 2
+  const guardiaMinWeeks  = labConfig.guardia_min_weeks_between ?? 2
+  const guardiaMaxMonth  = labConfig.guardia_max_per_month ?? 2
 
   // ── Public holiday handling ──────────────────────────────────────────────
   const holidayMode = labConfig.public_holiday_mode ?? "saturday"
@@ -313,12 +313,12 @@ export function runRotaEngine({
   // ── Contract type / onboarding coverage weights ──────────────────────────
   // Returns the fraction this person contributes toward coverage minimums on a given date.
   // 0 = onboarding period (assigned but doesn't count), 0.5 = part-time/intern, 1 = full-time
-  const partTimeWeight = (labConfig as any).part_time_weight as number | undefined ?? 0.5
-  const internWeight   = (labConfig as any).intern_weight   as number | undefined ?? 0.5
+  const partTimeWeight = labConfig.part_time_weight ?? 0.5
+  const internWeight   = labConfig.intern_weight ?? 0.5
   function coverageWeight(s: StaffWithSkills, date: string): number {
-    const onboardingEnd = (s as any).onboarding_end_date as string | null | undefined
+    const onboardingEnd = s.onboarding_end_date
     if (onboardingEnd && date <= onboardingEnd) return 0
-    const ct = (s as any).contract_type as string | undefined ?? "full_time"
+    const ct = s.contract_type ?? "full_time"
     if (ct === "part_time") return partTimeWeight
     if (ct === "intern")    return internWeight
     return 1
@@ -1825,8 +1825,8 @@ export function runRotaEngine({
           return true
         }).sort((a, b) => {
           // 1. Volunteers first
-          const aPref = (a as any).prefers_guardia ? 0 : 1
-          const bPref = (b as any).prefers_guardia ? 0 : 1
+          const aPref = a.prefers_guardia ? 0 : 1
+          const bPref = b.prefers_guardia ? 0 : 1
           if (aPref !== bPref) return aPref - bPref
           // 2. Fewest guardias this month
           const aMon = guardiaCountMonth(a.id)

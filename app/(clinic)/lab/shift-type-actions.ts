@@ -71,9 +71,12 @@ export async function saveShiftTypes(
 
 export async function countAssignmentsForShift(code: string): Promise<number> {
   const supabase = await createClient()
+  const orgId = await getOrgId()
+  if (!orgId) return 0
   const { count } = await supabase
     .from("rota_assignments")
     .select("*", { count: "exact", head: true })
-    .eq("shift_type", code) as { count: number | null }
+    .eq("shift_type", code)
+    .eq("organisation_id", orgId) as { count: number | null }
   return count ?? 0
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useRef, useEffect, Fragment } from "react"
+import { useCallback, useMemo, useState, useRef, useEffect, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRightLeft, Plus, Users, X } from "lucide-react"
@@ -206,15 +206,19 @@ export function TransposedPersonGrid({
 
   if (!data) return null
 
-  const ROLE_LABEL_MAP: Record<string, string> = {}
-  for (const d of data.departments ?? []) { if (!d.parent_id) ROLE_LABEL_MAP[d.code] = d.name }
+  const ROLE_LABEL_MAP = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of data.departments ?? []) { if (!d.parent_id) map[d.code] = (locale === "en" && d.name_en) ? d.name_en : d.name }
+    return map
+  }, [data.departments, locale])
 
-  const activeStaff = staffList
+  const activeStaff = useMemo(() => staffList
     .filter((s) => s.onboarding_status !== "inactive")
     .sort((a, b) => {
       const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
       return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
     })
+  , [staffList])
 
   const [localDays, setLocalDays] = useState(data.days)
   if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
@@ -225,13 +229,16 @@ export function TransposedPersonGrid({
   }
 
   // Build assignment map: staffId → date → assignment
-  const assignMap: Record<string, Record<string, Assignment>> = {}
-  for (const day of localDays) {
-    for (const a of day.assignments) {
-      if (!assignMap[a.staff_id]) assignMap[a.staff_id] = {}
-      assignMap[a.staff_id][day.date] = a
+  const assignMap = useMemo(() => {
+    const map: Record<string, Record<string, Assignment>> = {}
+    for (const day of localDays) {
+      for (const a of day.assignments) {
+        if (!map[a.staff_id]) map[a.staff_id] = {}
+        map[a.staff_id][day.date] = a
+      }
     }
-  }
+    return map
+  }, [localDays])
 
   const isTaskMode = data?.rotaDisplayMode === "by_task"
   const tecnicaByCode = useMemo(
@@ -270,13 +277,26 @@ export function TransposedPersonGrid({
     return map
   }, [localDays, isTaskMode])
 
-  async function handleTaskRemove(assignmentId: string) {
+  const handleTaskRemove = useCallback(async (assignmentId: string) => {
     setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) })))
     const result = await removeAssignment(assignmentId)
     if (result.error) toast.error(result.error)
-  }
+  }, [])
 
-  async function handleTaskAdd(staffId: string | null, date: string, tecnicaCodigo: string) {
+  // Group staff by role for sub-headers
+  const roleGroups = useMemo(() => {
+    const groups: { role: string; members: StaffWithSkills[] }[] = []
+    for (const s of activeStaff) {
+      const last = groups[groups.length - 1]
+      if (last && last.role === s.role) last.members.push(s)
+      else groups.push({ role: s.role, members: [s] })
+    }
+    return groups
+  }, [activeStaff])
+
+  const allMembers = useMemo(() => roleGroups.flatMap((g) => g.members), [roleGroups])
+
+  const handleTaskAdd = useCallback(async (staffId: string | null, date: string, tecnicaCodigo: string) => {
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const staffMember = staffId ? allMembers.find((s) => s.id === staffId) : null
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
@@ -296,17 +316,7 @@ export function TransposedPersonGrid({
         assignments: d.assignments.map((a) => a.id === tempId ? { ...a, id: result.id ?? tempId } : a),
       })))
     }
-  }
-
-  // Group staff by role for sub-headers
-  const roleGroups: { role: string; members: StaffWithSkills[] }[] = []
-  for (const s of activeStaff) {
-    const last = roleGroups[roleGroups.length - 1]
-    if (last && last.role === s.role) last.members.push(s)
-    else roleGroups.push({ role: s.role, members: [s] })
-  }
-
-  const allMembers = roleGroups.flatMap((g) => g.members)
+  }, [allMembers, data?.weekStart, defaultShiftCode])
   const days = localDays
 
   // Task mode: prepend an ALL column

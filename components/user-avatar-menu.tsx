@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { LogOut, UserCog, HelpCircle, Sun, Moon, Monitor } from "lucide-react"
@@ -115,7 +116,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
           style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: variant === "light" ? "1.5px solid var(--border)" : "1.5px solid rgba(255,255,255,0.4)" }}
           title={firstName}
         >
-          <img src={avatarUrl} alt="Avatar" onError={() => setAvatarError(true)} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+          <Image src={avatarUrl} alt="Avatar" width={28} height={28} onError={() => setAvatarError(true)} className="rounded-full object-cover block" />
         </button>
       ) : (
         <button

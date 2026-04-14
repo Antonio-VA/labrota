@@ -58,7 +58,7 @@ export function StaffForm({
     staff?.avoid_shifts ?? []
   )
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
-  const [contractType, setContractType] = useState<string>((staff as any)?.contract_type ?? "full_time")
+  const [contractType, setContractType] = useState<string>(staff?.contract_type ?? "full_time")
   const [selectedColor, setSelectedColor] = useState<string>(
     staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
   )
@@ -280,7 +280,7 @@ export function StaffForm({
           </Field>
         </div>
         <OnboardingPeriodField
-          initialValue={(staff as any)?.onboarding_end_date ?? null}
+          initialValue={staff?.onboarding_end_date ?? null}
           disabled={isPending}
         />
         <EndDateField initialValue={staff?.end_date ?? null} disabled={isPending} label={t("fields.endDate")} />
@@ -443,7 +443,7 @@ export function StaffForm({
               type="checkbox"
               name="prefers_guardia"
               value="on"
-              defaultChecked={(staff as any)?.prefers_guardia === true}
+              defaultChecked={staff?.prefers_guardia === true}
               disabled={isPending}
               className="mt-0.5 size-4 rounded border-border accent-primary"
             />

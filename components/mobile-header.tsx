@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useTransition } from "react"
+import Image from "next/image"
 import { ChevronLeft, ChevronRight, ChevronDown, Check, Star, Bell, User } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
@@ -57,7 +58,7 @@ export function MobileHeader({
           )}
         >
           {orgLogoUrl && !logoError ? (
-            <img src={orgLogoUrl} alt="" className="size-7 object-cover rounded-md shrink-0" style={{ border: "1.5px solid rgba(255,255,255,0.4)" }} onError={() => setLogoError(true)} />
+            <Image src={orgLogoUrl} alt="" width={28} height={28} className="size-7 object-cover rounded-md shrink-0 border-[1.5px] border-white/40" onError={() => setLogoError(true)} />
           ) : (
             <span className="size-7 rounded-lg bg-white/15 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
               {orgInitials}
@@ -119,7 +120,7 @@ export function MobileHeader({
                   >
                     {org.logo_url ? (
                       <>
-                        <img src={org.logo_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display") }} />
+                        <Image src={org.logo_url} alt="" width={32} height={32} className="h-8 w-8 rounded-lg object-cover shrink-0" onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none"; ((e.currentTarget as HTMLElement).nextElementSibling as HTMLElement)?.style.removeProperty("display") }} />
                         <span className="size-8 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0" style={{ display: "none" }}>
                           {initials}
                         </span>

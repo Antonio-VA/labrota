@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useTransition } from "react"
+import Image from "next/image"
 import { Check, ChevronDown, Star, Loader2 } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
@@ -65,7 +66,7 @@ export function ClinicTopBar({
                 className="flex items-center gap-2 text-[14px] font-medium text-white/90 hover:text-white hover:bg-white/15 rounded-lg px-2.5 py-1.5 -mx-2.5 -my-1.5 transition-colors disabled:opacity-60"
               >
                 {orgLogoUrl && !logoError && (
-                  <img src={orgLogoUrl} alt="" className="size-7 object-cover rounded-md shrink-0" style={{ border: "1.5px solid rgba(255,255,255,0.4)" }} onError={() => setLogoError(true)} />
+                  <Image src={orgLogoUrl} alt="" width={28} height={28} className="size-7 object-cover rounded-md shrink-0 border-[1.5px] border-white/40" onError={() => setLogoError(true)} />
                 )}
                 <span data-org-name>{switchingTo ?? orgName}</span>
                 <ChevronDown className="size-3.5 text-white/60" />
@@ -125,7 +126,7 @@ export function ClinicTopBar({
           ) : (
             <div className="flex items-center gap-2">
               {orgLogoUrl && !logoError && (
-                <img src={orgLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
+                <Image src={orgLogoUrl} alt="" width={80} height={32} className="h-8 w-auto max-w-[80px] object-contain rounded shrink-0" onError={() => setLogoError(true)} />
               )}
               <span className="text-[14px] font-medium text-white/90" data-org-name>{orgName}</span>
             </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -75,7 +76,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
       {/* Profile header */}
       <div className="flex items-center gap-3">
         {initialUser?.avatarUrl && !avatarImgError ? (
-          <img src={initialUser.avatarUrl} alt="" className="size-14 rounded-full object-cover" onError={() => setAvatarImgError(true)} />
+          <Image src={initialUser.avatarUrl} alt="" width={56} height={56} className="size-14 rounded-full object-cover" onError={() => setAvatarImgError(true)} />
         ) : (
           <div className="size-14 rounded-full bg-primary/10 text-primary text-[18px] font-bold flex items-center justify-center">
             {initials}

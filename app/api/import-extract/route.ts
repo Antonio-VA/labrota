@@ -1,5 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic"
-import { generateObject } from "ai"
+import { generateText, Output } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
@@ -171,14 +171,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      schema: extractionSchema,
+      output: Output.object({ schema: extractionSchema }),
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: parts }],
     })
 
-    return Response.json(result.object)
+    return Response.json(result.output)
   } catch (err) {
     console.error("Import extraction error:", err)
     return Response.json(

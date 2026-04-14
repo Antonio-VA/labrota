@@ -86,7 +86,7 @@ export function AuditLogViewer() {
       from: dateFrom || undefined,
       to: dateTo || undefined,
       limit: 500, // fetch more, paginate client-side
-    }).then((data) => { setLogs(data); setLoading(false) })
+    }).then((data) => { setLogs("error" in data ? [] : data); setLoading(false) })
   }, [actionFilter, dateFrom, dateTo])
 
   // Client-side user filter

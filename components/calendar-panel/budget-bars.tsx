@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -21,7 +21,8 @@ export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDa
   liveDays?: RotaDay[] | null; deptFilter?: Set<string>; colorChips?: boolean
 }) {
   const t = useTranslations("schedule")
-  const ROLE_LABEL_LOCAL = buildDeptMaps(data.departments ?? []).label
+  const locale = useLocale()
+  const ROLE_LABEL_LOCAL = buildDeptMaps(data.departments ?? [], locale).label
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)

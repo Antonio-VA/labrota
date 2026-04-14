@@ -43,8 +43,10 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const skillLabel = makeSkillLabel(tecnicas)
   const skillOrder = Object.fromEntries(tecnicas.map((t, i) => [t.codigo, i]))
   const deptBorder: Record<string, string> = { ...ROLE_BORDER_COLOR }
-  const deptLabel: Record<string, string> = { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
-  for (const d of deptsProp) { deptBorder[d.code] = d.colour; deptLabel[d.code] = d.name }
+  const deptLabel: Record<string, string> = locale === "en"
+    ? { lab: "Embryology", andrology: "Andrology", admin: "Admin" }
+    : { lab: "Embriología", andrology: "Andrología", admin: "Admin" }
+  for (const d of deptsProp) { deptBorder[d.code] = d.colour; deptLabel[d.code] = (locale === "en" && d.name_en) ? d.name_en : d.name }
 
   const [search,       setSearch]       = useState("")
   const [roleFilter,   setRoleFilter]   = useState<StaffRole | "all">("all")

@@ -296,7 +296,7 @@ export function runRotaEngineV2({
   }
 
   // Days-off preference: controls when staff get their off days
-  const daysOffPref = (labConfig as any).days_off_preference as "always_weekend" | "prefer_weekend" | "any_day" | undefined ?? "prefer_weekend"
+  const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
 
   // ── Public holiday handling ──────────────────────────────────────────────
   const holidayMode = labConfig.public_holiday_mode ?? "saturday"

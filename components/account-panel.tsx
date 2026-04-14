@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useRef } from "react"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { X, Sun, Moon, Monitor, Check, Camera, Cloud, Unplug, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
@@ -134,7 +135,7 @@ export function AccountPanel({ open, onClose, user }: {
                 style={{ background: prefs.accentColor ?? "#1b4f8a" }}
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="size-full object-cover" onError={() => setAvatarUrl(null)} />
+                  <Image src={avatarUrl} alt="Avatar" width={56} height={56} className="size-full object-cover" onError={() => setAvatarUrl(null)} />
                 ) : (
                   <span className="flex items-center justify-center size-full text-[18px] font-bold text-white">{initials}</span>
                 )}

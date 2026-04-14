@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useRef } from "react"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { Upload, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -96,7 +97,7 @@ export function OrgSettingsForm({
           className="size-14 rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center overflow-hidden shrink-0 transition-colors"
         >
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="size-full object-cover" />
+            <Image src={logoUrl} alt="Logo" width={56} height={56} className="size-full object-cover" />
           ) : (
             <Upload className="size-5 text-muted-foreground" />
           )}
@@ -182,7 +183,6 @@ export function OrgSettingsForm({
         </p>
         <Button
           size="sm"
-          variant="outline"
           onClick={saveRegional}
           disabled={isPending || (country === settings.country && region === settings.region)}
           className="self-start text-[12px] h-7"

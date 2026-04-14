@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useEffect, useRef, useLayoutEffect } from "react"
+import Image from "next/image"
 import { createPortal } from "react-dom"
 import { useLocale } from "next-intl"
 import { formatDateWithYear } from "@/lib/format-date"
@@ -211,7 +212,7 @@ function UserRow({ user }: { user: GlobalUserInfo }) {
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                <Image src={user.avatarUrl} alt="" width={32} height={32} className="size-8 rounded-full object-cover" />
               ) : (
                 <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[12px] font-semibold">
                   {initials}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Plane, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -127,7 +127,7 @@ export function ShiftGrid({
   }, [staffList])
 
   // Department maps — memoized so buildDeptMaps doesn't run on every render
-  const deptMapsMemo = useMemo(() => buildDeptMaps(data?.departments ?? []), [data?.departments])
+  const deptMapsMemo = useMemo(() => buildDeptMaps(data?.departments ?? [], locale), [data?.departments, locale])
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
@@ -151,35 +151,35 @@ export function ShiftGrid({
     onLocalDaysChange?.(data.days)
   }
 
-  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
+  const patchLocalAssignment = useCallback((assignmentId: string, patch: Record<string, unknown>) => {
     setLocalDays((prev) => prev.map((d) => ({
       ...d,
       assignments: d.assignments.map((a) =>
         a.id === assignmentId ? { ...a, ...patch } : a
       ),
     })))
-  }
+  }, [])
 
-  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
+  const handleFunctionLabelSave = useCallback(async (assignmentId: string, label: string | null) => {
     patchLocalAssignment(assignmentId, { function_label: label })
     const result = await setFunctionLabel(assignmentId, label)
     if (result.error) { toast.error(result.error); onRefresh() }
-  }
+  }, [patchLocalAssignment, onRefresh])
 
-  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
+  const handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
     patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
     const result = await setTecnica(assignmentId, tecnicaId)
     if (result.error) { toast.error(result.error); onRefresh() }
-  }
+  }, [patchLocalAssignment, onRefresh])
 
   // Debounced refresh — batches rapid changes into one server fetch
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  function debouncedRefresh() {
+  const debouncedRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current)
     refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
-  }
+  }, [onRefresh])
 
-  async function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
     setOverId(null)
@@ -297,7 +297,7 @@ export function ShiftGrid({
         onCancelUndo?.(); toast.error(t("moveError")); onRefresh()
       }
     }
-  }
+  }, [localDays, data, weekStart, staffById, onAfterMutation, onCancelUndo, onSaved, onRefresh, t])
 
   if (loading) {
     return (

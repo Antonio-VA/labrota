@@ -1,7 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
-import { getOrgId } from "@/lib/get-org-id"
+import { withOrgId } from "@/lib/with-org-id"
 
 export interface AuditLogEntry {
   id: string
@@ -18,22 +17,20 @@ export async function getAuditLogs(filters?: {
   to?: string
   action?: string
   limit?: number
-}): Promise<AuditLogEntry[]> {
-  const supabase = await createClient()
-  const orgId = await getOrgId()
-  if (!orgId) return []
+}): Promise<AuditLogEntry[] | { error: string }> {
+  return withOrgId(async (orgId, supabase) => {
+    let query = supabase
+      .from("audit_logs")
+      .select("id, user_email, action, entity_type, changes, metadata, created_at")
+      .eq("organisation_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(filters?.limit ?? 100)
 
-  let query = supabase
-    .from("audit_logs")
-    .select("id, user_email, action, entity_type, changes, metadata, created_at")
-    .eq("organisation_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(filters?.limit ?? 100)
+    if (filters?.from) query = query.gte("created_at", filters.from)
+    if (filters?.to) query = query.lte("created_at", filters.to + "T23:59:59")
+    if (filters?.action) query = query.eq("action", filters.action)
 
-  if (filters?.from) query = query.gte("created_at", filters.from)
-  if (filters?.to) query = query.lte("created_at", filters.to + "T23:59:59")
-  if (filters?.action) query = query.eq("action", filters.action)
-
-  const { data } = await query as { data: AuditLogEntry[] | null }
-  return data ?? []
+    const { data } = await query as { data: AuditLogEntry[] | null }
+    return data ?? []
+  })
 }

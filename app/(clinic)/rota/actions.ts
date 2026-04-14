@@ -682,6 +682,7 @@ export async function generateRota(
   const { data: orgRow } = await supabase
     .from("organisations")
     .select("rota_display_mode")
+    .eq("id", orgId)
     .limit(1)
     .maybeSingle() as { data: { rota_display_mode?: string } | null }
   const rotaDisplayMode = orgRow?.rota_display_mode ?? "by_shift"
@@ -944,7 +945,7 @@ export async function generateRotaWithAI(
   preserveOverrides: boolean,
 ): Promise<{ error?: string; assignmentCount?: number; reasoning?: string }> {
   const { anthropic } = await import("@ai-sdk/anthropic")
-  const { generateObject } = await import("ai")
+  const { generateText, Output } = await import("ai")
   const { z } = await import("zod")
 
   const supabase = await createClient()
@@ -1185,15 +1186,15 @@ Use staff IDs (not names) and shift codes exactly as provided.`
   })
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      schema: assignmentSchema,
+      output: Output.object({ schema: assignmentSchema }),
       system: systemPrompt,
       prompt: userPrompt,
       maxOutputTokens: 16000,
     })
 
-    const { reasoning, assignments: aiAssignments, warnings: aiWarnings } = result.object
+    const { reasoning, assignments: aiAssignments, warnings: aiWarnings } = result.output!
 
     // Validate: filter out invalid staff/shift/date combos
     const validStaffIds = new Set(staff.map((s) => s.id))
@@ -1304,7 +1305,7 @@ export async function generateRotaHybrid(
   preserveOverrides: boolean,
 ): Promise<{ error?: string; assignmentCount?: number; reasoning?: string }> {
   const { anthropic } = await import("@ai-sdk/anthropic")
-  const { generateObject } = await import("ai")
+  const { generateText, Output } = await import("ai")
   const { z } = await import("zod")
 
   const supabase = await createClient()
@@ -1600,15 +1601,15 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
   })
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      schema: assignmentSchema,
+      output: Output.object({ schema: assignmentSchema }),
       system: systemPrompt,
       prompt: userPrompt,
       maxOutputTokens: 16000,
     })
 
-    const { assessment, assignments: aiAssignments, warnings: aiWarnings } = result.object
+    const { assessment, assignments: aiAssignments, warnings: aiWarnings } = result.output!
     const reasoning = assessment
 
     // Validate assignments
@@ -1830,7 +1831,7 @@ export async function generateTaskHybrid(
   preserveOverrides: boolean,
 ): Promise<{ error?: string; assignmentCount?: number; reasoning?: string }> {
   const { anthropic } = await import("@ai-sdk/anthropic")
-  const { generateObject } = await import("ai")
+  const { generateText, Output } = await import("ai")
   const { z } = await import("zod")
 
   const supabase = await createClient()
@@ -1863,9 +1864,6 @@ export async function generateTaskHybrid(
   const labConfig = labConfigRes.data as LabConfig | null
   if (!labConfig) return { error: "Lab configuration not found." }
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
-
-  const hybridYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
-  const hybridHolidays: Record<string, string> = Object.assign({}, ...hybridYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
 
   const allStaff = (staffRes.data ?? []) as StaffWithSkills[]
   const leaves = (leavesRes.data ?? []) as Leave[]
@@ -2102,15 +2100,15 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
   })
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      schema: assignmentSchema,
+      output: Output.object({ schema: assignmentSchema }),
       system: systemPrompt,
       prompt: userPrompt,
       maxOutputTokens: 16000,
     })
 
-    const { assessment, assignments: aiAssignments, whole_team_dates, warnings: aiWarnings } = result.object
+    const { assessment, assignments: aiAssignments, whole_team_dates, warnings: aiWarnings } = result.output!
 
     // ── Validate ────────────────────────────────────────────────────────────────
     const validStaffIds = new Set(allStaff.map((s) => s.id))
@@ -2353,6 +2351,7 @@ export async function upsertAssignment(params: {
         is_manual_override: true,
       } as never)
       .eq("id", params.assignmentId)
+      .eq("organisation_id", orgId)
     if (error) return { error: error.message }
     revalidatePath("/")
     return { id: params.assignmentId }

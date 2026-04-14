@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useRef, useEffect, Fragment } from "react"
+import { useCallback, useMemo, useState, useRef, useEffect, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft, Plus } from "lucide-react"
 import { toast } from "sonner"
@@ -129,26 +129,26 @@ export function PersonGrid({
     setLocalDays(data.days)
   }
 
-  function patchLocalAssignment(assignmentId: string, patch: Record<string, unknown>) {
+  const patchLocalAssignment = useCallback((assignmentId: string, patch: Record<string, unknown>) => {
     setLocalDays((prev) => prev.map((d) => ({
       ...d,
       assignments: d.assignments.map((a) =>
         a.id === assignmentId ? { ...a, ...patch } : a
       ),
     })))
-  }
+  }, [])
 
-  async function handleFunctionLabelSave(assignmentId: string, label: string | null) {
+  const handleFunctionLabelSave = useCallback(async (assignmentId: string, label: string | null) => {
     patchLocalAssignment(assignmentId, { function_label: label })
     const result = await setFunctionLabel(assignmentId, label)
     if (result.error) toast.error(result.error)
-  }
+  }, [patchLocalAssignment])
 
-  async function handleTecnicaSave(assignmentId: string, tecnicaId: string | null) {
+  const handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
     patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
     const result = await setTecnica(assignmentId, tecnicaId)
     if (result.error) toast.error(result.error)
-  }
+  }, [patchLocalAssignment])
 
   if (loading) {
     return (
@@ -181,7 +181,7 @@ export function PersonGrid({
 
   if (!data) return null
 
-  const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [])
+  const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [], locale)
 
   // Build assignment lookup: staffId → date → assignment
   const assignMap = useMemo(() => {
@@ -226,13 +226,13 @@ export function PersonGrid({
 
   const [pickerState, setPickerState] = useState<{ staffId: string | null; date: string } | null>(null)
 
-  async function handleTaskRemove(assignmentId: string) {
+  const handleTaskRemove = useCallback(async (assignmentId: string) => {
     setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) })))
     const result = await removeAssignment(assignmentId)
     if (result.error) toast.error(result.error)
-  }
+  }, [])
 
-  async function handleTaskAdd(staffId: string | null, date: string, tecnicaCodigo: string) {
+  const handleTaskAdd = useCallback(async (staffId: string | null, date: string, tecnicaCodigo: string) => {
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const staffMember = staffId ? staffList.find((s) => s.id === staffId) : null
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
@@ -253,7 +253,7 @@ export function PersonGrid({
         assignments: d.assignments.map((a) => a.id === tempId ? { ...a, id: result.id ?? tempId } : a),
       })))
     }
-  }
+  }, [staffList, data?.weekStart, defaultShiftCode])
 
   // Shift highlighting — hover a shift to highlight all same-shift cells
   const { enabled: highlightEnabled } = useStaffHover()

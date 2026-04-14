@@ -42,10 +42,10 @@ export function DayView({ day, loading, locale, departments = [], punctions, bio
     const colors: Record<string, string> = {}
     const labels: Record<string, string> = {}
     for (const d of departments) {
-      if (!d.parent_id) { colors[d.code] = d.colour; labels[d.code] = d.name }
+      if (!d.parent_id) { colors[d.code] = d.colour; labels[d.code] = (locale === "en" && d.name_en) ? d.name_en : d.name }
     }
     return { deptColorMap: colors, deptLabelMap: labels }
-  }, [departments])
+  }, [departments, locale])
   // Staff → department colour map
   const staffColorMap = useMemo(() => {
     const m: Record<string, string> = {}

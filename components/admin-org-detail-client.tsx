@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -635,7 +636,7 @@ export function AdminOrgDetailClient({
                 className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-[16px] font-semibold text-muted-foreground hover:border-primary transition-colors overflow-hidden relative"
               >
                 {logoUrl ? (
-                  <img src={logoUrl} alt="" className="size-full object-cover" />
+                  <Image src={logoUrl} alt="" width={56} height={56} className="size-full object-cover" />
                 ) : (
                   orgName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
                 )}

@@ -1431,7 +1431,12 @@
     "byPerson": "By person",
     "byPersonDesc": "Rows are staff, columns are days",
     "markAllRead": "Mark all read",
-    "empty": "No notifications"
+    "empty": "No notifications",
+    "done": "Done",
+    "accept": "Accept",
+    "decline": "Decline",
+    "approve": "Approve",
+    "reject": "Reject"
   },
   "mobileEdit": {
     "editMode": "Edit mode",

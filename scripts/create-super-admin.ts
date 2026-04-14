@@ -2,9 +2,9 @@
  * One-time script: create the LabRota super admin account.
  *
  * Usage (from project root):
- *   npx tsx scripts/create-super-admin.ts
+ *   SUPER_ADMIN_EMAIL=you@example.com npx tsx scripts/create-super-admin.ts
  *
- * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.
+ * Requires NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, and SUPER_ADMIN_EMAIL.
  * Reads .env.local automatically if present.
  *
  * Refuses to run if a super admin already exists.
@@ -36,17 +36,17 @@ try {
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const SUPER_ADMIN_EMAIL = "antonio.grit@gmail.com"
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SECRET_KEY
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !serviceRoleKey || !SUPER_ADMIN_EMAIL) {
     console.error(
       "\n⛔  Missing environment variables.\n" +
-        "    NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set\n" +
+        "    NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, and SUPER_ADMIN_EMAIL must be set\n" +
         "    (add them to .env.local or export them before running).\n"
     )
     process.exit(1)

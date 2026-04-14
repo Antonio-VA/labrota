@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac } from "crypto"
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const SECRET = process.env.SUPABASE_SECRET_KEY ?? ""
+const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export function signSwapAction(swapId: string, action: "approve" | "reject", step: "manager" | "target"): string {
-  return createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}`).digest("hex")
+  const expires = Date.now() + TOKEN_TTL_MS
+  return `${expires}.${createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")}`
 }
 
 function verifySwapAction(swapId: string, action: string, step: string, token: string): boolean {
-  const expected = createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}`).digest("hex")
-  return expected === token
+  const dotIdx = token.indexOf(".")
+  if (dotIdx === -1) return false
+  const expires = Number(token.slice(0, dotIdx))
+  const sig = token.slice(dotIdx + 1)
+  if (isNaN(expires) || Date.now() > expires) return false
+  const expected = createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")
+  return expected === sig
 }
 
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const rl = rateLimit(`swap-action:${ip}`, 20)
+  if (!rl.success) return rateLimitResponse()
+
   const { searchParams } = request.nextUrl
   const swapId = searchParams.get("id")
   const action = searchParams.get("action") as "approve" | "reject" | null

@@ -1431,7 +1431,12 @@
     "byPerson": "Por persona",
     "byPersonDesc": "Filas por persona, columnas por día",
     "markAllRead": "Marcar todas leídas",
-    "empty": "Sin notificaciones"
+    "empty": "Sin notificaciones",
+    "done": "Gestionado",
+    "accept": "Aceptar",
+    "decline": "Declinar",
+    "approve": "Aprobar",
+    "reject": "Rechazar"
   },
   "mobileEdit": {
     "editMode": "Modo edicion",

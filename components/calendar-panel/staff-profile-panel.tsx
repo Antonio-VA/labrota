@@ -58,7 +58,7 @@ export function StaffProfilePanel({
   }, [staffId, open, weekStart])
 
   const staff = staffId ? staffList.find((s) => s.id === staffId) : null
-  const deptMaps = buildDeptMaps(weekData?.departments ?? [])
+  const deptMaps = buildDeptMaps(weekData?.departments ?? [], locale)
   const ROLE_LABEL = deptMaps.label
   const ROLE_BORDER = deptMaps.border
 
@@ -116,21 +116,21 @@ export function StaffProfilePanel({
                       </Tooltip>
                     ) : null
                   })()}
-                  {(staff as any).contract_type === "part_time" && (
+                  {staff.contract_type === "part_time" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">PT</span>
                   )}
-                  {(staff as any).contract_type === "intern" && (
+                  {staff.contract_type === "intern" && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">INT</span>
                   )}
                   {(() => {
-                    const end = (staff as any).onboarding_end_date as string | null
+                    const end = staff.onboarding_end_date
                     const today = new Date().toISOString().split("T")[0]
                     if (end && today <= end) return (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
                     )
                     return null
                   })()}
-                  {(staff as any).prefers_guardia === true && (
+                  {staff.prefers_guardia === true && (
                     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 shrink-0">G</span>
                   )}
                 </div>
@@ -383,16 +383,16 @@ export function StaffProfilePanel({
                   <p className="text-muted-foreground">{t("daysPerWeek")}</p>
                   <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                     <p className="text-foreground font-medium">{staff.days_per_week ?? 5} {locale === "es" ? "días/sem" : "days/wk"}</p>
-                    {(staff as any).contract_type === "part_time" && (
+                    {staff.contract_type === "part_time" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">{locale === "es" ? "A tiempo parcial" : "Part-time"}</span>
                     )}
-                    {(staff as any).contract_type === "intern" && (
+                    {staff.contract_type === "intern" && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">{locale === "es" ? "Becario" : "Intern"}</span>
                     )}
                   </div>
                 </div>
                 {(() => {
-                  const end = (staff as any).onboarding_end_date as string | null
+                  const end = staff.onboarding_end_date
                   const today = new Date().toISOString().split("T")[0]
                   if (!end) return null
                   return (

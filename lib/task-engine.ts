@@ -121,7 +121,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
   }
 
   // Task conflict threshold (soft)
-  const taskConflictThreshold = (labConfig as any).task_conflict_threshold ?? 3
+  const taskConflictThreshold = labConfig.task_conflict_threshold ?? 3
 
   // Historical workload scores
   const workloadScore: Record<string, number> = {}
@@ -156,11 +156,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
   }
 
   // Days-off preference
-  const daysOffPref = (labConfig as any).days_off_preference as
-    | "always_weekend"
-    | "prefer_weekend"
-    | "any_day"
-    | undefined ?? "prefer_weekend"
+  const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
 
   // Assignment lookup for rules: date → set of staff_ids (recent + generated)
   const assignedByDate: Record<string, Set<string>> = {}

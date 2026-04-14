@@ -1,6 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function GET(req: Request) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const rl = rateLimit(`auth-method:${ip}`, 10)
+  if (!rl.success) return rateLimitResponse()
+
   const { searchParams } = new URL(req.url)
   const email = searchParams.get("email")?.trim().toLowerCase()
 
@@ -19,7 +24,6 @@ export async function GET(req: Request) {
       .maybeSingle() as { data: { organisation_id: string | null } | null }
 
     if (!profile?.organisation_id) {
-      // Don't reveal whether email exists — return default
       return Response.json({ method: "password" })
     }
 

@@ -4,11 +4,16 @@ import type { DeptMaps, ViewMode } from "./types"
 import { DEFAULT_DEPT_MAPS, ROLE_ORDER, SHIFT_ORDER, LEGACY_SKILL_NAMES } from "./constants"
 import { Bookmark, Grid3X3, Sparkles, BrainCircuit } from "lucide-react"
 
-export function buildDeptMaps(departments: import("@/lib/types/database").Department[]): DeptMaps {
+/** Pick the locale-appropriate department display name */
+export function deptDisplayName(d: import("@/lib/types/database").Department, locale: string): string {
+  return locale === "en" && d.name_en ? d.name_en : d.name
+}
+
+export function buildDeptMaps(departments: import("@/lib/types/database").Department[], locale: string = "es"): DeptMaps {
   if (!departments || departments.length === 0) return DEFAULT_DEPT_MAPS
   return {
     border: Object.fromEntries(departments.map((d) => [d.code, d.colour])),
-    label:  Object.fromEntries(departments.map((d) => [d.code, d.name])),
+    label:  Object.fromEntries(departments.map((d) => [d.code, deptDisplayName(d, locale)])),
     order:  Object.fromEntries(departments.map((d) => [d.code, d.sort_order])),
   }
 }

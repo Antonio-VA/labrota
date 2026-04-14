@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
     callbackUrl.search = request.nextUrl.search
     return NextResponse.redirect(callbackUrl)
   }
-  const hostname = request.headers.get("host") ?? ""
+  const hostname = (request.headers.get("host") ?? "").toLowerCase()
   const isAdminSubdomain =
     hostname === "admin.labrota.app" ||
     hostname.startsWith("admin.localhost")

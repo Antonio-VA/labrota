@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -156,7 +157,7 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
                   <div className="flex items-center gap-2.5">
                     <div className="size-8 shrink-0 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden text-[11px] font-semibold text-muted-foreground">
                       {row.logo_url ? (
-                        <img src={row.logo_url} alt={row.name} className="size-full object-contain p-0.5" />
+                        <Image src={row.logo_url} alt={row.name} width={32} height={32} className="size-full object-contain p-0.5" />
                       ) : (
                         row.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
                       )}

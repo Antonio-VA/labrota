@@ -18,6 +18,11 @@ import type { CalendarLayout } from "./types"
 import type { GenerationStrategy } from "./utils"
 import { toast } from "sonner"
 
+// Hoisted stable references — avoids new object/function on every render
+const EMPTY_RECORD: Record<string, never> = {}
+const EMPTY_STAFF: StaffWithSkills[] = []
+const NOOP = () => {}
+
 export function WeekContent({
   weekData, staffList, filteredStaffList,
   calendarLayout, daysAsRows, compact, colorChips, personSimplified,
@@ -79,13 +84,13 @@ export function WeekContent({
         {(loading || !staffLoaded) && (
           <div className="absolute inset-0 z-10 bg-background flex flex-col">
             {weekData?.rotaDisplayMode === "by_task" && daysAsRows ? (
-              <TransposedTaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} publicHolidays={{}} onLeaveByDate={{}} compact={compact} colorChips={colorChips} />
+              <TransposedTaskGrid data={null} staffList={EMPTY_STAFF} loading locale={locale} isPublished={false} publicHolidays={EMPTY_RECORD} onLeaveByDate={EMPTY_RECORD} compact={compact} colorChips={colorChips} />
             ) : weekData?.rotaDisplayMode === "by_task" ? (
-              <TaskGrid data={null} staffList={[]} loading locale={locale} isPublished={false} onRefresh={() => {}} taskConflictThreshold={3} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
+              <TaskGrid data={null} staffList={EMPTY_STAFF} loading locale={locale} isPublished={false} onRefresh={NOOP} taskConflictThreshold={3} punctionsDefault={EMPTY_RECORD} punctionsOverride={EMPTY_RECORD} onPunctionsChange={NOOP} compact={compact} colorBorders={colorChips} showPuncBiopsy={false} />
             ) : calendarLayout === "person" ? (
-              <PersonGrid data={null} staffList={[]} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} onChipClick={() => {}} simplified={personSimplified} />
+              <PersonGrid data={null} staffList={EMPTY_STAFF} loading locale={locale} isPublished={false} shiftTimes={null} onLeaveByDate={EMPTY_RECORD} publicHolidays={EMPTY_RECORD} onChipClick={NOOP} simplified={personSimplified} />
             ) : (
-              <ShiftGrid data={null} staffList={[]} loading locale={locale} onCellClick={() => {}} onChipClick={() => {}} isPublished={false} shiftTimes={null} onLeaveByDate={{}} publicHolidays={{}} punctionsDefault={{}} punctionsOverride={{}} onPunctionsChange={() => {}} onRefresh={() => {}} weekStart={weekStart} compact={compact} colorChips={colorChips} />
+              <ShiftGrid data={null} staffList={EMPTY_STAFF} loading locale={locale} onCellClick={NOOP} onChipClick={NOOP} isPublished={false} shiftTimes={null} onLeaveByDate={EMPTY_RECORD} publicHolidays={EMPTY_RECORD} punctionsDefault={EMPTY_RECORD} punctionsOverride={EMPTY_RECORD} onPunctionsChange={NOOP} onRefresh={NOOP} weekStart={weekStart} compact={compact} colorChips={colorChips} />
             )}
             {activeStrategy === "ai_hybrid" && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">

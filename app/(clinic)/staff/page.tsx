@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic"
+import { getTranslations } from "next-intl/server"
 import { requireEditor } from "@/lib/require-editor"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -141,10 +142,13 @@ export default async function StaffPage() {
     }
   }
 
+  const t = await getTranslations("staff")
+
   return (
     <>
       <div className="flex-1 overflow-auto p-6 md:p-8" style={{ scrollbarGutter: "stable" }}>
         <MobileGate>
+          <h1 className="text-[18px] font-medium mb-4">{t("title")}</h1>
           <StaffList staff={staff} tecnicas={tecnicas} departments={depts} shiftTypes={shiftTypes} maxStaff={maxStaff} leaveBalances={leaveBalances} />
         </MobileGate>
       </div>
