@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from "react"
 import { useRef } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
-import { X, Sun, Moon, Monitor, Check, Camera, Cloud, Unplug, ChevronRight } from "lucide-react"
+import { X, Sun, Moon, Monitor, Check, Camera, Cloud, Unplug, ChevronRight, BookOpen } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -345,11 +345,22 @@ export function AccountPanel({ open, onClose, user }: {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
-          <Button size="sm" onClick={handleSave} disabled={isPending || loading}>
-            {isPending ? tc("saving") : tc("save")}
-          </Button>
+        <div className="border-t border-border px-5 py-3 shrink-0 flex items-center justify-between gap-2">
+          <a
+            href="https://docs.labrota.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <BookOpen className="size-3.5" />
+            Help
+          </a>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
+            <Button size="sm" onClick={handleSave} disabled={isPending || loading}>
+              {isPending ? tc("saving") : tc("save")}
+            </Button>
+          </div>
         </div>
       </div>
     </>

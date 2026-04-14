@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
-import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3, Settings, BookOpen } from "lucide-react"
+import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3, Settings } from "lucide-react"
 import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
@@ -129,16 +129,6 @@ export function AppSidebar() {
           })}
         </div>
       <div className="flex flex-col items-center gap-2 pb-3">
-        <a
-          href="https://docs.labrota.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col items-center gap-1.5 py-2 px-2 rounded-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full"
-          title="Help"
-        >
-          <BookOpen className="size-4" />
-          <span className="text-[10px] font-medium leading-none">Help</span>
-        </a>
         <span className="text-[17px] leading-none" style={{ color: "var(--muted-foreground)", opacity: 0.35, textShadow: "0 1px 0 rgba(255,255,255,0.4), 0 -1px 0 rgba(0,0,0,0.1)" }}>
           <span className="font-light">lab</span><span className="font-medium">rota</span>
         </span>
