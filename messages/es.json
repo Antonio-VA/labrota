@@ -81,7 +81,10 @@
     "settings": "Admin",
     "signOut": "Cerrar sesión",
     "appName": "LabRota",
-    "account": "Mi cuenta"
+    "account": "Mi cuenta",
+    "day": "Día",
+    "week": "Semana",
+    "myRota": "Mi turno"
   },
   "auth": {
     "signIn": "Iniciar sesión",

@@ -12,6 +12,10 @@ import {
 import type { StaffWithSkills } from "@/lib/types/database"
 import type { GenerationStrategy } from "@/components/calendar-panel/utils"
 
+// Module-level caches — survive component unmount/remount (navigation away and back)
+const _weekCache = new Map<string, RotaWeekData>()
+let _staffCache: StaffWithSkills[] | null = null
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface UseRotaDataOptions {
@@ -32,17 +36,21 @@ export function useRotaData({
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  const [weekData, setWeekData]           = useState<RotaWeekData | null>(null)
+  // Seed from module-level caches so navigation-back is instant (no flash of loading)
+  const cachedWeek = initialData ?? _weekCache.get(weekStart) ?? null
+  const cachedStaff = _staffCache
+
+  const [weekData, setWeekData]           = useState<RotaWeekData | null>(cachedWeek)
   const [monthSummary, setMonthSummary]   = useState<RotaMonthSummary | null>(null)
-  const [loadingWeek, setLoadingWeek]     = useState(!initialData)
+  const [loadingWeek, setLoadingWeek]     = useState(!cachedWeek)
   const [loadingMonth, setLoadingMonth]   = useState(false)
   const [error, setError]                 = useState<string | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(!!initialData)
-  const [staffList, setStaffList]         = useState<StaffWithSkills[]>([])
-  const [staffLoaded, setStaffLoaded]     = useState(false)
+  const [initialLoaded, setInitialLoaded] = useState(!!cachedWeek)
+  const [staffList, setStaffList]         = useState<StaffWithSkills[]>(cachedStaff ?? [])
+  const [staffLoaded, setStaffLoaded]     = useState(!!cachedStaff)
   const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
   const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(
-    initialData?.rota?.punctions_override ?? {},
+    cachedWeek?.rota?.punctions_override ?? {},
   )
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
   const [liveDays, setLiveDays]           = useState<RotaDay[] | null>(null)
@@ -51,7 +59,6 @@ export function useRotaData({
 
   // ── Internal refs ────────────────────────────────────────────────────────
 
-  const weekCache        = useRef<Map<string, RotaWeekData>>(new Map())
   const fetchVersionRef  = useRef(0)
   const lastFetchId      = useRef(0)
   const initialDataUsed  = useRef(false)
@@ -75,11 +82,11 @@ export function useRotaData({
     const run = () => {
       const prev = weekOffset(ws, -7)
       const next = weekOffset(ws, 7)
-      if (!weekCache.current.has(prev)) {
-        getRotaWeek(prev).then((d) => { weekCache.current.set(prev, d) }).catch(() => {})
+      if (!_weekCache.has(prev)) {
+        getRotaWeek(prev).then((d) => { _weekCache.set(prev, d) }).catch(() => {})
       }
-      if (!weekCache.current.has(next)) {
-        getRotaWeek(next).then((d) => { weekCache.current.set(next, d) }).catch(() => {})
+      if (!_weekCache.has(next)) {
+        getRotaWeek(next).then((d) => { _weekCache.set(next, d) }).catch(() => {})
       }
     }
     if (typeof requestIdleCallback === "function") requestIdleCallback(run)
@@ -93,7 +100,7 @@ export function useRotaData({
     const initialData = initialDataRef.current
     if (!initialDataUsed.current && initialData?.weekStart === ws) {
       initialDataUsed.current = true
-      weekCache.current.set(ws, initialData)
+      _weekCache.set(ws, initialData)
       setInitialLoaded(true)
       setWeekData(initialData)
       setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
@@ -103,7 +110,7 @@ export function useRotaData({
     }
 
     // Cache hit — show instantly, then silently refresh in background
-    const cached = weekCache.current.get(ws)
+    const cached = _weekCache.get(ws)
     if (cached) {
       setInitialLoaded(true)
       setWeekData(cached)
@@ -115,7 +122,7 @@ export function useRotaData({
       reasoningSourceRef.current = null
       setActiveStrategy(null)
       getRotaWeek(ws).then((d) => {
-        weekCache.current.set(ws, d)
+        _weekCache.set(ws, d)
         setWeekData(d)
         setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
         prefetchAdjacent(ws)
@@ -135,7 +142,7 @@ export function useRotaData({
     )
     Promise.race([getRotaWeek(ws), timeout]).then((d) => {
       if (fetchVersionRef.current !== version) return
-      weekCache.current.set(ws, d)
+      _weekCache.set(ws, d)
       setInitialLoaded(true)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -155,7 +162,7 @@ export function useRotaData({
     const id = ++lastFetchId.current
     getRotaWeek(ws).then((d) => {
       if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
-      weekCache.current.set(ws, d)
+      _weekCache.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
     }).catch(() => {/* ignore — grid stays as-is */})
@@ -248,7 +255,7 @@ export function useRotaData({
         setTimeout(() => reject(new Error("Staff load timed out")), 15000),
       )
       Promise.race([getActiveStaff(), staffTimeout])
-        .then((s) => { setStaffList(s); setStaffLoaded(true) })
+        .then((s) => { _staffCache = s; setStaffList(s); setStaffLoaded(true) })
         .catch(() => { setStaffLoaded(true) })
     }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -259,6 +266,7 @@ export function useRotaData({
     const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
     if (ids === prevStaffIdsRef.current) return
     prevStaffIdsRef.current = ids
+    _staffCache = weekData.activeStaff
     setStaffList(weekData.activeStaff)
     setStaffLoaded(true)
   }, [weekData?.activeStaff])

@@ -221,6 +221,7 @@ export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
 
 // ── updateOrgLogo ─────────────────────────────────────────────────────────────
 export async function updateOrgLogo(orgId: string, logoUrl: string | null) {
+  if (logoUrl && !logoUrl.startsWith("https://")) return { error: "Logo URL must use HTTPS." }
   await assertSuperAdmin()
 
   const admin = createAdminClient()

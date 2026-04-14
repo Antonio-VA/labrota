@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
-import { useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { CalendarDays, CalendarRange, Briefcase, ClipboardList, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -17,13 +17,8 @@ const BASE_ITEMS: NavItem[] = [
 const MY_ROTA_ITEM: NavItem = { key: "myRota", icon: ClipboardList, href: "/my-rota" }
 const LEAVES_ITEM: NavItem = { key: "leaves", icon: Briefcase, href: "/leaves" }
 
-const LABELS: Record<string, Record<string, string>> = {
-  es: { day: "Día", week: "Semana", myRota: "Mi turno", leaves: "Ausencias" },
-  en: { day: "Day", week: "Week", myRota: "My Rota", leaves: "Leave" },
-}
-
 export function MobileBottomNav() {
-  const locale = useLocale() as "es" | "en"
+  const t = useTranslations("nav")
   const pathname = usePathname()
   const canEdit = useCanEdit()
   const viewerStaffId = useViewerStaffId()
@@ -116,7 +111,7 @@ export function MobileBottomNav() {
                   <item.icon className="size-[26px]" strokeWidth={isActive ? 2 : 1.5} />
                 )}
                 <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
-                  {LABELS[locale]?.[item.key] ?? item.key}
+                  {t(item.key as Parameters<typeof t>[0])}
                 </span>
               </button>
             )

@@ -96,6 +96,9 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
     return { error: "Invalid email address." }
   }
 
+  const VALID_ROLES = ["admin", "manager", "viewer"]
+  if (!VALID_ROLES.includes(role)) return { error: "Invalid role." }
+
   // Check if auth user already exists via profiles table
   const { data: existingProfile } = await admin
     .from("profiles")
@@ -328,6 +331,7 @@ export async function updateOrgName(name: string): Promise<{ error?: string }> {
 }
 
 export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }> {
+  if (logoUrl && !logoUrl.startsWith("https://")) return { error: "Logo URL must use HTTPS." }
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("organisations")
