@@ -398,7 +398,7 @@ export function StaffForm({
           {t("daysPreferredHint3")}
         </p>
         <div className="flex gap-2 flex-wrap">
-          {shiftTypes.filter((st) => st.active !== false).map((st) => {
+          {shiftTypes.filter((st) => st.active !== false && (st.department_codes?.length === 0 || st.department_codes?.includes(role))).map((st) => {
             const isPref = preferredShifts.includes(st.code)
             const isAvoid = avoidShifts.includes(st.code)
             return (

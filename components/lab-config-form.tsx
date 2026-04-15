@@ -92,6 +92,10 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
   const coverageWarnings = isByShift ? shiftCoverageWarnings : taskCoverageWarnings
 
+  // by_task: detect if shifts have department_codes configured (multi-shift grouping)
+  const activeShiftsWithDepts = shiftTypes.filter((st) => st.active !== false && st.department_codes?.length > 0)
+  const hasShiftDeptLinking = !isByShift && activeShiftsWithDepts.length > 0
+
   /** Set per-department shift coverage value */
   function setShiftCov(shiftCode: string, day: string, role: "lab" | "andrology" | "admin", raw: string) {
     const v = parseInt(raw, 10)
@@ -190,12 +194,13 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   function handleCoverageSave() {
     setCoverageStatus("idle")
     startCoverageTransition(async () => {
+      const effectiveShiftCovEnabled = shiftCoverageEnabled || hasShiftDeptLinking
       const result = await updateLabConfig({
         coverage_by_day: coverageByDay,
         task_coverage_enabled: taskCoverageEnabled,
         task_coverage_by_day: taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
-        shift_coverage_enabled: shiftCoverageEnabled,
-        shift_coverage_by_day: shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
+        shift_coverage_enabled: effectiveShiftCovEnabled,
+        shift_coverage_by_day: effectiveShiftCovEnabled ? shiftCoverage : config.shift_coverage_by_day,
       })
       if (result.error) {
         setCoverageErrorMsg(result.error)
@@ -240,8 +245,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_conflict_threshold: values.task_conflict_threshold,
         task_coverage_enabled:  taskCoverageEnabled,
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
-        shift_coverage_enabled: shiftCoverageEnabled,
-        shift_coverage_by_day:  shiftCoverageEnabled ? shiftCoverage : config.shift_coverage_by_day,
+        shift_coverage_enabled: shiftCoverageEnabled || hasShiftDeptLinking,
+        shift_coverage_by_day:  (shiftCoverageEnabled || hasShiftDeptLinking) ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:       values.days_off_preference,
         guardia_min_weeks_between: values.guardia_min_weeks_between,
         guardia_max_per_month:     values.guardia_max_per_month,
@@ -369,8 +374,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           )}
         </div>
 
-        {/* by_task mode OR by_shift with toggle OFF → department table */}
-        {(!isByShift || !shiftCoverageEnabled) && (
+        {/* by_task mode OR by_shift with toggle OFF → department table (not when shift-dept linking active) */}
+        {(!isByShift || !shiftCoverageEnabled) && !hasShiftDeptLinking && (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -489,8 +494,86 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           </div>
         )}
 
+        {/* by_task with shift-department linking → per-shift per-department table */}
+        {hasShiftDeptLinking && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-muted border-b border-border">
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[140px]">{t("fields.shiftColumn")}</th>
+                  {DAY_KEYS.map((day) => (
+                    <th key={day} className={cn("px-1 py-2 text-center font-medium text-muted-foreground w-[52px]", (day === "sat" || day === "sun") && "bg-muted/60")}>{t(`days.${day}`).slice(0, 3)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {activeShiftsWithDepts.map((st) => {
+                  const linkedDepts = departments.filter((d) => st.department_codes.includes(d.code))
+                  return (
+                    <Fragment key={st.id}>
+                      <tr className="bg-muted/60 border-t border-border">
+                        <td colSpan={8} className="px-3 py-1.5">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[13px] font-semibold">{st.name_es || st.code}</span>
+                            <span className="text-[11px] text-muted-foreground">{st.start_time}–{st.end_time}</span>
+                          </span>
+                        </td>
+                      </tr>
+                      {linkedDepts.map((dept, rIdx) => (
+                        <tr key={`${st.id}-${dept.code}`} className={cn("border-b border-border/30", rIdx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                          <td className="px-3 py-0.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: dept.colour }} />
+                              <span className="text-[12px] text-muted-foreground">{dept.abbreviation}</span>
+                            </span>
+                          </td>
+                          {DAY_KEYS.map((day) => {
+                            const isWknd = day === "sat" || day === "sun"
+                            const isActiveDay = st.active_days?.includes(day) ?? true
+                            const entry = shiftCoverage[st.code]?.[day]
+                            const covEntry = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                            const roleKey = dept.code as "lab" | "andrology" | "admin"
+                            const val = covEntry[roleKey] ?? 0
+                            return (
+                              <td key={day} className={cn("px-1 py-0.5 text-center", isWknd && "bg-muted/30")}>
+                                {isActiveDay ? (
+                                  <div className="group relative flex items-center justify-center">
+                                    <button type="button" tabIndex={-1}
+                                      onClick={() => setShiftCov(st.code, day, roleKey, String(Math.max(0, val - 1)))}
+                                      className="absolute left-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
+                                    >-</button>
+                                    <input type="number" min={0} max={20} value={val || ""}
+                                      onChange={(e) => setShiftCov(st.code, day, roleKey, e.target.value)}
+                                      disabled={isPending}
+                                      className={cn(
+                                        "w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
+                                        val > 0 ? "border-input bg-background text-foreground" : "border-input bg-background text-muted-foreground/30",
+                                        "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                      )}
+                                    />
+                                    <button type="button" tabIndex={-1}
+                                      onClick={() => setShiftCov(st.code, day, roleKey, String(val + 1))}
+                                      className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
+                                    >+</button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground/30">—</span>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          {isByShift && shiftCoverageEnabled
+          {(isByShift && shiftCoverageEnabled) || hasShiftDeptLinking
             ? t("fields.coverageShiftFooter")
             : t("fields.coverageDeptFooter")}
         </p>
