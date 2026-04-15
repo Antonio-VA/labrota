@@ -137,8 +137,6 @@ export default async function LabConfigPage() {
             turnos={
               <TurnosTab
                 initialTypes={shiftTypes}
-                rotaDisplayMode={rotaDisplayMode}
-                departments={departments}
               />
             }
           />
