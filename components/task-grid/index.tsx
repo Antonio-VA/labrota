@@ -160,7 +160,7 @@ export function TaskGrid({
     if (hasDeptLinking) {
       // Group by department_codes linking
       for (const st of shiftsWithDepts) {
-        const groupTecnicas = tecnicas.filter((tc) => st.department_codes.includes(tc.department) && !assigned.has(tc.id))
+        const groupTecnicas = tecnicas.filter((tc) => tc.department.split(",").some((d) => st.department_codes.includes(d)) && !assigned.has(tc.id))
         for (const tc of groupTecnicas) assigned.add(tc.id)
         if (groupTecnicas.length > 0) {
           groups.push({

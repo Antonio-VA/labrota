@@ -125,12 +125,14 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     }
   }
 
-  // Active técnicas grouped by department
+  // Active técnicas grouped by department (comma-separated departments distribute to each)
   const tecByDept: Record<string, typeof tecnicas> = {}
   for (const t of tecnicas) {
-    const dept = t.department || "lab"
-    if (!tecByDept[dept]) tecByDept[dept] = []
-    tecByDept[dept].push(t)
+    const depts = (t.department || "lab").split(",").filter(Boolean)
+    for (const dept of depts) {
+      if (!tecByDept[dept]) tecByDept[dept] = []
+      tecByDept[dept].push(t)
+    }
   }
 
   // Task conflict threshold (soft)
@@ -690,7 +692,9 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
 
       // ── Standard (non-grouped) assignment
       // Resolve which shift this task belongs to via department linking
-      const taskShiftCode = hasShiftDeptLinking ? (deptToShift[task.department] ?? dummyShift) : dummyShift
+      const taskDepts = task.department.split(",").filter(Boolean)
+      const matchedDept = taskDepts.find((d) => deptToShift[d])
+      const taskShiftCode = hasShiftDeptLinking && matchedDept ? deptToShift[matchedDept] : dummyShift
       const taskShiftDeptCodes = hasShiftDeptLinking
         ? activeShiftsWithDepts.find((st) => st.code === taskShiftCode)?.department_codes
         : undefined
