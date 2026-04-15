@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useTransition, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { GripVertical, Plus, X, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -65,16 +66,28 @@ function DepartmentSelect({
   placeholder: string
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 })
 
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        btnRef.current?.contains(e.target as Node) ||
+        popRef.current?.contains(e.target as Node)
+      ) return
+      setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
+
+  function handleOpen() {
+    const rect = btnRef.current?.getBoundingClientRect()
+    if (rect) setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    setOpen((p) => !p)
+  }
 
   function toggle(code: string) {
     const next = selected.includes(code)
@@ -86,11 +99,12 @@ function DepartmentSelect({
   const selectedDepts = departments.filter((d) => selected.includes(d.code))
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
+        ref={btnRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen(!open)}
+        onClick={handleOpen}
         className={cn(
           "flex items-center gap-1 w-full min-h-[32px] px-2 py-1 rounded-md border border-input bg-background text-left transition-colors",
           "hover:border-primary/40 disabled:opacity-50",
@@ -114,8 +128,12 @@ function DepartmentSelect({
         </div>
         <ChevronDown className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-background border border-border rounded-md shadow-lg py-1">
+      {open && createPortal(
+        <div
+          ref={popRef}
+          className="bg-background border border-border rounded-md shadow-lg py-1"
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, zIndex: 200 }}
+        >
           {departments.map((d) => {
             const isSelected = selected.includes(d.code)
             return (
@@ -135,7 +153,8 @@ function DepartmentSelect({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
