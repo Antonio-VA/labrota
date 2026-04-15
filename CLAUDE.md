@@ -191,7 +191,29 @@ Use `formatDate` in: week view headers, schedule cells, inline references.
 - Migration at `supabase/migrations/20260317000001_initial_schema.sql`
 
 ### Tables
-`organisations` · `profiles` · `staff` · `staff_skills` · `leaves` · `rotas` · `rota_assignments` · `lab_config`
+`organisations` · `profiles` · `staff` · `staff_skills` · `leaves` · `rotas` · `rota_assignments` · `lab_config` · `shift_types` · `departments` · `tecnicas`
+
+### Shift-Department Linking (by_task mode)
+
+For by_task organisations, shifts can be linked to departments via `shift_types.department_codes text[]`.
+
+**Data model:**
+- `shift_types.department_codes` — array of department codes that participate in this shift
+- `staff.preferred_shift` — when a department is in 2+ shifts, determines which shift the person belongs to
+
+**UI changes when linking is active:**
+- **Shifts tab** — multi-select dropdown per shift row to pick departments (not chips — departments can grow)
+- **Coverage tab** — groups by shift, indented departments underneath; only linked departments shown per shift; non-active days show "—"
+- **Schedule views** — subheaders become shift name + time range instead of department name; staff grouped by their shift
+- **Task grid** — technique rows grouped under shift subheaders; staff selector filtered to shift's departments
+- **Staff form** — shift preference buttons filtered to only shifts that include the staff member's department
+
+**Engine behaviour:**
+- `task-engine.ts` scopes candidates by shift-department linking
+- `preferred_shift` is a soft preference in candidate sorting
+- Assignments get the correct `shift_type` based on the task's department mapping
+
+**Backwards-compatible:** empty `department_codes` = all departments (no shift grouping, original behaviour).
 
 ---
 
