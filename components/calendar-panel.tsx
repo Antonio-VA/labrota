@@ -137,14 +137,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
   const [currentDate, setCurrentDateState] = useState(() => {
-    // When SSR provides initialData, start on that week to avoid a mismatch
-    // that would discard the pre-fetched data and trigger a redundant client fetch
-    if (initialData?.weekStart) {
-      const firstDay = initialData.weekStart
-      return firstDay
-    }
-    if (typeof window === "undefined") return TODAY
-    return sessionStorage.getItem("labrota_current_date") || TODAY
+    if (typeof window === "undefined") return initialData?.weekStart ?? TODAY
+    // Restore saved week from sessionStorage; fall back to SSR data then today
+    return sessionStorage.getItem("labrota_current_date") || initialData?.weekStart || TODAY
   })
   const setCurrentDate: typeof setCurrentDateState = (v) => {
     setCurrentDateState((prev) => {

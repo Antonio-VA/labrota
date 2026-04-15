@@ -688,14 +688,12 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       // Filter staff by the task's own departments
       const taskDeptCodes = task.department.split(",").filter(Boolean)
 
-      // Find qualified candidates (skill-based + task department + shift scoping)
+      // Find qualified candidates (skill-based + task department filter)
       const candidates = workingStaff.filter((s) => {
         const skills = staffSkillsCache[s.id]
         if (!skills || !isQualified(skills, task.code)) return false
         // Only include staff from the task's departments
         if (taskDeptCodes.length > 0 && !taskDeptCodes.includes(s.role)) return false
-        // Scope by preferred_shift: staff with a different preferred_shift are excluded
-        if (task.typical_shifts.length > 0 && s.preferred_shift && s.preferred_shift !== taskShiftCode) return false
         return true
       })
 
