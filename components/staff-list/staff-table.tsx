@@ -136,7 +136,7 @@ export function StaffTable({
   return (
     <div className={cn("rounded-lg border border-border bg-background", muted && "opacity-60")}>
       {/* Header */}
-      <div className="hidden md:grid px-4 py-2 bg-muted/30 border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}>
+      <div className="hidden md:grid px-4 py-2 bg-background border-b border-border items-center sticky top-[52px] z-10" style={{ gridTemplateColumns: buildGrid(visibleCols, effectiveOrder) }}>
         <input
           type="checkbox"
           checked={allSelected}
