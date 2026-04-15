@@ -292,8 +292,8 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
         <span className="text-[11px] text-muted-foreground">{t("start")}</span>
         <span className="text-[11px] text-muted-foreground">{t("end")}</span>
         <span className="text-[11px] text-muted-foreground">{t("nameEs")}</span>
-        {showDepts && <span className="text-[11px] text-muted-foreground">{t("departments")}</span>}
-        <span className="text-[11px] text-muted-foreground">{t("activeDays")}</span>
+        {showDepts && <span className="text-[11px] text-muted-foreground justify-self-start">{t("departments")}</span>}
+        <span className="text-[11px] text-muted-foreground justify-self-start">{t("activeDays")}</span>
         <span />
       </div>
 

@@ -44,7 +44,6 @@ export function TurnosTab({ initialTypes, rotaDisplayMode, departments }: {
           initialTypes={initialTypes}
           hideSaveButton
           registerSave={registerShiftSave}
-          daysReadOnly={rotaDisplayMode === "by_task"}
           departments={rotaDisplayMode === "by_task" ? departments : undefined}
         />
       </div>
