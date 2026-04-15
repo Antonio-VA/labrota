@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useRef, useTransition, useEffect } from "react"
-import { createPortal } from "react-dom"
+import { useState, useRef, useTransition } from "react"
 import { useTranslations } from "next-intl"
-import { GripVertical, Plus, X, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react"
+import { GripVertical, Plus, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { saveShiftTypes, countAssignmentsForShift } from "@/app/(clinic)/lab/shift-type-actions"
-import type { ShiftTypeDefinition, Department } from "@/lib/types/database"
+import type { ShiftTypeDefinition } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
 const ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
@@ -21,7 +20,6 @@ interface ShiftRow {
   start_time: string
   end_time: string
   active_days: string[]
-  department_codes: string[]
   isNew: boolean       // true = not yet saved to DB
 }
 
@@ -34,7 +32,6 @@ function rowFromDefinition(def: ShiftTypeDefinition): ShiftRow {
     start_time: def.start_time,
     end_time: def.end_time,
     active_days: def.active_days ?? [...ALL_DAYS],
-    department_codes: def.department_codes ?? [],
     isNew: false,
   }
 }
@@ -49,124 +46,16 @@ function newRow(): ShiftRow {
     start_time: "07:30",
     end_time: "15:30",
     active_days: [...ALL_DAYS],
-    department_codes: [],
     isNew: true,
   }
 }
 
-// ── Department multi-select dropdown ────────────────────────────────────────
-
-function DepartmentSelect({
-  departments, selected, disabled, onChange, placeholder,
-}: {
-  departments: Department[]
-  selected: string[]
-  disabled: boolean
-  onChange: (codes: string[]) => void
-  placeholder: string
-}) {
-  const [open, setOpen] = useState(false)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const popRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 })
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (
-        btnRef.current?.contains(e.target as Node) ||
-        popRef.current?.contains(e.target as Node)
-      ) return
-      setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  function handleOpen() {
-    const rect = btnRef.current?.getBoundingClientRect()
-    if (rect) setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-    setOpen((p) => !p)
-  }
-
-  function toggle(code: string) {
-    const next = selected.includes(code)
-      ? selected.filter((c) => c !== code)
-      : [...selected, code]
-    onChange(next)
-  }
-
-  const selectedDepts = departments.filter((d) => selected.includes(d.code))
-
-  return (
-    <div className="relative">
-      <button
-        ref={btnRef}
-        type="button"
-        disabled={disabled}
-        onClick={handleOpen}
-        className={cn(
-          "flex items-center gap-1 w-full min-h-[32px] px-2 py-1 rounded-md border border-input bg-background text-left transition-colors",
-          "hover:border-primary/40 disabled:opacity-50",
-          open && "border-primary ring-1 ring-primary/20",
-        )}
-      >
-        <div className="flex-1 flex items-center gap-1 flex-wrap min-w-0">
-          {selectedDepts.length === 0 ? (
-            <span className="text-[11px] text-muted-foreground/60">{placeholder}</span>
-          ) : (
-            selectedDepts.map((d) => (
-              <span
-                key={d.code}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border"
-                style={{ borderColor: d.colour, color: d.colour, backgroundColor: `${d.colour}10` }}
-              >
-                {d.abbreviation}
-              </span>
-            ))
-          )}
-        </div>
-        <ChevronDown className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
-      {open && createPortal(
-        <div
-          ref={popRef}
-          className="bg-background border border-border rounded-md shadow-lg py-1"
-          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, zIndex: 200 }}
-        >
-          {departments.map((d) => {
-            const isSelected = selected.includes(d.code)
-            return (
-              <button
-                key={d.code}
-                type="button"
-                onClick={() => toggle(d.code)}
-                className={cn(
-                  "flex items-center gap-2 w-full px-2.5 py-1.5 text-[12px] text-left transition-colors",
-                  isSelected ? "bg-primary/5 font-medium" : "hover:bg-muted/50",
-                )}
-              >
-                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: d.colour }} />
-                <span className="flex-1 truncate">{d.name}</span>
-                <span className="text-[10px] text-muted-foreground">{d.abbreviation}</span>
-                {isSelected && <span className="text-primary text-[11px]">✓</span>}
-              </button>
-            )
-          })}
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, registerSave, daysReadOnly, departments }: {
+export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, registerSave, daysReadOnly }: {
   initialTypes: ShiftTypeDefinition[]
   hideSaveButton?: boolean
   onSaveComplete?: (ok: boolean) => void
   registerSave?: (fn: () => Promise<boolean>) => void
   daysReadOnly?: boolean
-  departments?: Department[]
 }) {
   const t = useTranslations("shiftTypes")
   const tc = useTranslations("common")
@@ -257,7 +146,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
       sort_order: 0,
       active: true,
       active_days: r.active_days,
-      department_codes: r.department_codes,
+      department_codes: [],
     }))
     const result = await saveShiftTypes(types)
     if (result.error) {
@@ -278,10 +167,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   }
   saveRef.current = doSave
 
-  const showDepts = departments && departments.length > 0
-  const gridCols = showDepts
-    ? "grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_10rem_auto_1.5rem]"
-    : "grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_auto_1.5rem]"
+  const gridCols = "grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_auto_1.5rem]"
 
   return (
     <div className="flex flex-col gap-3">
@@ -292,7 +178,6 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
         <span className="text-[11px] text-muted-foreground">{t("start")}</span>
         <span className="text-[11px] text-muted-foreground">{t("end")}</span>
         <span className="text-[11px] text-muted-foreground">{t("nameEs")}</span>
-        {showDepts && <span className="text-[11px] text-muted-foreground justify-self-start">{t("departments")}</span>}
         <span className="text-[11px] text-muted-foreground justify-self-start">{t("activeDays")}</span>
         <span />
       </div>
@@ -359,17 +244,6 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
                   maxLength={30}
                   placeholder={t("namePlaceholder")}
                 />
-
-                {/* Department multi-select dropdown */}
-                {showDepts && (
-                  <DepartmentSelect
-                    departments={departments}
-                    selected={row.department_codes}
-                    disabled={isPending}
-                    onChange={(codes) => updateRow(row.id, { department_codes: codes })}
-                    placeholder={t("selectDepartments")}
-                  />
-                )}
 
                 {/* Day toggles — inline */}
                 <div className="flex items-center gap-0.5">

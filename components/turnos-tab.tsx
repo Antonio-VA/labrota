@@ -6,12 +6,10 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ShiftTypesTable } from "@/components/shift-types-table"
 import { toast } from "sonner"
-import type { ShiftTypeDefinition, Department } from "@/lib/types/database"
+import type { ShiftTypeDefinition } from "@/lib/types/database"
 
-export function TurnosTab({ initialTypes, rotaDisplayMode, departments }: {
+export function TurnosTab({ initialTypes }: {
   initialTypes: ShiftTypeDefinition[]
-  rotaDisplayMode?: string
-  departments?: Department[]
 }) {
   const t = useTranslations("turnos")
   const tc = useTranslations("common")
@@ -44,7 +42,6 @@ export function TurnosTab({ initialTypes, rotaDisplayMode, departments }: {
           initialTypes={initialTypes}
           hideSaveButton
           registerSave={registerShiftSave}
-          departments={rotaDisplayMode === "by_task" ? departments : undefined}
         />
       </div>
 

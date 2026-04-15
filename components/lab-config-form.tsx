@@ -91,9 +91,9 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
 
 
-  // by_task: detect if shifts have department_codes configured (multi-shift grouping)
-  const activeShiftsWithDepts = shiftTypes.filter((st) => st.active !== false && st.department_codes?.length > 0)
-  const hasShiftDeptLinking = !isByShift && activeShiftsWithDepts.length > 0
+  // by_task: show per-shift coverage when there are active shifts
+  const activeShifts = shiftTypes.filter((st) => st.active !== false)
+  const hasShiftCoverage = !isByShift && activeShifts.length > 0
 
   /** Set per-department shift coverage value */
   function setShiftCov(shiftCode: string, day: string, role: string, raw: string) {
@@ -183,7 +183,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   function handleCoverageSave() {
     setCoverageStatus("idle")
     startCoverageTransition(async () => {
-      const effectiveShiftCovEnabled = shiftCoverageEnabled || hasShiftDeptLinking
+      const effectiveShiftCovEnabled = shiftCoverageEnabled || hasShiftCoverage
       const result = await updateLabConfig({
         coverage_by_day: coverageByDay,
         task_coverage_enabled: taskCoverageEnabled,
@@ -217,8 +217,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_conflict_threshold: values.task_conflict_threshold,
         task_coverage_enabled:  taskCoverageEnabled,
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
-        shift_coverage_enabled: shiftCoverageEnabled || hasShiftDeptLinking,
-        shift_coverage_by_day:  (shiftCoverageEnabled || hasShiftDeptLinking) ? shiftCoverage : config.shift_coverage_by_day,
+        shift_coverage_enabled: shiftCoverageEnabled || hasShiftCoverage,
+        shift_coverage_by_day:  (shiftCoverageEnabled || hasShiftCoverage) ? shiftCoverage : config.shift_coverage_by_day,
         days_off_preference:       values.days_off_preference,
         guardia_min_weeks_between: values.guardia_min_weeks_between,
         guardia_max_per_month:     values.guardia_max_per_month,
@@ -347,7 +347,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         </div>
 
         {/* by_task mode OR by_shift with toggle OFF → department table (not when shift-dept linking active) */}
-        {(!isByShift || !shiftCoverageEnabled) && !hasShiftDeptLinking && (
+        {(!isByShift || !shiftCoverageEnabled) && !hasShiftCoverage && (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -467,7 +467,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         )}
 
         {/* by_task with shift-department linking → per-shift per-department table */}
-        {hasShiftDeptLinking && (
+        {hasShiftCoverage && (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -479,8 +479,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                 </tr>
               </thead>
               <tbody>
-                {activeShiftsWithDepts.map((st) => {
-                  const linkedDepts = departments.filter((d) => st.department_codes.includes(d.code))
+                {activeShifts.map((st) => {
+                  const linkedDepts = departments
                   return (
                     <Fragment key={st.id}>
                       <tr className="bg-muted/60 border-t border-border">
@@ -544,7 +544,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         )}
 
         <p className="px-5 py-2 text-[11px] text-muted-foreground border-t border-border/50">
-          {(isByShift && shiftCoverageEnabled) || hasShiftDeptLinking
+          {(isByShift && shiftCoverageEnabled) || hasShiftCoverage
             ? t("fields.coverageShiftFooter")
             : t("fields.coverageDeptFooter")}
         </p>

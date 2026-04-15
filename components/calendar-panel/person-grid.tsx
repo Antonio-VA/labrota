@@ -259,15 +259,8 @@ export function PersonGrid({
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
-  // Detect shift-department linking for by_task mode
-  const shiftsWithDepts = useMemo(() =>
-    (data?.shiftTypes ?? []).filter((st) => st.active !== false && st.department_codes?.length > 0),
-    [data?.shiftTypes]
-  )
-  const useShiftGrouping = isTaskMode && shiftsWithDepts.length > 0
-
   // Active staff sorted by role then first name + role grouping
-  const { activeStaff, roleGroups, shiftGroupList } = useMemo(() => {
+  const { activeStaff, roleGroups } = useMemo(() => {
     const active = staffList
       .filter((s) => s.onboarding_status !== "inactive")
       .sort((a, b) => {
@@ -281,39 +274,8 @@ export function PersonGrid({
       else groups.push({ role: s.role, members: [s] })
     }
 
-    // Build shift-based groups when shift-department linking is active
-    const shiftGroups: { shiftCode: string; shiftLabel: string; shiftTime: string; members: StaffWithSkills[] }[] = []
-    if (useShiftGrouping) {
-      const assigned = new Set<string>()
-      for (const st of shiftsWithDepts) {
-        const members = active.filter((s) => {
-          if (assigned.has(s.id)) return false
-          if (!st.department_codes.includes(s.role)) return false
-          // If staff has a preferred_shift, only put them in that shift
-          if (s.preferred_shift && s.preferred_shift !== st.code) {
-            // Check if preferred shift also includes their dept
-            const prefShift = shiftsWithDepts.find((x) => x.code === s.preferred_shift)
-            if (prefShift && prefShift.department_codes.includes(s.role)) return false
-          }
-          return true
-        })
-        for (const m of members) assigned.add(m.id)
-        shiftGroups.push({
-          shiftCode: st.code,
-          shiftLabel: st.name_es || st.code,
-          shiftTime: `${st.start_time}–${st.end_time}`,
-          members,
-        })
-      }
-      // Any staff not assigned to a shift (dept not linked)
-      const unassigned = active.filter((s) => !assigned.has(s.id))
-      if (unassigned.length > 0) {
-        shiftGroups.push({ shiftCode: "__other__", shiftLabel: "Other", shiftTime: "", members: unassigned })
-      }
-    }
-
-    return { activeStaff: active, roleGroups: groups, shiftGroupList: shiftGroups }
-  }, [staffList, useShiftGrouping, shiftsWithDepts])
+    return { activeStaff: active, roleGroups: groups }
+  }, [staffList])
 
   const days = localDays
 
@@ -459,9 +421,9 @@ export function PersonGrid({
         )}
 
         {/* Staff groups — shift-based or role-based */}
-        {(useShiftGrouping ? shiftGroupList : roleGroups).map((group, groupIdx) => {
-          const isShiftGroup = "shiftCode" in group
-          const groupKey = isShiftGroup ? group.shiftCode : group.role
+        {roleGroups.map((group, groupIdx) => {
+          const isShiftGroup = false as const
+          const groupKey = group.role
           const members = group.members
           return (
           <Fragment key={groupKey}>
@@ -470,25 +432,10 @@ export function PersonGrid({
               className="px-3 py-1.5 bg-muted border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
             >
-              {isShiftGroup ? (
-                <>
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    {group.shiftLabel}
-                  </span>
-                  {group.shiftTime && (
-                    <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                      {group.shiftTime}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[group.role] ?? "bg-slate-400")} />
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                    {ROLE_LABEL_MAP[group.role] ?? group.role}
-                  </span>
-                </>
-              )}
+              <span className={cn("size-1.5 rounded-full shrink-0", ROLE_DOT[group.role] ?? "bg-slate-400")} />
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                {ROLE_LABEL_MAP[group.role] ?? group.role}
+              </span>
             </div>
 
             {/* Member rows */}

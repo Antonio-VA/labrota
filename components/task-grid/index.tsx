@@ -426,12 +426,17 @@ export function TaskGrid({
               // Determine shift code for this group's assignments
               const groupShift = (useShiftGrouping && group.shiftCode) ? group.shiftCode as ShiftType : defaultShiftCode
 
+              // Scope staff to this shift via preferred_shift
+              const shiftStaffList = useShiftGrouping && group.shiftCode
+                ? staffList.filter((s) => !s.preferred_shift || s.preferred_shift === group.shiftCode)
+                : staffList
+
               return group.tecnicas.map((tecnica) => {
               // Filter staff by the task's own departments
               const taskDepts = tecnica.department.split(",").filter(Boolean)
               const taskStaffList = taskDepts.length > 0
-                ? staffList.filter((s) => taskDepts.includes(s.role))
-                : staffList
+                ? shiftStaffList.filter((s) => taskDepts.includes(s.role))
+                : shiftStaffList
 
               return (
               <Fragment key={`${tecnica.id}-${group.shiftCode}`}>

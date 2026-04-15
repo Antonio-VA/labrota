@@ -112,19 +112,6 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     .filter((st) => st.active !== false)
     .sort((a, b) => a.sort_order - b.sort_order)[0]?.code ?? "T1"
 
-  // Shift-department linking: map department codes → shift code
-  const activeShiftsWithDepts = shiftTypes.filter((st) => st.active !== false && st.department_codes?.length > 0)
-  const hasShiftDeptLinking = activeShiftsWithDepts.length > 0
-  const deptToShift: Record<string, string> = {}
-  if (hasShiftDeptLinking) {
-    for (const st of activeShiftsWithDepts) {
-      for (const deptCode of st.department_codes) {
-        // First shift wins (staff preferred_shift resolves multi-shift depts)
-        if (!deptToShift[deptCode]) deptToShift[deptCode] = st.code
-      }
-    }
-  }
-
   // Active técnicas grouped by department (comma-separated departments distribute to each)
   const tecByDept: Record<string, typeof tecnicas> = {}
   for (const t of tecnicas) {
@@ -693,27 +680,22 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
 
       // ── Standard (non-grouped) assignment
-      // Resolve which shift this task belongs to: typical_shifts first, then department fallback
-      let taskShiftCode: string
-      if (task.typical_shifts.length > 0) {
-        taskShiftCode = task.typical_shifts[0]
-      } else if (hasShiftDeptLinking) {
-        const taskDepts = task.department.split(",").filter(Boolean)
-        const matchedDept = taskDepts.find((d) => deptToShift[d])
-        taskShiftCode = matchedDept ? deptToShift[matchedDept] : dummyShift
-      } else {
-        taskShiftCode = dummyShift
-      }
+      // Resolve which shift this task belongs to: typical_shifts first, fallback to dummy
+      const taskShiftCode = task.typical_shifts.length > 0
+        ? task.typical_shifts[0]
+        : dummyShift
 
-      // Filter staff by the task's own departments (not the shift's department_codes)
+      // Filter staff by the task's own departments
       const taskDeptCodes = task.department.split(",").filter(Boolean)
 
-      // Find qualified candidates (skill-based + task department filter)
+      // Find qualified candidates (skill-based + task department + shift scoping)
       const candidates = workingStaff.filter((s) => {
         const skills = staffSkillsCache[s.id]
         if (!skills || !isQualified(skills, task.code)) return false
         // Only include staff from the task's departments
         if (taskDeptCodes.length > 0 && !taskDeptCodes.includes(s.role)) return false
+        // Scope by preferred_shift: staff with a different preferred_shift are excluded
+        if (task.typical_shifts.length > 0 && s.preferred_shift && s.preferred_shift !== taskShiftCode) return false
         return true
       })
 
@@ -724,7 +706,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         const bCert = staffSkillsCache[b.id]?.certified.has(task.code) ? 0 : 1
         if (aCert !== bCert) return aCert - bCert
         // Prefer staff whose preferred_shift matches this task's shift
-        if (hasShiftDeptLinking) {
+        if (task.typical_shifts.length > 0) {
           const aPref = a.preferred_shift === taskShiftCode ? 0 : 1
           const bPref = b.preferred_shift === taskShiftCode ? 0 : 1
           if (aPref !== bPref) return aPref - bPref
