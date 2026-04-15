@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { Fragment, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -145,6 +145,35 @@ export function TaskGrid({
 
   const tecnicas = (data.tecnicas ?? []).filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
   const days = localDays
+
+  // Group tecnicas by shift when shift-department linking is active
+  const shiftsWithDepts = (data.shiftTypes ?? []).filter((st) => st.active !== false && st.department_codes?.length > 0)
+  const useShiftGrouping = shiftsWithDepts.length > 0
+
+  type TecnicaGroup = { shiftCode: string; shiftLabel: string; shiftTime: string; tecnicas: typeof tecnicas }
+  const tecnicaGroups: TecnicaGroup[] = (() => {
+    if (!useShiftGrouping) return [{ shiftCode: "", shiftLabel: "", shiftTime: "", tecnicas }]
+    const groups: TecnicaGroup[] = []
+    const assigned = new Set<string>()
+    for (const st of shiftsWithDepts) {
+      const groupTecnicas = tecnicas.filter((tc) => st.department_codes.includes(tc.department) && !assigned.has(tc.id))
+      for (const tc of groupTecnicas) assigned.add(tc.id)
+      if (groupTecnicas.length > 0) {
+        groups.push({
+          shiftCode: st.code,
+          shiftLabel: st.name_es || st.code,
+          shiftTime: `${st.start_time}–${st.end_time}`,
+          tecnicas: groupTecnicas,
+        })
+      }
+    }
+    // Unassigned tecnicas
+    const unassigned = tecnicas.filter((tc) => !assigned.has(tc.id))
+    if (unassigned.length > 0) {
+      groups.push({ shiftCode: "__other__", shiftLabel: "Other", shiftTime: "", tecnicas: unassigned })
+    }
+    return groups
+  })()
 
   if (tecnicas.length === 0) {
     return (
@@ -379,61 +408,90 @@ export function TaskGrid({
           )
         })}
 
-        {/* Technique rows */}
-        {tecnicas.map((tecnica) => (
-          <>
-            {/* Technique label */}
-            <div
-              key={`label-${tecnica.id}`}
-              className={cn("border-b border-r border-border flex items-center gap-1.5", compact ? "px-2 py-1" : "px-3 py-2")}
-              style={{ borderLeft: `3px solid ${resolveColor(tecnica.color)}` }}
-            >
-              <span className={cn("font-medium truncate", compact ? "text-[10px]" : "text-[12px]")}>{tecnica.nombre_es}</span>
-            </div>
-            {/* Day cells for this technique */}
-            {days.map((day) => {
-              const dayAssignments = day.assignments.filter(
-                (a) => a.function_label === tecnica.codigo
-              ) as unknown as Assignment[]
-              const conflictStaff = getConflictStaff(day)
+        {/* Technique rows — grouped by shift when shift-department linking active */}
+        {tecnicaGroups.map((group) => (
+          <Fragment key={group.shiftCode || "__all__"}>
+            {/* Shift subheader — only when shift grouping is active */}
+            {useShiftGrouping && group.shiftCode !== "__other__" && (
+              <div
+                className="px-3 py-1.5 bg-muted border-b border-border flex items-center gap-1.5"
+                style={{ gridColumn: "1 / -1" }}
+              >
+                <span className={cn("font-semibold text-muted-foreground uppercase tracking-wide", compact ? "text-[10px]" : "text-[11px]")}>
+                  {group.shiftLabel}
+                </span>
+                {group.shiftTime && (
+                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                    {group.shiftTime}
+                  </span>
+                )}
+              </div>
+            )}
+            {(() => {
+              // Filter staff to only those in this shift's departments
+              const shiftDeptCodes = useShiftGrouping && group.shiftCode !== "__other__"
+                ? shiftsWithDepts.find((st) => st.code === group.shiftCode)?.department_codes
+                : undefined
+              const groupStaffList = shiftDeptCodes
+                ? staffList.filter((s) => shiftDeptCodes.includes(s.role))
+                : staffList
 
-              const hasEmpty = dayAssignments.length === 0
-              return (
+              return group.tecnicas.map((tecnica) => (
+              <Fragment key={tecnica.id}>
+                {/* Technique label */}
                 <div
-                  key={`${tecnica.id}-${day.date}`}
-                  className={cn(
-                    "border-b border-r last:border-r-0 border-border min-w-0",
-                    hasEmpty && "bg-muted/20",
-                    day.isWeekend && "bg-muted/30"
-                  )}
-                  style={new Date(day.date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
+                  className={cn("border-b border-r border-border flex items-center gap-1.5", compact ? "px-2 py-1" : "px-3 py-2")}
+                  style={{ borderLeft: `3px solid ${resolveColor(tecnica.color)}` }}
                 >
-                  <TaskCell
-                    tecnica={tecnica}
-                    date={day.date}
-                    assignments={dayAssignments}
-                    staffList={staffList}
-                    leaveStaffIds={leaveByDate[day.date] ?? new Set()}
-                    conflictStaffIds={conflictStaff}
-                    isPublished={isPublished}
-                    isWholeTeamOverride={localWholeTeam[`${tecnica.codigo}:${day.date}`] ?? undefined}
-                    onAssign={handleAssign}
-                    onRemove={handleRemove}
-                    onAssignSilent={assignSilent}
-                    onRemoveSilent={removeSilent}
-                    onOptimisticAdd={optimisticAdd}
-                    onOptimisticRemove={optimisticRemove}
-                    onToggleWholeTeam={handleToggleWholeTeam}
-                    onRefresh={debouncedRefresh}
-                    compact={compact}
-                    staffColorMap={staffColorMap}
-                    colorBorders={colorBorders}
-                    onChipClick={onChipClick}
-                  />
+                  <span className={cn("font-medium truncate", compact ? "text-[10px]" : "text-[12px]")}>{tecnica.nombre_es}</span>
                 </div>
-              )
-            })}
-          </>
+                {/* Day cells for this technique */}
+                {days.map((day) => {
+                  const dayAssignments = day.assignments.filter(
+                    (a) => a.function_label === tecnica.codigo
+                  ) as unknown as Assignment[]
+                  const conflictStaff = getConflictStaff(day)
+
+                  const hasEmpty = dayAssignments.length === 0
+                  return (
+                    <div
+                      key={`${tecnica.id}-${day.date}`}
+                      className={cn(
+                        "border-b border-r last:border-r-0 border-border min-w-0",
+                        hasEmpty && "bg-muted/20",
+                        day.isWeekend && "bg-muted/30"
+                      )}
+                      style={new Date(day.date + "T12:00:00").getDay() === 6 ? { borderLeftWidth: 1, borderLeftStyle: "dashed", borderLeftColor: "var(--border)" } : undefined}
+                    >
+                      <TaskCell
+                        tecnica={tecnica}
+                        date={day.date}
+                        assignments={dayAssignments}
+                        staffList={groupStaffList}
+                        leaveStaffIds={leaveByDate[day.date] ?? new Set()}
+                        conflictStaffIds={conflictStaff}
+                        isPublished={isPublished}
+                        isWholeTeamOverride={localWholeTeam[`${tecnica.codigo}:${day.date}`] ?? undefined}
+                        onAssign={handleAssign}
+                        onRemove={handleRemove}
+                        onAssignSilent={assignSilent}
+                        onRemoveSilent={removeSilent}
+                        onOptimisticAdd={optimisticAdd}
+                        onOptimisticRemove={optimisticRemove}
+                        onToggleWholeTeam={handleToggleWholeTeam}
+                        onRefresh={debouncedRefresh}
+                        compact={compact}
+                        staffColorMap={staffColorMap}
+                        colorBorders={colorBorders}
+                        onChipClick={onChipClick}
+                      />
+                    </div>
+                  )
+                })}
+              </Fragment>
+            ))
+            })()}
+          </Fragment>
         ))}
 
         {/* OFF row — unassigned + on leave */}

@@ -165,7 +165,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .lte("start_date", dates[6])
       .gte("end_date", dates[0])
       .eq("status", "approved") as unknown as Promise<{ data: LeaveRow[] | null; error: { message: string } | null }>,
-    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null; error: { message: string } | null }>,
+    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null; error: { message: string } | null }>,
     supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null; error: { message: string } | null }>,
     supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null; error: { message: string } | null }>,
     supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: RuleRow[] | null; error: { message: string } | null }>,
