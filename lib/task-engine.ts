@@ -112,6 +112,19 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     .filter((st) => st.active !== false)
     .sort((a, b) => a.sort_order - b.sort_order)[0]?.code ?? "T1"
 
+  // Shift-department linking: map department codes → shift code
+  const activeShiftsWithDepts = shiftTypes.filter((st) => st.active !== false && st.department_codes?.length > 0)
+  const hasShiftDeptLinking = activeShiftsWithDepts.length > 0
+  const deptToShift: Record<string, string> = {}
+  if (hasShiftDeptLinking) {
+    for (const st of activeShiftsWithDepts) {
+      for (const deptCode of st.department_codes) {
+        // First shift wins (staff preferred_shift resolves multi-shift depts)
+        if (!deptToShift[deptCode]) deptToShift[deptCode] = st.code
+      }
+    }
+  }
+
   // Active técnicas grouped by department
   const tecByDept: Record<string, typeof tecnicas> = {}
   for (const t of tecnicas) {
@@ -676,10 +689,24 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
 
       // ── Standard (non-grouped) assignment
-      // Find qualified candidates (skill-based, no department filter)
+      // Resolve which shift this task belongs to via department linking
+      const taskShiftCode = hasShiftDeptLinking ? (deptToShift[task.department] ?? dummyShift) : dummyShift
+      const taskShiftDeptCodes = hasShiftDeptLinking
+        ? activeShiftsWithDepts.find((st) => st.code === taskShiftCode)?.department_codes
+        : undefined
+
+      // Find qualified candidates (skill-based + department-shift filter)
       const candidates = workingStaff.filter((s) => {
         const skills = staffSkillsCache[s.id]
-        return skills && isQualified(skills, task.code)
+        if (!skills || !isQualified(skills, task.code)) return false
+        // When shift-department linking active, only include staff from linked departments
+        if (taskShiftDeptCodes && !taskShiftDeptCodes.includes(s.role)) return false
+        // If staff has a preferred_shift and it differs, skip if their dept is in multiple shifts
+        if (hasShiftDeptLinking && s.preferred_shift && s.preferred_shift !== taskShiftCode) {
+          const prefShift = activeShiftsWithDepts.find((st) => st.code === s.preferred_shift)
+          if (prefShift && prefShift.department_codes.includes(s.role)) return false
+        }
+        return true
       })
 
       // Sort candidates
@@ -688,6 +715,12 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         const aCert = staffSkillsCache[a.id]?.certified.has(task.code) ? 0 : 1
         const bCert = staffSkillsCache[b.id]?.certified.has(task.code) ? 0 : 1
         if (aCert !== bCert) return aCert - bCert
+        // Prefer staff whose preferred_shift matches this task's shift
+        if (hasShiftDeptLinking) {
+          const aPref = a.preferred_shift === taskShiftCode ? 0 : 1
+          const bPref = b.preferred_shift === taskShiftCode ? 0 : 1
+          if (aPref !== bPref) return aPref - bPref
+        }
         // Task rotation preference
         const aRot = taskRotationScore(a.id, task.code, dayIndex, deptTaskCodes[task.department] ?? [])
         const bRot = taskRotationScore(b.id, task.code, dayIndex, deptTaskCodes[task.department] ?? [])
@@ -712,7 +745,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
 
         dayAssignments.push({
           staff_id: candidate.id,
-          shift_type: dummyShift,
+          shift_type: taskShiftCode,
           function_label: task.code,
         })
         staffTaskCount[candidate.id] = currentCount + 1
