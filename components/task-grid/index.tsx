@@ -320,6 +320,22 @@ export function TaskGrid({
     onRefresh()
   }
 
+  // Pre-compute per-day cross-shift exclusion:
+  // For each day, which shift is each staff member working in?
+  // staffShiftByDay[date] = Map<staffId, shiftCode>
+  const staffShiftByDay: Record<string, Map<string, string>> = {}
+  if (useShiftGrouping) {
+    for (const day of days) {
+      const map = new Map<string, string>()
+      for (const a of day.assignments) {
+        if (a.function_label && a.shift_type && !map.has(a.staff_id)) {
+          map.set(a.staff_id, a.shift_type)
+        }
+      }
+      staffShiftByDay[day.date] = map
+    }
+  }
+
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-background">
       <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(${days.length}, minmax(0, 1fr))` }}>
@@ -459,13 +475,14 @@ export function TaskGrid({
                     ? allDayAssignments.filter((a) => a.shift_type === group.shiftCode)
                     : allDayAssignments
 
-                  // Cross-shift exclusion: staff assigned to this task in other shift groups
-                  const crossShiftExcludedIds = useShiftGrouping && group.shiftCode
-                    ? new Set(allDayAssignments.filter((a) => a.shift_type !== group.shiftCode).map((a) => a.staff_id))
-                    : new Set<string>()
-
-                  const filteredStaffList = crossShiftExcludedIds.size > 0
-                    ? taskStaffList.filter((s) => !crossShiftExcludedIds.has(s.id))
+                  // Day-level cross-shift exclusion: staff assigned to ANY task
+                  // in a different shift on this day cannot be selected here
+                  const shiftMap = staffShiftByDay[day.date]
+                  const filteredStaffList = useShiftGrouping && group.shiftCode && shiftMap
+                    ? taskStaffList.filter((s) => {
+                        const assignedShift = shiftMap.get(s.id)
+                        return !assignedShift || assignedShift === group.shiftCode
+                      })
                     : taskStaffList
 
                   const conflictStaff = getConflictStaff(day)
