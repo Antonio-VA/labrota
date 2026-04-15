@@ -148,41 +148,33 @@ export function TaskGrid({
 
   // Group tecnicas by shift — always show shift subheaders when shifts exist
   const activeShifts = (data.shiftTypes ?? []).filter((st) => st.active !== false)
-  const shiftsWithDepts = activeShifts.filter((st) => st.department_codes?.length > 0)
   const useShiftGrouping = activeShifts.length > 0
 
   type TecnicaGroup = { shiftCode: string; shiftLabel: string; shiftTime: string; tecnicas: typeof tecnicas }
   const tecnicaGroups: TecnicaGroup[] = (() => {
     if (!useShiftGrouping) return [{ shiftCode: "", shiftLabel: "", shiftTime: "", tecnicas }]
-    const hasDeptLinking = shiftsWithDepts.length > 0
     const groups: TecnicaGroup[] = []
     const assigned = new Set<string>()
-    if (hasDeptLinking) {
-      // Group by department_codes linking
-      for (const st of shiftsWithDepts) {
-        const groupTecnicas = tecnicas.filter((tc) => tc.department.split(",").some((d) => st.department_codes.includes(d)) && !assigned.has(tc.id))
-        for (const tc of groupTecnicas) assigned.add(tc.id)
-        if (groupTecnicas.length > 0) {
-          groups.push({
-            shiftCode: st.code,
-            shiftLabel: st.name_es || st.code,
-            shiftTime: `${st.start_time}–${st.end_time}`,
-            tecnicas: groupTecnicas,
-          })
-        }
-      }
-      const unassigned = tecnicas.filter((tc) => !assigned.has(tc.id))
-      if (unassigned.length > 0) {
-        groups.push({ shiftCode: "__other__", shiftLabel: "Other", shiftTime: "", tecnicas: unassigned })
-      }
-    } else {
-      // No department linking — all tecnicas under each shift (single group with first shift as header)
-      groups.push({
-        shiftCode: activeShifts[0].code,
-        shiftLabel: activeShifts[0].name_es || activeShifts[0].code,
-        shiftTime: `${activeShifts[0].start_time}–${activeShifts[0].end_time}`,
-        tecnicas,
+
+    for (const st of activeShifts) {
+      const groupTecnicas = tecnicas.filter((tc) => {
+        if (assigned.has(tc.id)) return false
+        // Empty typical_shifts = belongs to all shifts
+        if (!tc.typical_shifts || tc.typical_shifts.length === 0) return true
+        return tc.typical_shifts.includes(st.code)
       })
+      // Only mark as assigned if task has explicit shifts (not wildcard)
+      for (const tc of groupTecnicas) {
+        if (tc.typical_shifts && tc.typical_shifts.length > 0) assigned.add(tc.id)
+      }
+      if (groupTecnicas.length > 0) {
+        groups.push({
+          shiftCode: st.code,
+          shiftLabel: st.name_es || st.code,
+          shiftTime: `${st.start_time}–${st.end_time}`,
+          tecnicas: groupTecnicas,
+        })
+      }
     }
     return groups
   })()
@@ -435,15 +427,14 @@ export function TaskGrid({
               </div>
             )}
             {(() => {
-              // Filter staff to only those in this shift's departments
-              const shiftDeptCodes = useShiftGrouping && group.shiftCode !== "__other__"
-                ? shiftsWithDepts.find((st) => st.code === group.shiftCode)?.department_codes
-                : undefined
-              const groupStaffList = shiftDeptCodes
-                ? staffList.filter((s) => shiftDeptCodes.includes(s.role))
+              return group.tecnicas.map((tecnica) => {
+              // Filter staff by the task's own departments
+              const taskDepts = tecnica.department.split(",").filter(Boolean)
+              const taskStaffList = taskDepts.length > 0
+                ? staffList.filter((s) => taskDepts.includes(s.role))
                 : staffList
 
-              return group.tecnicas.map((tecnica) => (
+              return (
               <Fragment key={tecnica.id}>
                 {/* Technique label */}
                 <div
@@ -474,7 +465,7 @@ export function TaskGrid({
                         tecnica={tecnica}
                         date={day.date}
                         assignments={dayAssignments}
-                        staffList={groupStaffList}
+                        staffList={taskStaffList}
                         leaveStaffIds={leaveByDate[day.date] ?? new Set()}
                         conflictStaffIds={conflictStaff}
                         isPublished={isPublished}
@@ -496,7 +487,7 @@ export function TaskGrid({
                   )
                 })}
               </Fragment>
-            ))
+            )})
             })()}
           </Fragment>
         ))}

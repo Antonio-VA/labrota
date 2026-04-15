@@ -84,8 +84,8 @@ type Draft = {
 }
 
 // ── Table grid ───────────────────────────────────────────────────────────────
-const GRID_SHIFT = "24px 28px minmax(100px,1fr) 80px 120px minmax(120px,1fr) 36px"
-const GRID_TASK = "24px 28px minmax(120px,1fr) 80px 120px 36px"
+const GRID_WITH_SHIFTS = "24px 28px minmax(100px,1fr) 80px 120px minmax(120px,1fr) 36px"
+const GRID_NO_SHIFTS   = "24px 28px minmax(120px,1fr) 80px 120px 36px"
 
 // ── Multi-select department dropdown ──────────────────────────────────────────
 
@@ -160,6 +160,9 @@ function SortableRow({
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: tecnica.sortId })
 
+  const showShifts = rotaDisplayMode !== "by_task" ? shiftCodes.length > 0 : shiftCodes.length > 1
+  const isByTask = rotaDisplayMode === "by_task"
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -179,10 +182,19 @@ function SortableRow({
     }
   }
 
+  function toggleShift(shift: string) {
+    const isSelected = tecnica.typical_shifts.includes(shift)
+    if (isSelected) {
+      onChange({ ...tecnica, typical_shifts: tecnica.typical_shifts.filter((s) => s !== shift) })
+    } else {
+      onChange({ ...tecnica, typical_shifts: [...tecnica.typical_shifts, shift] })
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}
+      style={{ ...style, gridTemplateColumns: showShifts ? GRID_WITH_SHIFTS : GRID_NO_SHIFTS }}
       className={cn(
         "grid items-center px-2 py-1.5 min-h-[40px] border-b border-border/50 gap-x-2",
         even ? "bg-muted/20" : "bg-background",
@@ -229,9 +241,23 @@ function SortableRow({
         disabled={disabled}
       />
 
-      {/* Shifts: 3-state — only for by_shift mode */}
-      {rotaDisplayMode !== "by_task" && <div className="flex gap-0.5 items-center">
+      {/* Shifts: 3-state cycle for by_shift, binary toggle for by_task */}
+      {showShifts && <div className="flex gap-0.5 items-center">
         {shiftCodes.map((shift) => {
+          if (isByTask) {
+            const isSelected = tecnica.typical_shifts.includes(shift)
+            return (
+              <button key={shift} type="button" disabled={disabled}
+                onClick={() => toggleShift(shift)}
+                className={cn(
+                  "h-5 px-1.5 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50",
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                )}
+              >{shift}</button>
+            )
+          }
           const isPref = tecnica.typical_shifts.includes(shift)
           const isAvoid = tecnica.avoid_shifts.includes(shift)
           return (
@@ -271,6 +297,7 @@ function SortableRow({
 let _counter = 0
 
 export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"], departments = [], rotaDisplayMode = "by_shift" }: { initialTecnicas: Tecnica[]; shiftCodes?: string[]; departments?: Department[]; rotaDisplayMode?: string }) {
+  const showShifts = rotaDisplayMode !== "by_task" ? shiftCodes.length > 0 : shiftCodes.length > 1
   const t = useTranslations("tecnicas")
   const tc = useTranslations("common")
   const [tecnicas, setTecnicas] = useState<Draft[]>(
@@ -387,13 +414,13 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
 
       {/* Table header — sticky */}
       {tecnicas.length > 0 && (
-        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border gap-x-2" style={{ gridTemplateColumns: rotaDisplayMode === "by_task" ? GRID_TASK : GRID_SHIFT }}>
+        <div className="grid items-center px-2 py-2 sticky top-0 z-10 bg-background border-b border-border gap-x-2" style={{ gridTemplateColumns: showShifts ? GRID_WITH_SHIFTS : GRID_NO_SHIFTS }}>
           <span />
           <span />
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("nameEs")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("shortName")}</span>
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("department")}</span>
-          {rotaDisplayMode !== "by_task" && <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Turnos</span>}
+          {showShifts && <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Turnos</span>}
           <span />
         </div>
       )}
