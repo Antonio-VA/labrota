@@ -97,11 +97,11 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   const hasShiftDeptLinking = !isByShift && activeShiftsWithDepts.length > 0
 
   /** Set per-department shift coverage value */
-  function setShiftCov(shiftCode: string, day: string, role: "lab" | "andrology" | "admin", raw: string) {
+  function setShiftCov(shiftCode: string, day: string, role: string, raw: string) {
     const v = parseInt(raw, 10)
     if (raw === "" || raw === undefined) {
       setShiftCoverage((p) => {
-        const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+        const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : {} as ShiftCoverageEntry)
         const updated = { ...prev, [role]: 0 }
         return { ...p, [shiftCode]: { ...(p[shiftCode] ?? {}), [day]: updated } }
       })
@@ -109,7 +109,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
     if (isNaN(v) || v < 0) return
     setShiftCoverage((p) => {
-      const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+      const prev = (typeof p[shiftCode]?.[day] === "object" ? p[shiftCode][day] : {} as ShiftCoverageEntry)
       const updated = { ...prev, [role]: v }
       return { ...p, [shiftCode]: { ...(p[shiftCode] ?? {}), [day]: updated } }
     })
@@ -141,7 +141,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
           .filter((st) => st.department_codes.includes(deptCode))
           .reduce((sum, st) => {
             const entry = shiftCoverage[st.code]?.[day]
-            const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+            const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
             return sum + (cov[deptRole] ?? 0)
           }, 0)
       : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
@@ -238,7 +238,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                   .filter((st) => st.department_codes.includes(deptCode))
                   .reduce((sum, st) => {
                     const entry = shiftCoverage[st.code]?.[day]
-                    const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                    const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
                     return sum + (cov[deptRole] ?? 0)
                   }, 0)
               : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
@@ -476,8 +476,8 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                           {DAY_KEYS.map((day) => {
                             const isWknd = day === "sat" || day === "sun"
                             const entry = shiftCoverage[st.code]?.[day]
-                            const covEntry = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
-                            const val = covEntry[role.key]
+                            const covEntry = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
+                            const val = covEntry[role.key] ?? 0
                             return (
                               <td key={day} className={cn("px-1 py-0.5 text-center", isWknd && "bg-muted/30")}>
                                 <div className="group relative flex items-center justify-center">
@@ -549,19 +549,18 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                             const isWknd = day === "sat" || day === "sun"
                             const isActiveDay = st.active_days?.includes(day) ?? true
                             const entry = shiftCoverage[st.code]?.[day]
-                            const covEntry = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
-                            const roleKey = dept.code as "lab" | "andrology" | "admin"
-                            const val = covEntry[roleKey] ?? 0
+                            const covEntry = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
+                            const val = covEntry[dept.code] ?? 0
                             return (
                               <td key={day} className={cn("px-1 py-0.5 text-center", isWknd && "bg-muted/30")}>
                                 {isActiveDay ? (
                                   <div className="group relative flex items-center justify-center">
                                     <button type="button" tabIndex={-1}
-                                      onClick={() => setShiftCov(st.code, day, roleKey, String(Math.max(0, val - 1)))}
+                                      onClick={() => setShiftCov(st.code, day, dept.code, String(Math.max(0, val - 1)))}
                                       className="absolute left-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
                                     >-</button>
                                     <input type="number" min={0} max={20} value={val || ""}
-                                      onChange={(e) => setShiftCov(st.code, day, roleKey, e.target.value)}
+                                      onChange={(e) => setShiftCov(st.code, day, dept.code, e.target.value)}
                                       disabled={isPending}
                                       className={cn(
                                         "w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
@@ -570,7 +569,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                       )}
                                     />
                                     <button type="button" tabIndex={-1}
-                                      onClick={() => setShiftCov(st.code, day, roleKey, String(val + 1))}
+                                      onClick={() => setShiftCov(st.code, day, dept.code, String(val + 1))}
                                       className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
                                     >+</button>
                                   </div>
@@ -665,7 +664,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                       .filter((st) => st.department_codes.includes(dept.code))
                                       .reduce((sum, st) => {
                                         const entry = shiftCoverage[st.code]?.[day]
-                                        const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                                        const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
                                         return sum + (cov[deptRole] ?? 0)
                                       }, 0)
                                   : coverageByDay[day]?.[deptRole] ?? 0

@@ -212,9 +212,10 @@ export type CoverageByDay = {
   thu: CoverageByDayEntry; fri: CoverageByDayEntry; sat: CoverageByDayEntry
   sun: CoverageByDayEntry
 }
-// Per-shift per-department coverage: { shift_code: { day_code: { lab: N, andrology: N, admin: N } } }
+// Per-shift per-department coverage: { shift_code: { day_code: { dept_code: N, ... } } }
+// Fixed keys for by_shift mode; index signature allows arbitrary dept codes (by_task with dept linking)
 // Backward-compat: values can be plain numbers (treated as lab-only, legacy)
-export type ShiftCoverageEntry = { lab: number; andrology: number; admin: number }
+export type ShiftCoverageEntry = { lab: number; andrology: number; admin: number; [deptCode: string]: number }
 export type ShiftCoverageByDay = Record<string, Record<string, ShiftCoverageEntry | number>>
 
 export interface LabConfig {
