@@ -154,19 +154,14 @@ export function TaskGrid({
   const tecnicaGroups: TecnicaGroup[] = (() => {
     if (!useShiftGrouping) return [{ shiftCode: "", shiftLabel: "", shiftTime: "", tecnicas }]
     const groups: TecnicaGroup[] = []
-    const assigned = new Set<string>()
 
     for (const st of activeShifts) {
       const groupTecnicas = tecnicas.filter((tc) => {
-        if (assigned.has(tc.id)) return false
         // Empty typical_shifts = belongs to all shifts
         if (!tc.typical_shifts || tc.typical_shifts.length === 0) return true
+        // Task appears in every shift it's flagged for
         return tc.typical_shifts.includes(st.code)
       })
-      // Only mark as assigned if task has explicit shifts (not wildcard)
-      for (const tc of groupTecnicas) {
-        if (tc.typical_shifts && tc.typical_shifts.length > 0) assigned.add(tc.id)
-      }
       if (groupTecnicas.length > 0) {
         groups.push({
           shiftCode: st.code,
@@ -229,14 +224,14 @@ export function TaskGrid({
   const staffLookup = Object.fromEntries(staffList.map((s) => [s.id, s]))
 
   // Optimistic patch helpers
-  function optimisticAdd(staffId: string, functionLabel: string, date: string) {
+  function optimisticAdd(staffId: string, functionLabel: string, date: string, shiftType?: ShiftType) {
     const s = staffLookup[staffId]
     if (!s) return
     const tempId = `temp-${Date.now()}-${Math.random()}`
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
       ...d,
       assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId, shift_type: defaultShiftCode,
+        id: tempId, staff_id: staffId, shift_type: shiftType ?? defaultShiftCode,
         is_manual_override: true, trainee_staff_id: null, notes: null,
         function_label: functionLabel, tecnica_id: null, whole_team: false,
         staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role as never },
@@ -258,9 +253,9 @@ export function TaskGrid({
     refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
   }
 
-  async function assignSilent(staffId: string, tecnicaCodigo: string, date: string) {
+  async function assignSilent(staffId: string, tecnicaCodigo: string, date: string, shiftType?: ShiftType) {
     const result = await upsertAssignment({
-      weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo,
+      weekStart, staffId, date, shiftType: shiftType ?? defaultShiftCode, functionLabel: tecnicaCodigo,
     })
     if (result.error) toast.error(result.error)
     return result
@@ -272,18 +267,19 @@ export function TaskGrid({
     return result
   }
 
-  async function handleAssign(staffId: string, tecnicaCodigo: string, date: string) {
+  async function handleAssign(staffId: string, tecnicaCodigo: string, date: string, shiftType?: ShiftType) {
+    const st = shiftType ?? defaultShiftCode
     const snapshot = data
     const idCapture: { value: string | undefined } = { value: undefined }
-    optimisticAdd(staffId, tecnicaCodigo, date)
+    optimisticAdd(staffId, tecnicaCodigo, date, st)
     if (snapshot) {
       onAfterMutation?.(
         snapshot,
         () => idCapture.value ? removeAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
-        () => upsertAssignment({ weekStart, staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo }),
+        () => upsertAssignment({ weekStart, staffId, date, shiftType: st, functionLabel: tecnicaCodigo }),
       )
     }
-    const result = await assignSilent(staffId, tecnicaCodigo, date)
+    const result = await assignSilent(staffId, tecnicaCodigo, date, st)
     if (result.error) { onCancelUndo?.(); return }
     idCapture.value = result.id
     onSaved?.()
@@ -427,6 +423,9 @@ export function TaskGrid({
               </div>
             )}
             {(() => {
+              // Determine shift code for this group's assignments
+              const groupShift = (useShiftGrouping && group.shiftCode) ? group.shiftCode as ShiftType : defaultShiftCode
+
               return group.tecnicas.map((tecnica) => {
               // Filter staff by the task's own departments
               const taskDepts = tecnica.department.split(",").filter(Boolean)
@@ -435,7 +434,7 @@ export function TaskGrid({
                 : staffList
 
               return (
-              <Fragment key={tecnica.id}>
+              <Fragment key={`${tecnica.id}-${group.shiftCode}`}>
                 {/* Technique label */}
                 <div
                   className={cn("border-b border-r border-border flex items-center gap-1.5", compact ? "px-2 py-1" : "px-3 py-2")}
@@ -445,15 +444,31 @@ export function TaskGrid({
                 </div>
                 {/* Day cells for this technique */}
                 {days.map((day) => {
-                  const dayAssignments = day.assignments.filter(
+                  // All assignments for this task on this day
+                  const allDayAssignments = day.assignments.filter(
                     (a) => a.function_label === tecnica.codigo
                   ) as unknown as Assignment[]
+
+                  // When shift grouping active, partition assignments by shift_type
+                  const dayAssignments = useShiftGrouping && group.shiftCode
+                    ? allDayAssignments.filter((a) => a.shift_type === group.shiftCode)
+                    : allDayAssignments
+
+                  // Cross-shift exclusion: staff assigned to this task in other shift groups
+                  const crossShiftExcludedIds = useShiftGrouping && group.shiftCode
+                    ? new Set(allDayAssignments.filter((a) => a.shift_type !== group.shiftCode).map((a) => a.staff_id))
+                    : new Set<string>()
+
+                  const filteredStaffList = crossShiftExcludedIds.size > 0
+                    ? taskStaffList.filter((s) => !crossShiftExcludedIds.has(s.id))
+                    : taskStaffList
+
                   const conflictStaff = getConflictStaff(day)
 
                   const hasEmpty = dayAssignments.length === 0
                   return (
                     <div
-                      key={`${tecnica.id}-${day.date}`}
+                      key={`${tecnica.id}-${group.shiftCode}-${day.date}`}
                       className={cn(
                         "border-b border-r last:border-r-0 border-border min-w-0",
                         hasEmpty && "bg-muted/20",
@@ -465,16 +480,16 @@ export function TaskGrid({
                         tecnica={tecnica}
                         date={day.date}
                         assignments={dayAssignments}
-                        staffList={taskStaffList}
+                        staffList={filteredStaffList}
                         leaveStaffIds={leaveByDate[day.date] ?? new Set()}
                         conflictStaffIds={conflictStaff}
                         isPublished={isPublished}
                         isWholeTeamOverride={localWholeTeam[`${tecnica.codigo}:${day.date}`] ?? undefined}
-                        onAssign={handleAssign}
+                        onAssign={(sid, code, d) => handleAssign(sid, code, d, groupShift)}
                         onRemove={handleRemove}
-                        onAssignSilent={assignSilent}
+                        onAssignSilent={(sid, code, d) => assignSilent(sid, code, d, groupShift)}
                         onRemoveSilent={removeSilent}
-                        onOptimisticAdd={optimisticAdd}
+                        onOptimisticAdd={(sid, fl, d) => optimisticAdd(sid, fl, d, groupShift)}
                         onOptimisticRemove={optimisticRemove}
                         onToggleWholeTeam={handleToggleWholeTeam}
                         onRefresh={debouncedRefresh}
