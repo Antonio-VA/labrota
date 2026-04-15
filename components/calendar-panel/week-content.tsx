@@ -232,7 +232,6 @@ export function WeekContent({
             onPunctionsChange={onPunctionsChange} onBiopsyChange={onBiopsyChange}
             biopsyConversionRate={weekData?.biopsyConversionRate}
             biopsyDay5Pct={weekData?.biopsyDay5Pct} biopsyDay6Pct={weekData?.biopsyDay6Pct}
-            shiftLabel={weekData?.shiftTypes?.[0] ? `${weekData.shiftTypes[0].start_time} – ${weekData.shiftTypes[0].end_time}` : undefined}
             compact={compact} colorBorders={colorChips} showPuncBiopsy={!compact && !personSimplified}
             onDateClick={onMonthDayClick} onChipClick={openProfile}
           />

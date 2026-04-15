@@ -34,7 +34,7 @@ export function TaskGrid({
   biopsyConversionRate = 0.5,
   biopsyDay5Pct = 0.5,
   biopsyDay6Pct = 0.5,
-  shiftLabel,
+
   compact = false,
   colorBorders = true,
   showPuncBiopsy = true,
@@ -59,7 +59,7 @@ export function TaskGrid({
   biopsyConversionRate?: number
   biopsyDay5Pct?: number
   biopsyDay6Pct?: number
-  shiftLabel?: string
+
   compact?: boolean
   colorBorders?: boolean
   showPuncBiopsy?: boolean
@@ -146,31 +146,43 @@ export function TaskGrid({
   const tecnicas = (data.tecnicas ?? []).filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
   const days = localDays
 
-  // Group tecnicas by shift when shift-department linking is active
-  const shiftsWithDepts = (data.shiftTypes ?? []).filter((st) => st.active !== false && st.department_codes?.length > 0)
-  const useShiftGrouping = shiftsWithDepts.length > 0
+  // Group tecnicas by shift — always show shift subheaders when shifts exist
+  const activeShifts = (data.shiftTypes ?? []).filter((st) => st.active !== false)
+  const shiftsWithDepts = activeShifts.filter((st) => st.department_codes?.length > 0)
+  const useShiftGrouping = activeShifts.length > 0
 
   type TecnicaGroup = { shiftCode: string; shiftLabel: string; shiftTime: string; tecnicas: typeof tecnicas }
   const tecnicaGroups: TecnicaGroup[] = (() => {
     if (!useShiftGrouping) return [{ shiftCode: "", shiftLabel: "", shiftTime: "", tecnicas }]
+    const hasDeptLinking = shiftsWithDepts.length > 0
     const groups: TecnicaGroup[] = []
     const assigned = new Set<string>()
-    for (const st of shiftsWithDepts) {
-      const groupTecnicas = tecnicas.filter((tc) => st.department_codes.includes(tc.department) && !assigned.has(tc.id))
-      for (const tc of groupTecnicas) assigned.add(tc.id)
-      if (groupTecnicas.length > 0) {
-        groups.push({
-          shiftCode: st.code,
-          shiftLabel: st.name_es || st.code,
-          shiftTime: `${st.start_time}–${st.end_time}`,
-          tecnicas: groupTecnicas,
-        })
+    if (hasDeptLinking) {
+      // Group by department_codes linking
+      for (const st of shiftsWithDepts) {
+        const groupTecnicas = tecnicas.filter((tc) => st.department_codes.includes(tc.department) && !assigned.has(tc.id))
+        for (const tc of groupTecnicas) assigned.add(tc.id)
+        if (groupTecnicas.length > 0) {
+          groups.push({
+            shiftCode: st.code,
+            shiftLabel: st.name_es || st.code,
+            shiftTime: `${st.start_time}–${st.end_time}`,
+            tecnicas: groupTecnicas,
+          })
+        }
       }
-    }
-    // Unassigned tecnicas
-    const unassigned = tecnicas.filter((tc) => !assigned.has(tc.id))
-    if (unassigned.length > 0) {
-      groups.push({ shiftCode: "__other__", shiftLabel: "Other", shiftTime: "", tecnicas: unassigned })
+      const unassigned = tecnicas.filter((tc) => !assigned.has(tc.id))
+      if (unassigned.length > 0) {
+        groups.push({ shiftCode: "__other__", shiftLabel: "Other", shiftTime: "", tecnicas: unassigned })
+      }
+    } else {
+      // No department linking — all tecnicas under each shift (single group with first shift as header)
+      groups.push({
+        shiftCode: activeShifts[0].code,
+        shiftLabel: activeShifts[0].name_es || activeShifts[0].code,
+        shiftTime: `${activeShifts[0].start_time}–${activeShifts[0].end_time}`,
+        tecnicas,
+      })
     }
     return groups
   })()
@@ -323,13 +335,8 @@ export function TaskGrid({
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-background">
       <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(${days.length}, minmax(0, 1fr))` }}>
-        {/* Header row */}
-        <div className={cn("border-b border-r border-border bg-muted flex flex-col justify-center", compact ? "px-2 py-1" : "px-3 py-2")}>
-          {shiftLabel && !compact && (
-            <span className="text-[10px] tabular-nums text-muted-foreground/70">{shiftLabel}</span>
-          )}
-          <span className={cn("font-medium text-muted-foreground uppercase tracking-wide", compact ? "text-[9px]" : "text-[11px]")}>Tarea</span>
-        </div>
+        {/* Header row — top-left corner */}
+        <div className={cn("border-b border-r border-border bg-muted", compact ? "px-2 py-1" : "px-3 py-2")} />
         {days.map((day) => {
           const d = new Date(day.date + "T12:00:00")
           const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()

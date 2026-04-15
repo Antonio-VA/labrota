@@ -135,7 +135,16 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
 
     const tec = tecnicas.find((tc) => tc.codigo === code)
     const deptCode = tec?.department?.split(",")[0] ?? "lab"
-    const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+    const deptRole = deptCode as "lab" | "andrology" | "admin"
+    const deptMin = hasShiftDeptLinking
+      ? activeShiftsWithDepts
+          .filter((st) => st.department_codes.includes(deptCode))
+          .reduce((sum, st) => {
+            const entry = shiftCoverage[st.code]?.[day]
+            const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+            return sum + (cov[deptRole] ?? 0)
+          }, 0)
+      : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
     const clamped = Math.min(v, deptMin)
     setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
     if (v > deptMin) {
@@ -222,8 +231,17 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         for (const [code, days] of Object.entries(taskCoverage)) {
           const tec = tecnicas.find((tc) => tc.codigo === code)
           const deptCode = tec?.department?.split(",")[0] ?? "lab"
+          const deptRole = deptCode as "lab" | "andrology" | "admin"
           for (const [day, val] of Object.entries(days)) {
-            const deptMin = coverageByDay[day as keyof CoverageByDay]?.[deptCode as "lab" | "andrology" | "admin"] ?? 0
+            const deptMin = hasShiftDeptLinking
+              ? activeShiftsWithDepts
+                  .filter((st) => st.department_codes.includes(deptCode))
+                  .reduce((sum, st) => {
+                    const entry = shiftCoverage[st.code]?.[day]
+                    const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                    return sum + (cov[deptRole] ?? 0)
+                  }, 0)
+              : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
             if (val > deptMin) violations.push(`${code} ${day}`)
           }
         }
@@ -642,7 +660,15 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                               </td>
                               {DAY_KEYS.map((day) => {
                                 const deptRole = dept.code as "lab" | "andrology" | "admin"
-                                const deptMin = coverageByDay[day]?.[deptRole] ?? 0
+                                const deptMin = hasShiftDeptLinking
+                                  ? activeShiftsWithDepts
+                                      .filter((st) => st.department_codes.includes(dept.code))
+                                      .reduce((sum, st) => {
+                                        const entry = shiftCoverage[st.code]?.[day]
+                                        const cov = (typeof entry === "object" && entry !== null ? entry : { lab: 0, andrology: 0, admin: 0 }) as ShiftCoverageEntry
+                                        return sum + (cov[deptRole] ?? 0)
+                                      }, 0)
+                                  : coverageByDay[day]?.[deptRole] ?? 0
                                 const explicitVal = taskCoverage[tec.codigo]?.[day]
                                 const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
                                 const isWeekend = day === "sat" || day === "sun"
