@@ -148,6 +148,10 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
   }
 
+  const [rotationMode, setRotationMode] = useState<"stable" | "weekly" | "daily">(
+    (initialRotation as "stable" | "weekly" | "daily") || "stable"
+  )
+
   const [values, setValues] = useState({
     punctions_by_day:     config.punctions_by_day ?? DEFAULT_PUNCTIONS,
     autonomous_community: config.autonomous_community ?? "",
@@ -219,6 +223,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         task_coverage_by_day:   taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
         shift_coverage_enabled: shiftCoverageEnabled || hasShiftCoverage,
         shift_coverage_by_day:  (shiftCoverageEnabled || hasShiftCoverage) ? shiftCoverage : config.shift_coverage_by_day,
+        shift_rotation:        rotationMode,
         days_off_preference:       values.days_off_preference,
         guardia_min_weeks_between: values.guardia_min_weeks_between,
         guardia_max_per_month:     values.guardia_max_per_month,
@@ -315,7 +320,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         )}
       </div>
 
-      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} isByTask={rotaDisplayMode === "by_task"} />}
+      {initialRotation && <ShiftRotationSetting initialValue={initialRotation} onChange={setRotationMode} isByTask={rotaDisplayMode === "by_task"} />}
 
       </>}
 
