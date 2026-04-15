@@ -34,6 +34,7 @@ export async function saveShiftTypes(
       sort_order: i,
       active: t.active ?? true,
       ...(t.active_days ? { active_days: t.active_days } : {}),
+      department_codes: t.department_codes ?? [],
     }))
 
     // Delete all existing, then insert new ones

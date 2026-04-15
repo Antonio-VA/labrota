@@ -1342,7 +1342,11 @@
     "dayFri": "Vi",
     "daySat": "Sá",
     "daySun": "Do",
-    "namePlaceholder": "Mañana"
+    "namePlaceholder": "Mañana",
+    "departments": "Departamentos",
+    "selectDepartments": "Seleccionar departamentos",
+    "allDepartments": "Todos",
+    "noDepartments": "Sin departamentos"
   },
   "plantillas": {
     "noTemplates": "Sin plantillas",

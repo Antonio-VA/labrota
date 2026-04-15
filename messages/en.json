@@ -1342,7 +1342,11 @@
     "dayFri": "Fr",
     "daySat": "Sa",
     "daySun": "Su",
-    "namePlaceholder": "Morning"
+    "namePlaceholder": "Morning",
+    "departments": "Departments",
+    "selectDepartments": "Select departments",
+    "allDepartments": "All",
+    "noDepartments": "No departments"
   },
   "plantillas": {
     "noTemplates": "No templates",

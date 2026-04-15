@@ -40,6 +40,7 @@ export interface ShiftTypeDefinition {
   sort_order:      number
   active:          boolean
   active_days:     string[]  // ["mon","tue","wed","thu","fri","sat","sun"]
+  department_codes: string[] // department codes that participate in this shift (by_task)
   created_at:      string
 }
 export type WorkingDay        = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
