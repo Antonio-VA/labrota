@@ -488,7 +488,7 @@ export async function bulkUpdateStaffField(
   let count = 0
   for (const { id, field, value } of updates) {
     // Only allow safe fields
-    const allowed = ["first_name", "last_name", "email", "preferred_shift", "avoid_shifts", "preferred_days", "avoid_days", "days_per_week", "working_pattern", "onboarding_status", "color"]
+    const allowed = ["first_name", "last_name", "email", "role", "preferred_shift", "avoid_shifts", "preferred_days", "avoid_days", "days_per_week", "working_pattern", "onboarding_status", "color"]
     if (!allowed.includes(field)) continue
     const { error } = await supabase
       .from("staff")

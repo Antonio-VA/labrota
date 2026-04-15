@@ -258,13 +258,27 @@ export function StaffTable({
             {effectiveOrder.filter(k => visibleCols.has(k)).map(k => {
               function cell(): React.ReactNode {
                 switch (k) {
-                  case "role":
+                  case "role": {
+                    const editRole = editMode ? String(getVal?.(member, "role") ?? member.role) : member.role
                     return (
                       <div className="hidden md:flex items-center gap-1.5">
-                        <span className="w-[3px] h-4 shrink-0 rounded-full" style={{ background: deptBorder[member.role] ?? "#94A3B8" }} />
-                        <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
+                        <span className="w-[3px] h-4 shrink-0 rounded-full" style={{ background: deptBorder[editRole] ?? "#94A3B8" }} />
+                        {editMode && setEditValue ? (
+                          <select
+                            value={editRole}
+                            onChange={(e) => setEditValue(member.id, "role", e.target.value)}
+                            className="h-7 rounded border border-input bg-transparent px-1 text-[13px] outline-none"
+                          >
+                            {Object.entries(deptLabel).map(([code, label]) => (
+                              <option key={code} value={code}>{label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-[13px] text-foreground">{deptLabel[member.role] ?? member.role}</span>
+                        )}
                       </div>
                     )
+                  }
                   case "email":
                     return (
                       <div className="hidden md:flex items-center min-w-0">
