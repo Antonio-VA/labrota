@@ -601,7 +601,8 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         if (hardRemovals.has(traineeId)) continue
         const demandEntry = taskDemand.find((td) => td.code === trainingTecCode)
         if (!demandEntry) continue
-        dayAssignments.push({ staff_id: traineeId, shift_type: dummyShift, function_label: trainingTecCode })
+        const traineeShift = demandEntry.typical_shifts.length > 0 ? demandEntry.typical_shifts[0] : dummyShift
+        dayAssignments.push({ staff_id: traineeId, shift_type: traineeShift, function_label: trainingTecCode })
         staffTaskCount[traineeId] = (staffTaskCount[traineeId] ?? 0) + 1
         if (!staffTasks[traineeId]) staffTasks[traineeId] = new Set()
         staffTasks[traineeId].add(trainingTecCode)
@@ -667,9 +668,15 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           // Assign all group tasks this candidate is qualified for
           for (const gt of groupTasks) {
             if (!isQualified(skills, gt.code)) continue
+            // Use the task's typical_shifts for shift_type, prefer candidate's preferred_shift
+            const gtShift = gt.typical_shifts.length > 0
+              ? (candidate.preferred_shift && gt.typical_shifts.includes(candidate.preferred_shift)
+                ? candidate.preferred_shift
+                : gt.typical_shifts[0])
+              : dummyShift
             dayAssignments.push({
               staff_id: candidate.id,
-              shift_type: dummyShift,
+              shift_type: gtShift,
               function_label: gt.code,
             })
             staffTaskCount[candidate.id] = (staffTaskCount[candidate.id] ?? 0) + 1
@@ -698,16 +705,10 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         ? task.typical_shifts[0]
         : dummyShift
 
-      // Filter staff by the task's own departments
-      const taskDeptCodes = task.department.split(",").filter(Boolean)
-
-      // Find qualified candidates (skill-based + task department filter)
+      // Find qualified candidates (skill-based, no department filter)
       const candidates = workingStaff.filter((s) => {
         const skills = staffSkillsCache[s.id]
-        if (!skills || !isQualified(skills, task.code)) return false
-        // Only include staff from the task's departments
-        if (taskDeptCodes.length > 0 && !taskDeptCodes.includes(s.role)) return false
-        return true
+        return skills && isQualified(skills, task.code)
       })
 
       // Sort candidates
