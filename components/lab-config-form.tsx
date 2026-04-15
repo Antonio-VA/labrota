@@ -594,9 +594,30 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                       ? departments.filter((d) => !d.parent_id)
                       : [{ id: "lab", code: "lab", name: t("fields.embryology") }, { id: "andrology", code: "andrology", name: t("fields.andrology") }]
                     const activeTecnicas = tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+                    const activeShiftCodes = activeShifts.map((st) => st.code)
+                    const shiftLabelMap: Record<string, string> = {}
+                    for (const st of activeShifts) shiftLabelMap[st.code] = st.name_es || st.code
+
                     return rootDepts.map((dept) => {
                       const deptTecnicas = activeTecnicas.filter((tc) => tc.department.split(",").includes(dept.code))
                       if (deptTecnicas.length === 0) return null
+
+                      // Build rows: one per task, or one per task+shift for multi-shift tasks
+                      type CovRow = { tec: typeof deptTecnicas[0]; covKey: string; shiftCode?: string }
+                      const rows: CovRow[] = []
+                      for (const tec of deptTecnicas) {
+                        const ts = tec.typical_shifts ?? []
+                        const inMultipleShifts = ts.length > 1 || (ts.length === 0 && activeShiftCodes.length > 1)
+                        if (inMultipleShifts) {
+                          const shifts = ts.length > 0 ? ts : activeShiftCodes
+                          for (const sc of shifts) {
+                            rows.push({ tec, covKey: `${tec.codigo}__${sc}`, shiftCode: sc })
+                          }
+                        } else {
+                          rows.push({ tec, covKey: tec.codigo })
+                        }
+                      }
+
                       return (
                         <Fragment key={dept.id ?? dept.code}>
                           <tr className="bg-muted/60">
@@ -604,22 +625,27 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                               {dept.name} <span className="text-muted-foreground/50 ml-1">{deptTecnicas.length}</span>
                             </td>
                           </tr>
-                          {deptTecnicas.map((tec, idx) => (
-                            <tr key={tec.id} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
+                          {rows.map((row, idx) => (
+                            <tr key={row.covKey} className={cn("border-b border-border/50", idx % 2 === 0 ? "bg-background" : "bg-muted/10")}>
                               <td className="px-3 py-1.5">
                                 <span className="inline-flex items-center gap-1.5">
-                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: tec.color?.startsWith("#") ? tec.color : "#64748B" }} />
-                                  <span className="text-[13px] font-medium">{tec.codigo}</span>
-                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{tec.nombre_es}</span>
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: row.tec.color?.startsWith("#") ? row.tec.color : "#64748B" }} />
+                                  <span className="text-[13px] font-medium">{row.tec.codigo}</span>
+                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{row.tec.nombre_es}</span>
+                                  {row.shiftCode && (
+                                    <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase leading-none bg-muted text-muted-foreground border border-border">
+                                      {shiftLabelMap[row.shiftCode] ?? row.shiftCode}
+                                    </span>
+                                  )}
                                 </span>
                               </td>
                               {DAY_KEYS.map((day) => {
-                                const explicitVal = taskCoverage[tec.codigo]?.[day]
+                                const explicitVal = taskCoverage[row.covKey]?.[day]
                                 const isWeekend = day === "sat" || day === "sun"
                                 return (
                                   <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
                                     <input type="number" min={0} value={explicitVal ?? ""}
-                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                      onChange={(e) => setTaskCov(row.covKey, day, e.target.value)} disabled={isPending}
                                       className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
                                         explicitVal !== undefined ? "border-input bg-background text-foreground"
                                           : "border-input bg-background text-muted-foreground/40",

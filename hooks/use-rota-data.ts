@@ -45,7 +45,8 @@ export function useRotaData({
   // Seed window cache with server-provided data so navigation away + back is instant
   if (initialData) _cache.weeks.set(initialData.weekStart, initialData)
 
-  const cachedWeek = initialData ?? _cache.weeks.get(weekStart) ?? null
+  // Only use initialData if it matches the requested week; otherwise check cache
+  const cachedWeek = (initialData?.weekStart === weekStart ? initialData : null) ?? _cache.weeks.get(weekStart) ?? null
   const cachedStaff = _cache.staff
 
   const [weekData, setWeekData]           = useState<RotaWeekData | null>(cachedWeek)
@@ -71,7 +72,7 @@ export function useRotaData({
   const lastFetchId      = useRef(0)
   const initialDataUsed  = useRef(false)
   const initialDataRef   = useRef<RotaWeekData | undefined>(initialData)
-  const skipInitialFetch = useRef(!!initialData)
+  const skipInitialFetch = useRef(!!initialData && initialData.weekStart === weekStart)
   const initialStaffUsed = useRef(false)
   const prevStaffIdsRef  = useRef("")
   const gridSetDaysRef   = useRef<((days: RotaDay[]) => void) | null>(null)

@@ -501,6 +501,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     // ── 2c: Build task demand for this day ──────────────────────────────
 
     interface TaskDemand {
+      key: string  // unique: "QCO" or "QCO__AND" for per-shift entries
       code: string
       department: string
       needed: number
@@ -510,18 +511,30 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     const taskDemand: TaskDemand[] = []
 
     if (taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0) {
-      // Explicit per-task coverage
-      for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay)) {
+      // Explicit per-task coverage — keys may be "QCO" or "QCO__AND" (per-shift)
+      // Aggregate entries: per-shift keys pin to that shift, plain keys use tecnica defaults
+      const seenTecCodes = new Set<string>()
+      for (const [rawKey, dayCov] of Object.entries(taskCoverageByDay)) {
         const needed = dayCov[dayCode] ?? 0
         if (needed <= 0) continue
+        const [tecCode, shiftCode] = rawKey.split("__")
         const tec = tecnicas.find((t) => t.codigo === tecCode)
         if (!tec) continue
-        taskDemand.push({ code: tecCode, needed, department: tec.department || "lab", typical_shifts: tec.typical_shifts ?? [] })
+        seenTecCodes.add(tecCode)
+        taskDemand.push({
+          key: rawKey,
+          code: tecCode,
+          needed,
+          department: tec.department || "lab",
+          // Per-shift key pins to that single shift; plain key uses tecnica defaults
+          typical_shifts: shiftCode ? [shiftCode] : (tec.typical_shifts ?? []),
+        })
       }
     } else {
       // Fallback: at least 1 person per active technique
       for (const tec of tecnicas) {
         taskDemand.push({
+          key: tec.codigo,
           code: tec.codigo,
           needed: 1,
           department: tec.department || "lab",
@@ -602,7 +615,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
 
     for (const task of taskDemand) {
       // Skip tasks already filled as part of a linked group
-      if (assignedViaGroup.has(task.code)) continue
+      if (assignedViaGroup.has(task.key)) continue
 
       // Check if this task belongs to a linked group
       const group = linkedGroups.find((g) => g.includes(task.code))
@@ -669,7 +682,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
 
         // Mark all group tasks as handled
         for (const gt of groupTasks) {
-          assignedViaGroup.add(gt.code)
+          assignedViaGroup.add(gt.key)
           gt.needed = Math.max(0, gt.needed - filled)
         }
 
