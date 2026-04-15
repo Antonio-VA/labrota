@@ -68,7 +68,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   const [taskCoverage, setTaskCoverage] = useState<Record<string, Record<string, number>>>(
     (config.task_coverage_by_day as Record<string, Record<string, number>>) ?? {}
   )
-  const [taskCoverageWarnings, setTaskCoverageWarnings] = useState<Set<string>>(new Set())
 
   // Shift-level coverage (by_shift mode) — per-department: { shift: { day: { lab, andrology, admin } } }
   const [shiftCoverageEnabled, setShiftCoverageEnabled] = useState(config.shift_coverage_enabled ?? false)
@@ -90,7 +89,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
   // Active coverage state depends on rotation mode
   const isByShift = rotaDisplayMode === "by_shift"
   const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
-  const coverageWarnings = isByShift ? shiftCoverageWarnings : taskCoverageWarnings
+
 
   // by_task: detect if shifts have department_codes configured (multi-shift grouping)
   const activeShiftsWithDepts = shiftTypes.filter((st) => st.active !== false && st.department_codes?.length > 0)
@@ -128,30 +127,11 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         }
         return next
       })
-      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
       return
     }
     if (isNaN(v) || v < 0) return
 
-    const tec = tecnicas.find((tc) => tc.codigo === code)
-    const deptCode = tec?.department?.split(",")[0] ?? "lab"
-    const deptRole = deptCode as "lab" | "andrology" | "admin"
-    const deptMin = hasShiftDeptLinking
-      ? activeShiftsWithDepts
-          .filter((st) => st.department_codes.includes(deptCode))
-          .reduce((sum, st) => {
-            const entry = shiftCoverage[st.code]?.[day]
-            const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
-            return sum + (cov[deptRole] ?? 0)
-          }, 0)
-      : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
-    const clamped = Math.min(v, deptMin)
-    setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: clamped } }))
-    if (v > deptMin) {
-      setTaskCoverageWarnings((p) => new Set(p).add(`${code}-${day}`))
-    } else {
-      setTaskCoverageWarnings((p) => { const n = new Set(p); n.delete(`${code}-${day}`); return n })
-    }
+    setTaskCoverage((p) => ({ ...p, [code]: { ...(p[code] ?? {}), [day]: v } }))
   }
 
   function handleToggleCoverage() {
@@ -225,32 +205,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     e.preventDefault()
     setStatus("idle")
     startTransition(async () => {
-      // Validate task coverage before save
-      if (taskCoverageEnabled) {
-        const violations: string[] = []
-        for (const [code, days] of Object.entries(taskCoverage)) {
-          const tec = tecnicas.find((tc) => tc.codigo === code)
-          const deptCode = tec?.department?.split(",")[0] ?? "lab"
-          const deptRole = deptCode as "lab" | "andrology" | "admin"
-          for (const [day, val] of Object.entries(days)) {
-            const deptMin = hasShiftDeptLinking
-              ? activeShiftsWithDepts
-                  .filter((st) => st.department_codes.includes(deptCode))
-                  .reduce((sum, st) => {
-                    const entry = shiftCoverage[st.code]?.[day]
-                    const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
-                    return sum + (cov[deptRole] ?? 0)
-                  }, 0)
-              : coverageByDay[day as keyof CoverageByDay]?.[deptRole] ?? 0
-            if (val > deptMin) violations.push(`${code} ${day}`)
-          }
-        }
-        if (violations.length > 0) {
-          setErrorMsg("Algunas tareas superan el mínimo del departamento. Ajusta los valores marcados antes de guardar.")
-          setStatus("error")
-          return
-        }
-      }
       const result = await updateLabConfig({
         coverage_by_day:      coverageByDay,
         punctions_by_day:     values.punctions_by_day,
@@ -658,32 +612,17 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                 </span>
                               </td>
                               {DAY_KEYS.map((day) => {
-                                const deptRole = dept.code as "lab" | "andrology" | "admin"
-                                const deptMin = hasShiftDeptLinking
-                                  ? activeShiftsWithDepts
-                                      .filter((st) => st.department_codes.includes(dept.code))
-                                      .reduce((sum, st) => {
-                                        const entry = shiftCoverage[st.code]?.[day]
-                                        const cov = (typeof entry === "object" && entry !== null ? entry : {} as ShiftCoverageEntry)
-                                        return sum + (cov[deptRole] ?? 0)
-                                      }, 0)
-                                  : coverageByDay[day]?.[deptRole] ?? 0
                                 const explicitVal = taskCoverage[tec.codigo]?.[day]
-                                const hasWarning = taskCoverageWarnings.has(`${tec.codigo}-${day}`)
                                 const isWeekend = day === "sat" || day === "sun"
                                 return (
                                   <td key={day} className={cn("px-1 py-1 text-center", isWeekend && "bg-muted/30")}>
-                                    <div className="relative">
-                                      <input type="number" min={0} max={deptMin} value={explicitVal ?? ""}
-                                        onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
-                                        className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
-                                          hasWarning ? "border-amber-400 bg-amber-50 text-amber-700"
-                                            : explicitVal !== undefined ? "border-input bg-background text-foreground"
-                                            : "border-input bg-background text-muted-foreground/40",
-                                          "focus:border-ring focus:ring-1 focus:ring-ring/50"
-                                        )} />
-                                      {hasWarning && <p className="text-[8px] text-amber-600 absolute -bottom-3 left-0 right-0 text-center whitespace-nowrap">{t("fields.maxAbbr")} {deptMin}</p>}
-                                    </div>
+                                    <input type="number" min={0} value={explicitVal ?? ""}
+                                      onChange={(e) => setTaskCov(tec.codigo, day, e.target.value)} disabled={isPending}
+                                      className={cn("w-12 h-7 rounded border text-center text-[13px] outline-none disabled:opacity-50 mx-auto block",
+                                        explicitVal !== undefined ? "border-input bg-background text-foreground"
+                                          : "border-input bg-background text-muted-foreground/40",
+                                        "focus:border-ring focus:ring-1 focus:ring-ring/50"
+                                      )} />
                                   </td>
                                 )
                               })}
