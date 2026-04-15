@@ -443,7 +443,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                     onChange={(e) => setShiftCov(st.code, day, role.key, e.target.value)}
                                     disabled={isPending}
                                     className={cn(
-                                      "w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
+                                      "no-spinners w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
                                       val > 0 ? "border-input bg-background text-foreground" : "border-input bg-background text-muted-foreground/30",
                                       "focus:border-ring focus:ring-1 focus:ring-ring/50"
                                     )}
@@ -517,7 +517,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                                       onChange={(e) => setShiftCov(st.code, day, dept.code, e.target.value)}
                                       disabled={isPending}
                                       className={cn(
-                                        "w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
+                                        "no-spinners w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
                                         val > 0 ? "border-input bg-background text-foreground" : "border-input bg-background text-muted-foreground/30",
                                         "focus:border-ring focus:ring-1 focus:ring-ring/50"
                                       )}

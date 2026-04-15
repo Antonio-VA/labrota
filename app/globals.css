@@ -307,6 +307,16 @@ input[type="number"]:focus::-webkit-inner-spin-button,
 input[type="number"]:focus::-webkit-outer-spin-button {
   opacity: 1;
 }
+/* Fully hide native spinners on inputs with custom +/- steppers */
+input.no-spinners::-webkit-inner-spin-button,
+input.no-spinners::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  opacity: 0;
+}
+input.no-spinners {
+  -moz-appearance: textfield;
+}
 
 /* Pop-out variant for floating nav — more transparent, stronger shadow */
 .glass-nav-pop {
