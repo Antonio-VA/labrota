@@ -508,24 +508,26 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
                             return (
                               <td key={day} className={cn("px-1 py-0.5 text-center", isWknd && "bg-muted/30")}>
                                 {isActiveDay ? (
-                                  <div className="group relative flex items-center justify-center">
-                                    <button type="button" tabIndex={-1}
-                                      onClick={() => setShiftCov(st.code, day, dept.code, String(Math.max(0, val - 1)))}
-                                      className="absolute left-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
-                                    >-</button>
+                                  <div className="group flex items-center justify-center gap-0.5">
                                     <input type="number" min={0} max={20} value={val || ""}
                                       onChange={(e) => setShiftCov(st.code, day, dept.code, e.target.value)}
                                       disabled={isPending}
                                       className={cn(
-                                        "no-spinners w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50 mx-auto block",
+                                        "no-spinners w-10 h-6 rounded border text-center text-[12px] outline-none disabled:opacity-50",
                                         val > 0 ? "border-input bg-background text-foreground" : "border-input bg-background text-muted-foreground/30",
                                         "focus:border-ring focus:ring-1 focus:ring-ring/50"
                                       )}
                                     />
-                                    <button type="button" tabIndex={-1}
-                                      onClick={() => setShiftCov(st.code, day, dept.code, String(val + 1))}
-                                      className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground text-[10px] w-3 h-6 flex items-center justify-center"
-                                    >+</button>
+                                    <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button type="button" tabIndex={-1}
+                                        onClick={() => setShiftCov(st.code, day, dept.code, String(val + 1))}
+                                        className="flex items-center justify-center text-muted-foreground hover:text-foreground"
+                                      ><ChevronUp className="size-3" /></button>
+                                      <button type="button" tabIndex={-1}
+                                        onClick={() => setShiftCov(st.code, day, dept.code, String(Math.max(0, val - 1)))}
+                                        className="flex items-center justify-center text-muted-foreground hover:text-foreground"
+                                      ><ChevronDown className="size-3" /></button>
+                                    </div>
                                   </div>
                                 ) : (
                                   <span className="text-[10px] text-muted-foreground/30">—</span>
