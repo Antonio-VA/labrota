@@ -51,7 +51,7 @@ export function TaskCell({
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   return (
-    <div ref={cellRef} className={cn("relative flex items-center gap-0.5 group/cell", compact ? "min-h-[28px] p-0.5" : "min-h-[36px] p-1")}>
+    <div ref={cellRef} className={cn("relative flex items-center gap-0.5 group/cell flex-wrap min-w-0 overflow-hidden", compact ? "min-h-[28px] p-0.5" : "min-h-[36px] p-1")}>
       {assignments.map((a) => {
         const onLeave = leaveStaffIds.has(a.staff_id)
         const hasConflict = conflictStaffIds.has(a.staff_id)

@@ -113,7 +113,7 @@ export function TaskGrid({
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div
           className="overflow-hidden"
-          style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, 1fr)` }}
+          style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(7, minmax(0, 1fr))` }}
         >
           {/* Header shimmer — matches real header structure */}
           <div className={cn("border-b border-r border-border bg-muted flex flex-col justify-center", compact ? "px-2 py-1" : "px-3 py-2")}>
@@ -293,7 +293,7 @@ export function TaskGrid({
 
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-background">
-      <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(${days.length}, 1fr)` }}>
+      <div style={{ display: "grid", gridTemplateColumns: `${compact ? "90px" : "120px"} repeat(${days.length}, minmax(0, 1fr))` }}>
         {/* Header row */}
         <div className={cn("border-b border-r border-border bg-muted flex flex-col justify-center", compact ? "px-2 py-1" : "px-3 py-2")}>
           {shiftLabel && !compact && (
@@ -402,7 +402,7 @@ export function TaskGrid({
                 <div
                   key={`${tecnica.id}-${day.date}`}
                   className={cn(
-                    "border-b border-r last:border-r-0 border-border",
+                    "border-b border-r last:border-r-0 border-border min-w-0",
                     hasEmpty && "bg-muted/20",
                     day.isWeekend && "bg-muted/30"
                   )}
