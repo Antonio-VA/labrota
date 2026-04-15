@@ -305,10 +305,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     const activeItem = tecnicas.find((t) => t.sortId === active.id)
     const overItem = tecnicas.find((t) => t.sortId === over.id)
     if (!activeItem || !overItem) return
-    // Prevent cross-dept drag: check if they share at least one department
-    const activeDepts = activeItem.department.split(",")
-    const overDepts = overItem.department.split(",")
-    if (!activeDepts.some((d) => overDepts.includes(d))) return
+  // Prevent cross-dept drag: removed — flat list now allows free reordering
     setTecnicas((prev) => {
       const oldIndex = prev.findIndex((t) => t.sortId === active.id)
       const newIndex = prev.findIndex((t) => t.sortId === over.id)
@@ -316,15 +313,16 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     })
   }
 
-  function addRow(dept: string = "lab") {
+  function addRow() {
     const sortId = `new-${_counter++}`
+    const defaultDept = departments.length > 0 ? departments.filter((d) => !d.parent_id)[0]?.code ?? "lab" : "lab"
     setTecnicas((prev) => [
       ...prev,
       {
         sortId,
         nombre_es: "", nombre_en: "", codigo: "",
         color: COLOR_PALETTE[prev.length % COLOR_PALETTE.length],
-        department: dept, typical_shifts: [], avoid_shifts: [], activa: true,
+        department: defaultDept, typical_shifts: [], avoid_shifts: [], activa: true,
         orden: prev.length,
       },
     ])
@@ -376,21 +374,6 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     })
   }
 
-  // Group by department (root departments only, multi-dept técnicas appear in first matching group)
-  const rootDepts = departments.length > 0
-    ? departments.filter((d) => !d.parent_id)
-    : [{ id: "lab", code: "lab", name: t("embriologia") } as Department, { id: "andrology", code: "andrology", name: t("andrologia") } as Department]
-  const assigned = new Set<string>()
-  const deptGroups = rootDepts.map((d) => {
-    const items = tecnicas.filter((tc) => {
-      if (assigned.has(tc.sortId)) return false
-      const codes = tc.department.split(",").filter(Boolean)
-      if (codes.includes(d.code)) { assigned.add(tc.sortId); return true }
-      return false
-    })
-    return { code: d.code, name: d.name, items }
-  })
-
   return (
     <div className="flex flex-col gap-2">
       {tecnicas.length === 0 && (
@@ -416,42 +399,32 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        {deptGroups.map((group) => (
-          <div key={group.code}>
-            {/* Department group header */}
-            <div className="bg-muted/60 px-2 py-1.5 border-b border-border">
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{group.name}</span>
-              <span className="text-[11px] text-muted-foreground/60 ml-2">{group.items.length}</span>
-            </div>
-
-            <SortableContext items={group.items.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
-              {group.items.map((tec, idx) => (
-                <SortableRow
-                  key={tec.sortId}
-                  tecnica={tec}
-                  onChange={(draft) => updateRow(tec.sortId, draft)}
-                  onDelete={() => deleteRow(tec.sortId)}
-                  disabled={isPending}
-                  shiftCodes={shiftCodes}
-                  departments={departments}
-                  even={idx % 2 === 0}
-                  rotaDisplayMode={rotaDisplayMode}
-                />
-              ))}
-            </SortableContext>
-
-            {/* Add row within this department */}
-            <button
-              type="button"
-              onClick={() => addRow(group.code)}
+        <SortableContext items={tecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
+          {tecnicas.map((tec, idx) => (
+            <SortableRow
+              key={tec.sortId}
+              tecnica={tec}
+              onChange={(draft) => updateRow(tec.sortId, draft)}
+              onDelete={() => deleteRow(tec.sortId)}
               disabled={isPending}
-              className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-2 px-2 w-full border-b border-border/30"
-            >
-              <Plus className="size-3" />
-              {t("addTecnica")}
-            </button>
-          </div>
-        ))}
+              shiftCodes={shiftCodes}
+              departments={departments}
+              even={idx % 2 === 0}
+              rotaDisplayMode={rotaDisplayMode}
+            />
+          ))}
+        </SortableContext>
+
+        {/* Add row */}
+        <button
+          type="button"
+          onClick={() => addRow()}
+          disabled={isPending}
+          className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-2 px-2 w-full border-b border-border/30"
+        >
+          <Plus className="size-3" />
+          {t("addTecnica")}
+        </button>
       </DndContext>
 
       {/* Footer */}
