@@ -721,6 +721,13 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
         return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
       })
 
+      // For multi-shift tasks, distribute assignments across shifts
+      // using round-robin or preferred_shift to balance rows
+      const shiftCounters: Record<string, number> = {}
+      if (task.typical_shifts.length > 1) {
+        for (const sc of task.typical_shifts) shiftCounters[sc] = 0
+      }
+
       let filled = 0
       for (const candidate of candidates) {
         if (filled >= task.needed) break
@@ -731,9 +738,23 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           warnings.push(`${date}: ${candidate.first_name} ${candidate.last_name} exceeds task threshold (${currentCount + 1} > ${taskConflictThreshold})`)
         }
 
+        // Pick shift_type: preferred_shift if it matches, otherwise round-robin across typical_shifts
+        let assignShift = taskShiftCode
+        if (task.typical_shifts.length > 1) {
+          if (candidate.preferred_shift && task.typical_shifts.includes(candidate.preferred_shift)) {
+            assignShift = candidate.preferred_shift
+          } else {
+            // Round-robin: pick the shift with fewest assignments so far
+            assignShift = task.typical_shifts.reduce((best, sc) =>
+              (shiftCounters[sc] ?? 0) < (shiftCounters[best] ?? 0) ? sc : best
+            )
+          }
+          shiftCounters[assignShift] = (shiftCounters[assignShift] ?? 0) + 1
+        }
+
         dayAssignments.push({
           staff_id: candidate.id,
-          shift_type: taskShiftCode,
+          shift_type: assignShift,
           function_label: task.code,
         })
         staffTaskCount[candidate.id] = currentCount + 1

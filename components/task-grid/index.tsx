@@ -456,12 +456,17 @@ export function TaskGrid({
 
               return (
               <Fragment key={`${tecnica.id}-${group.shiftCode}`}>
-                {/* Technique label */}
+                {/* Technique label — show shift badge when task appears in multiple shifts */}
                 <div
                   className={cn("border-b border-r border-border flex items-center gap-1.5", compact ? "px-2 py-1" : "px-3 py-2")}
                   style={{ borderLeft: `3px solid ${resolveColor(tecnica.color)}` }}
                 >
                   <span className={cn("font-medium truncate", compact ? "text-[10px]" : "text-[12px]")}>{tecnica.nombre_es}</span>
+                  {useShiftGrouping && group.shiftCode && (tecnica.typical_shifts?.length ?? 0) !== 1 && (
+                    <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase leading-none bg-muted text-muted-foreground border border-border">
+                      {group.shiftCode}
+                    </span>
+                  )}
                 </div>
                 {/* Day cells for this technique */}
                 {days.map((day) => {
