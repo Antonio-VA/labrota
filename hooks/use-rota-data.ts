@@ -70,14 +70,10 @@ export function useRotaData({
 
   const fetchVersionRef  = useRef(0)
   const lastFetchId      = useRef(0)
-  const initialDataUsed  = useRef(false)
-  const initialDataRef   = useRef<RotaWeekData | undefined>(initialData)
   const skipInitialFetch = useRef(!!initialData && initialData.weekStart === weekStart)
   const initialStaffUsed = useRef(false)
   const prevStaffIdsRef  = useRef("")
   const gridSetDaysRef   = useRef<((days: RotaDay[]) => void) | null>(null)
-
-  useEffect(() => { initialDataRef.current = initialData }, [initialData])
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -105,22 +101,11 @@ export function useRotaData({
   // ── Fetch functions ──────────────────────────────────────────────────────
 
   const fetchWeek = useCallback((ws: string) => {
-    // On first call, if the server pre-fetched this exact week, use it directly
-    const initialData = initialDataRef.current
-    if (!initialDataUsed.current && initialData?.weekStart === ws) {
-      initialDataUsed.current = true
-      _cache.weeks.set(ws, initialData)
-      setInitialLoaded(true)
-      setWeekData(initialData)
-      setPunctionsOverrideLocal(initialData.rota?.punctions_override ?? {})
-      setLoadingWeek(false)
-      prefetchAdjacent(ws)
-      return
-    }
-
-    // Cache hit — show instantly, then silently refresh in background
+    // Cache hit — show instantly, then silently refresh in background.
+    // Version-guarded so rapid week switches don't let an older response overwrite a newer one.
     const cached = _cache.weeks.get(ws)
     if (cached) {
+      const version = ++fetchVersionRef.current
       setInitialLoaded(true)
       setWeekData(cached)
       setPunctionsOverrideLocal(cached.rota?.punctions_override ?? {})
@@ -131,6 +116,7 @@ export function useRotaData({
       reasoningSourceRef.current = null
       setActiveStrategy(null)
       getRotaWeek(ws).then((d) => {
+        if (fetchVersionRef.current !== version) return
         _cache.weeks.set(ws, d)
         setWeekData(d)
         setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -164,7 +150,7 @@ export function useRotaData({
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps — reads initialData via ref to stay stable
+  }, [])
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
   const fetchWeekSilent = useCallback((ws: string) => {
