@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import type { LeaveType } from "@/lib/types/database"
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ const OTHER_STAFF_ID = "staff-other-000"
 
 const baseParams = {
   staffId: TEST_STAFF_ID,
-  type: "annual",
+  type: "annual" as LeaveType,
   startDate: "2026-04-10",
   endDate: "2026-04-12",
   notes: "Family holiday",

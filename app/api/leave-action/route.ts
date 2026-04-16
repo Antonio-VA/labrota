@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   const newStatus = action === "approve" ? "approved" : "rejected"
   const { error } = await admin
     .from("leaves")
-    .update({ status: newStatus } as never)
+    .update({ status: newStatus })
     .eq("id", leaveId)
 
   if (error) {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   // Try to store review timestamp (column may not exist before migration)
   await admin
     .from("leaves")
-    .update({ reviewed_at: new Date().toISOString() } as never)
+    .update({ reviewed_at: new Date().toISOString() })
     .eq("id", leaveId)
     
 

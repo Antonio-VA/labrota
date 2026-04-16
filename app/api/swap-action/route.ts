@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (action === "approve") {
       await admin
         .from("swap_requests")
-        .update({ status: "pending_target", manager_reviewed_at: new Date().toISOString() } as never)
+        .update({ status: "pending_target", manager_reviewed_at: new Date().toISOString() })
         .eq("id", swapId)
 
       // Send email to target staff with accept/decline links
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       // Manager rejects
       await admin
         .from("swap_requests")
-        .update({ status: "rejected", rejected_by: "manager", manager_reviewed_at: new Date().toISOString() } as never)
+        .update({ status: "rejected", rejected_by: "manager", manager_reviewed_at: new Date().toISOString() })
         .eq("id", swapId)
 
       // Notify initiator
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
       // Target declines
       await admin
         .from("swap_requests")
-        .update({ status: "rejected", rejected_by: "target", target_responded_at: new Date().toISOString() } as never)
+        .update({ status: "rejected", rejected_by: "target", target_responded_at: new Date().toISOString() })
         .eq("id", swapId)
 
       // Notify initiator

@@ -126,7 +126,7 @@ export async function disconnectOutlook(
     // Convert synced leaves to manual
     await admin
       .from("leaves")
-      .update({ source: "manual", outlook_event_id: null } as never)
+      .update({ source: "manual", outlook_event_id: null })
       .eq("staff_id", staffId)
       .eq("organisation_id", orgId)
       .eq("source", "outlook")
@@ -143,7 +143,7 @@ export async function disconnectOutlook(
     // Convert past ones to manual
     await admin
       .from("leaves")
-      .update({ source: "manual", outlook_event_id: null } as never)
+      .update({ source: "manual", outlook_event_id: null })
       .eq("staff_id", staffId)
       .eq("organisation_id", orgId)
       .eq("source", "outlook")
@@ -160,7 +160,7 @@ export async function toggleOutlookSync(enabled: boolean): Promise<{ error?: str
   const admin = createAdminClient()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_outlook_sync: enabled } as never)
+    .update({ enable_outlook_sync: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
 

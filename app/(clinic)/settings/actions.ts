@@ -144,7 +144,7 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
       user_id: userId,
       role,
       display_name: displayName || null,
-    } as never)
+    })
 
   if (memberError) return { error: memberError.message }
 
@@ -156,7 +156,7 @@ export async function inviteOrgUser(email: string, role: string, displayName: st
     .single() as { data: { organisation_id: string | null } | null }
 
   if (!profile?.organisation_id) {
-    await admin.from("profiles").update({ organisation_id: orgId } as never).eq("id", userId)
+    await admin.from("profiles").update({ organisation_id: orgId }).eq("id", userId)
   }
 
   logAuditEvent({
@@ -181,7 +181,7 @@ export async function updateUserRole(targetUserId: string, newRole: string): Pro
 
   const { error } = await admin
     .from("organisation_members")
-    .update({ role: newRole } as never)
+    .update({ role: newRole })
     .eq("organisation_id", orgId)
     .eq("user_id", targetUserId)
 
@@ -221,7 +221,7 @@ export async function removeOrgMember(targetUserId: string): Promise<{ error?: s
     .eq("user_id", targetUserId) as { data: Array<{ organisation_id: string }> | null }
 
   if (!remaining?.length) {
-    await admin.from("profiles").update({ organisation_id: null } as never).eq("id", targetUserId)
+    await admin.from("profiles").update({ organisation_id: null }).eq("id", targetUserId)
   }
 
   logAuditEvent({
@@ -254,7 +254,7 @@ export async function linkUserToStaff(targetUserId: string, staffId: string | nu
 
   const { error } = await admin
     .from("organisation_members")
-    .update({ linked_staff_id: staffId } as never)
+    .update({ linked_staff_id: staffId })
     .eq("organisation_id", orgId)
     .eq("user_id", targetUserId)
 
@@ -322,7 +322,7 @@ export async function updateOrgName(name: string): Promise<{ error?: string }> {
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("organisations")
-    .update({ name } as never)
+    .update({ name })
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
@@ -335,7 +335,7 @@ export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("organisations")
-    .update({ logo_url: logoUrl } as never)
+    .update({ logo_url: logoUrl })
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
@@ -356,12 +356,12 @@ export async function updateOrgRegional(country: string, region: string): Promis
   if (!existing) {
     const { error: insertError } = await admin
       .from("lab_config")
-      .insert({ organisation_id: orgId, country, region, autonomous_community: region || null } as never)
+      .insert({ organisation_id: orgId, country, region, autonomous_community: region || null })
     if (insertError) return { error: insertError.message }
   } else {
     const { error } = await admin
       .from("lab_config")
-      .update({ country, region, autonomous_community: region || null } as never)
+      .update({ country, region, autonomous_community: region || null })
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
   }
@@ -375,7 +375,7 @@ export async function updateAuthMethod(method: "otp" | "password"): Promise<{ er
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("organisations")
-    .update({ auth_method: method } as never)
+    .update({ auth_method: method })
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
@@ -386,7 +386,7 @@ export async function toggleLeaveRequests(enabled: boolean): Promise<{ error?: s
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_leave_requests: enabled } as never)
+    .update({ enable_leave_requests: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
@@ -397,7 +397,7 @@ export async function toggleSwapRequests(enabled: boolean): Promise<{ error?: st
   const { orgId, admin } = await requireOrgAdmin()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_swap_requests: enabled } as never)
+    .update({ enable_swap_requests: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
@@ -423,7 +423,7 @@ export async function resetImplementation(): Promise<{ error?: string }> {
     admin.from("shift_types").delete().eq("organisation_id", orgId),
     admin.from("departments").delete().eq("organisation_id", orgId),
     admin.from("rota_rules").delete().eq("organisation_id", orgId),
-    admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId),
+    admin.from("lab_config").update({ country: "", region: "", autonomous_community: null }).eq("organisation_id", orgId),
     admin.from("implementation_steps").delete().eq("organisation_id", orgId),
   ])
   revalidatePath("/settings")

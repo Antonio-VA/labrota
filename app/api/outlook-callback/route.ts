@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
         refresh_token: encrypt(tokens.refresh_token),
         token_expires_at: expiresAt,
         sync_enabled: true,
-      } as never, { onConflict: "staff_id" })
+      }, { onConflict: "staff_id" })
 
     if (dbError) {
       console.error("[outlook-callback] DB error:", dbError)

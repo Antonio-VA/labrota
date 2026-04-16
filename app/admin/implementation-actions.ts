@@ -155,7 +155,7 @@ export async function loadDefaultDepartments(orgId: string, lang: Lang, mode: Lo
     }))
 
   if (rows.length > 0) {
-    const { error } = await admin.from("departments").insert(rows as never)
+    const { error } = await admin.from("departments").insert(rows)
     if (error) return { error: error.message }
   }
 

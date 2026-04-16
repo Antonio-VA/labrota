@@ -23,7 +23,7 @@ export default async function StaffPage() {
     supabase.from("departments").select("*").order("sort_order"),
     supabase.from("shift_types").select("*").order("sort_order"),
   ])
-  const staff = (staffRes.data ?? []) as StaffWithSkills[]
+  const staff = (staffRes.data ?? []) as unknown as StaffWithSkills[]
   const tecnicas = (tecnicasRes.data ?? []) as Tecnica[]
   const depts = (deptRes.data ?? []) as Department[]
   const shiftTypes = (shiftRes.data ?? []) as ShiftTypeDefinition[]

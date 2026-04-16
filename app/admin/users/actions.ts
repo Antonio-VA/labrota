@@ -19,7 +19,7 @@ export async function updateMemberRole(
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisation_members")
-    .update({ role } as never)
+    .update({ role })
     .eq("user_id", userId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }

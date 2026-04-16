@@ -74,13 +74,14 @@ export async function adminInstallHrModule(orgId: string): Promise<{ error?: str
   const leaveTypeInserts = DEFAULT_LEAVE_TYPES.map((lt) => ({
     organisation_id: orgId,
     name: lt.name,
-    name_en: lt.name_en,
+    name_en: lt.name_en ?? null,
     has_balance: lt.has_balance,
     default_days: lt.default_days,
     allows_carry_forward: lt.allows_carry_forward,
     is_paid: lt.is_paid,
     color: lt.color,
     sort_order: lt.sort_order,
+    is_archived: false,
     overflow_to_type_id: null as string | null,
   }))
 
@@ -209,7 +210,15 @@ export async function adminCreateCompanyLeaveType(orgId: string, params: {
 
   const { error } = await admin.from("company_leave_types").insert({
     organisation_id: orgId,
-    ...params,
+    name: params.name,
+    name_en: params.name_en ?? null,
+    has_balance: params.has_balance,
+    default_days: params.default_days,
+    allows_carry_forward: params.allows_carry_forward,
+    overflow_to_type_id: params.overflow_to_type_id,
+    is_paid: params.is_paid,
+    color: params.color,
+    is_archived: false,
     sort_order: (maxSort?.[0]?.sort_order ?? -1) + 1,
   })
 
@@ -257,7 +266,7 @@ export async function adminGenerateBalancesForYear(orgId: string, year: number):
   const existingMap = new Map((existing ?? []).map((b) => [`${b.staff_id}:${b.leave_type_id}`, b.id]))
 
   let created = 0, updated = 0
-  const inserts: Array<{ organisation_id: string; staff_id: string; leave_type_id: string; year: number; entitlement: number }> = []
+  const inserts: Array<{ organisation_id: string; staff_id: string; leave_type_id: string; year: number; entitlement: number; carried_forward: number; cf_expiry_date: string | null; manual_adjustment: number; manual_adjustment_notes: string | null }> = []
   const updatePromises: PromiseLike<unknown>[] = []
 
   for (const staff of staffList) {
@@ -271,7 +280,7 @@ export async function adminGenerateBalancesForYear(orgId: string, year: number):
         )
         updated++
       } else {
-        inserts.push({ organisation_id: orgId, staff_id: staff.id, leave_type_id: lt.id, year, entitlement })
+        inserts.push({ organisation_id: orgId, staff_id: staff.id, leave_type_id: lt.id, year, entitlement, carried_forward: 0, cf_expiry_date: null, manual_adjustment: 0, manual_adjustment_notes: null })
         created++
       }
     }
@@ -335,7 +344,7 @@ export async function adminRollOverCarryForward(orgId: string, fromYear: number)
       await admin.from("holiday_balance").update({ carried_forward: cfDays, cf_expiry_date: cfExpiryDate }).eq("id", toBalance.id)
     } else {
       const lt = cfTypes.find((t) => t.id === bal.leave_type_id)
-      await admin.from("holiday_balance").insert({ organisation_id: orgId, staff_id: bal.staff_id, leave_type_id: bal.leave_type_id, year: toYear, entitlement: lt?.default_days ?? 0, carried_forward: cfDays, cf_expiry_date: cfExpiryDate })
+      await admin.from("holiday_balance").insert({ organisation_id: orgId, staff_id: bal.staff_id, leave_type_id: bal.leave_type_id, year: toYear, entitlement: lt?.default_days ?? 0, carried_forward: cfDays, cf_expiry_date: cfExpiryDate, manual_adjustment: 0, manual_adjustment_notes: null })
     }
     processed++
   }

@@ -11,6 +11,7 @@ import type {
   CompanyLeaveType,
   HolidayConfig,
   HolidayBalance,
+  LeaveType,
 } from "@/lib/types/database"
 
 // ── Auth helper ──────────────────────────────────────────────────────────────
@@ -115,13 +116,14 @@ export async function installHrModule(): Promise<{ error?: string }> {
   const leaveTypeInserts = DEFAULT_LEAVE_TYPES.map((lt) => ({
     organisation_id: orgId,
     name: lt.name,
-    name_en: lt.name_en,
+    name_en: lt.name_en ?? null,
     has_balance: lt.has_balance,
     default_days: lt.default_days,
     allows_carry_forward: lt.allows_carry_forward,
     is_paid: lt.is_paid,
     color: lt.color,
     sort_order: lt.sort_order,
+    is_archived: false,
     overflow_to_type_id: null as string | null, // will link after insert
   }))
 
@@ -249,7 +251,15 @@ export async function createCompanyLeaveType(params: {
 
   const { error } = await admin.from("company_leave_types").insert({
     organisation_id: orgId,
-    ...params,
+    name: params.name,
+    name_en: params.name_en ?? null,
+    has_balance: params.has_balance,
+    default_days: params.default_days,
+    allows_carry_forward: params.allows_carry_forward,
+    overflow_to_type_id: params.overflow_to_type_id,
+    is_paid: params.is_paid,
+    color: params.color,
+    is_archived: false,
     sort_order: sortOrder,
   })
 
@@ -438,6 +448,10 @@ export async function generateBalancesForYear(year: number): Promise<{ created: 
     leave_type_id: string
     year: number
     entitlement: number
+    carried_forward: number
+    cf_expiry_date: string | null
+    manual_adjustment: number
+    manual_adjustment_notes: string | null
   }> = []
 
   for (const staff of staffList) {
@@ -453,6 +467,10 @@ export async function generateBalancesForYear(year: number): Promise<{ created: 
         leave_type_id: lt.id,
         year,
         entitlement: lt.default_days ?? 0,
+        carried_forward: 0,
+        cf_expiry_date: null,
+        manual_adjustment: 0,
+        manual_adjustment_notes: null,
       })
       created++
     }
@@ -562,6 +580,8 @@ export async function rollOverCarryForward(fromYear: number): Promise<{ processe
         entitlement: leaveType?.default_days ?? 0,
         carried_forward: cfDays,
         cf_expiry_date: cfExpiryDate,
+        manual_adjustment: 0,
+        manual_adjustment_notes: null,
       })
     }
 
@@ -584,7 +604,7 @@ export async function mapLegacyLeaveType(
     .from("leaves")
     .update({ leave_type_id: companyLeaveTypeId })
     .eq("organisation_id", orgId)
-    .eq("type", legacyType)
+    .eq("type", legacyType as LeaveType)
     .is("leave_type_id", null)
     .select("id") as { data: Array<{ id: string }> | null; error: { message: string } | null }
 

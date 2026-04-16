@@ -39,7 +39,7 @@ export async function updateLabConfig(data: LabConfigUpdate) {
 
   const { error } = await supabase
     .from("lab_config")
-    .update(data as never)
+    .update(data)
     .eq("organisation_id", profile.organisation_id)
 
   if (error) return { error: error.message }

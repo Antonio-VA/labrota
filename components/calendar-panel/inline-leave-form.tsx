@@ -7,13 +7,14 @@ import { AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { quickCreateLeave, previewLeaveBalance } from "@/app/(clinic)/leaves/actions"
+import type { LeaveType } from "@/lib/types/database"
 
 export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId: string | null; open: boolean; onClose: () => void; onCreated: () => void }) {
   const t = useTranslations("schedule")
   const tl = useTranslations("leaves")
   const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
-  const [type, setType] = useState("annual")
+  const [type, setType] = useState<LeaveType>("annual")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [notes, setNotes] = useState("")
@@ -57,7 +58,7 @@ export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId
       <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{t("newLeave")}</p>
       <select
         value={type}
-        onChange={(e) => setType(e.target.value)}
+        onChange={(e) => setType(e.target.value as LeaveType)}
         className="h-7 rounded border border-input bg-transparent px-2 text-[12px] outline-none w-full"
       >
         <option value="annual">{tl("types.annual")}</option>

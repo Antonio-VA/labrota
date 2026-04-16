@@ -82,12 +82,14 @@ export interface Organisation {
 }
 
 export interface Profile {
-  id:              string
-  organisation_id: string | null
-  email:           string
-  full_name:       string | null
-  created_at:      string
-  updated_at:      string
+  id:                      string
+  organisation_id:         string | null
+  default_organisation_id: string | null
+  email:                   string
+  full_name:               string | null
+  preferences:             Record<string, unknown> | null
+  created_at:              string
+  updated_at:              string
 }
 
 export interface Staff {
@@ -163,6 +165,7 @@ export interface Rota {
   published_at:       string | null
   published_by:       string | null
   punctions_override: Record<string, number> | null
+  engine_warnings:    string[] | null
   created_at:         string
   updated_at:         string
 }
@@ -388,12 +391,91 @@ export type CompanyLeaveTypeUpdate = Partial<Omit<CompanyLeaveTypeInsert, 'organ
 export type HolidayBalanceInsert = Omit<HolidayBalance, 'id' | 'created_at' | 'updated_at'>
 export type HolidayBalanceUpdate = Partial<Omit<HolidayBalanceInsert, 'organisation_id'>>
 
-// ── Insert types (omit server-generated fields) ───────────────────────────────
-export type StaffInsert = Omit<Staff, 'id' | 'created_at' | 'updated_at'>
-export type LeaveInsert = Omit<Leave, 'id' | 'created_at' | 'updated_at'>
-export type RotaInsert  = Omit<Rota,  'id' | 'created_at' | 'updated_at'>
-export type RotaAssignmentInsert = Omit<RotaAssignment, 'id' | 'created_at' | 'updated_at'>
-export type SwapRequestInsert = Omit<SwapRequest, 'id' | 'created_at' | 'updated_at'>
+// ── Audit Logs ───────────────────────────────────────────────────────────────
+export interface AuditLog {
+  id:              string
+  organisation_id: string | null
+  user_id:         string | null
+  user_email:      string | null
+  action:          string
+  entity_type:     string | null
+  entity_id:       string | null
+  changes:         Record<string, unknown> | null
+  metadata:        Record<string, unknown> | null
+  created_at:      string
+}
+
+// ── Backups ──────────────────────────────────────────────────────────────────
+export type BackupType = 'auto' | 'manual'
+
+export interface Backup {
+  id:              string
+  organisation_id: string
+  created_at:      string
+  created_by:      string | null
+  type:            BackupType
+  label:           string | null
+  config:          Record<string, unknown>
+  rotas:           unknown[]
+}
+
+// ── Implementation Steps ─────────────────────────────────────────────────────
+export interface ImplementationStep {
+  id:              string
+  organisation_id: string
+  step_key:        string
+  completed_at:    string
+  completed_by:    string | null
+}
+
+// ── Rota Snapshots ───────────────────────────────────────────────────────────
+export interface RotaSnapshotRow {
+  id:              string
+  organisation_id: string
+  rota_id:         string
+  date:            string
+  week_start:      string
+  assignments:     unknown
+  user_id:         string | null
+  user_email:      string | null
+  created_at:      string
+}
+
+// ── Hybrid Generation Log ────────────────────────────────────────────────────
+export interface HybridGenerationLog {
+  id:              string
+  organisation_id: string
+  created_at:      string
+}
+
+// ── Insert types (required fields + optional DB-default fields) ──────────────
+
+export type StaffInsert = Pick<Staff, 'organisation_id' | 'first_name' | 'last_name' | 'role' | 'working_pattern' | 'contracted_hours' | 'days_per_week' | 'start_date' | 'color'> & Partial<Pick<Staff,
+  | 'email' | 'preferred_days' | 'avoid_days' | 'onboarding_status' | 'contract_type'
+  | 'onboarding_end_date' | 'prefers_guardia' | 'preferred_shift' | 'avoid_shifts'
+  | 'end_date' | 'notes'
+>>
+
+export type LeaveInsert = Pick<Leave, 'organisation_id' | 'staff_id' | 'type' | 'start_date' | 'end_date' | 'status'> & Partial<Pick<Leave,
+  | 'source' | 'outlook_event_id' | 'notes' | 'attachment_url'
+  | 'created_by' | 'reviewed_by' | 'reviewed_at'
+  | 'leave_type_id' | 'days_counted' | 'balance_year'
+  | 'uses_cf_days' | 'cf_days_used' | 'parent_leave_id'
+>>
+
+export type RotaInsert = Pick<Rota, 'organisation_id' | 'week_start'> & Partial<Pick<Rota,
+  | 'status' | 'generation_type' | 'published_at' | 'published_by' | 'punctions_override' | 'engine_warnings'
+>>
+
+export type RotaAssignmentInsert = Pick<RotaAssignment, 'organisation_id' | 'rota_id' | 'staff_id' | 'date' | 'shift_type'> & Partial<Pick<RotaAssignment,
+  | 'function_label' | 'is_manual_override' | 'trainee_staff_id' | 'notes'
+  | 'is_opu' | 'tecnica_id' | 'whole_team'
+>>
+
+export type SwapRequestInsert = Pick<SwapRequest, 'organisation_id' | 'rota_id' | 'initiator_staff_id' | 'initiator_assignment_id' | 'swap_type' | 'swap_date' | 'swap_shift_type' | 'status'> & Partial<Pick<SwapRequest,
+  | 'target_staff_id' | 'target_assignment_id' | 'rejected_by' | 'rejection_reason'
+  | 'manager_reviewed_at' | 'manager_reviewed_by' | 'target_responded_at'
+>>
 
 // ── Update types (all fields optional except id) ──────────────────────────────
 export type StaffUpdate  = Partial<StaffInsert>
@@ -424,6 +506,7 @@ export type LabConfigUpdate = {
   enable_notes?:             boolean
   enable_task_in_shift?:     boolean
   enable_leave_requests?:    boolean
+  enable_swap_requests?:     boolean
   default_days_per_week?:    number
   shift_name_am_es?:         string
   shift_name_pm_es?:         string
@@ -481,7 +564,7 @@ export interface RotaRule {
   updated_at:      string
 }
 
-export type RotaRuleInsert = Omit<RotaRule, 'id' | 'created_at' | 'updated_at'>
+export type RotaRuleInsert = Pick<RotaRule, 'organisation_id' | 'type' | 'is_hard' | 'enabled' | 'staff_ids' | 'params'> & Partial<Pick<RotaRule, 'notes' | 'expires_at'>>
 export type RotaRuleUpdate = Partial<RotaRuleInsert>
 
 // ── Rota Templates ───────────────────────────────────────────────────────────
@@ -538,130 +621,204 @@ export interface OrganisationMember {
 }
 
 // ── Joined types used in UI ───────────────────────────────────────────────────
-export interface StaffWithSkills extends Staff {
+export type StaffWithSkills = Staff & {
   staff_skills: StaffSkill[]
 }
 
-export interface RotaAssignmentWithStaff extends RotaAssignment {
+export type RotaAssignmentWithStaff = RotaAssignment & {
   staff: Staff
 }
 
-export interface LeaveWithStaff extends Leave {
+export type LeaveWithStaff = Leave & {
   staff: Pick<Staff, 'id' | 'first_name' | 'last_name' | 'role'> | null
   reviewer_name?: string | null
 }
 
 // ── Supabase Database type (for typed createClient<Database>()) ───────────────
-// Use explicit Insert/Update shapes (not Omit<>) so supabase-js generics resolve correctly.
+// Flatten converts interfaces to mapped types so supabase-js conditional types resolve correctly.
+// Without this, postgrest-js generics fall back to `never` for insert/update operations.
+type Flatten<T> = { [K in keyof T]: T[K] }
 export interface Database {
   public: {
     Tables: {
       organisations: {
-        Row:    Organisation
+        Row:    Flatten<Organisation>
         Insert: { name: string; slug: string; is_active?: boolean }
-        Update: { name?: string; slug?: string; is_active?: boolean; logo_url?: string | null }
+        Update: Flatten<Partial<Omit<Organisation, 'id' | 'created_at'>>>
         Relationships: []
       }
       profiles: {
-        Row:    Profile
-        Insert: { id: string; email: string; organisation_id?: string | null; full_name?: string | null }
-        Update: { organisation_id?: string | null; full_name?: string | null }
+        Row:    Flatten<Profile>
+        Insert: { id: string; email: string; organisation_id?: string | null; default_organisation_id?: string | null; full_name?: string | null; preferences?: Record<string, unknown> | null }
+        Update: { organisation_id?: string | null; default_organisation_id?: string | null; full_name?: string | null; preferences?: Record<string, unknown> | null }
         Relationships: []
       }
       staff: {
-        Row:    Staff
-        Insert: StaffInsert
-        Update: StaffUpdate
+        Row:    Flatten<Staff>
+        Insert: Flatten<StaffInsert>
+        Update: Flatten<StaffUpdate>
         Relationships: []
       }
       staff_skills: {
-        Row:    StaffSkill
-        Insert: { organisation_id: string; staff_id: string; skill: SkillName; level?: SkillLevel }
+        Row:    Flatten<StaffSkill>
+        Insert: { organisation_id: string; staff_id: string; skill: string; level?: string }
         Update: Record<string, never>
         Relationships: []
       }
       leaves: {
-        Row:    Leave
-        Insert: LeaveInsert
-        Update: LeaveUpdate
+        Row:    Flatten<Leave>
+        Insert: Flatten<LeaveInsert>
+        Update: Flatten<LeaveUpdate>
         Relationships: []
       }
       rotas: {
-        Row:    Rota
-        Insert: RotaInsert
-        Update: Partial<RotaInsert>
+        Row:    Flatten<Rota>
+        Insert: Flatten<RotaInsert>
+        Update: Flatten<Partial<RotaInsert>>
         Relationships: []
       }
       rota_assignments: {
-        Row:    RotaAssignment
-        Insert: RotaAssignmentInsert
-        Update: Partial<RotaAssignmentInsert>
+        Row:    Flatten<RotaAssignment>
+        Insert: Flatten<RotaAssignmentInsert>
+        Update: Flatten<Partial<RotaAssignmentInsert>>
         Relationships: []
       }
       lab_config: {
-        Row:    LabConfig
-        Insert: { organisation_id: string } & Partial<Omit<LabConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
-        Update: LabConfigUpdate
+        Row:    Flatten<LabConfig>
+        Insert: Flatten<Pick<LabConfig, 'organisation_id'> & Partial<Omit<LabConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>>
+        Update: Flatten<LabConfigUpdate>
         Relationships: []
       }
       rota_rules: {
-        Row:    RotaRule
-        Insert: RotaRuleInsert
-        Update: RotaRuleUpdate
+        Row:    Flatten<RotaRule>
+        Insert: Flatten<RotaRuleInsert>
+        Update: Flatten<RotaRuleUpdate>
         Relationships: []
       }
       shift_types: {
-        Row:    ShiftTypeDefinition
-        Insert: Omit<ShiftTypeDefinition, 'id' | 'created_at'>
-        Update: Partial<Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>>
+        Row:    Flatten<ShiftTypeDefinition>
+        Insert: Flatten<Pick<ShiftTypeDefinition, 'organisation_id' | 'code' | 'name_es' | 'name_en' | 'start_time' | 'end_time' | 'sort_order' | 'active'> & Partial<Pick<ShiftTypeDefinition, 'active_days' | 'department_codes'>>>
+        Update: Flatten<Partial<Omit<ShiftTypeDefinition, 'id' | 'created_at' | 'organisation_id'>>>
         Relationships: []
       }
       rota_templates: {
-        Row:    RotaTemplate
+        Row:    Flatten<RotaTemplate>
         Insert: { organisation_id: string; name: string; assignments: unknown }
         Update: { name?: string; assignments?: unknown }
         Relationships: []
       }
       departments: {
-        Row:    Department
+        Row:    Flatten<Department>
         Insert: { organisation_id: string; code: string; name: string; name_en?: string; abbreviation?: string; colour?: string; is_default?: boolean; sort_order?: number }
         Update: { name?: string; name_en?: string; abbreviation?: string; colour?: string; sort_order?: number }
         Relationships: []
       }
       outlook_connections: {
-        Row:    OutlookConnection
+        Row:    Flatten<OutlookConnection>
         Insert: { organisation_id: string; staff_id: string; microsoft_user_id: string; email: string; access_token: string; refresh_token: string; token_expires_at: string; sync_enabled?: boolean }
         Update: { access_token?: string; refresh_token?: string; token_expires_at?: string; last_synced_at?: string; sync_enabled?: boolean }
         Relationships: []
       }
       organisation_members: {
-        Row:    OrganisationMember
-        Insert: { organisation_id: string; user_id: string; role?: string; display_name?: string | null }
-        Update: { role?: string; display_name?: string | null }
+        Row:    Flatten<OrganisationMember>
+        Insert: { organisation_id: string; user_id: string; role?: string; display_name?: string | null; linked_staff_id?: string | null }
+        Update: { role?: string; display_name?: string | null; linked_staff_id?: string | null }
         Relationships: []
       }
       hr_module: {
-        Row:    HrModule
+        Row:    Flatten<HrModule>
         Insert: { organisation_id: string; status?: HrModuleStatus; installed_by?: string | null }
         Update: { status?: HrModuleStatus; removed_at?: string | null; removed_by?: string | null }
         Relationships: []
       }
       company_leave_types: {
-        Row:    CompanyLeaveType
-        Insert: CompanyLeaveTypeInsert
-        Update: CompanyLeaveTypeUpdate
+        Row:    Flatten<CompanyLeaveType>
+        Insert: Flatten<CompanyLeaveTypeInsert>
+        Update: Flatten<CompanyLeaveTypeUpdate>
         Relationships: []
       }
       holiday_config: {
-        Row:    HolidayConfig
-        Insert: { organisation_id: string } & Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
-        Update: Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>
+        Row:    Flatten<HolidayConfig>
+        Insert: Flatten<{ organisation_id: string } & Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>>
+        Update: Flatten<Partial<Omit<HolidayConfig, 'id' | 'organisation_id' | 'created_at' | 'updated_at'>>>
         Relationships: []
       }
       holiday_balance: {
-        Row:    HolidayBalance
-        Insert: HolidayBalanceInsert
-        Update: HolidayBalanceUpdate
+        Row:    Flatten<HolidayBalance>
+        Insert: Flatten<HolidayBalanceInsert>
+        Update: Flatten<HolidayBalanceUpdate>
+        Relationships: []
+      }
+      tecnicas: {
+        Row:    Flatten<Tecnica>
+        Insert: Flatten<Pick<Tecnica, 'organisation_id' | 'nombre_es' | 'nombre_en' | 'codigo' | 'color' | 'department' | 'activa' | 'orden'> & Partial<Pick<Tecnica, 'required_skill' | 'typical_shifts' | 'avoid_shifts'>>>
+        Update: Flatten<Partial<Omit<Tecnica, 'id' | 'created_at' | 'organisation_id'>>>
+        Relationships: []
+      }
+      notifications: {
+        Row:    Flatten<Notification>
+        Insert: { organisation_id: string; user_id: string; type?: string; title: string; message?: string; data?: Record<string, unknown>; read?: boolean }
+        Update: { read?: boolean }
+        Relationships: []
+      }
+      swap_requests: {
+        Row:    Flatten<SwapRequest>
+        Insert: Flatten<SwapRequestInsert>
+        Update: Flatten<Partial<SwapRequestInsert>>
+        Relationships: []
+      }
+      rota_publish_recipients: {
+        Row:    Flatten<RotaPublishRecipient>
+        Insert: { organisation_id: string; user_id?: string | null; external_email?: string | null; external_name?: string | null; enabled?: boolean }
+        Update: { user_id?: string | null; external_email?: string | null; external_name?: string | null; enabled?: boolean }
+        Relationships: []
+      }
+      audit_logs: {
+        Row:    Flatten<AuditLog>
+        Insert: { organisation_id?: string | null; user_id?: string | null; user_email?: string | null; action: string; entity_type?: string | null; entity_id?: string | null; changes?: Record<string, unknown> | null; metadata?: Record<string, unknown> | null }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      backups: {
+        Row:    Flatten<Backup>
+        Insert: { organisation_id: string; created_by?: string | null; type: BackupType; label?: string | null; config?: Record<string, unknown>; rotas?: unknown[] }
+        Update: { label?: string | null; rotas?: unknown[] }
+        Relationships: []
+      }
+      implementation_steps: {
+        Row:    Flatten<ImplementationStep>
+        Insert: { organisation_id: string; step_key: string; completed_by?: string | null }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      rota_snapshots: {
+        Row:    Flatten<RotaSnapshotRow>
+        Insert: { organisation_id: string; rota_id: string; date: string; week_start: string; assignments: unknown; user_id?: string | null; user_email?: string | null }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      hybrid_generation_log: {
+        Row:    Flatten<HybridGenerationLog>
+        Insert: { organisation_id: string }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      note_templates: {
+        Row:    { id: string; organisation_id: string; text: string; created_at: string; updated_at: string }
+        Insert: { organisation_id: string; text: string }
+        Update: { text?: string; updated_at?: string }
+        Relationships: []
+      }
+      week_notes: {
+        Row:    { id: string; organisation_id: string; week_start: string; text: string; is_template: boolean; created_at: string; updated_at: string }
+        Insert: { organisation_id: string; week_start: string; text: string; is_template?: boolean }
+        Update: { text?: string; updated_at?: string }
+        Relationships: []
+      }
+      dismissed_note_templates: {
+        Row:    { id: string; organisation_id: string; note_template_id: string; week_start: string; created_at: string }
+        Insert: { organisation_id: string; note_template_id: string; week_start: string }
+        Update: Record<string, never>
         Relationships: []
       }
     }

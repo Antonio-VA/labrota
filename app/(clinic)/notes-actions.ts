@@ -20,7 +20,7 @@ export async function addNoteTemplate(text: string): Promise<{ error?: string; i
   return withOrgId(async (orgId, supabase) => {
     const { data, error } = await supabase
       .from("note_templates")
-      .insert({ organisation_id: orgId, text } as never)
+      .insert({ organisation_id: orgId, text })
       .select("id")
       .single()
     if (error) return { error: error.message }
@@ -33,7 +33,7 @@ export async function updateNoteTemplate(id: string, text: string): Promise<{ er
   return withOrgId(async (orgId, supabase) => {
     const { error } = await supabase
       .from("note_templates")
-      .update({ text, updated_at: new Date().toISOString() } as never)
+      .update({ text, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
@@ -93,7 +93,7 @@ export async function addWeekNote(weekStart: string, text: string): Promise<{ er
   return withOrgId(async (orgId, supabase) => {
     const { data, error } = await supabase
       .from("week_notes")
-      .insert({ organisation_id: orgId, week_start: weekStart, text, is_template: false } as never)
+      .insert({ organisation_id: orgId, week_start: weekStart, text, is_template: false })
       .select("id")
       .single()
     if (error) return { error: error.message }
@@ -105,7 +105,7 @@ export async function updateWeekNote(id: string, text: string): Promise<{ error?
   return withOrgId(async (orgId, supabase) => {
     const { error } = await supabase
       .from("week_notes")
-      .update({ text, updated_at: new Date().toISOString() } as never)
+      .update({ text, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
@@ -125,7 +125,7 @@ export async function dismissTemplateNote(noteTemplateId: string, weekStart: str
   return withOrgId(async (orgId, supabase) => {
     const { error } = await supabase
       .from("dismissed_note_templates")
-      .insert({ organisation_id: orgId, note_template_id: noteTemplateId, week_start: weekStart } as never)
+      .insert({ organisation_id: orgId, note_template_id: noteTemplateId, week_start: weekStart })
     if (error) return { error: error.message }
     return {}
   })

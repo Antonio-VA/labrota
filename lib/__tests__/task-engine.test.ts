@@ -15,7 +15,7 @@ const WEEK = "2026-03-16" // Mon 16 Mar – Sun 22 Mar
 const SHIFT_T1: ShiftTypeDefinition = {
   id: "s1", organisation_id: ORG, code: "T1", name_es: "Mañana", name_en: "Morning",
   start_time: "08:00", end_time: "15:00", sort_order: 1, created_at: "",
-  active: true, active_days: [],
+  active: true, active_days: [], department_codes: [],
 }
 
 const BASE_CONFIG = {

@@ -98,7 +98,7 @@ export function LeaveForm({
       }
       const result = await requestLeave({
         staffId: fd.get("staff_id") as string,
-        type: fd.get("type") as string,
+        type: fd.get("type") as import("@/lib/types/database").LeaveType,
         startDate: fd.get("start_date") as string,
         endDate: fd.get("end_date") as string,
         notes: (fd.get("notes") as string) || undefined,

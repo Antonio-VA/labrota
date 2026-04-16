@@ -29,7 +29,7 @@ export async function saveDepartments(
             colour: dept.colour,
             sort_order: dept.sort_order,
             parent_id: dept.parent_id ?? null,
-          } as never)
+          })
           .eq("id", dept.id)
           .eq("organisation_id", orgId)
         if (error) return { error: error.message }
@@ -47,7 +47,7 @@ export async function saveDepartments(
             is_default: false,
             sort_order: dept.sort_order,
             parent_id: dept.parent_id ?? null,
-          } as never)
+          })
         if (error) return { error: error.message }
       }
     }
@@ -71,7 +71,7 @@ export async function seedDefaultDepartments(): Promise<{ seeded: boolean; error
 
     const { error } = await supabase
       .from("departments")
-      .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })) as never)
+      .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })))
 
     if (error) return { seeded: false, error: error.message }
     revalidatePath("/lab")

@@ -103,7 +103,7 @@ export async function syncStepCompletions(): Promise<void> {
     .map((key) => ({ organisation_id: orgId, step_key: key, completed_by: userId }))
 
   if (newSteps.length > 0) {
-    await supabase.from("implementation_steps").insert(newSteps as never[])
+    await supabase.from("implementation_steps").insert(newSteps)
   }
 }
 

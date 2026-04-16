@@ -34,11 +34,11 @@ const BASE_CONFIG = {
 
 const SHIFT_T1: ShiftTypeDefinition = {
   id: "s1", organisation_id: ORG, code: "T1", name_es: "Mañana", name_en: "Morning",
-  start_time: "08:00", end_time: "15:00", sort_order: 1, active: true, active_days: ["mon","tue","wed","thu","fri","sat","sun"], created_at: "",
+  start_time: "08:00", end_time: "15:00", sort_order: 1, active: true, active_days: ["mon","tue","wed","thu","fri","sat","sun"], department_codes: [], created_at: "",
 }
 const SHIFT_T2: ShiftTypeDefinition = {
   id: "s2", organisation_id: ORG, code: "T2", name_es: "Tarde", name_en: "Afternoon",
-  start_time: "13:00", end_time: "20:00", sort_order: 2, active: true, active_days: ["mon","tue","wed","thu","fri","sat","sun"], created_at: "",
+  start_time: "13:00", end_time: "20:00", sort_order: 2, active: true, active_days: ["mon","tue","wed","thu","fri","sat","sun"], department_codes: [], created_at: "",
 }
 
 function makeStaff(overrides: Partial<StaffWithSkills> & { id: string }): StaffWithSkills {

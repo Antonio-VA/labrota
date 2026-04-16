@@ -72,14 +72,14 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
   // 1. Create org
   const { data: org, error: orgErr } = await admin
     .from("organisations")
-    .insert({ name: payload.orgName, slug, is_active: true, rota_display_mode: payload.mode } as never)
+    .insert({ name: payload.orgName, slug, is_active: true, rota_display_mode: payload.mode })
     .select("id")
     .single()
   if (orgErr) return { error: orgErr.code === "23505" ? "Slug already taken." : orgErr.message }
   const orgId = (org as { id: string }).id
 
   // 2. Seed lab_config
-  await admin.from("lab_config").insert({ organisation_id: orgId } as never)
+  await admin.from("lab_config").insert({ organisation_id: orgId })
 
   // 3. Create departments
   for (let i = 0; i < payload.departments.length; i++) {
@@ -87,7 +87,7 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
     await admin.from("departments").insert({
       organisation_id: orgId, code: d.code, name: d.name, colour: d.colour,
       abbreviation: d.name.slice(0, 3), sort_order: i, is_default: i < 3,
-    } as never)
+    })
   }
 
   // 4. Create staff (batch insert, then map initials → IDs)
@@ -219,7 +219,7 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
   // 8. Add current user as admin
   await admin.from("organisation_members").insert({
     organisation_id: orgId, user_id: user.id, role: "admin",
-  } as never)
+  })
 
   revalidatePath("/admin")
   return { orgId }

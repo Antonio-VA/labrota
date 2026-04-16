@@ -34,7 +34,7 @@ export async function markAsRead(notificationId: string): Promise<{ error?: stri
   const supabase = await createClient()
   const { error } = await supabase
     .from("notifications")
-    .update({ read: true } as never)
+    .update({ read: true })
     .eq("id", notificationId)
   if (error) return { error: error.message }
   return {}
@@ -46,7 +46,7 @@ export async function markAllAsRead(): Promise<{ error?: string }> {
   if (!user) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("notifications")
-    .update({ read: true } as never)
+    .update({ read: true })
     .eq("user_id", user.id)
     .eq("read", false)
   if (error) return { error: error.message }
@@ -110,7 +110,7 @@ export async function notifyLeaveImpact(params: {
     },
   }))
 
-  await admin.from("notifications").insert(notifications as never)
+  await admin.from("notifications").insert(notifications)
 }
 
 /** Notify a staff member when their shift changes on a published rota. */
@@ -146,7 +146,7 @@ export async function notifyShiftChange(params: {
       title: "Your shift has changed",
       message: params.message,
       data: { date: params.date, staffId: params.staffId },
-    } as never)
+    })
   } catch (e) {
     console.error("[notify] Failed to send shift change notification:", e)
   }

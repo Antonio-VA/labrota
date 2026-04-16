@@ -131,7 +131,7 @@ export async function createSwapRequest(params: {
       swap_date: assignment.date,
       swap_shift_type: assignment.shift_type,
       status: "pending_manager",
-    } as never)
+    })
     .select("id")
     .single() as { data: { id: string } | null; error: unknown }
 
@@ -507,7 +507,7 @@ export async function cancelSwapRequest(swapId: string): Promise<{ error?: strin
 
   await admin
     .from("swap_requests")
-    .update({ status: "cancelled" } as never)
+    .update({ status: "cancelled" })
     .eq("id", swapId)
 
   revalidatePath("/")
@@ -536,7 +536,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
     .single() as { data: { id: string; staff_id: string; shift_type: string; date: string; rota_id: string } | null }
 
   if (!initiatorAssignment) {
-    await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" } as never).eq("id", swapId)
+    await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" }).eq("id", swapId)
     return { error: "The original shift assignment no longer exists." }
   }
 
@@ -551,7 +551,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
       .single() as { data: { id: string; staff_id: string; shift_type: string; date: string; rota_id: string } | null }
 
     if (!targetAssignment) {
-      await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" } as never).eq("id", swapId)
+      await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" }).eq("id", swapId)
       return { error: "The target shift assignment no longer exists." }
     }
 
@@ -569,7 +569,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
       shift_type: initData.shift_type,
       organisation_id: swap.organisation_id,
       is_manual_override: true,
-    } as never)
+    })
 
     await admin.from("rota_assignments").insert({
       rota_id: targetData.rota_id,
@@ -578,7 +578,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
       shift_type: targetData.shift_type,
       organisation_id: swap.organisation_id,
       is_manual_override: true,
-    } as never)
+    })
 
   } else {
     // day_off: target covers initiator's day; initiator covers target's exchange day
@@ -593,7 +593,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         .single() as { data: { id: string; staff_id: string; shift_type: string; date: string; rota_id: string } | null }
 
       if (!targetAssignment) {
-        await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" } as never).eq("id", swapId)
+        await admin.from("swap_requests").update({ status: "rejected", rejected_by: "system" }).eq("id", swapId)
         return { error: "The exchange assignment no longer exists." }
       }
 
@@ -607,7 +607,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         shift_type: initiatorAssignment.shift_type,
         organisation_id: swap.organisation_id,
         is_manual_override: true,
-      } as never)
+      })
 
       await admin.from("rota_assignments").insert({
         rota_id: targetAssignment.rota_id,
@@ -616,12 +616,12 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         shift_type: targetAssignment.shift_type,
         organisation_id: swap.organisation_id,
         is_manual_override: true,
-      } as never)
+      })
     } else {
       // Legacy / simple cover: reassign initiator's shift to target staff
       await admin
         .from("rota_assignments")
-        .update({ staff_id: swap.target_staff_id, is_manual_override: true } as never)
+        .update({ staff_id: swap.target_staff_id, is_manual_override: true })
         .eq("id", initiatorAssignment.id)
     }
   }
@@ -629,7 +629,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
   // Mark swap as approved
   await admin
     .from("swap_requests")
-    .update({ status: "approved", target_responded_at: new Date().toISOString() } as never)
+    .update({ status: "approved", target_responded_at: new Date().toISOString() })
     .eq("id", swapId)
 
   // Re-send published rota email with swap notice (fire-and-forget)
@@ -736,7 +736,7 @@ export async function approveSwapByManager(swapId: string): Promise<{ error?: st
       status: "pending_target",
       manager_reviewed_at: new Date().toISOString(),
       manager_reviewed_by: user.id,
-    } as never)
+    })
     .eq("id", swapId)
 
   if (error) return { error: error.message }
@@ -785,7 +785,7 @@ export async function rejectSwapByManager(swapId: string): Promise<{ error?: str
       rejected_by: "manager",
       manager_reviewed_at: new Date().toISOString(),
       manager_reviewed_by: user.id,
-    } as never)
+    })
     .eq("id", swapId)
 
   if (error) return { error: error.message }

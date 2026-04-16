@@ -112,7 +112,7 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
 
   const { error } = await supabase
     .from("profiles")
-    .update({ preferences: merged } as never)
+    .update({ preferences: merged })
     .eq("id", user.id)
 
   if (error) return { error: error.message }

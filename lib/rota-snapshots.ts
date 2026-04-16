@@ -73,7 +73,7 @@ export async function captureSnapshot(rotaId: string, date: string, weekStart: s
       date,
       week_start: weekStart,
       assignments: payload,
-    } as never)
+    })
   } catch (e) {
     console.error("[snapshot] Failed to capture:", e)
   }
@@ -133,7 +133,7 @@ export async function captureWeekSnapshot(rotaId: string, weekStart: string): Pr
       assignments: payload,
       user_id: user?.id ?? null,
       user_email: user?.email ?? null,
-    } as never)
+    })
   } catch (e) {
     console.error("[snapshot] Failed to capture week:", e)
   }

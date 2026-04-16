@@ -164,7 +164,7 @@ export async function getBackups(orgId: string): Promise<BackupEntry[]> {
   if (!data?.length) return []
 
   // Resolve user names
-  const userIds = [...new Set(data.map((b) => b.created_by).filter(Boolean))]
+  const userIds = [...new Set(data.map((b) => b.created_by).filter((id): id is string => id != null))]
   const nameMap: Record<string, string> = {}
   if (userIds.length > 0) {
     const { data: profiles } = await admin

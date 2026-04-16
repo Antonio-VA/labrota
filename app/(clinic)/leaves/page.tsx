@@ -80,7 +80,7 @@ export default async function LeavesPage() {
       .order("last_name"),
   ])
 
-  const rawLeaves = (leavesData ?? []) as LeaveWithStaff[]
+  const rawLeaves = (leavesData ?? []) as unknown as LeaveWithStaff[]
   const staff  = (staffData  ?? []) as Staff[]
 
   // Resolve reviewer names for leaves that have reviewed_by

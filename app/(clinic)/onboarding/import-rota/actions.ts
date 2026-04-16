@@ -76,7 +76,7 @@ export async function importFutureRota(input: ImportRotaInput): Promise<ImportRo
     const { data: rota, error: rotaErr } = await supabase
       .from("rotas")
       .upsert(
-        { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: "manual" } as never,
+        { organisation_id: orgId, week_start: weekStart, status: "draft", generation_type: "manual" },
         { onConflict: "organisation_id,week_start" }
       )
       .select("id")
@@ -97,6 +97,7 @@ export async function importFutureRota(input: ImportRotaInput): Promise<ImportRo
     const rows = assignments.map((a) => {
       const tecId = a.task_codes?.[0] ? tecnicaIdMap[a.task_codes[0]] ?? null : null
       return {
+        organisation_id: orgId,
         rota_id: rotaId,
         staff_id: a.staff_id,
         date: a.date,
@@ -110,7 +111,7 @@ export async function importFutureRota(input: ImportRotaInput): Promise<ImportRo
     if (rows.length > 0) {
       const { data: inserted } = await supabase
         .from("rota_assignments")
-        .upsert(rows as never[], { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+        .upsert(rows, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
         .select("id")
 
       totalAssignments += inserted?.length ?? rows.length

@@ -39,11 +39,11 @@ export async function adminSwitchToOrg(orgId: string) {
       user_id: user.id,
       organisation_id: orgId,
       role: "admin",
-    } as never)
+    })
   }
 
   // Set active org in profile + cookie
-  await admin.from("profiles").update({ organisation_id: orgId } as never).eq("id", user.id)
+  await admin.from("profiles").update({ organisation_id: orgId }).eq("id", user.id)
   const cookieStore = await cookies()
   cookieStore.set("labrota_active_org", orgId, { path: "/", maxAge: 365 * 86400, sameSite: "lax" })
 
@@ -143,8 +143,8 @@ export async function createOrganisation(formData: FormData) {
       const userId = userData.user.id
       await admin.from("organisation_members").insert({
         organisation_id: orgId, user_id: userId, role: "admin",
-      } as never)
-      await admin.from("profiles").update({ organisation_id: orgId, full_name: firstUserName || null } as never).eq("id", userId)
+      })
+      await admin.from("profiles").update({ organisation_id: orgId, full_name: firstUserName || null }).eq("id", userId)
     }
   }
 
@@ -162,7 +162,7 @@ export async function renameOrganisation(orgId: string, newName: string) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
-    .update({ name, slug: generateSlug(name) } as never)
+    .update({ name, slug: generateSlug(name) })
     .eq("id", orgId)
 
   if (error) return { error: error.message }
@@ -189,7 +189,7 @@ export async function deleteOrganisation(orgId: string) {
     admin.from("staff").delete().eq("organisation_id", orgId),
     admin.from("lab_config").delete().eq("organisation_id", orgId),
     admin.from("organisation_members").delete().eq("organisation_id", orgId),
-    admin.from("profiles").update({ organisation_id: null } as never).eq("organisation_id", orgId),
+    admin.from("profiles").update({ organisation_id: null }).eq("organisation_id", orgId),
     admin.from("profiles").update({ default_organisation_id: null } as never).eq("default_organisation_id", orgId),
   ])
 
@@ -211,7 +211,7 @@ export async function toggleOrgStatus(orgId: string, currentStatus: boolean) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
-    .update({ is_active: !currentStatus } as never)
+    .update({ is_active: !currentStatus })
     .eq("id", orgId)
 
   if (error) throw new Error(error.message)
@@ -227,7 +227,7 @@ export async function updateOrgLogo(orgId: string, logoUrl: string | null) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
-    .update({ logo_url: logoUrl } as never)
+    .update({ logo_url: logoUrl })
     .eq("id", orgId)
 
   if (error) return { error: error.message }
@@ -247,7 +247,7 @@ export async function renameOrgUser(userId: string, orgId: string, newName: stri
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisation_members")
-    .update({ display_name } as never)
+    .update({ display_name })
     .eq("user_id", userId)
     .eq("organisation_id", orgId)
 
@@ -262,7 +262,7 @@ export async function updateOrgUserRole(userId: string, orgId: string, newRole: 
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisation_members")
-    .update({ role: newRole } as never)
+    .update({ role: newRole })
     .eq("user_id", userId)
     .eq("organisation_id", orgId)
 
@@ -305,7 +305,7 @@ export async function removeOrgUser(userId: string, orgId: string) {
 
     await admin
       .from("profiles")
-      .update({ organisation_id: otherMember?.organisation_id ?? null } as never)
+      .update({ organisation_id: otherMember?.organisation_id ?? null })
       .eq("id", userId)
   }
 
@@ -400,7 +400,7 @@ export async function createOrgUser(formData: FormData) {
   // Add to organisation_members
   const { error: memberError } = await admin
     .from("organisation_members")
-    .upsert({ organisation_id: orgId, user_id: userId, role: appRole, display_name } as never, {
+    .upsert({ organisation_id: orgId, user_id: userId, role: appRole, display_name }, {
       onConflict: "organisation_id,user_id",
     })
 
@@ -416,7 +416,7 @@ export async function createOrgUser(formData: FormData) {
   if (!profile?.organisation_id) {
     await admin
       .from("profiles")
-      .update({ organisation_id: orgId, full_name: fullName || null } as never)
+      .update({ organisation_id: orgId, full_name: fullName || null })
       .eq("id", userId)
   }
 
@@ -516,7 +516,7 @@ export async function resetOrgImplementation(orgId: string) {
   await admin.from("shift_types").delete().eq("organisation_id", orgId)
   await admin.from("departments").delete().eq("organisation_id", orgId)
   await admin.from("rota_rules").delete().eq("organisation_id", orgId)
-  await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null } as never).eq("organisation_id", orgId)
+  await admin.from("lab_config").update({ country: "", region: "", autonomous_community: null }).eq("organisation_id", orgId)
   await admin.from("implementation_steps").delete().eq("organisation_id", orgId)
   revalidatePath(`/admin/orgs/${orgId}`)
   return { success: true }
@@ -527,7 +527,7 @@ export async function toggleOrgLeaveRequests(orgId: string, enabled: boolean) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_leave_requests: enabled } as never)
+    .update({ enable_leave_requests: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/orgs/${orgId}`)
@@ -539,7 +539,7 @@ export async function toggleOrgTaskInShift(orgId: string, enabled: boolean) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_task_in_shift: enabled } as never)
+    .update({ enable_task_in_shift: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/orgs/${orgId}`)
@@ -583,7 +583,7 @@ export async function toggleOrgNotes(orgId: string, enabled: boolean) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_notes: enabled } as never)
+    .update({ enable_notes: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/orgs/${orgId}`)
@@ -607,7 +607,7 @@ export async function toggleOrgOutlookSync(orgId: string, enabled: boolean) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("lab_config")
-    .update({ enable_outlook_sync: enabled } as never)
+    .update({ enable_outlook_sync: enabled })
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/orgs/${orgId}`)
@@ -627,7 +627,7 @@ export async function copyOrganisation(
   const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + `-${Date.now().toString(36)}`
   const { data: newOrg, error: createErr } = await admin
     .from("organisations")
-    .insert({ name: newName, slug, is_active: true, rota_display_mode: (source as { rota_display_mode?: string }).rota_display_mode ?? "by_shift" } as never)
+    .insert({ name: newName, slug, is_active: true, rota_display_mode: (source as { rota_display_mode?: string }).rota_display_mode ?? "by_shift" })
     .select("id").single()
   if (createErr) return { error: createErr.message }
   const newOrgId = (newOrg as { id: string }).id
@@ -637,12 +637,12 @@ export async function copyOrganisation(
     const { data: cfg } = await admin.from("lab_config").select("*").eq("organisation_id", sourceOrgId).maybeSingle()
     if (cfg) {
       const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = cfg as Record<string, unknown>
-      await admin.from("lab_config").insert({ ...rest, organisation_id: newOrgId } as never)
+      await admin.from("lab_config").insert({ ...rest, organisation_id: newOrgId })
     } else {
-      await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
+      await admin.from("lab_config").insert({ organisation_id: newOrgId })
     }
   } else {
-    await admin.from("lab_config").insert({ organisation_id: newOrgId } as never)
+    await admin.from("lab_config").insert({ organisation_id: newOrgId })
   }
 
   // Copy config tables in parallel (no FK dependencies between them)

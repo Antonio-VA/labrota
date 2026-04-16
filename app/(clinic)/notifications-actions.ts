@@ -107,7 +107,7 @@ export async function toggleRecipient(userId: string, enabled: boolean): Promise
     const { error } = await supabase
       .from("rota_publish_recipients")
       .upsert(
-        { organisation_id: orgId, user_id: userId, enabled: true } as never,
+        { organisation_id: orgId, user_id: userId, enabled: true },
         { onConflict: "organisation_id,user_id" }
       )
     if (error) return { error: error.message }
@@ -123,7 +123,7 @@ export async function toggleRecipient(userId: string, enabled: boolean): Promise
     if (existing) {
       const { error } = await supabase
         .from("rota_publish_recipients")
-        .update({ enabled: false } as never)
+        .update({ enabled: false })
         .eq("id", existing.id)
       if (error) return { error: error.message }
     }
@@ -145,7 +145,7 @@ export async function addExternalRecipient(email: string, name: string): Promise
       external_email: email.trim().toLowerCase(),
       external_name: name.trim() || null,
       enabled: true,
-    } as never)
+    })
 
   if (error) {
     if (error.code === "23505") return { error: "Este email ya está registrado." }
@@ -178,7 +178,7 @@ export async function toggleExternalRecipient(id: string, enabled: boolean): Pro
 
   const { error } = await supabase
     .from("rota_publish_recipients")
-    .update({ enabled } as never)
+    .update({ enabled })
     .eq("id", id)
 
   if (error) return { error: error.message }
@@ -205,7 +205,7 @@ export async function updateRotaEmailFormat(format: "by_shift" | "by_person"): P
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
-    .update({ rota_email_format: format } as never)
+    .update({ rota_email_format: format })
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")

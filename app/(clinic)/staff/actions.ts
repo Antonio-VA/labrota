@@ -46,14 +46,14 @@ async function inviteStaffAsViewer(staffId: string, email: string, fullName: str
 
   // Link organisation member
   await admin.from("organisation_members").upsert(
-    { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName, linked_staff_id: staffId } as never,
+    { organisation_id: orgId, user_id: userId, role: "viewer", display_name: fullName, linked_staff_id: staffId },
     { onConflict: "organisation_id,user_id" }
   )
 
   // Set profile org if first org
   const { data: profile } = await admin.from("profiles").select("organisation_id").eq("id", userId).single() as { data: { organisation_id: string | null } | null }
   if (!profile?.organisation_id) {
-    await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName } as never).eq("id", userId)
+    await admin.from("profiles").update({ organisation_id: orgId, full_name: fullName }).eq("id", userId)
   }
 }
 const ALL_DAYS: WorkingDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -125,7 +125,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
   const { data: newStaff, error } = await supabase
     .from("staff")
-    .insert({ ...staff, organisation_id: orgId, onboarding_end_date: onboardingEndDate } as never)
+    .insert({ ...staff, organisation_id: orgId, onboarding_end_date: onboardingEndDate })
     .select("id")
     .single()
 
@@ -135,7 +135,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
 
   if (skills.length > 0) {
     const { error: skillsError } = await supabase.from("staff_skills").insert(
-      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: newStaffId, skill, level })) as never
+      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: newStaffId, skill, level }))
     )
     if (skillsError) return { error: skillsError.message }
   }
@@ -186,6 +186,10 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
             leave_type_id: lt.id,
             year: currentYear,
             entitlement: lt.default_days ?? 0,
+            carried_forward: 0,
+            cf_expiry_date: null as string | null,
+            manual_adjustment: 0,
+            manual_adjustment_notes: null as string | null,
           }))
           await adminClient.from("holiday_balance").insert(inserts)
         }
@@ -245,7 +249,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
 
   const { error: updateError } = await supabase
     .from("staff")
-    .update({ ...staff, onboarding_end_date: onboardingEndDate } as never)
+    .update({ ...staff, onboarding_end_date: onboardingEndDate })
     .eq("id", id)
     .eq("organisation_id", orgId)
 
@@ -256,7 +260,7 @@ export async function updateStaff(id: string, _prevState: unknown, formData: For
   if (delError) return { error: delError.message }
   if (skills.length > 0) {
     const { error: insError } = await supabase.from("staff_skills").insert(
-      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level })) as never
+      skills.map(({ skill, level }) => ({ organisation_id: orgId, staff_id: id, skill, level }))
     )
     if (insError) return { error: insError.message }
   }
@@ -313,7 +317,7 @@ export async function bulkAddSkill(
 
   const { error } = await supabase
     .from("staff_skills")
-    .insert(toAdd.map((staff_id) => ({ organisation_id: orgId, staff_id, skill, level })) as never)
+    .insert(toAdd.map((staff_id) => ({ organisation_id: orgId, staff_id, skill, level })))
 
   if (error) return { added: 0, skipped: staffIds.length, error: error.message }
 
@@ -362,7 +366,7 @@ export async function bulkAddSkills(
     .in("skill", skillCodes) as { data: { staff_id: string; skill: string }[] | null }
 
   const existingSet = new Set((existing ?? []).map((r) => `${r.staff_id}:${r.skill}`))
-  const rows: { organisation_id: string; staff_id: string; skill: string; level: string }[] = []
+  const rows: { organisation_id: string; staff_id: string; skill: string; level?: string }[] = []
   for (const staffId of staffIds) {
     for (const { skill, level } of skills) {
       if (!existingSet.has(`${staffId}:${skill}`)) {
@@ -373,7 +377,7 @@ export async function bulkAddSkills(
   const skipped = staffIds.length * skills.length - rows.length
   if (rows.length === 0) return { added: 0, skipped }
 
-  const { error } = await supabase.from("staff_skills").insert(rows as never)
+  const { error } = await supabase.from("staff_skills").insert(rows)
   if (error) return { added: 0, skipped, error: error.message }
 
   revalidatePath("/staff")
@@ -414,7 +418,7 @@ export async function bulkUpdateStatus(
 
   const { data, error } = await supabase
     .from("staff")
-    .update({ onboarding_status: status } as never)
+    .update({ onboarding_status: status })
     .in("id", staffIds)
     .eq("organisation_id", orgId)
     .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
@@ -436,7 +440,7 @@ export async function bulkSoftDeleteStaff(
 
   const { data, error } = await supabase
     .from("staff")
-    .update({ onboarding_status: "inactive" as OnboardingStatus, end_date: today } as never)
+    .update({ onboarding_status: "inactive" as OnboardingStatus, end_date: today })
     .in("id", staffIds)
     .eq("organisation_id", orgId)
     .select("id") as { data: { id: string }[] | null; error: { message: string } | null }
@@ -492,7 +496,7 @@ export async function bulkUpdateStaffField(
     if (!allowed.includes(field)) continue
     const { error } = await supabase
       .from("staff")
-      .update({ [field]: value } as never)
+      .update({ [field]: value })
       .eq("id", id)
       .eq("organisation_id", orgId)
     if (!error) count++

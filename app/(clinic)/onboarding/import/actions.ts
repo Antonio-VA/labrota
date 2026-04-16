@@ -49,10 +49,10 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
           first_name: firstName,
           last_name: lastName,
           role: ["lab", "andrology", "admin"].includes(s.department) ? s.department : "lab",
-          working_pattern: s.observed_days.length > 0 ? s.observed_days : ["mon", "tue", "wed", "thu", "fri"],
+          working_pattern: (s.observed_days.length > 0 ? s.observed_days : ["mon", "tue", "wed", "thu", "fri"]) as import("@/lib/types/database").WorkingPattern,
           days_per_week: s.observed_days.length > 0 ? Math.min(s.observed_days.length, 7) : 5,
           preferred_shift: s.shift_preference || null,
-          onboarding_status: "active",
+          onboarding_status: "active" as const,
           color: PASTEL_COLORS[i % PASTEL_COLORS.length],
           contracted_hours: 40,
           start_date: new Date().toISOString().split("T")[0],
@@ -61,7 +61,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
 
       const { data: inserted, error } = await supabase
         .from("staff")
-        .insert(rows as never)
+        .insert(rows)
         .select("id") as unknown as { data: { id: string }[] | null; error: { message: string } | null }
 
       if (error) return { success: false, error: `Staff insert failed: ${error.message}` }
@@ -93,7 +93,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
 
       const { data: inserted, error } = await supabase
         .from("shift_types")
-        .insert(rows as never)
+        .insert(rows)
         .select("id") as unknown as { data: { id: string }[] | null; error: { message: string } | null }
 
       if (error) return { success: false, error: `Shift types insert failed: ${error.message}` }
@@ -119,7 +119,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
 
       const { data: inserted, error } = await supabase
         .from("tecnicas")
-        .insert(rows as never)
+        .insert(rows)
         .select("id") as unknown as { data: { id: string }[] | null; error: { message: string } | null }
 
       if (error) return { success: false, error: `Techniques insert failed: ${error.message}` }
@@ -167,7 +167,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
       if (rows.length > 0) {
         const { data: inserted, error } = await supabase
           .from("rota_rules")
-          .insert(rows as never)
+          .insert(rows)
           .select("id") as unknown as { data: { id: string }[] | null; error: { message: string } | null }
 
         if (error) return { success: false, error: `Rules insert failed: ${error.message}` }
@@ -193,7 +193,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
         updates.task_coverage_enabled = true
         updates.task_coverage_by_day = taskCov
       }
-      await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
+      await supabase.from("lab_config").update(updates).eq("organisation_id", orgId)
     }
 
     // ── 6. Apply lab settings if detected ─────────────────────────────────
@@ -237,7 +237,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
       if (ls.admin_on_weekends !== undefined) updates.admin_on_weekends = ls.admin_on_weekends
 
       if (Object.keys(updates).length > 0) {
-        await supabase.from("lab_config").update(updates as never).eq("organisation_id", orgId)
+        await supabase.from("lab_config").update(updates).eq("organisation_id", orgId)
         counts.labSettings = true
       }
     }

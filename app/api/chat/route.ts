@@ -211,7 +211,7 @@ ${pageContext ? `- ${pageContext}` : ""}
             supabase.from("shift_types").select("code, name_es, start_time, end_time, active_days").order("sort_order"),
           ])
 
-          const assignments = (assignmentsRes.data ?? []) as { date: string; shift_type: string; staff: { role: string } | null }[]
+          const assignments = (assignmentsRes.data ?? []) as unknown as { date: string; shift_type: string; staff: { role: string } | null }[]
           const config = configRes.data as Record<string, unknown> | null
           const shiftTypes = (shiftTypesRes.data ?? []) as { code: string; name_es: string; start_time: string; end_time: string; active_days: string[] }[]
 
@@ -439,7 +439,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           ])
 
           const tecnicas = (tecnicasRes.data ?? []) as { codigo: string; nombre_es: string; department: string; color: string; required_skill: string | null; typical_shifts: string[]; activa: boolean }[]
-          const staffSkills = (staffSkillsRes.data ?? []) as { skill: string; level: string; staff: { first_name: string; last_name: string } | null }[]
+          const staffSkills = (staffSkillsRes.data ?? []) as unknown as { skill: string; level: string; staff: { first_name: string; last_name: string } | null }[]
 
           // Group staff by skill
           const staffBySkill: Record<string, { name: string; level: string }[]> = {}

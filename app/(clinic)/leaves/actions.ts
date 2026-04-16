@@ -52,7 +52,7 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
 
   const { error, data: insertedLeave } = await supabase
     .from("leaves")
-    .insert({ ...leave, ...hrFields, organisation_id: orgId } as never)
+    .insert({ ...leave, ...hrFields, organisation_id: orgId })
     .select("id")
     .single() as { error: { message: string } | null; data: { id: string } | null }
 
@@ -121,7 +121,7 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
 
   const { error } = await supabase
     .from("leaves")
-    .update(leave as never)
+    .update(leave)
     .eq("id", id)
     .eq("organisation_id", orgId)
 
@@ -146,7 +146,7 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
 /** Quick-create leave from the rota screen (no FormData). */
 export async function quickCreateLeave(params: {
   staffId: string
-  type: string
+  type: LeaveType
   startDate: string
   endDate: string
   notes?: string
@@ -160,7 +160,7 @@ export async function quickCreateLeave(params: {
   if (params.endDate < params.startDate) return { error: "End date must be on or after start date." }
 
   // Compute HR module fields if active
-  let hrFields: Record<string, unknown> = {}
+  let hrFields: Partial<Pick<import("@/lib/types/database").Leave, 'leave_type_id' | 'days_counted' | 'balance_year' | 'uses_cf_days' | 'cf_days_used'>> = {}
   if (params.leaveTypeId && await isHrModuleActive(orgId)) {
     const hrResult = await computeHrLeaveFields({
       orgId,
@@ -185,11 +185,11 @@ export async function quickCreateLeave(params: {
       type: params.type,
       start_date: params.startDate,
       end_date: params.endDate,
-      status: "approved",
+      status: "approved" as const,
       notes: params.notes?.trim() || null,
       organisation_id: orgId,
       ...hrFields,
-    } as never)
+    })
     .select("id")
     .single() as { error: { message: string } | null; data: { id: string } | null }
 
@@ -292,7 +292,7 @@ export async function previewLeaveBalance(params: {
 /** Employee submits a leave request (status = pending). Can also return { info? } for balance overflow notes. */
 export async function requestLeave(params: {
   staffId: string
-  type: string
+  type: LeaveType
   startDate: string
   endDate: string
   notes?: string
@@ -351,11 +351,11 @@ export async function requestLeave(params: {
       type: params.type,
       start_date: params.startDate,
       end_date: params.endDate,
-      status: "pending",
+      status: "pending" as const,
       notes: params.notes?.trim() || null,
       attachment_url: params.attachmentUrl ?? null,
       organisation_id: orgId,
-    } as never)
+    })
     .select("id")
     .single() as { data: { id: string } | null; error: unknown }
 
@@ -433,7 +433,7 @@ export async function requestLeave(params: {
           : `${staffName} has requested leave from ${formatDateWithYear(params.startDate + "T12:00:00", locale)} to ${formatDateWithYear(params.endDate + "T12:00:00", locale)}.${overflowInfo ? ` (${overflowInfo.mainDays}d ${overflowInfo.mainTypeName} + ${overflowInfo.overflowDays}d ${overflowInfo.overflowTypeName})` : ""}`,
         data: { leaveId: insertedLeave.id, staffId: params.staffId, startDate: params.startDate, endDate: params.endDate },
       }))
-      await admin.from("notifications").insert(inAppNotifs as never)
+      await admin.from("notifications").insert(inAppNotifs)
     }
   } catch {
     // Notification/email failure should not block the request
@@ -687,7 +687,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   const { error } = await supabase
     .from("leaves")
-    .update({ status: "approved" } as never)
+    .update({ status: "approved" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
@@ -696,7 +696,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
   // Try to store reviewer info (columns may not exist before migration)
   await supabase
     .from("leaves")
-    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
     
@@ -728,7 +728,7 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
 
   const { error } = await supabase
     .from("leaves")
-    .update({ status: "rejected" } as never)
+    .update({ status: "rejected" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
@@ -737,7 +737,7 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
   // Try to store reviewer info (columns may not exist before migration)
   await supabase
     .from("leaves")
-    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
     
@@ -774,7 +774,7 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
 
   const { error } = await admin
     .from("leaves")
-    .update({ status: "cancelled" } as never)
+    .update({ status: "cancelled" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
@@ -782,7 +782,7 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
   if (!error) {
     await admin
       .from("leaves")
-      .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() } as never)
+      .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
       .eq("id", leaveId)
       .eq("organisation_id", orgId)
       

@@ -98,7 +98,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
             start_date: event.startDate,
             end_date: event.endDate,
             type: guessLeaveType(event.subject),
-          } as never)
+          })
           .eq("id", existing.id)
         if (error) result.errors.push(`Update failed for event ${event.eventId}: ${error.message}`)
         else result.updated++
@@ -158,7 +158,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   // Update last_synced_at
   await admin
     .from("outlook_connections")
-    .update({ last_synced_at: new Date().toISOString() } as never)
+    .update({ last_synced_at: new Date().toISOString() })
     .eq("staff_id", staffId)
 
   // Notify managers if leaves were created or deleted
@@ -199,7 +199,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
           message: `${parts.join(", ")} from ${staffName}'s Outlook calendar.`,
           data: { staffId, created: result.created, deleted: result.deleted, affectedWeeks },
         }))
-        await admin.from("notifications").insert(notifications as never)
+        await admin.from("notifications").insert(notifications)
       }
     } catch { /* notification failure is non-blocking */ }
   }

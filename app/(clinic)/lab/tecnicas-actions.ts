@@ -38,7 +38,7 @@ export async function saveTecnica(
         avoid_shifts:   tecnica.avoid_shifts ?? [],
         activa:         tecnica.activa ?? true,
         orden:          tecnica.orden ?? 0,
-      } as never)
+      })
       .eq("id", tecnica.id)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
@@ -60,7 +60,7 @@ export async function saveTecnica(
       avoid_shifts:    tecnica.avoid_shifts ?? [],
       activa:          tecnica.activa ?? true,
       orden:           tecnica.orden ?? 0,
-    } as never)
+    })
     .select("id")
     .single()
 
@@ -96,7 +96,7 @@ export async function reorderTecnicas(orderedIds: string[]): Promise<{ error?: s
   if (!orgId) return { error: "Not authenticated." }
   await Promise.all(
     orderedIds.map((id, i) =>
-      supabase.from("tecnicas").update({ orden: i } as never).eq("id", id).eq("organisation_id", orgId)
+      supabase.from("tecnicas").update({ orden: i }).eq("id", id).eq("organisation_id", orgId)
     )
   )
   revalidatePath("/lab")
@@ -137,12 +137,12 @@ export async function bulkSaveTecnicas(
     }
 
     if (t.id) {
-      await supabase.from("tecnicas").update(row as never).eq("id", t.id).eq("organisation_id", orgId)
+      await supabase.from("tecnicas").update(row).eq("id", t.id).eq("organisation_id", orgId)
       resultIds.push(t.id)
     } else {
       const { data, error } = await supabase
         .from("tecnicas")
-        .insert({ ...row, organisation_id: orgId } as never)
+        .insert({ ...row, organisation_id: orgId })
         .select("id")
         .single()
       if (error || !data) return { ids: [], error: error?.message ?? "Failed to create técnica." }
@@ -192,7 +192,7 @@ export async function seedDefaultTecnicas(): Promise<{ seeded: boolean; error?: 
 
   const { error } = await supabase
     .from("tecnicas")
-    .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })) as never)
+    .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })))
 
   if (error) return { seeded: false, error: error.message }
   revalidatePath("/lab")

@@ -691,7 +691,7 @@ export async function generateRota(
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft" } as never,
+      { organisation_id: orgId, week_start: weekStart, status: "draft" },
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
@@ -702,7 +702,7 @@ export async function generateRota(
   const rotaId = (rotaRow as { id: string }).id
 
   // Best-effort: set generation_type (column may not exist yet)
-  await supabase.from("rotas").update({ generation_type: generationType } as never).eq("id", rotaId)
+  await supabase.from("rotas").update({ generation_type: generationType }).eq("id", rotaId)
 
   // Determine which staff+date combos have manual overrides (to preserve individually)
   const overrideKeys = new Set<string>() // "staffId:date"
@@ -740,7 +740,7 @@ export async function generateRota(
   // Normalise preferred_shift against the org's actual shift_type codes.
   const shiftTypesData = (shiftTypesForEngine.data ?? []) as import("@/lib/types/database").ShiftTypeDefinition[]
   const validEngineCodes = new Set(shiftTypesData.map((st) => st.code))
-  const normalizedStaff = ((staffRes.data ?? []) as StaffWithSkills[]).map((s) => {
+  const normalizedStaff = ((staffRes.data ?? []) as unknown as StaffWithSkills[]).map((s) => {
     return validEngineCodes.size > 0 && s.preferred_shift && !validEngineCodes.has(s.preferred_shift)
       ? { ...s, preferred_shift: null }
       : s
@@ -909,7 +909,7 @@ export async function generateRota(
 
   const { error: insertError } = await supabase
     .from("rota_assignments")
-    .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    .upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
   if (insertError) return { error: insertError.message }
 
@@ -917,7 +917,7 @@ export async function generateRota(
   // Filter out internal [engine] logs — only keep user-facing warnings
   const userWarnings = engineWarnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
   // Always update (even to clear) so stale warnings from previous generation are removed
-  await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
+  await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null }).eq("id", rotaId)
 
   // Audit log
   const { data: { user: auditUser } } = await supabase.auth.getUser()
@@ -972,7 +972,7 @@ export async function generateRotaWithAI(
   if (!labConfig) return { error: "Lab configuration not found." }
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
 
-  const staff = (staffRes.data ?? []) as StaffWithSkills[]
+  const staff = (staffRes.data ?? []) as unknown as StaffWithSkills[]
   const leaves = (leavesRes.data ?? []) as Leave[]
   const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
   const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || r.expires_at > weekStart)
@@ -1008,12 +1008,12 @@ export async function generateRotaWithAI(
   // Upsert rota record
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id").single()
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  await supabase.from("rotas").update({ generation_type: "ai_reasoning" } as never).eq("id", rotaId)
+  await supabase.from("rotas").update({ generation_type: "ai_reasoning" }).eq("id", rotaId)
 
   // Handle overrides
   const overrideKeys = new Set<string>()
@@ -1238,13 +1238,13 @@ Use staff IDs (not names) and shift codes exactly as provided.`
 
     const { error: insertError } = await supabase
       .from("rota_assignments")
-      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+      .upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
     if (insertError) return { error: insertError.message }
 
     // Save warnings + reasoning to rota
     const allWarnings = [...aiWarnings, `[ai-reasoning] ${reasoning}`]
-    const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId)
+    const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings }).eq("id", rotaId)
     if (warnError) {
       // engine_warnings column might not exist — try creating it won't work via RLS,
       // but log so reasoning is at least returned in the response
@@ -1342,7 +1342,7 @@ export async function generateRotaHybrid(
   const hybridYears = [...new Set(weekDates.map((d) => parseInt(d.slice(0, 4))))]
   const hybridHolidays: Record<string, string> = Object.assign({}, ...hybridYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
 
-  const allStaff = (staffRes.data ?? []) as StaffWithSkills[]
+  const allStaff = (staffRes.data ?? []) as unknown as StaffWithSkills[]
   const leaves = (leavesRes.data ?? []) as Leave[]
   const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
   const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || r.expires_at > weekStart)
@@ -1370,12 +1370,12 @@ export async function generateRotaHybrid(
   // ── 2. Upsert rota record & clear old assignments ─────────────────────────
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id").single()
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId)
+  await supabase.from("rotas").update({ generation_type: "ai_hybrid" }).eq("id", rotaId)
 
   const overrideKeys = new Set<string>()
   let overrideAssignments: { staff_id: string; date: string; shift_type: string }[] = []
@@ -1717,7 +1717,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     const { error: insertError } = await supabase
       .from("rota_assignments")
-      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+      .upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
 
     if (insertError) return { error: insertError.message }
 
@@ -1763,7 +1763,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     // Save warnings + reasoning (use recalculated coverage + Claude's own warnings, not stale engine ones)
     const allWarnings = [...aiWarnings, `[ai-reasoning] ${fullReasoning}`]
-    const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings } as never).eq("id", rotaId)
+    const { error: warnError } = await supabase.from("rotas").update({ engine_warnings: allWarnings }).eq("id", rotaId)
     if (warnError) console.error("Failed to save engine_warnings:", warnError.message)
 
     // Audit
@@ -1779,7 +1779,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     })
 
     // Log usage for quota tracking
-    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
     revalidatePath("/")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
@@ -1801,15 +1801,15 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
 
     if (engineAssignments.length > 0) {
       await supabase.from("rota_assignments")
-        .upsert(engineAssignments as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+        .upsert(engineAssignments, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     }
 
     // Save engine warnings
     const userWarnings = engineResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
-    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
+    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null }).eq("id", rotaId)
 
     // Log usage for quota tracking (fallback still counts as a hybrid attempt)
-    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
     revalidatePath("/")
 
@@ -1865,7 +1865,7 @@ export async function generateTaskHybrid(
   if (!labConfig) return { error: "Lab configuration not found." }
   if (staffRes.error) return { error: `Failed to load staff: ${staffRes.error.message}` }
 
-  const allStaff = (staffRes.data ?? []) as StaffWithSkills[]
+  const allStaff = (staffRes.data ?? []) as unknown as StaffWithSkills[]
   const leaves = (leavesRes.data ?? []) as Leave[]
   const recentAssignments = (recentRes.data ?? []) as RotaAssignment[]
   const activeRules = ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || r.expires_at > weekStart)
@@ -1893,12 +1893,12 @@ export async function generateTaskHybrid(
   // ── 2. Upsert rota & clear old assignments ───────────────────────────────────
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id").single()
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  await supabase.from("rotas").update({ generation_type: "ai_hybrid" } as never).eq("id", rotaId)
+  await supabase.from("rotas").update({ generation_type: "ai_hybrid" }).eq("id", rotaId)
 
   const overrideKeys = new Set<string>()
   let overrideAssignments: { staff_id: string; date: string; shift_type: string; function_label: string }[] = []
@@ -2251,16 +2251,16 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
 
     const { error: insertError } = await supabase
       .from("rota_assignments")
-      .upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+      .upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (insertError) return { error: insertError.message }
 
     const warningsStr = aiWarnings.length > 0 ? `\n\nRemaining issues:\n${aiWarnings.map((w) => `• ${w}`).join("\n")}` : ""
     const fullReasoning = `${assessment}${warningsStr}`
-    await supabase.from("rotas").update({ engine_warnings: [...aiWarnings, `[ai-reasoning] ${fullReasoning}`] } as never).eq("id", rotaId)
+    await supabase.from("rotas").update({ engine_warnings: [...aiWarnings, `[ai-reasoning] ${fullReasoning}`] }).eq("id", rotaId)
 
     const { data: { user: auditUser } } = await supabase.auth.getUser()
     logAuditEvent({ orgId, userId: auditUser?.id, userEmail: auditUser?.email, action: "rota_generated", entityType: "rota", entityId: rotaId, metadata: { weekStart, method: "ai_hybrid_task", assignmentCount: toInsert.length, preserveOverrides } })
-    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
     revalidatePath("/")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
@@ -2280,11 +2280,11 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
     )
     if (engineAssignments.length > 0) {
       await supabase.from("rota_assignments")
-        .upsert(engineAssignments as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+        .upsert(engineAssignments, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     }
     const userWarnings = taskResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
-    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null } as never).eq("id", rotaId)
-    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId } as never)
+    await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null }).eq("id", rotaId)
+    await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
     revalidatePath("/")
     const msg = e instanceof Error ? e.message : "AI optimisation failed"
     return { assignmentCount: engineAssignments.length, reasoning: `⚠ Claude optimisation failed (${msg}). Showing task engine base rota instead.` }
@@ -2304,7 +2304,7 @@ export async function getActiveStaff(): Promise<StaffWithSkills[]> {
     console.error("[getActiveStaff] Query error:", error.message)
     throw new Error(`Failed to load staff: ${error.message}`)
   }
-  return (data ?? []) as StaffWithSkills[]
+  return (data ?? []) as unknown as StaffWithSkills[]
 }
 
 // ── upsertAssignment ──────────────────────────────────────────────────────────
@@ -2328,7 +2328,7 @@ export async function upsertAssignment(params: {
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: params.weekStart, status: "draft" } as never,
+      { organisation_id: orgId, week_start: params.weekStart, status: "draft" },
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
@@ -2349,7 +2349,7 @@ export async function upsertAssignment(params: {
         notes: params.notes ?? null,
         trainee_staff_id: params.traineeStaffId ?? null,
         is_manual_override: true,
-      } as never)
+      })
       .eq("id", params.assignmentId)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
@@ -2370,12 +2370,12 @@ export async function upsertAssignment(params: {
     }
     let { data: row, error } = await supabase
       .from("rota_assignments")
-      .upsert(row_data as never, { onConflict: "rota_id,staff_id,date,function_label" })
+      .upsert(row_data, { onConflict: "rota_id,staff_id,date,function_label" })
       .select("id")
       .single()
     // Fall back to plain insert if constraint doesn't exist
     if (error?.message?.includes("ON CONFLICT")) {
-      const res = await supabase.from("rota_assignments").insert(row_data as never).select("id").single()
+      const res = await supabase.from("rota_assignments").insert(row_data).select("id").single()
       row = res.data
       error = res.error
     }
@@ -2424,7 +2424,7 @@ export async function updateAssignmentShift(
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ shift_type: shiftType, is_manual_override: true } as never)
+    .update({ shift_type: shiftType, is_manual_override: true })
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2489,7 +2489,7 @@ export async function regenerateDay(
   // Run engine for the full week (needed for budget tracking)
   const { days } = runRotaEngine({
     weekStart,
-    staff: (staffRes.data ?? []) as StaffWithSkills[],
+    staff: (staffRes.data ?? []) as unknown as StaffWithSkills[],
     leaves: (leavesRes.data ?? []) as Leave[],
     recentAssignments: (recentRes.data ?? []) as RotaAssignment[],
     labConfig,
@@ -2516,7 +2516,7 @@ export async function regenerateDay(
   // Upsert rota record
   const { data: rotaRow, error: rotaError } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id")
     .single()
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
@@ -2542,7 +2542,7 @@ export async function regenerateDay(
   }))
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -2561,7 +2561,7 @@ export async function moveAssignment(
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ date: newDate, is_manual_override: true } as never)
+    .update({ date: newDate, is_manual_override: true })
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2599,7 +2599,7 @@ export async function setPunctionsOverride(
 
   const { error } = await supabase
     .from("rotas")
-    .update({ punctions_override: updated } as never)
+    .update({ punctions_override: updated })
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2626,7 +2626,7 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
 
   const { error } = await supabase
     .from("rotas")
-    .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName } as never)
+    .update({ status: "published", published_at: new Date().toISOString(), published_by: publisherName })
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2675,7 +2675,7 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rotas")
-    .update({ status: "draft", published_at: null } as never)
+    .update({ status: "draft", published_at: null })
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2691,7 +2691,7 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ shift_type: newShiftType, is_manual_override: true } as never)
+    .update({ shift_type: newShiftType, is_manual_override: true })
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2727,7 +2727,7 @@ export async function setTecnica(assignmentId: string, tecnicaId: string | null)
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ tecnica_id: tecnicaId } as never)
+    .update({ tecnica_id: tecnicaId })
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2743,7 +2743,7 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
   if (!orgId) return { error: "Not authenticated." }
   const { error } = await supabase
     .from("rota_assignments")
-    .update({ function_label: label ?? "" } as never)
+    .update({ function_label: label ?? "" })
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
@@ -2787,7 +2787,7 @@ export async function setWholeTeam(
     // Update existing assignments
     const { error } = await supabase
       .from("rota_assignments")
-      .update({ whole_team: wholeTeam } as never)
+      .update({ whole_team: wholeTeam })
       .eq("rota_id", rotaId)
       .eq("date", date)
       .eq("function_label", functionLabel)
@@ -2811,7 +2811,7 @@ export async function setWholeTeam(
         function_label: functionLabel,
         whole_team: true,
         is_manual_override: true,
-      } as never, { onConflict: "rota_id,staff_id,date,function_label" })
+      }, { onConflict: "rota_id,staff_id,date,function_label" })
     }
   }
 
@@ -3209,7 +3209,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
   // Ensure rota exists
   const { data: rotaRow } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
   if (!rotaRow) return { error: "Error creating rota." }
@@ -3236,7 +3236,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     }))
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -3270,7 +3270,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
   // Upsert rota
   const { data: rotaRow } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id,week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
   if (!rotaRow) return { error: "Error creating rota." }
@@ -3311,10 +3311,10 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
         function_label: a.function_label ?? "",
       }
     })
-    .filter(Boolean)
+    .filter((x): x is NonNullable<typeof x> => x !== null)
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -3330,7 +3330,7 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   const { data: rotaRow, error: upsertErr } = await supabase
     .from("rotas")
     .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft" } as never,
+      { organisation_id: orgId, week_start: weekStart, status: "draft" },
       { onConflict: "organisation_id,week_start" }
     )
     .select("id")
@@ -3340,7 +3340,7 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   if (!rotaRow) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
-  await supabase.from("rotas").update({ generation_type: "manual" } as never).eq("id", rotaRow.id)
+  await supabase.from("rotas").update({ generation_type: "manual" }).eq("id", rotaRow.id)
 
   await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
   revalidatePath("/")
@@ -3377,7 +3377,7 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
 
   const { error } = await (supabase
     .from("rota_templates") as ReturnType<typeof supabase.from>)
-    .insert({ organisation_id: orgId, name, assignments: templateAssignments } as never)
+    .insert({ organisation_id: orgId, name, assignments: templateAssignments })
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}
@@ -3410,13 +3410,13 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   // Upsert rota record
   const { data: rota } = await supabase
     .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" } as never, { onConflict: "organisation_id, week_start" })
+    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id, week_start" })
     .select("id")
     .single() as unknown as { data: { id: string } | null }
   if (!rota) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
-  await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" } as never).eq("id", rota.id)
+  await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" }).eq("id", rota.id)
 
   // Fetch leaves for this week
   const { data: leaves } = await supabase
@@ -3472,7 +3472,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   }
 
   if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").upsert(toInsert as never, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+    const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
     if (error) return { error: error.message }
   }
 
@@ -3484,7 +3484,7 @@ export async function renameTemplate(id: string, name: string): Promise<{ error?
   const supabase = await createClient()
   const orgId = await getCachedOrgId()
   if (!orgId) return { error: "Not authenticated." }
-  const { error } = await supabase.from("rota_templates").update({ name } as never).eq("id", id).eq("organisation_id", orgId)
+  const { error } = await supabase.from("rota_templates").update({ name }).eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/lab")
   return {}

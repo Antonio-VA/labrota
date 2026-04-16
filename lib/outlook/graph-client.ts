@@ -100,7 +100,7 @@ export async function getValidAccessToken(staffId: string): Promise<string> {
         access_token: encrypt(tokens.access_token),
         refresh_token: encrypt(tokens.refresh_token),
         token_expires_at: expiresAtNew,
-      } as never)
+      })
       .eq("staff_id", staffId)
 
     return tokens.access_token
@@ -108,7 +108,7 @@ export async function getValidAccessToken(staffId: string): Promise<string> {
     // Token revoked — disable sync
     await admin
       .from("outlook_connections")
-      .update({ sync_enabled: false } as never)
+      .update({ sync_enabled: false })
       .eq("staff_id", staffId)
     throw new Error(`Outlook token revoked for staff ${staffId}. Sync disabled.`)
   }

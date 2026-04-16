@@ -15,7 +15,7 @@ export async function createRule(
   if (!orgId) return { error: "No organisation found." }
   const { data: rule, error } = await supabase
     .from("rota_rules")
-    .insert({ ...data, organisation_id: orgId } as never)
+    .insert({ ...data, organisation_id: orgId })
     .select()
     .maybeSingle()
   if (error) return { error: error.message }
@@ -33,7 +33,7 @@ export async function updateRule(
   if (!user) return { error: "Unauthorized" }
   const { data: rule, error } = await supabase
     .from("rota_rules")
-    .update(data as never)
+    .update(data)
     .eq("id", id)
     .select()
     .maybeSingle()
@@ -65,7 +65,7 @@ export async function toggleRule(
   if (!user) return { error: "Unauthorized" }
   const { error } = await supabase
     .from("rota_rules")
-    .update({ enabled } as never)
+    .update({ enabled })
     .eq("id", id)
   if (error) return { error: error.message }
   revalidatePath("/lab")

@@ -25,7 +25,7 @@ export async function switchOrg(orgId: string): Promise<{ error?: string }> {
   // Update DB (for login default)
   const { error } = await admin
     .from("profiles")
-    .update({ organisation_id: orgId } as never)
+    .update({ organisation_id: orgId })
     .eq("id", user.id)
 
   if (error) return { error: error.message }
@@ -62,7 +62,7 @@ export async function setDefaultOrg(orgId: string | null): Promise<{ error?: str
 
   const { error } = await admin
     .from("profiles")
-    .update({ default_organisation_id: orgId } as never)
+    .update({ default_organisation_id: orgId })
     .eq("id", user.id)
 
   if (error) return { error: error.message }
