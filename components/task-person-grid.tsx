@@ -1,9 +1,8 @@
 "use client"
 
-import { useMemo, useState, useRef, useEffect, Fragment } from "react"
-import { createPortal } from "react-dom"
+import { useMemo, useState, useRef, Fragment } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, CalendarDays, Plus, Users, X, Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react"
+import { AlertTriangle, CalendarDays, Plus, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -11,11 +10,10 @@ import { removeAssignment, upsertAssignment, type RotaWeekData, type RotaDay } f
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "@/components/calendar-panel/types"
-import { ROLE_ORDER, DEFAULT_DEPT_MAPS } from "@/components/calendar-panel/constants"
-import { TODAY } from "@/components/calendar-panel/constants"
+import { ROLE_ORDER, DEFAULT_DEPT_MAPS, TODAY } from "@/components/calendar-panel/constants"
+import { resolveColor, LEAVE_ICON_MAP } from "@/components/task-grid/constants"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
-
-const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
 const LEAVE_LABEL: Record<string, { es: string; en: string }> = {
   annual:    { es: "Vacaciones", en: "Annual leave" },
   sick:      { es: "Baja médica", en: "Sick leave" },
@@ -25,86 +23,8 @@ const LEAVE_LABEL: Record<string, { es: string; en: string }> = {
   other:     { es: "Ausencia",   en: "Leave" },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const COLOR_HEX: Record<string, string> = {
-  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
-  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
-}
-function resolveColor(color: string): string {
-  if (!color) return "#94A3B8"
-  if (color.startsWith("#")) return color
-  return COLOR_HEX[color] ?? "#94A3B8"
-}
-
-/** Pill showing a task technique code — left border in technique color, cross-cell hover */
-function TaskChip({
-  label, tecColor, compact, colorChips, forceHover, onHover, onRemove,
-}: {
-  label: string; tecColor: string; compact?: boolean; colorChips?: boolean
-  forceHover?: boolean; onHover?: (code: string | null) => void; onRemove?: () => void
-}) {
-  const [hov, setHov] = useState(false)
-  const active = hov || forceHover
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100 text-foreground/70",
-        compact ? "text-[10px] py-0" : "text-[11px] py-0.5",
-      )}
-      style={{
-        borderRadius: 4,
-        ...(colorChips && tecColor ? { borderLeft: `3px solid ${tecColor}` } : {}),
-        ...(active && tecColor ? { backgroundColor: `${tecColor}40`, color: "var(--foreground)" } : {}),
-      }}
-      onMouseEnter={() => { setHov(true); onHover?.(label) }}
-      onMouseLeave={() => { setHov(false); onHover?.(null) }}
-    >
-      {label}
-      {/* Always render X to reserve space — invisible when not active to prevent layout shift */}
-      {onRemove ? (
-        <button
-          className={cn("ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity", !active && "invisible")}
-          tabIndex={active ? 0 : -1}
-          onClick={(e) => { e.stopPropagation(); onRemove() }}
-        >
-          <X className="size-2.5" />
-        </button>
-      ) : null}
-    </span>
-  )
-}
-
-/** Portal-based task technique picker */
-function TaskPickerPortal({ tecnicas, assigned, pos, onSelect, onClose }: {
-  tecnicas: Tecnica[]; assigned: Set<string>
-  pos: { top: number; left: number }; onSelect: (codigo: string) => void; onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [onClose])
-  const available = tecnicas.filter((t) => t.activa && !assigned.has(t.codigo))
-  if (available.length === 0) return null
-  return createPortal(
-    <div ref={ref} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 200 }}
-      className="bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto">
-      {available.map((t) => (
-        <button key={t.id}
-          className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
-          onClick={(e) => { e.stopPropagation(); onSelect(t.codigo); onClose() }}>
-          <span className="size-2 rounded-full shrink-0 flex-none" style={{ background: resolveColor(t.color) }} />
-          <span className="truncate">{t.nombre_es}</span>
-        </button>
-      ))}
-    </div>,
-    document.body
-  )
-}
+import { TaskChip } from "@/components/calendar-panel/task-chip"
+import { TaskPickerPortal } from "@/components/calendar-panel/task-picker"
 
 /** One staff × one day task cell — manages its own picker portal */
 function TaskPersonCell({
@@ -408,13 +328,8 @@ export function TaskPersonGrid({
     const effectiveP = punctionsOverride?.[date] ?? punctionsDefault?.[date] ?? 0
     const defaultP = punctionsDefault?.[date] ?? 0
     const isOverride = punctionsOverride?.[date] !== undefined
-    const d5ago = new Date(date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-    const d6ago = new Date(date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-    const d5str = d5ago.toISOString().split("T")[0]
-    const d6str = d6ago.toISOString().split("T")[0]
-    const p5 = punctionsOverride?.[d5str] ?? punctionsDefault?.[d5str] ?? 0
-    const p6 = punctionsOverride?.[d6str] ?? punctionsDefault?.[d6str] ?? 0
-    const bForecast = Math.round(p5 * cr * d5pct + p6 * cr * d6pct)
+    const getPunc = (d: string) => punctionsOverride?.[d] ?? punctionsDefault?.[d] ?? 0
+    const bForecast = computeBiopsyForecast(date, getPunc, cr, d5pct, d6pct)
     return { effectiveP, defaultP, isOverride, bForecast }
   }
 

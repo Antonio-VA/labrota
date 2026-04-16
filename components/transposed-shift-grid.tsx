@@ -12,20 +12,9 @@ import { moveAssignment, moveAssignmentShift, removeAssignment, upsertAssignment
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { StaffWithSkills, ShiftType, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
+import { ROLE_BORDER, TECNICA_PILL } from "@/components/calendar-panel/constants"
 
 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-const ROLE_BORDER: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
-
-const TECNICA_PILL: Record<string, string> = {
-  amber: "bg-amber-500/10 border-amber-500/30 text-amber-600",
-  blue: "bg-blue-500/10 border-blue-500/30 text-blue-600",
-  green: "bg-green-500/10 border-green-500/30 text-green-600",
-  purple: "bg-purple-500/10 border-purple-500/30 text-purple-600",
-  coral: "bg-red-500/10 border-red-500/30 text-red-600",
-  teal: "bg-teal-500/10 border-teal-500/30 text-teal-600",
-  slate: "bg-muted border-border text-muted-foreground",
-  red: "bg-red-500/10 border-red-500/30 text-red-600",
-}
 
 interface TransposedShiftGridProps {
   data: RotaWeekData | null

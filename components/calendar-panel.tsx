@@ -57,6 +57,7 @@ import {
 import type { RotaTemplate } from "@/lib/types/database"
 import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { AssignmentSheet } from "@/components/assignment-sheet"
 import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
 import { bulkAddSkill, bulkRemoveSkill, bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
@@ -677,10 +678,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
             const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
             return sameDow ? sameDow[1] : 0
           }
-          const d5 = new Date(sheetDate + "T12:00:00"); d5.setDate(d5.getDate() - 5)
-          const d6 = new Date(sheetDate + "T12:00:00"); d6.setDate(d6.getDate() - 6)
-          const cr = weekData.biopsyConversionRate ?? 0.5
-          return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
+          return computeBiopsyForecast(sheetDate, getPunc, weekData.biopsyConversionRate ?? 0.5, weekData.biopsyDay5Pct ?? 0.5, weekData.biopsyDay6Pct ?? 0.5)
         })()}
         rotaDisplayMode={weekData?.rotaDisplayMode}
         taskConflictThreshold={weekData?.taskConflictThreshold}

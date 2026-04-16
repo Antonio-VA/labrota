@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, useRef, useEffect, Fragment } from "react"
+import { useCallback, useMemo, useState, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft, Plus } from "lucide-react"
 import { toast } from "sonner"
@@ -17,18 +17,9 @@ import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
 import { ROLE_ORDER, ROLE_DOT, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
 import { buildDeptMaps } from "./utils"
-
-// ── Task-mode helpers ─────────────────────────────────────────────────────────
-
-const COLOR_HEX: Record<string, string> = {
-  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
-  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
-}
-function resolveColor(color: string): string {
-  if (!color) return "#94A3B8"
-  if (color.startsWith("#")) return color
-  return COLOR_HEX[color] ?? "#94A3B8"
-}
+import { resolveColor } from "@/components/task-grid/constants"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
+import { TaskPickerInline as TaskPicker } from "./task-picker"
 
 /** Pill showing a task code — no background by default, hover reveals task color */
 function TaskChip({ label, color, onRemove }: { label: string; color: string; onRemove?: () => void }) {
@@ -52,43 +43,6 @@ function TaskChip({ label, color, onRemove }: { label: string; color: string; on
         >×</button>
       )}
     </span>
-  )
-}
-
-/** Dropdown to pick a tecnica to assign */
-function TaskPicker({ tecnicas, assigned, onSelect, onClose }: {
-  tecnicas: Tecnica[]
-  assigned: Set<string>
-  onSelect: (codigo: string) => void
-  onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [onClose])
-
-  const available = tecnicas.filter((t) => t.activa && !assigned.has(t.codigo))
-  if (available.length === 0) return null
-  return (
-    <div
-      ref={ref}
-      className="absolute left-0 top-full mt-0.5 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto"
-    >
-      {available.map((t) => (
-        <button
-          key={t.id}
-          className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
-          onClick={(e) => { e.stopPropagation(); onSelect(t.codigo); onClose() }}
-        >
-          <span className="size-2 rounded-full shrink-0 flex-none" style={{ background: resolveColor(t.color) }} />
-          <span className="truncate">{t.nombre_es}</span>
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -341,11 +295,7 @@ export function PersonGrid({
                 const bRate = data?.biopsyConversionRate ?? 0.5
                 const bD5 = data?.biopsyDay5Pct ?? 0.5
                 const bD6 = data?.biopsyDay6Pct ?? 0.5
-                const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                const p5 = getPunc(d5ago.toISOString().split("T")[0])
-                const p6 = getPunc(d6ago.toISOString().split("T")[0])
-                const forecast = Math.round(p5 * bRate * bD5 + p6 * bRate * bD6)
+                const forecast = computeBiopsyForecast(day.date, getPunc, bRate, bD5, bD6)
                 const tooltip = forecast > 0 ? `${forecast} biopsias previstas` : `${pEffective} punciones`
                 return (
                   <DayStatsInput

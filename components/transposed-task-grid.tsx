@@ -12,22 +12,9 @@ import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
-
-const COLOR_HEX: Record<string, string> = {
-  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
-  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
-}
-function resolveColor(color: string): string {
-  if (!color) return "#94A3B8"
-  if (color.startsWith("#")) return color
-  return COLOR_HEX[color] ?? "#94A3B8"
-}
-const ROLE_BORDER: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
-function resolveStaffColor(color: string): string {
-  if (!color) return "#94A3B8"
-  if (color.startsWith("#")) return color
-  return COLOR_HEX[color] ?? "#94A3B8"
-}
+import { ROLE_BORDER } from "@/components/calendar-panel/constants"
+import { resolveColor } from "@/components/task-grid/constants"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 
 // ── Staff selector popup ──────────────────────────────────────────────────────
 
@@ -292,7 +279,7 @@ export function TransposedTaskGrid({
   const today = new Date().toISOString().split("T")[0]
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
   const staffColorMap = useMemo(() =>
-    Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveStaffColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
+    Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
   , [staffList])
 
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
@@ -307,11 +294,8 @@ export function TransposedTaskGrid({
     const effectiveP = punctionsOverride?.[date] ?? punctionsDefault?.[date] ?? 0
     const defaultP = punctionsDefault?.[date] ?? 0
     const isOverride = punctionsOverride?.[date] !== undefined
-    const d5ago = new Date(date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-    const d6ago = new Date(date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-    const p5 = punctionsOverride?.[d5ago.toISOString().split("T")[0]] ?? punctionsDefault?.[d5ago.toISOString().split("T")[0]] ?? 0
-    const p6 = punctionsOverride?.[d6ago.toISOString().split("T")[0]] ?? punctionsDefault?.[d6ago.toISOString().split("T")[0]] ?? 0
-    const bForecast = Math.round(p5 * cr * d5pct + p6 * cr * d6pct)
+    const getPunc = (d: string) => punctionsOverride?.[d] ?? punctionsDefault?.[d] ?? 0
+    const bForecast = computeBiopsyForecast(date, getPunc, cr, d5pct, d6pct)
     return { effectiveP, defaultP, isOverride, bForecast }
   }
 

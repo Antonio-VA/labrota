@@ -5,6 +5,7 @@ import { AlertTriangle, Briefcase, Check, Lock } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { rotateArray } from "./utils"
 import { DayStatsInput } from "./day-stats-input"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -124,14 +125,9 @@ export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, 
                 const tooltipPb = (() => {
                   const s = summary as RotaMonthSummary
                   const pu = punctionsOverride[day.date] ?? day.punctions
-                  const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                  const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const d5str = d5ago.toISOString().split("T")[0]
-                  const d6str = d6ago.toISOString().split("T")[0]
-                  const p5 = punctionsOverride[d5str] ?? s.days.find((dd) => dd.date === d5str)?.punctions ?? 0
-                  const p6 = punctionsOverride[d6str] ?? s.days.find((dd) => dd.date === d6str)?.punctions ?? 0
                   const cr = s.biopsyConversionRate ?? 0.5
-                  const b = Math.round(p5 * cr * (s.biopsyDay5Pct ?? 0.5) + p6 * cr * (s.biopsyDay6Pct ?? 0.5))
+                  const getPunc = (d: string) => punctionsOverride[d] ?? s.days.find((dd) => dd.date === d)?.punctions ?? 0
+                  const b = computeBiopsyForecast(day.date, getPunc, cr, s.biopsyDay5Pct ?? 0.5, s.biopsyDay6Pct ?? 0.5)
                   if (pu === 0 && b === 0) return null
                   const indexPct = pu > 0 ? Math.round((b / pu) * 100) : null
                   const expectedPct = Math.round(cr * 100)
@@ -250,22 +246,15 @@ export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, 
                       const effectiveP = punctionsOverride[day.date] ?? day.punctions
                       // Biopsy forecast — use summary days or weekday fallback
                       const s = summary as RotaMonthSummary
-                      const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                      const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                      const d5str = d5ago.toISOString().split("T")[0]
-                      const d6str = d6ago.toISOString().split("T")[0]
                       function getPuncFromSummary(dateStr: string): number {
                         if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
                         const found = s.days.find((dd) => dd.date === dateStr)
                         if (found) return found.punctions
-                        // Fallback: same weekday from any day in summary
                         const dow = new Date(dateStr + "T12:00:00").getDay()
                         const sameDow = s.days.find((dd) => new Date(dd.date + "T12:00:00").getDay() === dow)
                         return sameDow?.punctions ?? 0
                       }
-                      const p5src = getPuncFromSummary(d5str)
-                      const p6src = getPuncFromSummary(d6str)
-                      const bForecast = Math.round(p5src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay5Pct ?? 0.5) + p6src * (s.biopsyConversionRate ?? 0.5) * (s.biopsyDay6Pct ?? 0.5))
+                      const bForecast = computeBiopsyForecast(day.date, getPuncFromSummary, s.biopsyConversionRate ?? 0.5, s.biopsyDay5Pct ?? 0.5, s.biopsyDay6Pct ?? 0.5)
                       return (
                         <div className="flex items-end gap-2">
                           <DayStatsInput

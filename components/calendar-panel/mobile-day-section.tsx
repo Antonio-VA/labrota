@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Check, Pencil } from "lucide-
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileTaskDayView } from "@/components/mobile-task-day-view"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
@@ -236,9 +237,7 @@ export function MobileDaySection({
                   const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
                   return sameDow ? sameDow[1] : 0
                 }
-                const d5 = new Date(currentDayData.date + "T12:00:00"); d5.setDate(d5.getDate() - 5)
-                const d6 = new Date(currentDayData.date + "T12:00:00"); d6.setDate(d6.getDate() - 6)
-                return Math.round(getPunc(d5.toISOString().split("T")[0]) * cr * (weekData.biopsyDay5Pct ?? 0.5) + getPunc(d6.toISOString().split("T")[0]) * cr * (weekData.biopsyDay6Pct ?? 0.5))
+                return computeBiopsyForecast(currentDayData.date, getPunc, cr, weekData.biopsyDay5Pct ?? 0.5, weekData.biopsyDay6Pct ?? 0.5)
               })()}
               ratioOptimal={weekData?.ratioOptimal}
               ratioMinimum={weekData?.ratioMinimum}

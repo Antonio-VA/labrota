@@ -8,6 +8,7 @@ import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, type Dra
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import {
   removeAssignment,
   deleteAssignment,
@@ -436,13 +437,11 @@ export function ShiftGrid({
                     const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
                     return sameDow ? sameDow[1] : 0
                   }
+                  const forecast = computeBiopsyForecast(dateStr, getPuncForDate, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct)
                   const d5ago = new Date(dateStr + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
                   const d6ago = new Date(dateStr + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const d5str = d5ago.toISOString().split("T")[0]
-                  const d6str = d6ago.toISOString().split("T")[0]
-                  const p5 = getPuncForDate(d5str)
-                  const p6 = getPuncForDate(d6str)
-                  const forecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
+                  const p5 = getPuncForDate(d5ago.toISOString().split("T")[0])
+                  const p6 = getPuncForDate(d6ago.toISOString().split("T")[0])
                   const sources: string[] = []
                   if (p5 > 0) sources.push(t("punctionsD5", { count: p5 }))
                   if (p6 > 0) sources.push(t("punctionsD6", { count: p6 }))

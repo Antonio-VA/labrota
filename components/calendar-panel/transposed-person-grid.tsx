@@ -1,9 +1,8 @@
 "use client"
 
-import { useCallback, useMemo, useState, useRef, useEffect, Fragment } from "react"
-import { createPortal } from "react-dom"
+import { useCallback, useMemo, useState, useRef, Fragment } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, ArrowRightLeft, Plus, Users, X } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Plus, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -13,85 +12,9 @@ import { PersonShiftSelector } from "./person-shift-selector"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
 import { ROLE_ORDER, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
-
-// ── Task-mode helpers ─────────────────────────────────────────────────────────
-
-const COLOR_HEX: Record<string, string> = {
-  blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
-  coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
-}
-function resolveColor(color: string): string {
-  if (!color) return "#94A3B8"
-  if (color.startsWith("#")) return color
-  return COLOR_HEX[color] ?? "#94A3B8"
-}
-
-/** Pill showing a task technique code — left border in technique color, cross-cell hover */
-function TaskChip({
-  label, tecColor, compact, colorChips, forceHover, onHover, onRemove,
-}: {
-  label: string; tecColor: string; compact?: boolean; colorChips?: boolean
-  forceHover?: boolean; onHover?: (code: string | null) => void; onRemove?: () => void
-}) {
-  const [hov, setHov] = useState(false)
-  const active = hov || forceHover
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded pl-1.5 pr-1 font-semibold group/chip transition-colors duration-100",
-        compact ? "text-[10px] py-0" : "text-[11px] py-0.5",
-      )}
-      style={{
-        borderRadius: 4,
-          ...(active && tecColor ? { backgroundColor: `${tecColor}40` } : {}),
-      }}
-      onMouseEnter={() => { setHov(true); onHover?.(label) }}
-      onMouseLeave={() => { setHov(false); onHover?.(null) }}
-    >
-      {label}
-      {onRemove ? (
-        <button
-          className={cn("ml-0.5 leading-none opacity-70 hover:opacity-100 transition-opacity", !active && "invisible")}
-          tabIndex={active ? 0 : -1}
-          onClick={(e) => { e.stopPropagation(); onRemove() }}
-        >
-          <X className="size-2.5" />
-        </button>
-      ) : null}
-    </span>
-  )
-}
-
-/** Portal-based task technique picker */
-function TaskPickerPortal({ tecnicas, assigned, pos, onSelect, onClose }: {
-  tecnicas: Tecnica[]; assigned: Set<string>
-  pos: { top: number; left: number }; onSelect: (codigo: string) => void; onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [onClose])
-  const available = tecnicas.filter((t) => t.activa && !assigned.has(t.codigo))
-  if (available.length === 0) return null
-  return createPortal(
-    <div ref={ref} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 200 }}
-      className="bg-background border border-border rounded-lg shadow-lg py-1 min-w-[140px] max-h-[200px] overflow-y-auto">
-      {available.map((t) => (
-        <button key={t.id}
-          className="flex items-center gap-2 w-full px-2.5 py-1 text-[11px] hover:bg-muted text-left transition-colors"
-          onClick={(e) => { e.stopPropagation(); onSelect(t.codigo); onClose() }}>
-          <span className="size-2 rounded-full shrink-0 flex-none" style={{ background: resolveColor(t.color) }} />
-          <span className="truncate">{t.nombre_es}</span>
-        </button>
-      ))}
-    </div>,
-    document.body
-  )
-}
+import { resolveColor } from "@/components/task-grid/constants"
+import { TaskChip } from "./task-chip"
+import { TaskPickerPortal } from "./task-picker"
 
 /** One staff member × one day task cell (transposed layout) — manages its own picker portal */
 function TransposedTaskCell({

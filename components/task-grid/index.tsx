@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { toast } from "sonner"
 import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
@@ -360,11 +361,7 @@ export function TaskGrid({
             const sameDow = Object.entries(punctionsDefault).find(([dd]) => new Date(dd + "T12:00:00").getDay() === dow)
             return sameDow ? sameDow[1] : 0
           }
-          const d5ago = new Date(day.date + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-          const d6ago = new Date(day.date + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-          const p5 = getPuncForDate(d5ago.toISOString().split("T")[0])
-          const p6 = getPuncForDate(d6ago.toISOString().split("T")[0])
-          const biopsyForecast = Math.round(p5 * biopsyConversionRate * biopsyDay5Pct + p6 * biopsyConversionRate * biopsyDay6Pct)
+          const biopsyForecast = computeBiopsyForecast(day.date, getPuncForDate, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct)
 
           return (
             <div
