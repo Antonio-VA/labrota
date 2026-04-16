@@ -101,7 +101,7 @@ export function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds
                 onMouseEnter={() => setHovered(s.id)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => onChipClick?.(s.id)}
-                className={cn("inline-flex items-center rounded px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors duration-150 bg-background/80", onChipClick && "cursor-pointer")}
+                className={cn("inline-flex items-center rounded px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors duration-150 bg-background", onChipClick && "cursor-pointer")}
                 style={isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : undefined}
               >
                 {`${s.first_name[0]}${s.last_name[0]}`}

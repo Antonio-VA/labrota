@@ -1,13 +1,24 @@
-import { TableSkeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function MobileAccountLoading() {
   return (
-    <div className="flex flex-col flex-1 overflow-hidden p-4 lg:p-6 gap-4">
-      <div className="flex items-center justify-between">
-        <div className="h-[18px] w-32 bg-muted animate-pulse rounded" />
-        <div className="h-8 w-28 bg-muted animate-pulse rounded-lg" />
+    <div className="flex-1 overflow-auto lg:hidden p-4 flex flex-col gap-5">
+      {/* Avatar + name */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-12 rounded-full" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-48" />
+        </div>
       </div>
-      <TableSkeleton rows={8} />
+      {/* Settings sections */}
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+      {/* Sign out */}
+      <Skeleton className="h-10 w-full rounded-lg mt-4" />
     </div>
   )
 }
