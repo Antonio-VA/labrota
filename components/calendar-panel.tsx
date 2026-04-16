@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment, memo } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
@@ -11,7 +11,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit, useUserRole } from "@/lib/role-context"
-import { CalendarDays, ChevronLeft, ChevronRight, AlertTriangle, Lock, FileDown, FileText, Sheet, CalendarX, MoreHorizontal, X, UserCog, CalendarPlus, Mail, Rows3, BookmarkPlus, BookmarkCheck, Sparkles, Grid3X3, BookmarkX, Bookmark, Briefcase, Check, CheckCircle2, Hourglass, Filter, LayoutList, Plane, Trash2, Pencil, Users, Clock, Cross, User, GraduationCap, Baby, Share, Copy, Star, ArrowRightLeft, ChevronUp, ChevronDown, Image, BrainCircuit, Minus, Plus, Undo2, Redo2 } from "lucide-react"
+import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { Button } from "@/components/ui/button"
@@ -109,13 +109,13 @@ import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
+export const CalendarPanel = memo(function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
     </StaffHoverProvider>
   )
-}
+})
 
 function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   const t      = useTranslations("schedule")

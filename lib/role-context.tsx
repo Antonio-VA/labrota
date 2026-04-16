@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext } from "react"
+import { createContext, useContext, useMemo } from "react"
 
 type UserRole = "admin" | "manager" | "viewer"
 
@@ -12,7 +12,8 @@ interface RoleContextValue {
 const RoleContext = createContext<RoleContextValue>({ role: "admin", staffId: null })
 
 export function RoleProvider({ role, staffId = null, children }: { role: UserRole; staffId?: string | null; children: React.ReactNode }) {
-  return <RoleContext value={{ role, staffId }}>{children}</RoleContext>
+  const value = useMemo(() => ({ role, staffId }), [role, staffId])
+  return <RoleContext value={value}>{children}</RoleContext>
 }
 
 export function useUserRole(): UserRole {

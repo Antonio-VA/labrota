@@ -264,7 +264,8 @@ export function useRotaData({
     return () => { cancelled = true }
   }, [weekStart, canEdit, view])
 
-  // Staff loading — use initialStaff prop or fetch separately
+  // Staff loading — use initialStaff prop; otherwise wait briefly for weekData.activeStaff
+  // (populated by getRotaWeek) and only fall back to a separate fetch if that stalls.
   useEffect(() => {
     if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
       initialStaffUsed.current = true
@@ -272,14 +273,26 @@ export function useRotaData({
       setStaffLoaded(true)
       return
     }
-    if (!staffLoaded && !weekData?.activeStaff) {
+    if (staffLoaded || weekData?.activeStaff) return
+
+    let cancelled = false
+    // Delay the fallback fetch so the sync effect can consume weekData.activeStaff first.
+    const fallbackDelay = setTimeout(() => {
+      if (cancelled || staffLoaded || weekData?.activeStaff) return
       const staffTimeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Staff load timed out")), 15000),
       )
       Promise.race([getActiveStaff(), staffTimeout])
-        .then((s) => { _cache.staff = s; setStaffList(s); setStaffLoaded(true) })
-        .catch(() => { setStaffLoaded(true) })
-    }
+        .then((s) => {
+          if (cancelled) return
+          _cache.staff = s
+          setStaffList(s)
+          setStaffLoaded(true)
+        })
+        .catch(() => { if (!cancelled) setStaffLoaded(true) })
+    }, 1500)
+
+    return () => { cancelled = true; clearTimeout(fallbackDelay) }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync staff from weekData.activeStaff (avoids duplicate fetch)
