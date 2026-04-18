@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Trash2, RotateCcw, AlertTriangle, Plus, Archive } from "lucide-react"
+import { Trash2, RotateCcw, AlertTriangle, Plus, Archive } from "lucide-react"
 import { formatDateWithYear } from "@/lib/format-date"
-import type { HrModule, CompanyLeaveType, HolidayConfig } from "@/lib/types/database"
+import type { CompanyLeaveType, HolidayConfig } from "@/lib/types/database"
 import {
   adminInstallHrModule,
   adminRemoveHrModule,

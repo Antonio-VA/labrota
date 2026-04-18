@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, Pencil, FileUp, CalendarPlus } from "lucide-react"
+import { Users, Plus, X, Lock, CheckCircle2, Circle, AlertTriangle, Upload, FileUp, CalendarPlus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { updateOrgRegional, updateOrgDisplayMode, createOrgUser, updateOrgBilling, toggleOrgLeaveRequests, toggleOrgTaskInShift, toggleOrgNotes, toggleOrgSwapRequests, toggleOrgOutlookSync, resetOrgImplementation, renameOrganisation, updateOrgLogo, adminSwitchToOrg, updateOrgEngineConfig, updateOrgAuthMethod, updateOrgMaxStaff } from "@/app/admin/actions"
@@ -64,7 +64,7 @@ export function AdminOrgDetailClient({
   initialMaxStaff = 50,
   implementationStatus,
   section = "all",
-  hideUsers = false,
+  hideUsers: _hideUsers = false,
   orgStaff = [],
 }: {
   orgId: string

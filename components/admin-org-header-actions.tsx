@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { deleteOrganisation, toggleOrgStatus, copyOrganisation } from "@/app/admin/actions"
 import { MoreHorizontal, Trash2, Copy, Power, PowerOff } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 
 interface Org { id: string; name: string; slug: string; is_active: boolean; logo_url: string | null }
 

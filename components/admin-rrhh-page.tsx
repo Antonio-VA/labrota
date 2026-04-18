@@ -59,7 +59,7 @@ export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initia
   const handleSaveConfig = () => {
     if (!config || !configDirty) return
     startTransition(async () => {
-      const { id, organisation_id, created_at, updated_at, ...rest } = config
+      const { id: _id, organisation_id: _organisation_id, created_at: _created_at, updated_at: _updated_at, ...rest } = config
       const result = await adminUpdateHolidayConfig(orgId, rest)
       if (result.error) toast.error(result.error)
       else { toast.success("Guardado"); setConfigDirty(false) }

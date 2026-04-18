@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
 import { CalendarDays, Users, Briefcase, FlaskConical, BarChart3, Settings } from "lucide-react"
-import { applyTheme } from "@/components/account-panel"
 import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { useCanEdit, useViewerStaffId } from "@/lib/role-context"
 import { cn } from "@/lib/utils"
@@ -58,7 +57,7 @@ export function AppSidebar() {
   const t        = useTranslations("nav")
   const pathname = usePathname()
 
-  const [user, setUser]              = useState<User | null>(null)
+  const [_user, setUser]              = useState<User | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
