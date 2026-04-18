@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, Fragment, memo } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition, Fragment, memo } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
-  getRotaWeek,
   generateRota,
   generateRotaWithAI,
   publishRota,
@@ -109,7 +108,7 @@ import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export const CalendarPanel = memo(function CalendarPanel(props: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
+export const CalendarPanel = memo(function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
@@ -117,7 +116,7 @@ export const CalendarPanel = memo(function CalendarPanel(props: { refreshKey?: n
   )
 })
 
-function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; chatOpen?: boolean; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
+function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
   const ts     = useTranslations("skills")
@@ -167,13 +166,9 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
   const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
 
-  // Share capture ref
-  const mobileContentRef = useRef<HTMLDivElement>(null)
-
   // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
-  const [dayWarningsOpen, setDayWarningsOpen] = useState(false)
   const [mobileCompact, toggleMobileCompact, setMobileCompact] = usePersistedToggle("labrota_mobile_compact", true)
   const [mobileDeptColor, toggleMobileDeptColor, setMobileDeptColor] = usePersistedToggle("labrota_mobile_dept_color", true)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
@@ -404,9 +399,8 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
     startTransition(async () => {
       const result = await setPunctionsOverride(rotaId, date, value)
       if (result.error) { setError(result.error); return }
-      const newData = await getRotaWeek(ws)
-      setWeekData(newData)
-      setPunctionsOverrideLocal(newData.rota?.punctions_override ?? {})
+      const newData = await fetchWeekSilent(ws)
+      if (!newData) return
       const newGaps = newData.days.find((d) => d.date === date)?.skillGaps ?? []
       if (newGaps.length > prevGaps.length) {
         toast.warning(t("coverageInsufficient"))
@@ -423,11 +417,7 @@ function CalendarPanelInner({ refreshKey = 0, chatOpen = false, initialData, ini
   const hasMonthAssignments = monthSummary?.days.some((d) => d.staffCount > 0) ?? false
   const hasAssignments = view === "month" ? hasMonthAssignments : hasWeekAssignments
   const anyMonthWeekPublished = monthSummary?.weekStatuses?.some((ws) => ws.status === "published") ?? false
-  const hasSkillGaps   = hasAssignments && (weekData?.days.some((d) => d.skillGaps.length > 0) ?? false)
-  // Show task assignment UI only in by_task mode, or in by_shift when the feature flag is on
-  const showTaskAssignment = weekData?.rotaDisplayMode === "by_task" || (weekData?.enableTaskInShift ?? false)
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
-  const showActions    = canEdit
 
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 

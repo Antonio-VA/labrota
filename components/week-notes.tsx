@@ -17,18 +17,37 @@ function truncate(s: string, max: number = 40): string {
   return s.length > max ? s.slice(0, max) + "…" : s
 }
 
+// Per-week cache pinned to window so revisits of a previously loaded week
+// skip the server round-trip. Mirrors the window-pinned cache in useRotaData.
+type _NotesCache = { weeks: Map<string, WeekNoteData> }
+const _notesCache: _NotesCache = (() => {
+  if (typeof window === "undefined") return { weeks: new Map() }
+  const win = window as unknown as { __lrNotesCache?: _NotesCache }
+  if (!win.__lrNotesCache) win.__lrNotesCache = { weeks: new Map() }
+  return win.__lrNotesCache
+})()
+
 export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekStart: string; initialData?: WeekNoteData }) {
   const t = useTranslations("notes")
-  const [data, setData] = useState<WeekNoteData | null>(initialDataProp ?? null)
-  const [loadedWeek, setLoadedWeek] = useState(initialDataProp ? weekStart : "")
+  if (initialDataProp) _notesCache.weeks.set(weekStart, initialDataProp)
+  const cached = _notesCache.weeks.get(weekStart) ?? null
+  const [data, setData] = useState<WeekNoteData | null>(cached)
+  const [loadedWeek, setLoadedWeek] = useState(cached ? weekStart : "")
   const [adding, setAdding] = useState(false)
   const [newText, setNewText] = useState("")
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     if (weekStart === loadedWeek) return // already have data for this week
+    const c = _notesCache.weeks.get(weekStart)
+    if (c) {
+      setData(c)
+      setLoadedWeek(weekStart)
+      return
+    }
     setData(null)
     getWeekNotes(weekStart).then((d) => {
+      _notesCache.weeks.set(weekStart, d)
       setData(d)
       setLoadedWeek(weekStart)
     })
@@ -43,7 +62,12 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
     startTransition(async () => {
       const result = await addWeekNote(weekStart, newText.trim())
       if (result.error) { toast.error(result.error); return }
-      setData((prev) => prev ? { ...prev, adHocNotes: [...prev.adHocNotes, { id: result.id!, text: newText.trim() }] } : prev)
+      setData((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, adHocNotes: [...prev.adHocNotes, { id: result.id!, text: newText.trim() }] }
+        _notesCache.weeks.set(weekStart, next)
+        return next
+      })
       setNewText("")
       setAdding(false)
     })
@@ -53,7 +77,12 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
     startTransition(async () => {
       const result = await deleteWeekNote(id)
       if (result.error) { toast.error(result.error); return }
-      setData((prev) => prev ? { ...prev, adHocNotes: prev.adHocNotes.filter((n) => n.id !== id) } : prev)
+      setData((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, adHocNotes: prev.adHocNotes.filter((n) => n.id !== id) }
+        _notesCache.weeks.set(weekStart, next)
+        return next
+      })
     })
   }
 
@@ -62,7 +91,12 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
     startTransition(async () => {
       const result = await dismissTemplateNote(templateId, weekStart)
       if (result.error) { toast.error(result.error); return }
-      setData((prev) => prev ? { ...prev, templates: prev.templates.filter((t) => t.id !== templateId) } : prev)
+      setData((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, templates: prev.templates.filter((t) => t.id !== templateId) }
+        _notesCache.weeks.set(weekStart, next)
+        return next
+      })
     })
   }
 

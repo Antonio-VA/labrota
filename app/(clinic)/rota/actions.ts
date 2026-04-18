@@ -158,7 +158,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
       .select("id, status, published_at, published_by, punctions_override, engine_warnings")
       .eq("week_start", weekStart)
       .maybeSingle() as unknown as Promise<{ data: RotaRecord | null; error: { message: string } | null }>,
-    supabase.from("lab_config").select("*").maybeSingle(),
+    supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle(),
     supabase
       .from("leaves")
       .select("staff_id, start_date, end_date, type")

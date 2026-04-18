@@ -63,7 +63,7 @@ export function WeekContent({
   pushUndo?: (snapshot: RotaWeekData, redo: () => Promise<any>, undo: () => Promise<any>) => void
   cancelLastUndo?: () => void
   triggerSaved?: () => void
-  fetchWeekSilent: (ws: string) => void
+  fetchWeekSilent: (ws: string) => Promise<RotaWeekData | null>
   setLiveDays: (days: RotaDay[] | null) => void
   onGenerateClick: () => void
   showCopyConfirm: boolean

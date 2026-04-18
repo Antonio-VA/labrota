@@ -57,7 +57,7 @@ export function MobileDaySection({
   punctionsOverride: Record<string, number>
   TODAY: string
   setWeekData: React.Dispatch<React.SetStateAction<RotaWeekData | null>>
-  fetchWeekSilent: (ws: string) => void
+  fetchWeekSilent: (ws: string) => Promise<RotaWeekData | null>
   setShowStrategyModal: (v: boolean) => void
   isPending: boolean
   mobileFavoriteView: { viewMode: string; compact: boolean; deptColor: boolean } | null

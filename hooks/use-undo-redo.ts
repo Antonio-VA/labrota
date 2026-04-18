@@ -15,7 +15,7 @@ interface UseUndoRedoOptions {
   locale: string
   weekData: RotaWeekData | null
   setWeekData: (d: RotaWeekData) => void
-  fetchWeekSilent: (ws: string) => void
+  fetchWeekSilent: (ws: string) => Promise<RotaWeekData | null>
   lastFetchId: React.RefObject<number>
   /** Direct setter for the active grid's localDays — bypasses full tree re-render */
   gridSetDaysRef: React.RefObject<((days: RotaDay[]) => void) | null>

@@ -152,15 +152,18 @@ export function useRotaData({
     })
   }, [])
 
-  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton
-  const fetchWeekSilent = useCallback((ws: string) => {
+  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton.
+  // Returns the fresh week so callers that need post-refresh data (skill gap
+  // toasts, etc.) can await it instead of re-issuing a raw getRotaWeek.
+  const fetchWeekSilent = useCallback((ws: string): Promise<RotaWeekData | null> => {
     const id = ++lastFetchId.current
-    getRotaWeek(ws).then((d) => {
-      if (id !== lastFetchId.current) return // stale — a newer fetch is in flight
+    return getRotaWeek(ws).then((d) => {
+      if (id !== lastFetchId.current) return null // stale — a newer fetch is in flight
       _cache.weeks.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
-    }).catch(() => {/* ignore — grid stays as-is */})
+      return d
+    }).catch(() => null)
   }, [])
 
   const handleRefresh = useCallback(() => {
