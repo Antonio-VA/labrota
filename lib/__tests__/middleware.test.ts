@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-let mockUser: { app_metadata?: { role?: string } } | null = null
+let mockUser: { id?: string; app_metadata?: { role?: string } } | null = null
+let mockProfileData: { preferences?: Record<string, unknown> } | null = null
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
@@ -12,7 +13,7 @@ vi.mock("@supabase/ssr", () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          single: async () => ({ data: null }),
+          single: async () => ({ data: mockProfileData }),
         }),
       }),
     }),
@@ -89,6 +90,7 @@ async function runMiddleware(pathname: string, host?: string) {
 
 beforeEach(() => {
   mockUser = null
+  mockProfileData = null
   mockRedirect.mockClear()
   mockRewrite.mockClear()
   mockNext.mockClear()
@@ -286,6 +288,56 @@ describe("middleware — admin subdomain", () => {
     mockUser = { app_metadata: { role: "super_admin" } }
     await runMiddleware("/", "admin.localhost:3000")
     expect(mockRewrite).toHaveBeenCalledWith("/admin")
+  })
+})
+
+describe("middleware — preferences sync (DB → cookies on new device)", () => {
+  it("writes labrota_theme cookie from DB preferences", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "dark", accentColor: "#abcdef" } }
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    const cookie = res.cookies.get("labrota_theme")
+    expect(cookie?.value).toContain('"theme":"dark"')
+    expect(cookie?.value).toContain('"accentColor":"#abcdef"')
+  })
+
+  it("writes labrota_prefs_synced marker cookie", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "light" } }
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    expect(res.cookies.get("labrota_prefs_synced")?.value).toBe("1")
+  })
+
+  it("writes locale cookie when user chose one explicitly", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { locale: "en" } }
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    expect(res.cookies.get("locale")?.value).toBe("en")
+  })
+
+  it("does not write locale cookie when user chose 'browser'", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { locale: "browser" } }
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    expect(res.cookies.get("locale")).toBeUndefined()
+  })
+
+  it("does not query DB for super_admin", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "super_admin" } }
+    mockProfileData = { preferences: { theme: "dark" } }
+    const res = (await runMiddleware("/admin")) as unknown as MockNextResponse
+    // super_admin path: prefs sync skipped entirely, no theme/marker cookie set
+    expect(res.cookies.get("labrota_theme")).toBeUndefined()
+    expect(res.cookies.get("labrota_prefs_synced")).toBeUndefined()
+  })
+
+  it("does not write theme cookie when DB has no preferences", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = null
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    expect(res.cookies.get("labrota_theme")).toBeUndefined()
+    // Marker still gets set to avoid re-querying
+    expect(res.cookies.get("labrota_prefs_synced")?.value).toBe("1")
   })
 })
 
