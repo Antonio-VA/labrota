@@ -1,6 +1,5 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Notification } from "@/lib/types/database"
@@ -95,7 +94,7 @@ export async function notifyLeaveImpact(params: {
   if (adminIds.length === 0) return
 
   // Create notifications
-  const weekLabels = overlapping.map((r) => r.week_start).join(", ")
+  const _weekLabels = overlapping.map((r) => r.week_start).join(", ")
   const notifications = adminIds.map((userId) => ({
     organisation_id: params.orgId,
     user_id: userId,

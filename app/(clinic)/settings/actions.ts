@@ -1,7 +1,6 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { getAuthUser } from "@/lib/auth-cache"

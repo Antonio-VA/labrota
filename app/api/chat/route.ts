@@ -358,7 +358,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const fromDate = from ?? new Date().toISOString().split("T")[0]
           const toDate = to ?? (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().split("T")[0] })()
 
-          let query = supabase
+          const query = supabase
             .from("leaves")
             .select("id, type, start_date, end_date, status, notes, staff(first_name, last_name)")
             .lte("start_date", toDate)
@@ -908,7 +908,7 @@ ${pageContext ? `- ${pageContext}` : ""}
         }),
         execute: async ({ type, isHard, notes, staffNames, params: ruleParams }) => {
           // Resolve staff IDs if names provided
-          let staffIds: string[] = []
+          const staffIds: string[] = []
           if (staffNames?.length) {
             for (const name of staffNames) {
               const parts = name.trim().split(" ")

@@ -76,7 +76,7 @@ async function main() {
   // Seed lab_config
   const { data: srcConfig } = await supabase.from("lab_config").select("*").eq("organisation_id", srcId).maybeSingle()
   if (srcConfig) {
-    const { id, organisation_id, created_at, updated_at, ...configData } = srcConfig as Record<string, unknown>
+    const { id: _id, organisation_id: _organisation_id, created_at: _created_at, updated_at: _updated_at, ...configData } = srcConfig as Record<string, unknown>
     await supabase.from("lab_config").insert({ ...configData, organisation_id: newId })
     console.log("  ✓ lab_config copied")
   }
@@ -86,7 +86,7 @@ async function main() {
   const { data: srcShifts } = await supabase.from("shift_types").select("*").eq("organisation_id", srcId).order("sort_order")
   if (srcShifts) {
     for (const s of srcShifts as Record<string, unknown>[]) {
-      const { id, organisation_id, created_at, ...data } = s
+      const { id: _id, organisation_id: _organisation_id, created_at: _created_at, ...data } = s
       await supabase.from("shift_types").insert({ ...data, organisation_id: newId })
     }
     console.log(`  ✓ ${srcShifts.length} shift types`)
@@ -97,7 +97,7 @@ async function main() {
   const { data: srcTecnicas } = await supabase.from("tecnicas").select("*").eq("organisation_id", srcId).order("orden")
   if (srcTecnicas) {
     for (const t of srcTecnicas as Record<string, unknown>[]) {
-      const { id, organisation_id, created_at, ...data } = t
+      const { id: _id, organisation_id: _organisation_id, created_at: _created_at, ...data } = t
       await supabase.from("tecnicas").insert({ ...data, organisation_id: newId })
     }
     console.log(`  ✓ ${srcTecnicas.length} técnicas`)
@@ -108,7 +108,7 @@ async function main() {
   const { data: srcDepts } = await supabase.from("departments").select("*").eq("organisation_id", srcId).order("sort_order")
   if (srcDepts) {
     for (const d of srcDepts as Record<string, unknown>[]) {
-      const { id, organisation_id, created_at, ...data } = d
+      const { id: _id, organisation_id: _organisation_id, created_at: _created_at, ...data } = d
       await supabase.from("departments").insert({ ...data, organisation_id: newId })
     }
     console.log(`  ✓ ${srcDepts.length} departments`)
@@ -132,7 +132,7 @@ async function main() {
     } while (usedNames.has(fullName))
     usedNames.add(fullName)
 
-    const { id, organisation_id, created_at, updated_at, staff_skills, ...data } = s
+    const { id, organisation_id: _organisation_id, created_at: _created_at, updated_at: _updated_at, staff_skills, ...data } = s
     const { data: newStaff, error: staffErr } = await supabase
       .from("staff")
       .insert({

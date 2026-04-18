@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
-import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import { formatDateWithYear } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────

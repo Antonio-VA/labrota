@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { CalendarPanel } from "@/components/calendar-panel"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"

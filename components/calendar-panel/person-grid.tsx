@@ -7,10 +7,10 @@ import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { removeAssignment, upsertAssignment, setFunctionLabel, setTecnica, type RotaWeekData, type RotaDay, type ShiftTimes } from "@/app/(clinic)/rota/actions"
-import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
+import type { StaffWithSkills } from "@/lib/types/database"
 import { PersonShiftSelector } from "./person-shift-selector"
 import { PersonShiftPill } from "./person-shift-pill"
-import { AssignmentPopover, DEPT_FOR_ROLE } from "./assignment-popover"
+import { AssignmentPopover } from "./assignment-popover"
 import { DayStatsInput } from "./day-stats-input"
 import { DayWarningPopover } from "./warnings"
 import { useStaffHover } from "@/components/staff-hover-context"
@@ -112,7 +112,7 @@ function PersonGridInner({
   swapStaffId, gridSetDaysRef,
 }: PersonGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
-  const tc = useTranslations("common")
+  const _tc = useTranslations("common")
   const [localDays, setLocalDays] = useState(data.days)
   // Register this grid's day setter for direct undo/redo updates
   useEffect(() => {
@@ -141,13 +141,13 @@ function PersonGridInner({
     if (result.error) toast.error(result.error)
   }, [patchLocalAssignment])
 
-  const handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
+  const _handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
     patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
     const result = await setTecnica(assignmentId, tecnicaId)
     if (result.error) toast.error(result.error)
   }, [patchLocalAssignment])
 
-  const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [], locale)
+  const { label: ROLE_LABEL_MAP, order: _ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [], locale)
 
   // Build assignment lookup: staffId → date → assignment
   const assignMap = useMemo(() => {
@@ -226,7 +226,7 @@ function PersonGridInner({
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
   // Active staff sorted by role then first name + role grouping
-  const { activeStaff, roleGroups } = useMemo(() => {
+  const { activeStaff: _activeStaff, roleGroups } = useMemo(() => {
     const active = staffList
       .filter((s) => s.onboarding_status !== "inactive")
       .sort((a, b) => {
@@ -293,7 +293,7 @@ function PersonGridInner({
               )}
               {/* Punciones / Biopsias — same component as ShiftGrid (hidden in simplified mode) */}
               {!simplified && (() => {
-                const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+                const _DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
                 function getPunc(dateStr: string): number {
                   if ((punctionsOverride ?? {})[dateStr] !== undefined) return (punctionsOverride ?? {})[dateStr]
                   if ((punctionsDefault ?? {})[dateStr] !== undefined) return (punctionsDefault ?? {})[dateStr]
@@ -383,8 +383,8 @@ function PersonGridInner({
         )}
 
         {/* Staff groups — shift-based or role-based */}
-        {roleGroups.map((group, groupIdx) => {
-          const isShiftGroup = false as const
+        {roleGroups.map((group, _groupIdx) => {
+          const _isShiftGroup = false as const
           const groupKey = group.role
           const members = group.members
           return (

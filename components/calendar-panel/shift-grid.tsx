@@ -22,23 +22,23 @@ import {
 } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
 import { DraggableShiftBadge, DraggableOffStaff, DroppableCell } from "./dnd-wrappers"
-import { AssignmentPopover, DEPT_FOR_ROLE } from "./assignment-popover"
+import { AssignmentPopover } from "./assignment-popover"
 import { DayStatsInput } from "./day-stats-input"
 import { ShiftBadge } from "./shift-badge"
 import { DayWarningPopover } from "./warnings"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
-import { ROLE_ORDER, ROLE_LABEL, ROLE_BORDER, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
+import { TODAY, DEFAULT_DEPT_MAPS } from "./constants"
 import { buildDeptMaps } from "./utils"
 
 export function ShiftGrid({
   data, staffList, loading, locale,
   onCellClick, onChipClick,
-  isPublished, isGenerating,
-  shiftTimes, onLeaveByDate, publicHolidays,
+  isPublished, isGenerating: _isGenerating,
+  shiftTimes: _shiftTimes, onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
   onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
-  ratioOptimal, ratioMinimum, timeFormat = "24h",
+  ratioOptimal: _ratioOptimal, ratioMinimum: _ratioMinimum, timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
   swapStaffId, gridSetDaysRef,
 }: {
@@ -77,8 +77,8 @@ export function ShiftGrid({
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
   const t  = useTranslations("schedule")
-  const tc = useTranslations("common")
-  const ts = useTranslations("skills")
+  const _tc = useTranslations("common")
+  const _ts = useTranslations("skills")
 
   // O(1) staff lookup by ID
   const staffById = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList])
@@ -171,7 +171,7 @@ export function ShiftGrid({
     if (result.error) { toast.error(result.error); onRefresh() }
   }, [patchLocalAssignment, onRefresh])
 
-  const handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
+  const _handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
     patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
     const result = await setTecnica(assignmentId, tecnicaId)
     if (result.error) { toast.error(result.error); onRefresh() }
@@ -179,7 +179,7 @@ export function ShiftGrid({
 
   // Debounced refresh — batches rapid changes into one server fetch
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const debouncedRefresh = useCallback(() => {
+  const _debouncedRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current)
     refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
   }, [onRefresh])
@@ -431,7 +431,7 @@ export function ShiftGrid({
                 {/* Punciones + biopsias — single clickable area (hidden in simplified mode) */}
                 {!simplified && (() => {
                   // Biopsy forecast: punciones from 5 and 6 days ago
-                  const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+                  const _DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
                   function getPuncForDate(ds: string): number {
                     // Try override, then default map, then lab config by weekday
                     if (punctionsOverride[ds] !== undefined) return punctionsOverride[ds]
@@ -493,8 +493,8 @@ export function ShiftGrid({
               const cellId = `${shiftRow}-${day.date}`
               const cellDow   = new Date(day.date + "T12:00:00").getDay()
               const isSatCell = cellDow === 6
-              const isWkndCell = isSatCell || cellDow === 0
-              const isEmpty   = dayShifts.length === 0 && effectivePDay === 0
+              const _isWkndCell = isSatCell || cellDow === 0
+              const _isEmpty   = dayShifts.length === 0 && effectivePDay === 0
               return (
                 <DroppableCell
                   key={day.date}
@@ -586,8 +586,8 @@ export function ShiftGrid({
             const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
             const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
             const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-            const isSaturday   = dow === 6
-            const isWeekendOff = dow === 6 || dow === 0
+            const _isSaturday   = dow === 6
+            const _isWeekendOff = dow === 6 || dow === 0
             const offCellId    = `OFF-${day.date}`
 
             // Unassigned staff — leave people first (non-draggable), then others

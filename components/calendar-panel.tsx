@@ -1,25 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, useTransition, Fragment } from "react"
+import { useCallback, useState, useTransition } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
 import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { useRotaData } from "@/hooks/use-rota-data"
-import { useFavoriteViews, type FavoriteView, type MobileFavoriteView } from "@/hooks/use-favorite-views"
-import { createPortal } from "react-dom"
+import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-views"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { useCanEdit, useUserRole } from "@/lib/role-context"
+import { useCanEdit } from "@/lib/role-context"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
-import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
@@ -27,49 +19,17 @@ import {
   generateRotaWithAI,
   publishRota,
   unlockRota,
-  moveAssignment,
   setPunctionsOverride,
-  moveAssignmentShift,
-  removeAssignment,
-  deleteAssignment,
-  regenerateDay,
-  setFunctionLabel,
-  setTecnica,
-  upsertAssignment,
-  getStaffProfile,
   type RotaWeekData,
-  type RotaDay,
-  type RotaDayWarning,
-  type RotaMonthSummary,
-  type MonthWeekStatus,
-  type ShiftTimes,
-  type StaffProfileData,
-  saveAsTemplate,
-  getTemplates,
   applyTemplate,
   clearWeek,
   copyPreviousWeek,
   generateRotaHybrid,
   generateTaskHybrid,
-  getHybridUsage,
 } from "@/app/(clinic)/rota/actions"
-import type { RotaTemplate } from "@/lib/types/database"
-import { formatDate, formatDateRange, formatDateWithYear } from "@/lib/format-date"
-import { formatTime } from "@/lib/format-time"
+import { formatDate } from "@/lib/format-date"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { AssignmentSheet } from "@/components/assignment-sheet"
-import { quickCreateLeave } from "@/app/(clinic)/leaves/actions"
-import { bulkAddSkill, bulkRemoveSkill, bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
-import { WeeklyStrip } from "@/components/weekly-strip"
-import { MobileEditToolbar } from "@/components/mobile-edit-toolbar"
-import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
-import { MobileTaskView } from "@/components/mobile-task-view"
-import { MobileTaskDayView } from "@/components/mobile-task-day-view"
-import { TapPopover } from "@/components/tap-popover"
-import { MobilePersonView } from "@/components/mobile-person-view"
-import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
-import { TransposedTaskGrid } from "@/components/transposed-task-grid"
-import { TaskPersonGrid } from "@/components/task-person-grid"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
@@ -81,26 +41,15 @@ const AIReasoningModal = dynamic(() => import("./calendar-panel/generation-modal
 const SaveTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.SaveTemplateModal })), { ssr: false })
 const ApplyTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.ApplyTemplateModal })), { ssr: false })
 const MultiWeekScopeDialog = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.MultiWeekScopeDialog })), { ssr: false })
-import { MySchedule } from "@/components/my-schedule"
 import { useViewerStaffId } from "@/lib/role-context"
-import { TaskGrid } from "@/components/task-grid"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
-import type { StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica } from "@/lib/types/database"
-import type { ViewMode, CalendarLayout, Assignment, DeptMaps, MenuItem } from "./calendar-panel/types"
-import { DEFAULT_DEPT_MAPS, ROLE_ORDER, ROLE_LABEL, ROLE_BORDER, ROLE_DOT, SHIFT_ORDER, TECNICA_PILL, COVERAGE_SKILLS, LEGACY_SKILL_NAMES, TODAY, DAY_ES_2, WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER, DOW_HEADERS_EN, DOW_HEADERS_ES } from "./calendar-panel/constants"
-import { buildDeptMaps, sortAssignments, addDays, addMonths, getMonthStart, formatToolbarLabel, rotateArray, makeSkillLabel, parseHybridInsights, buildStrategyCards, type GenerationStrategy } from "./calendar-panel/utils"
+import type { StaffWithSkills } from "@/lib/types/database"
+import type { ViewMode, CalendarLayout } from "./calendar-panel/types"
+import { TODAY } from "./calendar-panel/constants"
+import { addDays, getMonthStart, formatToolbarLabel, type GenerationStrategy } from "./calendar-panel/utils"
 
 import { ShiftBudgetBar, MonthBudgetBar } from "./calendar-panel/budget-bars"
-import { PersonShiftSelector } from "./calendar-panel/person-shift-selector"
-import { ProfileSkillsSection } from "./calendar-panel/profile-skills-section"
-import { PersonShiftPill } from "./calendar-panel/person-shift-pill"
-import { DraggableShiftBadge, DraggableOffStaff, DroppableCell } from "./calendar-panel/dnd-wrappers"
-import { PersonGrid } from "./calendar-panel/person-grid"
-import { TransposedPersonGrid } from "./calendar-panel/transposed-person-grid"
-import { ShiftGrid } from "./calendar-panel/shift-grid"
-import { DayView } from "./calendar-panel/day-view"
-import { DayWarningPopover, WarningsPill } from "./calendar-panel/warnings"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"
@@ -119,7 +68,7 @@ export function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWe
 function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   const t      = useTranslations("schedule")
   const tc     = useTranslations("common")
-  const ts     = useTranslations("skills")
+  const _ts    = useTranslations("skills")
   const locale = useLocale()
   const canEdit = useCanEdit()
   const viewerStaffId = useViewerStaffId()
@@ -131,7 +80,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const setView = (v: ViewMode) => { setViewState(v); sessionStorage.setItem("labrota_view", v) }
   const [calendarLayout, setCalendarLayout] = usePersistedState<CalendarLayout>("labrota_calendar_layout", "shift")
   const [compact, setCompact] = useState(false)
-  const [personSimplified, togglePersonSimplified, setPersonSimplified] = usePersistedToggle("labrota_person_simplified", true)
+  const [personSimplified, togglePersonSimplified, _setPersonSimplified] = usePersistedToggle("labrota_person_simplified", true)
   const [daysAsRows, toggleDaysAsRows, setDaysAsRows] = usePersistedToggle("labrota_days_as_rows", false)
   const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
@@ -205,13 +154,13 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   // Data fetching, caching, staff loading (extracted to hook)
   const {
-    weekData, setWeekData, monthSummary, setMonthSummary,
+    weekData, setWeekData, monthSummary, setMonthSummary: _setMonthSummary,
     loadingWeek, setLoadingWeek, loadingMonth, setLoadingMonth,
     error, setError, initialLoaded, staffList, staffLoaded,
     prevWeekHasRota, punctionsOverride, setPunctionsOverrideLocal,
     activeStrategy, setActiveStrategy, liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
-    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
+    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh: _handleRefresh, prefetchWeek,
     handleBiopsyChange, lastFetchIdRef, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
 
@@ -226,8 +175,8 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   // Department filter (extracted to hook)
   const {
-    departments, globalDeptMaps, ALL_DEPTS, deptAbbrMap,
-    deptFilter, allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
+    departments: _departments, globalDeptMaps, ALL_DEPTS, deptAbbrMap,
+    deptFilter, allDeptsSelected: _allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
     filteredStaffList,
   } = useDepartmentFilter(weekData, staffList)
 
@@ -256,9 +205,9 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   // DnD (extracted to hook)
   const {
-    draggingId, draggingFrom, dragOverDate,
-    handleChipDragStart, handleChipDragEnd,
-    handleColumnDragOver, handleColumnDragLeave, handleColumnDrop,
+    draggingId: _draggingId, draggingFrom: _draggingFrom, dragOverDate: _dragOverDate,
+    handleChipDragStart: _handleChipDragStart, handleChipDragEnd: _handleChipDragEnd,
+    handleColumnDragOver: _handleColumnDragOver, handleColumnDragLeave: _handleColumnDragLeave, handleColumnDrop: _handleColumnDrop,
   } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
   // Undo/Redo (extracted to hook)

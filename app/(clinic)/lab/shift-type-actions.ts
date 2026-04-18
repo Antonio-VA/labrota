@@ -52,7 +52,7 @@ export async function saveShiftTypes(
     if (insError) {
       // If active_days column doesn't exist yet, retry without it
       if (insError.message?.includes("active_days")) {
-        const rowsWithout = rows.map(({ active_days, ...rest }) => rest)
+        const rowsWithout = rows.map(({ active_days: _active_days, ...rest }) => rest)
         const { error: retryError } = await supabase
           .from("shift_types")
           .insert(rowsWithout)

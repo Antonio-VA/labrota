@@ -6,16 +6,14 @@ import { AlertTriangle, CalendarDays, CalendarX, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
-import { cn } from "@/lib/utils"
 import { useStaffHover } from "@/components/staff-hover-context"
 import { TapPopover } from "@/components/tap-popover"
 import { LEAVE_ICON_MAP } from "./budget-bars"
-import type { Assignment } from "./types"
-import { ROLE_ORDER, DEFAULT_DEPT_MAPS } from "./constants"
+import { DEFAULT_DEPT_MAPS } from "./constants"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 
-export function DayView({ day, loading, locale, departments = [], punctions, biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact, mobileDeptColor = true, ratioOptimal, ratioMinimum }: {
+export function DayView({ day, loading, locale, departments = [], punctions: _punctions, biopsyForecast: _biopsyForecast, isEditMode, onRemoveAssignment, onAddStaff, data, staffList, mobileCompact, mobileDeptColor = true, ratioOptimal: _ratioOptimal, ratioMinimum: _ratioMinimum }: {
   day: RotaDay | null
   loading: boolean
   locale: string
@@ -34,10 +32,10 @@ export function DayView({ day, loading, locale, departments = [], punctions, bio
 }) {
   const t  = useTranslations("schedule")
   const tc = useTranslations("common")
-  const ts = useTranslations("skills")
+  const _ts = useTranslations("skills")
 
   // Build dept color map: role code → colour
-  const { hoveredStaffId, setHovered } = useStaffHover()
+  const { hoveredStaffId, setHovered: _setHovered } = useStaffHover()
   const { deptColorMap, deptLabelMap } = useMemo(() => {
     const colors: Record<string, string> = {}
     const labels: Record<string, string> = {}
@@ -156,8 +154,8 @@ export function DayView({ day, loading, locale, departments = [], punctions, bio
                       const fnLabel = a.function_label ? resolveFunctionLabel(a.function_label) : null
                       const staffMember = staffList?.find((s) => s.id === a.staff_id)
                       const deptName = deptLabelMap[a.staff.role] ?? a.staff.role
-                      const workDays = staffMember?.working_pattern ?? []
-                      const dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
+                      const _workDays = staffMember?.working_pattern ?? []
+                      const _dayLabels = { mon: "L", tue: "M", wed: "X", thu: "J", fri: "V", sat: "S", sun: "D" } as Record<string, string>
                       const pillContent = (
                         <span
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-background text-[13px] font-medium cursor-pointer transition-colors active:scale-95"
@@ -251,8 +249,8 @@ export function DayView({ day, loading, locale, departments = [], punctions, bio
             {mobileCompact ? (
               <div className="flex flex-wrap gap-1">
                 {onLeave.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
+                  const _isHov = hoveredStaffId === s.id
+                  const _sColor = staffColorMap[s.id] ?? "#BFDBFE"
                   const leaveType = day ? (data?.onLeaveTypeByDate?.[day.date]?.[s.id] ?? "other") : "other"
                   const LeaveIcon = LEAVE_ICON_MAP[leaveType] ?? CalendarX
                   return (
@@ -269,8 +267,8 @@ export function DayView({ day, loading, locale, departments = [], punctions, bio
                 })}
                 {offDuty.map((s) => {
                   const roleColor = deptColorMap[s.role] ?? "#64748B"
-                  const isHov = hoveredStaffId === s.id
-                  const sColor = staffColorMap[s.id] ?? "#BFDBFE"
+                  const _isHov = hoveredStaffId === s.id
+                  const _sColor = staffColorMap[s.id] ?? "#BFDBFE"
                   return (
                     <TapPopover key={s.id} trigger={
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-background text-muted-foreground text-[12px] cursor-pointer active:scale-95"
