@@ -16,7 +16,7 @@ export function DayStatsInput({ date, value, defaultValue, isOverride, onChange,
   compact?: boolean
 }) {
   const t = useTranslations("schedule")
-  const locale = useLocale()
+  const _locale = useLocale()
   const [open, setOpen]   = useState(false)
   const [draft, setDraft] = useState(String(value))
   const [biopsyDraft, setBiopsyDraft] = useState(String(biopsyForecast))
@@ -34,7 +34,7 @@ export function DayStatsInput({ date, value, defaultValue, isOverride, onChange,
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  function save() {
+  function _save() {
     const n = parseInt(draft, 10)
     if (!isNaN(n) && n >= 0) onChange(date, n === defaultValue ? null : n)
     else setDraft(String(value))

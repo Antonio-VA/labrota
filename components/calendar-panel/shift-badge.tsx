@@ -11,7 +11,7 @@ import { DEFAULT_DEPT_MAPS } from "./constants"
 
 // ── Staff chip (Vista por persona) ────────────────────────────────────────────
 
-export function StaffChip({ first, last, role, isOverride, hasTrainee, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
+export function StaffChip({ first, last, role, isOverride: _isOverride, hasTrainee, notes, shiftTime, onClick, isDragging, onDragStart, onDragEnd }: {
   first: string; last: string; role: string; isOverride: boolean; hasTrainee: boolean
   notes?: string | null; shiftTime?: string
   onClick?: (e: React.MouseEvent) => void
@@ -65,7 +65,7 @@ export type ShiftBadgeProps = {
   trainingTecCode?: string | null
 }
 
-export function ShiftBadge({ first, last, role, isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [], trainingTecCode }: ShiftBadgeProps) {
+export function ShiftBadge({ first, last, role, isOverride: _isOverride, functionLabel, tecnica, compact = false, borderColor, isTrainingTecnica, colorChips = true, readOnly, staffId, staffColor, departments = [], trainingTecCode }: ShiftBadgeProps) {
   const { hoveredStaffId, setHovered } = useStaffHover()
   const [pillHovered, setPillHovered] = useState(false)
   // Resolve department code to abbreviation for pill display

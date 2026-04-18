@@ -14,7 +14,7 @@ export function PersonShiftPill({ assignment, shiftTimes, tecnica, onClick, task
   taskDisabled?: boolean
   simplified?: boolean
 }) {
-  const { shift_type, is_manual_override, function_label } = assignment
+  const { shift_type, is_manual_override: _is_manual_override, function_label } = assignment
   const time = shiftTimes?.[shift_type]
 
   const cleanLabel = function_label?.startsWith("dept_") ? null : function_label

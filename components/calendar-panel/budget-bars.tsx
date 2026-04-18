@@ -16,7 +16,7 @@ export const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sic
 
 // ── Shift budget bar ───────────────────────────────────────────────────────────
 
-export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDays, deptFilter, colorChips = true }: {
+export function ShiftBudgetBar({ data, staffList, weekLabel: _weekLabel, onPillClick, liveDays, deptFilter, colorChips = true }: {
   data: RotaWeekData; staffList: StaffWithSkills[]; weekLabel: string; onPillClick?: (staffId: string) => void
   liveDays?: RotaDay[] | null; deptFilter?: Set<string>; colorChips?: boolean
 }) {
@@ -195,7 +195,7 @@ export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDa
   )
 }
 
-export function MonthBudgetBar({ summary, monthLabel, onPillClick }: {
+export function MonthBudgetBar({ summary, monthLabel: _monthLabel, onPillClick }: {
   summary: RotaMonthSummary; monthLabel: string; onPillClick?: (staffId: string) => void
 }) {
   const t = useTranslations("schedule")

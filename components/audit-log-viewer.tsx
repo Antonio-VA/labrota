@@ -5,7 +5,6 @@ import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { formatDateTime, formatDateTimeDetailed } from "@/lib/format-date"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { getAuditLogs, type AuditLogEntry } from "@/app/(clinic)/lab/audit-actions"
 

@@ -318,7 +318,7 @@ function buildOverflowItems(ctx: {
     onSaveTemplate, onApplyTemplate,
     daysAsRows, toggleDaysAsRows, compact, setCompact, personSimplified, togglePersonSimplified,
     colorChips, toggleColorChips, highlightHover, toggleHighlightHover, calendarLayout,
-    favoriteView, onSaveFavorite, onGoToFavorite, setView, setCalendarLayout,
+    favoriteView, onSaveFavorite, onGoToFavorite, setView: _setView, setCalendarLayout: _setCalendarLayout,
     onShowHistory, onDelete,
     t,
   } = ctx

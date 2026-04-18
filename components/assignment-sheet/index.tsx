@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { Plus, Trash2, Pencil, AlertTriangle, CheckCircle2, Copy, Sparkles, Info, ChevronDown, ChevronUp } from "lucide-react"
+import { Trash2, Pencil, AlertTriangle, CheckCircle2, Copy, Sparkles, Info, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 import { formatTime } from "@/lib/format-time"
 import {
@@ -64,7 +64,7 @@ export function AssignmentSheet({
   open, onOpenChange, date, weekStart, day, staffList, onLeaveStaffIds,
   shiftTimes, shiftTypes, tecnicas, departments: deptsProp,
   punctionsDefault, punctionsOverride, rota, isPublished, onSaved, onPunctionsChange,
-  timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold = 3, enableTaskInShift = true,
+  timeFormat = "24h", biopsyForecast, rotaDisplayMode = "by_shift", taskConflictThreshold: _taskConflictThreshold = 3, enableTaskInShift = true,
 }: Props) {
   const t = useTranslations("assignmentSheet")
   const tc = useTranslations("common")

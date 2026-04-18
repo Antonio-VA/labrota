@@ -9,10 +9,10 @@ import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { rotateArray } from "./utils"
 import { DayStatsInput } from "./day-stats-input"
 import { useStaffHover } from "@/components/staff-hover-context"
-import { TODAY, DOW_HEADERS_ES, DOW_HEADERS_EN, ROLE_ORDER, DEFAULT_DEPT_MAPS } from "./constants"
+import { TODAY, DOW_HEADERS_ES, DOW_HEADERS_EN } from "./constants"
 import type { RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 
-export function MonthGrid({ summary, loading, locale, currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
+export function MonthGrid({ summary, loading, locale, currentDate: _currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {
   summary: RotaMonthSummary | null
   loading: boolean
   locale: string

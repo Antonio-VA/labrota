@@ -178,7 +178,7 @@ function SortableRow({ dept, onChange, onDelete, disabled, even }: {
 
 let _counter = 0
 
-export function DepartmentsTab({ initialDepartments, enableSubDepartments = true }: { initialDepartments: Department[]; enableSubDepartments?: boolean }) {
+export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enableSubDepartments = true }: { initialDepartments: Department[]; enableSubDepartments?: boolean }) {
   const t = useTranslations("departments")
   const tc = useTranslations("common")
   const [departments, setDepartments] = useState<Draft[]>(

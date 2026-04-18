@@ -3,7 +3,6 @@
 import React from "react"
 import { CalendarDays, Sparkles, BrainCircuit, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { TaskGrid } from "@/components/task-grid"
 import { TransposedShiftGrid } from "@/components/transposed-shift-grid"
 import { TransposedTaskGrid } from "@/components/transposed-task-grid"

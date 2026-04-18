@@ -128,7 +128,7 @@ export function TransposedPersonGrid(props: TransposedPersonGridProps) {
 
 function TransposedPersonGridInner({
   data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
+  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault: _punctionsDefault, punctionsOverride: _punctionsOverride, onPunctionsChange: _onPunctionsChange,
   swapStaffId, gridSetDaysRef,
 }: TransposedPersonGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
@@ -137,7 +137,7 @@ function TransposedPersonGridInner({
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
   const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
 
-  const ROLE_LABEL_MAP = useMemo(() => {
+  const _ROLE_LABEL_MAP = useMemo(() => {
     const map: Record<string, string> = {}
     for (const d of data.departments ?? []) { if (!d.parent_id) map[d.code] = (locale === "en" && d.name_en) ? d.name_en : d.name }
     return map
@@ -305,7 +305,7 @@ function TransposedPersonGridInner({
           const dayN = String(d.getDate())
           const today = day.date === TODAY
           const holiday = publicHolidays[day.date]
-          const isSat = d.getDay() === 6
+          const _isSat = d.getDay() === 6
 
           return (
             <Fragment key={day.date}>
