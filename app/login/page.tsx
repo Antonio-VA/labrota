@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [otpCode, setOtpCode] = useState("")
   const [step, setStep] = useState<"email" | "password" | "code">("email")
-  const [authMethod, setAuthMethod] = useState<"otp" | "password">("password")
+  const [_authMethod, setAuthMethod] = useState<"otp" | "password">("password")
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const otpRef = useRef<HTMLInputElement>(null)

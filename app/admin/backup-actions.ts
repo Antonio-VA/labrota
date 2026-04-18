@@ -264,7 +264,7 @@ export async function restoreBackup(
     }
     // Restore staff + skills
     for (const s of backup.config.teamMembers as Record<string, unknown>[]) {
-      const { id: oldId, staff_skills: skills, created_at: __, updated_at: ___, ...rest } = s
+      const { id: _oldId, staff_skills: skills, created_at: __, updated_at: ___, ...rest } = s
       const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: orgId } as never).select("id").single()
       if (ns && (skills as unknown[] | undefined)?.length) {
         for (const sk of skills as Record<string, unknown>[]) {

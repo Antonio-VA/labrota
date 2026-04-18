@@ -10,7 +10,6 @@ import {
   getHolidayConfig,
   getCompanyLeaveTypes,
 } from "@/app/(clinic)/settings/hr-module-actions"
-import type { CompanyLeaveType, HolidayConfig } from "@/lib/types/database"
 
 export default async function HrModulePage() {
   await requireEditor()

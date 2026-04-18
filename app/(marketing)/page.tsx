@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   BarChart3,
   Palmtree,
-  Sparkles,
   AlertTriangle,
   Clock,
   UserX,

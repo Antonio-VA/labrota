@@ -3,12 +3,12 @@
 import { useState, useRef, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Upload, CheckCircle2 } from "lucide-react"
 import { getSheetNames, parseSheet } from "@/lib/parse-excel-rota"
 import { importHistoricalRota } from "@/app/admin/import-actions"
 
 export function AdminHistoryUpload({ orgId }: { orgId: string }) {
-  const [isPending, startTransition] = useTransition()
+  const [_isPending, startTransition] = useTransition()
   const [results, setResults] = useState<{ file: string; weeks: number; skills: number; leaves: number }[]>([])
   const [processing, setProcessing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)

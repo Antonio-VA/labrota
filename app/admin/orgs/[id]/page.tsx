@@ -8,7 +8,7 @@ import type { Organisation } from "@/lib/types/database"
 
 type RotaListRow = { week_start: string; status: string; created_at: string }
 type RotaTypeRow = { generation_type: string | null }
-import { ArrowLeft, Users, Plus } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
@@ -16,7 +16,6 @@ import { AdminOrgDetailClient } from "@/components/admin-org-detail-client"
 import { AdminOrgTabs } from "@/components/admin-org-tabs"
 import { AdminBackups } from "@/components/admin-backups"
 import { AdminHrInstallCard } from "@/components/admin-hr-install-card"
-import { updateOrgRegional } from "@/app/admin/actions"
 import { getAdminHrModuleStatus } from "@/app/admin/hr-module-actions"
 
 export default async function OrgDetailPage({
@@ -115,7 +114,7 @@ export default async function OrgDetailPage({
     })
 
   // Org initials
-  const initials = org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+  const _initials = org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
 
   return (
     <div className="flex flex-col gap-6">

@@ -105,13 +105,6 @@ function parseFormData(formData: FormData) {
 }
 
 
-function computeOnboardingEndDate(startDate: string, weeks: number): string | null {
-  if (!weeks || weeks <= 0) return null
-  const d = new Date(startDate + "T12:00:00")
-  d.setDate(d.getDate() + weeks * 7)
-  return d.toISOString().split("T")[0]
-}
-
 export async function createStaff(_prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const orgId = await getOrgId()
@@ -531,7 +524,7 @@ export async function calculateOptimalHeadcount(): Promise<{ data?: HeadcountRes
 
   const lc = labConfigRes.data
   const departments = deptRes.data ?? []
-  const staffList = staffRes.data ?? []
+  const _staffList = staffRes.data ?? []
 
   const isByTask = (orgRes.data?.rota_display_mode ?? "by_shift") === "by_task"
 

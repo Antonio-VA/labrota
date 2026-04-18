@@ -186,7 +186,7 @@ export default async function PrintRotaPage({
           {/* Shift rows */}
           <tbody>
             {shiftCodes.map((shiftCode) => {
-              const shiftDef = shiftTypes.find((s) => s.code === shiftCode)
+              const _shiftDef = shiftTypes.find((s) => s.code === shiftCode)
               const time = shiftTimes[shiftCode]
               return (
                 <tr key={shiftCode} style={{ borderBottom: "1px solid #ccddee" }}>

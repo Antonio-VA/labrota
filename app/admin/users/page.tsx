@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { Users } from "lucide-react"
 import { AdminGlobalUsersTable } from "@/components/admin-global-users-table"
-import type { GlobalUserInfo, GlobalOrgRow } from "@/components/admin-global-users-table"
+import type { GlobalUserInfo } from "@/components/admin-global-users-table"
 
 type MemberRow = { user_id: string; organisation_id: string; role: string; display_name: string | null }
 type OrgRow = { id: string; name: string; slug: string; auth_method: string | null }

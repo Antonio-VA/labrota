@@ -19,7 +19,7 @@ export default async function EditStaffPage({
   await requireEditor()
   const { id } = await params
   const supabase = await createClient()
-  const t = await getTranslations("staff")
+  const _t = await getTranslations("staff")
 
   const [staffRes, tecnicasRes, deptRes, shiftTypesRes, labConfigRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").eq("id", id).single() as unknown as Promise<{ data: StaffWithSkills | null }>,
