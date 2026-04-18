@@ -226,65 +226,72 @@ interface TransposedTaskGridProps {
   onChipClick?: (staff_id: string) => void; onDateClick?: (date: string) => void
 }
 
-export function TransposedTaskGrid({
+function TransposedTaskGridSkeleton() {
+  const skelTecnicas = 5
+  const skelGridCols = `75px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
+  return (
+    <div className="flex flex-col flex-1 min-h-0 gap-3">
+      <div className="overflow-auto flex-1 rounded-lg border border-border">
+        <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: skelGridCols }}>
+          <div className="sticky top-0 z-10 border-b border-r border-border bg-muted h-[48px]" />
+          {Array.from({ length: skelTecnicas }).map((_, i) => (
+            <div key={i} className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2 flex flex-col items-center gap-1">
+              <div className="shimmer-bar h-3 w-10 rounded" />
+              <div className="shimmer-bar h-2 w-16 rounded" />
+            </div>
+          ))}
+          <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 flex items-center justify-center">
+            <div className="shimmer-bar h-3 w-8" />
+          </div>
+          {Array.from({ length: 7 }).map((_, row) => (
+            <div key={row} className="contents">
+              <div className="border-b border-r border-border bg-muted px-2 py-1.5 flex items-center justify-end gap-1.5 sticky left-0 z-10">
+                <div className="shimmer-bar h-2.5 w-6" />
+                <div className="shimmer-bar w-5 h-5 rounded-full" />
+              </div>
+              {Array.from({ length: skelTecnicas }).map((_, col) => (
+                <div key={col} className="border-b border-r border-border px-1 py-1 min-h-[28px]">
+                  <div className="shimmer-bar h-4 w-8 rounded" />
+                </div>
+              ))}
+              <div className="border-b border-border p-1 min-h-[28px]">
+                <div className="shimmer-bar h-4 w-full rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Wrapper keeps hooks unconditional by gating loading + null data before the inner component.
+export function TransposedTaskGrid(props: TransposedTaskGridProps) {
+  if (props.loading) return <TransposedTaskGridSkeleton />
+  if (!props.data) return null
+  return <TransposedTaskGridInner {...props} data={props.data} />
+}
+
+function TransposedTaskGridInner({
   data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, compact = false,
-  colorChips = true, loading, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
+  colorChips = true, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
   biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
   onRemoveAssignment, onChipClick, onDateClick,
-}: TransposedTaskGridProps) {
+}: TransposedTaskGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
   // Subscribe to staff hover context at parent level — ensures all TechDayCell props update on hover
   const { hoveredStaffId, setHovered } = useStaffHover()
 
-  if (loading) {
-    const skelTecnicas = 5
-    const skelGridCols = `75px repeat(${skelTecnicas}, minmax(62px, 88px)) minmax(130px, 1fr)`
-    return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="overflow-auto flex-1 rounded-lg border border-border">
-          <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: skelGridCols }}>
-            <div className="sticky top-0 z-10 border-b border-r border-border bg-muted h-[48px]" />
-            {Array.from({ length: skelTecnicas }).map((_, i) => (
-              <div key={i} className="sticky top-0 z-10 border-b border-r border-border bg-muted px-2 py-2 flex flex-col items-center gap-1">
-                <div className="shimmer-bar h-3 w-10 rounded" />
-                <div className="shimmer-bar h-2 w-16 rounded" />
-              </div>
-            ))}
-            <div className="sticky top-0 z-10 border-b border-border bg-muted px-2 py-2 flex items-center justify-center">
-              <div className="shimmer-bar h-3 w-8" />
-            </div>
-            {Array.from({ length: 7 }).map((_, row) => (
-              <>
-                <div key={`h-${row}`} className="border-b border-r border-border bg-muted px-2 py-1.5 flex items-center justify-end gap-1.5 sticky left-0 z-10">
-                  <div className="shimmer-bar h-2.5 w-6" />
-                  <div className="shimmer-bar w-5 h-5 rounded-full" />
-                </div>
-                {Array.from({ length: skelTecnicas }).map((_, col) => (
-                  <div key={col} className="border-b border-r border-border px-1 py-1 min-h-[28px]">
-                    <div className="shimmer-bar h-4 w-8 rounded" />
-                  </div>
-                ))}
-                <div key={`off-${row}`} className="border-b border-border p-1 min-h-[28px]">
-                  <div className="shimmer-bar h-4 w-full rounded" />
-                </div>
-              </>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const tecnicas = useMemo(() => (data?.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data?.tecnicas])
+  const tecnicas = useMemo(() => (data.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data.tecnicas])
   const today = new Date().toISOString().split("T")[0]
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
   const staffColorMap = useMemo(() =>
     Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
   , [staffList])
 
-  const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
+  const [localDays, setLocalDays] = useState<RotaDay[]>(data.days)
   const [prevData, setPrevData] = useState(data)
-  if (data !== prevData) { setPrevData(data); setLocalDays(data?.days ?? []) }
+  if (data !== prevData) { setPrevData(data); setLocalDays(data.days) }
 
   // P/B stats helpers (same logic as TaskPersonGrid)
   const cr = biopsyConversionRate ?? 0.5
@@ -300,20 +307,23 @@ export function TransposedTaskGrid({
   }
 
   async function handleAdd(staffId: string, date: string, tecnicaCodigo: string) {
-    const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
-    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const defaultShiftCode = (data.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
+    let tempId = ""
     const staffMember = staffList.find((s) => s.id === staffId)
-    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
-      ...d,
-      assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId, shift_type: defaultShiftCode, is_manual_override: true,
-        trainee_staff_id: null, notes: null, function_label: tecnicaCodigo, tecnica_id: null, whole_team: false,
-        staff: staffMember
-          ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never }
-          : { id: staffId, first_name: "?", last_name: "", role: "lab" as never },
-      }],
-    }))
-    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
+    setLocalDays((prev) => {
+      tempId = `temp-${Date.now()}-${Math.random()}`
+      return prev.map((d) => d.date !== date ? d : {
+        ...d,
+        assignments: [...d.assignments, {
+          id: tempId, staff_id: staffId, shift_type: defaultShiftCode, is_manual_override: true,
+          trainee_staff_id: null, notes: null, function_label: tecnicaCodigo, tecnica_id: null, whole_team: false,
+          staff: staffMember
+            ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never }
+            : { id: staffId, first_name: "?", last_name: "", role: "lab" as never },
+        }],
+      })
+    })
+    const result = await upsertAssignment({ weekStart: data.weekStart ?? "", staffId, date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
     if (result.error) {
       toast.error(result.error)
       setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== tempId) })))

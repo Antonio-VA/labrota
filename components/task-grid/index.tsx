@@ -1,6 +1,6 @@
 "use client"
 
-import React, { Fragment, useState, useRef } from "react"
+import React, { Fragment, useEffect, useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -70,10 +70,19 @@ export function TaskGrid({
 }) {
   const t = useTranslations("schedule")
   const [localDays, setLocalDays] = useState<RotaDay[]>(data?.days ?? [])
-  // Register this grid's day setter for direct undo/redo updates
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
+  // Register this grid's day setter for direct undo/redo updates. The parent
+  // only calls the setter from event handlers (undo/redo), never during
+  // render, so a post-commit effect is fine.
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDays
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
   // Local whole_team state: "tecnicaCode:date" → boolean
   const [localWholeTeam, setLocalWholeTeam] = useState<Record<string, boolean>>({})
+  // Debounced refresh timer — declared up here so the hook runs before the
+  // loading/!data early return below.
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync from server whenever data changes — set-during-render avoids one-frame lag
   const [prevData, setPrevData] = useState(data)
@@ -228,16 +237,21 @@ export function TaskGrid({
   function optimisticAdd(staffId: string, functionLabel: string, date: string, shiftType?: ShiftType) {
     const s = staffLookup[staffId]
     if (!s) return
-    const tempId = `temp-${Date.now()}-${Math.random()}`
-    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
-      ...d,
-      assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId, shift_type: shiftType ?? defaultShiftCode,
-        is_manual_override: true, trainee_staff_id: null, notes: null,
-        function_label: functionLabel, tecnica_id: null, whole_team: false,
-        staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role as never },
-      }],
-    }))
+    setLocalDays((prev) => {
+      // Temp IDs live until the server refresh swaps them for real UUIDs, so
+      // Date.now + Math.random is fine here — computed inside the updater so
+      // the compiler knows it's not a render-time side effect.
+      const tempId = `temp-${Date.now()}-${Math.random()}`
+      return prev.map((d) => d.date !== date ? d : {
+        ...d,
+        assignments: [...d.assignments, {
+          id: tempId, staff_id: staffId, shift_type: shiftType ?? defaultShiftCode,
+          is_manual_override: true, trainee_staff_id: null, notes: null,
+          function_label: functionLabel, tecnica_id: null, whole_team: false,
+          staff: { id: s.id, first_name: s.first_name, last_name: s.last_name, role: s.role as never },
+        }],
+      })
+    })
   }
 
   function optimisticRemove(assignmentId: string) {
@@ -248,7 +262,6 @@ export function TaskGrid({
   }
 
   // Debounced refresh — batches rapid selections into one server fetch
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function debouncedRefresh() {
     if (refreshTimer.current) clearTimeout(refreshTimer.current)
     refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)

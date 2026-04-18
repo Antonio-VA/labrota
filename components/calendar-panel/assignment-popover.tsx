@@ -14,7 +14,7 @@ export const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "a
 
 // ── Assignment popover (función + técnica in one) ─────────────────────────────
 
-export function AssignmentPopover({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, disabled, children }: {
+interface AssignmentPopoverProps {
   assignment: { id: string; staff: { role: string }; function_label: string | null }
   staffSkills: { skill: string; level: string }[]
   tecnicas: Tecnica[]
@@ -23,10 +23,17 @@ export function AssignmentPopover({ assignment, staffSkills, tecnicas, departmen
   isPublished: boolean
   disabled?: boolean
   children: React.ReactNode
-}) {
-  // When disabled, just render children without any popover
-  if (disabled) return <>{children}</>
+}
 
+// Thin wrapper that bails out for the `disabled` case without spinning up the
+// popover machinery (effects, portals, refs). The inner component is the one
+// that holds the hooks — splitting keeps all hooks unconditional.
+export function AssignmentPopover(props: AssignmentPopoverProps) {
+  if (props.disabled) return <>{props.children}</>
+  return <AssignmentPopoverInner {...props} />
+}
+
+function AssignmentPopoverInner({ assignment, staffSkills, tecnicas, departments = [], onFunctionSave, isPublished, children }: AssignmentPopoverProps) {
   const t = useTranslations("schedule")
   const tStaff = useTranslations("staff")
   const [open, setOpen] = useState(false)

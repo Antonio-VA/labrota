@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, Fragment } from "react"
+import { useCallback, useEffect, useMemo, useState, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft, Plus } from "lucide-react"
 import { toast } from "sonner"
@@ -46,12 +46,7 @@ function TaskChip({ label, color, onRemove }: { label: string; color: string; on
   )
 }
 
-export function PersonGrid({
-  data, staffList, loading, locale,
-  isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
-  isGenerating, swapStaffId, gridSetDaysRef,
-}: {
+interface PersonGridProps {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
   loading: boolean
@@ -71,12 +66,60 @@ export function PersonGrid({
   isGenerating?: boolean
   swapStaffId?: string | null
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
-}) {
+}
+
+function PersonGridSkeleton() {
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
+        <div className="h-[72px] border-b border-r border-border" />
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
+            <div className="shimmer-bar h-2.5 w-6" />
+            <div className="shimmer-bar w-8 h-8 rounded-full" />
+            <div className="shimmer-bar h-2.5 w-12 rounded" />
+          </div>
+        ))}
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Fragment key={i}>
+            <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
+              <div className="shimmer-bar h-3 w-28" />
+            </div>
+            {Array.from({ length: 7 }).map((_, j) => (
+              <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
+                <div className="shimmer-bar h-9 w-full rounded" />
+              </div>
+            ))}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Thin wrapper keeps hooks unconditional by gating the early-return paths
+// (loading skeleton and null data) before entering the hook-rich inner component.
+export function PersonGrid(props: PersonGridProps) {
+  if (props.loading) return <PersonGridSkeleton />
+  if (!props.data) return null
+  return <PersonGridInner {...props} data={props.data} />
+}
+
+function PersonGridInner({
+  data, staffList, locale,
+  isPublished, shiftTimes, onLeaveByDate, publicHolidays,
+  onChipClick, onDateClick, colorChips, compact, punctionsDefault, punctionsOverride, onPunctionsChange, simplified,
+  swapStaffId, gridSetDaysRef,
+}: PersonGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
-  const [localDays, setLocalDays] = useState(data?.days ?? [])
+  const [localDays, setLocalDays] = useState(data.days)
   // Register this grid's day setter for direct undo/redo updates
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDays
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
   const [prevData, setPrevData] = useState(data)
   if (data && data !== prevData) {
     setPrevData(data)
@@ -103,37 +146,6 @@ export function PersonGrid({
     const result = await setTecnica(assignmentId, tecnicaId)
     if (result.error) toast.error(result.error)
   }, [patchLocalAssignment])
-
-  if (loading) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
-          <div className="h-[72px] border-b border-r border-border" />
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center py-2 border-b border-r last:border-r-0 border-border gap-1">
-              <div className="shimmer-bar h-2.5 w-6" />
-              <div className="shimmer-bar w-8 h-8 rounded-full" />
-              <div className="shimmer-bar h-2.5 w-12 rounded" />
-            </div>
-          ))}
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Fragment key={i}>
-              <div className="px-3 py-2.5 border-b border-r border-border flex items-center">
-                <div className="shimmer-bar h-3 w-28" />
-              </div>
-              {Array.from({ length: 7 }).map((_, j) => (
-                <div key={j} className="p-1.5 border-b border-r last:border-r-0 border-border min-h-[48px] flex items-center">
-                  <div className="shimmer-bar h-9 w-full rounded" />
-                </div>
-              ))}
-            </Fragment>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (!data) return null
 
   const { label: ROLE_LABEL_MAP, order: ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [], locale)
 

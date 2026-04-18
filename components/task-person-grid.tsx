@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useRef, Fragment } from "react"
+import { useEffect, useMemo, useState, useRef, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, CalendarDays, Plus, Users } from "lucide-react"
 import { toast } from "sonner"
@@ -158,74 +158,94 @@ interface TaskPersonGridProps {
 }
 
 
-export function TaskPersonGrid({
-  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, onLeaveTypeByDate,
-  compact, colorChips = true, loading, simplified, punctionsDefault, punctionsOverride,
-  onPunctionsChange, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
-  onChipClick, onDateClick, gridSetDaysRef,
-}: TaskPersonGridProps) {
-  const t = useTranslations("schedule")
-
-  // Loading skeleton — staff-as-rows, days-as-columns
-  if (loading) {
-    const skelDays = 7
-    const skelStaff = 8
-    const skelCols = `80px repeat(${skelDays}, 1fr)`
-    return (
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="rounded-lg border border-border overflow-hidden w-full">
-          <div style={{ display: "grid", gridTemplateColumns: skelCols }}>
-            {/* Header */}
-            <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
-            {Array.from({ length: skelDays }).map((_, i) => (
-              <div key={i} className="border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 gap-1">
-                <div className="shimmer-bar h-2 w-6" />
-                <div className="shimmer-bar h-5 w-5 rounded-full" />
-              </div>
-            ))}
-            {/* ALL row */}
-            <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center px-2 py-1">
-              <div className="shimmer-bar h-2.5 w-6" />
+function TaskPersonGridSkeleton({ compact }: { compact?: boolean }) {
+  const skelDays = 7
+  const skelStaff = 8
+  const skelCols = `80px repeat(${skelDays}, 1fr)`
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="rounded-lg border border-border overflow-hidden w-full">
+        <div style={{ display: "grid", gridTemplateColumns: skelCols }}>
+          {/* Header */}
+          <div className="border-b border-r border-border bg-muted sticky left-0 z-20" style={{ minHeight: 48 }} />
+          {Array.from({ length: skelDays }).map((_, i) => (
+            <div key={i} className="border-b border-r last:border-r-0 border-border bg-muted flex flex-col items-center justify-center py-1.5 gap-1">
+              <div className="shimmer-bar h-2 w-6" />
+              <div className="shimmer-bar h-5 w-5 rounded-full" />
             </div>
-            {Array.from({ length: skelDays }).map((_, i) => (
-              <div key={i} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
-                <div className="shimmer-bar h-4 w-8 rounded" />
-              </div>
-            ))}
-            {/* Staff rows */}
-            {Array.from({ length: skelStaff }).map((_, row) => (
-              <Fragment key={row}>
-                <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex flex-col justify-center px-2 gap-1" style={{ minHeight: compact ? 28 : 34 }}>
-                  <div className="shimmer-bar h-2.5 w-12" />
-                </div>
-                {Array.from({ length: skelDays }).map((_, col) => (
-                  <div key={col} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
-                    <div className="shimmer-bar h-4 w-7 rounded" />
-                    {col % 3 === 0 && <div className="shimmer-bar h-4 w-6 rounded" />}
-                  </div>
-                ))}
-              </Fragment>
-            ))}
+          ))}
+          {/* ALL row */}
+          <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex items-center px-2 py-1">
+            <div className="shimmer-bar h-2.5 w-6" />
           </div>
+          {Array.from({ length: skelDays }).map((_, i) => (
+            <div key={i} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
+              <div className="shimmer-bar h-4 w-8 rounded" />
+            </div>
+          ))}
+          {/* Staff rows */}
+          {Array.from({ length: skelStaff }).map((_, row) => (
+            <Fragment key={row}>
+              <div className="border-b border-r border-border bg-muted sticky left-0 z-10 flex flex-col justify-center px-2 gap-1" style={{ minHeight: compact ? 28 : 34 }}>
+                <div className="shimmer-bar h-2.5 w-12" />
+              </div>
+              {Array.from({ length: skelDays }).map((_, col) => (
+                <div key={col} className={cn("border-b border-r last:border-r-0 border-border flex flex-wrap gap-0.5 items-center content-center p-0.5", compact ? "min-h-[22px]" : "min-h-[28px]")}>
+                  <div className="shimmer-bar h-4 w-7 rounded" />
+                  {col % 3 === 0 && <div className="shimmer-bar h-4 w-6 rounded" />}
+                </div>
+              ))}
+            </Fragment>
+          ))}
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
+
+// Wrapper keeps hooks unconditional by handling loading + null-data early-returns
+// before the inner component runs its hooks.
+export function TaskPersonGrid(props: TaskPersonGridProps) {
+  if (props.loading) return <TaskPersonGridSkeleton compact={props.compact} />
+  if (!props.data) return null
+  return <TaskPersonGridInner {...props} data={props.data} />
+}
+
+function TaskPersonGridInner({
+  data, staffList, locale, isPublished, publicHolidays, onLeaveByDate, onLeaveTypeByDate,
+  compact, colorChips = true, simplified, punctionsDefault, punctionsOverride,
+  onPunctionsChange, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct,
+  onChipClick, onDateClick, gridSetDaysRef,
+}: TaskPersonGridProps & { data: RotaWeekData }) {
+  const t = useTranslations("schedule")
 
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
 
-  const [localDays, setLocalDays] = useState(data?.days ?? [])
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
+  const [localDays, setLocalDays] = useState(data.days)
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDays
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
   const [prevData, setPrevData] = useState(data)
   if (data !== prevData) {
     setPrevData(data)
-    setLocalDays(data?.days ?? [])
+    setLocalDays(data.days)
   }
 
-  const tecnicas = useMemo(() => (data?.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data?.tecnicas])
+  const tecnicas = useMemo(() => (data.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data.tecnicas])
   const tecnicaByCode = useMemo(() => Object.fromEntries(tecnicas.map((t) => [t.codigo, t])), [tecnicas])
-  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
+  const defaultShiftCode = (data.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
+
+  const activeStaff = useMemo(() =>
+    staffList
+      .filter((s) => s.onboarding_status !== "inactive")
+      .sort((a, b) => {
+        const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+        return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+      })
+  , [staffList])
 
   // Multi-assignment map: staffId → date → Assignment[]
   const taskAssignMap = useMemo(() => {
@@ -262,20 +282,23 @@ export function TaskPersonGrid({
   }
 
   async function handleTaskAdd(staffId: string | null, date: string, tecnicaCodigo: string) {
-    const tempId = `temp-${Date.now()}-${Math.random()}`
+    let tempId = ""
     const staffMember = staffId ? activeStaff.find((s) => s.id === staffId) : null
-    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
-      ...d,
-      assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCode,
-        is_manual_override: true, trainee_staff_id: null, notes: null,
-        function_label: tecnicaCodigo, tecnica_id: null, whole_team: staffId === null,
-        staff: staffMember
-          ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never }
-          : { id: "", first_name: "All", last_name: "", role: "lab" as never },
-      }],
-    }))
-    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
+    setLocalDays((prev) => {
+      tempId = `temp-${Date.now()}-${Math.random()}`
+      return prev.map((d) => d.date !== date ? d : {
+        ...d,
+        assignments: [...d.assignments, {
+          id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCode,
+          is_manual_override: true, trainee_staff_id: null, notes: null,
+          function_label: tecnicaCodigo, tecnica_id: null, whole_team: staffId === null,
+          staff: staffMember
+            ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never }
+            : { id: "", first_name: "All", last_name: "", role: "lab" as never },
+        }],
+      })
+    })
+    const result = await upsertAssignment({ weekStart: data.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
     if (result.error) toast.error(result.error)
     else {
       setLocalDays((prev) => prev.map((d) => ({
@@ -285,16 +308,7 @@ export function TaskPersonGrid({
     }
   }
 
-  const activeStaff = useMemo(() =>
-    staffList
-      .filter((s) => s.onboarding_status !== "inactive")
-      .sort((a, b) => {
-        const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-        return ro !== 0 ? ro : a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
-      })
-  , [staffList])
-
-  if (!data || localDays.length === 0) return null
+  if (localDays.length === 0) return null
 
   // Empty state — no rota or no assignments yet
   if (!data.rota || !localDays.some((d) => d.assignments.length > 0)) {

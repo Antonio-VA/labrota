@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRightLeft, Briefcase, Hourglass } from "lucide-react"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
@@ -55,106 +55,116 @@ function DroppableCell({ id, children, className, style }: { id: string; childre
   )
 }
 
-export function TransposedShiftGrid({
-  data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
-  compact, colorChips = true, timeFormat = "24h", loading, onCellClick, onChipClick, onRefresh,
-  swapStaffId, gridSetDaysRef,
-}: TransposedShiftGridProps) {
+function TransposedShiftGridSkeleton() {
   const tc = useTranslations("common")
-  const tSwaps = useTranslations("swaps")
-
-  // Loading skeleton — days as rows, shift codes as columns
-  if (loading) {
-    const skelShifts = 4
-    const skelGridCols = `120px repeat(${skelShifts}, 1fr) minmax(80px, 1fr)`
-    return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="overflow-auto flex-1 rounded-lg border border-border">
-          <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: skelGridCols }}>
-            {/* Header row */}
-            <div className="sticky top-0 z-10 border-b border-r border-border bg-muted h-[48px]" />
-            {Array.from({ length: skelShifts }).map((_, i) => (
-              <div key={i} className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex flex-col items-center gap-1">
-                <div className="shimmer-bar h-3 w-8" />
-                <div className="shimmer-bar h-2.5 w-14 rounded" />
-              </div>
-            ))}
-            <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex items-center justify-center">
+  const skelShifts = 4
+  const skelGridCols = `120px repeat(${skelShifts}, 1fr) minmax(80px, 1fr)`
+  return (
+    <div className="flex flex-col flex-1 min-h-0 gap-3">
+      <div className="overflow-auto flex-1 rounded-lg border border-border">
+        <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: skelGridCols }}>
+          {/* Header row */}
+          <div className="sticky top-0 z-10 border-b border-r border-border bg-muted h-[48px]" />
+          {Array.from({ length: skelShifts }).map((_, i) => (
+            <div key={i} className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex flex-col items-center gap-1">
               <div className="shimmer-bar h-3 w-8" />
+              <div className="shimmer-bar h-2.5 w-14 rounded" />
             </div>
-
-            {/* Day rows */}
-            {Array.from({ length: 7 }).map((_, row) => (
-              <>
-                <div key={`h-${row}`} className="border-b border-r border-border bg-muted px-2 py-2 flex items-center justify-end gap-1.5 sticky left-0 z-10">
-                  <div className="shimmer-bar h-2.5 w-6" />
-                  <div className="shimmer-bar w-6 h-6 rounded-full" />
-                </div>
-                {Array.from({ length: skelShifts }).map((_, col) => (
-                  <div key={col} className="border-b border-l border-border p-1 min-h-[48px] flex flex-col gap-0.5">
-                    <div className="shimmer-bar h-5 w-full rounded" />
-                    <div className="shimmer-bar h-5 w-3/4 rounded" />
-                  </div>
-                ))}
-                <div key={`off-${row}`} className="border-b border-l border-border p-1 min-h-[48px]">
-                  <div className="shimmer-bar h-5 w-full rounded" />
-                </div>
-              </>
-            ))}
+          ))}
+          <div className="sticky top-0 z-10 border-b border-l border-border bg-muted px-2 py-2 flex items-center justify-center">
+            <div className="shimmer-bar h-3 w-8" />
           </div>
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="generating-label text-[13px] text-muted-foreground">
-            {tc("loading")}
-          </span>
+
+          {/* Day rows */}
+          {Array.from({ length: 7 }).map((_, row) => (
+            <div key={row} className="contents">
+              <div className="border-b border-r border-border bg-muted px-2 py-2 flex items-center justify-end gap-1.5 sticky left-0 z-10">
+                <div className="shimmer-bar h-2.5 w-6" />
+                <div className="shimmer-bar w-6 h-6 rounded-full" />
+              </div>
+              {Array.from({ length: skelShifts }).map((_, col) => (
+                <div key={col} className="border-b border-l border-border p-1 min-h-[48px] flex flex-col gap-0.5">
+                  <div className="shimmer-bar h-5 w-full rounded" />
+                  <div className="shimmer-bar h-5 w-3/4 rounded" />
+                </div>
+              ))}
+              <div className="border-b border-l border-border p-1 min-h-[48px]">
+                <div className="shimmer-bar h-5 w-full rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    )
-  }
+      <div className="flex items-center justify-center py-1">
+        <span className="generating-label text-[13px] text-muted-foreground">
+          {tc("loading")}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// Wrapper keeps hooks unconditional by gating loading + null data before the inner component.
+export function TransposedShiftGrid(props: TransposedShiftGridProps) {
+  if (props.loading) return <TransposedShiftGridSkeleton />
+  if (!props.data) return null
+  return <TransposedShiftGridInner {...props} data={props.data} />
+}
+
+function TransposedShiftGridInner({
+  data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
+  compact, colorChips = true, timeFormat = "24h", onCellClick, onChipClick, onRefresh,
+  swapStaffId, gridSetDaysRef,
+}: TransposedShiftGridProps & { data: RotaWeekData }) {
+  const tSwaps = useTranslations("swaps")
   const { hoveredStaffId, setHovered } = useStaffHover()
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const shiftTypes = data?.shiftTypes ?? []
+  const shiftTypes = data.shiftTypes ?? []
   const shiftCodes = shiftTypes.filter((s) => s.active !== false).map((s) => s.code)
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
-  const tecnicas = data?.tecnicas ?? []
+  const tecnicas = data.tecnicas ?? []
 
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
 
   // Staff → department colour map
   const staffColorMap = useMemo(() => {
     const deptColors: Record<string, string> = {}
-    for (const dept of (data?.departments ?? [])) deptColors[dept.code] = dept.colour
+    for (const dept of (data.departments ?? [])) deptColors[dept.code] = dept.colour
     const map: Record<string, string> = {}
     for (const s of staffList) map[s.id] = deptColors[s.role] ?? ROLE_BORDER[s.role] ?? "#94A3B8"
     return map
-  }, [staffList, data?.departments])
+  }, [staffList, data.departments])
 
   const today = new Date().toISOString().split("T")[0]
 
   // Local optimistic state — mirrors data.days but allows instant UI updates
   type DayData = NonNullable<typeof data>["days"][0]
-  const [localDays, setLocalDays] = useState<DayData[]>(data?.days ?? [])
+  const [localDays, setLocalDays] = useState<DayData[]>(data.days)
   // Register this grid's day setter for direct undo/redo updates
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays as (days: RotaDay[]) => void
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDays as (days: RotaDay[]) => void
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
 
   // Sync from server — set-during-render avoids one-frame lag vs useEffect
   const [prevData, setPrevData] = useState(data)
-  if (data && data !== prevData) {
+  if (data !== prevData) {
     setPrevData(data)
     setLocalDays(data.days)
   }
 
-  const daysToRender = localDays.length > 0 ? localDays : (data?.days ?? [])
+  const daysToRender = localDays.length > 0 ? localDays : data.days
 
   // Reset local state to server data on error
   const syncFromServer = useCallback(() => {
-    setLocalDays(data?.days ?? [])
-  }, [data?.days])
+    setLocalDays(data.days)
+  }, [data.days])
 
-  if (!data || daysToRender.length === 0) return null
+  if (daysToRender.length === 0) return null
 
   const gridCols = `120px repeat(${shiftCodes.length}, 1fr) minmax(80px, 1fr)`
 

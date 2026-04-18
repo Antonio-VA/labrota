@@ -1,19 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { buildDeptMaps } from "@/components/calendar-panel/utils"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 
 export function useDepartmentFilter(weekData: RotaWeekData | null, staffList: StaffWithSkills[]) {
   const rawDepts = weekData?.departments ?? []
-  // Stabilize departments reference — departments don't change during undo/redo
-  const prevDeptKey = useRef("")
-  const stableDepts = useRef(rawDepts)
+  // Stabilize departments reference — the array identity changes on every
+  // weekData refetch (undo/redo, silent refresh) but the codes don't. Keying
+  // the downstream memos on a code-string instead of the array preserves
+  // referential equality so child consumers (dept dropdowns, filters) don't
+  // re-memoize on every fetch.
   const deptKey = rawDepts.map((d) => d.code).join(",")
-  if (deptKey !== prevDeptKey.current) {
-    prevDeptKey.current = deptKey
-    stableDepts.current = rawDepts
-  }
-  const departments = stableDepts.current
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deptKey encodes rawDepts content
+  const departments = useMemo(() => rawDepts, [deptKey])
 
   const globalDeptMaps = useMemo(() => buildDeptMaps(departments), [departments])
 

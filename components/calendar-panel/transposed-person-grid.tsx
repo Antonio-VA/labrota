@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, useRef, Fragment } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRightLeft, Plus, Users } from "lucide-react"
 import { toast } from "sonner"
@@ -99,11 +99,7 @@ function TransposedTaskCell({
   )
 }
 
-export function TransposedPersonGrid({
-  data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
-  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
-  swapStaffId, gridSetDaysRef,
-}: {
+interface TransposedPersonGridProps {
   data: RotaWeekData | null
   staffList: StaffWithSkills[]
   locale: string
@@ -121,14 +117,25 @@ export function TransposedPersonGrid({
   onPunctionsChange?: (date: string, value: number | null) => void
   swapStaffId?: string | null
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
-}) {
+}
+
+// Null-gate wrapper — the inner component holds all the hooks so none of them
+// are called conditionally on `data` being present.
+export function TransposedPersonGrid(props: TransposedPersonGridProps) {
+  if (!props.data) return null
+  return <TransposedPersonGridInner {...props} data={props.data} />
+}
+
+function TransposedPersonGridInner({
+  data, staffList, locale, isPublished, shiftTimes, onLeaveByDate, publicHolidays,
+  onChipClick, onDateClick, colorChips, compact, simplified, punctionsDefault, punctionsOverride, onPunctionsChange,
+  swapStaffId, gridSetDaysRef,
+}: TransposedPersonGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
   const tSwaps = useTranslations("swaps")
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
   const [hoveredTecnica, setHoveredTecnica] = useState<string | null>(null)
-
-  if (!data) return null
 
   const ROLE_LABEL_MAP = useMemo(() => {
     const map: Record<string, string> = {}
@@ -145,7 +152,14 @@ export function TransposedPersonGrid({
   , [staffList])
 
   const [localDays, setLocalDays] = useState(data.days)
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDays
+  // Register this grid's day setter on the parent ref so undo/redo can push
+  // state directly. Parent only reads .current from event handlers, so a
+  // post-commit effect is fine.
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDays
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
   const [prevData, setPrevData] = useState(data)
   if (data !== prevData) {
     setPrevData(data)
