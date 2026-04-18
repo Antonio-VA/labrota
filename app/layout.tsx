@@ -69,7 +69,7 @@ export default async function RootLayout({
     }
   } catch {}
 
-  const rootStyle: Record<string, string> = { "color-scheme": dataTheme === "dark" ? "dark" : "light" }
+  const rootStyle: Record<string, string> = {}
   if (accentColor) {
     rootStyle["--primary"] = accentColor
     rootStyle["--ring"] = accentColor
