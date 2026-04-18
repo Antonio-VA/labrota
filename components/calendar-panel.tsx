@@ -211,9 +211,18 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     prevWeekHasRota, punctionsOverride, setPunctionsOverrideLocal,
     activeStrategy, setActiveStrategy, liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
-    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh,
+    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
     handleBiopsyChange, lastFetchId, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
+
+  // Hover-prefetch: warm the cache the moment the user's cursor enters a nav
+  // button, so the subsequent click hits a primed cache. Only week view — month
+  // view jumps 28 days, which would need a different fetch strategy.
+  const handleHoverNav = useCallback((dir: -1 | 1) => {
+    if (view !== "week") return
+    const target = addDays(weekStart, dir * 7)
+    prefetchWeek(getMondayOfWeek(new Date(target + "T12:00:00")))
+  }, [view, weekStart, prefetchWeek])
 
   // Department filter (extracted to hook)
   const {
@@ -432,7 +441,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
       {/* Desktop toolbar */}
       <DesktopToolbar
         currentDate={currentDate} weekStart={weekStart} view={view} setView={setView}
-        locale={locale} TODAY={TODAY} goToToday={goToToday} navigate={navigate}
+        locale={locale} TODAY={TODAY} goToToday={goToToday} navigate={navigate} onHoverNav={handleHoverNav}
         onWeekJump={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
         calendarLayout={calendarLayout} setCalendarLayout={setCalendarLayout}
         monthViewMode={monthViewMode} setMonthViewMode={setMonthViewMode}

@@ -23,6 +23,7 @@ export interface DesktopToolbarProps {
   TODAY: string
   goToToday: () => void
   navigate: (dir: -1 | 1) => void
+  onHoverNav?: (dir: -1 | 1) => void
   onWeekJump: (date: string) => void
 
   // Layout
@@ -101,7 +102,7 @@ export interface DesktopToolbarProps {
 
 export function DesktopToolbar(props: DesktopToolbarProps) {
   const {
-    currentDate, weekStart, view, setView, locale, TODAY, goToToday, navigate, onWeekJump,
+    currentDate, weekStart, view, setView, locale, TODAY, goToToday, navigate, onHoverNav, onWeekJump,
     calendarLayout, setCalendarLayout, monthViewMode, setMonthViewMode, rotaDisplayMode,
     compact, setCompact, personSimplified, togglePersonSimplified, daysAsRows, toggleDaysAsRows,
     colorChips, toggleColorChips, highlightHover, toggleHighlightHover,
@@ -138,10 +139,24 @@ export function DesktopToolbar(props: DesktopToolbarProps) {
           {tc("today")}
         </Button>
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} aria-label={t("previousPeriod")}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => navigate(-1)}
+            onMouseEnter={() => onHoverNav?.(-1)}
+            onFocus={() => onHoverNav?.(-1)}
+            aria-label={t("previousPeriod")}
+          >
             <ChevronLeft />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => navigate(1)} aria-label={t("nextPeriod")}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => navigate(1)}
+            onMouseEnter={() => onHoverNav?.(1)}
+            onFocus={() => onHoverNav?.(1)}
+            aria-label={t("nextPeriod")}
+          >
             <ChevronRight />
           </Button>
         </div>

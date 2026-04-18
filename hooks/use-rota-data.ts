@@ -85,18 +85,21 @@ export function useRotaData({
 
   function prefetchAdjacent(ws: string) {
     const run = () => {
-      const prev = weekOffset(ws, -7)
-      const next = weekOffset(ws, 7)
-      if (!_cache.weeks.has(prev)) {
-        getRotaWeek(prev).then((d) => { _cache.weeks.set(prev, d) }).catch(() => {})
-      }
-      if (!_cache.weeks.has(next)) {
-        getRotaWeek(next).then((d) => { _cache.weeks.set(next, d) }).catch(() => {})
-      }
+      prefetchWeek(weekOffset(ws, -7))
+      prefetchWeek(weekOffset(ws, 7))
     }
     if (typeof requestIdleCallback === "function") requestIdleCallback(run)
     else setTimeout(run, 200)
   }
+
+  // Fire-and-forget prefetch: populates the cache without touching React state.
+  // Used by adjacent-week prefetch and by hover-on-nav-button prefetch so a
+  // click-to-next/prev hits a warm cache. Safe to call repeatedly — the cache
+  // check prevents duplicate round-trips.
+  const prefetchWeek = useCallback((ws: string) => {
+    if (_cache.weeks.has(ws)) return
+    getRotaWeek(ws).then((d) => { _cache.weeks.set(ws, d) }).catch(() => {})
+  }, [])
 
   // ── Fetch functions ──────────────────────────────────────────────────────
 
@@ -310,7 +313,7 @@ export function useRotaData({
     activeStrategy, setActiveStrategy,
     liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
-    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh,
+    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
     handleBiopsyChange,
     lastFetchId, gridSetDaysRef,
   }
