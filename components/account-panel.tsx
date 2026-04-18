@@ -57,6 +57,7 @@ export function AccountPanel({ open, onClose, user }: {
   const [department, setDepartment] = useState<string | null>(null)
   const [outlook, setOutlook] = useState<UserOutlookStatus>({ available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null })
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
   useEffect(() => {
     if (!open || !user) return
     setLoading(true)
@@ -73,6 +74,7 @@ export function AccountPanel({ open, onClose, user }: {
       setLoading(false)
     })
   }, [open, user])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleSave() {
     // Apply theme immediately — don't wait for server save

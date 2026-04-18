@@ -69,6 +69,7 @@ export function LeavesList({
   const searchParams = useSearchParams()
 
   // Handle Outlook OAuth callback URL params
+  /* eslint-disable react-hooks/set-state-in-effect -- URL-param side effect */
   useEffect(() => {
     const outlookStatus = searchParams.get("outlook")
     if (!outlookStatus) return
@@ -84,6 +85,7 @@ export function LeavesList({
     // Clean URL params
     router.replace("/leaves", { scroll: false })
   }, [searchParams, router, to])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleCancel(leaveId: string) {
     toast(t("cancelConfirm"), {

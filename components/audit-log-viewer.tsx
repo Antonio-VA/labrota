@@ -78,6 +78,7 @@ export function AuditLogViewer() {
   const [page, setPage] = useState(0)
   const [detail, setDetail] = useState<AuditLogEntry | null>(null)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-filter-change */
   useEffect(() => {
     setLoading(true)
     setPage(0)
@@ -88,6 +89,7 @@ export function AuditLogViewer() {
       limit: 500, // fetch more, paginate client-side
     }).then((data) => { setLogs("error" in data ? [] : data); setLoading(false) })
   }, [actionFilter, dateFrom, dateTo])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Client-side user filter
   const filtered = userFilter

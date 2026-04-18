@@ -40,6 +40,7 @@ export function RotaHistoryPanel({
   const [confirmRestore, setConfirmRestore] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
   useEffect(() => {
     if (!open) return
     setLoading(true)
@@ -50,6 +51,7 @@ export function RotaHistoryPanel({
       setLoading(false)
     })
   }, [open, weekStart])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const selected = selectedId ? snapshots.find((s) => s.id === selectedId) : null
   const weekDates = getWeekDates(weekStart)

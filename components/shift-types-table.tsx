@@ -165,7 +165,9 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   function handleSave() {
     startTransition(() => { doSave() })
   }
-  saveRef.current = doSave
+  useEffect(() => {
+    saveRef.current = doSave
+  })
 
   const gridCols = "grid-cols-[1.5rem_3.5rem_5.5rem_5.5rem_1fr_auto_1.5rem]"
 

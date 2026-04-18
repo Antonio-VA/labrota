@@ -47,9 +47,11 @@ export function OutlookSyncPanel({
     setLoading(false)
   }, [])
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
   useEffect(() => {
     if (open) loadStatus()
   }, [open, loadStatus])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSyncOne = (staffId: string, staffName: string) => {
     startTransition(async () => {

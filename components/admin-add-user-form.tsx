@@ -49,7 +49,7 @@ export function AddUserForm({ orgId }: { orgId: string }) {
         <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
           <CheckCircle2 className="size-4 text-emerald-600 mt-0.5 shrink-0" />
           <p className="text-[14px] text-emerald-700">
-            Invitation sent. They'll receive an email to access the platform.
+            Invitation sent. They&apos;ll receive an email to access the platform.
           </p>
         </div>
       )}

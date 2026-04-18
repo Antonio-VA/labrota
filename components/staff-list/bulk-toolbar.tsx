@@ -35,9 +35,11 @@ function AddSkillDropdown({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [level, setLevel] = useState<SkillLevel>("certified")
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on close */
   useEffect(() => {
     if (!open) { setSelected(new Set()); setLevel("certified") }
   }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggleSkill(s: string) {
     setSelected((prev) => {
@@ -117,9 +119,11 @@ function RemoveSkillDropdown({
   const tc = useTranslations("common")
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on close */
   useEffect(() => {
     if (!open) setSelected(new Set())
   }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggleSkill(s: string) {
     setSelected((prev) => {
@@ -212,7 +216,9 @@ function DeleteModal({
   const [confirmText, setConfirmText] = useState("")
   const confirmWord = t("deactivateModal.confirmWord")
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on close */
   useEffect(() => { if (!open) setConfirmText("") }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!open) return null
 
@@ -266,7 +272,9 @@ function HardDeleteModal({
   const [confirmText, setConfirmText] = useState("")
   const confirmWord = t("hardDeleteModal.confirmWord")
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on close */
   useEffect(() => { if (!open) setConfirmText("") }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!open) return null
 

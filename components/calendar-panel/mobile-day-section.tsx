@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef } from "react"
+import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight, AlertTriangle, Check, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -288,7 +289,6 @@ export function MobileDaySection({
 }
 
 function MobileDayWarnings({ day, locale, onClose }: { day: RotaDay; locale: string; onClose: () => void }) {
-  const { createPortal } = require("react-dom")
   const t = useTranslations("schedule")
   return createPortal(
     <div className="fixed inset-0 z-[200] flex flex-col justify-end lg:hidden" onClick={onClose}>

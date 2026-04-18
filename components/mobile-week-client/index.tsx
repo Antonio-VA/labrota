@@ -68,11 +68,13 @@ export function MobileWeekClient() {
   })
 
   // Force task view for by-task orgs — "by person" is not available
+  /* eslint-disable react-hooks/set-state-in-effect -- derived from fetched data */
   useEffect(() => {
     if (data?.rotaDisplayMode === "by_task" && weekViewMode === "person") {
       setWeekViewMode("task")
     }
   }, [data?.rotaDisplayMode, weekViewMode])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggleHighlight() {
     const next = !highlightEnabled
@@ -112,6 +114,7 @@ export function MobileWeekClient() {
 
   const hasFavourite = weekFavourite !== null
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-week-change */
   useEffect(() => {
     const cachedData = _mobileWeekCache.get(weekStart)
     const cachedStaff = _mobileWeekStaffCache
@@ -140,6 +143,7 @@ export function MobileWeekClient() {
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [weekStart])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function navigate(dir: number) {
     const d = new Date(weekStart + "T12:00:00")

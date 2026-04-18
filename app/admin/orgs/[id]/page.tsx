@@ -27,6 +27,7 @@ export default async function OrgDetailPage({
   const { id } = await params
   const admin = createAdminClient()
   const locale = await getLocale() as "es" | "en"
+  // eslint-disable-next-line react-hooks/purity -- server component, Date.now runs per request
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const [

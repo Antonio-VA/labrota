@@ -46,6 +46,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
   const ref = useRef<HTMLDivElement>(null)
 
   // Read current theme on mount
+  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
   useEffect(() => {
     try {
       const raw = localStorage.getItem("labrota_theme")
@@ -55,6 +56,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
       }
     } catch {}
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!open) return

@@ -31,6 +31,7 @@ export function StaffKpis({
   const [headcountOpen, setHeadcountOpen] = useState(false)
   const headcountRef = useRef<HTMLDivElement>(null)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- cache hydrate + fetch */
   useEffect(() => {
     const cached = localStorage.getItem("labrota_headcount")
     if (cached) {
@@ -48,6 +49,7 @@ export function StaffKpis({
       })
     }
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!headcountOpen) return

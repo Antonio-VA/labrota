@@ -60,7 +60,7 @@ export function StaffForm({
   const [role, setRole] = useState<string>(staff?.role ?? "lab")
   const [contractType, setContractType] = useState<string>(staff?.contract_type ?? "full_time")
   const [selectedColor, setSelectedColor] = useState<string>(
-    staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
+    () => staff?.color || STAFF_PASTEL_COLORS[Math.floor(Math.random() * STAFF_PASTEL_COLORS.length)]
   )
 
   // Derive capacidades from técnicas matching the staff's department
