@@ -62,7 +62,7 @@ export function useFavoriteViews({ onApplyDesktop, onApplyMobile }: UseFavoriteV
         setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
       }
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView }
 }

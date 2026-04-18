@@ -22,6 +22,12 @@ const _cache: _LrCache = (() => {
   return win.__lrCache
 })()
 
+function weekOffset(ws: string, days: number): string {
+  const dt = new Date(ws + "T12:00:00")
+  dt.setDate(dt.getDate() + days)
+  return dt.toISOString().split("T")[0]
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface UseRotaDataOptions {
@@ -77,21 +83,6 @@ export function useRotaData({
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  function weekOffset(ws: string, days: number): string {
-    const dt = new Date(ws + "T12:00:00")
-    dt.setDate(dt.getDate() + days)
-    return dt.toISOString().split("T")[0]
-  }
-
-  function prefetchAdjacent(ws: string) {
-    const run = () => {
-      prefetchWeek(weekOffset(ws, -7))
-      prefetchWeek(weekOffset(ws, 7))
-    }
-    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
-    else setTimeout(run, 200)
-  }
-
   // Fire-and-forget prefetch: populates the cache without touching React state.
   // Used by adjacent-week prefetch and by hover-on-nav-button prefetch so a
   // click-to-next/prev hits a warm cache. Safe to call repeatedly — the cache
@@ -100,6 +91,15 @@ export function useRotaData({
     if (_cache.weeks.has(ws)) return
     getRotaWeek(ws).then((d) => { _cache.weeks.set(ws, d) }).catch(() => {})
   }, [])
+
+  const prefetchAdjacent = useCallback((ws: string) => {
+    const run = () => {
+      prefetchWeek(weekOffset(ws, -7))
+      prefetchWeek(weekOffset(ws, 7))
+    }
+    if (typeof requestIdleCallback === "function") requestIdleCallback(run)
+    else setTimeout(run, 200)
+  }, [prefetchWeek])
 
   // ── Fetch functions ──────────────────────────────────────────────────────
 
@@ -153,7 +153,7 @@ export function useRotaData({
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
     })
-  }, [])
+  }, [prefetchAdjacent])
 
   // Silent refresh — used after drag-drop so the grid doesn't flash skeleton.
   // Returns the fresh week so callers that need post-refresh data (skill gap
