@@ -56,7 +56,10 @@ export function useDepartmentFilter(weekData: RotaWeekData | null, staffList: St
     localStorage.setItem("labrota_dept_filter", JSON.stringify([dept]))
   }
 
-  const filteredStaffList = allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role))
+  const filteredStaffList = useMemo(
+    () => allDeptsSelected ? staffList : staffList.filter((s) => deptFilter.has(s.role)),
+    [allDeptsSelected, staffList, deptFilter],
+  )
 
   return {
     departments,

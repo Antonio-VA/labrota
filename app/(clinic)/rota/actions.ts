@@ -2916,7 +2916,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
       .lte("start_date", gridDates[gridDates.length - 1])
       .gte("end_date", gridDates[0])
       .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
-    supabase.from("lab_config").select("punctions_by_day, country, region").single() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null } | null }>,
+    supabase.from("lab_config").select("punctions_by_day, country, region, public_holiday_mode, min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct").maybeSingle() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null; public_holiday_mode?: string | null; min_lab_coverage?: number | null; min_weekend_lab_coverage?: number | null; min_andrology_coverage?: number | null; min_weekend_andrology?: number | null; ratio_optimal?: number | null; ratio_minimum?: number | null; first_day_of_week?: number | null; time_format?: string | null; biopsy_conversion_rate?: number | null; biopsy_day5_pct?: number | null; biopsy_day6_pct?: number | null } | null }>,
     supabase
       .from("rotas")
       .select("week_start, status, engine_warnings")
@@ -3032,14 +3032,14 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const dow       = new Date(date + "T12:00:00").getDay()
     const dowKey    = DOW_TO_KEY[dow]
     const isWeekend = dow === 0 || dow === 6
-    const monthHolidayMode = (labConfigRes.data as { public_holiday_mode?: string } | null)?.public_holiday_mode ?? "saturday"
+    const monthHolidayMode = labConfigRes.data?.public_holiday_mode ?? "saturday"
     const isHolidayReducedCoverage = monthHolidayMode !== "weekday" && !!holidays[date] && !isWeekend
     const effectiveWeekend = isWeekend || isHolidayReducedCoverage
     const uniqueEntries = [...new Map(entries.map((e) => [e.staff_id, e])).values()]
     const labCount = uniqueEntries.filter((e) => e.role === "lab").length
     const andrologyCount = uniqueEntries.filter((e) => e.role === "andrology").length
     // Coverage warning: check if below minimums
-    const lc = labConfigRes.data as Record<string, number> | null
+    const lc = labConfigRes.data
     const hasCoverageWarning = staffIds.length > 0 && lc ? (
       labCount < (effectiveWeekend ? (lc.min_weekend_lab_coverage ?? lc.min_lab_coverage ?? 0) : (lc.min_lab_coverage ?? 0)) ||
       andrologyCount < (effectiveWeekend ? (lc.min_weekend_andrology ?? lc.min_andrology_coverage ?? 0) : (lc.min_andrology_coverage ?? 0))
@@ -3079,15 +3079,14 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   })
 
-  const ratioConfigRes = await supabase.from("lab_config").select("ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct").maybeSingle()
-  const ratioOptimal = (ratioConfigRes.data as { ratio_optimal?: number } | null)?.ratio_optimal ?? 1.0
-  const ratioMinimum = (ratioConfigRes.data as { ratio_minimum?: number } | null)?.ratio_minimum ?? 0.75
-  const firstDayOfWeek = (ratioConfigRes.data as { first_day_of_week?: number } | null)?.first_day_of_week ?? 0
-
-  const timeFormat = (ratioConfigRes.data as { time_format?: string } | null)?.time_format ?? "24h"
-  const biopsyConversionRate = (ratioConfigRes.data as { biopsy_conversion_rate?: number } | null)?.biopsy_conversion_rate ?? 0.5
-  const biopsyDay5Pct = (ratioConfigRes.data as { biopsy_day5_pct?: number } | null)?.biopsy_day5_pct ?? 0.5
-  const biopsyDay6Pct = (ratioConfigRes.data as { biopsy_day6_pct?: number } | null)?.biopsy_day6_pct ?? 0.5
+  const lcRow = labConfigRes.data
+  const ratioOptimal = lcRow?.ratio_optimal ?? 1.0
+  const ratioMinimum = lcRow?.ratio_minimum ?? 0.75
+  const firstDayOfWeek = lcRow?.first_day_of_week ?? 0
+  const timeFormat = lcRow?.time_format ?? "24h"
+  const biopsyConversionRate = lcRow?.biopsy_conversion_rate ?? 0.5
+  const biopsyDay5Pct = lcRow?.biopsy_day5_pct ?? 0.5
+  const biopsyDay6Pct = lcRow?.biopsy_day6_pct ?? 0.5
   return { monthStart, days, weekStatuses, staffTotals, ratioOptimal, ratioMinimum, firstDayOfWeek, timeFormat, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct, rotaDisplayMode, taskConflictThreshold: 3, enableTaskInShift: false }
 }
 

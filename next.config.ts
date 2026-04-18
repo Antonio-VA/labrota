@@ -5,6 +5,11 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Keep RSC payload for dynamic routes warm in the client router cache so
+  // revisiting /schedule after a short detour doesn't refetch from the server.
+  experimental: {
+    staleTimes: { dynamic: 30, static: 180 },
+  },
   images: {
     remotePatterns: [
       {
