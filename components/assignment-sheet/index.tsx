@@ -73,9 +73,13 @@ export function AssignmentSheet({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Merge department colours into the module-level ROLE_BORDER for sub-components
-  for (const d of deptsProp ?? []) ROLE_BORDER[d.code] = d.colour
+  useEffect(() => {
+    for (const d of deptsProp ?? []) ROLE_BORDER[d.code] = d.colour
+  }, [deptsProp])
 
-  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const sortAssignments = (items: Assignment[]) =>
+    [...items].sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
+  const [assignments, setAssignments] = useState<Assignment[]>(() => sortAssignments(day?.assignments ?? []))
   const [, startSave] = useTransition()
 
   const [editingP, setEditingP]       = useState(false)
@@ -85,18 +89,18 @@ export function AssignmentSheet({
   const [isRegenerating, startRegen] = useTransition()
   const [warningsExpanded, setWarningsExpanded] = useState(false)
 
-  // Sync from day prop
-  useEffect(() => {
-    setAssignments(
-      [...(day?.assignments ?? [])].sort((a, b) =>
-        (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
-      )
-    )
-  }, [day])
-
-  useEffect(() => {
+  // Sync from day prop — set-during-render beats effect + extra render pass
+  const [prevDay, setPrevDay] = useState(day)
+  if (day !== prevDay) {
+    setPrevDay(day)
+    setAssignments(sortAssignments(day?.assignments ?? []))
+  }
+  // Reset transient UI on close
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (!open) { setShowDeleteAll(false); setEditingP(false) }
-  }, [open])
+  }
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -141,16 +145,19 @@ export function AssignmentSheet({
     const staff = staffList.find((s) => s.id === staffId)
     if (!staff || !date) return
 
-    const tempId = `temp-${Date.now()}`
-    const optimistic: Assignment = {
-      id: tempId, staff_id: staffId, shift_type: shift,
-      is_manual_override: true,
-      trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false,
-      staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
-    }
-    setAssignments((prev) => [...prev, optimistic].sort(
-      (a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
-    ))
+    let tempId = ""
+    setAssignments((prev) => {
+      tempId = `temp-${Date.now()}`
+      const optimistic: Assignment = {
+        id: tempId, staff_id: staffId, shift_type: shift,
+        is_manual_override: true,
+        trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false,
+        staff: { id: staffId, first_name: staff.first_name, last_name: staff.last_name, role: staff.role },
+      }
+      return [...prev, optimistic].sort(
+        (a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
+      )
+    })
 
     save(
       async () => {

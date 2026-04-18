@@ -69,7 +69,7 @@ export function useRotaData({
   // ── Internal refs ────────────────────────────────────────────────────────
 
   const fetchVersionRef  = useRef(0)
-  const lastFetchId      = useRef(0)
+  const lastFetchIdRef      = useRef(0)
   const skipInitialFetch = useRef(!!initialData && initialData.weekStart === weekStart)
   const initialStaffUsed = useRef(false)
   const prevStaffIdsRef  = useRef("")
@@ -159,9 +159,9 @@ export function useRotaData({
   // Returns the fresh week so callers that need post-refresh data (skill gap
   // toasts, etc.) can await it instead of re-issuing a raw getRotaWeek.
   const fetchWeekSilent = useCallback((ws: string): Promise<RotaWeekData | null> => {
-    const id = ++lastFetchId.current
+    const id = ++lastFetchIdRef.current
     return getRotaWeek(ws).then((d) => {
-      if (id !== lastFetchId.current) return null // stale — a newer fetch is in flight
+      if (id !== lastFetchIdRef.current) return null // stale — a newer fetch is in flight
       _cache.weeks.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -315,6 +315,6 @@ export function useRotaData({
     aiReasoningRef, reasoningSourceRef,
     fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
     handleBiopsyChange,
-    lastFetchId, gridSetDaysRef,
+    lastFetchIdRef, gridSetDaysRef,
   }
 }

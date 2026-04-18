@@ -86,11 +86,12 @@ export function ShiftBudgetBar({ data, staffList, weekLabel, onPillClick, liveDa
     a[1].first.localeCompare(b[1].first) || a[1].last.localeCompare(b[1].last)
   )
 
-  // Measure overflow after render
+  // Measure overflow after render — needs DOM, so setState in effect is correct here.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const items = el.querySelectorAll<HTMLElement>("[data-pill]")
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM-layout measurement
     if (items.length === 0) { setVisibleCount(null); return }
     const containerRight = el.getBoundingClientRect().right
     let count = 0

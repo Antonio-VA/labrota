@@ -41,6 +41,7 @@ export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekSta
     if (weekStart === loadedWeek) return // already have data for this week
     const c = _notesCache.weeks.get(weekStart)
     if (c) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- cache hit fast-path
       setData(c)
       setLoadedWeek(weekStart)
       return

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Plane, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -133,16 +133,20 @@ export function ShiftGrid({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId]     = useState<string | null>(null)
   const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
-  const setLocalDays: typeof setLocalDaysRaw = (update) => {
+  const setLocalDays = useCallback<typeof setLocalDaysRaw>((update) => {
     setLocalDaysRaw((prev) => {
       const next = typeof update === "function" ? update(prev) : update
       onLocalDaysChange?.(next)
       return next
     })
-  }
+  }, [onLocalDaysChange])
 
   // Register this grid's day setter for direct undo/redo updates
-  if (gridSetDaysRef) gridSetDaysRef.current = setLocalDaysRaw
+  useEffect(() => {
+    if (!gridSetDaysRef) return
+    gridSetDaysRef.current = setLocalDaysRaw
+    return () => { gridSetDaysRef.current = null }
+  }, [gridSetDaysRef])
 
   // Sync local state whenever server data arrives — set-during-render avoids one-frame lag
   const [prevData, setPrevData] = useState(data)
@@ -159,7 +163,7 @@ export function ShiftGrid({
         a.id === assignmentId ? { ...a, ...patch } : a
       ),
     })))
-  }, [])
+  }, [setLocalDays])
 
   const handleFunctionLabelSave = useCallback(async (assignmentId: string, label: string | null) => {
     patchLocalAssignment(assignmentId, { function_label: label })
@@ -298,7 +302,7 @@ export function ShiftGrid({
         onCancelUndo?.(); toast.error(t("moveError")); onRefresh()
       }
     }
-  }, [localDays, data, weekStart, staffById, onAfterMutation, onCancelUndo, onSaved, onRefresh, t])
+  }, [localDays, data, weekStart, staffById, onAfterMutation, onCancelUndo, onSaved, onRefresh, setLocalDays, t])
 
   if (loading) {
     return (

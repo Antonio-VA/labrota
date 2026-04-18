@@ -212,7 +212,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     activeStrategy, setActiveStrategy, liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
     fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
-    handleBiopsyChange, lastFetchId, gridSetDaysRef,
+    handleBiopsyChange, lastFetchIdRef, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
 
   // Hover-prefetch: warm the cache the moment the user's cursor enters a nav
@@ -265,7 +265,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
-  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef })
+  } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchIdRef, gridSetDaysRef })
 
   // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {

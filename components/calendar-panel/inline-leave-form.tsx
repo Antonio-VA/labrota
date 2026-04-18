@@ -21,7 +21,11 @@ export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId
   const [balancePreview, setBalancePreview] = useState<Awaited<ReturnType<typeof previewLeaveBalance>>>(null)
 
   useEffect(() => {
-    if (!staffId || !startDate || !endDate || endDate < startDate) { setBalancePreview(null); return }
+    if (!staffId || !startDate || !endDate || endDate < startDate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced fetch on deps
+      setBalancePreview(null)
+      return
+    }
     const timer = setTimeout(async () => {
       const result = await previewLeaveBalance({ staffId, type, startDate, endDate })
       setBalancePreview(result)

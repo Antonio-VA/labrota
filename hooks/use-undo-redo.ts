@@ -16,12 +16,12 @@ interface UseUndoRedoOptions {
   weekData: RotaWeekData | null
   setWeekData: (d: RotaWeekData) => void
   fetchWeekSilent: (ws: string) => Promise<RotaWeekData | null>
-  lastFetchId: React.RefObject<number>
+  lastFetchIdRef: React.RefObject<number>
   /** Direct setter for the active grid's localDays — bypasses full tree re-render */
   gridSetDaysRef: React.RefObject<((days: RotaDay[]) => void) | null>
 }
 
-export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchId, gridSetDaysRef }: UseUndoRedoOptions) {
+export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchIdRef, gridSetDaysRef }: UseUndoRedoOptions) {
   const undoStack = useRef<UndoEntry[]>([])
   const redoStack = useRef<UndoEntry[]>([])
   const [undoLen, setUndoLen] = useState(0)
@@ -58,7 +58,7 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     if (currentData) {
       redoStack.current = [...redoStack.current, { snapshot: entry.snapshot, forwardSnapshot: currentData, inverse: entry.inverse, forward: entry.forward }]
     }
-    lastFetchId.current++
+    lastFetchIdRef.current++
     // 1. Direct grid update — same path as drag-and-drop, renders only the grid
     if (gridSetDaysRef.current) {
       flushSync(() => {
@@ -88,7 +88,7 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     if (currentData) {
       undoStack.current = [...undoStack.current.slice(-19), { snapshot: currentData, forwardSnapshot: targetSnapshot, inverse: entry.inverse, forward: entry.forward }]
     }
-    lastFetchId.current++
+    lastFetchIdRef.current++
     // 1. Direct grid update
     if (gridSetDaysRef.current) {
       flushSync(() => {
@@ -109,10 +109,11 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     })
   }
 
-  // Clear stacks when navigating weeks
+  // Clear stacks when navigating weeks — refs must reset here so state stays in sync.
   useEffect(() => {
     undoStack.current = []
     redoStack.current = []
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- paired with ref clear above
     setUndoLen(0)
     setRedoLen(0)
   }, [weekStart])
