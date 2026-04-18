@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, useTransition, Fragment, memo } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition, Fragment } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
@@ -108,13 +108,13 @@ import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export const CalendarPanel = memo(function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
+export function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (
     <StaffHoverProvider>
       <CalendarPanelInner {...props} />
     </StaffHoverProvider>
   )
-})
+}
 
 function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNotifications = false, initialNotes }: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   const t      = useTranslations("schedule")

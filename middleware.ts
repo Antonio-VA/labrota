@@ -1,7 +1,42 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+const PUBLIC_PATHS = new Set([
+  "/privacy",
+  "/terms",
+  "/gdpr",
+  "/forgot-password",
+  "/reset-password",
+  "/set-password",
+  "/demo",
+])
+
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/outlook-") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/brand") ||
+    PUBLIC_PATHS.has(pathname)
+  )
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl
+
+  // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback.
+  // Handled before any auth work so we don't pay a round-trip for a redirect.
+  if (searchParams.get("code") && !pathname.startsWith("/auth/callback") && !pathname.startsWith("/api/outlook-")) {
+    const callbackUrl = new URL("/auth/callback", request.url)
+    callbackUrl.search = request.nextUrl.search
+    return NextResponse.redirect(callbackUrl)
+  }
+
+  // Short-circuit truly public paths so we skip the Supabase round-trip entirely.
+  if (isPublicPath(pathname)) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -30,7 +65,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname, searchParams } = request.nextUrl
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
 
   // ── Sync user preferences from DB → cookies on new device/browser ────────
@@ -71,13 +105,6 @@ export async function middleware(request: NextRequest) {
     supabaseResponse.cookies.set("labrota_prefs_synced", "1", { path: "/", maxAge: 365 * 24 * 60 * 60, sameSite: "lax" })
   }
 
-  // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback
-  // Skip for Outlook OAuth callback which also uses ?code=
-  if (searchParams.get("code") && !pathname.startsWith("/auth/callback") && !pathname.startsWith("/api/outlook-")) {
-    const callbackUrl = new URL("/auth/callback", request.url)
-    callbackUrl.search = request.nextUrl.search
-    return NextResponse.redirect(callbackUrl)
-  }
   const hostname = (request.headers.get("host") ?? "").toLowerCase()
   const isAdminSubdomain =
     hostname === "admin.labrota.app" ||
@@ -85,13 +112,9 @@ export async function middleware(request: NextRequest) {
 
   // ── admin.labrota.app subdomain ──────────────────────────────────────────
   if (isAdminSubdomain) {
-    // Pass through special paths unchanged
-    if (
-      pathname.startsWith("/auth") ||
-      pathname.startsWith("/_next") ||
-      pathname.startsWith("/brand") ||
-      pathname === "/login"
-    ) {
+    // /login is the only unauthenticated admin path — the rest of the
+    // public paths were already short-circuited above.
+    if (pathname === "/login") {
       return supabaseResponse
     }
 
@@ -115,23 +138,6 @@ export async function middleware(request: NextRequest) {
       rewriteResponse.cookies.set(name, value)
     })
     return rewriteResponse
-  }
-
-  // Allow through unconditionally (public routes)
-  if (
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/api/outlook-") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/brand") ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
-    pathname === "/gdpr" ||
-    pathname === "/forgot-password" ||
-    pathname === "/reset-password" ||
-    pathname === "/set-password" ||
-    pathname === "/demo"
-  ) {
-    return supabaseResponse
   }
 
   // ── Marketing home (always public) ──────────────────────────────────────────
@@ -159,8 +165,9 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── /login & /demo ───────────────────────────────────────────────────────
-  if (pathname === "/login" || pathname === "/demo") {
+  // ── /login ───────────────────────────────────────────────────────────────
+  // /demo was short-circuited earlier, so only /login reaches this point.
+  if (pathname === "/login") {
     if (user) {
       if (isSuperAdmin) return NextResponse.redirect(new URL("/admin", request.url))
       return NextResponse.redirect(new URL("/schedule", request.url))
@@ -181,6 +188,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.svg|brand/).*)",
+    // Skip static Next.js assets, favicon, /brand/*, and root-level files
+    // with a common static extension (svg/json/ico/html/mjs/png/jpg/webp/woff/woff2).
+    "/((?!_next/static|_next/image|favicon\\.svg|brand/|[^/]+\\.(?:svg|json|ico|html|mjs|png|jpe?g|gif|webp|avif|xml|txt|woff2?)$).*)",
   ],
 }
