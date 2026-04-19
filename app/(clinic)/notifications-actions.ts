@@ -49,12 +49,16 @@ export async function getPublishRecipients(): Promise<RecipientRow[]> {
     .select("user_id, display_name")
     .eq("organisation_id", orgId) as { data: { user_id: string; display_name: string | null }[] | null }
 
-  // Get emails from auth.users (parallel)
+  // Get emails from profiles in a single query (avoids N+1 getUserById calls)
   const userIds = (members ?? []).map((m) => m.user_id)
-  const emailResults = await Promise.all(
-    userIds.map((uid) => admin.auth.admin.getUserById(uid).then(({ data: { user } }) => user?.email ? [uid, user.email] as const : null))
+  const { data: profiles } = userIds.length > 0
+    ? await admin.from("profiles").select("id, email").in("id", userIds) as {
+        data: { id: string; email: string }[] | null
+      }
+    : { data: [] }
+  const userEmails: Record<string, string> = Object.fromEntries(
+    (profiles ?? []).filter((p) => p.email).map((p) => [p.id, p.email])
   )
-  const userEmails: Record<string, string> = Object.fromEntries(emailResults.filter(Boolean) as [string, string][])
 
   // Get existing recipients
   const supabase = await createClient()
@@ -242,10 +246,13 @@ export async function getEnabledRecipientEmails(orgId: string): Promise<string[]
   if (!recipients || recipients.length === 0) return []
 
   const externalEmails = recipients.filter((r) => r.external_email).map((r) => r.external_email!)
-  const userRecipients = recipients.filter((r) => r.user_id)
-  const userEmails = await Promise.all(
-    userRecipients.map((r) => admin.auth.admin.getUserById(r.user_id!).then(({ data: { user } }) => user?.email ?? null))
-  )
+  const userIds = recipients.map((r) => r.user_id).filter((id): id is string => !!id)
+  const { data: profiles } = userIds.length > 0
+    ? await admin.from("profiles").select("email").in("id", userIds) as {
+        data: { email: string }[] | null
+      }
+    : { data: [] }
+  const userEmails = (profiles ?? []).map((p) => p.email).filter((e): e is string => !!e)
 
-  return [...externalEmails, ...userEmails.filter(Boolean) as string[]]
+  return [...externalEmails, ...userEmails]
 }
