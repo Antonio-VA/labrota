@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ShiftTypesTable } from "@/components/shift-types-table"
+import { useTimedState } from "@/hooks/use-timed-state"
 import { toast } from "sonner"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 
@@ -14,7 +15,7 @@ export function TurnosTab({ initialTypes }: {
   const t = useTranslations("turnos")
   const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
-  const [saved, setSaved] = useState(false)
+  const [saved, flashSaved] = useTimedState(false, 3000)
   const [shiftSaveFn, setShiftSaveFn] = useState<(() => Promise<boolean>) | null>(null)
 
   const registerShiftSave = useCallback((fn: () => Promise<boolean>) => setShiftSaveFn(() => fn), [])
@@ -23,9 +24,8 @@ export function TurnosTab({ initialTypes }: {
     startTransition(async () => {
       const shiftOk = await shiftSaveFn?.() ?? true
       if (shiftOk) {
-        setSaved(true)
+        flashSaved(true)
         toast.success(t("changesSaved"))
-        setTimeout(() => setSaved(false), 3000)
       } else {
         toast.error(t("saveError"))
       }

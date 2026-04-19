@@ -6,6 +6,7 @@ import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { bulkSaveTecnicas, seedDefaultTecnicas } from "@/app/(clinic)/lab/tecnicas-actions"
+import { useTimedState } from "@/hooks/use-timed-state"
 import type { Tecnica, Department } from "@/lib/types/database"
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -316,7 +317,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
     }))
   )
   const [isPending, startTransition] = useTransition()
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
+  const [status, flashStatus, setStatus] = useTimedState<"idle" | "success" | "error">("idle", 3000)
   const [errorMsg, setErrorMsg] = useState("")
   const [deletedIds, setDeletedIds] = useState<string[]>([])
 
@@ -384,8 +385,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
       setTecnicas((prev) =>
         prev.map((t, i) => ({ ...t, id: t.id ?? result.ids[i], sortId: t.id ?? result.ids[i] ?? t.sortId }))
       )
-      setStatus("success")
-      setTimeout(() => setStatus("idle"), 3000)
+      flashStatus("success")
     })
   }
 

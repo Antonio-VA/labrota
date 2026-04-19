@@ -12,20 +12,16 @@ import {
   dismissTemplateNote,
   type WeekNoteData,
 } from "@/app/(clinic)/notes-actions"
+import { createWindowCache } from "@/lib/window-cache"
 
 function truncate(s: string, max: number = 40): string {
   return s.length > max ? s.slice(0, max) + "…" : s
 }
 
 // Per-week cache pinned to window so revisits of a previously loaded week
-// skip the server round-trip. Mirrors the window-pinned cache in useRotaData.
+// skip the server round-trip.
 type _NotesCache = { weeks: Map<string, WeekNoteData> }
-const _notesCache: _NotesCache = (() => {
-  if (typeof window === "undefined") return { weeks: new Map() }
-  const win = window as unknown as { __lrNotesCache?: _NotesCache }
-  if (!win.__lrNotesCache) win.__lrNotesCache = { weeks: new Map() }
-  return win.__lrNotesCache
-})()
+const _notesCache = createWindowCache<_NotesCache>("__lrNotesCache", () => ({ weeks: new Map() }))
 
 export function WeekNotes({ weekStart, initialData: initialDataProp }: { weekStart: string; initialData?: WeekNoteData }) {
   const t = useTranslations("notes")
