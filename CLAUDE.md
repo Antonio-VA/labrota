@@ -85,6 +85,36 @@ supabase/
 
 ---
 
+## Component Structure
+
+**Keep client components under ~300 lines.** When a file grows past that — or when it has more than ~3 distinct UI sections / sub-components — split it on the first pass, not later.
+
+**Folder pattern** (used by `staff-form`, `calendar-panel`, `assignment-sheet`, `lab-config-form`, `admin-org-detail-client`):
+
+```
+components/<name>/
+  index.tsx         Thin orchestrator — state + dispatch to sections
+  shared.tsx        Types + small reusable bits (rows, toggles, helpers)
+  <section>.tsx     One file per section / sub-component
+```
+
+**Page-level split** (used by `app/(marketing)/`):
+
+```
+app/<group>/
+  page.tsx          Orchestrator
+  _sections/        Underscore prefix keeps it out of route discovery
+    content.ts      Static content / i18n blobs
+    <section>.tsx   One file per section
+```
+
+**Rules of thumb:**
+- State that only one section uses → declare it inside that section, not in the orchestrator.
+- Don't widen literal types with `as const` on multi-locale content objects — it makes the per-language shapes incompatible.
+- Extract recurring inline UI (stepper inputs, number rows, toggle rows) into a local helper in `shared.tsx` rather than copy-pasting.
+
+---
+
 ## Design System
 
 Follow this on every new component:
