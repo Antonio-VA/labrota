@@ -17,6 +17,7 @@ import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import { createRule, toggleRule, deleteRule } from "@/app/(clinic)/lab/rules-actions"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import type { Proposal } from "@/lib/proposal-types"
 
 const transport = new DefaultChatTransport({
   api: "/api/chat",
@@ -29,15 +30,6 @@ const transport = new DefaultChatTransport({
       : undefined,
   }),
 })
-
-// ── Proposal types ────────────────────────────────────────────────────────────
-
-type Proposal = {
-  proposal: true
-  action: string
-  params: Record<string, unknown>
-  description: string
-}
 
 // ── Proposal card ─────────────────────────────────────────────────────────────
 
@@ -56,129 +48,124 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       setError(null)
 
       try {
-        const p = proposal.params
         let ok = false
 
         switch (proposal.action) {
           case "generateRota": {
-            const result = await generateRota(p.weekStart as string, false)
+            const result = await generateRota(proposal.params.weekStart, false)
             if (result.error) { setError(result.error); break }
             if ((result.assignmentCount ?? 0) === 0) { setError("No assignments created. Check staff and lab config."); break }
-            ok = true;             break
+            ok = true; break
           }
           case "addLeave": {
-            if (!p.staffId) { setError("Staff member not found."); break }
+            const p = proposal.params
             const formData = new FormData()
-            formData.set("staff_id", p.staffId as string)
-            formData.set("type", p.leaveType as string)
-            formData.set("start_date", p.startDate as string)
-            formData.set("end_date", p.endDate as string)
-            if (p.notes) formData.set("notes", p.notes as string)
+            formData.set("staff_id", p.staffId)
+            formData.set("type", p.leaveType)
+            formData.set("start_date", p.startDate)
+            formData.set("end_date", p.endDate)
+            if (p.notes) formData.set("notes", p.notes)
             const result = await createLeave(null, formData)
             if ((result as { error?: string })?.error) { setError((result as { error: string }).error); break }
-            ok = true
-            break
+            ok = true; break
           }
           case "addNote": {
-            const result = await addWeekNote(p.weekStart as string, p.text as string)
+            const result = await addWeekNote(proposal.params.weekStart, proposal.params.text)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "assignStaff": {
+            const p = proposal.params
             const result = await upsertAssignment({
-              weekStart: p.weekStart as string,
-              staffId: p.staffId as string,
-              date: p.date as string,
-              shiftType: p.shiftType as string,
+              weekStart: p.weekStart, staffId: p.staffId, date: p.date, shiftType: p.shiftType,
             })
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "regenerateDay": {
-            const result = await regenerateDay(p.weekStart as string, p.date as string)
+            const result = await regenerateDay(proposal.params.weekStart, proposal.params.date)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "publishRota": {
-            const { getRotaWeek } = await import("@/app/(clinic)/rota/actions")
-            const weekData = await getRotaWeek(p.weekStart as string)
-            if (!weekData.rota?.id) { setError("No rota found for this week."); break }
-            const result = await publishRota(weekData.rota.id)
+            const result = await publishRota(proposal.params.rotaId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "unlockRota": {
-            const { getRotaWeek } = await import("@/app/(clinic)/rota/actions")
-            const weekData = await getRotaWeek(p.weekStart as string)
-            if (!weekData.rota?.id) { setError("No rota found for this week."); break }
-            const result = await unlockRota(weekData.rota.id)
+            const result = await unlockRota(proposal.params.rotaId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "copyPreviousWeek": {
-            const result = await copyPreviousWeek(p.weekStart as string)
+            const result = await copyPreviousWeek(proposal.params.weekStart)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "addSkill": {
-            const result = await bulkAddSkill(p.staffIds as string[], p.skill as string, ((p.level as string) ?? "certified") as "certified" | "training")
+            const p = proposal.params
+            const result = await bulkAddSkill([p.staffId], p.skill, p.level)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "removeSkill": {
-            const result = await bulkRemoveSkill(p.staffIds as string[], p.skill as string)
+            const p = proposal.params
+            const result = await bulkRemoveSkill([p.staffId], p.skill)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "deactivateStaff": {
-            const result = await bulkSoftDeleteStaff(p.staffIds as string[])
+            const result = await bulkSoftDeleteStaff([proposal.params.staffId])
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "updateStaff": {
-            const result = await bulkUpdateStaffField(
-              (p.staffIds as string[]).map(id => ({ id, field: p.field as string, value: p.value as unknown }))
-            )
+            const { staffId, changes } = proposal.params
+            const updates = Object.entries(changes).map(([field, value]) => ({ id: staffId, field, value }))
+            const result = await bulkUpdateStaffField(updates)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "updateCoverage": {
-            const result = await updateLabConfig(p as Parameters<typeof updateLabConfig>[0])
+            const result = await updateLabConfig(proposal.params)
             if ((result as { error?: string })?.error) { setError((result as { error: string }).error); break }
             ok = true; break
           }
           case "createRule": {
-            const result = await createRule(p as Parameters<typeof createRule>[0])
+            const result = await createRule(proposal.params)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "toggleRule": {
-            const result = await toggleRule(p.ruleId as string, p.enabled as boolean)
+            const result = await toggleRule(proposal.params.ruleId, proposal.params.enabled)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "deleteRule": {
-            const result = await deleteRule(p.ruleId as string)
+            const result = await deleteRule(proposal.params.ruleId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "approveLeave": {
-            const result = await approveLeave(p.leaveId as string)
+            const result = await approveLeave(proposal.params.leaveId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "rejectLeave": {
-            const result = await rejectLeave(p.leaveId as string)
+            const result = await rejectLeave(proposal.params.leaveId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
           case "cancelLeave": {
-            const result = await cancelLeave(p.leaveId as string)
+            const result = await cancelLeave(proposal.params.leaveId)
             if (result.error) { setError(result.error); break }
             ok = true; break
           }
-          default:
-            setError(`Unknown action: ${proposal.action}`)
+          default: {
+            const _exhaustive: never = proposal
+            setError("Unknown proposal action")
+            void _exhaustive
+          }
         }
 
         if (ok) {

@@ -3,7 +3,8 @@ import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import type { StaffRole, SkillName, PunctionsByDay } from "@/lib/types/database"
+import type { StaffRole, SkillName, PunctionsByDay, LabConfigUpdate } from "@/lib/types/database"
+import { propose } from "@/lib/proposal-types"
 
 const SKILL_LABEL: Record<string, string> = {
   icsi: "ICSI", iui: "IUI", vitrification: "Vitrification", thawing: "Thawing",
@@ -517,12 +518,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           weekStart: z.string().describe("Monday ISO date YYYY-MM-DD"),
           reason: z.string().optional().describe("Brief reason or context for the proposal"),
         }),
-        execute: async ({ weekStart, reason }) => ({
-          proposal: true,
-          action: "generateRota" as const,
-          params: { weekStart },
-          description: reason ?? `Generate rota for week of ${weekStart}`,
-        }),
+        execute: async ({ weekStart, reason }) =>
+          propose("generateRota", { weekStart }, reason ?? `Generate rota for week of ${weekStart}`),
       }),
 
       proposeAddLeave: tool({
@@ -560,10 +557,9 @@ ${pageContext ? `- ${pageContext}` : ""}
             return { error: `Staff member "${params.staffName}" not found. Check the name and try again.` }
           }
 
-          return {
-            proposal: true,
-            action: "addLeave" as const,
-            params: {
+          return propose(
+            "addLeave",
+            {
               staffId: staff.id,
               staffName: `${staff.first_name} ${staff.last_name}`,
               leaveType: params.leaveType,
@@ -571,8 +567,8 @@ ${pageContext ? `- ${pageContext}` : ""}
               endDate: params.endDate,
               notes: params.notes ?? null,
             },
-            description: `Add ${LEAVE_TYPE_LABEL[params.leaveType] ?? params.leaveType} for ${params.staffName}: ${params.startDate} – ${params.endDate}`,
-          }
+            `Add ${LEAVE_TYPE_LABEL[params.leaveType] ?? params.leaveType} for ${params.staffName}: ${params.startDate} – ${params.endDate}`,
+          )
         },
       }),
 
@@ -582,12 +578,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           weekStart: z.string().describe("Monday ISO date YYYY-MM-DD"),
           text: z.string().describe("The note text to add"),
         }),
-        execute: async ({ weekStart, text }) => ({
-          proposal: true,
-          action: "addNote",
-          params: { weekStart, text },
-          description: `Add note to week of ${weekStart}: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
-        }),
+        execute: async ({ weekStart, text }) =>
+          propose("addNote", { weekStart, text }, `Add note to week of ${weekStart}: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`),
       }),
 
       proposeAssignStaff: tool({
@@ -606,6 +598,8 @@ ${pageContext ? `- ${pageContext}` : ""}
             .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
             .maybeSingle() as { data: { id: string; first_name: string; last_name: string } | null }
 
+          if (!staff) return { error: `Staff member "${staffName}" not found.` }
+
           // Compute weekStart (Monday of that week)
           const d = new Date(date + "T12:00:00")
           const day = d.getDay()
@@ -613,13 +607,12 @@ ${pageContext ? `- ${pageContext}` : ""}
           d.setDate(d.getDate() + diff)
           const weekStart = d.toISOString().split("T")[0]
 
-          const resolvedName = staff ? `${staff.first_name} ${staff.last_name}` : staffName
-          return {
-            proposal: true,
-            action: "assignStaff",
-            params: { weekStart, staffId: staff?.id ?? null, date, shiftType, functionLabel: functionLabel ?? null },
-            description: `Assign ${resolvedName} to ${shiftType} on ${date}${functionLabel ? ` (${functionLabel})` : ""}`,
-          }
+          const resolvedName = `${staff.first_name} ${staff.last_name}`
+          return propose(
+            "assignStaff",
+            { weekStart, staffId: staff.id, date, shiftType, functionLabel: functionLabel ?? null },
+            `Assign ${resolvedName} to ${shiftType} on ${date}${functionLabel ? ` (${functionLabel})` : ""}`,
+          )
         },
       }),
 
@@ -635,12 +628,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           d.setDate(d.getDate() + diff)
           const weekStart = d.toISOString().split("T")[0]
 
-          return {
-            proposal: true,
-            action: "regenerateDay",
-            params: { weekStart, date },
-            description: `Regenerate rota for ${date}`,
-          }
+          return propose("regenerateDay", { weekStart, date }, `Regenerate rota for ${date}`)
         },
       }),
 
@@ -659,12 +647,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!rota) return { error: `No rota found for week of ${weekStart}` }
           if (rota.status === "published") return { error: `Rota for ${weekStart} is already published` }
 
-          return {
-            proposal: true,
-            action: "publishRota",
-            params: { rotaId: rota.id },
-            description: `Publish rota for week of ${weekStart}`,
-          }
+          return propose("publishRota", { rotaId: rota.id }, `Publish rota for week of ${weekStart}`)
         },
       }),
 
@@ -683,12 +666,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!rota) return { error: `No rota found for week of ${weekStart}` }
           if (rota.status !== "published") return { error: `Rota for ${weekStart} is not published` }
 
-          return {
-            proposal: true,
-            action: "unlockRota",
-            params: { rotaId: rota.id },
-            description: `Unlock rota for week of ${weekStart} (back to draft)`,
-          }
+          return propose("unlockRota", { rotaId: rota.id }, `Unlock rota for week of ${weekStart} (back to draft)`)
         },
       }),
 
@@ -697,12 +675,8 @@ ${pageContext ? `- ${pageContext}` : ""}
         inputSchema: z.object({
           weekStart: z.string().describe("Monday ISO date YYYY-MM-DD of the target week to fill"),
         }),
-        execute: async ({ weekStart }) => ({
-          proposal: true,
-          action: "copyPreviousWeek",
-          params: { weekStart },
-          description: `Copy previous week's rota to week of ${weekStart}`,
-        }),
+        execute: async ({ weekStart }) =>
+          propose("copyPreviousWeek", { weekStart }, `Copy previous week's rota to week of ${weekStart}`),
       }),
 
       // ── New read tools ──────────────────────────────────────────────────────────
@@ -774,12 +748,11 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (Object.keys(changes).length === 0) return { error: "No changes specified." }
 
           const desc = Object.entries(changes).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(", ")
-          return {
-            proposal: true,
-            action: "updateStaff",
-            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, changes },
-            description: `Update ${staff.first_name} ${staff.last_name}: ${desc}`,
-          }
+          return propose(
+            "updateStaff",
+            { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, changes },
+            `Update ${staff.first_name} ${staff.last_name}: ${desc}`,
+          )
         },
       }),
 
@@ -802,12 +775,11 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
           const staff = staffList[0]
 
-          return {
-            proposal: true,
-            action: "addSkill",
-            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill, level },
-            description: `Add ${SKILL_LABEL[skill] ?? skill} (${level}) to ${staff.first_name} ${staff.last_name}`,
-          }
+          return propose(
+            "addSkill",
+            { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill, level },
+            `Add ${SKILL_LABEL[skill] ?? skill} (${level}) to ${staff.first_name} ${staff.last_name}`,
+          )
         },
       }),
 
@@ -829,12 +801,11 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
           const staff = staffList[0]
 
-          return {
-            proposal: true,
-            action: "removeSkill",
-            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill },
-            description: `Remove ${SKILL_LABEL[skill] ?? skill} from ${staff.first_name} ${staff.last_name}`,
-          }
+          return propose(
+            "removeSkill",
+            { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill },
+            `Remove ${SKILL_LABEL[skill] ?? skill} from ${staff.first_name} ${staff.last_name}`,
+          )
         },
       }),
 
@@ -856,12 +827,11 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
           const staff = staffList[0]
 
-          return {
-            proposal: true,
-            action: "deactivateStaff",
-            params: { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}` },
-            description: `Deactivate ${staff.first_name} ${staff.last_name}${reason ? ` (${reason})` : ""}`,
-          }
+          return propose(
+            "deactivateStaff",
+            { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}` },
+            `Deactivate ${staff.first_name} ${staff.last_name}${reason ? ` (${reason})` : ""}`,
+          )
         },
       }),
 
@@ -874,7 +844,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           andrologyWeekend: z.number().optional().describe("Minimum andrology staff on weekends"),
         }),
         execute: async ({ labWeekday, labWeekend, andrologyWeekday, andrologyWeekend }) => {
-          const changes: Record<string, number> = {}
+          const changes: LabConfigUpdate = {}
           if (labWeekday !== undefined) changes.min_lab_coverage = labWeekday
           if (labWeekend !== undefined) changes.min_weekend_lab_coverage = labWeekend
           if (andrologyWeekday !== undefined) changes.min_andrology_coverage = andrologyWeekday
@@ -883,12 +853,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (Object.keys(changes).length === 0) return { error: "No changes specified." }
 
           const desc = Object.entries(changes).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(", ")
-          return {
-            proposal: true,
-            action: "updateCoverage",
-            params: { changes },
-            description: `Update coverage: ${desc}`,
-          }
+          return propose("updateCoverage", changes, `Update coverage: ${desc}`)
         },
       }),
 
@@ -922,10 +887,9 @@ ${pageContext ? `- ${pageContext}` : ""}
             }
           }
 
-          return {
-            proposal: true,
-            action: "createRule",
-            params: {
+          return propose(
+            "createRule",
+            {
               type,
               is_hard: isHard ?? true,
               enabled: true,
@@ -934,8 +898,8 @@ ${pageContext ? `- ${pageContext}` : ""}
               notes: notes ?? null,
               expires_at: null,
             },
-            description: `Create rule: ${RULE_TYPE_LABEL[type] ?? type}${notes ? ` — ${notes}` : ""}`,
-          }
+            `Create rule: ${RULE_TYPE_LABEL[type] ?? type}${notes ? ` — ${notes}` : ""}`,
+          )
         },
       }),
 
@@ -946,12 +910,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           enabled: z.boolean().describe("Whether to enable (true) or disable (false) the rule"),
           ruleDescription: z.string().optional().describe("Brief description of the rule for the confirmation card"),
         }),
-        execute: async ({ ruleId, enabled, ruleDescription }) => ({
-          proposal: true,
-          action: "toggleRule",
-          params: { ruleId, enabled },
-          description: `${enabled ? "Enable" : "Disable"} rule${ruleDescription ? `: ${ruleDescription}` : ""}`,
-        }),
+        execute: async ({ ruleId, enabled, ruleDescription }) =>
+          propose("toggleRule", { ruleId, enabled }, `${enabled ? "Enable" : "Disable"} rule${ruleDescription ? `: ${ruleDescription}` : ""}`),
       }),
 
       proposeDeleteRule: tool({
@@ -960,12 +920,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           ruleId: z.string().describe("ID of the rule to delete"),
           ruleDescription: z.string().optional().describe("Brief description of the rule for the confirmation card"),
         }),
-        execute: async ({ ruleId, ruleDescription }) => ({
-          proposal: true,
-          action: "deleteRule",
-          params: { ruleId },
-          description: `Delete rule${ruleDescription ? `: ${ruleDescription}` : ""}`,
-        }),
+        execute: async ({ ruleId, ruleDescription }) =>
+          propose("deleteRule", { ruleId }, `Delete rule${ruleDescription ? `: ${ruleDescription}` : ""}`),
       }),
 
       proposeApproveLeave: tool({
@@ -975,12 +931,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().describe("Staff member name for the confirmation card"),
           dates: z.string().describe("Date range for the confirmation card"),
         }),
-        execute: async ({ leaveId, staffName, dates }) => ({
-          proposal: true,
-          action: "approveLeave",
-          params: { leaveId },
-          description: `Approve leave for ${staffName}: ${dates}`,
-        }),
+        execute: async ({ leaveId, staffName, dates }) =>
+          propose("approveLeave", { leaveId }, `Approve leave for ${staffName}: ${dates}`),
       }),
 
       proposeRejectLeave: tool({
@@ -990,12 +942,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().describe("Staff member name for the confirmation card"),
           dates: z.string().describe("Date range for the confirmation card"),
         }),
-        execute: async ({ leaveId, staffName, dates }) => ({
-          proposal: true,
-          action: "rejectLeave",
-          params: { leaveId },
-          description: `Reject leave for ${staffName}: ${dates}`,
-        }),
+        execute: async ({ leaveId, staffName, dates }) =>
+          propose("rejectLeave", { leaveId }, `Reject leave for ${staffName}: ${dates}`),
       }),
 
       proposeCancelLeave: tool({
@@ -1005,12 +953,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().describe("Staff member name for the confirmation card"),
           dates: z.string().describe("Date range for the confirmation card"),
         }),
-        execute: async ({ leaveId, staffName, dates }) => ({
-          proposal: true,
-          action: "cancelLeave",
-          params: { leaveId },
-          description: `Cancel leave for ${staffName}: ${dates}`,
-        }),
+        execute: async ({ leaveId, staffName, dates }) =>
+          propose("cancelLeave", { leaveId }, `Cancel leave for ${staffName}: ${dates}`),
       }),
     },
   })
