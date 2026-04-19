@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
-import { formatDateWithYear } from "@/lib/format-date"
+import { formatDateWithYear, getMondayOf } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -299,13 +299,6 @@ export interface ExtraDaysData {
   rows: ExtraDaysRow[]
 }
 
-function getMonday(date: Date): Date {
-  const d = new Date(date)
-  const dow = d.getDay()
-  d.setDate(d.getDate() - ((dow + 6) % 7))
-  return d
-}
-
 export async function generateExtraDaysReport(month: string): Promise<ExtraDaysData | { error: string }> {
   const supabase = await createClient()
   const orgId = await getOrgId()
@@ -347,7 +340,7 @@ export async function generateExtraDaysReport(month: string): Promise<ExtraDaysD
 
   for (const a of assignments ?? []) {
     if (!staffIds.has(a.staff_id)) continue
-    const weekStart = getMonday(new Date(a.date + "T12:00:00")).toISOString().split("T")[0]
+    const weekStart = getMondayOf(a.date)
     if (!byStaffWeek[a.staff_id]) byStaffWeek[a.staff_id] = {}
     if (!byStaffWeek[a.staff_id][weekStart]) byStaffWeek[a.staff_id][weekStart] = new Set()
     byStaffWeek[a.staff_id][weekStart].add(a.date)

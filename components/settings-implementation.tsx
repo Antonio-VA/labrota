@@ -7,7 +7,7 @@ import Link from "next/link"
 import { CheckCircle2, Circle, AlertTriangle, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { formatDate, formatDateWithYear, formatTime } from "@/lib/format-date"
+import { formatDate, formatDateWithYear, formatTimeOfDay } from "@/lib/format-date"
 import { toast } from "sonner"
 import { resetImplementation } from "@/app/(clinic)/settings/actions"
 
@@ -41,7 +41,7 @@ export function SettingsImplementation({
     const now = new Date()
     const sameYear = d.getFullYear() === now.getFullYear()
     const date = sameYear ? formatDate(d, loc) : formatDateWithYear(d, loc)
-    return `${date} · ${formatTime(d, loc)}`
+    return `${date} · ${formatTimeOfDay(d, loc)}`
   }
 
   const steps = [

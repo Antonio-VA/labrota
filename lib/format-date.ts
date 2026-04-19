@@ -37,9 +37,11 @@ export function formatDateWithYear(date: Date | string, locale: Locale): string 
 }
 
 /**
- * 14:30  /  2:30 PM
+ * 14:30  /  2:30 PM — localized clock time from a Date.
+ * Distinct from formatTime() in lib/format-time.ts, which converts an
+ * already-stored "HH:MM" string per the org's 24h/12h setting.
  */
-export function formatTime(date: Date | string, locale: Locale): string {
+export function formatTimeOfDay(date: Date | string, locale: Locale): string {
   const d = typeof date === "string" ? new Date(date) : date
   return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
     hour: "2-digit",
@@ -51,7 +53,7 @@ export function formatTime(date: Date | string, locale: Locale): string {
  * lun 17 mar · 14:30  /  Mon 17 Mar · 2:30 PM
  */
 export function formatDateTime(date: Date | string, locale: Locale): string {
-  return `${formatDate(date, locale)} · ${formatTime(date, locale)}`
+  return `${formatDate(date, locale)} · ${formatTimeOfDay(date, locale)}`
 }
 
 /**
