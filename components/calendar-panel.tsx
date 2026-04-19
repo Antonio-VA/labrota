@@ -7,15 +7,15 @@ import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-sta
 import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { useRotaData } from "@/hooks/use-rota-data"
 import { useRotaActions } from "@/hooks/use-rota-actions"
-import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-views"
+import { useFavoriteViews, type FavoriteView, type MobileFavoriteView } from "@/hooks/use-favorite-views"
 import { useCalendarModals } from "@/hooks/use-calendar-modals"
+import { useCalendarExport } from "@/hooks/use-calendar-export"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
-import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import dynamic from "next/dynamic"
 const MonthGrid = dynamic(() => import("./calendar-panel/month-grid").then((m) => ({ default: m.MonthGrid })), { ssr: false })
@@ -83,21 +83,28 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
   const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
 
-  const { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView } = useFavoriteViews({
-    onApplyDesktop: (fav) => {
-      const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
-      if (!sessionView) setView(fav.view as ViewMode)
-      setCalendarLayout(fav.calendarLayout as CalendarLayout)
-      setDaysAsRows(fav.daysAsRows)
-      setCompact(fav.compact)
-      setColorChips(fav.colorChips)
-      setHighlightHover(fav.highlightEnabled)
+  const { favoriteView, mobileFavoriteView, saveDesktop, goToDesktop, saveMobile, goToMobile } = useFavoriteViews({
+    desktop: {
+      apply: (fav: FavoriteView, { isInitial }) => {
+        const sessionHasView = isInitial && typeof window !== "undefined" && !!sessionStorage.getItem("labrota_view")
+        if (!sessionHasView) setView(fav.view as ViewMode)
+        setCalendarLayout(fav.calendarLayout as CalendarLayout)
+        setDaysAsRows(fav.daysAsRows)
+        setCompact(fav.compact)
+        setColorChips(fav.colorChips)
+        setHighlightHover(fav.highlightEnabled)
+      },
+      capture: () => ({ view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }),
     },
-    onApplyMobile: (fav) => {
-      setMobileViewMode(fav.viewMode as "shift" | "person")
-      setMobileCompact(fav.compact)
-      setMobileDeptColor(fav.deptColor)
+    mobile: {
+      apply: (fav: MobileFavoriteView) => {
+        setMobileViewMode(fav.viewMode as "shift" | "person")
+        setMobileCompact(fav.compact)
+        setMobileDeptColor(fav.deptColor)
+      },
+      capture: () => ({ viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }),
     },
+    onSaved: () => toast.success(t("favoriteViewSaved")),
   })
 
   const weekStart  = getMondayOf(currentDate)
@@ -205,56 +212,9 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
 
-  async function handleExportPdf() {
-    const fresh = await fetchWeekSilent(weekStart) ?? weekData
-    if (!fresh) return
-    const { exportPdfByShift, exportPdfByPerson, exportPdfByTask } = await import("@/lib/export-pdf")
-    const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-    const notesEl = document.querySelector("[data-week-notes]")
-    const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
-    const n = noteTexts.length > 0 ? noteTexts : undefined
-    if (fresh.rotaDisplayMode === "by_task") exportPdfByTask(fresh, fresh.tecnicas ?? [], on, locale, n, daysAsRows)
-    else if (calendarLayout === "person") exportPdfByPerson(fresh, on, locale, n, daysAsRows)
-    else exportPdfByShift(fresh, on, locale, n, daysAsRows)
-  }
-
-  async function handleExportExcel() {
-    const fresh = await fetchWeekSilent(weekStart) ?? weekData
-    if (!fresh) return
-    const { exportWeekByShift, exportWeekByPerson, exportWeekByTask } = await import("@/lib/export-excel")
-    if (fresh.rotaDisplayMode === "by_task") exportWeekByTask(fresh, fresh.tecnicas ?? [], locale, daysAsRows)
-    else if (calendarLayout === "person") exportWeekByPerson(fresh, locale, daysAsRows)
-    else exportWeekByShift(fresh, locale, daysAsRows)
-  }
-
-  function handleSaveFavorite() {
-    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-    setFavoriteView(fav)
-    saveUserPreferences({ favoriteView: fav })
-    toast.success(t("favoriteViewSaved"))
-  }
-
-  const handleGoToFavorite = favoriteView ? () => {
-    setView(favoriteView.view as ViewMode)
-    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-    setDaysAsRows(favoriteView.daysAsRows)
-    setCompact(favoriteView.compact)
-    setColorChips(favoriteView.colorChips)
-    setHighlightHover(favoriteView.highlightEnabled)
-  } : undefined
-
-  function handleSaveMobileFavorite() {
-    const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
-    setMobileFavoriteView(fav)
-    saveUserPreferences({ mobileFavoriteView: fav })
-    toast.success(t("favoriteViewSaved"))
-  }
-
-  const handleGoToMobileFavorite = mobileFavoriteView ? () => {
-    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
-    setMobileCompact(mobileFavoriteView.compact)
-    setMobileDeptColor(mobileFavoriteView.deptColor)
-  } : undefined
+  const { exportPdf, exportExcel } = useCalendarExport({
+    weekData, weekStart, locale, calendarLayout, daysAsRows, fetchWeekSilent,
+  })
 
   if (!initialLoaded && !staffLoaded) return <CalendarSkeleton />
 
@@ -286,11 +246,11 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         onApplyTemplate={() => modals.setApplyTemplateOpen(true)}
         onShowHistory={() => modals.setHistoryOpen(true)}
         onDelete={handleDelete}
-        onExportPdf={handleExportPdf}
-        onExportExcel={handleExportExcel}
+        onExportPdf={exportPdf}
+        onExportExcel={exportExcel}
         favoriteView={favoriteView}
-        onSaveFavorite={handleSaveFavorite}
-        onGoToFavorite={handleGoToFavorite}
+        onSaveFavorite={saveDesktop}
+        onGoToFavorite={goToDesktop}
         t={t} tc={tc}
       />
 
@@ -375,9 +335,9 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           punctionsOverride={punctionsOverride} TODAY={TODAY}
           setWeekData={setWeekData} fetchWeekSilent={fetchWeekSilent}
           setShowStrategyModal={modals.setShowStrategyModal} isPending={isPending}
-          mobileFavoriteView={mobileFavoriteView} setMobileFavoriteView={setMobileFavoriteView}
-          onSaveMobileFavorite={handleSaveMobileFavorite}
-          onGoToMobileFavorite={handleGoToMobileFavorite}
+          mobileFavoriteView={mobileFavoriteView}
+          onSaveMobileFavorite={saveMobile}
+          onGoToMobileFavorite={goToMobile}
           t={t} tc={tc}
         />
       </div>

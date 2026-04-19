@@ -29,7 +29,7 @@ export function MobileDaySection({
   punctionsOverride, TODAY,
   setWeekData, fetchWeekSilent, setShowStrategyModal,
   isPending,
-  mobileFavoriteView, setMobileFavoriteView: _setMobileFavoriteView,
+  mobileFavoriteView,
   onSaveMobileFavorite, onGoToMobileFavorite,
   t, tc,
 }: {
@@ -62,7 +62,6 @@ export function MobileDaySection({
   setShowStrategyModal: (v: boolean) => void
   isPending: boolean
   mobileFavoriteView: { viewMode: string; compact: boolean; deptColor: boolean } | null
-  setMobileFavoriteView: (v: any) => void
   onSaveMobileFavorite: () => void
   onGoToMobileFavorite: (() => void) | undefined
   t: any
