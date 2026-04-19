@@ -10,6 +10,11 @@ import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureWeekSnapshot } from "@/lib/rota-snapshots"
 import { getPublicHolidays } from "@/lib/rota-holidays"
+import {
+  acquireRotaGenerationLock,
+  releaseRotaGenerationLock,
+  ROTA_GENERATION_LOCK_ERROR,
+} from "@/lib/rota-generation-lock"
 import type {
   StaffWithSkills,
   Leave,
@@ -93,6 +98,11 @@ export async function generateRota(
 
   const rotaId = (rotaRow as { id: string }).id
 
+  if (!(await acquireRotaGenerationLock(supabase, rotaId))) {
+    return { error: ROTA_GENERATION_LOCK_ERROR }
+  }
+
+  try {
   // Best-effort: set generation_type (column may not exist yet)
   await supabase.from("rotas").update({ generation_type: generationType }).eq("id", rotaId)
 
@@ -325,6 +335,9 @@ export async function generateRota(
   revalidatePath("/")
   const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
   return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
+  } finally {
+    await releaseRotaGenerationLock(supabase, rotaId)
+  }
 }
 
 // ── generateRotaWithAI ────────────────────────────────────────────────────────
@@ -404,6 +417,11 @@ export async function generateRotaWithAI(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
+  if (!(await acquireRotaGenerationLock(supabase, rotaId))) {
+    return { error: ROTA_GENERATION_LOCK_ERROR }
+  }
+
+  try {
   await supabase.from("rotas").update({ generation_type: "ai_reasoning" }).eq("id", rotaId)
 
   // Handle overrides
@@ -660,6 +678,9 @@ Use staff IDs (not names) and shift codes exactly as provided.`
     const msg = e instanceof Error ? e.message : "AI generation failed"
     return { error: `AI generation error: ${msg}` }
   }
+  } finally {
+    await releaseRotaGenerationLock(supabase, rotaId)
+  }
 }
 
 // ── generateRotaHybrid ────────────────────────────────────────────────────────
@@ -766,6 +787,11 @@ export async function generateRotaHybrid(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
+  if (!(await acquireRotaGenerationLock(supabase, rotaId))) {
+    return { error: ROTA_GENERATION_LOCK_ERROR }
+  }
+
+  try {
   await supabase.from("rotas").update({ generation_type: "ai_hybrid" }).eq("id", rotaId)
 
   const overrideKeys = new Set<string>()
@@ -1210,6 +1236,9 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
       reasoning: `⚠ Claude optimisation failed (${msg}). Showing engine v2 base rota instead.`,
     }
   }
+  } finally {
+    await releaseRotaGenerationLock(supabase, rotaId)
+  }
 }
 
 // ── generateTaskHybrid ────────────────────────────────────────────────────────
@@ -1289,6 +1318,11 @@ export async function generateTaskHybrid(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
+  if (!(await acquireRotaGenerationLock(supabase, rotaId))) {
+    return { error: ROTA_GENERATION_LOCK_ERROR }
+  }
+
+  try {
   await supabase.from("rotas").update({ generation_type: "ai_hybrid" }).eq("id", rotaId)
 
   const overrideKeys = new Set<string>()
@@ -1679,5 +1713,8 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
     revalidatePath("/")
     const msg = e instanceof Error ? e.message : "AI optimisation failed"
     return { assignmentCount: engineAssignments.length, reasoning: `⚠ Claude optimisation failed (${msg}). Showing task engine base rota instead.` }
+  }
+  } finally {
+    await releaseRotaGenerationLock(supabase, rotaId)
   }
 }

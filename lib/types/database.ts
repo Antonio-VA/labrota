@@ -166,6 +166,7 @@ export interface Rota {
   published_by:       string | null
   punctions_override: Record<string, number> | null
   engine_warnings:    string[] | null
+  generating_at:      string | null
   created_at:         string
   updated_at:         string
 }
@@ -464,7 +465,7 @@ export type LeaveInsert = Pick<Leave, 'organisation_id' | 'staff_id' | 'type' | 
 >>
 
 export type RotaInsert = Pick<Rota, 'organisation_id' | 'week_start'> & Partial<Pick<Rota,
-  | 'status' | 'generation_type' | 'published_at' | 'published_by' | 'punctions_override' | 'engine_warnings'
+  | 'status' | 'generation_type' | 'published_at' | 'published_by' | 'punctions_override' | 'engine_warnings' | 'generating_at'
 >>
 
 export type RotaAssignmentInsert = Pick<RotaAssignment, 'organisation_id' | 'rota_id' | 'staff_id' | 'date' | 'shift_type'> & Partial<Pick<RotaAssignment,
