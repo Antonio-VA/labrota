@@ -33,6 +33,40 @@ const RULE_TYPE_LABEL: Record<string, string> = {
   equipo_completo: "Whole team",
 }
 
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>
+type StaffRef = { id: string; first_name: string; last_name: string }
+
+/**
+ * Resolve a staff member from a free-form name ("John Smith", "Smith", "J. Smith").
+ * Tries first+last when 2+ words are supplied, falls back to last-name only.
+ */
+async function resolveStaffByName(
+  supabase: SupabaseClient,
+  name: string,
+  { activeOnly = false }: { activeOnly?: boolean } = {},
+): Promise<StaffRef | null> {
+  const parts = name.trim().split(/\s+/)
+  const last = parts[parts.length - 1]
+
+  const base = () => {
+    const q = supabase.from("staff").select("id, first_name, last_name")
+    return activeOnly ? q.neq("onboarding_status", "inactive") : q
+  }
+
+  if (parts.length >= 2) {
+    const { data } = await base()
+      .ilike("first_name", `%${parts[0]}%`)
+      .ilike("last_name", `%${last}%`)
+      .limit(1) as { data: StaffRef[] | null }
+    if (data?.[0]) return data[0]
+  }
+
+  const { data } = await base()
+    .ilike("last_name", `%${last}%`)
+    .limit(1) as { data: StaffRef[] | null }
+  return data?.[0] ?? null
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -533,27 +567,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           notes: z.string().optional(),
         }),
         execute: async (params) => {
-          // Resolve staff ID — try first+last name, then last name only
-          const nameParts = params.staffName.trim().split(" ")
-          let staff: { id: string; first_name: string; last_name: string } | null = null
-          if (nameParts.length >= 2) {
-            const { data } = await supabase
-              .from("staff")
-              .select("id, first_name, last_name")
-              .ilike("first_name", `%${nameParts[0]}%`)
-              .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-              .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-            staff = data?.[0] ?? null
-          }
-          if (!staff) {
-            const { data } = await supabase
-              .from("staff")
-              .select("id, first_name, last_name")
-              .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-              .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-            staff = data?.[0] ?? null
-          }
-
+          const staff = await resolveStaffByName(supabase, params.staffName)
           if (!staff) {
             return { error: `Staff member "${params.staffName}" not found. Check the name and try again.` }
           }
@@ -592,13 +606,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           functionLabel: z.string().optional().describe("Optional function/department label"),
         }),
         execute: async ({ staffName, date, shiftType, functionLabel }) => {
-          const nameParts = staffName.trim().split(" ")
-          const { data: staff } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .maybeSingle() as { data: { id: string; first_name: string; last_name: string } | null }
-
+          const staff = await resolveStaffByName(supabase, staffName)
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           const weekStart = getMondayOf(date)
@@ -717,16 +725,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           onboardingStatus: z.enum(["active", "training", "certified", "inactive"]).optional(),
         }),
         execute: async ({ staffName, ...updates }) => {
-          const nameParts = staffName.trim().split(" ")
-          const { data: staffList } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .neq("onboarding_status", "inactive")
-            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-
-          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
-          const staff = staffList[0]
+          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           const changes: Record<string, unknown> = {}
           if (updates.daysPerWeek !== undefined) changes.days_per_week = updates.daysPerWeek
@@ -754,16 +754,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           level: z.enum(["certified", "training"]).describe("Skill level"),
         }),
         execute: async ({ staffName, skill, level }) => {
-          const nameParts = staffName.trim().split(" ")
-          const { data: staffList } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .neq("onboarding_status", "inactive")
-            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-
-          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
-          const staff = staffList[0]
+          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
             "addSkill",
@@ -780,16 +772,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
         }),
         execute: async ({ staffName, skill }) => {
-          const nameParts = staffName.trim().split(" ")
-          const { data: staffList } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .neq("onboarding_status", "inactive")
-            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-
-          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
-          const staff = staffList[0]
+          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
             "removeSkill",
@@ -806,16 +790,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           reason: z.string().optional().describe("Reason for deactivation"),
         }),
         execute: async ({ staffName, reason }) => {
-          const nameParts = staffName.trim().split(" ")
-          const { data: staffList } = await supabase
-            .from("staff")
-            .select("id, first_name, last_name")
-            .ilike("last_name", `%${nameParts[nameParts.length - 1]}%`)
-            .neq("onboarding_status", "inactive")
-            .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-
-          if (!staffList?.length) return { error: `Staff member "${staffName}" not found.` }
-          const staff = staffList[0]
+          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
             "deactivateStaff",
@@ -862,19 +838,12 @@ ${pageContext ? `- ${pageContext}` : ""}
           params: z.record(z.string(), z.unknown()).optional().describe("Rule-specific parameters"),
         }),
         execute: async ({ type, isHard, notes, staffNames, params: ruleParams }) => {
-          // Resolve staff IDs if names provided
           const staffIds: string[] = []
           if (staffNames?.length) {
-            for (const name of staffNames) {
-              const parts = name.trim().split(" ")
-              const { data } = await supabase
-                .from("staff")
-                .select("id, first_name, last_name")
-                .ilike("last_name", `%${parts[parts.length - 1]}%`)
-                .neq("onboarding_status", "inactive")
-                .limit(1) as { data: { id: string; first_name: string; last_name: string }[] | null }
-              if (data?.[0]) staffIds.push(data[0].id)
-            }
+            const resolved = await Promise.all(
+              staffNames.map((n) => resolveStaffByName(supabase, n, { activeOnly: true })),
+            )
+            for (const s of resolved) if (s) staffIds.push(s.id)
           }
 
           return propose(
