@@ -82,8 +82,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
     return normalized
   })
-  const [shiftCoverageWarnings, setShiftCoverageWarnings] = useState<Set<string>>(new Set())
-
   // Active coverage state depends on rotation mode
   const isByShift = rotaDisplayMode === "by_shift"
   const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
