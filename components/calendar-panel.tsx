@@ -444,25 +444,25 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
             })
           }
         }}
-        onExportPdf={() => {
-          if (!weekData) return
-          import("@/lib/export-pdf").then(({ exportPdfByShift, exportPdfByPerson, exportPdfByTask }) => {
-            const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-            const notesEl = document.querySelector("[data-week-notes]")
-            const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
-            const n = noteTexts.length > 0 ? noteTexts : undefined
-            if (weekData.rotaDisplayMode === "by_task") exportPdfByTask(weekData, weekData.tecnicas ?? [], on, locale, n, daysAsRows)
-            else if (calendarLayout === "person") exportPdfByPerson(weekData, on, locale, n, daysAsRows)
-            else exportPdfByShift(weekData, on, locale, n, daysAsRows)
-          })
+        onExportPdf={async () => {
+          const fresh = await fetchWeekSilent(weekStart) ?? weekData
+          if (!fresh) return
+          const { exportPdfByShift, exportPdfByPerson, exportPdfByTask } = await import("@/lib/export-pdf")
+          const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+          const notesEl = document.querySelector("[data-week-notes]")
+          const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
+          const n = noteTexts.length > 0 ? noteTexts : undefined
+          if (fresh.rotaDisplayMode === "by_task") exportPdfByTask(fresh, fresh.tecnicas ?? [], on, locale, n, daysAsRows)
+          else if (calendarLayout === "person") exportPdfByPerson(fresh, on, locale, n, daysAsRows)
+          else exportPdfByShift(fresh, on, locale, n, daysAsRows)
         }}
-        onExportExcel={() => {
-          if (!weekData) return
-          import("@/lib/export-excel").then(({ exportWeekByShift, exportWeekByPerson, exportWeekByTask }) => {
-            if (weekData.rotaDisplayMode === "by_task") exportWeekByTask(weekData, weekData.tecnicas ?? [], locale, daysAsRows)
-            else if (calendarLayout === "person") exportWeekByPerson(weekData, locale, daysAsRows)
-            else exportWeekByShift(weekData, locale, daysAsRows)
-          })
+        onExportExcel={async () => {
+          const fresh = await fetchWeekSilent(weekStart) ?? weekData
+          if (!fresh) return
+          const { exportWeekByShift, exportWeekByPerson, exportWeekByTask } = await import("@/lib/export-excel")
+          if (fresh.rotaDisplayMode === "by_task") exportWeekByTask(fresh, fresh.tecnicas ?? [], locale, daysAsRows)
+          else if (calendarLayout === "person") exportWeekByPerson(fresh, locale, daysAsRows)
+          else exportWeekByShift(fresh, locale, daysAsRows)
         }}
         favoriteView={favoriteView}
         onSaveFavorite={() => {

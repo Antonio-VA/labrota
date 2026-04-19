@@ -54,6 +54,7 @@ export function AccountPanel({ open, onClose, user }: {
       return { locale: "browser", theme: saved.theme ?? "light", accentColor: saved.accentColor ?? "#1b4f8a" }
     } catch { return { locale: "browser", theme: "light", accentColor: "#1b4f8a" } }
   })
+  const [loadedLocale, setLoadedLocale] = useState<UserPreferences["locale"]>("browser")
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [department, setDepartment] = useState<string | null>(null)
@@ -71,6 +72,7 @@ export function AccountPanel({ open, onClose, user }: {
         timeFormat: p.timeFormat ?? "24h",
         firstDayOfWeek: p.firstDayOfWeek ?? 0,
       })
+      setLoadedLocale(p.locale ?? "browser")
       setDepartment(dept)
       setOutlook(ol)
       setLoading(false)
@@ -84,6 +86,11 @@ export function AccountPanel({ open, onClose, user }: {
     startTransition(async () => {
       const result = await saveUserPreferences(prefs)
       if (result.error) { toast.error(result.error); return }
+      if (prefs.locale && prefs.locale !== loadedLocale) {
+        writeLocaleCookie(prefs.locale)
+        window.location.href = "/"
+        return
+      }
       toast.success(t("saved"))
       onClose()
     })
@@ -171,12 +178,7 @@ export function AccountPanel({ open, onClose, user }: {
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("language")}</p>
             <select
               value={prefs.locale}
-              onChange={(e) => {
-                const next = e.target.value as NonNullable<UserPreferences["locale"]>
-                writeLocaleCookie(next)
-                saveUserPreferences({ locale: next })
-                window.location.href = "/"
-              }}
+              onChange={(e) => setPrefs((p) => ({ ...p, locale: e.target.value as NonNullable<UserPreferences["locale"]> }))}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="browser">{t("browserDefault")}</option>
