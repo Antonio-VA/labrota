@@ -4,6 +4,8 @@ import { DEFAULT_DEPT_BORDER } from "@/lib/department-colors"
 
 export { DEFAULT_DEPT_BORDER }
 
+export const EMPTY_STAFF_SET: Set<string> = new Set()
+
 export const COLOR_HEX: Record<string, string> = {
   blue: "#60A5FA", green: "#34D399", amber: "#FBBF24", purple: "#A78BFA",
   coral: "#F87171", teal: "#2DD4BF", slate: "#94A3B8", red: "#EF4444",
