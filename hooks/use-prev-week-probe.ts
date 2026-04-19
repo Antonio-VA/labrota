@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"
+import { addDays } from "@/components/calendar-panel/utils"
 import { getRotaCache } from "./use-rota-cache"
 
 export function usePrevWeekProbe({
@@ -17,9 +18,7 @@ export function usePrevWeekProbe({
   useEffect(() => {
     if (!canEdit || view !== "week") return
     let cancelled = false
-    const prev = new Date(weekStart + "T12:00:00")
-    prev.setDate(prev.getDate() - 7)
-    const prevWs = prev.toISOString().split("T")[0]
+    const prevWs = addDays(weekStart, -7)
     const cache = getRotaCache()
     const cached = cache.weeks.get(prevWs)
     if (cached) {

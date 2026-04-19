@@ -154,13 +154,13 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   // Data fetching, caching, staff loading (extracted to hook)
   const {
-    weekData, setWeekData, monthSummary, setMonthSummary: _setMonthSummary,
+    weekData, setWeekData, monthSummary,
     loadingWeek, setLoadingWeek, loadingMonth, setLoadingMonth,
     error, setError, initialLoaded, staffList, staffLoaded,
     prevWeekHasRota, punctionsOverride, setPunctionsOverrideLocal,
     activeStrategy, setActiveStrategy, liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
-    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh: _handleRefresh, prefetchWeek,
+    fetchWeek, fetchWeekSilent, fetchMonth, prefetchWeek,
     handleBiopsyChange, lastFetchIdRef, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
 

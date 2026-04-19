@@ -19,7 +19,7 @@ export function useStaffList({
   const initialStaffUsed = useRef(false)
   const prevStaffIdsRef = useRef("")
 
-  // Use initialStaff prop; otherwise wait briefly for weekData.activeStaff
+  // Prefer initialStaff prop; otherwise wait briefly for weekData.activeStaff
   // (populated by getRotaWeek) and only fall back to a separate fetch if that stalls.
   /* eslint-disable react-hooks/set-state-in-effect -- initial-prop fast path */
   useEffect(() => {
@@ -32,11 +32,12 @@ export function useStaffList({
     if (staffLoaded || weekData?.activeStaff) return
 
     let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
     const fallbackDelay = setTimeout(() => {
       if (cancelled || staffLoaded || weekData?.activeStaff) return
-      const staffTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Staff load timed out")), 15000),
-      )
+      const staffTimeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Staff load timed out")), 15000)
+      })
       Promise.race([getActiveStaff(), staffTimeout])
         .then((s) => {
           if (cancelled) return
@@ -45,13 +46,18 @@ export function useStaffList({
           setStaffLoaded(true)
         })
         .catch(() => { if (!cancelled) setStaffLoaded(true) })
+        .finally(() => { if (timeoutId !== undefined) clearTimeout(timeoutId) })
     }, 1500)
 
-    return () => { cancelled = true; clearTimeout(fallbackDelay) }
+    return () => {
+      cancelled = true
+      clearTimeout(fallbackDelay)
+      if (timeoutId !== undefined) clearTimeout(timeoutId)
+    }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Sync staff from weekData.activeStaff (avoids duplicate fetch)
+  // Mirror weekData.activeStaff into staffList — ID guard avoids rerender churn.
   /* eslint-disable react-hooks/set-state-in-effect -- mirrors weekData deriving activeStaff */
   useEffect(() => {
     if (!weekData?.activeStaff || weekData.activeStaff.length === 0) return

@@ -7,18 +7,12 @@ import {
   type RotaDay,
 } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
-import type { GenerationStrategy } from "@/components/calendar-panel/utils"
+import { addDays, type GenerationStrategy } from "@/components/calendar-panel/utils"
 import { getRotaCache } from "./use-rota-cache"
 import { useMonthSummary } from "./use-month-summary"
 import { usePrevWeekProbe } from "./use-prev-week-probe"
 import { useStaffList } from "./use-staff-list"
 import { computeBiopsyOverridePatch } from "@/lib/biopsy-override"
-
-function weekOffset(ws: string, days: number): string {
-  const dt = new Date(ws + "T12:00:00")
-  dt.setDate(dt.getDate() + days)
-  return dt.toISOString().split("T")[0]
-}
 
 interface UseRotaDataOptions {
   weekStart: string
@@ -36,8 +30,12 @@ export function useRotaData({
 
   const cache = getRotaCache()
 
-  // Seed week cache with server-provided data so navigation away + back is instant
-  if (initialData) cache.weeks.set(initialData.weekStart, initialData)
+  // Seed cache once from SSR payload so navigation away + back is instant.
+  const seededRef = useRef(false)
+  if (!seededRef.current) {
+    seededRef.current = true
+    if (initialData) cache.weeks.set(initialData.weekStart, initialData)
+  }
 
   const cachedWeek = (initialData?.weekStart === weekStart ? initialData : null) ?? cache.weeks.get(weekStart) ?? null
 
@@ -69,16 +67,16 @@ export function useRotaData({
 
   const prefetchAdjacent = useCallback((ws: string) => {
     const run = () => {
-      prefetchWeek(weekOffset(ws, -7))
-      prefetchWeek(weekOffset(ws, 7))
+      prefetchWeek(addDays(ws, -7))
+      prefetchWeek(addDays(ws, 7))
     }
     if (typeof requestIdleCallback === "function") requestIdleCallback(run)
     else setTimeout(run, 200)
   }, [prefetchWeek])
 
   const fetchWeek = useCallback((ws: string) => {
-    // Cache hit — show instantly, then silently refresh in background.
-    // Version-guarded so rapid week switches don't let an older response overwrite a newer one.
+    // Cache hit: show instantly, then silently refresh. Version-guarded so rapid
+    // week switches don't let an older response overwrite a newer one.
     const cached = cache.weeks.get(ws)
     if (cached) {
       const version = ++fetchVersionRef.current
@@ -108,9 +106,10 @@ export function useRotaData({
     setLoadingWeek(true)
     setLiveDays(null)
     setError(null)
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000),
-    )
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("Request timed out. Please refresh.")), 15000)
+    })
     Promise.race([getRotaWeek(ws), timeout]).then((d) => {
       if (fetchVersionRef.current !== version) return
       cache.weeks.set(ws, d)
@@ -125,16 +124,18 @@ export function useRotaData({
       setWeekData(null)
       setError(e instanceof Error ? e.message : "Failed to load schedule data.")
       setLoadingWeek(false)
+    }).finally(() => {
+      if (timeoutId !== undefined) clearTimeout(timeoutId)
     })
   }, [cache, prefetchAdjacent])
 
-  // Silent refresh — used after drag-drop so the grid doesn't flash skeleton.
-  // Returns the fresh week so callers that need post-refresh data (skill gap
-  // toasts, etc.) can await it instead of re-issuing a raw getRotaWeek.
+  // Silent refresh after drag-drop so the grid doesn't flash skeleton. Returns
+  // the fresh week so callers (skill-gap toasts, etc.) can await it instead of
+  // re-issuing a raw getRotaWeek.
   const fetchWeekSilent = useCallback((ws: string): Promise<RotaWeekData | null> => {
     const id = ++lastFetchIdRef.current
     return getRotaWeek(ws).then((d) => {
-      if (id !== lastFetchIdRef.current) return null // stale — a newer fetch is in flight
+      if (id !== lastFetchIdRef.current) return null
       cache.weeks.set(ws, d)
       setWeekData(d)
       setPunctionsOverrideLocal(d.rota?.punctions_override ?? {})
@@ -142,12 +143,7 @@ export function useRotaData({
     }).catch(() => null)
   }, [cache])
 
-  const handleRefresh = useCallback(() => {
-    fetchWeekSilent(weekStart)
-  }, [fetchWeekSilent, weekStart])
-
-  // Composed: month summary, prev-week probe, staff list
-  const { monthSummary, setMonthSummary, loadingMonth, setLoadingMonth, fetchMonth } =
+  const { monthSummary, loadingMonth, setLoadingMonth, fetchMonth } =
     useMonthSummary({ monthStart, weekStart, view, refreshKey })
   const prevWeekHasRota = usePrevWeekProbe({ weekStart, canEdit, view })
   const { staffList, staffLoaded } = useStaffList({ initialStaff, weekData, refreshKey })
@@ -163,19 +159,17 @@ export function useRotaData({
     if (patch) setPunctionsOverrideLocal((prev) => ({ ...prev, ...patch }))
   }
 
-  // When server pre-fetches, prime adjacent weeks so clicking next/prev is instant
   useEffect(() => {
     if (initialData) prefetchAdjacent(initialData.weekStart)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Initial week fetch (skip if server pre-fetched)
   useEffect(() => {
     if (skipInitialFetch.current) { skipInitialFetch.current = false; return }
     fetchWeek(weekStart)
   }, [weekStart, fetchWeek])
 
-  // Refresh on refreshKey change — week only; month handled by useMonthSummary.
+  // refreshKey refetches week only; month is handled by useMonthSummary.
   useEffect(() => {
     if (refreshKey === 0) return
     fetchWeek(weekStart)
@@ -184,7 +178,7 @@ export function useRotaData({
 
   return {
     weekData, setWeekData,
-    monthSummary, setMonthSummary,
+    monthSummary,
     loadingWeek, setLoadingWeek,
     loadingMonth, setLoadingMonth,
     error, setError,
@@ -195,7 +189,7 @@ export function useRotaData({
     activeStrategy, setActiveStrategy,
     liveDays, setLiveDays,
     aiReasoningRef, reasoningSourceRef,
-    fetchWeek, fetchWeekSilent, fetchMonth, handleRefresh, prefetchWeek,
+    fetchWeek, fetchWeekSilent, fetchMonth, prefetchWeek,
     handleBiopsyChange,
     lastFetchIdRef, gridSetDaysRef,
   }

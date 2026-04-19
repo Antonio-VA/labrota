@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { getRotaMonthSummary, type RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 
 export function useMonthSummary({
@@ -13,8 +13,10 @@ export function useMonthSummary({
 }) {
   const [monthSummary, setMonthSummary] = useState<RotaMonthSummary | null>(null)
   const [loadingMonth, setLoadingMonth] = useState(false)
+  const lastFetchedKeyRef = useRef<string | null>(null)
 
   const fetchMonth = useCallback((ms: string, ws?: string) => {
+    lastFetchedKeyRef.current = `${ms}:${ws ?? ""}`
     setMonthSummary(null)
     setLoadingMonth(true)
     getRotaMonthSummary(ms, ws).then((d) => {
@@ -24,7 +26,10 @@ export function useMonthSummary({
   }, [])
 
   useEffect(() => {
-    if (view === "month") fetchMonth(monthStart, weekStart)
+    if (view !== "month") return
+    const key = `${monthStart}:${weekStart}`
+    if (lastFetchedKeyRef.current === key) return
+    fetchMonth(monthStart, weekStart)
   }, [monthStart, weekStart, view, fetchMonth])
 
   useEffect(() => {
