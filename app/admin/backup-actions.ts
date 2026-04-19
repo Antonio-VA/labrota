@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { typedQuery } from "@/lib/supabase/typed-query"
 
 async function assertSuperAdmin() {
   const supabase = await createClient()
@@ -76,21 +77,25 @@ async function captureConfig(admin: ReturnType<typeof createAdminClient>, orgId:
 }
 
 async function captureRotas(admin: ReturnType<typeof createAdminClient>, orgId: string): Promise<BackupRota[]> {
-  const { data: rotas } = await admin
-    .from("rotas")
-    .select("id, week_start, status, updated_at")
-    .eq("organisation_id", orgId)
-    .order("week_start", { ascending: false })
-    .limit(52) as unknown as { data: { id: string; week_start: string; status: string; updated_at: string }[] | null }
+  const { data: rotas } = await typedQuery<{ id: string; week_start: string; status: string; updated_at: string }[]>(
+    admin
+      .from("rotas")
+      .select("id, week_start, status, updated_at")
+      .eq("organisation_id", orgId)
+      .order("week_start", { ascending: false })
+      .limit(52)
+  )
 
   if (!rotas?.length) return []
 
   const result: BackupRota[] = []
   for (const rota of rotas) {
-    const { data: assignments } = await admin
-      .from("rota_assignments")
-      .select("*")
-      .eq("rota_id", rota.id) as unknown as { data: unknown[] | null }
+    const { data: assignments } = await typedQuery<unknown[]>(
+      admin
+        .from("rota_assignments")
+        .select("*")
+        .eq("rota_id", rota.id)
+    )
 
     result.push({
       weekStart: rota.week_start,
@@ -115,12 +120,14 @@ export async function createBackup(
 
   // For auto backups, enforce max 30 per tenant
   if (type === "auto") {
-    const { data: existing } = await admin
-      .from("backups")
-      .select("id")
-      .eq("organisation_id", orgId)
-      .eq("type", "auto")
-      .order("created_at", { ascending: false }) as unknown as { data: { id: string }[] | null }
+    const { data: existing } = await typedQuery<{ id: string }[]>(
+      admin
+        .from("backups")
+        .select("id")
+        .eq("organisation_id", orgId)
+        .eq("type", "auto")
+        .order("created_at", { ascending: false })
+    )
 
     if (existing && existing.length >= 30) {
       // Delete oldest auto backups beyond 30
@@ -134,17 +141,19 @@ export async function createBackup(
   const config = await captureConfig(admin, orgId)
   const rotas = await captureRotas(admin, orgId)
 
-  const { data, error } = await admin
-    .from("backups")
-    .insert({
-      organisation_id: orgId,
-      type,
-      label: label || (type === "manual" ? "Copia manual" : null),
-      config,
-      rotas,
-    } as never)
-    .select("id")
-    .single() as unknown as { data: { id: string } | null; error: { message: string } | null }
+  const { data, error } = await typedQuery<{ id: string }>(
+    admin
+      .from("backups")
+      .insert({
+        organisation_id: orgId,
+        type,
+        label: label || (type === "manual" ? "Copia manual" : null),
+        config,
+        rotas,
+      } as never)
+      .select("id")
+      .single()
+  )
 
   if (error) return { error: error.message }
   revalidatePath(`/admin/orgs/${orgId}`)
@@ -154,12 +163,14 @@ export async function createBackup(
 export async function getBackups(orgId: string): Promise<BackupEntry[]> {
   await assertSuperAdmin()
   const admin = createAdminClient()
-  const { data } = await admin
-    .from("backups")
-    .select("id, organisation_id, created_at, created_by, type, label, config, rotas")
-    .eq("organisation_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(100) as unknown as { data: { id: string; organisation_id: string; created_at: string; created_by: string | null; type: "auto" | "manual"; label: string | null; config: BackupConfig; rotas: BackupRota[] }[] | null }
+  const { data } = await typedQuery<{ id: string; organisation_id: string; created_at: string; created_by: string | null; type: "auto" | "manual"; label: string | null; config: BackupConfig; rotas: BackupRota[] }[]>(
+    admin
+      .from("backups")
+      .select("id, organisation_id, created_at, created_by, type, label, config, rotas")
+      .eq("organisation_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(100)
+  )
 
   if (!data?.length) return []
 
@@ -167,10 +178,12 @@ export async function getBackups(orgId: string): Promise<BackupEntry[]> {
   const userIds = [...new Set(data.map((b) => b.created_by).filter((id): id is string => id != null))]
   const nameMap: Record<string, string> = {}
   if (userIds.length > 0) {
-    const { data: profiles } = await admin
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", userIds) as unknown as { data: { id: string; full_name: string | null; email: string }[] | null }
+    const { data: profiles } = await typedQuery<{ id: string; full_name: string | null; email: string }[]>(
+      admin
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds)
+    )
     for (const p of profiles ?? []) {
       nameMap[p.id] = p.full_name || p.email
     }
@@ -224,11 +237,13 @@ export async function restoreBackup(
   await assertSuperAdmin()
   const admin = createAdminClient()
 
-  const { data: backup } = await admin
-    .from("backups")
-    .select("config, rotas")
-    .eq("id", backupId)
-    .single() as unknown as { data: { config: BackupConfig; rotas: BackupRota[] } | null }
+  const { data: backup } = await typedQuery<{ config: BackupConfig; rotas: BackupRota[] }>(
+    admin
+      .from("backups")
+      .select("config, rotas")
+      .eq("id", backupId)
+      .single()
+  )
 
   if (!backup) return { error: "Backup not found" }
 
@@ -290,11 +305,13 @@ export async function restoreBackup(
       : backup.rotas.filter((r) => r.status === "published")
 
     for (const rota of rotasToRestore) {
-      const { data: newRota } = await admin
-        .from("rotas")
-        .insert({ organisation_id: orgId, week_start: rota.weekStart, status: rota.status } as never)
-        .select("id")
-        .single() as unknown as { data: { id: string } | null }
+      const { data: newRota } = await typedQuery<{ id: string }>(
+        admin
+          .from("rotas")
+          .insert({ organisation_id: orgId, week_start: rota.weekStart, status: rota.status } as never)
+          .select("id")
+          .single()
+      )
 
       if (newRota && rota.assignments.length > 0) {
         // Insert assignments in chunks
@@ -326,12 +343,14 @@ export async function runBackupCleanup(orgId: string): Promise<{ error?: string;
   let cleaned = 0
 
   // 1. Auto backups: keep last 30
-  const { data: autos } = await admin
-    .from("backups")
-    .select("id")
-    .eq("organisation_id", orgId)
-    .eq("type", "auto")
-    .order("created_at", { ascending: false }) as unknown as { data: { id: string }[] | null }
+  const { data: autos } = await typedQuery<{ id: string }[]>(
+    admin
+      .from("backups")
+      .select("id")
+      .eq("organisation_id", orgId)
+      .eq("type", "auto")
+      .order("created_at", { ascending: false })
+  )
 
   if (autos && autos.length > 30) {
     const toDelete = autos.slice(30).map((b) => b.id)
@@ -341,11 +360,13 @@ export async function runBackupCleanup(orgId: string): Promise<{ error?: string;
 
   // 2. Rota retention tiers within backups
   const now = new Date()
-  const { data: allBackups } = await admin
-    .from("backups")
-    .select("id, created_at, rotas")
-    .eq("organisation_id", orgId)
-    .order("created_at", { ascending: false }) as unknown as { data: { id: string; created_at: string; rotas: BackupRota[] }[] | null }
+  const { data: allBackups } = await typedQuery<{ id: string; created_at: string; rotas: BackupRota[] }[]>(
+    admin
+      .from("backups")
+      .select("id, created_at, rotas")
+      .eq("organisation_id", orgId)
+      .order("created_at", { ascending: false })
+  )
 
   for (const backup of allBackups ?? []) {
     const age = (now.getTime() - new Date(backup.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000) // weeks
