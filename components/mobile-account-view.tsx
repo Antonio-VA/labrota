@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 import { saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import { applyTheme } from "@/components/account-panel"
+import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
 import { toast } from "sonner"
 
 const ACCENT_COLORS = [
@@ -43,26 +44,13 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
 
   function handleSave() {
     startTransition(async () => {
-      // Apply visual changes immediately
       applyTheme(prefs)
-
-      // Handle locale: set/clear cookie
-      if (prefs.locale === "browser") {
-        document.cookie = "locale=;path=/;max-age=0"
-      } else {
-        document.cookie = `locale=${prefs.locale};path=/;max-age=31536000`
-      }
-
+      const nextLocale = prefs.locale ?? "browser"
+      const localeChanged = readLocaleCookie() !== nextLocale
+      writeLocaleCookie(nextLocale)
       await saveUserPreferences(prefs)
       toast.success(t("saved"))
-
-      // Reload if locale changed (next-intl needs a fresh page)
-      const currentLocaleCookie = document.cookie.split(";")
-        .find((c) => c.trim().startsWith("locale="))?.split("=")[1] ?? "browser"
-      const localeChanged = currentLocaleCookie !== (prefs.locale ?? "browser")
-      if (localeChanged) {
-        window.location.reload()
-      }
+      if (localeChanged) window.location.reload()
     })
   }
 

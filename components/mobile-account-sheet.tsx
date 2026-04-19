@@ -12,6 +12,7 @@ import {
 } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import { applyTheme } from "@/components/account-panel"
+import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
 import { toast } from "sonner"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
@@ -73,16 +74,11 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
     startTransition(async () => {
       if (_accountCache) _accountCache.prefs = prefs
       applyTheme(prefs)
-      if (prefs.locale === "browser") {
-        document.cookie = "locale=;path=/;max-age=0"
-      } else {
-        document.cookie = `locale=${prefs.locale};path=/;max-age=31536000`
-      }
+      const nextLocale = prefs.locale ?? "browser"
+      const localeChanged = readLocaleCookie() !== nextLocale
+      writeLocaleCookie(nextLocale)
       await saveUserPreferences(prefs)
       toast.success(t("saved"))
-      const currentLocaleCookie = document.cookie.split(";")
-        .find((c) => c.trim().startsWith("locale="))?.split("=")[1] ?? "browser"
-      const localeChanged = currentLocaleCookie !== (prefs.locale ?? "browser")
       if (localeChanged) window.location.reload()
     })
   }

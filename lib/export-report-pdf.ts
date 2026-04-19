@@ -1,12 +1,10 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import type { StaffReportData, TechReportData } from "@/app/(clinic)/reports/actions"
+import { resolveLocale } from "@/lib/locale-cookie"
 
 const TIMESTAMP = () => {
-  const locale = typeof document !== "undefined"
-    ? (document.cookie.match(/(?:^|; )locale=(\w+)/)?.[1] ?? "es")
-    : "es"
-  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+  return new Intl.DateTimeFormat(resolveLocale() === "es" ? "es-ES" : "en-US", {
     dateStyle: "long",
     timeStyle: "short",
   }).format(new Date())

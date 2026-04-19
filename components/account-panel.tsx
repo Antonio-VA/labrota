@@ -19,6 +19,7 @@ import {
 } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
 import { applyTheme } from "@/lib/apply-theme"
+import { writeLocaleCookie } from "@/lib/locale-cookie"
 import type { User } from "@supabase/supabase-js"
 
 const ACCENT_COLORS = [
@@ -171,16 +172,9 @@ export function AccountPanel({ open, onClose, user }: {
             <select
               value={prefs.locale}
               onChange={(e) => {
-                const next = e.target.value as UserPreferences["locale"]
-                // Set cookie client-side for immediate effect
-                if (next === "browser") {
-                  document.cookie = "locale=;path=/;max-age=0"
-                } else {
-                  document.cookie = `locale=${next};path=/;max-age=${365 * 86400}`
-                }
-                // Save to DB
+                const next = e.target.value as NonNullable<UserPreferences["locale"]>
+                writeLocaleCookie(next)
                 saveUserPreferences({ locale: next })
-                // Full page navigation to force server re-render with new cookie
                 window.location.href = "/"
               }}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"

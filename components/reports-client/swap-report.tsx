@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { ArrowLeft, FileDown, FileSpreadsheet, ArrowLeftRight } from "lucide-react"
 import type { SwapReportData } from "@/app/(clinic)/reports/actions"
 import { formatDateWithYear } from "@/lib/format-date"
+import { resolveLocale } from "@/lib/locale-cookie"
 
 // ── Swap requests report ─────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ const SWAP_STATUS_COLOR: Record<string, string> = {
 
 export function SwapReportView({ data, onBack }: { data: SwapReportData; onBack: () => void }) {
   const t = useTranslations("reports")
-  const locale = (typeof window !== "undefined" ? document.cookie.match(/locale=(\w+)/)?.[1] : "es") as "es" | "en" ?? "es"
+  const locale = resolveLocale()
 
   return (
     <div className="flex flex-col gap-4">
