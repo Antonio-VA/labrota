@@ -7,31 +7,25 @@ import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { useCanEdit } from "@/lib/role-context"
 import { usePersistedState } from "@/hooks/use-persisted-state"
+import { useMobileWeekData } from "@/hooks/use-mobile-week-data"
 import { TapPopover } from "@/components/tap-popover"
 import { WeekNotes } from "@/components/week-notes"
-import { getRotaWeek, getActiveStaff, type RotaWeekData } from "@/app/(clinic)/rota/actions"
-import type { StaffWithSkills } from "@/lib/types/database"
 import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
-import { ROLE_COLOR, contrastColor, ROLE_LABEL, TASK_NAMED_COLORS, LEAVE_ICONS, LEAVE_COLORS } from "./constants"
+import { ROLE_COLOR, contrastColor, ROLE_LABEL, LEAVE_ICONS, LEAVE_COLORS, dayAbbrFor } from "./constants"
 import { WeekPicker } from "./week-picker"
 import { WeekInsightsSheet, WeekWarningsSheet } from "./bottom-sheets"
 import { WeekOverflow } from "./week-overflow"
 import { WeekGenerateSheet } from "./generate-sheet"
-
-// Module-level caches — survive navigation away and back
-const _mobileWeekCache = new Map<string, RotaWeekData>()
-let _mobileWeekStaffCache: StaffWithSkills[] | null = null
+import { PersonView } from "./person-view"
+import { TaskView } from "./task-view"
 
 export function MobileWeekClient() {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const canEdit = useCanEdit()
-  const [weekStart, setWeekStart] = useState(() => getMondayOf())
-  const [data, setData] = useState<RotaWeekData | null>(() => _mobileWeekCache.get(getMondayOf()) ?? null)
-  const [staffList, setStaffList] = useState<StaffWithSkills[]>(() => _mobileWeekStaffCache ?? [])
-  const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOf()))
+  const { weekStart, setWeekStart, data, staffList, loading, refresh } = useMobileWeekData()
   const weekGridRef = useRef<HTMLDivElement>(null)
   const [highlightEnabled, setHighlightEnabled] = usePersistedState<boolean>("labrota_week_highlight", false)
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
@@ -49,7 +43,6 @@ export function MobileWeekClient() {
   })
   const [taskDaysAsRows, setTaskDaysAsRows] = useState<boolean>(weekFavourite?.taskDaysAsRows === true)
 
-  // Force task view for by-task orgs — "by person" is not available
   /* eslint-disable react-hooks/set-state-in-effect -- derived from fetched data */
   useEffect(() => {
     if (data?.rotaDisplayMode === "by_task" && weekViewMode === "person") {
@@ -75,6 +68,10 @@ export function MobileWeekClient() {
     setTaskDaysAsRows((v) => !v)
   }
 
+  function toggleHighlightedStaff(id: string) {
+    setHighlightedStaff((p) => p === id ? null : id)
+  }
+
   const isFavourite = weekFavourite !== null &&
     weekFavourite.weekViewMode === weekViewMode &&
     weekFavourite.mobileDeptColor === mobileDeptColor &&
@@ -94,37 +91,6 @@ export function MobileWeekClient() {
 
   const hasFavourite = weekFavourite !== null
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-week-change */
-  useEffect(() => {
-    const cachedData = _mobileWeekCache.get(weekStart)
-    const cachedStaff = _mobileWeekStaffCache
-    if (cachedData && cachedStaff) {
-      setData(cachedData)
-      setStaffList(cachedStaff)
-      setLoading(false)
-      // Silent refresh in background
-      Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
-        _mobileWeekCache.set(weekStart, rotaData)
-        _mobileWeekStaffCache = staff
-        setData(rotaData)
-        setStaffList(staff)
-      }).catch(() => {})
-      return
-    }
-    setLoading(true)
-    Promise.all([
-      cachedData ? Promise.resolve(cachedData) : getRotaWeek(weekStart),
-      cachedStaff ? Promise.resolve(cachedStaff) : getActiveStaff(),
-    ]).then(([rotaData, staff]) => {
-      _mobileWeekCache.set(weekStart, rotaData)
-      _mobileWeekStaffCache = staff
-      setData(rotaData)
-      setStaffList(staff)
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [weekStart])
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   function navigate(dir: number) {
     const d = new Date(weekStart + "T12:00:00")
     d.setDate(d.getDate() + dir * 7)
@@ -140,30 +106,32 @@ export function MobileWeekClient() {
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
   const timeFormat = data?.timeFormat ?? "24h"
 
-  // Widen the sticky row-header column for task mode so task names fit
   const isTaskMode = weekViewMode !== "person" && data?.rotaDisplayMode === "by_task" && !!data?.tecnicas?.length
   const gridHdrW = isTaskMode ? "80px" : "52px"
 
-  // Build staff role/name map from staffList for the Off row
   const fullStaffMap = useMemo(() => {
     const m: Record<string, { fn: string; ln: string; role: string; dpw: number }> = {}
     for (const s of staffList) m[s.id] = { fn: s.first_name, ln: s.last_name, role: s.role, dpw: s.days_per_week }
     return m
   }, [staffList])
 
-  // Department color map from org config
   const deptColorMap = useMemo(() => {
     const m: Record<string, string> = {}
     for (const dept of data?.departments ?? []) if (dept.colour) m[dept.code] = dept.colour
     return m
   }, [data?.departments])
 
-  // Per-staff highlight color (individual color field)
   const staffColorLookup = useMemo(() => {
     const m: Record<string, string> = {}
     for (const s of staffList) if (s.color) m[s.id] = s.color
     return m
   }, [staffList])
+
+  const workingDaysByStaff = useMemo(() => {
+    const m: Record<string, Set<string>> = {}
+    for (const d of days) for (const a of d.assignments) (m[a.staff_id] ??= new Set()).add(d.date)
+    return m
+  }, [days])
 
   const hasWarnings = days.some((d) => d.warnings.length > 0 || d.skillGaps.length > 0)
   const warningCount = days.reduce((acc, d) => acc + d.warnings.length + d.skillGaps.length, 0)
@@ -192,7 +160,6 @@ export function MobileWeekClient() {
 
         <div className="flex-1" />
 
-        {/* Warnings button */}
         <button onClick={() => setWarningsOpen(true)} className={cn(
           "flex items-center justify-center gap-1 rounded-full active:bg-accent shrink-0",
           hasWarnings ? "h-9 px-2" : "size-9"
@@ -227,12 +194,7 @@ export function MobileWeekClient() {
           onGoToFavourite={goToFavourite}
           taskDaysAsRows={taskDaysAsRows}
           onToggleTaskDaysAsRows={toggleTaskDaysAsRows}
-          onRefresh={() => {
-            setLoading(true)
-            Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
-              setData(rotaData); setStaffList(staff); setLoading(false)
-            })
-          }}
+          onRefresh={refresh}
         />
       </div>
 
@@ -281,9 +243,7 @@ export function MobileWeekClient() {
                 const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date)
                 const num = date.getDate()
                 const isToday = day.date === today
-                const isSat = dow === 6
-                const isSun = dow === 0
-                const isWknd = isSat || isSun
+                const isWknd = dow === 0 || dow === 6
                 const isHoliday = !!data?.publicHolidays?.[day.date]
                 return (
                   <div
@@ -304,179 +264,36 @@ export function MobileWeekClient() {
 
             {/* Rows */}
             {weekViewMode === "person" ? (
-              // ── Person view ─────────────────────────────────────────────
-              <>
-                {(() => {
-                  const ROLE_ORDER: Record<string, number> = { lab: 0, andrology: 1, admin: 2 }
-                  return staffList
-                    .filter((s) => days.some((d) => d.assignments.some((a) => a.staff_id === s.id)))
-                    .sort((a, b) => {
-                      const ro = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
-                      if (ro !== 0) return ro
-                      return a.first_name.localeCompare(b.first_name)
-                    })
-                })().map((s) => {
-                  const isHL = highlightEnabled && highlightedStaff === s.id
-                  const roleColor = deptColorMap[s.role] ?? ROLE_COLOR[s.role] ?? "#94A3B8"
-                  const hlColor = staffColorLookup[s.id] ?? roleColor
-                  return (
-                    <div key={s.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
-                      <div
-                        className="border-r border-border bg-muted sticky left-0 z-[5] flex items-center pl-1.5 pr-1 py-1.5 gap-1 cursor-pointer min-w-0"
-                        style={mobileDeptColor ? { borderLeft: `3px solid ${roleColor}` } : undefined}
-                        onClick={() => highlightEnabled && setHighlightedStaff((p) => p === s.id ? null : s.id)}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold text-foreground truncate leading-tight">{s.first_name} {s.last_name[0]}.</p>
-                        </div>
-                      </div>
-                      {days.map((day) => {
-                        const a = day.assignments.find((x) => x.staff_id === s.id)
-                        const st = a ? shiftTypeMap[a.shift_type] : null
-                        const dow = new Date(day.date + "T12:00:00").getDay()
-                        const isSat = dow === 6; const isSun = dow === 0
-                        return (
-                          <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 flex flex-col items-center justify-center min-w-0">
-                            {a && st ? (
-                              <TapPopover trigger={
-                                <div
-                                  className="w-full text-center cursor-pointer active:opacity-70"
-                                  style={isHL ? { color: hlColor, fontWeight: 700 } : undefined}
-                                >
-                                  <span className="text-[11px] font-semibold leading-tight">{a.shift_type}</span>
-                                </div>
-                              }>
-                                <p className="font-medium">{s.first_name} {s.last_name}</p>
-                                <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[s.role] ?? s.role}</p>
-                                <p className="text-[11px] opacity-70">{a.shift_type} · {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}</p>
-                              </TapPopover>
-                            ) : (
-                              <span className="text-[10px] font-medium text-muted-foreground/40">{t("offShort")}</span>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-                {/* Shift times legend */}
-                {shiftTypes.length > 0 && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2.5 border-b border-border bg-muted/30">
-                    {shiftTypes.map((st) => (
-                      <span key={st.code} className="text-[11px] text-muted-foreground">
-                        <span className="font-medium text-foreground">{st.code}</span> {formatTime(st.start_time, timeFormat)}–{formatTime(st.end_time, timeFormat)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+              <PersonView
+                staffList={staffList}
+                days={days}
+                shiftTypeMap={shiftTypeMap}
+                shiftTypes={shiftTypes}
+                gridHdrW={gridHdrW}
+                highlightEnabled={highlightEnabled}
+                highlightedStaff={highlightedStaff}
+                onToggleHighlight={toggleHighlightedStaff}
+                mobileDeptColor={mobileDeptColor}
+                deptColorMap={deptColorMap}
+                staffColorLookup={staffColorLookup}
+                locale={locale}
+                timeFormat={timeFormat}
+              />
             ) : data.rotaDisplayMode === "by_task" && data.tecnicas ? (
-              (() => {
-                const activeTecnicas = data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-                const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                function renderStaffChip(a: { id: string; staff_id: string; staff: { first_name: string; last_name: string; role: string } }) {
-                  const isHL = highlightEnabled && highlightedStaff === a.staff_id
-                  const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
-                  const hlColor = staffColorLookup[a.staff_id] ?? roleColor
-                  const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
-                  const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
-                  return (
-                    <TapPopover key={a.id} trigger={
-                      <span
-                        className="text-[11px] font-medium rounded px-1.5 py-1 border cursor-pointer active:scale-95 transition-colors"
-                        style={isHL
-                          ? { backgroundColor: hlColor, borderColor: hlColor, color: contrastColor(hlColor) }
-                          : mobileDeptColor
-                            ? { borderColor: "var(--border)", backgroundColor: "var(--background)", borderLeft: `3px solid ${roleColor}` }
-                            : { borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-                        onClick={() => highlightEnabled && setHighlightedStaff((p) => p === a.staff_id ? null : a.staff_id)}
-                      >
-                        {a.staff.first_name[0]}{a.staff.last_name[0]}
-                      </span>
-                    }>
-                      <p className="font-medium">{a.staff.first_name} {a.staff.last_name}</p>
-                      <p className="text-[11px] opacity-70">{ROLE_LABEL[locale]?.[a.staff.role] ?? a.staff.role}{offAbbrs.length > 0 ? ` · Off: ${offAbbrs.join(" ")}` : ""}</p>
-                    </TapPopover>
-                  )
-                }
-
-                if (taskDaysAsRows) {
-                  // ── Transposed: days as rows, tasks as columns ───────────────
-                  const dayColW = "44px"  // narrower than task-label column (80px)
-                  const tecColW = `minmax(44px, 1fr)`
-                  const colTemplate = `${dayColW} repeat(${activeTecnicas.length}, ${tecColW})`
-                  return (
-                    <>
-                      {/* Sticky header: corner + task columns */}
-                      <div className="sticky top-0 z-10 grid border-b border-border bg-muted" style={{ gridTemplateColumns: colTemplate }}>
-                        <div className="px-2 py-2 border-r border-border bg-muted sticky left-0 z-[6]" />
-                        {activeTecnicas.map((tec) => {
-                          const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
-                          return (
-                            <div key={tec.id} className="px-1 py-1.5 text-center border-r border-border last:border-r-0" style={{ borderBottom: `3px solid ${dotColor}` }}>
-                              <span className="text-[9px] font-semibold text-foreground block leading-tight">{tec.codigo}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      {/* Day rows */}
-                      {days.map((day) => {
-                        const date = new Date(day.date + "T12:00:00")
-                        const dow = date.getDay()
-                        const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date)
-                        const num = date.getDate()
-                        const isToday = day.date === today
-                        const isWknd = dow === 0 || dow === 6
-                        const isHoliday = !!data?.publicHolidays?.[day.date]
-                        return (
-                          <div key={day.date} className="grid border-b border-border" style={{ gridTemplateColumns: colTemplate }}>
-                            <div className="border-r border-border bg-muted sticky left-0 z-[5] px-1 py-1 flex flex-col items-center justify-center" style={isHoliday ? { backgroundColor: "rgb(254 243 199 / 0.8)" } : undefined}>
-                              <span className={cn("text-[8px] uppercase leading-none", isToday ? "text-primary font-semibold" : isWknd ? "text-muted-foreground/40" : "text-muted-foreground")}>{wday}</span>
-                              {isToday
-                                ? <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold mt-0.5">{num}</span>
-                                : <span className={cn("text-[13px] font-semibold leading-none mt-0.5", isWknd ? "text-muted-foreground" : "text-primary")}>{num}</span>
-                              }
-                            </div>
-                            {activeTecnicas.map((tec) => {
-                              const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
-                              return (
-                                <div key={tec.id} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start">
-                                  {assignments.map((a) => renderStaffChip(a))}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
-                    </>
-                  )
-                }
-
-                // ── Default: tasks as rows, days as columns ─────────────────
-                return activeTecnicas.map((tec) => {
-                  const dotColor = tec.color?.startsWith("#") ? tec.color : (TASK_NAMED_COLORS[tec.color] ?? "#3B82F6")
-                  const tecLabel = locale === "en" ? tec.nombre_en : tec.nombre_es
-                  return (
-                    <div key={tec.id} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
-                      <div className="border-r border-border bg-muted sticky left-0 z-[5] flex items-stretch">
-                        <div className="w-[3px] shrink-0" style={{ backgroundColor: dotColor }} />
-                        <div className="px-1 py-1.5 flex flex-col justify-center flex-1 min-w-0">
-                          <span className="text-[11px] font-semibold text-foreground leading-tight">{tec.codigo}</span>
-                          <span className="text-[9px] text-muted-foreground truncate leading-tight">{tecLabel}</span>
-                        </div>
-                      </div>
-                      {days.map((day) => {
-                        const assignments = day.assignments.filter((a) => a.function_label === tec.codigo || a.tecnica_id === tec.id)
-                        return (
-                          <div key={day.date} className="px-1 py-2 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-1 content-start">
-                            {assignments.map((a) => renderStaffChip(a))}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })
-              })()
+              <TaskView
+                data={data}
+                days={days}
+                today={today}
+                locale={locale}
+                taskDaysAsRows={taskDaysAsRows}
+                gridHdrW={gridHdrW}
+                highlightEnabled={highlightEnabled}
+                highlightedStaff={highlightedStaff}
+                onToggleHighlight={toggleHighlightedStaff}
+                mobileDeptColor={mobileDeptColor}
+                deptColorMap={deptColorMap}
+                staffColorLookup={staffColorLookup}
+              />
             ) : (
               shiftTypes.map((st) => (
                 <div key={st.code} className="grid border-b border-border" style={{ gridTemplateColumns: `${gridHdrW} repeat(${days.length}, 1fr)` }}>
@@ -503,9 +320,9 @@ export function MobileWeekClient() {
                           const isHL = highlightEnabled && highlightedStaff === a.staff_id
                           const roleColor = deptColorMap[a.staff.role] ?? ROLE_COLOR[a.staff.role] ?? "#94A3B8"
                           const hlColor = staffColorLookup[a.staff_id] ?? roleColor
-                          const offDays = days.filter((d) => !d.assignments.some((x) => x.staff_id === a.staff_id))
-                          const DAY_ABBR = locale === "en" ? ["Su","Mo","Tu","We","Th","Fr","Sa"] : ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
-                          const offAbbrs = offDays.map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
+                          const working = workingDaysByStaff[a.staff_id]
+                          const DAY_ABBR = dayAbbrFor(locale)
+                          const offAbbrs = days.filter((d) => !working?.has(d.date)).map((d) => DAY_ABBR[new Date(d.date + "T12:00:00").getDay()])
                           return (
                             <TapPopover key={a.id} trigger={
                               <div
@@ -542,8 +359,6 @@ export function MobileWeekClient() {
                 const leaveTypes = data?.onLeaveTypeByDate?.[day.date] ?? {}
                 const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
                 const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
-                const dow = new Date(day.date + "T12:00:00").getDay()
-                const isSat = dow === 6; const isSun = dow === 0
                 return (
                   <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start" style={{ backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" }}>
                     {[...leaveIds].map((sid) => {
@@ -610,12 +425,7 @@ export function MobileWeekClient() {
         weekStart={weekStart}
         rotaDisplayMode={data?.rotaDisplayMode ?? "by_shift"}
         engineConfig={data?.engineConfig}
-        onRefresh={() => {
-          setLoading(true)
-          Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
-            setData(rotaData); setStaffList(staff); setLoading(false)
-          })
-        }}
+        onRefresh={refresh}
       />
     </div>
   )

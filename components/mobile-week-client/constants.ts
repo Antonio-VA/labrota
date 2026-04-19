@@ -34,3 +34,7 @@ export const LEAVE_COLORS: Record<string, { border: string; bg: string; text: st
   maternity: { border: "#F9A8D4", bg: "#FDF2F8", text: "#DB2777" },
   other:     { border: "#CBD5E1", bg: "#F8FAFC", text: "#475569" },
 }
+
+const DAY_ABBR_ES = ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+const DAY_ABBR_EN = ["Su","Mo","Tu","We","Th","Fr","Sa"]
+export const dayAbbrFor = (locale: string) => locale === "en" ? DAY_ABBR_EN : DAY_ABBR_ES
