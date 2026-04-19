@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useState, useTransition } from "react"
+import { useCallback, useState } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
 import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { useRotaData } from "@/hooks/use-rota-data"
+import { useRotaActions } from "@/hooks/use-rota-actions"
 import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-views"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -14,21 +15,7 @@ import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
-import {
-  publishRota,
-  unlockRota,
-  setPunctionsOverride,
-  type RotaWeekData,
-  applyTemplate,
-  clearWeek,
-  copyPreviousWeek,
-} from "@/app/(clinic)/rota/actions"
-import {
-  generateRota,
-  generateRotaWithAI,
-  generateRotaHybrid,
-  generateTaskHybrid,
-} from "@/app/(clinic)/rota/generate-actions"
+import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { formatDate } from "@/lib/format-date"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
@@ -101,11 +88,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   const [showStrategyModal, setShowStrategyModal] = useState(false)
   const [showReasoningModal, setShowReasoningModal] = useState(false)
-  const [multiWeekScope, setMultiWeekScope] = useState<string[] | null>(null)
   const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
-  const [showCopyConfirm, setShowCopyConfirm] = useState(false)
-  const [isPending, startTransition]    = useTransition()
-  const [pendingAction, setPendingAction] = useState<"generating" | "deleting" | null>(null)
 
   // Day edit sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -164,6 +147,24 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     fetchWeek, fetchWeekSilent, fetchMonth, prefetchWeek,
     handleBiopsyChange, lastFetchIdRef, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
+
+  const {
+    isPending, pendingAction,
+    multiWeekScope, setMultiWeekScope,
+    showCopyConfirm, setShowCopyConfirm,
+    handleStrategyGenerate, handlePublish, handleUnlock,
+    handleDelete, handleCopyPreviousWeek, handlePunctionsChange,
+  } = useRotaActions({
+    weekStart, monthStart, view,
+    weekData, monthSummary,
+    setError, setActiveStrategy,
+    setLoadingWeek, setLoadingMonth,
+    setPunctionsOverrideLocal,
+    aiReasoningRef, reasoningSourceRef,
+    fetchWeek, fetchWeekSilent, fetchMonth,
+    setShowStrategyModal,
+    t,
+  })
 
   // Hover-prefetch: warm the cache the moment the user's cursor enters a nav
   // button, so the subsequent click hits a primed cache. Only week view — month
@@ -239,134 +240,10 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     setShowStrategyModal(true)
   }
 
-  function handleStrategyGenerate(strategy: GenerationStrategy, templateId?: string) {
-    setShowStrategyModal(false)
-    const weeksToGenerate = multiWeekScope ?? [weekStart]
-    setMultiWeekScope(null)
-
-    setActiveStrategy(strategy)
-    setLoadingWeek(true)
-    setPendingAction(strategy === "manual" ? "deleting" : "generating")
-    startTransition(async () => {
-      try {
-        let successCount = 0
-        let errorMsg: string | null = null
-
-        for (const ws of weeksToGenerate) {
-          if (strategy === "manual") {
-            const result = await clearWeek(ws)
-            if (result.error) { errorMsg = result.error; break }
-            successCount++
-          } else if (strategy === "flexible_template" && templateId) {
-            const result = await applyTemplate(templateId, ws, true)
-            if (result.error) { errorMsg = result.error; break }
-            successCount++
-          } else if (strategy === "ai_hybrid") {
-            const isTask = weekData?.rotaDisplayMode === "by_task"
-            const result = isTask
-              ? await generateTaskHybrid(ws, false)
-              : await generateRotaHybrid(ws, false)
-            if (result.error) { errorMsg = result.error; break }
-            if (result.reasoning) {
-              aiReasoningRef.current = result.reasoning
-              reasoningSourceRef.current = "hybrid"
-            }
-            successCount++
-          } else if (strategy === "ai_reasoning") {
-            const result = await generateRotaWithAI(ws, false)
-            if (result.error) { errorMsg = result.error; break }
-            if (result.reasoning) {
-              aiReasoningRef.current = result.reasoning
-              reasoningSourceRef.current = "claude"
-            }
-            successCount++
-          } else if (strategy === "ai_optimal") {
-            // Route to the engine version configured for this org + display mode
-            const isByTask = weekData?.rotaDisplayMode === "by_task"
-            const version = isByTask
-              ? (weekData?.engineConfig?.taskOptimalVersion ?? "v1")
-              : (weekData?.engineConfig?.aiOptimalVersion ?? "v2")
-            const genType = version === "v1" ? "ai_optimal" : "ai_optimal_v2"
-            const result = await generateRota(ws, false, genType)
-            if (result.error) { errorMsg = result.error; break }
-            successCount++
-          }
-        }
-
-        if (errorMsg) {
-          setError(errorMsg)
-          toast.error(errorMsg)
-        } else if (weeksToGenerate.length > 1) {
-          toast.success(t("weeksGenerated", { count: successCount }))
-        } else {
-          toast.success(t("scheduleGenerated"))
-        }
-
-        fetchWeek(weekStart)
-        if (view === "month") fetchMonth(monthStart, weekStart)
-      } catch (e) {
-        const raw = e instanceof Error ? e.message : String(e)
-        const isTimeout = /failed to fetch|timeout|aborted|network/i.test(raw)
-        const msg = isTimeout ? t("generatingTimeout") : raw || t("generatingError")
-        setError(msg)
-        toast.error(msg)
-      } finally {
-        setActiveStrategy(null)
-        setPendingAction(null)
-      }
-    })
-  }
-
-  function handlePublish() {
-    if (!weekData?.rota) return
-    startTransition(async () => {
-      const result = await publishRota(weekData.rota!.id)
-      if (result.error) setError(result.error)
-      else fetchWeek(weekStart)
-    })
-  }
-
-  function handleUnlock() {
-    if (!weekData?.rota) return
-    startTransition(async () => {
-      const result = await unlockRota(weekData.rota!.id)
-      if (result.error) setError(result.error)
-      else fetchWeek(weekStart)
-    })
-  }
-
-
   function handleMonthDayClick(date: string) {
-    setCurrentDate(date)   // ensures correct week is loaded for the AssignmentSheet
+    setCurrentDate(date)
     setSheetDate(date)
     setSheetOpen(true)
-  }
-
-
-  function handlePunctionsChange(date: string, value: number | null) {
-    if (!weekData?.rota) return
-    const prevGaps = weekData.days.find((d) => d.date === date)?.skillGaps ?? []
-    const rotaId = weekData.rota.id
-    const ws = weekStart
-    setPunctionsOverrideLocal((prev) => {
-      if (value === null) {
-        const { [date]: _removed, ...rest } = prev
-        return rest
-      }
-      return { ...prev, [date]: value }
-    })
-    startTransition(async () => {
-      const result = await setPunctionsOverride(rotaId, date, value)
-      if (result.error) { setError(result.error); return }
-      const newData = await fetchWeekSilent(ws)
-      if (!newData) return
-      const newGaps = newData.days.find((d) => d.date === date)?.skillGaps ?? []
-      if (newGaps.length > prevGaps.length) {
-        toast.warning(t("coverageInsufficient"))
-      } else if (newGaps.length === 0 && prevGaps.length > 0) {
-        toast.success(t("coverageOk"))
-      }
-    })
   }
 
   const rota           = weekData?.rota ?? null
@@ -381,35 +258,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
-
-  function handleDelete() {
-    const msg = view === "month" ? t("confirm4WeeksDelete") : t("deleteWeekConfirm")
-    if (!confirm(msg)) return
-    if (view === "month") setLoadingMonth(true)
-    setPendingAction("deleting")
-    startTransition(async () => {
-      if (view === "month" && monthSummary) {
-        const allWeekStarts: string[] = []
-        for (let i = 0; i < monthSummary.days.length; i += 7) {
-          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-        }
-        let errors = 0
-        for (const ws of allWeekStarts) {
-          const result = await clearWeek(ws)
-          if (result.error) errors++
-        }
-        if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
-        else toast.success(t("fourWeeksDeleted"))
-        fetchWeek(weekStart)
-        fetchMonth(monthStart, weekStart)
-      } else {
-        const result = await clearWeek(weekStart)
-        if (result.error) toast.error(result.error)
-        else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
-      }
-      setPendingAction(null)
-    })
-  }
 
   async function handleExportPdf() {
     const fresh = await fetchWeekSilent(weekStart) ?? weekData
@@ -431,17 +279,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     if (fresh.rotaDisplayMode === "by_task") exportWeekByTask(fresh, fresh.tecnicas ?? [], locale, daysAsRows)
     else if (calendarLayout === "person") exportWeekByPerson(fresh, locale, daysAsRows)
     else exportWeekByShift(fresh, locale, daysAsRows)
-  }
-
-  function handleCopyPreviousWeek() {
-    setShowCopyConfirm(false)
-    setLoadingWeek(true)
-    startTransition(async () => {
-      const result = await copyPreviousWeek(weekStart)
-      if (result.error) { toast.error(result.error); return }
-      toast.success(t("copyAssignments", { count: result.count ?? 0 }))
-      fetchWeek(weekStart)
-    })
   }
 
   function handleSaveFavorite() {
