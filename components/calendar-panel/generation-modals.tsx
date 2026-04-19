@@ -11,9 +11,9 @@ import {
   getTemplates,
   applyTemplate,
   saveAsTemplate,
-  getHybridUsage,
   type RotaMonthSummary,
 } from "@/app/(clinic)/rota/actions"
+import { getHybridUsage } from "@/app/(clinic)/rota/generate-actions"
 import { formatDate } from "@/lib/format-date"
 import { buildStrategyCards, parseHybridInsights, type GenerationStrategy } from "./utils"
 import { TODAY } from "./constants"

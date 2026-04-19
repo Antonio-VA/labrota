@@ -15,8 +15,6 @@ import { toast } from "sonner"
 import { getMondayOfWeek } from "@/lib/rota-engine"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
-  generateRota,
-  generateRotaWithAI,
   publishRota,
   unlockRota,
   setPunctionsOverride,
@@ -24,9 +22,13 @@ import {
   applyTemplate,
   clearWeek,
   copyPreviousWeek,
+} from "@/app/(clinic)/rota/actions"
+import {
+  generateRota,
+  generateRotaWithAI,
   generateRotaHybrid,
   generateTaskHybrid,
-} from "@/app/(clinic)/rota/actions"
+} from "@/app/(clinic)/rota/generate-actions"
 import { formatDate } from "@/lib/format-date"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { AssignmentSheet } from "@/components/assignment-sheet"
