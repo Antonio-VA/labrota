@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { typedQuery } from "@/lib/supabase/typed-query"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
@@ -127,39 +128,46 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Fire the assignments query in parallel with everything else, but don't block
   // the null-rota return on it — if no rota exists, we throw it away unawaited.
   // This saves ~50-150ms on "no rota" weeks (next-week clicks before generation).
-  const assignmentsPromise = supabase
-    .from("rota_assignments")
-    .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
-    .eq("rotas.week_start", weekStart) as unknown as Promise<{ data: Array<{ id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; function_label: string | null; tecnica_id: string | null; whole_team: boolean; rota_id: string }> | null; error: { message: string } | null }>
+  type AssignmentJoinRow = { id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; function_label: string | null; tecnica_id: string | null; whole_team: boolean; rota_id: string }
+  const assignmentsPromise = typedQuery<AssignmentJoinRow[]>(
+    supabase
+      .from("rota_assignments")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
+      .eq("rotas.week_start", weekStart))
 
   const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes] = await Promise.all([
-    supabase
-      .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
-      .eq("week_start", weekStart)
-      .maybeSingle() as unknown as Promise<{ data: RotaRecord | null; error: { message: string } | null }>,
+    typedQuery<RotaRecord>(
+      supabase
+        .from("rotas")
+        .select("id, status, published_at, published_by, punctions_override, engine_warnings")
+        .eq("week_start", weekStart)
+        .maybeSingle()),
     supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle(),
-    supabase
-      .from("leaves")
-      .select("staff_id, start_date, end_date, type")
-      .lte("start_date", dates[6])
-      .gte("end_date", dates[0])
-      .eq("status", "approved") as unknown as Promise<{ data: LeaveRow[] | null; error: { message: string } | null }>,
-    supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order") as unknown as Promise<{ data: ShiftTypeDefinition[] | null; error: { message: string } | null }>,
-    supabase.from("tecnicas").select("*").order("orden").order("created_at") as unknown as Promise<{ data: Tecnica[] | null; error: { message: string } | null }>,
-    supabase.from("departments").select("*").order("sort_order") as unknown as Promise<{ data: import("@/lib/types/database").Department[] | null; error: { message: string } | null }>,
-    supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]) as unknown as Promise<{ data: RuleRow[] | null; error: { message: string } | null }>,
-    supabase
-      .from("organisations")
-      .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
-      .limit(1)
-      .maybeSingle() as unknown as Promise<{ data: OrgConfig | null; error: { message: string } | null }>,
-    supabase
-      .from("staff")
-      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours") as unknown as Promise<{ data: StaffRow[] | null; error: { message: string } | null }>,
-    supabase
-      .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null; error: { message: string } | null }>,
+    typedQuery<LeaveRow[]>(
+      supabase
+        .from("leaves")
+        .select("staff_id, start_date, end_date, type")
+        .lte("start_date", dates[6])
+        .gte("end_date", dates[0])
+        .eq("status", "approved")),
+    typedQuery<ShiftTypeDefinition[]>(supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order")),
+    typedQuery<Tecnica[]>(supabase.from("tecnicas").select("*").order("orden").order("created_at")),
+    typedQuery<import("@/lib/types/database").Department[]>(supabase.from("departments").select("*").order("sort_order")),
+    typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"])),
+    typedQuery<OrgConfig>(
+      supabase
+        .from("organisations")
+        .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
+        .limit(1)
+        .maybeSingle()),
+    typedQuery<StaffRow[]>(
+      supabase
+        .from("staff")
+        .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours")),
+    typedQuery<SkillRow[]>(
+      supabase
+        .from("staff_skills")
+        .select("staff_id, skill, level")),
   ])
 
   // Check for critical query errors — throw so callers can catch
@@ -177,11 +185,12 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
   let rotaResult = rotaResultFull
   if (rotaResultFull.error && !rotaResultFull.data) {
-    const fallback = await supabase
-      .from("rotas")
-      .select("id, status, published_at, published_by, punctions_override")
-      .eq("week_start", weekStart)
-      .maybeSingle() as unknown as typeof rotaResultFull
+    const fallback = await typedQuery<RotaRecord>(
+      supabase
+        .from("rotas")
+        .select("id, status, published_at, published_by, punctions_override")
+        .eq("week_start", weekStart)
+        .maybeSingle())
     rotaResult = fallback
   }
 
@@ -327,10 +336,11 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // If newer columns missing, retry with minimal select
   let rawAssignments: RawAssignment[] = []
   if (assignmentsRes.error) {
-    const { data: baseData } = (await supabase
-      .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override")
-      .eq("rota_id", rota.id)) as unknown as { data: Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[] | null }
+    const { data: baseData } = await typedQuery<Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[]>(
+      supabase
+        .from("rota_assignments")
+        .select("id, staff_id, date, shift_type, is_manual_override")
+        .eq("rota_id", rota.id))
     rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false }))
   } else {
     rawAssignments = assignmentsRes.data ?? []
@@ -1214,38 +1224,48 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     }
   }
 
-  const orgRes = await (supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle() as unknown as Promise<{ data: { rota_display_mode?: string } | null }>)
+  const orgRes = await typedQuery<{ rota_display_mode?: string }>(
+    supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle())
   const rotaDisplayMode = orgRes.data?.rota_display_mode ?? "by_shift"
 
+  type MonthAssignmentRow = { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }
+  type MonthLabConfigRow = { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null; public_holiday_mode?: string | null; min_lab_coverage?: number | null; min_weekend_lab_coverage?: number | null; min_andrology_coverage?: number | null; min_weekend_andrology?: number | null; ratio_optimal?: number | null; ratio_minimum?: number | null; first_day_of_week?: number | null; time_format?: string | null; biopsy_conversion_rate?: number | null; biopsy_day5_pct?: number | null; biopsy_day6_pct?: number | null }
   const [assignmentsRes, skillsRes, leavesRes, labConfigRes, rotasRes, staffRes, tecnicasRes] = await Promise.all([
-    supabase
-      .from("rota_assignments")
-      .select("date, staff_id, shift_type, staff:staff_id(first_name, last_name, role)")
-      .gte("date", gridDates[0])
-      .lte("date", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }[] | null }>,
-    supabase
-      .from("staff_skills")
-      .select("staff_id, skill, level") as unknown as Promise<{ data: SkillRow[] | null }>,
-    supabase
-      .from("leaves")
-      .select("staff_id, start_date, end_date")
-      .lte("start_date", gridDates[gridDates.length - 1])
-      .gte("end_date", gridDates[0])
-      .eq("status", "approved") as unknown as Promise<{ data: { staff_id: string; start_date: string; end_date: string }[] | null }>,
-    supabase.from("lab_config").select("punctions_by_day, country, region, public_holiday_mode, min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct").maybeSingle() as unknown as Promise<{ data: { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null; public_holiday_mode?: string | null; min_lab_coverage?: number | null; min_weekend_lab_coverage?: number | null; min_andrology_coverage?: number | null; min_weekend_andrology?: number | null; ratio_optimal?: number | null; ratio_minimum?: number | null; first_day_of_week?: number | null; time_format?: string | null; biopsy_conversion_rate?: number | null; biopsy_day5_pct?: number | null; biopsy_day6_pct?: number | null } | null }>,
-    supabase
-      .from("rotas")
-      .select("week_start, status, engine_warnings")
-      .gte("week_start", gridDates[0])
-      .lte("week_start", gridDates[gridDates.length - 1]) as unknown as Promise<{ data: { week_start: string; status: string; engine_warnings: string[] | null }[] | null }>,
-    supabase
-      .from("staff")
-      .select("id, first_name, last_name, role, days_per_week")
-      .neq("onboarding_status", "inactive") as unknown as Promise<{ data: { id: string; first_name: string; last_name: string; role: string; days_per_week: number }[] | null }>,
-    supabase
-      .from("tecnicas")
-      .select("codigo, required_skill, typical_shifts")
-      .eq("activa", true) as unknown as Promise<{ data: { codigo: string; required_skill: string | null; typical_shifts: string[] | null }[] | null }>,
+    typedQuery<MonthAssignmentRow[]>(
+      supabase
+        .from("rota_assignments")
+        .select("date, staff_id, shift_type, staff:staff_id(first_name, last_name, role)")
+        .gte("date", gridDates[0])
+        .lte("date", gridDates[gridDates.length - 1])),
+    typedQuery<SkillRow[]>(
+      supabase
+        .from("staff_skills")
+        .select("staff_id, skill, level")),
+    typedQuery<{ staff_id: string; start_date: string; end_date: string }[]>(
+      supabase
+        .from("leaves")
+        .select("staff_id, start_date, end_date")
+        .lte("start_date", gridDates[gridDates.length - 1])
+        .gte("end_date", gridDates[0])
+        .eq("status", "approved")),
+    typedQuery<MonthLabConfigRow>(
+      supabase.from("lab_config").select("punctions_by_day, country, region, public_holiday_mode, min_lab_coverage, min_weekend_lab_coverage, min_andrology_coverage, min_weekend_andrology, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct").maybeSingle()),
+    typedQuery<{ week_start: string; status: string; engine_warnings: string[] | null }[]>(
+      supabase
+        .from("rotas")
+        .select("week_start, status, engine_warnings")
+        .gte("week_start", gridDates[0])
+        .lte("week_start", gridDates[gridDates.length - 1])),
+    typedQuery<{ id: string; first_name: string; last_name: string; role: string; days_per_week: number }[]>(
+      supabase
+        .from("staff")
+        .select("id, first_name, last_name, role, days_per_week")
+        .neq("onboarding_status", "inactive")),
+    typedQuery<{ codigo: string; required_skill: string | null; typical_shifts: string[] | null }[]>(
+      supabase
+        .from("tecnicas")
+        .select("codigo, required_skill, typical_shifts")
+        .eq("activa", true)),
   ])
 
   // Assignment data
@@ -1445,48 +1465,54 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
   const fmt = (d: Date) => d.toISOString().split("T")[0]
 
   const [assignmentsRes, leavesRes, pastLeavesRes, prevWeekRes, nextWeekRes, rulesRes] = await Promise.all([
-    supabase
-      .from("rota_assignments")
-      .select("date, shift_type, function_label")
-      .eq("staff_id", staffId)
-      .gte("date", since)
-      .lte("date", today)
-      .order("date", { ascending: false })
-      .limit(20) as unknown as Promise<{ data: { date: string; shift_type: string; function_label: string | null }[] | null }>,
-    supabase
-      .from("leaves")
-      .select("start_date, end_date, type")
-      .eq("staff_id", staffId)
-      .eq("status", "approved")
-      .gte("end_date", today)
-      .order("start_date", { ascending: true })
-      .limit(5) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
-    supabase
-      .from("leaves")
-      .select("start_date, end_date, type")
-      .eq("staff_id", staffId)
-      .eq("status", "approved")
-      .lt("end_date", today)
-      .order("end_date", { ascending: false })
-      .limit(3) as unknown as Promise<{ data: { start_date: string; end_date: string; type: string }[] | null }>,
-    supabase
-      .from("rota_assignments")
-      .select("date, shift_type")
-      .eq("staff_id", staffId)
-      .gte("date", fmt(prevMonday))
-      .lte("date", fmt(prevSunday))
-      .order("date") as unknown as Promise<{ data: { date: string; shift_type: string }[] | null }>,
-    supabase
-      .from("rota_assignments")
-      .select("date, shift_type")
-      .eq("staff_id", staffId)
-      .gte("date", fmt(nextMonday))
-      .lte("date", fmt(nextSunday))
-      .order("date") as unknown as Promise<{ data: { date: string; shift_type: string }[] | null }>,
-    supabase
-      .from("rota_rules")
-      .select("type, is_hard, staff_ids, params, notes, expires_at")
-      .eq("enabled", true) as unknown as Promise<{ data: { type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null; expires_at: string | null }[] | null }>,
+    typedQuery<{ date: string; shift_type: string; function_label: string | null }[]>(
+      supabase
+        .from("rota_assignments")
+        .select("date, shift_type, function_label")
+        .eq("staff_id", staffId)
+        .gte("date", since)
+        .lte("date", today)
+        .order("date", { ascending: false })
+        .limit(20)),
+    typedQuery<{ start_date: string; end_date: string; type: string }[]>(
+      supabase
+        .from("leaves")
+        .select("start_date, end_date, type")
+        .eq("staff_id", staffId)
+        .eq("status", "approved")
+        .gte("end_date", today)
+        .order("start_date", { ascending: true })
+        .limit(5)),
+    typedQuery<{ start_date: string; end_date: string; type: string }[]>(
+      supabase
+        .from("leaves")
+        .select("start_date, end_date, type")
+        .eq("staff_id", staffId)
+        .eq("status", "approved")
+        .lt("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(3)),
+    typedQuery<{ date: string; shift_type: string }[]>(
+      supabase
+        .from("rota_assignments")
+        .select("date, shift_type")
+        .eq("staff_id", staffId)
+        .gte("date", fmt(prevMonday))
+        .lte("date", fmt(prevSunday))
+        .order("date")),
+    typedQuery<{ date: string; shift_type: string }[]>(
+      supabase
+        .from("rota_assignments")
+        .select("date, shift_type")
+        .eq("staff_id", staffId)
+        .gte("date", fmt(nextMonday))
+        .lte("date", fmt(nextSunday))
+        .order("date")),
+    typedQuery<{ type: string; is_hard: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null; expires_at: string | null }[]>(
+      supabase
+        .from("rota_rules")
+        .select("type, is_hard, staff_ids, params, notes, expires_at")
+        .eq("enabled", true)),
   ])
 
   return {
@@ -1512,30 +1538,33 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
   lastWeekDate.setDate(lastWeekDate.getDate() - 7)
   const lastWeek = lastWeekDate.toISOString().split("T")[0]
 
-  const { data: lastWeekAssignments } = await supabase
-    .from("rota_assignments")
-    .select("staff_id, shift_type, function_label")
-    .eq("date", lastWeek) as unknown as { data: { staff_id: string; shift_type: string; function_label: string | null }[] | null }
+  const { data: lastWeekAssignments } = await typedQuery<{ staff_id: string; shift_type: string; function_label: string | null }[]>(
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, shift_type, function_label")
+      .eq("date", lastWeek))
 
   if (!lastWeekAssignments || lastWeekAssignments.length === 0) {
     return { error: "No assignments on the same day last week." }
   }
 
   // Ensure rota exists
-  const { data: rotaRow } = await supabase
-    .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
-    .select("id")
-    .single() as unknown as { data: { id: string } | null }
+  const { data: rotaRow } = await typedQuery<{ id: string }>(
+    supabase
+      .from("rotas")
+      .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
+      .select("id")
+      .single())
   if (!rotaRow) return { error: "Error creating rota." }
 
   // Check who's on leave
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("staff_id")
-    .lte("start_date", date)
-    .gte("end_date", date)
-    .eq("status", "approved") as unknown as { data: { staff_id: string }[] | null }
+  const { data: leaves } = await typedQuery<{ staff_id: string }[]>(
+    supabase
+      .from("leaves")
+      .select("staff_id")
+      .lte("start_date", date)
+      .gte("end_date", date)
+      .eq("status", "approved"))
   const leaveIds = new Set((leaves ?? []).map((l) => l.staff_id))
 
   const toInsert = lastWeekAssignments
@@ -1572,31 +1601,34 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
   const currDates = getWeekDates(weekStart)
 
   // Fetch previous week's assignments
-  const { data: prevAssignments } = await supabase
-    .from("rota_assignments")
-    .select("staff_id, date, shift_type, function_label")
-    .gte("date", prevDates[0])
-    .lte("date", prevDates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
+  const { data: prevAssignments } = await typedQuery<{ staff_id: string; date: string; shift_type: string; function_label: string | null }[]>(
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, date, shift_type, function_label")
+      .gte("date", prevDates[0])
+      .lte("date", prevDates[6]))
 
   if (!prevAssignments || prevAssignments.length === 0) {
     return { error: "No assignments in the previous week." }
   }
 
   // Upsert rota
-  const { data: rotaRow } = await supabase
-    .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
-    .select("id")
-    .single() as unknown as { data: { id: string } | null }
+  const { data: rotaRow } = await typedQuery<{ id: string }>(
+    supabase
+      .from("rotas")
+      .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id,week_start" })
+      .select("id")
+      .single())
   if (!rotaRow) return { error: "Error creating rota." }
 
   // Check leaves for this week
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("staff_id, start_date, end_date")
-    .lte("start_date", currDates[6])
-    .gte("end_date", currDates[0])
-    .eq("status", "approved") as unknown as { data: { staff_id: string; start_date: string; end_date: string }[] | null }
+  const { data: leaves } = await typedQuery<{ staff_id: string; start_date: string; end_date: string }[]>(
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date")
+      .lte("start_date", currDates[6])
+      .gte("end_date", currDates[0])
+      .eq("status", "approved"))
 
   const onLeave: Record<string, Set<string>> = {}
   for (const l of leaves ?? []) {
@@ -1642,14 +1674,15 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   const orgId = await getCachedOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: rotaRow, error: upsertErr } = await supabase
-    .from("rotas")
-    .upsert(
-      { organisation_id: orgId, week_start: weekStart, status: "draft" },
-      { onConflict: "organisation_id,week_start" }
-    )
-    .select("id")
-    .single() as unknown as { data: { id: string } | null; error: { message: string } | null }
+  const { data: rotaRow, error: upsertErr } = await typedQuery<{ id: string }>(
+    supabase
+      .from("rotas")
+      .upsert(
+        { organisation_id: orgId, week_start: weekStart, status: "draft" },
+        { onConflict: "organisation_id,week_start" }
+      )
+      .select("id")
+      .single())
 
   if (upsertErr) return { error: upsertErr.message }
   if (!rotaRow) return { error: "Error creating rota." }
@@ -1672,11 +1705,12 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
   if (!orgId) return { error: "No organisation found." }
 
   const dates = getWeekDates(weekStart)
-  const { data: assignments } = await supabase
-    .from("rota_assignments")
-    .select("staff_id, date, shift_type, function_label")
-    .gte("date", dates[0])
-    .lte("date", dates[6]) as unknown as { data: { staff_id: string; date: string; shift_type: string; function_label: string | null }[] | null }
+  const { data: assignments } = await typedQuery<{ staff_id: string; date: string; shift_type: string; function_label: string | null }[]>(
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, date, shift_type, function_label")
+      .gte("date", dates[0])
+      .lte("date", dates[6]))
 
   if (!assignments || assignments.length === 0) return { error: "No shifts to save." }
 
@@ -1700,10 +1734,11 @@ export async function saveAsTemplate(weekStart: string, name: string): Promise<{
 
 export async function getTemplates(): Promise<RotaTemplate[]> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("rota_templates")
-    .select("id, name, assignments, created_at")
-    .order("created_at", { ascending: false }) as unknown as { data: RotaTemplate[] | null }
+  const { data } = await typedQuery<RotaTemplate[]>(
+    supabase
+      .from("rota_templates")
+      .select("id, name, assignments, created_at")
+      .order("created_at", { ascending: false }))
   return data ?? []
 }
 
@@ -1713,33 +1748,36 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   if (!orgId) return { error: "No organisation found." }
 
   // Fetch template
-  const { data: template } = await supabase
-    .from("rota_templates")
-    .select("id, name, assignments")
-    .eq("id", templateId)
-    .single() as unknown as { data: RotaTemplate | null }
+  const { data: template } = await typedQuery<RotaTemplate>(
+    supabase
+      .from("rota_templates")
+      .select("id, name, assignments")
+      .eq("id", templateId)
+      .single())
   if (!template) return { error: "Template not found." }
 
   const dates = getWeekDates(weekStart)
 
   // Upsert rota record
-  const { data: rota } = await supabase
-    .from("rotas")
-    .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id, week_start" })
-    .select("id")
-    .single() as unknown as { data: { id: string } | null }
+  const { data: rota } = await typedQuery<{ id: string }>(
+    supabase
+      .from("rotas")
+      .upsert({ organisation_id: orgId, week_start: weekStart, status: "draft" }, { onConflict: "organisation_id, week_start" })
+      .select("id")
+      .single())
   if (!rota) return { error: "Error creating rota." }
 
   // Best-effort: set generation_type
   await supabase.from("rotas").update({ generation_type: strict ? "strict_template" : "flexible_template" }).eq("id", rota.id)
 
   // Fetch leaves for this week
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("staff_id, start_date, end_date")
-    .lte("start_date", dates[6])
-    .gte("end_date", dates[0])
-    .eq("status", "approved") as unknown as { data: { staff_id: string; start_date: string; end_date: string }[] | null }
+  const { data: leaves } = await typedQuery<{ staff_id: string; start_date: string; end_date: string }[]>(
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date")
+      .lte("start_date", dates[6])
+      .gte("end_date", dates[0])
+      .eq("status", "approved"))
 
   const onLeave: Record<string, Set<string>> = {}
   for (const l of leaves ?? []) {
@@ -1753,10 +1791,11 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
   }
 
   // Fetch active staff
-  const { data: activeStaff } = await supabase
-    .from("staff")
-    .select("id, onboarding_status")
-    .eq("onboarding_status", "active") as unknown as { data: { id: string }[] | null }
+  const { data: activeStaff } = await typedQuery<{ id: string }[]>(
+    supabase
+      .from("staff")
+      .select("id, onboarding_status")
+      .eq("onboarding_status", "active"))
   const activeIds = new Set((activeStaff ?? []).map((s) => s.id))
 
   // Delete existing non-override assignments
