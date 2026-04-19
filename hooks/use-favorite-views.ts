@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useRef, useEffect } from "react"
 import { getUserPreferences, saveUserPreferences } from "@/app/(clinic)/account-actions"
+import { usePersistedState } from "./use-persisted-state"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,14 +23,8 @@ interface UseFavoriteViewsOptions {
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useFavoriteViews({ onApplyDesktop, onApplyMobile }: UseFavoriteViewsOptions) {
-  const [favoriteView, setFavoriteView] = useState<FavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_favorite_view") ?? "null") } catch { return null }
-  })
-  const [mobileFavoriteView, setMobileFavoriteView] = useState<MobileFavoriteView | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_mobile_favorite_view") ?? "null") } catch { return null }
-  })
+  const [favoriteView, setFavoriteView] = usePersistedState<FavoriteView | null>("labrota_favorite_view", null)
+  const [mobileFavoriteView, setMobileFavoriteView] = usePersistedState<MobileFavoriteView | null>("labrota_mobile_favorite_view", null)
 
   // Apply desktop favorite on first mount (only if no session-stored view)
   const favAppliedRef = useRef(false)
@@ -49,20 +44,12 @@ export function useFavoriteViews({ onApplyDesktop, onApplyMobile }: UseFavoriteV
 
   // Sync from DB when localStorage is empty (new browser)
   useEffect(() => {
-    const hasDesktop = localStorage.getItem("labrota_favorite_view")
-    const hasMobile = localStorage.getItem("labrota_mobile_favorite_view")
-    if (hasDesktop && hasMobile) return
+    if (favoriteView && mobileFavoriteView) return
     getUserPreferences().then((prefs) => {
-      if (!hasDesktop && prefs.favoriteView) {
-        localStorage.setItem("labrota_favorite_view", JSON.stringify(prefs.favoriteView))
-        setFavoriteView(prefs.favoriteView as FavoriteView)
-      }
-      if (!hasMobile && prefs.mobileFavoriteView) {
-        localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(prefs.mobileFavoriteView))
-        setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
-      }
+      if (!favoriteView && prefs.favoriteView) setFavoriteView(prefs.favoriteView as FavoriteView)
+      if (!mobileFavoriteView && prefs.mobileFavoriteView) setMobileFavoriteView(prefs.mobileFavoriteView as MobileFavoriteView)
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView }
 }

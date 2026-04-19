@@ -466,7 +466,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         onSaveFavorite={() => {
           const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
           setFavoriteView(fav)
-          localStorage.setItem("labrota_favorite_view", JSON.stringify(fav))
           saveUserPreferences({ favoriteView: fav })
           toast.success(t("favoriteViewSaved"))
         }}
@@ -583,7 +582,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           onSaveMobileFavorite={() => {
             const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
             setMobileFavoriteView(fav)
-            localStorage.setItem("labrota_mobile_favorite_view", JSON.stringify(fav))
             saveUserPreferences({ mobileFavoriteView: fav })
             toast.success(t("favoriteViewSaved"))
           }}
