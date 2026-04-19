@@ -9,8 +9,8 @@ import { importFutureRota, type ImportRotaResult } from "@/app/(clinic)/onboardi
 import { processFile, formatSize } from "@/components/import-wizard/file-processing"
 import { FileIcon } from "@/components/import-wizard/ui-helpers"
 import type { ExtractedRota, DbStaff, DbShift, StaffMatch, ShiftMatch } from "./types"
-import { matchStaff, matchShift, fmtDate, fmtWeekRange } from "./matching"
-import { getMondayOf } from "@/lib/format-date"
+import { matchStaff, matchShift, fmtWeekRange } from "./matching"
+import { formatDateWithYear, getMondayOf } from "@/lib/format-date"
 
 type Step = "upload" | "extracting" | "review" | "importing" | "done"
 
@@ -268,7 +268,7 @@ export function ImportRotaWizard() {
           <div className="rounded-lg border border-border bg-background px-4 py-3">
             <p className="text-[13px] text-muted-foreground">Período detectado</p>
             <p className="text-[14px] font-medium mt-0.5">
-              {fmtDate(extracted.date_range.start)} — {fmtDate(extracted.date_range.end)}
+              {formatDateWithYear(extracted.date_range.start, "es")} — {formatDateWithYear(extracted.date_range.end, "es")}
               <span className="text-muted-foreground font-normal ml-2">({weekStarts.length} semana{weekStarts.length !== 1 ? "s" : ""})</span>
             </p>
           </div>

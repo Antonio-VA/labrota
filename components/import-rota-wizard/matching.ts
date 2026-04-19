@@ -43,11 +43,6 @@ export function matchShift(fileCode: string, shiftList: DbShift[]): ShiftMatch {
   return { file_code: fileCode, db_code: "", db_label: "", confidence: "none" }
 }
 
-export function fmtDate(iso: string): string {
-  const d = new Date(iso + "T12:00:00")
-  return new Intl.DateTimeFormat("es", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(d)
-}
-
 export function fmtWeekRange(weekStart: string): string {
   const start = new Date(weekStart + "T12:00:00")
   const end = new Date(weekStart + "T12:00:00")
