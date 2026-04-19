@@ -1,44 +1,39 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Plane, ArrowRightLeft } from "lucide-react"
+import { ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
-import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
+import { DndContext, DragOverlay } from "@dnd-kit/core"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
-import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import {
-  removeAssignment,
-  deleteAssignment,
-  upsertAssignment,
-  moveAssignmentShift,
   setFunctionLabel,
-  setTecnica,
   type RotaWeekData,
   type RotaDay,
   type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
-import { DraggableShiftBadge, DraggableOffStaff, DroppableCell } from "./dnd-wrappers"
+import { useShiftGridDnd } from "@/hooks/use-shift-grid-dnd"
+import { DraggableShiftBadge, DroppableCell } from "./dnd-wrappers"
 import { AssignmentPopover } from "./assignment-popover"
-import { DayStatsInput } from "./day-stats-input"
 import { ShiftBadge } from "./shift-badge"
-import { DayWarningPopover } from "./warnings"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
-import { TODAY, DEFAULT_DEPT_MAPS } from "./constants"
+import { DEFAULT_DEPT_MAPS } from "./constants"
 import { buildDeptMaps } from "./utils"
+import { ShiftGridHeader } from "./shift-grid-header"
+import { ShiftGridOffRow } from "./shift-grid-off-row"
 
 export function ShiftGrid({
   data, staffList, loading, locale,
   onCellClick, onChipClick,
-  isPublished, isGenerating: _isGenerating,
-  shiftTimes: _shiftTimes, onLeaveByDate, publicHolidays,
+  isPublished,
+  onLeaveByDate, publicHolidays,
   punctionsDefault, punctionsOverride, onPunctionsChange, onBiopsyChange,
   onRefresh, onAfterMutation, onCancelUndo, onSaved, weekStart, compact, colorChips, simplified, onDateClick, onLocalDaysChange,
-  ratioOptimal: _ratioOptimal, ratioMinimum: _ratioMinimum, timeFormat = "24h",
+  timeFormat = "24h",
   biopsyConversionRate = 0.5, biopsyDay5Pct = 0.5, biopsyDay6Pct = 0.5,
   swapStaffId, gridSetDaysRef,
 }: {
@@ -76,14 +71,10 @@ export function ShiftGrid({
   swapStaffId?: string | null
   gridSetDaysRef?: React.RefObject<((days: RotaDay[]) => void) | null>
 }) {
-  const t  = useTranslations("schedule")
-  const _tc = useTranslations("common")
-  const _ts = useTranslations("skills")
+  const t = useTranslations("schedule")
 
-  // O(1) staff lookup by ID
   const staffById = useMemo(() => new Map(staffList.map((s) => [s.id, s])), [staffList])
 
-  // Staff color map — maps each staff member to their department colour
   const deptColorMap = useMemo(() => {
     const m: Record<string, string> = {}
     for (const dept of (data?.departments ?? [])) m[dept.code] = dept.colour
@@ -94,10 +85,6 @@ export function ShiftGrid({
   , [staffList, deptColorMap])
   const { hoveredStaffId, setHovered } = useStaffHover()
 
-  // Require 5px movement before drag activates — allows click events to pass through
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  // Compute header dates from weekStart so they update immediately on navigation
   const headerDates = useMemo(() => {
     const dates: string[] = []
     const base = new Date(weekStart + "T12:00:00")
@@ -109,7 +96,6 @@ export function ShiftGrid({
     return dates
   }, [weekStart])
 
-  // O(1) tecnica lookups — avoids O(n) .find() calls inside render loops
   const tecnicaByCode = useMemo(() =>
     Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t]))
   , [data?.tecnicas])
@@ -117,7 +103,6 @@ export function ShiftGrid({
     Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.id, t]))
   , [data?.tecnicas])
 
-  // O(1) skill-level lookups per staff — avoids repeated .find() on skill arrays
   const staffSkillLevelMap = useMemo(() => {
     const m: Record<string, Record<string, string>> = {}
     for (const s of staffList) {
@@ -127,11 +112,8 @@ export function ShiftGrid({
     return m
   }, [staffList])
 
-  // Department maps — memoized so buildDeptMaps doesn't run on every render
   const deptMapsMemo = useMemo(() => buildDeptMaps(data?.departments ?? [], locale), [data?.departments, locale])
 
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [overId, setOverId]     = useState<string | null>(null)
   const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
   const setLocalDays = useCallback<typeof setLocalDaysRaw>((update) => {
     setLocalDaysRaw((prev) => {
@@ -141,7 +123,6 @@ export function ShiftGrid({
     })
   }, [onLocalDaysChange])
 
-  // Register this grid's day setter for direct undo/redo updates
   useEffect(() => {
     if (!gridSetDaysRef) return
     gridSetDaysRef.current = setLocalDaysRaw
@@ -171,143 +152,14 @@ export function ShiftGrid({
     if (result.error) { toast.error(result.error); onRefresh() }
   }, [patchLocalAssignment, onRefresh])
 
-  const _handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
-    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
-    const result = await setTecnica(assignmentId, tecnicaId)
-    if (result.error) { toast.error(result.error); onRefresh() }
-  }, [patchLocalAssignment, onRefresh])
-
-  // Debounced refresh — batches rapid changes into one server fetch
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const _debouncedRefresh = useCallback(() => {
-    if (refreshTimer.current) clearTimeout(refreshTimer.current)
-    refreshTimer.current = setTimeout(() => { onRefresh(); refreshTimer.current = null }, 800)
-  }, [onRefresh])
-
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveId(null)
-    setOverId(null)
-    if (!over) return
-
-    const activeId = String(active.id)
-    const destZone = String(over.id)
-
-    // ── OFF → shift: create a new assignment ─────────────────────────────────
-    if (activeId.startsWith("off-")) {
-      if (destZone.startsWith("OFF-")) return
-      const destDate  = destZone.slice(-10)
-      const destShift = destZone.slice(0, destZone.length - 11) as ShiftType
-      const staffId   = activeId.slice(4, activeId.length - 11)
-      const staffMember = staffById.get(staffId)
-
-      // Optimistic: add a placeholder assignment immediately
-      if (staffMember) {
-        setLocalDays((prev) => prev.map((d) => {
-          if (d.date !== destDate) return d
-          const optimistic = {
-            id: `opt-${Date.now()}`, staff_id: staffId,
-            staff: { id: staffId, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never },
-            shift_type: destShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false,
-          }
-          return { ...d, assignments: [...d.assignments, optimistic as Assignment] }
-        }))
-      }
-
-      {
-        const snapshot = data
-        const idCapture: { value: string | undefined } = { value: undefined }
-        if (snapshot) {
-          onAfterMutation?.(
-            snapshot,
-            () => idCapture.value ? deleteAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
-            () => upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift }),
-          )
-        }
-        try {
-          const result = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
-          if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-          idCapture.value = result.id
-          onSaved?.()
-        } catch {
-          onCancelUndo?.(); toast.error(t("assignmentError")); onRefresh(); return
-        }
-      }
-      // No refresh — optimistic state is correct
-      return
-    }
-
-    // ── Existing assignment → shift or OFF ────────────────────────────────────
-    const assignmentId    = activeId
-    const sourceAssignment = localDays.flatMap((d) => d.assignments.map((a) => ({ ...a, date: d.date }))).find((a) => a.id === assignmentId)
-    if (!sourceAssignment) return
-
-    const sourceZone = `${sourceAssignment.shift_type}-${sourceAssignment.date}`
-    if (sourceZone === destZone) return
-
-    if (destZone.startsWith("OFF-")) {
-      // Optimistic: remove immediately
-      setLocalDays((prev) => prev.map((d) => ({
-        ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId),
-      })))
-      const oldShift = sourceAssignment.shift_type as ShiftType
-      const oldDate  = sourceAssignment.date
-      const oldStaff = sourceAssignment.staff_id
-      const snapshot = data
-      if (snapshot) {
-        onAfterMutation?.(
-          snapshot,
-          () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
-          () => removeAssignment(assignmentId),
-        )
-      }
-      try {
-        const result = await removeAssignment(assignmentId)
-        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-        onSaved?.()
-        // No refresh — optimistic state is correct
-      } catch {
-        onCancelUndo?.(); toast.error(t("removeError")); onRefresh()
-      }
-    } else {
-      const destDate  = destZone.slice(-10)
-      const destShift = destZone.slice(0, destZone.length - 11)
-
-      if (sourceAssignment.date !== destDate) {
-        toast.error(t("shiftMoveError"))
-        return
-      }
-
-      const oldShift = sourceAssignment.shift_type
-      const snapshot = data
-      // Optimistic: change shift_type immediately
-      setLocalDays((prev) => prev.map((d) => ({
-        ...d, assignments: d.assignments.map((a) =>
-          a.id === assignmentId ? { ...a, shift_type: destShift, is_manual_override: true } : a
-        ),
-      })))
-      if (snapshot) {
-        onAfterMutation?.(
-          snapshot,
-          () => moveAssignmentShift(assignmentId, oldShift),
-          () => moveAssignmentShift(assignmentId, destShift),
-        )
-      }
-      try {
-        const result = await moveAssignmentShift(assignmentId, destShift)
-        if (result?.error) { onCancelUndo?.(); toast.error(result.error); onRefresh(); return }
-        onSaved?.()
-        // Don't refresh — optimistic state is already correct
-      } catch {
-        onCancelUndo?.(); toast.error(t("moveError")); onRefresh()
-      }
-    }
-  }, [localDays, data, weekStart, staffById, onAfterMutation, onCancelUndo, onSaved, onRefresh, setLocalDays, t])
+  const { activeId, overId, sensors, handleDragStart, handleDragOver, handleDragEnd } = useShiftGridDnd({
+    localDays, data, weekStart, staffById, setLocalDays,
+    onAfterMutation, onCancelUndo, onSaved, onRefresh, t,
+  })
 
   if (loading) {
     return (
       <div className="rounded-lg border border-border bg-background overflow-hidden w-full flex flex-col">
-        {/* Header */}
         <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border" style={{ minHeight: 52 }}>
           <div className="border-r border-border bg-muted" />
           {Array.from({ length: 7 }).map((_, i) => (
@@ -318,7 +170,6 @@ export function ShiftGrid({
             </div>
           ))}
         </div>
-        {/* Rows — match real shift row height with multiple name bars */}
         {Array.from({ length: 6 }).map((_, row) => (
           <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
             <div className="border-r border-border flex items-center justify-end px-2 py-3">
@@ -339,30 +190,24 @@ export function ShiftGrid({
 
   if (!data) return null
 
-  // Build skill map for coverage dots
-  const staffSkillMap: Record<string, string[]> = {}
-  for (const s of staffList) {
-    staffSkillMap[s.id] = (s.staff_skills ?? []).map((sk) => sk.skill)
-  }
-
-  // Dynamic shift rows from data
   const SHIFT_ROWS = data.shiftTypes.map((s) => s.code)
   const shiftTypeMap = Object.fromEntries((data.shiftTypes ?? []).map((st) => [st.code, st]))
-
-  // Staff IDs visible based on department filter
   const visibleStaffIds = new Set(staffList.map((s) => s.id))
 
-  // Dynamic department maps from DB (memoized above)
   const ROLE_BORDER = deptMapsMemo.border
   const ROLE_LABEL = deptMapsMemo.label
   const ROLE_ORDER = deptMapsMemo.order
 
-  // Find the active assignment for drag overlay
+  const sortChips = (a: Assignment, b: Assignment) => {
+    const r = (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9)
+    if (r !== 0) return r
+    return a.staff.first_name.localeCompare(b.staff.first_name) || a.staff.last_name.localeCompare(b.staff.last_name)
+  }
+
   const activeAssignment = activeId
     ? localDays.flatMap((d) => d.assignments).find((a) => a.id === activeId)
     : null
 
-  // Find the active off-staff member for drag overlay (id = "off-{staffId}-{date}")
   const activeOffStaff = activeId?.startsWith("off-")
     ? staffList.find((s) => activeId.startsWith(`off-${s.id}`))
     : null
@@ -370,111 +215,31 @@ export function ShiftGrid({
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={(e) => { setActiveId(String(e.active.id)); setOverId(null) }}
-      onDragOver={(e) => { setOverId(e.over ? String(e.over.id) : null) }}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="rounded-lg border border-border bg-background overflow-hidden w-full">
+        <ShiftGridHeader
+          headerDates={headerDates}
+          localDays={localDays}
+          locale={locale}
+          publicHolidays={publicHolidays}
+          simplified={simplified}
+          hasRota={!!data.rota}
+          punctionsDefault={punctionsDefault}
+          punctionsOverride={punctionsOverride}
+          onPunctionsChange={onPunctionsChange}
+          onBiopsyChange={onBiopsyChange}
+          biopsyConversionRate={biopsyConversionRate}
+          biopsyDay5Pct={biopsyDay5Pct}
+          biopsyDay6Pct={biopsyDay6Pct}
+          isPublished={isPublished}
+          onDateClick={onDateClick}
+        />
 
-        {/* Header row — uses headerDates (from weekStart) so dates update immediately on navigation */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
-          <div className="bg-muted" />
-          {headerDates.map((dateStr) => {
-            const day   = localDays.find((ld) => ld.date === dateStr)
-            const d     = new Date(dateStr + "T12:00:00")
-            const wday  = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-            const dayN  = String(d.getDate())
-            const today = dateStr === TODAY
-            const isSat = d.getDay() === 6
-            const isSun = d.getDay() === 0
-            const isWknd = isSat || isSun
-            const holidayName = publicHolidays[dateStr]
-
-            const defaultP      = punctionsDefault[dateStr] ?? 0
-            const effectiveP    = punctionsOverride[dateStr] ?? defaultP
-            const hasOverride   = punctionsOverride[dateStr] !== undefined
-
-            return (
-              <div
-                key={dateStr}
-                className={cn(
-                  "relative flex flex-col items-center justify-center py-1 gap-0 border-l border-border",
-                  holidayName ? "bg-amber-500/10" : "bg-muted"
-                )}
-              >
-                {day && day.warnings.length > 0 && (
-                  <DayWarningPopover warnings={day.warnings} />
-                )}
-
-                <button
-                  onClick={() => onDateClick?.(dateStr)}
-                  className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
-                >
-                  <span className={cn("text-[10px] uppercase tracking-wider", "text-muted-foreground")}>{wday}</span>
-                  <span className={cn(
-                    "font-semibold leading-none text-[18px]",
-                    today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                    : holidayName ? "text-amber-600 dark:text-amber-400" : isWknd ? "text-primary/60" : "text-primary"
-                  )}>
-                    {dayN}
-                  </span>
-                </button>
-                {holidayName && (
-                  <Tooltip>
-                    <TooltipTrigger render={
-                      <span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>
-                    } />
-                    <TooltipContent side="bottom">{holidayName}</TooltipContent>
-                  </Tooltip>
-                )}
-
-                {/* Punciones + biopsias — single clickable area (hidden in simplified mode) */}
-                {!simplified && (() => {
-                  // Biopsy forecast: punciones from 5 and 6 days ago
-                  const _DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-                  function getPuncForDate(ds: string): number {
-                    // Try override, then default map, then lab config by weekday
-                    if (punctionsOverride[ds] !== undefined) return punctionsOverride[ds]
-                    if (punctionsDefault[ds] !== undefined) return punctionsDefault[ds]
-                    // Fallback: use weekday default from punctionsDefault of same weekday in current week
-                    const dow = new Date(ds + "T12:00:00").getDay()
-                    const sameDow = Object.entries(punctionsDefault).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-                    return sameDow ? sameDow[1] : 0
-                  }
-                  const forecast = computeBiopsyForecast(dateStr, getPuncForDate, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct)
-                  const d5ago = new Date(dateStr + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
-                  const d6ago = new Date(dateStr + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-                  const p5 = getPuncForDate(d5ago.toISOString().split("T")[0])
-                  const p6 = getPuncForDate(d6ago.toISOString().split("T")[0])
-                  const sources: string[] = []
-                  if (p5 > 0) sources.push(t("punctionsD5", { count: p5 }))
-                  if (p6 > 0) sources.push(t("punctionsD6", { count: p6 }))
-                  const tooltip = forecast > 0 ? t("biopsyForecast", { count: forecast, sources: sources.join(", ") }) : t("punctionsLabel", { count: effectiveP })
-                  return (
-                    <DayStatsInput
-                      date={dateStr}
-                      value={effectiveP}
-                      defaultValue={defaultP}
-                      isOverride={hasOverride}
-                      onChange={onPunctionsChange}
-                      onBiopsyChange={onBiopsyChange}
-                      disabled={isPublished || !data.rota}
-                      biopsyForecast={forecast}
-                      biopsyTooltip={tooltip}
-                      compact
-                    />
-                  )
-                })()}
-
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Shift rows */}
         {SHIFT_ROWS.map((shiftRow) => (
           <div key={shiftRow} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            {/* Shift label — right-aligned, three-line: code / start / end */}
             <div className="flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
               <span className="text-[11px] leading-tight font-semibold text-foreground">{shiftRow}</span>
               <span className="text-[13px] font-medium leading-tight tabular-nums text-primary">
@@ -487,14 +252,10 @@ export function ShiftGrid({
               )}
             </div>
             {localDays.map((day) => {
-              const dayShifts    = [...day.assignments.filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))].sort((a, b) => a.staff.first_name.localeCompare(b.staff.first_name) || a.staff.last_name.localeCompare(b.staff.last_name))
-                .sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 9) - (ROLE_ORDER[b.staff.role] ?? 9))
-              const effectivePDay = punctionsOverride[day.date] ?? punctionsDefault[day.date] ?? 0
+              const dayShifts = day.assignments
+                .filter((a) => a.shift_type === shiftRow && visibleStaffIds.has(a.staff_id))
+                .sort(sortChips)
               const cellId = `${shiftRow}-${day.date}`
-              const cellDow   = new Date(day.date + "T12:00:00").getDay()
-              const isSatCell = cellDow === 6
-              const _isWkndCell = isSatCell || cellDow === 0
-              const _isEmpty   = dayShifts.length === 0 && effectivePDay === 0
               return (
                 <DroppableCell
                   key={day.date}
@@ -503,8 +264,7 @@ export function ShiftGrid({
                   isPublished={isPublished}
                   onClick={() => { if (!isPublished) onCellClick(day.date, shiftRow) }}
                   className={cn(
-                    "p-1.5 flex flex-col gap-1 border-l border-border",
-                    "bg-background",
+                    "p-1.5 flex flex-col gap-1 border-l border-border bg-background",
                     compact ? "min-h-[32px]" : "min-h-[48px]",
                     !isPublished && "cursor-pointer"
                   )}
@@ -570,85 +330,28 @@ export function ShiftGrid({
                       </AssignmentPopover>
                     )
                   })}
-                  {/* Empty cell — grey bg applied via parent */}
                 </DroppableCell>
               )
             })}
           </div>
         ))}
 
-        {/* OFF row */}
-        <div className="grid grid-cols-[80px_repeat(7,1fr)]">
-          <div className="flex flex-col items-end justify-center px-2.5 py-2 bg-muted">
-            <span className="text-[10px] text-muted-foreground leading-tight font-medium uppercase tracking-wide">OFF</span>
-          </div>
-          {localDays.map((day) => {
-            const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-            const leaveIds    = new Set(onLeaveByDate[day.date] ?? [])
-            const dow         = new Date(day.date + "T12:00:00").getDay() // 0=Sun, 6=Sat
-            const _isSaturday   = dow === 6
-            const _isWeekendOff = dow === 6 || dow === 0
-            const offCellId    = `OFF-${day.date}`
-
-            // Unassigned staff — leave people first (non-draggable), then others
-            const allOff = staffList.filter((s) => !assignedIds.has(s.id))
-            const onLeaveStaff = allOff.filter((s) => leaveIds.has(s.id))
-              .sort((a, b) => a.last_name.localeCompare(b.last_name))
-            const availableOff = allOff.filter((s) => !leaveIds.has(s.id))
-              .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9))
-            return (
-              <DroppableCell
-                key={day.date}
-                id={offCellId}
-                isOver={overId === offCellId}
-                isPublished={isPublished}
-                className="p-1.5 flex flex-col gap-1 border-l border-border bg-background"
-                style={{
-                  backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)",
-                  backgroundSize: "10px 10px",
-                }}
-              >
-                {/* On leave — always first, not draggable, gray + airplane */}
-                {onLeaveStaff.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  return (
-                  <div
-                    key={s.id}
-                    onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
-                    onMouseEnter={() => setHovered(s.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    className={cn("flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border select-none cursor-pointer transition-colors duration-150", colorChips ? "border-border" : "border-transparent")}
-                    style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : "var(--muted-foreground)"}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
-                  >
-                    <span className="truncate italic">{s.first_name} {s.last_name[0]}.</span>
-                    <Plane className="size-3 shrink-0 ml-auto text-muted-foreground/40" />
-                  </div>
-                  )
-                })}
-                {/* Available — draggable + clickable for profile */}
-                {availableOff.map((s) => {
-                  const isHov = hoveredStaffId === s.id
-                  return (
-                  <DraggableOffStaff key={s.id} staffId={s.id} date={day.date} disabled={isPublished}>
-                    <div
-                      onClick={() => onChipClick({ staff_id: s.id } as Assignment, day.date)}
-                      onMouseEnter={() => setHovered(s.id)}
-                      onMouseLeave={() => setHovered(null)}
-                      className={cn("flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border cursor-pointer transition-colors duration-150", colorChips ? "border-border" : "border-transparent")}
-                      style={{ borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : (ROLE_BORDER[s.role] ?? "#94A3B8")}` : undefined, borderRadius: 4, paddingLeft: 5, paddingRight: 6, ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}) }}
-                    >
-                      <span className="truncate">{s.first_name} {s.last_name[0]}.</span>
-                    </div>
-                  </DraggableOffStaff>
-                  )
-                })}
-              </DroppableCell>
-            )
-          })}
-        </div>
+        <ShiftGridOffRow
+          localDays={localDays}
+          staffList={staffList}
+          onLeaveByDate={onLeaveByDate}
+          overId={overId}
+          isPublished={isPublished}
+          colorChips={colorChips}
+          hoveredStaffId={hoveredStaffId}
+          setHovered={setHovered}
+          staffColorMap={staffColorMap}
+          roleBorder={ROLE_BORDER}
+          roleOrder={ROLE_ORDER}
+          onChipClick={onChipClick}
+        />
       </div>
 
-      {/* Drag overlay */}
       <DragOverlay>
         {activeAssignment ? (
           <div className="opacity-90 shadow-lg rounded">
