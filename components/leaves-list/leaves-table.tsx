@@ -58,7 +58,7 @@ function LeaveCard({
         </span>
         <span className="text-[12px] text-muted-foreground">({days}d)</span>
         {leave.attachment_url && (
-          <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+          <a href={`/api/leave-attachment?id=${leave.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
             <Paperclip className="size-3" />
           </a>
         )}
@@ -177,7 +177,7 @@ export function LeavesTable({
                       <span title="Synced from Outlook"><Cloud className="size-3.5 text-blue-500" /></span>
                     )}
                     {leave.attachment_url && (
-                      <a href={leave.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={t("viewAttachment")}>
+                      <a href={`/api/leave-attachment?id=${leave.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={t("viewAttachment")}>
                         <Paperclip className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
                       </a>
                     )}

@@ -90,13 +90,13 @@ export function LeaveForm({
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     startRequest(async () => {
-      let attachmentUrl: string | undefined
+      let attachmentPath: string | undefined
       if (attachmentFile) {
         const uploadFd = new FormData()
         uploadFd.set("file", attachmentFile)
         const up = await uploadLeaveAttachment(uploadFd)
         if (up.error) { setRequestError(up.error); return }
-        attachmentUrl = up.url
+        attachmentPath = up.path
       }
       const result = await requestLeave({
         staffId: fd.get("staff_id") as string,
@@ -104,7 +104,7 @@ export function LeaveForm({
         startDate: fd.get("start_date") as string,
         endDate: fd.get("end_date") as string,
         notes: (fd.get("notes") as string) || undefined,
-        attachmentUrl,
+        attachmentUrl: attachmentPath,
       })
       if (result.error) { setRequestError(result.error); return }
       toast.success(t("requestSent"))
