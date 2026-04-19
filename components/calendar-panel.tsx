@@ -10,6 +10,7 @@ import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
+import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
@@ -48,12 +49,11 @@ import type { ViewMode, CalendarLayout } from "./calendar-panel/types"
 import { TODAY } from "./calendar-panel/constants"
 import { addDays, getMonthStart, formatToolbarLabel, type GenerationStrategy } from "./calendar-panel/utils"
 
+import { ShiftBudgetBar, MonthBudgetBar } from "./calendar-panel/budget-bars"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"
 import { MobileDaySection } from "./calendar-panel/mobile-day-section"
-import { CalendarBanners } from "./calendar-panel/calendar-banners"
-import { CalendarBottomBar } from "./calendar-panel/calendar-bottom-bar"
 import { AssignmentSheetHost } from "./calendar-panel/assignment-sheet-host"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
@@ -516,15 +516,27 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
       {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
 
-      <CalendarBanners
-        view={view}
-        isPublished={!!isPublished}
-        publishedAt={rota?.published_at ?? null}
-        publishedBy={rota?.published_by ?? null}
-        error={error}
-        locale={locale}
-        t={t}
-      />
+      {/* Banners */}
+      <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
+        {isPublished && view === "week" && (
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 flex items-center gap-2">
+            <Lock className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-[13px] text-emerald-700 dark:text-emerald-300">
+              {rota?.published_at
+                ? t("rotaPublishedBy", {
+                    date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(rota.published_at)),
+                    author: rota.published_by ?? "—",
+                  })
+                : t("rotaPublished")}
+            </span>
+          </div>
+        )}
+        {error && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
+            <span className="text-[13px] text-destructive">{error}</span>
+          </div>
+        )}
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col">
@@ -647,23 +659,34 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         </div>
       )}
 
-      <CalendarBottomBar
-        view={view}
-        canEdit={canEdit}
-        loadingWeek={loadingWeek}
-        loadingMonth={loadingMonth}
-        weekData={weekData}
-        monthSummary={monthSummary}
-        filteredStaffList={filteredStaffList}
-        currentDate={currentDate}
-        weekStart={weekStart}
-        locale={locale}
-        formatLabel={formatToolbarLabel}
-        openProfile={openProfile}
-        liveDays={liveDays}
-        deptFilter={deptFilter}
-        colorChips={colorChips}
-      />
+      {/* Bottom taskbar — desktop only, hidden for viewers */}
+      <div className="hidden md:block shrink-0">
+        {canEdit && view === "week" && !weekData && loadingWeek && (
+          <div className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className={i === 0 ? "h-3 w-20 rounded bg-muted animate-pulse" : "h-5 w-14 rounded bg-muted animate-pulse"} />
+            ))}
+          </div>
+        )}
+        {canEdit && view === "week" && weekData && (
+          <ShiftBudgetBar
+            data={weekData}
+            staffList={filteredStaffList}
+            weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
+            onPillClick={openProfile}
+            liveDays={weekData.rotaDisplayMode === "by_task" ? null : liveDays}
+            deptFilter={deptFilter}
+            colorChips={colorChips}
+          />
+        )}
+        {canEdit && view === "month" && monthSummary && !loadingMonth && (
+          <MonthBudgetBar
+            summary={monthSummary}
+            monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}
+            onPillClick={openProfile}
+          />
+        )}
+      </div>
 
       {/* Generation strategy modal */}
       <GenerationStrategyModal
