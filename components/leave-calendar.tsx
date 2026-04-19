@@ -32,7 +32,7 @@ const DAY_HEADERS_ES = ["L", "M", "X", "J", "V", "S", "D"]
 const DAY_HEADERS_EN = ["M", "T", "W", "T", "F", "S", "S"]
 
 export function LeaveCalendar({ leaves, leaveTypes, year: initialYear }: Props) {
-  const t = useTranslations("hr")
+  const _t = useTranslations("hr")
   const tl = useTranslations("leaves")
   const locale = useLocale() as "es" | "en"
   const today = new Date()

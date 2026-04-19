@@ -354,7 +354,7 @@ export function MobileWeekClient() {
                         const a = day.assignments.find((x) => x.staff_id === s.id)
                         const st = a ? shiftTypeMap[a.shift_type] : null
                         const dow = new Date(day.date + "T12:00:00").getDay()
-                        const isSat = dow === 6; const isSun = dow === 0
+                        const _isSat = dow === 6; const _isSun = dow === 0
                         return (
                           <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 flex flex-col items-center justify-center min-w-0">
                             {a && st ? (
@@ -508,7 +508,7 @@ export function MobileWeekClient() {
                   {days.map((day) => {
                     const assignments = day.assignments.filter((a) => a.shift_type === st.code)
                     const dow = new Date(day.date + "T12:00:00").getDay()
-                    const isSat = dow === 6; const isSun = dow === 0
+                    const _isSat = dow === 6; const _isSun = dow === 0
                     const activeDays = (shiftTypeMap[st.code] as { active_days?: string[] })?.active_days
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)
@@ -563,7 +563,7 @@ export function MobileWeekClient() {
                 const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
                 const offDuty = staffList.filter((s) => !assignedIds.has(s.id) && !leaveIds.has(s.id))
                 const dow = new Date(day.date + "T12:00:00").getDay()
-                const isSat = dow === 6; const isSun = dow === 0
+                const _isSat = dow === 6; const _isSun = dow === 0
                 return (
                   <div key={day.date} className="px-0.5 py-1 border-r border-border last:border-r-0 min-w-0 overflow-hidden flex flex-wrap gap-0.5 content-start" style={{ backgroundImage: "radial-gradient(circle, rgba(100,130,170,0.18) 1px, transparent 1px)", backgroundSize: "10px 10px" }}>
                     {[...leaveIds].map((sid) => {

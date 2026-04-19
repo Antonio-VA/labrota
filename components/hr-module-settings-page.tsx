@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Plus, Archive, RotateCcw, Trash2 } from "lucide-react"
+import { AlertTriangle, Plus, Archive, RotateCcw } from "lucide-react"
 import {
   updateHolidayConfig,
   createCompanyLeaveType,
@@ -48,8 +48,8 @@ export function HrModuleSettingsPage({ config: initialConfig, leaveTypes: initia
   })
 
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteInput, setDeleteInput] = useState("")
+  const [_showDeleteConfirm, _setShowDeleteConfirm] = useState(false)
+  const [deleteInput, _setDeleteInput] = useState("")
 
   const saveConfig = (updates: Partial<NonNullable<typeof config>>) => {
     const newConfig = { ...config!, ...updates }
@@ -136,7 +136,7 @@ export function HrModuleSettingsPage({ config: initialConfig, leaveTypes: initia
     })
   }
 
-  const handleDeleteData = () => {
+  const _handleDeleteData = () => {
     if (deleteInput !== "DELETE") return
     startTransition(async () => {
       const result = await deleteAllHrData()

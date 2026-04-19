@@ -3,17 +3,17 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
+import { RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
-export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null; weekStart: string }) {
+export function MobileWeekView({ data, weekStart: _weekStart }: { data: RotaWeekData | null; weekStart: string }) {
   const t = useTranslations("schedule")
   const locale = useLocale() as "es" | "en"
-  const [isLandscape, setIsLandscape] = useState(false)
+  const [_isLandscape, _setIsLandscape] = useState(false)
 
   if (!data) {
     return (
