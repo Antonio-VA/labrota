@@ -22,6 +22,18 @@ export function addDays(isoDate: string, days: number): string {
   return d.toISOString().split("T")[0]
 }
 
+/** Return ISO date strings for all 7 days of the week starting on weekStart. */
+export function getWeekDates(weekStart: string): string[] {
+  const dates: string[] = []
+  const base = new Date(weekStart + "T12:00:00")
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base)
+    d.setDate(base.getDate() + i)
+    dates.push(d.toISOString().split("T")[0])
+  }
+  return dates
+}
+
 /** Plain number → lab-only; object → as-is; missing → zeros. */
 export function normalizeShiftCov(val: ShiftCoverageEntry | number | undefined): ShiftCoverageEntry {
   if (val === undefined || val === null) return { lab: 0, andrology: 0, admin: 0 }

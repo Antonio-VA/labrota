@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { ONE_DAY_MS, RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
-import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
+import { getWeekDates } from "@/lib/engine-helpers"
 import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureWeekSnapshot } from "@/lib/rota-snapshots"
@@ -226,8 +226,7 @@ export async function generateRota(
     )
   } else {
     // ── BY_SHIFT MODE: use shift engine ──────────────────────────────────
-    const engineFn = generationType === "ai_optimal_v2" ? runRotaEngineV2 : runRotaEngine
-    const { days, taskAssignments: shiftEngineTaskAssignments, warnings } = engineFn({
+    const { days, taskAssignments: shiftEngineTaskAssignments, warnings } = runRotaEngineV2({
       weekStart,
       staff: normalizedStaff,
       leaves: engineLeaves,

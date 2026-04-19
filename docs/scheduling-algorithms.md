@@ -1,6 +1,6 @@
 # LabRota — Scheduling Algorithms
 
-Three scheduling engines power LabRota's rota generation. All are pure functions (no DB calls) for testability.
+Two scheduling engines power LabRota's rota generation. Both are pure functions (no DB calls) for testability.
 
 ---
 
@@ -8,11 +8,12 @@ Three scheduling engines power LabRota's rota generation. All are pure functions
 
 | Engine | File | Mode | Assigns to | Used by |
 |--------|------|------|------------|---------|
-| **Shift v1** | `lib/rota-engine.ts` | `by_shift` | Shifts (T1, T2, ...) | AI Optimal v1 |
-| **Shift v2** | `lib/rota-engine-v2.ts` | `by_shift` | Shifts (T1, T2, ...) | AI Optimal v2, Hybrid, Claude Reasoning |
+| **Shift v2** | `lib/rota-engine-v2.ts` | `by_shift` | Shifts (T1, T2, ...) | AI Optimal, Hybrid, Claude Reasoning |
 | **Task** | `lib/task-engine.ts` | `by_task` | Tasks/Técnicas (ICSI, Biopsy, ...) | Task mode orgs |
 
-All three share the same two-phase architecture:
+The legacy shift v1 engine has been removed. The `lab_config.ai_optimal_version` column remains so additional by-shift engines can plug in without schema changes.
+
+Both engines share the same two-phase architecture:
 1. **Phase 1** — Reserve minimum coverage across all 7 days (budget pre-allocation)
 2. **Phase 2** — Day-by-day assignment with rules, preferences, and distribution
 

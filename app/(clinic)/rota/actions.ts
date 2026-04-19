@@ -5,7 +5,8 @@ import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
-import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
+import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
+import { getWeekDates } from "@/lib/engine-helpers"
 import { getMondayOf } from "@/lib/format-date"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot } from "@/lib/rota-snapshots"
@@ -802,7 +803,7 @@ export async function regenerateDay(
   const regenHolidays: Record<string, string> = Object.assign({}, ...regenYears.map((y) => getPublicHolidays(y, labConfig.country || "ES", labConfig.region || null)))
 
   // Run engine for the full week (needed for budget tracking)
-  const { days } = runRotaEngine({
+  const { days } = runRotaEngineV2({
     weekStart,
     staff: (staffRes.data ?? []) as unknown as StaffWithSkills[],
     leaves: (leavesRes.data ?? []) as Leave[],

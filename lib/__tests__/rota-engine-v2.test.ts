@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { runRotaEngine, getWeekDates } from "../rota-engine"
+import { runRotaEngineV2 } from "../rota-engine-v2"
+import { getWeekDates } from "../engine-helpers"
 import type {
   StaffWithSkills,
   Leave,
@@ -86,10 +87,10 @@ describe("getWeekDates", () => {
 
 // ── Core assignment logic ─────────────────────────────────────────────────────
 
-describe("runRotaEngine — basic assignment", () => {
+describe("runRotaEngineV2 — basic assignment", () => {
   it("assigns active lab staff on their working days", () => {
     const staff = [makeStaff({ id: "s1" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -104,7 +105,7 @@ describe("runRotaEngine — basic assignment", () => {
 
   it("does not assign inactive staff", () => {
     const staff = [makeStaff({ id: "s1", onboarding_status: "inactive" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -114,7 +115,7 @@ describe("runRotaEngine — basic assignment", () => {
   it("respects staff start_date", () => {
     // Staff starts Wednesday — should only appear Wed–Fri
     const staff = [makeStaff({ id: "s1", start_date: "2026-03-18" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -127,7 +128,7 @@ describe("runRotaEngine — basic assignment", () => {
   it("respects staff end_date", () => {
     // Staff ends Tuesday
     const staff = [makeStaff({ id: "s1", end_date: "2026-03-17" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -139,7 +140,7 @@ describe("runRotaEngine — basic assignment", () => {
 
 // ── Leave filtering ───────────────────────────────────────────────────────────
 
-describe("runRotaEngine — leave", () => {
+describe("runRotaEngineV2 — leave", () => {
   it("does not assign staff on leave days", () => {
     const staff = [makeStaff({ id: "s1" })]
     const leaves: Leave[] = [{
@@ -148,7 +149,7 @@ describe("runRotaEngine — leave", () => {
       start_date: "2026-03-16", end_date: "2026-03-18", // Mon–Wed
       notes: null, created_at: "", updated_at: "", created_by: null,
     } as never]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves, recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -168,7 +169,7 @@ describe("runRotaEngine — leave", () => {
       start_date: "2026-03-16", end_date: "2026-03-18", // Mon–Wed (3 days)
       notes: null, created_at: "", updated_at: "", created_by: null,
     } as never]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves, recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -186,11 +187,11 @@ describe("runRotaEngine — leave", () => {
 
 // ── Weekly shift budget ───────────────────────────────────────────────────────
 
-describe("runRotaEngine — shift budget", () => {
+describe("runRotaEngineV2 — shift budget", () => {
   it("does not assign more shifts than days_per_week", () => {
     // 4-day week staff, working pattern Mon–Fri
     const staff = [makeStaff({ id: "s1", days_per_week: 3 })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -201,7 +202,7 @@ describe("runRotaEngine — shift budget", () => {
   it("reserves weekend slots before filling weekdays", () => {
     // Staff works Mon–Fri + Sat; 6 days/week
     const staff = [makeStaff({ id: "s1", days_per_week: 6, working_pattern: ["mon", "tue", "wed", "thu", "fri", "sat"] })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -215,7 +216,7 @@ describe("runRotaEngine — shift budget", () => {
 
 // ── Preferred days (soft constraint) ──────────────────────────────────────────
 
-describe("runRotaEngine — preferred days", () => {
+describe("runRotaEngineV2 — preferred days", () => {
   it("preferred_days staff are sorted before non-preferred on that day", () => {
     // Both work Mon-Fri, but s1 prefers Mon, s2 does not
     // With days_per_week=1, only one gets Monday — should be s1
@@ -223,7 +224,7 @@ describe("runRotaEngine — preferred days", () => {
       makeStaff({ id: "s1", first_name: "Preferred", days_per_week: 1, preferred_days: ["mon"] }),
       makeStaff({ id: "s2", first_name: "NoPreference", days_per_week: 1, preferred_days: [] }),
     ]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -237,7 +238,7 @@ describe("runRotaEngine — preferred days", () => {
       makeStaff({ id: "s1", preferred_days: null }),
       makeStaff({ id: "s2", preferred_days: null }),
     ]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -249,10 +250,10 @@ describe("runRotaEngine — preferred days", () => {
 
 // ── Shift distribution ────────────────────────────────────────────────────────
 
-describe("runRotaEngine — shift types", () => {
+describe("runRotaEngineV2 — shift types", () => {
   it("uses T1 by default when no shift types provided", () => {
     const staff = [makeStaff({ id: "s1" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -266,7 +267,7 @@ describe("runRotaEngine — shift types", () => {
       makeStaff({ id: "s1", first_name: "Ana" }),
       makeStaff({ id: "s2", first_name: "Bea" }),
     ]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
       shiftTypes: [SHIFT_T1, SHIFT_T2],
@@ -278,7 +279,7 @@ describe("runRotaEngine — shift types", () => {
 
   it("respects preferred_shift for individual staff", () => {
     const staff = [makeStaff({ id: "s1", preferred_shift: "T2" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
       shiftTypes: [SHIFT_T1, SHIFT_T2],
@@ -290,7 +291,7 @@ describe("runRotaEngine — shift types", () => {
 
 // ── Workload fairness ─────────────────────────────────────────────────────────
 
-describe("runRotaEngine — workload scoring", () => {
+describe("runRotaEngineV2 — workload scoring", () => {
   it("prioritises staff with fewer recent shifts", () => {
     // 2 staff, 1 budget slot only; s2 has more recent history → s1 gets priority
     const staff = [
@@ -301,7 +302,7 @@ describe("runRotaEngine — workload scoring", () => {
       { id: "r1", staff_id: "s2", date: "2026-03-09", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
       { id: "r2", staff_id: "s2", date: "2026-03-10", shift_type: "T1", is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "" },
     ] as never[]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG,
     })
@@ -313,13 +314,13 @@ describe("runRotaEngine — workload scoring", () => {
 
 // ── Admin role ────────────────────────────────────────────────────────────────
 
-describe("runRotaEngine — admin", () => {
+describe("runRotaEngineV2 — admin", () => {
   it("assigns admin staff based on coverage minimums", () => {
     const staff = [
       makeStaff({ id: "a1", role: "admin" }),
       makeStaff({ id: "a2", role: "admin" }),
     ]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
     })
@@ -331,7 +332,7 @@ describe("runRotaEngine — admin", () => {
 
   it("does not assign admin on weekends when admin_on_weekends is false", () => {
     const staff = [makeStaff({ id: "a1", role: "admin", working_pattern: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: { ...BASE_CONFIG, admin_on_weekends: false },
     })
@@ -344,7 +345,7 @@ describe("runRotaEngine — admin", () => {
 
 // ── Coverage warnings ─────────────────────────────────────────────────────────
 
-describe("runRotaEngine — coverage warnings", () => {
+describe("runRotaEngineV2 — coverage warnings", () => {
   it("emits warning when lab coverage is below minimum", () => {
     // coverage_by_day requires 2 lab on weekdays but only 1 lab staff
     const staff = [makeStaff({ id: "s1" })]
@@ -361,7 +362,7 @@ describe("runRotaEngine — coverage warnings", () => {
         sun: { lab: 0, andrology: 0, admin: 0 },
       },
     } as unknown as LabConfig
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: config,
     })
@@ -380,7 +381,7 @@ describe("runRotaEngine — coverage warnings", () => {
         { id: "sk3", organisation_id: ORG, staff_id: "s2", skill: "egg_collection", level: "certified", created_at: "" },
       ],
     })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff: staffNoBiopsy, leaves: [], recentAssignments: [],
       labConfig: BASE_CONFIG,
       tecnicas: [
@@ -395,10 +396,11 @@ describe("runRotaEngine — coverage warnings", () => {
 
 // ── Scheduling rules ──────────────────────────────────────────────────────────
 
-describe("runRotaEngine — rules", () => {
-  it("max_dias_consecutivos (hard): emits warning when staff below cap, keeps assigned", () => {
-    // New engine behavior: hard rules only REMOVE staff who are already at their
-    // days_per_week cap. Staff below cap are kept but a warning is emitted.
+describe("runRotaEngineV2 — rules", () => {
+  it("max_dias_consecutivos (hard): re-adds staff when removal would break coverage (L1 override)", () => {
+    // v2 engine behaviour: hard rules remove staff unconditionally, but the L1
+    // (coverage / budget) fallback re-adds them and emits an "L2 ignorada"
+    // warning when removal would violate coverage minima.
     const staff = [makeStaff({ id: "s1" })]
     // Seed 5 consecutive days immediately before Monday
     const recentAssignments = Array.from({ length: 5 }, (_, i) => ({
@@ -414,15 +416,15 @@ describe("runRotaEngine — rules", () => {
       is_hard: true, enabled: true, staff_ids: [], params: { maxDays: 5 },
       notes: null, expires_at: null, created_at: "", updated_at: "",
     }
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG, rules: [rule],
     })
-    // Monday: s1 has worked 5 consecutive days but is below weekly cap (0 < 5)
-    // → kept assigned, but warning emitted about rule being overridden
+    // Monday: s1 is the only lab staff; removing them would leave coverage at 0/1.
+    // L1 override re-adds s1 and emits the override warning.
     const mon = result.days.find((d) => d.date === "2026-03-16")!
     expect(mon.assignments.find((a) => a.staff_id === "s1")).toBeDefined()
-    expect(result.warnings.some((w) => w.includes("regla de planificación ignorada"))).toBe(true)
+    expect(result.warnings.some((w) => w.includes("regla L2 ignorada"))).toBe(true)
   })
 
   it("max_dias_consecutivos (soft): emits warning instead of removing", () => {
@@ -440,7 +442,7 @@ describe("runRotaEngine — rules", () => {
       is_hard: false, enabled: true, staff_ids: [], params: { maxDays: 5 },
       notes: null, expires_at: null, created_at: "", updated_at: "",
     }
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG, rules: [rule],
     })
@@ -451,10 +453,10 @@ describe("runRotaEngine — rules", () => {
     expect(result.warnings.some((w) => w.includes("días consecutivos") || w.includes("consecutive days"))).toBe(true)
   })
 
-  it("no_coincidir (hard): emits warning when conflicting staff are below cap", () => {
-    // New engine behavior: hard rules only REMOVE staff at their days_per_week cap.
-    // Both staff start the week at 0 shifts, so neither is at cap → both kept,
-    // but a warning is emitted about the rule being overridden.
+  it("no_coincidir (hard): keeps both staff when weekly budget not yet met (L1 override)", () => {
+    // v2 engine behaviour: hard rules only remove staff who are already at their
+    // days_per_week cap. Both staff start Monday below cap, so the L1 budget
+    // override keeps them and emits an "L2 ignorada" warning.
     const staff = [
       makeStaff({ id: "s1", first_name: "Ana" }),
       makeStaff({ id: "s2", first_name: "Bea" }),
@@ -469,17 +471,15 @@ describe("runRotaEngine — rules", () => {
       is_hard: true, enabled: true, staff_ids: ["s1", "s2"], params: {},
       notes: null, expires_at: null, created_at: "", updated_at: "",
     }
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG, rules: [rule],
     })
     const mon = result.days.find((d) => d.date === "2026-03-16")!
-    // Both staff below cap → both kept assigned
     const ids = mon.assignments.map((a) => a.staff_id)
     expect(ids).toContain("s1")
     expect(ids).toContain("s2")
-    // Warning emitted about rule being overridden for shift fulfilment
-    expect(result.warnings.some((w) => w.includes("regla de planificación ignorada"))).toBe(true)
+    expect(result.warnings.some((w) => w.includes("regla L2 ignorada"))).toBe(true)
   })
 
   it("disabled rules are ignored", () => {
@@ -497,7 +497,7 @@ describe("runRotaEngine — rules", () => {
       is_hard: true, enabled: false, staff_ids: [], params: { maxDays: 5 }, // disabled
       notes: null, expires_at: null, created_at: "", updated_at: "",
     }
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments,
       labConfig: BASE_CONFIG, rules: [rule],
     })
@@ -509,11 +509,11 @@ describe("runRotaEngine — rules", () => {
 
 // ── Punctions / dynamic lab coverage ─────────────────────────────────────────
 
-describe("runRotaEngine — punctions & dynamic coverage", () => {
+describe("runRotaEngineV2 — punctions & dynamic coverage", () => {
   it("emits warning when punctions require more lab staff than available", () => {
     // staffing_ratio = 3; punctions = 9 → need 3 lab staff; only 1 available
     const staff = [makeStaff({ id: "s1" })]
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: { ...BASE_CONFIG, staffing_ratio: 3 },
       punctionsOverride: { "2026-03-16": 9 },
@@ -527,7 +527,7 @@ describe("runRotaEngine — punctions & dynamic coverage", () => {
       makeStaff({ id: `s${i}`, first_name: `S${i}` })
     )
     // Config default for Monday = 1, override = 3, ratio = 3 → dynamicLabMin = 1, 4 available → no shortage
-    const result = runRotaEngine({
+    const result = runRotaEngineV2({
       weekStart: WEEK, staff, leaves: [], recentAssignments: [],
       labConfig: { ...BASE_CONFIG, min_lab_coverage: 1, min_andrology_coverage: 0 },
       punctionsOverride: { "2026-03-16": 3 },

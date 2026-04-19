@@ -100,10 +100,10 @@ export function useRotaActions({
             successCount++
           } else if (strategy === "ai_optimal") {
             const isByTask = weekData?.rotaDisplayMode === "by_task"
-            const version = isByTask
-              ? (weekData?.engineConfig?.taskOptimalVersion ?? "v1")
-              : (weekData?.engineConfig?.aiOptimalVersion ?? "v2")
-            const genType = version === "v1" ? "ai_optimal" : "ai_optimal_v2"
+            // Shift engine is v2-only. Task engine still supports v1/v2 selection.
+            const genType: "ai_optimal" | "ai_optimal_v2" = isByTask
+              ? ((weekData?.engineConfig?.taskOptimalVersion ?? "v1") === "v1" ? "ai_optimal" : "ai_optimal_v2")
+              : "ai_optimal_v2"
             const result = await generateRota(ws, false, genType)
             if (result.error) { errorMsg = result.error; break }
             successCount++

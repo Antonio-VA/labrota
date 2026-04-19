@@ -38,7 +38,7 @@ import type {
   SkillName,
   WorkingDay,
 } from "@/lib/types/database"
-import { getDayCode, isWeekend, addDays, normalizeShiftCov } from "@/lib/engine-helpers"
+import { getDayCode, isWeekend, addDays, getWeekDates, normalizeShiftCov } from "@/lib/engine-helpers"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -76,20 +76,6 @@ export interface EngineParams {
   shiftCoverageEnabled?: boolean
   shiftCoverageByDay?: ShiftCoverageByDay | null // shift_code → { day: { lab, andrology, admin } }
   publicHolidays?: Record<string, string>  // date → holiday name
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Return ISO date strings for all 7 days of the week starting on weekStart. */
-export function getWeekDates(weekStart: string): string[] {
-  const dates: string[] = []
-  const base = new Date(weekStart + "T12:00:00")
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(base)
-    d.setDate(base.getDate() + i)
-    dates.push(d.toISOString().split("T")[0])
-  }
-  return dates
 }
 
 // ── Engine ────────────────────────────────────────────────────────────────────

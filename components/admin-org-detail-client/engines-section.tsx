@@ -2,6 +2,8 @@
 
 import { AdminToggle } from "./shared"
 
+const SHIFT_ENGINE_VERSIONS = ["v2"] as const
+
 export function EnginesSection({
   displayMode,
   aiOptimalVersion,
@@ -49,11 +51,11 @@ export function EnginesSection({
               <div>
                 <p className="text-[14px] font-medium">Versión del motor</p>
                 <p className="text-[12px] text-muted-foreground">
-                  v2 recomendado — mejoras de asignación y restricciones estrictas.
+                  v2 es la única versión disponible actualmente.
                 </p>
               </div>
               <div className="flex gap-4">
-                {(["v1", "v2"] as const).map((v) => (
+                {SHIFT_ENGINE_VERSIONS.map((v) => (
                   <label key={v} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"

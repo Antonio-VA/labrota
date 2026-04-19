@@ -2,7 +2,7 @@
 
 ## Current State
 
-The engine (`lib/rota-engine.ts`) only handles **by_shift** scheduling:
+The by-shift engine (`lib/rota-engine-v2.ts`) only handles **by_shift** scheduling:
 
 1. Determine eligible staff per day
 2. Meet department coverage minimums (lab, andrology, admin)
@@ -191,7 +191,7 @@ And pass `task_conflict_threshold` from labConfig (already available via `labCon
 In `generateRota()` (`app/(clinic)/rota/actions.ts`), pass the missing params:
 
 ```typescript
-const { days, taskAssignments, warnings } = runRotaEngine({
+const { days, taskAssignments, warnings } = runRotaEngineV2({
   // ... existing params ...
   taskCoverageEnabled: labConfig.task_coverage_enabled,
   taskCoverageByDay: labConfig.task_coverage_by_day,
@@ -242,7 +242,7 @@ When saving assignments, also write task assignments:
 
 | File | Change |
 |---|---|
-| `lib/rota-engine.ts` | Add Phase 4 task assignment, return `taskAssignments`, use `taskCoverageByDay` |
+| `lib/rota-engine-v2.ts` | Add Phase 4 task assignment, return `taskAssignments`, use `taskCoverageByDay` |
 | `lib/types/database.ts` | No changes needed (types already exist) |
 | `app/(clinic)/rota/actions.ts` | Pass taskCoverage params to engine, write task assignments to DB |
 | `components/task-grid.tsx` | No changes — already renders from DB assignments |

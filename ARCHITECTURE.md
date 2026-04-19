@@ -86,17 +86,18 @@ Client (useChat from @ai-sdk/react)
 
 ## Rota Generation Architecture
 
-Five generation strategies, routed by the UI strategy modal:
+Four generation strategies, routed by the UI strategy modal:
 
 | Strategy | Engine | Claude | Description |
 |----------|--------|--------|-------------|
 | Template | — | No | Copy from saved template (strict or flexible) |
-| AI Optimal v1 | `rota-engine.ts` | No | Original algorithm: assign all + apply rules |
-| AI Optimal v2 | `rota-engine-v2.ts` | No | L1/L2/L3 constraint hierarchy |
+| AI Optimal | `rota-engine-v2.ts` | No | L1/L2/L3 constraint hierarchy (by-shift, v2 only) |
 | Hybrid | `rota-engine-v2.ts` | Yes | v2 base rota → Claude reviews and optimises |
 | Claude Reasoning | — | Yes | Claude generates from scratch with step-by-step reasoning |
 
-### Engine Architecture (v1 & v2)
+The `lab_config.ai_optimal_version` column picks the active by-shift engine version per organisation. Only `v2` is currently implemented; the selector in the admin UI remains so future engines can be added without a schema change. Historical rotas created with the legacy v1 engine retain `generation_type = 'ai_optimal'` in the database for display purposes, but no new rotas are generated with v1.
+
+### Engine Architecture (v2)
 
 ```
 Phase 1: Reserve minimum coverage for all 7 days
@@ -195,8 +196,7 @@ components/               82 client components
   ui/                     Design system primitives (base-ui + shadcn)
 
 lib/
-  rota-engine.ts          Scheduling engine v1
-  rota-engine-v2.ts       Scheduling engine v2 (L1/L2/L3)
+  rota-engine-v2.ts       Scheduling engine v2 (L1/L2/L3) — by-shift mode
   task-engine.ts          Task-mode scheduling engine
   export-pdf.ts           PDF export (jsPDF)
   export-excel.ts         Excel export (xlsx-js-style)

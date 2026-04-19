@@ -100,7 +100,9 @@ export function AdminOrgDetailClient({
   const [enableNotes, setEnableNotes] = useState(initialEnableNotes)
   const [enableTaskInShift, setEnableTaskInShift] = useState(initialEnableTaskInShift)
   const [authMethod, setAuthMethod] = useState(initialAuthMethod)
-  const [aiOptimalVersion, setAiOptimalVersion] = useState(initialAiOptimalVersion)
+  const [aiOptimalVersion, setAiOptimalVersion] = useState(
+    initialAiOptimalVersion === "v1" ? "v2" : initialAiOptimalVersion,
+  )
   const [engineHybridEnabled, setEngineHybridEnabled] = useState(initialEngineHybridEnabled)
   const [engineReasoningEnabled, setEngineReasoningEnabled] = useState(initialEngineReasoningEnabled)
   const [taskOptimalVersion] = useState(initialTaskOptimalVersion)

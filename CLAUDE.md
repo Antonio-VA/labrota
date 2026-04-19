@@ -284,7 +284,7 @@ ANTHROPIC_API_KEY=
 ```bash
 npx vitest run
 ```
-- `lib/__tests__/rota-engine.test.ts` — rota generation logic
+- `lib/__tests__/rota-engine-v2.test.ts` — rota generation logic (by-shift engine v2)
 - `lib/__tests__/task-engine.test.ts` — task-based engine logic
 - `lib/__tests__/middleware.test.ts` — auth routing (public paths, login, admin, subdomain)
 - `lib/__tests__/format-date.test.ts` — date formatting helpers
@@ -299,7 +299,7 @@ npx playwright test
 
 ### When to update tests
 - Changed middleware routing? → update `middleware.test.ts`
-- Changed rota engine logic? → update `rota-engine.test.ts`
+- Changed rota engine logic? → update `rota-engine-v2.test.ts`
 - Changed date formatting? → update `format-date.test.ts`
 - Added/removed pages or changed page content? → update `smoke.spec.ts`
 - Changed auth flow? → update `auth.setup.ts`

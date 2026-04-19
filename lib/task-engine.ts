@@ -27,8 +27,7 @@ import type {
   SkillName,
 } from "@/lib/types/database"
 
-import { getWeekDates } from "@/lib/rota-engine"
-import { getDayCode, isWeekend, addDays } from "@/lib/engine-helpers"
+import { getDayCode, isWeekend, addDays, getWeekDates } from "@/lib/engine-helpers"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
