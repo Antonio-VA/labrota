@@ -108,7 +108,8 @@ export interface RotaWeekData {
 }
 
 
-import { getPublicHolidays, isWeekendDate } from "@/lib/rota-holidays"
+import { getPublicHolidays } from "@/lib/rota-holidays"
+import { isWeekend } from "@/lib/engine-helpers"
 
 // ── getRotaWeek ───────────────────────────────────────────────────────────────
 
@@ -244,7 +245,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Base day structure with no assignments
   const dayMap: Record<string, RotaDay> = {}
   for (const date of dates) {
-    dayMap[date] = { date, isWeekend: isWeekendDate(date), assignments: [], skillGaps: [], warnings: [] }
+    dayMap[date] = { date, isWeekend: isWeekend(date), assignments: [], skillGaps: [], warnings: [] }
   }
 
   // Build shift times from shift_types table

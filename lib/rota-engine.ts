@@ -24,10 +24,10 @@ import type {
   ShiftType,
   ShiftTypeDefinition,
   ShiftCoverageByDay,
-  ShiftCoverageEntry,
   SkillName,
   WorkingDay,
 } from "@/lib/types/database"
+import { getDayCode, isWeekend, addDays, normalizeShiftCov } from "@/lib/engine-helpers"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,30 +68,6 @@ export interface EngineParams {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Normalize shift coverage value: plain number → lab-only, object → as-is */
-function normalizeShiftCov(val: ShiftCoverageEntry | number | undefined): ShiftCoverageEntry {
-  if (val === undefined || val === null) return { lab: 0, andrology: 0, admin: 0 }
-  if (typeof val === "number") return { lab: val, andrology: 0, admin: 0 }
-  return val
-}
-
-const WEEKDAY_CODES: WorkingDay[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-
-function getDayCode(isoDate: string): WorkingDay {
-  return WEEKDAY_CODES[new Date(isoDate + "T12:00:00").getDay()]
-}
-
-function isWeekend(isoDate: string): boolean {
-  const code = getDayCode(isoDate)
-  return code === "sat" || code === "sun"
-}
-
-function addDaysStr(isoDate: string, days: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]
-}
 
 /** Return ISO date strings for all 7 days of the week starting on weekStart. */
 export function getWeekDates(weekStart: string): string[] {
@@ -671,8 +647,8 @@ export function runRotaEngine({
 
             if (recovery === "following") {
               // If staff worked LAST weekend → must be off THIS weekend
-              const prevSat = addDaysStr(date, -( getDayCode(date) === "sat" ? 7 : 8))
-              const prevSun = addDaysStr(date, -(getDayCode(date) === "sun" ? 7 : 6))
+              const prevSat = addDays(date, -( getDayCode(date) === "sat" ? 7 : 8))
+              const prevSun = addDays(date, -(getDayCode(date) === "sun" ? 7 : 6))
               const workedLastWeekend = recentAssignments.some(
                 (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
               )
@@ -687,8 +663,8 @@ export function runRotaEngine({
             } else {
               // "previous": If staff is working THIS weekend → must have been off LAST weekend
               // Since we're assigning now, check if they worked last weekend — if so, block
-              const prevSat = addDaysStr(date, -(getDayCode(date) === "sat" ? 7 : 8))
-              const prevSun = addDaysStr(date, -(getDayCode(date) === "sun" ? 7 : 6))
+              const prevSat = addDays(date, -(getDayCode(date) === "sat" ? 7 : 8))
+              const prevSun = addDays(date, -(getDayCode(date) === "sun" ? 7 : 6))
               const workedLastWeekend = recentAssignments.some(
                 (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
               )

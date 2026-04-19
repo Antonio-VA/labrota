@@ -17,7 +17,3 @@ export function getPublicHolidays(year: number, country = "ES", region?: string 
   return result
 }
 
-export function isWeekendDate(isoDate: string): boolean {
-  const day = new Date(isoDate + "T12:00:00").getDay()
-  return day === 0 || day === 6
-}

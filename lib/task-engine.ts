@@ -25,10 +25,10 @@ import type {
   RotaRule,
   ShiftTypeDefinition,
   SkillName,
-  WorkingDay,
 } from "@/lib/types/database"
 
 import { getWeekDates } from "@/lib/rota-engine"
+import { getDayCode, isWeekend, addDays } from "@/lib/engine-helpers"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -65,25 +65,6 @@ export interface TaskEngineParams {
   taskCoverageByDay?: Record<string, Record<string, number>> | null
   /** Recent task assignments for rotation inference: staff_id → tecnica_code[] */
   recentTaskAssignments?: { staff_id: string; tecnica_code: string; date: string }[]
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const WEEKDAY_CODES: WorkingDay[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-
-function getDayCode(isoDate: string): WorkingDay {
-  return WEEKDAY_CODES[new Date(isoDate + "T12:00:00").getDay()]
-}
-
-function isWeekend(isoDate: string): boolean {
-  const code = getDayCode(isoDate)
-  return code === "sat" || code === "sun"
-}
-
-function addDaysStr(isoDate: string, n: number): string {
-  const d = new Date(isoDate + "T12:00:00")
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
 }
 
 // ── Engine ────────────────────────────────────────────────────────────────────
@@ -421,8 +402,8 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
           for (const s of eligibleStaff) {
             if (!affects(s.id)) continue
             const dayCode = getDayCode(date)
-            const prevSat = addDaysStr(date, -(dayCode === "sat" ? 7 : 8))
-            const prevSun = addDaysStr(date, -(dayCode === "sun" ? 7 : 6))
+            const prevSat = addDays(date, -(dayCode === "sat" ? 7 : 8))
+            const prevSun = addDays(date, -(dayCode === "sun" ? 7 : 6))
             const workedLastWeekend = recentAssignments.some(
               (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
             )
