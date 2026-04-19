@@ -116,7 +116,6 @@ function sanitizeModernColors(doc: Document, root: HTMLElement) {
 
   // 2. Also nuke any CSS custom properties in :root that contain modern colors
   //    by injecting an override stylesheet with resolved values
-  const rootStyles = doc.documentElement.style
   const computedRoot = window.getComputedStyle(document.documentElement)
   const cssVarOverrides: string[] = []
   // Get all CSS custom properties from the original document

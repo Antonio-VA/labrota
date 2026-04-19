@@ -7,13 +7,11 @@ import { Upload, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import {
   updateOrgName,
   updateOrgLogo,
   updateOrgRegional,
-  toggleLeaveRequests,
   type OrgSettings,
 } from "@/app/(clinic)/settings/actions"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
@@ -26,7 +24,6 @@ export function OrgSettingsForm({
   orgId: string
 }) {
   const t = useTranslations("orgSettings")
-  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
 
   // Name
@@ -42,9 +39,6 @@ export function OrgSettingsForm({
   // Regional
   const [country, setCountry] = useState(settings.country)
   const [region, setRegion] = useState(settings.region)
-
-  // Feature toggles
-  const [leaveRequests, setLeaveRequests] = useState(settings.enableLeaveRequests)
 
   function saveName() {
     if (!draftName.trim()) return
@@ -191,7 +185,6 @@ export function OrgSettingsForm({
         </Button>
       </div>
 
-      {/* Feature toggles moved to Funcionalidades tab */}
     </div>
   )
 }

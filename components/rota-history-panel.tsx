@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils"
 import { getWeekSnapshots, restoreWeekSnapshot, type RotaSnapshot, type SnapshotAssignment } from "@/lib/rota-snapshots"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 
-const DOW_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
 function getWeekDates(weekStart: string): string[] {

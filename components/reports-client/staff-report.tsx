@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ArrowLeft, FileDown, FileSpreadsheet } from "lucide-react"
 import type { StaffReportData } from "@/app/(clinic)/reports/actions"
-import { formatDateWithYear } from "@/lib/format-date"
 
 // ── Staff Report View ────────────────────────────────────────────────────────
 

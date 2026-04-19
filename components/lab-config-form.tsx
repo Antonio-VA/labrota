@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
-import { CheckCircle2, AlertCircle, Info, ChevronUp, ChevronDown } from "lucide-react"
+import { CheckCircle2, AlertCircle, ChevronUp, ChevronDown } from "lucide-react"
 import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
 import { useTimedState } from "@/hooks/use-timed-state"
@@ -82,10 +82,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
     return normalized
   })
-  // Active coverage state depends on rotation mode
   const isByShift = rotaDisplayMode === "by_shift"
-  const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
-
 
   // by_task: show per-shift coverage when there are active shifts
   const activeShifts = shiftTypes.filter((st) => st.active !== false)

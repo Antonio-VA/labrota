@@ -11,7 +11,7 @@ export function useCalendarDnd({ weekStart, fetchWeek, setError }: UseCalendarDn
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
-  const [isPendingDnd, startDndTransition] = useTransition()
+  const [, startDndTransition] = useTransition()
 
   function handleChipDragStart(assignmentId: string, fromDate: string) {
     setDraggingId(assignmentId)

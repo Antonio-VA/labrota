@@ -6,7 +6,7 @@ import { Plus, Trash2, GripVertical, CheckCircle2, AlertCircle } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Department } from "@/lib/types/database"
-import { saveDepartments, seedDefaultDepartments } from "@/app/(clinic)/lab/department-actions"
+import { saveDepartments } from "@/app/(clinic)/lab/department-actions"
 import { useTimedState } from "@/hooks/use-timed-state"
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -207,15 +207,6 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enab
       const oldIndex = prev.findIndex((d) => d.sortId === active.id)
       const newIndex = prev.findIndex((d) => d.sortId === over.id)
       return arrayMove(prev, oldIndex, newIndex).map((d, i) => ({ ...d, sort_order: i }))
-    })
-  }
-
-  function handleSeed() {
-    if (departments.length > 0 && !confirm(t("loadDefaultsConfirm"))) return
-    startTransition(async () => {
-      const result = await seedDefaultDepartments()
-      if (result.error) { setErrorMsg(result.error); setStatus("error"); return }
-      if ("seeded" in result && result.seeded) window.location.reload()
     })
   }
 

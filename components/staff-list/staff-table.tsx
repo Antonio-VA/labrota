@@ -3,7 +3,7 @@
 import React from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { Star, Hourglass, ArrowUp, ArrowDown } from "lucide-react"
+import { Star, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, Tecnica } from "@/lib/types/database"

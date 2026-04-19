@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { Users, BarChart3, Loader2, CalendarDays, ClipboardList, ArrowLeftRight, Banknote } from "lucide-react"
 import {
@@ -22,7 +21,7 @@ import { UnpaidLeaveReportView } from "./unpaid-leave-report"
 
 type View = "cards" | "period_staff" | "period_tech" | "period_leaves" | "period_swaps" | "period_unpaid" | "month_extra" | "staff_report" | "tech_report" | "extra_report" | "leave_report" | "swap_report" | "unpaid_report"
 
-export function ReportsClient({ orgDisplayMode, orgName, hrModuleActive = false }: { orgDisplayMode: string; orgName: string; hrModuleActive?: boolean }) {
+export function ReportsClient({ orgDisplayMode, hrModuleActive = false }: { orgDisplayMode: string; hrModuleActive?: boolean }) {
   const t = useTranslations("reports")
   const [view, setView] = useState<View>("cards")
   const [isPending, startTransition] = useTransition()

@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation"
 import { Upload, X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, Check, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { importFutureRota, type ImportRotaInput, type ImportRotaResult } from "@/app/(clinic)/onboarding/import-rota/actions"
-import type { ProcessedFile } from "@/lib/types/import"
+import { importFutureRota, type ImportRotaResult } from "@/app/(clinic)/onboarding/import-rota/actions"
 import { processFile, formatSize } from "@/components/import-wizard/file-processing"
 import { FileIcon } from "@/components/import-wizard/ui-helpers"
 import type { ExtractedRota, DbStaff, DbShift, StaffMatch, ShiftMatch } from "./types"
@@ -74,14 +73,6 @@ export function ImportRotaWizard() {
       const data: ExtractedRota = await res.json()
       setExtracted(data)
 
-      // Fetch DB staff and shifts for matching
-      const [staffRes, shiftRes] = await Promise.all([
-        fetch("/api/import-rota-extract/staff").catch(() => null),
-        fetch("/api/import-rota-extract/shifts").catch(() => null),
-      ])
-
-      // Fallback: use inline fetch via server component pattern
-      // For now we fetch via a simpler approach
       const { createClient } = await import("@/lib/supabase/client")
       const supabase = createClient()
       const [sRes, shRes] = await Promise.all([

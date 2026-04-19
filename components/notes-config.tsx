@@ -6,9 +6,7 @@ import { Plus, Pencil, Trash2, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { addNoteTemplate, updateNoteTemplate, deleteNoteTemplate } from "@/app/(clinic)/notes-actions"
-import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 
 export function NotesConfig({
   initialTemplates,
@@ -17,7 +15,7 @@ export function NotesConfig({
   initialTemplates: { id: string; text: string }[]
   initialEnabled: boolean
 }) {
-  const [enabled, setEnabled] = useState(initialEnabled)
+  const enabled = initialEnabled
   const [templates, setTemplates] = useState(initialTemplates)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
@@ -25,15 +23,6 @@ export function NotesConfig({
   const [isPending, startTransition] = useTransition()
   const t = useTranslations("notes")
   const tc = useTranslations("common")
-
-  function handleToggle() {
-    const next = !enabled
-    setEnabled(next)
-    startTransition(async () => {
-      const result = await updateLabConfig({ enable_notes: next })
-      if (result.error) toast.error(result.error)
-    })
-  }
 
   function handleAdd() {
     if (!newText.trim()) return

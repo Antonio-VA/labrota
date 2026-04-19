@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test"
+import { test as setup } from "@playwright/test"
 import path from "path"
 
 const STORAGE_STATE = path.join(__dirname, ".auth/e2e-test.json")

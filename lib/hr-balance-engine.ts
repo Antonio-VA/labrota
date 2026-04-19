@@ -84,7 +84,6 @@ export function countDays(
 
   while (current <= end) {
     const dateStr = formatDateISO(current)
-    const weekend = isWeekend(current)
 
     if (config.counting_method === "working_days") {
       // Working days: count Mon-Fri, then subtract public holidays that fall on working days

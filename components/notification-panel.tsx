@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, X, Check, AlertTriangle, CalendarDays, ArrowLeftRight, Loader2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   getNotifications,

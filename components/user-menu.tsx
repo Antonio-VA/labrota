@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
@@ -29,7 +28,6 @@ function displayName(user: User): string {
 
 export function UserMenu() {
   const t = useTranslations("nav")
-  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {

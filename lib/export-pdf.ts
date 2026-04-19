@@ -24,12 +24,6 @@ function slugify(s: string): string {
   return s.replace(/[^a-zA-Z0-9]+/g, "").replace(/\s+/g, "")
 }
 
-function fmtTimestamp(locale: string): string {
-  return new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(new Date())
-}
-
 // ── Design tokens (printer-friendly B&W) ────────────────────────────────────
 
 const COLORS = {
@@ -193,7 +187,6 @@ export async function exportPdfByShift(data: RotaWeekData, orgName: string, loca
       // OFF column
       if (data.staffNames) {
         const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
-        const leaveIds = new Set(data.onLeaveByDate?.[day.date] ?? [])
         const offNames = Object.keys(data.staffNames)
           .filter((id) => !assignedIds.has(id))
           .map((id) => data.staffNames[id]).filter(Boolean)

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useRef, useTransition } from "react"
+import { useState, useEffect, useMemo, useRef, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { usePersistedState } from "@/hooks/use-persisted-state"

@@ -3,7 +3,6 @@
 import { useState, useEffect, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { Plus, Lock, X } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   getWeekNotes,
@@ -13,10 +12,6 @@ import {
   type WeekNoteData,
 } from "@/app/(clinic)/notes-actions"
 import { createWindowCache } from "@/lib/window-cache"
-
-function truncate(s: string, max: number = 40): string {
-  return s.length > max ? s.slice(0, max) + "…" : s
-}
 
 // Per-week cache pinned to window so revisits of a previously loaded week
 // skip the server round-trip.

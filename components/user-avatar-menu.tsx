@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
-import { useRouter } from "next/navigation"
 import { LogOut, UserCog, HelpCircle, BookOpen, Sun, Moon, Monitor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { applyTheme } from "@/components/account-panel"
@@ -37,7 +36,6 @@ function hiResAvatarUrl(url: string | null): string | null {
 export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser: InitialUser; variant?: "dark" | "light" }) {
   const t = useTranslations("nav")
   const tu = useTranslations("userMenu")
-  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)

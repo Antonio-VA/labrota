@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect } from "react"
-import { getUserPreferences, saveUserPreferences } from "@/app/(clinic)/account-actions"
+import { getUserPreferences } from "@/app/(clinic)/account-actions"
 import { usePersistedState } from "./use-persisted-state"
 
 // ── Types ────────────────────────────────────────────────────────────────────

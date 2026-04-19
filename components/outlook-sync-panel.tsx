@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useCallback, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { X, Cloud, CloudOff, RefreshCw, Unplug, Check } from "lucide-react"
+import { X, Cloud, CloudOff, RefreshCw, Unplug } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

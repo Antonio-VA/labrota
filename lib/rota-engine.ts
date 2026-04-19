@@ -248,7 +248,6 @@ export function runRotaEngine({
   const shiftCodes = [...activeShiftTypes]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((st) => st.code)
-  const activeShiftSet = new Set(shiftCodes)
 
   // Técnica → typical shifts lookup (for soft shift preference)
   const tecnicaTypicalShifts: Record<string, Set<string>> = {}
@@ -1220,7 +1219,6 @@ export function runRotaEngine({
         roleStaff: StaffWithSkills[],
         roleMinMap: Record<string, number>,
         roleFilledMap: Record<string, number>,
-        roleName: string
       ) => {
         // First: fill per-shift minimums for this role
         for (const shiftCode of defaultShiftCodes) {
@@ -1260,8 +1258,8 @@ export function runRotaEngine({
           roleFilledMap[shift] = (roleFilledMap[shift] ?? 0) + 1
         }
       }
-      placeRoleByMin(androStaff, shiftMinAndro, shiftFilledAndro, "andrología")
-      placeRoleByMin(adminStaff, shiftMinAdmin, shiftFilledAdmin, "admin")
+      placeRoleByMin(androStaff, shiftMinAndro, shiftFilledAndro)
+      placeRoleByMin(adminStaff, shiftMinAdmin, shiftFilledAdmin)
 
       // ── Rotation swap pass ──
       // For weekly/daily rotation, try swapping same-role pairs between shifts
@@ -1542,7 +1540,6 @@ export function runRotaEngine({
     for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
       if (!dayShiftSet.has(shiftCode)) continue
       const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
-      const staffIdsInShift = new Set(staffInShift.map((a) => a.staff_id))
 
       for (const techCode of techCodes) {
         // Check if at least one certified person is in this shift

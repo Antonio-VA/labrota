@@ -1,9 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { ArrowLeft, FileDown, FileSpreadsheet } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import type { ExtraDaysData } from "@/app/(clinic)/reports/actions"
 
 // ── Extra Days Report View ──────────────────────────────────────────────────

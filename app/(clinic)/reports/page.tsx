@@ -14,7 +14,7 @@ import { getOrgDisplayMode } from "./actions"
 export default async function ReportsPage() {
   await requireEditor()
   const t = await getTranslations("reports")
-  const { mode, orgName } = await getOrgDisplayMode()
+  const { mode } = await getOrgDisplayMode()
 
   // Check HR module status
   const supabase = await createClient()
@@ -28,7 +28,7 @@ export default async function ReportsPage() {
       <MobileGate>
         <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
           <h1 className="text-[18px] font-medium">{t("title")}</h1>
-          <ReportsClient orgDisplayMode={mode} orgName={orgName} hrModuleActive={hrMod?.status === "active"} />
+          <ReportsClient orgDisplayMode={mode} hrModuleActive={hrMod?.status === "active"} />
         </div>
       </MobileGate>
     </div>

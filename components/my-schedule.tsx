@@ -123,7 +123,6 @@ export function MySchedule({
   const isCurrentWeek = days.some((d) => d.date === today)
   const currentMonday = days[0]?.date ? getMondayOf(days[0].date) : getMondayOf(today)
   const weekOptions = generateWeekOptions(currentMonday, locale)
-  const todayMonday = getMondayOf(today)
 
   // Derive staff first name from assignments
   const staffFirstName = (() => {

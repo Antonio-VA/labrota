@@ -1,10 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { ArrowLeft, FileDown, FileSpreadsheet, ArrowLeftRight } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import type { SwapReportData } from "@/app/(clinic)/reports/actions"
 import { formatDateWithYear } from "@/lib/format-date"
 import { resolveLocale } from "@/lib/locale-cookie"

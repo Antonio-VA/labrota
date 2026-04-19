@@ -58,24 +58,3 @@ export async function saveDepartments(
   })
 }
 
-export async function seedDefaultDepartments(): Promise<{ seeded: boolean; error?: string } | { error: string }> {
-  return withOrgId(async (orgId, supabase) => {
-    // Delete existing departments for this org
-    await supabase.from("departments").delete().eq("organisation_id", orgId)
-
-    const defaults = [
-      { code: "lab",       name: "Embriología",     name_en: "Embryology",     abbreviation: "EM", colour: "#60A5FA", is_default: true, sort_order: 0 },
-      { code: "andrology", name: "Andrología",       name_en: "Andrology",      abbreviation: "AN", colour: "#34D399", is_default: true, sort_order: 1 },
-      { code: "admin",     name: "Administración",   name_en: "Administration", abbreviation: "AD", colour: "#94A3B8", is_default: true, sort_order: 2 },
-    ]
-
-    const { error } = await supabase
-      .from("departments")
-      .insert(defaults.map((d) => ({ ...d, organisation_id: orgId })))
-
-    if (error) return { seeded: false, error: error.message }
-    revalidatePath("/lab")
-    revalidatePath("/")
-    return { seeded: true }
-  })
-}

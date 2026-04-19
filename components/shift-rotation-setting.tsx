@@ -25,7 +25,7 @@ export function ShiftRotationSetting({ initialValue, onChange, registerSave, isB
   const tt = useTranslations("taskRotation")
   const tr = isByTask ? tt : t
   const [value, setValue] = useState<RotationMode>((initialValue as RotationMode) || "stable")
-  const [isPending, startTransition] = useTransition()
+  const [isPending] = useTransition()
 
   useEffect(() => {
     registerSave?.(async () => {

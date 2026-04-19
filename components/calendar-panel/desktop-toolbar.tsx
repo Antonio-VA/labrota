@@ -1,6 +1,5 @@
 "use client"
 
-import React from "react"
 import { ChevronLeft, ChevronRight, Lock, FileText, Sheet, BookmarkPlus, BookmarkCheck, Rows3, ArrowRightLeft, LayoutList, Star, Clock, Trash2, Check, Undo2, Redo2, BrainCircuit, Grid3X3, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"

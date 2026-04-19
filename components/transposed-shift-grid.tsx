@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, ArrowRightLeft, Briefcase, Hourglass } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Briefcase } from "lucide-react"
 import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
