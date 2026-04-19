@@ -3,6 +3,7 @@ import { createHmac } from "crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { exchangeCodeForTokens, getMicrosoftProfile } from "@/lib/outlook/graph-client"
 import { encrypt } from "@/lib/outlook/encryption"
+import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
 
 // Verify and parse the signed state parameter
 function parseState(state: string): { staffId: string; orgId: string } | null {
@@ -56,6 +57,16 @@ export async function GET(req: NextRequest) {
   }
 
   const { staffId, orgId } = parsed
+
+  // Re-verify session ownership: the signed state proves the request came
+  // from our /api/outlook-auth flow, but does not prove that the user who
+  // completed Microsoft OAuth is the same user the tokens belong to. Without
+  // this check, an attacker who gets any signed state could write their own
+  // Microsoft tokens against another staff record.
+  const authError = await authorizeOutlookConnection(staffId, orgId)
+  if (authError) {
+    return errorRedirect(req, authError)
+  }
 
   try {
     // Exchange code for tokens

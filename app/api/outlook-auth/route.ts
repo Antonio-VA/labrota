@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createHmac } from "crypto"
 import { MICROSOFT_AUTH_URL, SCOPES, getClientConfig } from "@/lib/outlook/config"
+import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
 
 // Build a signed state parameter to prevent CSRF
 function buildState(staffId: string, orgId: string): string {
@@ -16,6 +17,12 @@ export async function GET(req: NextRequest) {
 
   if (!staffId || !orgId) {
     return NextResponse.json({ error: "staffId and orgId required" }, { status: 400 })
+  }
+
+  const authError = await authorizeOutlookConnection(staffId, orgId)
+  if (authError) {
+    const status = authError === "unauthenticated" ? 401 : 403
+    return NextResponse.json({ error: authError }, { status })
   }
 
   const { clientId, redirectUri } = getClientConfig()
