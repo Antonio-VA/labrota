@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Sparkles, AlertTriangle, CalendarX, Check, B
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { useCanEdit } from "@/lib/role-context"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import { TapPopover } from "@/components/tap-popover"
 import { WeekNotes } from "@/components/week-notes"
 import { getRotaWeek, getActiveStaff, type RotaWeekData } from "@/app/(clinic)/rota/actions"
@@ -32,40 +33,21 @@ export function MobileWeekClient() {
   const [staffList, setStaffList] = useState<StaffWithSkills[]>(() => _mobileWeekStaffCache ?? [])
   const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOfWeek(new Date())))
   const weekGridRef = useRef<HTMLDivElement>(null)
-  const [highlightEnabled, setHighlightEnabled] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("labrota_week_highlight") === "true"
-  })
+  const [highlightEnabled, setHighlightEnabled] = usePersistedState<boolean>("labrota_week_highlight", false)
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
   const [warningsOpen, setWarningsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
-  const [weekViewMode, setWeekViewMode] = useState<"task" | "person">(() => {
-    if (typeof window === "undefined") return "task"
-    try {
-      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
-      return fav.weekViewMode === "person" ? "person" : "task"
-    } catch { return "task" }
-  })
-  const [mobileDeptColor, setMobileDeptColor] = useState(() => {
+  const [weekFavourite, setWeekFavourite] = usePersistedState<{ weekViewMode: string; mobileDeptColor: boolean; taskDaysAsRows?: boolean } | null>("labrota_week_favourite", null)
+  const [weekViewMode, setWeekViewMode] = useState<"task" | "person">(
+    weekFavourite?.weekViewMode === "person" ? "person" : "task"
+  )
+  const [mobileDeptColor, setMobileDeptColor] = useState<boolean>(() => {
+    if (weekFavourite?.mobileDeptColor !== undefined) return weekFavourite.mobileDeptColor
     if (typeof window === "undefined") return true
-    try {
-      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
-      if (fav.mobileDeptColor !== undefined) return fav.mobileDeptColor as boolean
-    } catch {}
     return localStorage.getItem("labrota_mobile_dept_color") !== "false"
   })
-  const [taskDaysAsRows, setTaskDaysAsRows] = useState(() => {
-    if (typeof window === "undefined") return false
-    try {
-      const fav = JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "{}")
-      return fav.taskDaysAsRows === true
-    } catch { return false }
-  })
-  const [weekFavourite, setWeekFavourite] = useState<{ weekViewMode: string; mobileDeptColor: boolean; taskDaysAsRows?: boolean } | null>(() => {
-    if (typeof window === "undefined") return null
-    try { return JSON.parse(localStorage.getItem("labrota_week_favourite") ?? "null") } catch { return null }
-  })
+  const [taskDaysAsRows, setTaskDaysAsRows] = useState<boolean>(weekFavourite?.taskDaysAsRows === true)
 
   // Force task view for by-task orgs — "by person" is not available
   /* eslint-disable react-hooks/set-state-in-effect -- derived from fetched data */
@@ -77,10 +59,10 @@ export function MobileWeekClient() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggleHighlight() {
-    const next = !highlightEnabled
-    setHighlightEnabled(next)
-    localStorage.setItem("labrota_week_highlight", String(next))
-    if (!next) setHighlightedStaff(null)
+    setHighlightEnabled((v) => {
+      if (v) setHighlightedStaff(null)
+      return !v
+    })
   }
 
   function toggleMobileDeptColor() {
@@ -99,9 +81,7 @@ export function MobileWeekClient() {
     (weekFavourite.taskDaysAsRows ?? false) === taskDaysAsRows
 
   function saveFavourite() {
-    const fav = { weekViewMode, mobileDeptColor, taskDaysAsRows }
-    setWeekFavourite(fav)
-    localStorage.setItem("labrota_week_favourite", JSON.stringify(fav))
+    setWeekFavourite({ weekViewMode, mobileDeptColor, taskDaysAsRows })
     toast.success(t("viewSavedFavorite"))
   }
 

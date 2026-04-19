@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useTransition } from "react"
+import React, { useState, useEffect, useMemo, useRef, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import { Users, Pencil, Plus, ChevronDown, ChevronRight, Columns3, Save } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -58,43 +59,32 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   const [sortDir,      setSortDir]      = useState<"asc" | "desc">("asc")
 
   // Column visibility
-  const STORAGE_KEY = "labrota_staff_columns"
-  const ORDER_KEY = "labrota_staff_col_order"
   const hrActive = !!leaveBalances
   const DEFAULT_COLS: ColKey[] = hrActive
     ? ["role", "capacidades", "training", "status", "leaveBalance", "leaveTaken", "leaveBooked"]
     : ["role", "capacidades", "training", "status"]
-  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-          const savedArr = JSON.parse(saved) as ColKey[]
-          const cols = new Set(savedArr)
-          if (!hrActive) {
-            HR_KEYS.forEach((k) => cols.delete(k))
-          } else {
-            HR_KEYS.forEach((k) => { if (!savedArr.includes(k)) cols.add(k) })
-          }
-          return cols
-        }
-      } catch { /* ignore */ }
-    }
-    return new Set(DEFAULT_COLS)
-  })
-  const [colOrder, setColOrder] = useState<ColKey[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(ORDER_KEY)
-        if (saved) {
-          const parsed = JSON.parse(saved) as ColKey[]
-          const extra = ALL_COL_ORDER.filter((k) => !parsed.includes(k))
-          return [...parsed, ...extra]
-        }
-      } catch { /* ignore */ }
-    }
-    return [...ALL_COL_ORDER]
-  })
+  const [visibleColsArr, setVisibleColsArr] = usePersistedState<ColKey[]>("labrota_staff_columns", DEFAULT_COLS)
+  const [colOrder, setColOrder] = usePersistedState<ColKey[]>("labrota_staff_col_order", [...ALL_COL_ORDER])
+
+  // One-time migrations on mount: sync HR_KEYS with hrActive, and backfill any new columns in colOrder
+  const migratedRef = useRef(false)
+  useEffect(() => {
+    if (migratedRef.current) return
+    migratedRef.current = true
+    setVisibleColsArr((prev) => {
+      if (!hrActive) return prev.filter((k) => !HR_KEYS.includes(k))
+      const missing = HR_KEYS.filter((k) => !prev.includes(k))
+      return missing.length ? [...prev, ...missing] : prev
+    })
+    setColOrder((prev) => {
+      const extra = ALL_COL_ORDER.filter((k) => !prev.includes(k))
+      return extra.length ? [...prev, ...extra] : prev
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleCols = useMemo(() => new Set(visibleColsArr), [visibleColsArr])
+  const setVisibleCols = (cols: Set<ColKey>) => setVisibleColsArr([...cols])
+
   const [showColDialog, setShowColDialog] = useState(false)
   const [draftOrder, setDraftOrder] = useState<ColKey[]>([])
   const [draftVisible, setDraftVisible] = useState<Set<ColKey>>(new Set())
@@ -108,10 +98,6 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
   function saveColPrefs() {
     setColOrder(draftOrder)
     setVisibleCols(draftVisible)
-    try {
-      localStorage.setItem(ORDER_KEY, JSON.stringify(draftOrder))
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...draftVisible]))
-    } catch { /* ignore */ }
     setShowColDialog(false)
   }
 
