@@ -9,6 +9,25 @@ export function deptDisplayName(d: import("@/lib/types/database").Department, lo
   return locale === "en" && d.name_en ? d.name_en : d.name
 }
 
+/** Builds a date→punciones resolver that falls back override → default → same-day-of-week default → 0. */
+export function buildPuncResolver(
+  punctionsDefault: Record<string, number> | undefined,
+  punctionsOverride: Record<string, number> | undefined,
+): (date: string) => number {
+  const def = punctionsDefault ?? {}
+  const over = punctionsOverride ?? {}
+  const byDow: Record<number, number> = {}
+  for (const [d, v] of Object.entries(def)) {
+    const dow = new Date(d + "T12:00:00").getDay()
+    if (byDow[dow] === undefined) byDow[dow] = v
+  }
+  return (date) => {
+    if (over[date] !== undefined) return over[date]
+    if (def[date] !== undefined) return def[date]
+    return byDow[new Date(date + "T12:00:00").getDay()] ?? 0
+  }
+}
+
 export function buildDeptMaps(departments: import("@/lib/types/database").Department[], locale: string = "es"): DeptMaps {
   if (!departments || departments.length === 0) return DEFAULT_DEPT_MAPS
   return {

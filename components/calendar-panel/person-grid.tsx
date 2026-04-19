@@ -1,25 +1,23 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, Fragment } from "react"
+import { useMemo, useState, Fragment } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft, Plus } from "lucide-react"
-import { toast } from "sonner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { removeAssignment, upsertAssignment, setFunctionLabel, setTecnica, type RotaWeekData, type RotaDay, type ShiftTimes } from "@/app/(clinic)/rota/actions"
+import type { RotaWeekData, RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { PersonShiftSelector } from "./person-shift-selector"
 import { PersonShiftPill } from "./person-shift-pill"
 import { AssignmentPopover } from "./assignment-popover"
-import { DayStatsInput } from "./day-stats-input"
-import { DayWarningPopover } from "./warnings"
 import { useStaffHover } from "@/components/staff-hover-context"
 import type { Assignment } from "./types"
-import { ROLE_ORDER, ROLE_DOT, TODAY, DEFAULT_DEPT_MAPS } from "./constants"
+import { ROLE_ORDER, ROLE_DOT, DEFAULT_DEPT_MAPS } from "./constants"
 import { buildDeptMaps } from "./utils"
 import { resolveColor } from "@/components/task-grid/constants"
-import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { TaskPickerInline as TaskPicker } from "./task-picker"
+import { usePersonGridState } from "@/hooks/use-person-grid-state"
+import { PersonGridHeader } from "./person-grid-header"
 
 /** Pill showing a task code — no background by default, hover reveals task color */
 function TaskChip({ label, color, onRemove }: { label: string; color: string; onRemove?: () => void }) {
@@ -112,121 +110,25 @@ function PersonGridInner({
   swapStaffId, gridSetDaysRef,
 }: PersonGridProps & { data: RotaWeekData }) {
   const t = useTranslations("schedule")
-  const _tc = useTranslations("common")
-  const [localDays, setLocalDays] = useState(data.days)
-  // Register this grid's day setter for direct undo/redo updates
-  useEffect(() => {
-    if (!gridSetDaysRef) return
-    gridSetDaysRef.current = setLocalDays
-    return () => { gridSetDaysRef.current = null }
-  }, [gridSetDaysRef])
-  const [prevData, setPrevData] = useState(data)
-  if (data && data !== prevData) {
-    setPrevData(data)
-    setLocalDays(data.days)
-  }
 
-  const patchLocalAssignment = useCallback((assignmentId: string, patch: Record<string, unknown>) => {
-    setLocalDays((prev) => prev.map((d) => ({
-      ...d,
-      assignments: d.assignments.map((a) =>
-        a.id === assignmentId ? { ...a, ...patch } : a
-      ),
-    })))
-  }, [])
+  const {
+    localDays, assignMap, tecnicaByCode, tecnicaById, taskAssignMap, wholeTeamByDate,
+    handleFunctionLabelSave, handleTaskRemove, handleTaskAdd,
+    handleExistingShiftChange, handleOffSlotAssign,
+  } = usePersonGridState({ data, staffList, gridSetDaysRef })
 
-  const handleFunctionLabelSave = useCallback(async (assignmentId: string, label: string | null) => {
-    patchLocalAssignment(assignmentId, { function_label: label })
-    const result = await setFunctionLabel(assignmentId, label)
-    if (result.error) toast.error(result.error)
-  }, [patchLocalAssignment])
+  const isTaskMode = data.rotaDisplayMode === "by_task"
 
-  const _handleTecnicaSave = useCallback(async (assignmentId: string, tecnicaId: string | null) => {
-    patchLocalAssignment(assignmentId, { tecnica_id: tecnicaId })
-    const result = await setTecnica(assignmentId, tecnicaId)
-    if (result.error) toast.error(result.error)
-  }, [patchLocalAssignment])
-
-  const { label: ROLE_LABEL_MAP, order: _ROLE_ORDER_MAP } = buildDeptMaps(data.departments ?? [], locale)
-
-  // Build assignment lookup: staffId → date → assignment
-  const assignMap = useMemo(() => {
-    const map: Record<string, Record<string, Assignment>> = {}
-    for (const day of localDays) {
-      for (const a of day.assignments) {
-        if (!map[a.staff_id]) map[a.staff_id] = {}
-        map[a.staff_id][day.date] = a
-      }
-    }
-    return map
-  }, [localDays])
-
-  // Task mode — multi-assignment map and helpers
-  const isTaskMode = data?.rotaDisplayMode === "by_task"
-  const tecnicaByCode = useMemo(() => Object.fromEntries((data?.tecnicas ?? []).map((t) => [t.codigo, t])), [data?.tecnicas])
-  const defaultShiftCode = (data?.shiftTypes?.[0]?.code ?? "T1") as import("@/lib/types/database").ShiftType
-
-  // Multi-assignment map: staffId → date → Assignment[]
-  const taskAssignMap = useMemo(() => {
-    if (!isTaskMode) return {} as Record<string, Record<string, Assignment[]>>
-    const map: Record<string, Record<string, Assignment[]>> = {}
-    for (const day of localDays) {
-      for (const a of day.assignments) {
-        if (!map[a.staff_id]) map[a.staff_id] = {}
-        if (!map[a.staff_id][day.date]) map[a.staff_id][day.date] = []
-        map[a.staff_id][day.date].push(a)
-      }
-    }
-    return map
-  }, [localDays, isTaskMode])
-
-  // Whole-team assignments by date
-  const wholeTeamByDate = useMemo(() => {
-    if (!isTaskMode) return {} as Record<string, Assignment[]>
-    const map: Record<string, Assignment[]> = {}
-    for (const day of localDays) {
-      map[day.date] = day.assignments.filter((a) => a.whole_team && a.function_label)
-    }
-    return map
-  }, [localDays, isTaskMode])
+  const { label: ROLE_LABEL_MAP } = useMemo(
+    () => buildDeptMaps(data.departments ?? [], locale),
+    [data.departments, locale],
+  )
 
   const [pickerState, setPickerState] = useState<{ staffId: string | null; date: string } | null>(null)
-
-  const handleTaskRemove = useCallback(async (assignmentId: string) => {
-    setLocalDays((prev) => prev.map((d) => ({ ...d, assignments: d.assignments.filter((a) => a.id !== assignmentId) })))
-    const result = await removeAssignment(assignmentId)
-    if (result.error) toast.error(result.error)
-  }, [])
-
-  const handleTaskAdd = useCallback(async (staffId: string | null, date: string, tecnicaCodigo: string) => {
-    const tempId = `temp-${Date.now()}-${Math.random()}`
-    const staffMember = staffId ? staffList.find((s) => s.id === staffId) : null
-    setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
-      ...d,
-      assignments: [...d.assignments, {
-        id: tempId, staff_id: staffId ?? "", shift_type: defaultShiftCode,
-        is_manual_override: true, trainee_staff_id: null, notes: null,
-        function_label: tecnicaCodigo, tecnica_id: null, whole_team: staffId === null,
-        staff: staffMember ? { id: staffMember.id, first_name: staffMember.first_name, last_name: staffMember.last_name, role: staffMember.role as never } : { id: "", first_name: "All", last_name: "", role: "lab" as never },
-      }],
-    }))
-    const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: staffId ?? "", date, shiftType: defaultShiftCode, functionLabel: tecnicaCodigo })
-    if (result.error) toast.error(result.error)
-    else {
-      // Replace temp id with real id
-      setLocalDays((prev) => prev.map((d) => ({
-        ...d,
-        assignments: d.assignments.map((a) => a.id === tempId ? { ...a, id: result.id ?? tempId } : a),
-      })))
-    }
-  }, [staffList, data?.weekStart, defaultShiftCode])
-
-  // Shift highlighting — hover a shift to highlight all same-shift cells
   const { enabled: highlightEnabled } = useStaffHover()
   const [hoveredShift, setHoveredShift] = useState<string | null>(null)
 
-  // Active staff sorted by role then first name + role grouping
-  const { activeStaff: _activeStaff, roleGroups } = useMemo(() => {
+  const roleGroups = useMemo(() => {
     const active = staffList
       .filter((s) => s.onboarding_status !== "inactive")
       .sort((a, b) => {
@@ -239,93 +141,77 @@ function PersonGridInner({
       if (last && last.role === s.role) last.members.push(s)
       else groups.push({ role: s.role, members: [s] })
     }
-
-    return { activeStaff: active, roleGroups: groups }
+    return groups
   }, [staffList])
 
   const days = localDays
+
+  const renderTaskCell = (staffId: string | null, date: string, assigns: Assignment[], extra?: { onLeave?: boolean }) => {
+    const onLeave = !!extra?.onLeave
+    const assignedCodes = new Set(assigns.map((a) => a.function_label!).filter(Boolean))
+    const isOpen = pickerState?.staffId === staffId && pickerState?.date === date
+    const clickable = !isPublished && !onLeave
+    return (
+      <div
+        className={cn(
+          "border-b border-r last:border-r-0 border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors",
+          compact ? "px-0.5 py-0 min-h-[24px]" : "px-1 py-0.5 min-h-[36px]",
+          onLeave && "bg-muted/20",
+          clickable && "cursor-pointer hover:bg-muted/30",
+        )}
+        onClick={clickable ? () => setPickerState(isOpen ? null : { staffId, date }) : undefined}
+      >
+        {onLeave ? (
+          <span className="text-[10px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
+        ) : (
+          <>
+            {assigns.map((a) => {
+              const tec = tecnicaByCode[a.function_label!]
+              return (
+                <TaskChip
+                  key={a.id}
+                  label={a.function_label!}
+                  color={tec ? resolveColor(tec.color) : "#94A3B8"}
+                  onRemove={!isPublished ? () => handleTaskRemove(a.id) : undefined}
+                />
+              )
+            })}
+            {!isPublished && !isOpen && (
+              <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                <Plus className="size-3" />
+              </span>
+            )}
+            {isOpen && (
+              <TaskPicker
+                tecnicas={data.tecnicas ?? []}
+                assigned={assignedCodes}
+                onSelect={(codigo) => handleTaskAdd(staffId, date, codigo)}
+                onClose={() => setPickerState(null)}
+              />
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-lg border border-border overflow-hidden w-full">
       <div style={{ display: "grid", gridTemplateColumns: "160px repeat(7, 1fr)" }}>
 
-        {/* Header row — matches by-shift view */}
-        <div className="border-r border-b border-border bg-muted sticky left-0 z-10" style={{ minHeight: 52 }} />
-        {days.map((day) => {
-          const d       = new Date(day.date + "T12:00:00")
-          const wday    = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
-          const dayN    = String(d.getDate())
-          const today   = day.date === TODAY
-          const holiday = publicHolidays[day.date]
-          const isSat   = d.getDay() === 6
-          const isSun   = d.getDay() === 0
-          const isWknd  = isSat || isSun
-          return (
-            <div key={day.date} className={cn(
-              "relative flex flex-col items-center justify-center py-1 gap-0 border-b border-r last:border-r-0 border-border",
-              holiday ? "bg-amber-100/80" : "bg-muted"
-            )}
-            style={{
-              ...(isSat ? { borderLeft: "1px dashed var(--border)" } : {}),
-            }}
-            >
-              {day.warnings.length > 0 && (
-                <DayWarningPopover warnings={day.warnings} />
-              )}
-              <button
-                onClick={() => onDateClick?.(day.date)}
-                className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
-              >
-                <span className={cn("text-[10px] uppercase tracking-wider", isWknd && !holiday ? "text-muted-foreground/50" : "text-muted-foreground")}>{wday}</span>
-                <span className={cn(
-                  "font-semibold leading-none text-[18px]",
-                  today ? "size-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[15px]"
-                  : holiday ? "text-amber-600" : isWknd ? "text-muted-foreground" : "text-primary"
-                )}>
-                  {dayN}
-                </span>
-              </button>
-              {holiday && (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
-                  <TooltipContent side="bottom">{holiday}</TooltipContent>
-                </Tooltip>
-              )}
-              {/* Punciones / Biopsias — same component as ShiftGrid (hidden in simplified mode) */}
-              {!simplified && (() => {
-                const _DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-                function getPunc(dateStr: string): number {
-                  if ((punctionsOverride ?? {})[dateStr] !== undefined) return (punctionsOverride ?? {})[dateStr]
-                  if ((punctionsDefault ?? {})[dateStr] !== undefined) return (punctionsDefault ?? {})[dateStr]
-                  const dow = new Date(dateStr + "T12:00:00").getDay()
-                  const sameDow = Object.entries(punctionsDefault ?? {}).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-                  return sameDow ? sameDow[1] : 0
-                }
-                const pDefault = (punctionsDefault ?? {})[day.date] ?? 0
-                const pEffective = (punctionsOverride ?? {})[day.date] ?? pDefault
-                const hasOverride = (punctionsOverride ?? {})[day.date] !== undefined
-                const bRate = data?.biopsyConversionRate ?? 0.5
-                const bD5 = data?.biopsyDay5Pct ?? 0.5
-                const bD6 = data?.biopsyDay6Pct ?? 0.5
-                const forecast = computeBiopsyForecast(day.date, getPunc, bRate, bD5, bD6)
-                const tooltip = forecast > 0 ? `${forecast} biopsias previstas` : `${pEffective} punciones`
-                return (
-                  <DayStatsInput
-                    date={day.date}
-                    value={pEffective}
-                    defaultValue={pDefault}
-                    isOverride={hasOverride}
-                    onChange={onPunctionsChange ?? (() => {})}
-                    disabled={!onPunctionsChange}
-                    biopsyForecast={forecast}
-                    biopsyTooltip={tooltip}
-                    compact
-                  />
-                )
-              })()}
-            </div>
-          )
-        })}
+        <PersonGridHeader
+          days={days}
+          locale={locale}
+          publicHolidays={publicHolidays}
+          simplified={simplified}
+          punctionsDefault={punctionsDefault}
+          punctionsOverride={punctionsOverride}
+          onPunctionsChange={onPunctionsChange}
+          biopsyConversionRate={data.biopsyConversionRate ?? 0.5}
+          biopsyDay5Pct={data.biopsyDay5Pct ?? 0.5}
+          biopsyDay6Pct={data.biopsyDay6Pct ?? 0.5}
+          onDateClick={onDateClick}
+        />
 
         {/* ALL row — whole-team task assignments (task mode only) */}
         {isTaskMode && (
@@ -342,54 +228,17 @@ function PersonGridInner({
             <div className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center", compact ? "px-1.5 min-h-[28px]" : "px-2 min-h-[36px]")}>
               <span className="text-[12px] font-semibold text-muted-foreground">ALL</span>
             </div>
-            {days.map((day) => {
-              const assigns = wholeTeamByDate[day.date] ?? []
-              const assignedCodes = new Set(assigns.map((a) => a.function_label!).filter(Boolean))
-              const isOpen = pickerState?.staffId === null && pickerState?.date === day.date
-              return (
-                <div
-                  key={day.date}
-                  className={cn("border-b border-r last:border-r-0 border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", compact ? "px-0.5 py-0 min-h-[24px]" : "px-1 py-0.5 min-h-[36px]", !isPublished && "cursor-pointer hover:bg-muted/30")}
-                  onClick={!isPublished ? () => setPickerState(isOpen ? null : { staffId: null, date: day.date }) : undefined}
-                >
-                  {assigns.map((a) => {
-                    const tec = tecnicaByCode[a.function_label!]
-                    return (
-                      <TaskChip
-                        key={a.id}
-                        label={a.function_label!}
-                        color={tec ? resolveColor(tec.color) : "#94A3B8"}
-                        onRemove={!isPublished ? () => handleTaskRemove(a.id) : undefined}
-                      />
-                    )
-                  })}
-                  {!isPublished && !isOpen && (
-                    <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-                      <Plus className="size-3" />
-                    </span>
-                  )}
-                  {isOpen && (
-                    <TaskPicker
-                      tecnicas={data?.tecnicas ?? []}
-                      assigned={assignedCodes}
-                      onSelect={(codigo) => handleTaskAdd(null, day.date, codigo)}
-                      onClose={() => setPickerState(null)}
-                    />
-                  )}
-                </div>
-              )
-            })}
+            {days.map((day) => (
+              <Fragment key={day.date}>
+                {renderTaskCell(null, day.date, wholeTeamByDate[day.date] ?? [])}
+              </Fragment>
+            ))}
           </Fragment>
         )}
 
-        {/* Staff groups — shift-based or role-based */}
-        {roleGroups.map((group, _groupIdx) => {
-          const _isShiftGroup = false as const
-          const groupKey = group.role
-          const members = group.members
-          return (
-          <Fragment key={groupKey}>
-            {/* Group header — spans all 8 columns */}
+        {/* Staff groups */}
+        {roleGroups.map((group) => (
+          <Fragment key={group.role}>
             <div
               className="px-3 py-1.5 bg-muted border-b border-border flex items-center gap-1.5"
               style={{ gridColumn: "1 / -1" }}
@@ -400,12 +249,10 @@ function PersonGridInner({
               </span>
             </div>
 
-            {/* Member rows */}
-            {members.map((s) => {
+            {group.members.map((s) => {
               const staffAssigns = assignMap[s.id] ?? {}
               return (
                 <Fragment key={s.id}>
-                  {/* Name cell — click opens profile */}
                   <div
                     className={cn("border-b border-r border-border bg-background sticky left-0 z-10 flex items-center min-w-0 cursor-pointer hover:bg-muted/50", compact ? "px-1.5 py-0.5 min-h-[28px]" : "px-2 py-1 min-h-[36px]")}
                     style={colorChips ? { borderLeft: `3px solid ${DEFAULT_DEPT_MAPS.border[s.role] ?? "#94A3B8"}` } : undefined}
@@ -416,63 +263,25 @@ function PersonGridInner({
                     </span>
                   </div>
 
-                  {/* Day cells */}
                   {days.map((day) => {
                     const onLeave = (onLeaveByDate[day.date] ?? []).includes(s.id)
 
-                    // ── Task mode cell ──────────────────────────────────────
                     if (isTaskMode) {
                       const taskAssigns = (taskAssignMap[s.id]?.[day.date] ?? []).filter((a) => a.function_label && !a.function_label.startsWith("dept_") && !a.whole_team)
-                      const assignedCodes = new Set(taskAssigns.map((a) => a.function_label!))
-                      const isOpen = pickerState?.staffId === s.id && pickerState?.date === day.date
                       return (
-                        <div
-                          key={day.date}
-                          className={cn("border-b border-r last:border-r-0 border-border relative flex flex-wrap gap-0.5 items-center bg-background transition-colors", compact ? "px-0.5 py-0 min-h-[24px]" : "px-1 py-0.5 min-h-[36px]", onLeave && "bg-muted/20", !isPublished && !onLeave && "cursor-pointer hover:bg-muted/30")}
-                          onClick={!isPublished && !onLeave ? () => setPickerState(isOpen ? null : { staffId: s.id, date: day.date }) : undefined}
-                        >
-                          {onLeave ? (
-                            <span className="text-[10px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
-                          ) : (
-                            <>
-                              {taskAssigns.map((a) => {
-                                const tec = tecnicaByCode[a.function_label!]
-                                return (
-                                  <TaskChip
-                                    key={a.id}
-                                    label={a.function_label!}
-                                    color={tec ? resolveColor(tec.color) : "#94A3B8"}
-                                    onRemove={!isPublished ? () => handleTaskRemove(a.id) : undefined}
-                                  />
-                                )
-                              })}
-                              {!isPublished && !isOpen && (
-                                <span className="inline-flex items-center justify-center size-4 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-                                  <Plus className="size-3" />
-                                </span>
-                              )}
-                              {isOpen && (
-                                <TaskPicker
-                                  tecnicas={data?.tecnicas ?? []}
-                                  assigned={assignedCodes}
-                                  onSelect={(codigo) => handleTaskAdd(s.id, day.date, codigo)}
-                                  onClose={() => setPickerState(null)}
-                                />
-                              )}
-                            </>
-                          )}
-                        </div>
+                        <Fragment key={day.date}>
+                          {renderTaskCell(s.id, day.date, taskAssigns, { onLeave })}
+                        </Fragment>
                       )
                     }
 
-                    // ── Shift mode cell (existing logic) ────────────────────
                     const assignment = staffAssigns[day.date]
-                    const taskOff = data?.rotaDisplayMode === "by_shift" && !data?.enableTaskInShift
+                    const taskOff = !data.enableTaskInShift
                     const cleanFnLabel = assignment?.function_label?.startsWith("dept_") ? null : assignment?.function_label
-                    const tecnica    = (taskOff || !assignment) ? null
+                    const tecnica = (taskOff || !assignment) ? null
                       : cleanFnLabel
-                        ? (data.tecnicas ?? []).find((t) => t.codigo === cleanFnLabel) ?? null
-                        : (data.tecnicas ?? []).find((t) => t.id === assignment.tecnica_id) ?? null
+                        ? tecnicaByCode[cleanFnLabel] ?? null
+                        : assignment.tecnica_id ? tecnicaById[assignment.tecnica_id] ?? null : null
                     const cellShift = assignment ? assignment.shift_type : (onLeave ? "__leave__" : "__off__")
                     const isShiftHovered = highlightEnabled && hoveredShift && cellShift === hoveredShift
                     const isOffCell = !assignment && !onLeave && isPublished
@@ -511,31 +320,17 @@ function PersonGridInner({
                             <PersonShiftSelector
                               assignment={assignment}
                               shiftTimes={shiftTimes}
-                              shiftTypes={data?.shiftTypes ?? []}
+                              shiftTypes={data.shiftTypes ?? []}
                               isPublished={isPublished}
                               simplified={simplified}
-                              onShiftChange={async (newShift) => {
-                                if (!newShift) {
-                                  patchLocalAssignment(assignment.id, { _removed: true })
-                                  setLocalDays((prev) => prev.map((d) => ({
-                                    ...d,
-                                    assignments: d.assignments.filter((a) => a.id !== assignment.id),
-                                  })))
-                                  const result = await removeAssignment(assignment.id)
-                                  if (result.error) toast.error(result.error)
-                                } else {
-                                  patchLocalAssignment(assignment.id, { shift_type: newShift })
-                                  const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                                  if (result.error) toast.error(result.error)
-                                }
-                              }}
+                              onShiftChange={(newShift) => handleExistingShiftChange(assignment, newShift, day.date)}
                             />
                           ) : (
                             <AssignmentPopover
                               assignment={assignment}
                               staffSkills={s.staff_skills ?? []}
-                              tecnicas={data?.tecnicas ?? []}
-                              departments={data?.departments ?? []}
+                              tecnicas={data.tecnicas ?? []}
+                              departments={data.departments ?? []}
                               onFunctionSave={handleFunctionLabelSave}
                               isPublished={isPublished}
                             >
@@ -553,23 +348,13 @@ function PersonGridInner({
                           <span className="text-[12px] text-muted-foreground italic w-full text-center">{t("leaveShort")}</span>
                         ) : !isPublished ? (
                           <PersonShiftSelector
-                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                            assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as never, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                             shiftTimes={shiftTimes}
-                            shiftTypes={data?.shiftTypes ?? []}
+                            shiftTypes={data.shiftTypes ?? []}
                             isPublished={false}
                             simplified={simplified}
                             isOff
-                            onShiftChange={async (newShift) => {
-                              if (!newShift) return
-                              const result = await upsertAssignment({ weekStart: data?.weekStart ?? "", staffId: s.id, date: day.date, shiftType: newShift })
-                              if (result.error) toast.error(result.error)
-                              else {
-                                setLocalDays((prev) => prev.map((d) => d.date !== day.date ? d : {
-                                  ...d,
-                                  assignments: [...d.assignments, { id: result.id ?? `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
-                                }))
-                              }
-                            }}
+                            onShiftChange={(newShift) => handleOffSlotAssign(s, day.date, newShift)}
                           />
                         ) : (
                           <span className="text-[12px] text-muted-foreground font-semibold select-none w-full text-center">OFF</span>
@@ -581,7 +366,7 @@ function PersonGridInner({
               )
             })}
           </Fragment>
-        )})}
+        ))}
       </div>
       {/* Shift legend — shown in simplified mode */}
       {simplified && shiftTimes && Object.keys(shiftTimes).length > 0 && (

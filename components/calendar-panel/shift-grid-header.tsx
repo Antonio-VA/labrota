@@ -9,6 +9,7 @@ import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "./day-stats-input"
 import { DayWarningPopover } from "./warnings"
 import { TODAY } from "./constants"
+import { buildPuncResolver } from "./utils"
 
 export function ShiftGridHeader({
   headerDates, localDays, locale, publicHolidays,
@@ -35,24 +36,14 @@ export function ShiftGridHeader({
 }) {
   const t = useTranslations("schedule")
 
-  const puncByDow = useMemo(() => {
-    const m: Record<number, number> = {}
-    for (const [d, v] of Object.entries(punctionsDefault)) {
-      const dow = new Date(d + "T12:00:00").getDay()
-      if (m[dow] === undefined) m[dow] = v
-    }
-    return m
-  }, [punctionsDefault])
+  const getPuncForDate = useMemo(
+    () => buildPuncResolver(punctionsDefault, punctionsOverride),
+    [punctionsDefault, punctionsOverride],
+  )
 
   const dayByDate = useMemo(() =>
     new Map(localDays.map((d) => [d.date, d] as const))
   , [localDays])
-
-  function getPuncForDate(ds: string): number {
-    if (punctionsOverride[ds] !== undefined) return punctionsOverride[ds]
-    if (punctionsDefault[ds] !== undefined) return punctionsDefault[ds]
-    return puncByDow[new Date(ds + "T12:00:00").getDay()] ?? 0
-  }
 
   return (
     <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
