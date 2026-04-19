@@ -6,6 +6,7 @@ import { RefreshCw, Info } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import type { StaffWithSkills, Tecnica, Department } from "@/lib/types/database"
 import { calculateOptimalHeadcount, type HeadcountResult } from "@/app/(clinic)/staff/actions"
 
@@ -26,29 +27,21 @@ export function StaffKpis({
 }) {
   const ts = useTranslations("staff")
 
-  const [headcount, setHeadcount] = useState<HeadcountResult | null>(null)
+  const [headcount, setHeadcount] = usePersistedState<HeadcountResult | null>("labrota_headcount", null)
   const [headcountLoading, setHeadcountLoading] = useState(false)
   const [headcountOpen, setHeadcountOpen] = useState(false)
   const headcountRef = useRef<HTMLDivElement>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- cache hydrate + fetch */
+  /* eslint-disable react-hooks/set-state-in-effect -- one-time fetch when cache is empty */
   useEffect(() => {
-    const cached = localStorage.getItem("labrota_headcount")
-    if (cached) {
-      try { setHeadcount(JSON.parse(cached)) } catch { /* ignore */ }
-    } else {
-      setHeadcountLoading(true)
-      calculateOptimalHeadcount().then((res) => {
-        if (res.data) {
-          setHeadcount(res.data)
-          localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
-        } else {
-          console.error("Headcount calculation failed:", res.error)
-        }
-        setHeadcountLoading(false)
-      })
-    }
-  }, [])
+    if (headcount !== null) return
+    setHeadcountLoading(true)
+    calculateOptimalHeadcount().then((res) => {
+      if (res.data) setHeadcount(res.data)
+      else console.error("Headcount calculation failed:", res.error)
+      setHeadcountLoading(false)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
@@ -63,7 +56,6 @@ export function StaffKpis({
     const res = await calculateOptimalHeadcount()
     if (res.data) {
       setHeadcount(res.data)
-      localStorage.setItem("labrota_headcount", JSON.stringify(res.data))
       toast.success(ts("recalculated"))
     } else {
       toast.error(res.error ?? "Error")

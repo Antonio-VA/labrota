@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { LabConfig } from "@/lib/types/database"
+import { useTimedState } from "@/hooks/use-timed-state"
 
 function FieldRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -21,7 +22,7 @@ function FieldRow({ label, hint, children }: { label: string; hint?: string; chi
 
 export function BiopsiaConfig({ config }: { config: LabConfig }) {
   const [isPending, startTransition] = useTransition()
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
+  const [status, flashStatus, setStatus] = useTimedState<"idle" | "success" | "error">("idle", 3000)
   const [values, setValues] = useState({
     biopsy_conversion_rate: config.biopsy_conversion_rate ?? 0.5,
     biopsy_day5_pct: config.biopsy_day5_pct ?? 0.5,
@@ -31,8 +32,8 @@ export function BiopsiaConfig({ config }: { config: LabConfig }) {
   function save() {
     startTransition(async () => {
       const result = await updateLabConfig(values)
-      setStatus(result.error ? "error" : "success")
-      if (!result.error) setTimeout(() => setStatus("idle"), 3000)
+      if (result.error) setStatus("error")
+      else flashStatus("success")
     })
   }
 

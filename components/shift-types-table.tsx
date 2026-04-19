@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { saveShiftTypes, countAssignmentsForShift } from "@/app/(clinic)/lab/shift-type-actions"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
+import { useTimedState } from "@/hooks/use-timed-state"
 
 const ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
 const DAY_LABEL_KEYS: Record<string, string> = { mon: "dayMon", tue: "dayTue", wed: "dayWed", thu: "dayThu", fri: "dayFri", sat: "daySat", sun: "daySun" }
@@ -61,7 +62,7 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
   const tc = useTranslations("common")
   const [rows, setRows] = useState<ShiftRow[]>(initialTypes.map(rowFromDefinition))
   const [isPending, startTransition] = useTransition()
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
+  const [status, flashStatus, setStatus] = useTimedState<"idle" | "success" | "error">("idle", 3000)
   const [errorMsg, setErrorMsg] = useState("")
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; count: number } | null>(null)
 
@@ -155,9 +156,8 @@ export function ShiftTypesTable({ initialTypes, hideSaveButton, onSaveComplete, 
       onSaveComplete?.(false)
       return false
     }
-    setStatus("success")
+    flashStatus("success")
     setRows((prev) => prev.map((r) => ({ ...r, isNew: false })))
-    setTimeout(() => setStatus("idle"), 3000)
     onSaveComplete?.(true)
     return true
   }

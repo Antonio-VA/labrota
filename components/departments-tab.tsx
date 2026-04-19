@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Department } from "@/lib/types/database"
 import { saveDepartments, seedDefaultDepartments } from "@/app/(clinic)/lab/department-actions"
+import { useTimedState } from "@/hooks/use-timed-state"
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -191,7 +192,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enab
     }))
   )
   const [isPending, startTransition] = useTransition()
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
+  const [status, flashStatus, setStatus] = useTimedState<"idle" | "success" | "error">("idle", 3000)
   const [errorMsg, setErrorMsg] = useState("")
 
   const sensors = useSensors(
@@ -269,8 +270,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enab
         setStatus("error")
       } else {
         setDeletedIds([])
-        setStatus("success")
-        setTimeout(() => setStatus("idle"), 3000)
+        flashStatus("success")
       }
     })
   }

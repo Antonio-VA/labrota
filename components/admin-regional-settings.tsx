@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { CheckCircle2 } from "lucide-react"
+import { useTimedState } from "@/hooks/use-timed-state"
 
 export function AdminRegionalSettings({
   orgId,
@@ -20,7 +21,7 @@ export function AdminRegionalSettings({
   const [country, setCountry] = useState(initialCountry)
   const [region, setRegion] = useState(initialRegion)
   const [isPending, startTransition] = useTransition()
-  const [saved, setSaved] = useState(false)
+  const [saved, flashSaved] = useTimedState(false, 3000)
 
   const countryConfig = getCountry(country)
 
@@ -33,7 +34,7 @@ export function AdminRegionalSettings({
     startTransition(async () => {
       const result = await onSave(orgId, country, region)
       if (result.error) toast.error(result.error)
-      else { setSaved(true); setTimeout(() => setSaved(false), 3000) }
+      else flashSaved(true)
     })
   }
 

@@ -9,6 +9,7 @@ import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, Shif
 import { CheckCircle2, AlertCircle, Info, ChevronUp, ChevronDown } from "lucide-react"
 import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
+import { useTimedState } from "@/hooks/use-timed-state"
 
 // ── Spanish autonomous communities ────────────────────────────────────────────
 const DAY_KEYS: (keyof PunctionsByDay)[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -50,12 +51,9 @@ const DEFAULT_COVERAGE: CoverageByDay = {
 
 export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation, hasPartTime = false, hasIntern = false }: { config: LabConfig; section?: "all" | "cobertura" | "parametros" | "workload"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string; hasPartTime?: boolean; hasIntern?: boolean }) {
   const t = useTranslations("lab")
-  const [isPending,         startTransition]         = useTransition()
-  const [coveragePending,   startCoverageTransition] = useTransition()
-  const [status,            setStatus]            = useState<"idle" | "success" | "error">("idle")
-  const [coverageStatus,    setCoverageStatus]    = useState<"idle" | "success" | "error">("idle")
-  const [errorMsg,          setErrorMsg]          = useState("")
-  const [coverageErrorMsg,  setCoverageErrorMsg]  = useState("")
+  const [isPending, startTransition] = useTransition()
+  const [status, flashStatus, setStatus] = useTimedState<"idle" | "success" | "error">("idle", 3000)
+  const [errorMsg, setErrorMsg] = useState("")
 
   const DEFAULT_PUNCTIONS: PunctionsByDay = { mon: 6, tue: 6, wed: 6, thu: 6, fri: 6, sat: 2, sun: 0 }
 
@@ -184,27 +182,6 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
   }, [])
 
-  function handleCoverageSave() {
-    setCoverageStatus("idle")
-    startCoverageTransition(async () => {
-      const effectiveShiftCovEnabled = shiftCoverageEnabled || hasShiftCoverage
-      const result = await updateLabConfig({
-        coverage_by_day: coverageByDay,
-        task_coverage_enabled: taskCoverageEnabled,
-        task_coverage_by_day: taskCoverageEnabled ? taskCoverage : config.task_coverage_by_day,
-        shift_coverage_enabled: effectiveShiftCovEnabled,
-        shift_coverage_by_day: effectiveShiftCovEnabled ? shiftCoverage : config.shift_coverage_by_day,
-      })
-      if (result.error) {
-        setCoverageErrorMsg(result.error)
-        setCoverageStatus("error")
-      } else {
-        setCoverageStatus("success")
-        setTimeout(() => setCoverageStatus("idle"), 3000)
-      }
-    })
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setStatus("idle")
@@ -236,8 +213,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
         setErrorMsg(result.error)
         setStatus("error")
       } else {
-        setStatus("success")
-        setTimeout(() => setStatus("idle"), 3000)
+        flashStatus("success")
       }
     })
   }

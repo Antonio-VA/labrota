@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Plus, Trash2, Check } from "lucide-react"
 import { toast } from "sonner"
+import { useTimedState } from "@/hooks/use-timed-state"
 import {
   toggleRecipient,
   addExternalRecipient,
@@ -17,13 +18,12 @@ import {
 } from "@/app/(clinic)/notifications-actions"
 
 function ToggleSwitch({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: () => void; disabled: boolean }) {
-  const [showCheck, setShowCheck] = useState(false)
+  const [showCheck, flashShowCheck] = useTimedState(false, 1500)
 
   const handleClick = useCallback(() => {
     onToggle()
-    setShowCheck(true)
-    setTimeout(() => setShowCheck(false), 1500)
-  }, [onToggle])
+    flashShowCheck(true)
+  }, [onToggle, flashShowCheck])
 
   return (
     <div className="flex items-center gap-2">
