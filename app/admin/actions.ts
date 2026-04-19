@@ -695,20 +695,34 @@ export async function copyOrganisation(
 
   await Promise.all(copyTasks)
 
-  // Staff must be sequential: skills depend on inserted staff IDs
-  // Track old→new staff ID mapping for rotas
+  // Staff first: skill and rota-assignment inserts below need the old→new staff ID map.
+  // Both multi-row inserts rely on PostgreSQL preserving input order in the RETURNING
+  // clause, which Supabase passes through for .insert([...]).select().
   const staffIdMap = new Map<string, string>()
   if (options.staff) {
     const { data } = await admin.from("staff").select("*, staff_skills(*)").eq("organisation_id", sourceOrgId)
-    for (const s of (data ?? []) as Record<string, unknown>[]) {
-      const { id: oldId, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: skills, ...rest } = s
-      const { data: ns } = await admin.from("staff").insert({ ...rest, organisation_id: newOrgId } as never).select("id").single()
-      if (ns) {
-        staffIdMap.set(oldId as string, (ns as { id: string }).id)
-        if ((skills as unknown[] | undefined)?.length) {
-          const skillRows = (skills as Record<string, unknown>[]).map((sk) => { const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk; return { ...skRest, staff_id: (ns as { id: string }).id, organisation_id: newOrgId } })
-          await admin.from("staff_skills").insert(skillRows as never)
+    const staffRows = (data ?? []) as Record<string, unknown>[]
+    if (staffRows.length) {
+      const staffInserts = staffRows.map((s) => {
+        const { id: _, organisation_id: __, created_at: ___, updated_at: ____, staff_skills: _____, ...rest } = s
+        return { ...rest, organisation_id: newOrgId }
+      })
+      const { data: inserted } = await admin.from("staff").insert(staffInserts as never).select("id")
+      const insertedRows = (inserted ?? []) as { id: string }[]
+
+      const allSkills: Record<string, unknown>[] = []
+      for (let i = 0; i < staffRows.length; i++) {
+        const newId = insertedRows[i]?.id
+        if (!newId) continue
+        staffIdMap.set(staffRows[i].id as string, newId)
+        const skills = (staffRows[i].staff_skills as Record<string, unknown>[] | undefined) ?? []
+        for (const sk of skills) {
+          const { id: _, staff_id: __, organisation_id: ___, ...skRest } = sk
+          allSkills.push({ ...skRest, staff_id: newId, organisation_id: newOrgId })
         }
+      }
+      if (allSkills.length) {
+        await admin.from("staff_skills").insert(allSkills as never)
       }
     }
   }
@@ -716,26 +730,38 @@ export async function copyOrganisation(
   // Copy rotas and assignments (requires staff mapping)
   if (options.rotas) {
     const { data: rotas } = await admin.from("rotas").select("*").eq("organisation_id", sourceOrgId).order("week_start")
-    for (const r of (rotas ?? []) as Record<string, unknown>[]) {
-      const oldRotaId = r.id as string
-      const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rotaRest } = r
-      const { data: newRota } = await admin.from("rotas").insert({ ...rotaRest, organisation_id: newOrgId } as never).select("id").single()
-      if (newRota) {
-        const newRotaId = (newRota as { id: string }).id
-        const { data: assignments } = await admin.from("rota_assignments").select("*").eq("rota_id", oldRotaId)
-        if (assignments?.length) {
-          const assignmentRows = (assignments as Record<string, unknown>[])
-            .map((a) => {
-              const { id: _, organisation_id: __, rota_id: ___, created_at: ____, updated_at: _____, ...aRest } = a
-              const newStaffId = staffIdMap.get(a.staff_id as string)
-              if (!newStaffId) return null
-              const newTraineeId = a.trainee_staff_id ? staffIdMap.get(a.trainee_staff_id as string) ?? null : null
-              return { ...aRest, rota_id: newRotaId, organisation_id: newOrgId, staff_id: newStaffId, trainee_staff_id: newTraineeId }
-            })
-            .filter(Boolean)
-          if (assignmentRows.length) {
-            await admin.from("rota_assignments").insert(assignmentRows as never)
-          }
+    const rotaRows = (rotas ?? []) as Record<string, unknown>[]
+    if (rotaRows.length) {
+      const rotaInserts = rotaRows.map((r) => {
+        const { id: _, organisation_id: __, created_at: ___, updated_at: ____, ...rest } = r
+        return { ...rest, organisation_id: newOrgId }
+      })
+      const { data: newRotas } = await admin.from("rotas").insert(rotaInserts as never).select("id")
+      const newRotaRows = (newRotas ?? []) as { id: string }[]
+
+      const rotaIdMap = new Map<string, string>()
+      for (let i = 0; i < rotaRows.length; i++) {
+        const newId = newRotaRows[i]?.id
+        if (newId) rotaIdMap.set(rotaRows[i].id as string, newId)
+      }
+
+      if (rotaIdMap.size > 0) {
+        const { data: assignments } = await admin
+          .from("rota_assignments")
+          .select("*")
+          .in("rota_id", Array.from(rotaIdMap.keys()))
+        const assignmentRows = ((assignments ?? []) as Record<string, unknown>[])
+          .map((a) => {
+            const { id: _, organisation_id: __, rota_id: oldRotaId, created_at: ____, updated_at: _____, ...aRest } = a
+            const newRotaId = rotaIdMap.get(oldRotaId as string)
+            const newStaffId = staffIdMap.get(a.staff_id as string)
+            if (!newRotaId || !newStaffId) return null
+            const newTraineeId = a.trainee_staff_id ? staffIdMap.get(a.trainee_staff_id as string) ?? null : null
+            return { ...aRest, rota_id: newRotaId, organisation_id: newOrgId, staff_id: newStaffId, trainee_staff_id: newTraineeId }
+          })
+          .filter(Boolean)
+        if (assignmentRows.length) {
+          await admin.from("rota_assignments").insert(assignmentRows as never)
         }
       }
     }
