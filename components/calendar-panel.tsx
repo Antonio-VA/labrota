@@ -8,6 +8,7 @@ import { useCalendarDnd } from "@/hooks/use-calendar-dnd"
 import { useRotaData } from "@/hooks/use-rota-data"
 import { useRotaActions } from "@/hooks/use-rota-actions"
 import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-views"
+import { useCalendarModals } from "@/hooks/use-calendar-modals"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
@@ -16,34 +17,23 @@ import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
-import { formatDate } from "@/lib/format-date"
 import dynamic from "next/dynamic"
-const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
-const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
-// Lazy-load heavy components not needed for initial render
 const MonthGrid = dynamic(() => import("./calendar-panel/month-grid").then((m) => ({ default: m.MonthGrid })), { ssr: false })
-const StaffProfilePanel = dynamic(() => import("./calendar-panel/staff-profile-panel").then((m) => ({ default: m.StaffProfilePanel })), { ssr: false })
-const GenerationStrategyModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.GenerationStrategyModal })), { ssr: false })
-const AIReasoningModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.AIReasoningModal })), { ssr: false })
-const SaveTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.SaveTemplateModal })), { ssr: false })
-const ApplyTemplateModal = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.ApplyTemplateModal })), { ssr: false })
-const MultiWeekScopeDialog = dynamic(() => import("./calendar-panel/generation-modals").then((m) => ({ default: m.MultiWeekScopeDialog })), { ssr: false })
 import { useViewerStaffId } from "@/lib/role-context"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
 import type { StaffWithSkills } from "@/lib/types/database"
 import type { ViewMode, CalendarLayout } from "./calendar-panel/types"
 import { TODAY } from "./calendar-panel/constants"
-import { addDays, getMonthStart, formatToolbarLabel, type GenerationStrategy } from "./calendar-panel/utils"
+import { addDays, getMonthStart } from "./calendar-panel/utils"
 
-import { ShiftBudgetBar, MonthBudgetBar } from "./calendar-panel/budget-bars"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"
 import { MobileDaySection } from "./calendar-panel/mobile-day-section"
 import { AssignmentSheetHost } from "./calendar-panel/assignment-sheet-host"
-
-// ── Main panel ────────────────────────────────────────────────────────────────
+import { CalendarModalsHost } from "./calendar-panel/calendar-modals-host"
+import { BottomTaskbar } from "./calendar-panel/bottom-taskbar"
 
 export function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (
@@ -75,7 +65,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   const [currentDate, setCurrentDateState] = useState(() => {
     if (typeof window === "undefined") return initialData?.weekStart ?? TODAY
-    // Restore saved week from sessionStorage; fall back to SSR data then today
     return sessionStorage.getItem("labrota_current_date") || initialData?.weekStart || TODAY
   })
   const setCurrentDate: typeof setCurrentDateState = (v) => {
@@ -86,35 +75,14 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     })
   }
 
-  const [showStrategyModal, setShowStrategyModal] = useState(false)
-  const [showReasoningModal, setShowReasoningModal] = useState(false)
-  const [showMultiWeekDialog, setShowMultiWeekDialog] = useState(false)
-
-  // Day edit sheet state
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [sheetDate, setSheetDate] = useState<string | null>(null)
-
-  // Staff profile panel state
-  const [profileOpen, setProfileOpen]       = useState(false)
-  const [profileStaffId, setProfileStaffId] = useState<string | null>(null)
-  const [saveTemplateOpen, setSaveTemplateOpen]   = useState(false)
-
-  // Mobile edit mode state
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)
   const [mobileCompact, toggleMobileCompact, setMobileCompact] = usePersistedToggle("labrota_mobile_compact", true)
   const [mobileDeptColor, toggleMobileDeptColor, setMobileDeptColor] = usePersistedToggle("labrota_mobile_dept_color", true)
   const [mobileViewMode, setMobileViewMode] = useState<"shift" | "person">("shift")
   const [mobileAddSheet, setMobileAddSheet] = useState<{ open: boolean; role: string }>({ open: false, role: "" })
-  const [historyOpen, setHistoryOpen] = useState(false)
   const [monthViewMode, setMonthViewMode] = usePersistedState<"shift" | "person">("labrota_month_view", "shift")
-  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false)
 
-  // Swap state for desktop viewers
-  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
-  const [swapAssignment, setSwapAssignment] = useState<{ id: string; shiftType: string; date: string } | null>(null)
-
-  // Favorite views (desktop + mobile) — synced to DB, cached in localStorage
   const { favoriteView, setFavoriteView, mobileFavoriteView, setMobileFavoriteView } = useFavoriteViews({
     onApplyDesktop: (fav) => {
       const sessionView = typeof window !== "undefined" ? sessionStorage.getItem("labrota_view") : null
@@ -132,11 +100,9 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     },
   })
 
-  // Derived
   const weekStart  = getMondayOf(currentDate)
   const monthStart = getMonthStart(currentDate)
 
-  // Data fetching, caching, staff loading (extracted to hook)
   const {
     weekData, setWeekData, monthSummary,
     loadingWeek, setLoadingWeek, loadingMonth, setLoadingMonth,
@@ -147,6 +113,8 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     fetchWeek, fetchWeekSilent, fetchMonth, prefetchWeek,
     handleBiopsyChange, lastFetchIdRef, gridSetDaysRef,
   } = useRotaData({ weekStart, monthStart, view, canEdit, refreshKey, initialData, initialStaff })
+
+  const modals = useCalendarModals({ weekData })
 
   const {
     isPending, pendingAction,
@@ -162,7 +130,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     setPunctionsOverrideLocal,
     aiReasoningRef, reasoningSourceRef,
     fetchWeek, fetchWeekSilent, fetchMonth,
-    setShowStrategyModal,
+    setShowStrategyModal: modals.setShowStrategyModal,
     t,
   })
 
@@ -175,75 +143,55 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     prefetchWeek(getMondayOf(target))
   }, [view, weekStart, prefetchWeek])
 
-  // Department filter (extracted to hook)
   const {
     departments: _departments, globalDeptMaps, ALL_DEPTS, deptAbbrMap,
     deptFilter, allDeptsSelected: _allDeptsSelected, toggleDept, setAllDepts, setOnlyDept,
     filteredStaffList,
   } = useDepartmentFilter(weekData, staffList)
 
-  const desktopSwapEnabled = !canEdit && viewerStaffId && weekData?.enableSwapRequests && weekData?.rota?.status === "published"
+  const desktopSwapEnabled = !canEdit && !!viewerStaffId && !!weekData?.enableSwapRequests && weekData?.rota?.status === "published"
 
-  const openProfile = useCallback((staffId: string) => {
-    setProfileStaffId(staffId)
-    setProfileOpen(true)
-  }, [])
-
-  // For desktop viewers: intercept chip click on their own assignments to open swap dialog
   const handleDesktopChipClick = useCallback((assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) => {
     if (desktopSwapEnabled && assignment.staff_id === viewerStaffId && assignment.id && assignment.shift_type && date) {
-      setSwapAssignment({ id: assignment.id, shiftType: assignment.shift_type, date })
-      setSwapDialogOpen(true)
+      modals.openSwap({ id: assignment.id, shiftType: assignment.shift_type, date })
     } else {
-      setProfileStaffId(assignment.staff_id)
-      setProfileOpen(true)
+      modals.openProfile(assignment.staff_id)
     }
-  }, [desktopSwapEnabled, viewerStaffId])
+  }, [desktopSwapEnabled, viewerStaffId, modals])
 
-  const handleOpenSheet = useCallback((date: string) => {
-    setSheetDate(date)
-    setSheetOpen(true)
-  }, [])
-
-  // DnD (extracted to hook)
   const {
     draggingId: _draggingId, draggingFrom: _draggingFrom, dragOverDate: _dragOverDate,
     handleChipDragStart: _handleChipDragStart, handleChipDragEnd: _handleChipDragEnd,
     handleColumnDragOver: _handleColumnDragOver, handleColumnDragLeave: _handleColumnDragLeave, handleColumnDrop: _handleColumnDrop,
   } = useCalendarDnd({ weekStart, fetchWeek, setError })
 
-  // Undo/Redo (extracted to hook)
   const {
     undoLen, redoLen, showSaved,
     triggerSaved, cancelLastUndo, pushUndo, handleUndo, handleRedo,
   } = useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWeekSilent, lastFetchIdRef, gridSetDaysRef })
 
-  // Navigation — both views move by 1 week
   function navigate(dir: -1 | 1) {
-    setShowStrategyModal(false)
+    modals.setShowStrategyModal(false)
     const days = view === "month" ? 28 : 7
     setCurrentDate((d) => addDays(d, dir * days))
   }
 
   function goToToday() {
     setCurrentDate(TODAY)
-    setShowStrategyModal(false)
+    modals.setShowStrategyModal(false)
   }
 
-  // Generate / publish / unlock
   function handleGenerateClick() {
     if (view === "month" && monthSummary) {
-      // 4-week view: always show scope dialog so user can pick scope
-      setShowMultiWeekDialog(true)
+      modals.setShowMultiWeekDialog(true)
       return
     }
-    setShowStrategyModal(true)
+    modals.setShowStrategyModal(true)
   }
 
   function handleMonthDayClick(date: string) {
     setCurrentDate(date)
-    setSheetDate(date)
-    setSheetOpen(true)
+    modals.openSheet(date)
   }
 
   const rota           = weekData?.rota ?? null
@@ -254,8 +202,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const hasAssignments = view === "month" ? hasMonthAssignments : hasWeekAssignments
   const anyMonthWeekPublished = monthSummary?.weekStatuses?.some((ws) => ws.status === "published") ?? false
   const currentDayData = weekData?.days.find((d) => d.date === currentDate) ?? null
-
-  const sheetDay = sheetDate ? (weekData?.days.find((d) => d.date === sheetDate) ?? null) : null
 
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
 
@@ -310,17 +256,14 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
     setMobileDeptColor(mobileFavoriteView.deptColor)
   } : undefined
 
-  // On first load, show inline skeleton so the panel occupies space
-  // and the chat panel doesn't appear alone before the calendar.
   if (!initialLoaded && !staffLoaded) return <CalendarSkeleton />
 
   return (
     <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
-      {/* Desktop toolbar */}
       <DesktopToolbar
         currentDate={currentDate} weekStart={weekStart} view={view} setView={setView}
         locale={locale} TODAY={TODAY} goToToday={goToToday} navigate={navigate} onHoverNav={handleHoverNav}
-        onWeekJump={(date) => { setCurrentDate(date); setShowStrategyModal(false) }}
+        onWeekJump={(date) => { setCurrentDate(date); modals.setShowStrategyModal(false) }}
         calendarLayout={calendarLayout} setCalendarLayout={setCalendarLayout}
         monthViewMode={monthViewMode} setMonthViewMode={setMonthViewMode}
         rotaDisplayMode={weekData?.rotaDisplayMode}
@@ -338,10 +281,10 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         weekData={weekData} monthSummary={monthSummary} filteredStaffList={filteredStaffList}
         aiReasoning={weekData?.aiReasoning || aiReasoningRef.current || null}
         onGenerateClick={handleGenerateClick} onPublish={handlePublish} onUnlock={handleUnlock}
-        onShowReasoning={() => setShowReasoningModal(true)}
-        onSaveTemplate={() => setSaveTemplateOpen(true)}
-        onApplyTemplate={() => setApplyTemplateOpen(true)}
-        onShowHistory={() => setHistoryOpen(true)}
+        onShowReasoning={() => modals.setShowReasoningModal(true)}
+        onSaveTemplate={() => modals.setSaveTemplateOpen(true)}
+        onApplyTemplate={() => modals.setApplyTemplateOpen(true)}
+        onShowHistory={() => modals.setHistoryOpen(true)}
         onDelete={handleDelete}
         onExportPdf={handleExportPdf}
         onExportExcel={handleExportExcel}
@@ -351,9 +294,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         t={t} tc={tc}
       />
 
-      {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
-
-      {/* Banners */}
       <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
         {isPublished && view === "week" && (
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 flex items-center gap-2">
@@ -375,10 +315,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         )}
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col">
-
-        {/* Week view */}
         {view === "week" && (
           <WeekContent
             weekData={weekData} staffList={staffList} filteredStaffList={filteredStaffList}
@@ -389,8 +326,8 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
             weekStart={weekStart} locale={locale} activeStrategy={activeStrategy}
             punctionsOverride={punctionsOverride}
             onPunctionsChange={handlePunctionsChange} onBiopsyChange={handleBiopsyChange}
-            openProfile={openProfile} onDesktopChipClick={handleDesktopChipClick}
-            onOpenSheet={handleOpenSheet} onMonthDayClick={handleMonthDayClick}
+            openProfile={modals.openProfile} onDesktopChipClick={handleDesktopChipClick}
+            onOpenSheet={modals.openSheet} onMonthDayClick={handleMonthDayClick}
             pushUndo={canEdit ? pushUndo : undefined}
             cancelLastUndo={canEdit ? cancelLastUndo : undefined}
             triggerSaved={canEdit ? triggerSaved : undefined}
@@ -405,7 +342,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           />
         )}
 
-        {/* Month view */}
         {view === "month" && (
           <div className="hidden md:flex flex-col flex-1 overflow-auto px-4 py-3">
             <MonthGrid
@@ -425,7 +361,6 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           </div>
         )}
 
-        {/* Mobile: day view (all users) */}
         <MobileDaySection
           weekData={weekData} staffList={staffList}
           currentDate={currentDate} setCurrentDate={setCurrentDate as any}
@@ -439,7 +374,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           mobileAddSheet={mobileAddSheet} setMobileAddSheet={setMobileAddSheet as any}
           punctionsOverride={punctionsOverride} TODAY={TODAY}
           setWeekData={setWeekData} fetchWeekSilent={fetchWeekSilent}
-          setShowStrategyModal={setShowStrategyModal} isPending={isPending}
+          setShowStrategyModal={modals.setShowStrategyModal} isPending={isPending}
           mobileFavoriteView={mobileFavoriteView} setMobileFavoriteView={setMobileFavoriteView}
           onSaveMobileFavorite={handleSaveMobileFavorite}
           onGoToMobileFavorite={handleGoToMobileFavorite}
@@ -448,10 +383,10 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
       </div>
 
       <AssignmentSheetHost
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        sheetDate={sheetDate}
-        sheetDay={sheetDay}
+        open={modals.sheetOpen}
+        onOpenChange={modals.setSheetOpen}
+        sheetDate={modals.sheetDate}
+        sheetDay={modals.sheetDay}
         weekStart={weekStart}
         weekData={weekData}
         staffList={staffList}
@@ -462,116 +397,34 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         onPunctionsChange={handlePunctionsChange}
       />
 
-      {/* Multi-week generation scope dialog */}
-      {showMultiWeekDialog && monthSummary && (
-        <MultiWeekScopeDialog
-          monthSummary={monthSummary}
-          onClose={() => setShowMultiWeekDialog(false)}
-          onSelectScope={(weeks) => { setMultiWeekScope(weeks); setShowStrategyModal(true) }}
-        />
-      )}
-
-      {/* Staff profile panel */}
-      <StaffProfilePanel
-        staffId={profileStaffId}
-        staffList={staffList}
-        weekData={weekData}
-        open={profileOpen}
-        onClose={() => setProfileOpen(false)}
-        onRefreshWeek={() => fetchWeek(weekStart)}
-      />
-
-      {/* Rota history panel */}
-      <RotaHistoryPanel
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-        weekStart={weekStart}
-        onRestored={() => fetchWeek(weekStart)}
-      />
-
-      {/* Week notes — desktop only, min-h ensures space is reserved during load */}
       {view === "week" && (
         <div className="hidden md:block shrink-0 min-h-[36px]" data-week-notes>
           <WeekNotes weekStart={weekStart} initialData={initialNotes} />
         </div>
       )}
 
-      {/* Bottom taskbar — desktop only, hidden for viewers */}
-      <div className="hidden md:block shrink-0">
-        {canEdit && view === "week" && !weekData && loadingWeek && (
-          <div className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={i === 0 ? "h-3 w-20 rounded bg-muted animate-pulse" : "h-5 w-14 rounded bg-muted animate-pulse"} />
-            ))}
-          </div>
-        )}
-        {canEdit && view === "week" && weekData && (
-          <ShiftBudgetBar
-            data={weekData}
-            staffList={filteredStaffList}
-            weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
-            onPillClick={openProfile}
-            liveDays={weekData.rotaDisplayMode === "by_task" ? null : liveDays}
-            deptFilter={deptFilter}
-            colorChips={colorChips}
-          />
-        )}
-        {canEdit && view === "month" && monthSummary && !loadingMonth && (
-          <MonthBudgetBar
-            summary={monthSummary}
-            monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}
-            onPillClick={openProfile}
-          />
-        )}
-      </div>
-
-      {/* Generation strategy modal */}
-      <GenerationStrategyModal
-        open={showStrategyModal}
-        weekStart={weekStart}
-        weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
-        onClose={() => setShowStrategyModal(false)}
-        onGenerate={handleStrategyGenerate}
-        rotaDisplayMode={weekData?.rotaDisplayMode ?? "by_shift"}
-        engineConfig={weekData?.engineConfig}
+      <BottomTaskbar
+        view={view} canEdit={canEdit}
+        weekData={weekData} monthSummary={monthSummary}
+        loadingWeek={loadingWeek} loadingMonth={loadingMonth}
+        filteredStaffList={filteredStaffList}
+        currentDate={currentDate} weekStart={weekStart} locale={locale}
+        liveDays={liveDays} deptFilter={deptFilter} colorChips={colorChips}
+        onPillClick={modals.openProfile}
       />
 
-      {/* AI Reasoning modal */}
-      <AIReasoningModal
-        open={showReasoningModal}
-        reasoning={weekData?.aiReasoning ?? aiReasoningRef.current ?? ""}
-        onClose={() => setShowReasoningModal(false)}
-        variant={reasoningSourceRef.current === "hybrid" ? "hybrid" : "claude"}
+      <CalendarModalsHost
+        modals={modals}
+        weekStart={weekStart} currentDate={currentDate} locale={locale}
+        weekData={weekData} monthSummary={monthSummary} staffList={staffList}
+        aiReasoning={weekData?.aiReasoning ?? aiReasoningRef.current ?? ""}
+        reasoningVariant={reasoningSourceRef.current === "hybrid" ? "hybrid" : "claude"}
+        desktopSwapEnabled={desktopSwapEnabled}
+        onStrategyGenerate={handleStrategyGenerate}
+        onSelectMultiWeekScope={(weeks) => { setMultiWeekScope(weeks); modals.setShowStrategyModal(true) }}
+        onRefreshWeek={() => fetchWeek(weekStart)}
+        onAfterApplyTemplate={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
       />
-
-      {/* Template modals */}
-      <SaveTemplateModal
-        open={saveTemplateOpen}
-        weekStart={weekStart}
-        onClose={() => setSaveTemplateOpen(false)}
-        onSaved={() => {}}
-      />
-      <ApplyTemplateModal
-        open={applyTemplateOpen}
-        weekStart={weekStart}
-        onClose={() => setApplyTemplateOpen(false)}
-        onApplied={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
-      />
-
-      {/* Desktop viewer swap dialog */}
-      {desktopSwapEnabled && swapAssignment && (
-        <SwapRequestDialog
-          open={swapDialogOpen}
-          onOpenChange={setSwapDialogOpen}
-          assignmentId={swapAssignment.id}
-          shiftType={swapAssignment.shiftType}
-          date={swapAssignment.date}
-          dateLabel={formatDate(swapAssignment.date, locale as "es" | "en")}
-          locale={locale as "es" | "en"}
-          weekStart={weekStart}
-        />
-      )}
-
     </main>
   )
 }
