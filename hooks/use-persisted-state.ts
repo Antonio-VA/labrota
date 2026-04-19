@@ -2,6 +2,11 @@ import { useState, useCallback } from "react"
 
 type Storage = "local" | "session"
 
+function getStore(storage: Storage): globalThis.Storage | null {
+  if (typeof window === "undefined") return null
+  return storage === "local" ? window.localStorage : window.sessionStorage
+}
+
 /**
  * useState backed by localStorage or sessionStorage.
  * Returns [value, setValue, toggle] — toggle is only useful for booleans.
@@ -11,10 +16,9 @@ export function usePersistedState<T>(
   defaultValue: T,
   storage: Storage = "local",
 ): [T, (v: T | ((prev: T) => T)) => void] {
-  const store = storage === "local" ? localStorage : sessionStorage
-
   const [value, setValueState] = useState<T>(() => {
-    if (typeof window === "undefined") return defaultValue
+    const store = getStore(storage)
+    if (!store) return defaultValue
     const stored = store.getItem(key)
     if (stored === null) return defaultValue
     try { return JSON.parse(stored) as T } catch { return stored as unknown as T }
@@ -23,10 +27,10 @@ export function usePersistedState<T>(
   const setValue = useCallback((v: T | ((prev: T) => T)) => {
     setValueState((prev) => {
       const next = typeof v === "function" ? (v as (prev: T) => T)(prev) : v
-      store.setItem(key, JSON.stringify(next))
+      getStore(storage)?.setItem(key, JSON.stringify(next))
       return next
     })
-  }, [key, store])
+  }, [key, storage])
 
   return [value, setValue]
 }
