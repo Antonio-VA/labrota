@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage, tool } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { getOrgId } from "@/lib/get-org-id"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { StaffRole, SkillName, PunctionsByDay, LabConfigUpdate } from "@/lib/types/database"
 import { propose } from "@/lib/proposal-types"
@@ -42,6 +43,7 @@ type StaffRef = { id: string; first_name: string; last_name: string }
  */
 async function resolveStaffByName(
   supabase: SupabaseClient,
+  orgId: string,
   name: string,
   { activeOnly = false }: { activeOnly?: boolean } = {},
 ): Promise<StaffRef | null> {
@@ -49,7 +51,7 @@ async function resolveStaffByName(
   const last = parts[parts.length - 1]
 
   const base = () => {
-    const q = supabase.from("staff").select("id, first_name, last_name")
+    const q = supabase.from("staff").select("id, first_name, last_name").eq("organisation_id", orgId)
     return activeOnly ? q.neq("onboarding_status", "inactive") : q
   }
 
@@ -71,6 +73,12 @@ export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Defense in depth: RLS filters by auth_organisation_id(), but we also
+  // scope every query below with .eq("organisation_id", orgId). If the user
+  // isn't a member of any org, fail fast rather than rely on empty RLS results.
+  const orgId = await getOrgId()
+  if (!orgId) return Response.json({ error: "No organisation." }, { status: 403 })
 
   const { success } = rateLimit(`chat:${user.id}`, 20) // 20 req/min per user
   if (!success) return rateLimitResponse()
@@ -187,12 +195,14 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data: assignments } = await supabase
             .from("rota_assignments")
             .select("date, shift_type, function_label, is_manual_override, staff(first_name, last_name, role)")
+            .eq("organisation_id", orgId)
             .gte("date", weekStart)
             .lte("date", endDate) as { data: { date: string; shift_type: string; function_label: string | null; is_manual_override: boolean; staff: { first_name: string; last_name: string; role: string } | null }[] | null }
 
           const { data: rota } = await supabase
             .from("rotas")
             .select("status, published_at")
+            .eq("organisation_id", orgId)
             .eq("week_start", weekStart)
             .maybeSingle() as { data: { status: string; published_at: string | null } | null }
 
@@ -241,10 +251,11 @@ ${pageContext ? `- ${pageContext}` : ""}
           const [assignmentsRes, configRes, shiftTypesRes] = await Promise.all([
             supabase.from("rota_assignments")
               .select("date, shift_type, staff(role)")
+              .eq("organisation_id", orgId)
               .gte("date", weekStart)
               .lte("date", endDate),
-            supabase.from("lab_config").select("*").single(),
-            supabase.from("shift_types").select("code, name_es, start_time, end_time, active_days").order("sort_order"),
+            supabase.from("lab_config").select("*").eq("organisation_id", orgId).maybeSingle(),
+            supabase.from("shift_types").select("code, name_es, start_time, end_time, active_days").eq("organisation_id", orgId).order("sort_order"),
           ])
 
           const assignments = (assignmentsRes.data ?? []) as unknown as { date: string; shift_type: string; staff: { role: string } | null }[]
@@ -287,6 +298,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data } = await supabase
             .from("staff")
             .select("id, first_name, last_name, role, onboarding_status, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, staff_skills(skill, level)")
+            .eq("organisation_id", orgId)
             .neq("onboarding_status", "inactive")
             .order("last_name") as {
               data: { id: string; first_name: string; last_name: string; role: StaffRole; onboarding_status: string; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; staff_skills: { skill: SkillName; level: string }[] }[] | null
@@ -322,6 +334,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data: staffList } = await supabase
             .from("staff")
             .select("id, first_name, last_name, role, email, days_per_week, working_pattern, preferred_days, preferred_shift, start_date, onboarding_status, notes, staff_skills(skill, level)")
+            .eq("organisation_id", orgId)
             .or(orClauses)
             .neq("onboarding_status", "inactive") as {
               data: { id: string; first_name: string; last_name: string; role: string; email: string | null; days_per_week: number; working_pattern: string[]; preferred_days: string[] | null; preferred_shift: string | null; start_date: string; onboarding_status: string; notes: string | null; staff_skills: { skill: string; level: string }[] }[] | null
@@ -337,12 +350,14 @@ ${pageContext ? `- ${pageContext}` : ""}
           const [assignmentsRes, leavesRes] = await Promise.all([
             supabase.from("rota_assignments")
               .select("date, shift_type, function_label")
+              .eq("organisation_id", orgId)
               .eq("staff_id", staff.id)
               .gte("date", fourWeeksAgoStr)
               .order("date", { ascending: false })
               .limit(30),
             supabase.from("leaves")
               .select("type, start_date, end_date, status")
+              .eq("organisation_id", orgId)
               .eq("staff_id", staff.id)
               .gte("end_date", today)
               .order("start_date"),
@@ -397,6 +412,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const query = supabase
             .from("leaves")
             .select("id, type, start_date, end_date, status, notes, staff(first_name, last_name)")
+            .eq("organisation_id", orgId)
             .lte("start_date", toDate)
             .gte("end_date", fromDate)
             .order("start_date")
@@ -429,8 +445,8 @@ ${pageContext ? `- ${pageContext}` : ""}
         inputSchema: z.object({}),
         execute: async () => {
           const [configRes, shiftTypesRes] = await Promise.all([
-            supabase.from("lab_config").select("*").single(),
-            supabase.from("shift_types").select("code, name_es, start_time, end_time, sort_order, active, active_days").order("sort_order"),
+            supabase.from("lab_config").select("*").eq("organisation_id", orgId).maybeSingle(),
+            supabase.from("shift_types").select("code, name_es, start_time, end_time, sort_order, active, active_days").eq("organisation_id", orgId).order("sort_order"),
           ])
 
           const config = configRes.data as Record<string, unknown> | null
@@ -470,8 +486,8 @@ ${pageContext ? `- ${pageContext}` : ""}
         inputSchema: z.object({}),
         execute: async () => {
           const [tecnicasRes, staffSkillsRes] = await Promise.all([
-            supabase.from("tecnicas").select("codigo, nombre_es, department, color, required_skill, typical_shifts, activa").order("orden"),
-            supabase.from("staff_skills").select("skill, level, staff(first_name, last_name)").order("skill"),
+            supabase.from("tecnicas").select("codigo, nombre_es, department, color, required_skill, typical_shifts, activa").eq("organisation_id", orgId).order("orden"),
+            supabase.from("staff_skills").select("skill, level, staff(first_name, last_name)").eq("organisation_id", orgId).order("skill"),
           ])
 
           const tecnicas = (tecnicasRes.data ?? []) as { codigo: string; nombre_es: string; department: string; color: string; required_skill: string | null; typical_shifts: string[]; activa: boolean }[]
@@ -504,6 +520,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data } = await supabase
             .from("departments")
             .select("id, code, name, abbreviation, colour, parent_id, is_default, sort_order")
+            .eq("organisation_id", orgId)
             .order("sort_order") as { data: { id: string; code: string; name: string; abbreviation: string; colour: string; parent_id: string | null; is_default: boolean; sort_order: number }[] | null }
 
           const departments = data ?? []
@@ -531,6 +548,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data } = await supabase
             .from("rota_rules")
             .select("id, type, config, description, active, staff(first_name, last_name)")
+            .eq("organisation_id", orgId)
             .order("created_at") as {
               data: { id: string; type: string; config: Record<string, unknown>; description: string | null; active: boolean; staff: { first_name: string; last_name: string } | null }[] | null
             }
@@ -567,7 +585,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           notes: z.string().optional(),
         }),
         execute: async (params) => {
-          const staff = await resolveStaffByName(supabase, params.staffName)
+          const staff = await resolveStaffByName(supabase, orgId, params.staffName)
           if (!staff) {
             return { error: `Staff member "${params.staffName}" not found. Check the name and try again.` }
           }
@@ -606,7 +624,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           functionLabel: z.string().optional().describe("Optional function/department label"),
         }),
         execute: async ({ staffName, date, shiftType, functionLabel }) => {
-          const staff = await resolveStaffByName(supabase, staffName)
+          const staff = await resolveStaffByName(supabase, orgId, staffName)
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           const weekStart = getMondayOf(date)
@@ -639,6 +657,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data: rota } = await supabase
             .from("rotas")
             .select("id, status")
+            .eq("organisation_id", orgId)
             .eq("week_start", weekStart)
             .maybeSingle() as { data: { id: string; status: string } | null }
 
@@ -658,6 +677,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const { data: rota } = await supabase
             .from("rotas")
             .select("id, status")
+            .eq("organisation_id", orgId)
             .eq("week_start", weekStart)
             .maybeSingle() as { data: { id: string; status: string } | null }
 
@@ -684,8 +704,8 @@ ${pageContext ? `- ${pageContext}` : ""}
         inputSchema: z.object({}),
         execute: async () => {
           const [staffRes, skillsRes] = await Promise.all([
-            supabase.from("staff").select("id, first_name, last_name, role").neq("onboarding_status", "inactive").order("last_name"),
-            supabase.from("staff_skills").select("staff_id, skill, level"),
+            supabase.from("staff").select("id, first_name, last_name, role").eq("organisation_id", orgId).neq("onboarding_status", "inactive").order("last_name"),
+            supabase.from("staff_skills").select("staff_id, skill, level").eq("organisation_id", orgId),
           ])
 
           const staff = (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string }[]
@@ -725,7 +745,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           onboardingStatus: z.enum(["active", "training", "certified", "inactive"]).optional(),
         }),
         execute: async ({ staffName, ...updates }) => {
-          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           const changes: Record<string, unknown> = {}
@@ -754,7 +774,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           level: z.enum(["certified", "training"]).describe("Skill level"),
         }),
         execute: async ({ staffName, skill, level }) => {
-          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
@@ -772,7 +792,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
         }),
         execute: async ({ staffName, skill }) => {
-          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
@@ -790,7 +810,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           reason: z.string().optional().describe("Reason for deactivation"),
         }),
         execute: async ({ staffName, reason }) => {
-          const staff = await resolveStaffByName(supabase, staffName, { activeOnly: true })
+          const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
           return propose(
@@ -841,7 +861,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           const staffIds: string[] = []
           if (staffNames?.length) {
             const resolved = await Promise.all(
-              staffNames.map((n) => resolveStaffByName(supabase, n, { activeOnly: true })),
+              staffNames.map((n) => resolveStaffByName(supabase, orgId, n, { activeOnly: true })),
             )
             for (const s of resolved) if (s) staffIds.push(s.id)
           }
