@@ -255,8 +255,14 @@ export async function renameOrgUser(userId: string, orgId: string, newName: stri
 }
 
 // ── updateOrgUserRole ─────────────────────────────────────────────────────────
+const VALID_MEMBER_ROLES = new Set(["admin", "manager", "viewer"])
+
 export async function updateOrgUserRole(userId: string, orgId: string, newRole: string) {
   await assertSuperAdmin()
+
+  if (!VALID_MEMBER_ROLES.has(newRole)) {
+    return { error: "Invalid role." }
+  }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -424,8 +430,13 @@ export async function createOrgUser(formData: FormData) {
 }
 
 // ── updateOrgAuthMethod ───────────────────────────────────────────────────
+const VALID_AUTH_METHODS = new Set(["otp", "password"])
+
 export async function updateOrgAuthMethod(orgId: string, method: "otp" | "password") {
   await assertSuperAdmin()
+  if (!VALID_AUTH_METHODS.has(method)) {
+    return { error: "Invalid auth method." }
+  }
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
