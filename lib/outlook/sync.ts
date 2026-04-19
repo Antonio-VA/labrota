@@ -31,6 +31,23 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   const result: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
   const admin = createAdminClient()
 
+  // Org isolation: the admin client bypasses RLS, so we must verify that
+  // staffId actually belongs to orgId before touching any tables. Without
+  // this, a caller passing a foreign staffId could read that staff's
+  // Outlook token via getValidAccessToken and write leaves into the wrong
+  // org. Checking against `staff` (not `outlook_connections`) also stops a
+  // tampered connection row from escalating.
+  const { data: staffRow } = await admin
+    .from("staff")
+    .select("id")
+    .eq("id", staffId)
+    .eq("organisation_id", orgId)
+    .maybeSingle()
+  if (!staffRow) {
+    result.errors.push("Staff does not belong to this organisation.")
+    return result
+  }
+
   // Get valid access token (auto-refreshes if needed)
   let accessToken: string
   try {
