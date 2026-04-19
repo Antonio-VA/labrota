@@ -10,7 +10,6 @@ import { useFavoriteViews, type MobileFavoriteView } from "@/hooks/use-favorite-
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
-import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
@@ -30,8 +29,6 @@ import {
   generateTaskHybrid,
 } from "@/app/(clinic)/rota/generate-actions"
 import { formatDate } from "@/lib/format-date"
-import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
-import { AssignmentSheet } from "@/components/assignment-sheet"
 import dynamic from "next/dynamic"
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })
 const SwapRequestDialog = dynamic(() => import("@/components/swap-request-dialog").then((m) => ({ default: m.SwapRequestDialog })), { ssr: false })
@@ -51,11 +48,13 @@ import type { ViewMode, CalendarLayout } from "./calendar-panel/types"
 import { TODAY } from "./calendar-panel/constants"
 import { addDays, getMonthStart, formatToolbarLabel, type GenerationStrategy } from "./calendar-panel/utils"
 
-import { ShiftBudgetBar, MonthBudgetBar } from "./calendar-panel/budget-bars"
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
 import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
 import { WeekContent } from "./calendar-panel/week-content"
 import { MobileDaySection } from "./calendar-panel/mobile-day-section"
+import { CalendarBanners } from "./calendar-panel/calendar-banners"
+import { CalendarBottomBar } from "./calendar-panel/calendar-bottom-bar"
+import { AssignmentSheetHost } from "./calendar-panel/assignment-sheet-host"
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
@@ -383,6 +382,97 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
 
   const toggleHighlightHover = useCallback(() => setHighlightHover(!highlightHover), [highlightHover, setHighlightHover])
 
+  function handleDelete() {
+    const msg = view === "month" ? t("confirm4WeeksDelete") : t("deleteWeekConfirm")
+    if (!confirm(msg)) return
+    if (view === "month") setLoadingMonth(true)
+    setPendingAction("deleting")
+    startTransition(async () => {
+      if (view === "month" && monthSummary) {
+        const allWeekStarts: string[] = []
+        for (let i = 0; i < monthSummary.days.length; i += 7) {
+          if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
+        }
+        let errors = 0
+        for (const ws of allWeekStarts) {
+          const result = await clearWeek(ws)
+          if (result.error) errors++
+        }
+        if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
+        else toast.success(t("fourWeeksDeleted"))
+        fetchWeek(weekStart)
+        fetchMonth(monthStart, weekStart)
+      } else {
+        const result = await clearWeek(weekStart)
+        if (result.error) toast.error(result.error)
+        else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
+      }
+      setPendingAction(null)
+    })
+  }
+
+  async function handleExportPdf() {
+    const fresh = await fetchWeekSilent(weekStart) ?? weekData
+    if (!fresh) return
+    const { exportPdfByShift, exportPdfByPerson, exportPdfByTask } = await import("@/lib/export-pdf")
+    const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
+    const notesEl = document.querySelector("[data-week-notes]")
+    const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
+    const n = noteTexts.length > 0 ? noteTexts : undefined
+    if (fresh.rotaDisplayMode === "by_task") exportPdfByTask(fresh, fresh.tecnicas ?? [], on, locale, n, daysAsRows)
+    else if (calendarLayout === "person") exportPdfByPerson(fresh, on, locale, n, daysAsRows)
+    else exportPdfByShift(fresh, on, locale, n, daysAsRows)
+  }
+
+  async function handleExportExcel() {
+    const fresh = await fetchWeekSilent(weekStart) ?? weekData
+    if (!fresh) return
+    const { exportWeekByShift, exportWeekByPerson, exportWeekByTask } = await import("@/lib/export-excel")
+    if (fresh.rotaDisplayMode === "by_task") exportWeekByTask(fresh, fresh.tecnicas ?? [], locale, daysAsRows)
+    else if (calendarLayout === "person") exportWeekByPerson(fresh, locale, daysAsRows)
+    else exportWeekByShift(fresh, locale, daysAsRows)
+  }
+
+  function handleCopyPreviousWeek() {
+    setShowCopyConfirm(false)
+    setLoadingWeek(true)
+    startTransition(async () => {
+      const result = await copyPreviousWeek(weekStart)
+      if (result.error) { toast.error(result.error); return }
+      toast.success(t("copyAssignments", { count: result.count ?? 0 }))
+      fetchWeek(weekStart)
+    })
+  }
+
+  function handleSaveFavorite() {
+    const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
+    setFavoriteView(fav)
+    saveUserPreferences({ favoriteView: fav })
+    toast.success(t("favoriteViewSaved"))
+  }
+
+  const handleGoToFavorite = favoriteView ? () => {
+    setView(favoriteView.view as ViewMode)
+    setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
+    setDaysAsRows(favoriteView.daysAsRows)
+    setCompact(favoriteView.compact)
+    setColorChips(favoriteView.colorChips)
+    setHighlightHover(favoriteView.highlightEnabled)
+  } : undefined
+
+  function handleSaveMobileFavorite() {
+    const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
+    setMobileFavoriteView(fav)
+    saveUserPreferences({ mobileFavoriteView: fav })
+    toast.success(t("favoriteViewSaved"))
+  }
+
+  const handleGoToMobileFavorite = mobileFavoriteView ? () => {
+    setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
+    setMobileCompact(mobileFavoriteView.compact)
+    setMobileDeptColor(mobileFavoriteView.deptColor)
+  } : undefined
+
   // On first load, show inline skeleton so the panel occupies space
   // and the chat panel doesn't appear alone before the calendar.
   if (!initialLoaded && !staffLoaded) return <CalendarSkeleton />
@@ -415,96 +505,26 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         onSaveTemplate={() => setSaveTemplateOpen(true)}
         onApplyTemplate={() => setApplyTemplateOpen(true)}
         onShowHistory={() => setHistoryOpen(true)}
-        onDelete={() => {
-          const msg = view === "month" ? t("confirm4WeeksDelete") : t("deleteWeekConfirm")
-          if (confirm(msg)) {
-            if (view === "month") setLoadingMonth(true)
-            setPendingAction("deleting")
-            startTransition(async () => {
-              if (view === "month" && monthSummary) {
-                const allWeekStarts: string[] = []
-                for (let i = 0; i < monthSummary.days.length; i += 7) {
-                  if (monthSummary.days[i]) allWeekStarts.push(monthSummary.days[i].date)
-                }
-                let errors = 0
-                for (const ws of allWeekStarts) {
-                  const result = await clearWeek(ws)
-                  if (result.error) errors++
-                }
-                if (errors > 0) toast.error(t("weeksWithErrors", { count: errors }))
-                else toast.success(t("fourWeeksDeleted"))
-                fetchWeek(weekStart)
-                fetchMonth(monthStart, weekStart)
-              } else {
-                const result = await clearWeek(weekStart)
-                if (result.error) toast.error(result.error)
-                else { toast.success(t("rotaDeleted")); fetchWeek(weekStart) }
-              }
-              setPendingAction(null)
-            })
-          }
-        }}
-        onExportPdf={async () => {
-          const fresh = await fetchWeekSilent(weekStart) ?? weekData
-          if (!fresh) return
-          const { exportPdfByShift, exportPdfByPerson, exportPdfByTask } = await import("@/lib/export-pdf")
-          const on = document.querySelector("[data-org-name]")?.textContent ?? "LabRota"
-          const notesEl = document.querySelector("[data-week-notes]")
-          const noteTexts = notesEl ? Array.from(notesEl.querySelectorAll("[data-note-text]")).map((el) => el.textContent ?? "").filter(Boolean) : []
-          const n = noteTexts.length > 0 ? noteTexts : undefined
-          if (fresh.rotaDisplayMode === "by_task") exportPdfByTask(fresh, fresh.tecnicas ?? [], on, locale, n, daysAsRows)
-          else if (calendarLayout === "person") exportPdfByPerson(fresh, on, locale, n, daysAsRows)
-          else exportPdfByShift(fresh, on, locale, n, daysAsRows)
-        }}
-        onExportExcel={async () => {
-          const fresh = await fetchWeekSilent(weekStart) ?? weekData
-          if (!fresh) return
-          const { exportWeekByShift, exportWeekByPerson, exportWeekByTask } = await import("@/lib/export-excel")
-          if (fresh.rotaDisplayMode === "by_task") exportWeekByTask(fresh, fresh.tecnicas ?? [], locale, daysAsRows)
-          else if (calendarLayout === "person") exportWeekByPerson(fresh, locale, daysAsRows)
-          else exportWeekByShift(fresh, locale, daysAsRows)
-        }}
+        onDelete={handleDelete}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
         favoriteView={favoriteView}
-        onSaveFavorite={() => {
-          const fav = { view, calendarLayout, daysAsRows, compact, colorChips, highlightEnabled: highlightHover }
-          setFavoriteView(fav)
-          saveUserPreferences({ favoriteView: fav })
-          toast.success(t("favoriteViewSaved"))
-        }}
-        onGoToFavorite={favoriteView ? () => {
-          setView(favoriteView.view as ViewMode)
-          setCalendarLayout(favoriteView.calendarLayout as CalendarLayout)
-          setDaysAsRows(favoriteView.daysAsRows)
-          setCompact(favoriteView.compact)
-          setColorChips(favoriteView.colorChips)
-          setHighlightHover(favoriteView.highlightEnabled)
-        } : undefined}
+        onSaveFavorite={handleSaveFavorite}
+        onGoToFavorite={handleGoToFavorite}
         t={t} tc={tc}
       />
 
       {/* Old mobile toolbar removed — replaced by compact toolbar inside the mobile day view section */}
 
-      {/* Banners */}
-      <div className="flex flex-col gap-2 px-4 pt-2 empty:hidden shrink-0">
-        {isPublished && view === "week" && (
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 flex items-center gap-2">
-            <Lock className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="text-[13px] text-emerald-700 dark:text-emerald-300">
-              {rota?.published_at
-                ? t("rotaPublishedBy", {
-                    date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(rota.published_at)),
-                    author: rota.published_by ?? "—",
-                  })
-                : t("rotaPublished")}
-            </span>
-          </div>
-        )}
-        {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
-            <span className="text-[13px] text-destructive">{error}</span>
-          </div>
-        )}
-      </div>
+      <CalendarBanners
+        view={view}
+        isPublished={!!isPublished}
+        publishedAt={rota?.published_at ?? null}
+        publishedBy={rota?.published_by ?? null}
+        error={error}
+        locale={locale}
+        t={t}
+      />
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col">
@@ -529,16 +549,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
             onGenerateClick={handleGenerateClick}
             showCopyConfirm={showCopyConfirm} setShowCopyConfirm={setShowCopyConfirm}
             prevWeekHasRota={prevWeekHasRota}
-            onCopyPreviousWeek={() => {
-              setShowCopyConfirm(false)
-              setLoadingWeek(true)
-              startTransition(async () => {
-                const result = await copyPreviousWeek(weekStart)
-                if (result.error) { toast.error(result.error); return }
-                toast.success(t("copyAssignments", { count: result.count ?? 0 }))
-                fetchWeek(weekStart)
-              })
-            }}
+            onCopyPreviousWeek={handleCopyPreviousWeek}
             desktopSwapStaffId={desktopSwapEnabled ? viewerStaffId : null}
             gridSetDaysRef={gridSetDaysRef}
             t={t} tc={tc}
@@ -581,56 +592,25 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
           setWeekData={setWeekData} fetchWeekSilent={fetchWeekSilent}
           setShowStrategyModal={setShowStrategyModal} isPending={isPending}
           mobileFavoriteView={mobileFavoriteView} setMobileFavoriteView={setMobileFavoriteView}
-          onSaveMobileFavorite={() => {
-            const fav: MobileFavoriteView = { viewMode: mobileViewMode, compact: mobileCompact, deptColor: mobileDeptColor }
-            setMobileFavoriteView(fav)
-            saveUserPreferences({ mobileFavoriteView: fav })
-            toast.success(t("favoriteViewSaved"))
-          }}
-          onGoToMobileFavorite={mobileFavoriteView ? () => {
-            setMobileViewMode(mobileFavoriteView.viewMode as "shift" | "person")
-            setMobileCompact(mobileFavoriteView.compact)
-            setMobileDeptColor(mobileFavoriteView.deptColor)
-          } : undefined}
+          onSaveMobileFavorite={handleSaveMobileFavorite}
+          onGoToMobileFavorite={handleGoToMobileFavorite}
           t={t} tc={tc}
         />
       </div>
 
-      {/* Day edit sheet */}
-      <AssignmentSheet
+      <AssignmentSheetHost
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        date={sheetDate}
+        sheetDate={sheetDate}
+        sheetDay={sheetDay}
         weekStart={weekStart}
-        day={sheetDay}
+        weekData={weekData}
         staffList={staffList}
-        onLeaveStaffIds={sheetDate ? (weekData?.onLeaveByDate[sheetDate] ?? []) : []}
-        shiftTimes={weekData?.shiftTimes ?? null}
-        shiftTypes={weekData?.shiftTypes ?? []}
-        tecnicas={weekData?.tecnicas ?? []}
-        departments={weekData?.departments ?? []}
-        punctionsDefault={sheetDate ? (weekData?.punctionsDefault[sheetDate] ?? 0) : 0}
         punctionsOverride={punctionsOverride}
-        rota={weekData?.rota ?? null}
-        isPublished={!!isPublished || !canEdit}
+        isPublished={!!isPublished}
+        canEdit={canEdit}
         onSaved={() => { fetchWeek(weekStart); if (view === "month") fetchMonth(monthStart, weekStart) }}
         onPunctionsChange={handlePunctionsChange}
-        timeFormat={weekData?.timeFormat}
-        biopsyForecast={(() => {
-          if (!sheetDate || !weekData) return 0
-          const pd = weekData.punctionsDefault
-          function getPunc(dateStr: string): number {
-            if (punctionsOverride[dateStr] !== undefined) return punctionsOverride[dateStr]
-            if (pd[dateStr] !== undefined) return pd[dateStr]
-            const dow = new Date(dateStr + "T12:00:00").getDay()
-            const sameDow = Object.entries(pd).find(([d]) => new Date(d + "T12:00:00").getDay() === dow)
-            return sameDow ? sameDow[1] : 0
-          }
-          return computeBiopsyForecast(sheetDate, getPunc, weekData.biopsyConversionRate ?? 0.5, weekData.biopsyDay5Pct ?? 0.5, weekData.biopsyDay6Pct ?? 0.5)
-        })()}
-        rotaDisplayMode={weekData?.rotaDisplayMode}
-        taskConflictThreshold={weekData?.taskConflictThreshold}
-        enableTaskInShift={weekData?.enableTaskInShift ?? false}
       />
 
       {/* Multi-week generation scope dialog */}
@@ -667,37 +647,23 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         </div>
       )}
 
-      {/* Bottom taskbar — desktop only, hidden for viewers */}
-      <div className="hidden md:block shrink-0">
-        {canEdit && view === "week" && !weekData && loadingWeek && (
-          <div className="shrink-0 h-12 bg-background border-t border-border flex items-center px-4 gap-2">
-            <div className="h-3 w-20 rounded bg-muted animate-pulse" />
-            <div className="h-5 w-14 rounded bg-muted animate-pulse" />
-            <div className="h-5 w-14 rounded bg-muted animate-pulse" />
-            <div className="h-5 w-14 rounded bg-muted animate-pulse" />
-            <div className="h-5 w-14 rounded bg-muted animate-pulse" />
-            <div className="h-5 w-14 rounded bg-muted animate-pulse" />
-          </div>
-        )}
-        {canEdit && view === "week" && weekData && (
-          <ShiftBudgetBar
-            data={weekData}
-            staffList={filteredStaffList}
-            weekLabel={formatToolbarLabel("week", currentDate, weekStart, locale)}
-            onPillClick={openProfile}
-            liveDays={weekData?.rotaDisplayMode === "by_task" ? null : liveDays}
-            deptFilter={deptFilter}
-            colorChips={colorChips}
-          />
-        )}
-        {canEdit && view === "month" && monthSummary && !loadingMonth && (
-          <MonthBudgetBar
-            summary={monthSummary}
-            monthLabel={formatToolbarLabel("month", currentDate, weekStart, locale)}
-            onPillClick={openProfile}
-          />
-        )}
-      </div>
+      <CalendarBottomBar
+        view={view}
+        canEdit={canEdit}
+        loadingWeek={loadingWeek}
+        loadingMonth={loadingMonth}
+        weekData={weekData}
+        monthSummary={monthSummary}
+        filteredStaffList={filteredStaffList}
+        currentDate={currentDate}
+        weekStart={weekStart}
+        locale={locale}
+        formatLabel={formatToolbarLabel}
+        openProfile={openProfile}
+        liveDays={liveDays}
+        deptFilter={deptFilter}
+        colorChips={colorChips}
+      />
 
       {/* Generation strategy modal */}
       <GenerationStrategyModal
