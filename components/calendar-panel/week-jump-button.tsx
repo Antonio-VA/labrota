@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getMondayOfWeek } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 import type { ViewMode } from "./types"
 import { TODAY } from "./constants"
 import { addDays, formatToolbarLabel } from "./utils"
@@ -59,7 +59,7 @@ export function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect 
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg py-1 min-w-[200px] max-h-[320px] overflow-y-auto">
           {weeks.map((w) => {
-            const todayMonday = getMondayOfWeek(new Date(TODAY + "T12:00:00"))
+            const todayMonday = getMondayOf(TODAY)
             const step = view === "month" ? 28 : 7
             const isThisWeek = view === "month"
               ? todayMonday >= w.monday && todayMonday < addDays(w.monday, step)

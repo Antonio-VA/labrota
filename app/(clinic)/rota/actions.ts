@@ -5,7 +5,8 @@ import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
-import { runRotaEngine, getWeekDates, getMondayOfWeek } from "@/lib/rota-engine"
+import { runRotaEngine, getWeekDates } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot } from "@/lib/rota-snapshots"
 import type {
@@ -1430,7 +1431,7 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
   const since = eightWeeksAgo.toISOString().split("T")[0]
 
   // Compute previous and next week date ranges relative to the viewed week
-  const viewedMonday = weekStart ? new Date(weekStart + "T12:00:00") : new Date(getMondayOfWeek() + "T12:00:00")
+  const viewedMonday = new Date((weekStart ?? getMondayOf()) + "T12:00:00")
   const prevMonday = new Date(viewedMonday)
   prevMonday.setDate(prevMonday.getDate() - 7)
   const prevSunday = new Date(prevMonday)

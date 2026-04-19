@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { StaffRole, SkillName, PunctionsByDay, LabConfigUpdate } from "@/lib/types/database"
 import { propose } from "@/lib/proposal-types"
+import { getMondayOf } from "@/lib/format-date"
 
 const SKILL_LABEL: Record<string, string> = {
   icsi: "ICSI", iui: "IUI", vitrification: "Vitrification", thawing: "Thawing",
@@ -600,13 +601,7 @@ ${pageContext ? `- ${pageContext}` : ""}
 
           if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
-          // Compute weekStart (Monday of that week)
-          const d = new Date(date + "T12:00:00")
-          const day = d.getDay()
-          const diff = day === 0 ? -6 : 1 - day
-          d.setDate(d.getDate() + diff)
-          const weekStart = d.toISOString().split("T")[0]
-
+          const weekStart = getMondayOf(date)
           const resolvedName = `${staff.first_name} ${staff.last_name}`
           return propose(
             "assignStaff",
@@ -622,12 +617,7 @@ ${pageContext ? `- ${pageContext}` : ""}
           date: z.string().describe("ISO date YYYY-MM-DD to regenerate"),
         }),
         execute: async ({ date }) => {
-          const d = new Date(date + "T12:00:00")
-          const day = d.getDay()
-          const diff = day === 0 ? -6 : 1 - day
-          d.setDate(d.getDate() + diff)
-          const weekStart = d.toISOString().split("T")[0]
-
+          const weekStart = getMondayOf(date)
           return propose("regenerateDay", { weekStart, date }, `Regenerate rota for ${date}`)
         },
       }),

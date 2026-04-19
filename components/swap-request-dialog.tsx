@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowLeftRight, Palmtree, Loader2, User, X, ChevronLeft, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, getMondayOf } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import type { SwapCandidate, DayOffCandidate, ExchangeOption } from "@/app/(clinic)/swaps/actions"
 import type { SwapType } from "@/lib/types/database"
@@ -18,15 +18,6 @@ interface SwapRequestDialogProps {
   dateLabel: string
   locale: "es" | "en"
   weekStart?: string
-}
-
-// Compute Monday of the week containing the given date
-function getMondayOf(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00")
-  const dow = d.getDay() // 0=Sun
-  const diff = dow === 0 ? -6 : 1 - dow
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
 }
 
 type Step = "type" | "candidates" | "exchange" | "confirm"

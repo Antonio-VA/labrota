@@ -1,16 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getValidAccessToken, fetchOOFEvents, type OOFEvent } from "./graph-client"
-import { formatDateRange, formatDateWithYear } from "@/lib/format-date"
+import { formatDateRange, formatDateWithYear, getMondayOf } from "@/lib/format-date"
 import type { LeaveType } from "@/lib/types/database"
-
-/** Returns the ISO date of the Monday of the week containing dateStr */
-function getMondayOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00")
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
-}
 
 function formatLeaveRange(start: string, end: string): string {
   const s = start + "T00:00:00"
@@ -182,7 +173,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
       }
 
       const allStartDates = [...createdRanges, ...deletedRanges].map(r => r.start).sort()
-      const affectedWeeks = allStartDates.length > 0 ? [getMondayOfWeek(allStartDates[0])] : []
+      const affectedWeeks = allStartDates.length > 0 ? [getMondayOf(allStartDates[0])] : []
 
       const { data: managers } = await admin
         .from("organisation_members")

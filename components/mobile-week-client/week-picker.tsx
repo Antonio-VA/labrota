@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getMondayOfWeek } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 
 export function addDays(date: string, n: number): string {
   const d = new Date(date + "T12:00:00")
@@ -81,7 +81,7 @@ export function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string;
         >
           {weeks.map((w) => {
             const isCurrent = w.monday === weekStart
-            const todayMonday = getMondayOfWeek(new Date())
+            const todayMonday = getMondayOf()
             const isThisWeek = w.monday === todayMonday
             return (
               <button

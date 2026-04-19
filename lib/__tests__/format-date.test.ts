@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatDate, formatDateWithYear, formatDateRange } from "../format-date"
+import { formatDate, formatDateWithYear, formatDateRange, getMondayOf } from "../format-date"
 
 // Use fixed dates to avoid timezone issues — noon UTC
 const MAR_17 = new Date("2026-03-17T12:00:00Z")
@@ -111,5 +111,20 @@ describe("formatDateRange", () => {
     const result = formatDateRange(MAR_17, MAR_17, "en")
     const parts = result.split("–")
     expect(parts).toHaveLength(2)
+  })
+})
+
+describe("getMondayOf", () => {
+  it("returns Monday for a Monday input", () => {
+    expect(getMondayOf("2026-03-16")).toBe("2026-03-16")
+  })
+  it("returns Monday for a Wednesday input", () => {
+    expect(getMondayOf("2026-03-18")).toBe("2026-03-16")
+  })
+  it("returns Monday for a Sunday input", () => {
+    expect(getMondayOf("2026-03-22")).toBe("2026-03-16")
+  })
+  it("accepts a Date input", () => {
+    expect(getMondayOf(new Date("2026-03-18T12:00:00Z"))).toBe("2026-03-16")
   })
 })

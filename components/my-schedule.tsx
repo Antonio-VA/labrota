@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
+import { getMondayOf } from "@/lib/format-date"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 
@@ -20,14 +21,6 @@ const DOW_ES = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 const DOW_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const MON_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-function getMondayOf(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00")
-  const dow = d.getDay()
-  const diff = dow === 0 ? -6 : 1 - dow
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
-}
 
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T12:00:00")

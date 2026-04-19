@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { getOrgId } from "@/lib/get-org-id"
+import { getMondayOf } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,16 +34,6 @@ export interface ImportRotaResult {
   error?: string
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getMondayOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00")
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
-}
-
 // ── Import action ────────────────────────────────────────────────────────────
 
 export async function importFutureRota(input: ImportRotaInput): Promise<ImportRotaResult> {
@@ -53,7 +44,7 @@ export async function importFutureRota(input: ImportRotaInput): Promise<ImportRo
   // Group assignments by week
   const byWeek: Record<string, ParsedAssignment[]> = {}
   for (const a of input.assignments) {
-    const ws = getMondayOfWeek(a.date)
+    const ws = getMondayOf(a.date)
     if (!byWeek[ws]) byWeek[ws] = []
     byWeek[ws].push(a)
   }

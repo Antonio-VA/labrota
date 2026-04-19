@@ -9,7 +9,8 @@ import { importFutureRota, type ImportRotaResult } from "@/app/(clinic)/onboardi
 import { processFile, formatSize } from "@/components/import-wizard/file-processing"
 import { FileIcon } from "@/components/import-wizard/ui-helpers"
 import type { ExtractedRota, DbStaff, DbShift, StaffMatch, ShiftMatch } from "./types"
-import { matchStaff, matchShift, getMondayOfWeek, fmtDate, fmtWeekRange } from "./matching"
+import { matchStaff, matchShift, fmtDate, fmtWeekRange } from "./matching"
+import { getMondayOf } from "@/lib/format-date"
 
 type Step = "upload" | "extracting" | "review" | "importing" | "done"
 
@@ -93,7 +94,7 @@ export function ImportRotaWizard() {
       setShiftMatches(uniqueShiftCodes.map((code) => matchShift(code, shifts)))
 
       // Detect weeks and set default conflict modes
-      const weeks = new Set(data.assignments.map((a) => getMondayOfWeek(a.date)))
+      const weeks = new Set(data.assignments.map((a) => getMondayOf(a.date)))
       const modes: Record<string, "replace" | "merge" | "skip"> = {}
       for (const w of weeks) modes[w] = "merge"
       setConflictModes(modes)

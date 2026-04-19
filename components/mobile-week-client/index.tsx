@@ -12,7 +12,7 @@ import { WeekNotes } from "@/components/week-notes"
 import { getRotaWeek, getActiveStaff, type RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { toast } from "sonner"
-import { getMondayOfWeek } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 import { ROLE_COLOR, contrastColor, ROLE_LABEL, TASK_NAMED_COLORS, LEAVE_ICONS, LEAVE_COLORS } from "./constants"
 import { WeekPicker } from "./week-picker"
 import { WeekInsightsSheet, WeekWarningsSheet } from "./bottom-sheets"
@@ -28,10 +28,10 @@ export function MobileWeekClient() {
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const canEdit = useCanEdit()
-  const [weekStart, setWeekStart] = useState(() => getMondayOfWeek(new Date()))
-  const [data, setData] = useState<RotaWeekData | null>(() => _mobileWeekCache.get(getMondayOfWeek(new Date())) ?? null)
+  const [weekStart, setWeekStart] = useState(() => getMondayOf())
+  const [data, setData] = useState<RotaWeekData | null>(() => _mobileWeekCache.get(getMondayOf()) ?? null)
   const [staffList, setStaffList] = useState<StaffWithSkills[]>(() => _mobileWeekStaffCache ?? [])
-  const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOfWeek(new Date())))
+  const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOf()))
   const weekGridRef = useRef<HTMLDivElement>(null)
   const [highlightEnabled, setHighlightEnabled] = usePersistedState<boolean>("labrota_week_highlight", false)
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)
@@ -128,11 +128,11 @@ export function MobileWeekClient() {
   function navigate(dir: number) {
     const d = new Date(weekStart + "T12:00:00")
     d.setDate(d.getDate() + dir * 7)
-    setWeekStart(getMondayOfWeek(d))
+    setWeekStart(getMondayOf(d))
   }
 
   const today = new Date().toISOString().split("T")[0]
-  const currentWeek = getMondayOfWeek(new Date())
+  const currentWeek = getMondayOf()
   const isCurrentWeek = weekStart === currentWeek
 
   const days = data?.days ?? []

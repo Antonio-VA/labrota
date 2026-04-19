@@ -43,14 +43,6 @@ export function matchShift(fileCode: string, shiftList: DbShift[]): ShiftMatch {
   return { file_code: fileCode, db_code: "", db_label: "", confidence: "none" }
 }
 
-export function getMondayOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00")
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
-}
-
 export function fmtDate(iso: string): string {
   const d = new Date(iso + "T12:00:00")
   return new Intl.DateTimeFormat("es", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(d)

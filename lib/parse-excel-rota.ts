@@ -1,4 +1,5 @@
 import type * as XLSXType from "xlsx"
+import { getMondayOf } from "@/lib/format-date"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,15 +88,6 @@ function isDate(cell: unknown, SSF?: typeof XLSXType.SSF): Date | null {
 
 function toISO(d: Date): string {
   return d.toISOString().split("T")[0]
-}
-
-function getMondayOfWeek(d: Date): string {
-  const copy = new Date(d)
-  copy.setHours(12, 0, 0, 0)
-  const day = copy.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  copy.setDate(copy.getDate() + diff)
-  return toISO(copy)
 }
 
 function looksLikeInitials(s: string): boolean {
@@ -260,7 +252,7 @@ export async function parseSheet(buffer: ArrayBuffer, sheetName: string): Promis
   // Deduplicate dates (multi-row days produce duplicates)
   const uniqueDates = [...new Set(dates)]
   const allDates = uniqueDates.length > 0 ? uniqueDates : headerDates.filter(Boolean)
-  const weekStart = allDates.length > 0 ? getMondayOfWeek(new Date(allDates[0] + "T12:00:00")) : toISO(new Date())
+  const weekStart = allDates.length > 0 ? getMondayOf(allDates[0]) : toISO(new Date())
 
   if (mode === "by_task") {
     // Determine orientation

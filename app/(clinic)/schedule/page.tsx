@@ -1,5 +1,5 @@
 import { ScheduleClient } from "@/app/(clinic)/schedule-client"
-import { getMondayOfWeek } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"
 import { getWeekNotes } from "@/app/(clinic)/notes-actions"
 
@@ -11,7 +11,7 @@ export const maxDuration = 300
 // router cache keeps this RSC payload fresh across short detours, which
 // preserves the "instant revisit" behaviour without a DB round-trip.
 export default async function SchedulePage() {
-  const weekStart = getMondayOfWeek(new Date())
+  const weekStart = getMondayOf()
   const [initialData, initialNotes] = await Promise.all([
     getRotaWeek(weekStart).catch(() => undefined),
     getWeekNotes(weekStart).catch(() => undefined),

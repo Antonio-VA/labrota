@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { runRotaEngine, getWeekDates, getMondayOfWeek } from "../rota-engine"
+import { runRotaEngine, getWeekDates } from "../rota-engine"
 import type {
   StaffWithSkills,
   Leave,
@@ -81,18 +81,6 @@ describe("getWeekDates", () => {
     expect(dates).toHaveLength(7)
     expect(dates[0]).toBe("2026-03-16") // Mon
     expect(dates[6]).toBe("2026-03-22") // Sun
-  })
-})
-
-describe("getMondayOfWeek", () => {
-  it("returns Monday for a Monday input", () => {
-    expect(getMondayOfWeek(new Date("2026-03-16"))).toBe("2026-03-16")
-  })
-  it("returns Monday for a Wednesday input", () => {
-    expect(getMondayOfWeek(new Date("2026-03-18"))).toBe("2026-03-16")
-  })
-  it("returns Monday for a Sunday input", () => {
-    expect(getMondayOfWeek(new Date("2026-03-22"))).toBe("2026-03-16")
   })
 })
 

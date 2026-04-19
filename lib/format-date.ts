@@ -81,3 +81,16 @@ export function formatDateRange(
 ): string {
   return `${formatDate(start, locale)} – ${formatDateWithYear(end, locale)}`
 }
+
+/**
+ * ISO date string of the Monday of the week containing `input`.
+ * Uses noon-local anchoring so DST transitions and negative UTC offsets
+ * can't slip the result onto an adjacent calendar day.
+ */
+export function getMondayOf(input: string | Date = new Date()): string {
+  const d = typeof input === "string" ? new Date(input + "T12:00:00") : new Date(input)
+  d.setHours(12, 0, 0, 0)
+  const dow = d.getDay() // 0 = Sun
+  d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow))
+  return d.toISOString().split("T")[0]
+}

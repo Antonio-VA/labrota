@@ -116,16 +116,6 @@ export function getWeekDates(weekStart: string): string[] {
   return dates
 }
 
-/** Return the ISO date of the Monday of the week containing `date`. */
-export function getMondayOfWeek(date: Date = new Date()): string {
-  const d = new Date(date)
-  d.setHours(12, 0, 0, 0)
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split("T")[0]
-}
-
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 export function runRotaEngineV2({

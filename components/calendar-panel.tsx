@@ -12,7 +12,7 @@ import { useLocale } from "next-intl"
 import { useCanEdit } from "@/lib/role-context"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
-import { getMondayOfWeek } from "@/lib/rota-engine"
+import { getMondayOf } from "@/lib/format-date"
 import { saveUserPreferences } from "@/app/(clinic)/account-actions"
 import {
   publishRota,
@@ -151,7 +151,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   })
 
   // Derived
-  const weekStart  = getMondayOfWeek(new Date(currentDate + "T12:00:00"))
+  const weekStart  = getMondayOf(currentDate)
   const monthStart = getMonthStart(currentDate)
 
   // Data fetching, caching, staff loading (extracted to hook)
@@ -172,7 +172,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const handleHoverNav = useCallback((dir: -1 | 1) => {
     if (view !== "week") return
     const target = addDays(weekStart, dir * 7)
-    prefetchWeek(getMondayOfWeek(new Date(target + "T12:00:00")))
+    prefetchWeek(getMondayOf(target))
   }, [view, weekStart, prefetchWeek])
 
   // Department filter (extracted to hook)
