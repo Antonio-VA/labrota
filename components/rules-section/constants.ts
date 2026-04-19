@@ -16,6 +16,16 @@ export const RULE_TYPES: RotaRuleType[] = [
   "equipo_completo",
 ]
 
+// Rule types that require two or more staff selected
+export const PAIR_TYPES: ReadonlySet<RotaRuleType> = new Set([
+  "no_librar_mismo_dia", "no_coincidir", "no_misma_tarea", "supervisor_requerido",
+])
+
+// Rule types that target techniques only — staff picker is hidden
+export const TECHNIQUE_ONLY_TYPES: ReadonlySet<RotaRuleType> = new Set([
+  "restriccion_dia_tecnica", "tecnicas_juntas", "tarea_multidepartamento", "equipo_completo",
+])
+
 // Which org modes each rule type applies to
 export const RULE_MODE: Record<RotaRuleType, "both" | "by_shift" | "by_task"> = {
   no_coincidir: "both",
@@ -178,7 +188,6 @@ export function formToInsert(form: RuleFormState): Omit<RotaRuleInsert, "organis
     params.tecnica_codes = form.wholeTeamTecnicas
     if (form.wholeTeamDays.length > 0) params.days = form.wholeTeamDays
   }
-  // restriccion_dia_tecnica is always hard — no soft option makes sense
   const isHard = form.type === "restriccion_dia_tecnica" ? true : form.is_hard
   return {
     type: form.type,

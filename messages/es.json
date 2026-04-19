@@ -917,6 +917,8 @@
       "cancel": "Cancelar",
       "confirmDelete": "¿Eliminar esta regla?",
       "errorMinTwoStaff": "Selecciona al menos 2 personas para esta regla",
+      "errorSelectTechnique": "Selecciona una técnica",
+      "errorSelectDay": "Selecciona al menos un día",
       "selectAtLeastTwo": "Selecciona al menos 2 personas",
       "expiresAt": "Fecha de expiración",
       "expiresAtHint": "Opcional — la regla se ignorará después de esta fecha",

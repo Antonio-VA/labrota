@@ -917,6 +917,8 @@
       "cancel": "Cancel",
       "confirmDelete": "Delete this rule?",
       "errorMinTwoStaff": "Select at least 2 people for this rule",
+      "errorSelectTechnique": "Select a technique",
+      "errorSelectDay": "Select at least one day",
       "selectAtLeastTwo": "Select at least 2 people",
       "expiresAt": "Expiry date",
       "expiresAtHint": "Optional — rule will be ignored after this date",
