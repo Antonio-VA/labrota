@@ -18,7 +18,7 @@ function parseInsights(text: string): { assessment: string; issues: string[] } |
 
 // ── AI insights bottom sheet ────────────────────────────────────────────────
 
-export function WeekInsightsSheet({ reasoning, locale: _locale, open, onClose }: { reasoning: string; locale: "es" | "en"; open: boolean; onClose: () => void }) {
+export function WeekInsightsSheet({ reasoning, locale, open, onClose }: { reasoning: string; locale: "es" | "en"; open: boolean; onClose: () => void }) {
   const t = useTranslations("schedule")
   if (!open) return null
   const parsed = parseInsights(reasoning)

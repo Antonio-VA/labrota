@@ -7,7 +7,7 @@ import { MoreHorizontal, Sparkles, FileDown, Grid3X3, Users, Check, Star } from 
 import { cn } from "@/lib/utils"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 
-export function WeekOverflow({ weekStart: _weekStart, data, onRefresh: _onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, hasFavourite, onSaveFavourite, onGoToFavourite, taskDaysAsRows, onToggleTaskDaysAsRows }: {
+export function WeekOverflow({ weekStart, data, onRefresh, highlightEnabled, onToggleHighlight, onGenerateWeek, weekViewMode, onToggleViewMode, deptColor, onToggleDeptColor, isFavourite, hasFavourite, onSaveFavourite, onGoToFavourite, taskDaysAsRows, onToggleTaskDaysAsRows }: {
   weekStart: string; data: RotaWeekData | null; onRefresh?: () => void
   highlightEnabled?: boolean; onToggleHighlight?: () => void
   onGenerateWeek?: () => void

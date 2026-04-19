@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useRef, useEffect, useTransition } from "react"
 import Image from "next/image"
-import { ChevronDown, Check, Star, User } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Star, Bell, User } from "lucide-react"
 import { switchOrg as switchOrgAction, setDefaultOrg } from "@/app/(clinic)/org-actions"
 import { NotificationBell } from "@/components/notification-panel"
 import { SwapBell } from "@/components/swap-panel"
@@ -24,7 +24,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({
   orgName, orgLogoUrl, allOrgs = [], activeOrgId, defaultOrgId,
-  dateLabel: _dateLabel, onPrev: _onPrev, onNext: _onNext,
+  dateLabel, onPrev, onNext,
 }: MobileHeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)

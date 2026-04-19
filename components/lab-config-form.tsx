@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import type { LabConfig, PunctionsByDay, CoverageByDay, ShiftCoverageByDay, ShiftCoverageEntry } from "@/lib/types/database"
-import { CheckCircle2, AlertCircle, ChevronUp, ChevronDown } from "lucide-react"
+import { CheckCircle2, AlertCircle, Info, ChevronUp, ChevronDown } from "lucide-react"
 import { ShiftRotationSetting } from "@/components/shift-rotation-setting"
 import { cn } from "@/lib/utils"
 
@@ -51,11 +51,11 @@ const DEFAULT_COVERAGE: CoverageByDay = {
 export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_shift", tecnicas = [], departments = [], shiftTypes = [], initialRotation, hasPartTime = false, hasIntern = false }: { config: LabConfig; section?: "all" | "cobertura" | "parametros" | "workload"; rotaDisplayMode?: string; tecnicas?: import("@/lib/types/database").Tecnica[]; departments?: import("@/lib/types/database").Department[]; shiftTypes?: import("@/lib/types/database").ShiftTypeDefinition[]; initialRotation?: string; hasPartTime?: boolean; hasIntern?: boolean }) {
   const t = useTranslations("lab")
   const [isPending,         startTransition]         = useTransition()
-  const [_coveragePending,  startCoverageTransition] = useTransition()
+  const [coveragePending,   startCoverageTransition] = useTransition()
   const [status,            setStatus]            = useState<"idle" | "success" | "error">("idle")
-  const [_coverageStatus,   setCoverageStatus]    = useState<"idle" | "success" | "error">("idle")
+  const [coverageStatus,    setCoverageStatus]    = useState<"idle" | "success" | "error">("idle")
   const [errorMsg,          setErrorMsg]          = useState("")
-  const [_coverageErrorMsg, setCoverageErrorMsg]  = useState("")
+  const [coverageErrorMsg,  setCoverageErrorMsg]  = useState("")
 
   const DEFAULT_PUNCTIONS: PunctionsByDay = { mon: 6, tue: 6, wed: 6, thu: 6, fri: 6, sat: 2, sun: 0 }
 
@@ -84,11 +84,11 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
     return normalized
   })
-  const [_shiftCoverageWarnings, _setShiftCoverageWarnings] = useState<Set<string>>(new Set())
+  const [shiftCoverageWarnings, setShiftCoverageWarnings] = useState<Set<string>>(new Set())
 
   // Active coverage state depends on rotation mode
   const isByShift = rotaDisplayMode === "by_shift"
-  const _coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
+  const coverageEnabled = isByShift ? shiftCoverageEnabled : taskCoverageEnabled
 
 
   // by_task: show per-shift coverage when there are active shifts
@@ -184,7 +184,7 @@ export function LabConfigForm({ config, section = "all", rotaDisplayMode = "by_s
     }
   }, [])
 
-  function _handleCoverageSave() {
+  function handleCoverageSave() {
     setCoverageStatus("idle")
     startCoverageTransition(async () => {
       const effectiveShiftCovEnabled = shiftCoverageEnabled || hasShiftCoverage

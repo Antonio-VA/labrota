@@ -86,7 +86,7 @@ export function MobileBottomNav() {
               <button
                 key={item.key}
                 onTouchStart={() => handleTap(item.key, item.href)}
-                onClick={(_e) => {
+                onClick={(e) => {
                   if (activeKey === item.key) return
                   handleTap(item.key, item.href)
                 }}

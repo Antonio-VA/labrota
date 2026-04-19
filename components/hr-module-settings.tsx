@@ -24,7 +24,7 @@ interface HrModuleSettingsProps {
   record: HrModule | null
 }
 
-export function HrModuleSettings({ installed, active, installedAt, record: _record }: HrModuleSettingsProps) {
+export function HrModuleSettings({ installed, active, installedAt, record }: HrModuleSettingsProps) {
   const t = useTranslations("hr")
   const tc = useTranslations("common")
   const locale = useLocale()

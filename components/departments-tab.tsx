@@ -209,7 +209,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enab
     })
   }
 
-  function _handleSeed() {
+  function handleSeed() {
     if (departments.length > 0 && !confirm(t("loadDefaultsConfirm"))) return
     startTransition(async () => {
       const result = await seedDefaultDepartments()
