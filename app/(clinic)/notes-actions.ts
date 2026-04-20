@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import { withOrgId } from "@/lib/with-org-id"
+import { mark, now } from "@/lib/server-timing"
 
 // ── Note templates (lab config) ─────────────────────────────────────────────
 
@@ -60,16 +61,22 @@ export interface WeekNoteData {
 }
 
 export async function getWeekNotes(weekStart: string): Promise<WeekNoteData> {
+  const tFn = now()
   const supabase = await createClient()
+  const tOrg = now()
   const orgId = await getOrgId()
+  mark("notes.getOrgId", tOrg)
   if (!orgId) return { templates: [], adHocNotes: [], enableNotes: true }
 
+  const tBatch = now()
+  const tT = now(), tD = now(), tA = now(), tC = now()
   const [templatesRes, dismissedRes, adHocRes, configRes] = await Promise.all([
-    supabase.from("note_templates").select("id, text").eq("organisation_id", orgId).order("created_at"),
-    supabase.from("dismissed_note_templates").select("note_template_id").eq("organisation_id", orgId).eq("week_start", weekStart),
-    supabase.from("week_notes").select("id, text").eq("organisation_id", orgId).eq("week_start", weekStart).eq("is_template", false).order("created_at"),
-    supabase.from("lab_config").select("enable_notes").eq("organisation_id", orgId).maybeSingle(),
+    supabase.from("note_templates").select("id, text").eq("organisation_id", orgId).order("created_at").then((r) => { mark("notes.q.templates", tT); return r }),
+    supabase.from("dismissed_note_templates").select("note_template_id").eq("organisation_id", orgId).eq("week_start", weekStart).then((r) => { mark("notes.q.dismissed", tD); return r }),
+    supabase.from("week_notes").select("id, text").eq("organisation_id", orgId).eq("week_start", weekStart).eq("is_template", false).order("created_at").then((r) => { mark("notes.q.weekNotes", tA); return r }),
+    supabase.from("lab_config").select("enable_notes").eq("organisation_id", orgId).maybeSingle().then((r) => { mark("notes.q.labConfig", tC); return r }),
   ])
+  mark("notes.batch(4 queries)", tBatch)
 
   // Throw on query errors so schedule page .catch() can handle them
   const noteErrors = [
@@ -86,6 +93,7 @@ export async function getWeekNotes(weekStart: string): Promise<WeekNoteData> {
   const adHocNotes = (adHocRes.data ?? []) as { id: string; text: string }[]
   const enableNotes = (configRes.data as { enable_notes?: boolean } | null)?.enable_notes ?? true
 
+  mark("notes.getWeekNotes.total", tFn)
   return { templates, adHocNotes, enableNotes }
 }
 
