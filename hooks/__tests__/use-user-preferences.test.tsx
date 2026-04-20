@@ -117,6 +117,22 @@ describe("useUserPreferences — update()", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(500) })
 
     expect(result.current.status).toBe("error")
+    expect(result.current.lastError).toBe("boom")
+  })
+
+  it("clears lastError on the next successful save", async () => {
+    saveUserPreferencesMock.mockResolvedValueOnce({ error: "boom" })
+    const { result } = renderHook(() => useUserPreferences(SEED))
+
+    act(() => { result.current.update({ theme: "dark" }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(result.current.lastError).toBe("boom")
+
+    act(() => { result.current.update({ accentColor: "#abcdef" }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+
+    expect(result.current.status).toBe("saved")
+    expect(result.current.lastError).toBeNull()
   })
 
   it("update(seed, { persist: false }) applies prefs but never saves", async () => {

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { typedQuery } from "@/lib/supabase/typed-query"
-import { getCachedOrgId } from "@/lib/auth-cache"
+import { getCachedOrgId, getCachedUserPreferences } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { getWeekDates } from "@/lib/engine-helpers"
@@ -110,6 +110,10 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   const orgRes = await typedQuery<{ rota_display_mode?: string }>(
     supabase.from("organisations").select("rota_display_mode").limit(1).maybeSingle())
   const rotaDisplayMode = orgRes.data?.rota_display_mode ?? "by_shift"
+
+  // Kick off user preferences in parallel with the main batch so the cascade
+  // (user.preferences ?? lab_config ?? default) adds no sequential latency.
+  const userPrefsPromise = getCachedUserPreferences()
 
   type MonthAssignmentRow = { date: string; staff_id: string; shift_type: string; staff: { first_name: string; last_name: string; role: string } | null }
   type MonthLabConfigRow = { punctions_by_day: Record<string, number> | null; country?: string | null; region?: string | null; public_holiday_mode?: string | null; min_lab_coverage?: number | null; min_weekend_lab_coverage?: number | null; min_andrology_coverage?: number | null; min_weekend_andrology?: number | null; ratio_optimal?: number | null; ratio_minimum?: number | null; first_day_of_week?: number | null; time_format?: string | null; biopsy_conversion_rate?: number | null; biopsy_day5_pct?: number | null; biopsy_day6_pct?: number | null }
@@ -299,10 +303,11 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
   })
 
   const lcRow = labConfigRes.data
+  const userPrefs = await userPrefsPromise
   const ratioOptimal = lcRow?.ratio_optimal ?? 1.0
   const ratioMinimum = lcRow?.ratio_minimum ?? 0.75
-  const firstDayOfWeek = lcRow?.first_day_of_week ?? 0
-  const timeFormat = lcRow?.time_format ?? "24h"
+  const firstDayOfWeek = userPrefs.firstDayOfWeek ?? lcRow?.first_day_of_week ?? 0
+  const timeFormat = userPrefs.timeFormat ?? lcRow?.time_format ?? "24h"
   const biopsyConversionRate = lcRow?.biopsy_conversion_rate ?? 0.5
   const biopsyDay5Pct = lcRow?.biopsy_day5_pct ?? 0.5
   const biopsyDay6Pct = lcRow?.biopsy_day6_pct ?? 0.5

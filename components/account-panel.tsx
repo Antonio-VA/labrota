@@ -42,7 +42,7 @@ export function AccountPanel({ open, onClose, user }: {
 }) {
   const t = useTranslations("account")
   const to = useTranslations("outlook")
-  const { prefs, update, status } = useUserPreferences(DEFAULT_PREFS)
+  const { prefs, update, status, lastError } = useUserPreferences(DEFAULT_PREFS)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [department, setDepartment] = useState<string | null>(null)
@@ -94,7 +94,7 @@ export function AccountPanel({ open, onClose, user }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <p className="text-[15px] font-medium">{t("title")}</p>
-            <SaveIndicator status={status} />
+            <SaveIndicator status={status} error={lastError} />
           </div>
           <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted transition-all duration-200 ease-out">
             <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110 hover:rotate-90" />
@@ -311,12 +311,21 @@ export function AccountPanel({ open, onClose, user }: {
   )
 }
 
-function SaveIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+function SaveIndicator({ status, error }: { status: "idle" | "saving" | "saved" | "error"; error?: string | null }) {
   const t = useTranslations("account")
   if (status === "idle") return null
-  const text = status === "saving" ? t("saving") : status === "saved" ? t("saved") : t("saveFailed")
-  const color = status === "error" ? "text-destructive" : "text-muted-foreground"
-  return <span className={cn("text-[11px] transition-opacity", color)}>{text}</span>
+  if (status === "error") {
+    return (
+      <span
+        className="text-[11px] text-destructive transition-opacity"
+        title={error ?? undefined}
+      >
+        {t("saveFailed")}{error ? `: ${error}` : ""}
+      </span>
+    )
+  }
+  const text = status === "saving" ? t("saving") : t("saved")
+  return <span className="text-[11px] text-muted-foreground transition-opacity">{text}</span>
 }
 
 // ── Font scale slider (shared between dropdown + panel) ──────────────────────

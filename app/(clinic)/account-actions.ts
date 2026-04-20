@@ -119,7 +119,10 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
     .select("preferences_updated_at")
     .single<{ preferences_updated_at: string }>()
 
-  if (error || !updated) return { error: error?.message ?? "Failed to save preferences." }
+  if (error || !updated) {
+    console.error("[saveUserPreferences] update failed", { userId: user.id, error })
+    return { error: error?.message ?? "Failed to save preferences." }
+  }
 
   const updatedAt = updated.preferences_updated_at
   const { cookies } = await import("next/headers")

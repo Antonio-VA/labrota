@@ -62,6 +62,7 @@ export function resolvePrefs(p: Partial<UserPreferences> | null | undefined): Sa
 export function useUserPreferences(initial: SavablePrefs) {
   const [prefs, setPrefsState] = useState<SavablePrefs>(initial)
   const [status, flashStatus, setStatus] = useTimedState<SaveStatus>("idle", SAVED_INDICATOR_MS)
+  const [lastError, setLastError] = useState<string | null>(null)
   const router = useRouter()
 
   const prefsRef = useRef<SavablePrefs>(initial)
@@ -76,8 +77,9 @@ export function useUserPreferences(initial: SavablePrefs) {
     pendingRef.current = null
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
     setStatus("saving")
+    setLastError(null)
     const result = await saveUserPreferences(toSave)
-    if (result.error) { setStatus("error"); return }
+    if (result.error) { setLastError(result.error); setStatus("error"); return }
     flashStatus("saved")
     bcRef.current?.postMessage({ prefs: toSave, source: instanceIdRef.current } satisfies BroadcastMessage)
   }, [flashStatus, setStatus])
@@ -134,5 +136,5 @@ export function useUserPreferences(initial: SavablePrefs) {
     }
   }, [flush])
 
-  return { prefs, update, status }
+  return { prefs, update, status, lastError }
 }
