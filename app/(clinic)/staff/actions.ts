@@ -1,5 +1,3 @@
-"use server"
-
 export { createStaff, updateStaff, deleteStaff } from "./_actions/crud"
 export {
   bulkAddSkill,
