@@ -17,55 +17,18 @@
  *  6. Task rotation: stable / weekly / daily within departments with >1 task
  */
 
-import type {
-  StaffWithSkills,
-  Leave,
-  RotaAssignment,
-  LabConfig,
-  RotaRule,
-  ShiftTypeDefinition,
-  SkillName,
-} from "@/lib/types/database"
+import type { SkillName, StaffWithSkills } from "@/lib/types/database"
 
 import { getDayCode, isWeekend, addDays, getWeekDates } from "@/lib/engine-helpers"
 import { toISODate } from "@/lib/format-date"
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+import type { TaskDayPlan, TaskEngineResult, TaskEngineParams } from "./task-engine/types"
+import { reserveMinCoverage } from "./task-engine/min-coverage"
+import { checkNoLibrarMismoDia } from "./task-engine/no-librar-check"
+import { applyDayRules } from "./task-engine/apply-day-rules"
+import { fillBudgets } from "./task-engine/budget-fill"
 
-export interface TaskDayPlan {
-  date: string
-  /** Every assignment has a task (function_label). One staff can appear multiple times. */
-  assignments: { staff_id: string; shift_type: string; function_label: string }[]
-  /** Staff available but not assigned to any task */
-  offStaff: string[]
-  skillGaps: SkillName[]
-}
-
-export interface TaskEngineResult {
-  days: TaskDayPlan[]
-  warnings: string[]
-}
-
-export interface TaskEngineParams {
-  weekStart: string
-  staff: StaffWithSkills[]
-  leaves: Leave[]
-  recentAssignments: RotaAssignment[]
-  labConfig: LabConfig
-  shiftTypes?: ShiftTypeDefinition[]
-  rules?: RotaRule[]
-  tecnicas: {
-    codigo: string
-    department: string
-    typical_shifts?: string[]
-    avoid_shifts?: string[]
-  }[]
-  taskRotation?: "stable" | "weekly" | "daily"
-  taskCoverageEnabled?: boolean
-  taskCoverageByDay?: Record<string, Record<string, number>> | null
-  /** Recent task assignments for rotation inference: staff_id → tecnica_code[] */
-  recentTaskAssignments?: { staff_id: string; tecnica_code: string; date: string }[]
-}
+export type { TaskDayPlan, TaskEngineResult, TaskEngineParams }
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 
@@ -193,47 +156,14 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
   }
 
   // ── PHASE 1: Pre-plan minimum department coverage ────────────────────────
-  // Reserve budget so every day meets its department minimums before tasks
-  // are distributed. Same approach as the shift engine's Phase 1.
-
-  const minCoverageReserved: Record<string, Set<string>> = {}
-
-  for (const date of allWeekDates) {
-    minCoverageReserved[date] = new Set()
-    const dayCode = getDayCode(date)
-    const wknd = isWeekend(date)
-    const dayCoverage = labConfig.coverage_by_day?.[dayCode]
-
-    for (const role of ["lab", "andrology", "admin"] as const) {
-      const required = dayCoverage?.[role] ?? (role === "lab" ? labConfig.min_lab_coverage : role === "andrology" ? labConfig.min_andrology_coverage : 0)
-      if (required <= 0) continue
-
-      const eligible = staff.filter((s) => {
-        if (s.onboarding_status === "inactive" || s.role !== role) return false
-        if (s.start_date > date || (s.end_date && s.end_date < date)) return false
-        if (leaveMap[s.id]?.has(date)) return false
-        const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
-        return reserved < (s.days_per_week ?? 5)
-      }).sort((a, b) => {
-        const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
-        const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
-        if (aRes !== bRes) return aRes - bRes
-        const aInPattern = (!a.working_pattern?.length || a.working_pattern.includes(dayCode)) ? 0 : 1
-        const bInPattern = (!b.working_pattern?.length || b.working_pattern.includes(dayCode)) ? 0 : 1
-        if (aInPattern !== bInPattern) return aInPattern - bInPattern
-        if (daysOffPref === "prefer_weekend" && wknd) {
-          const aWknd = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(a.id)).length
-          const bWknd = Object.entries(minCoverageReserved).filter(([d, s]) => isWeekend(d) && s.has(b.id)).length
-          if (aWknd !== bWknd) return aWknd - bWknd
-        }
-        return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
-      })
-
-      for (let i = 0; i < Math.min(required, eligible.length); i++) {
-        minCoverageReserved[date].add(eligible[i].id)
-      }
-    }
-  }
+  const minCoverageReserved = reserveMinCoverage({
+    staff,
+    allWeekDates,
+    labConfig,
+    leaveMap,
+    workloadScore,
+    daysOffPref,
+  })
 
   // ── Task rotation helper ──────────────────────────────────────────────────
   // Returns a sorting score for a candidate+task combo based on rotation mode.
@@ -270,6 +200,13 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
   }
 
   // ── PHASE 2: Day-by-day task assignment ──────────────────────────────────
+  // Intentionally kept inline. The loop reads and writes ~10 mutable maps
+  // (weeklyDayCount, assignedByDate, minCoverageReserved, workloadScore,
+  // leaveMap, lastTasksByStaff, tecByDept, …) and many closures
+  // (isAvailable, hasBudget, getStaffSkills, isQualified, taskRotationScore,
+  // consecutiveDaysBefore). Extracting it would require threading all of that
+  // through a params object or refactoring the loop into a stateful class —
+  // not a size-only win. Do not flag in file-size audits.
 
   for (let dayIndex = 0; dayIndex < allWeekDates.length; dayIndex++) {
     const date = allWeekDates[dayIndex]
@@ -321,152 +258,18 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     })
 
     // ── 2b: Apply scheduling rules to filter staff ──────────────────────
-
-    const hardRemovals = new Set<string>()
-
-    if (rules.length > 0) {
-      const dateMonth = date.slice(0, 7)
-      const weekendCountThisMonth: Record<string, number> = {}
-      for (const a of recentAssignments) {
-        if (a.date.slice(0, 7) === dateMonth && isWeekend(a.date)) {
-          weekendCountThisMonth[a.staff_id] = (weekendCountThisMonth[a.staff_id] ?? 0) + 1
-        }
-      }
-
-      for (const rule of rules.filter((r) => r.enabled)) {
-        const affectedIds = rule.staff_ids.length > 0 ? new Set(rule.staff_ids) : null
-        const affects = (id: string) => affectedIds === null || affectedIds.has(id)
-
-        if (rule.type === "max_dias_consecutivos") {
-          const maxDays = (rule.params.maxDays as number) ?? 5
-          for (const s of eligibleStaff) {
-            if (!affects(s.id)) continue
-            if (consecutiveDaysBefore(s.id, date) >= maxDays) {
-              if (rule.is_hard) {
-                hardRemovals.add(s.id)
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxDays} días consecutivos (regla obligatoria)`)
-              } else {
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxDays} días consecutivos`)
-              }
-            }
-          }
-        }
-
-        if (rule.type === "distribucion_fines_semana" && weekend) {
-          const maxPerMonth = (rule.params.maxPerMonth as number) ?? 2
-          for (const s of eligibleStaff) {
-            if (!affects(s.id)) continue
-            if ((weekendCountThisMonth[s.id] ?? 0) >= maxPerMonth) {
-              if (rule.is_hard) {
-                hardRemovals.add(s.id)
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — ${maxPerMonth} fines de semana este mes (regla obligatoria)`)
-              } else {
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} lleva ${maxPerMonth} fines de semana este mes`)
-              }
-            }
-          }
-        }
-
-        if (rule.type === "no_coincidir") {
-          const scope = (rule.params.scope as string | undefined) ?? "same_day"
-          const ruleDays = (rule.params.days as string[] | undefined) ?? []
-          if (ruleDays.length > 0 && !ruleDays.includes(dayCode)) {
-            // Rule doesn't apply today — skip
-          } else if (scope === "same_day") {
-            const ruleStaff = rule.staff_ids
-            if (ruleStaff.length >= 2) {
-              const present = eligibleStaff.filter((s) => ruleStaff.includes(s.id) && !hardRemovals.has(s.id))
-              if (present.length >= 2 && rule.is_hard) {
-                present.sort((a, b) => (workloadScore[b.id] ?? 0) - (workloadScore[a.id] ?? 0))
-                for (let i = 1; i < present.length; i++) {
-                  if (!reservedIds.has(present[i].id)) {
-                    hardRemovals.add(present[i].id)
-                  }
-                }
-                const removedNames = present.slice(1).filter((s) => !reservedIds.has(s.id)).map((s) => s.first_name)
-                if (removedNames.length > 0) {
-                  warnings.push(`${date}: ${removedNames.join(", ")} retirado — no coincidir con ${present[0].first_name} (regla obligatoria)`)
-                }
-              } else if (present.length >= 2) {
-                warnings.push(`${date}: ${present.map((s) => s.first_name).join(" + ")} assigned together (no_coincidir, soft)`)
-              }
-            }
-          }
-          // scope === "same_shift" not applicable in task engine (no shifts)
-        }
-
-        if (rule.type === "descanso_fin_de_semana" && weekend) {
-          const recovery = (rule.params.recovery as string) ?? "following"
-          const restDays = (rule.params.restDays as number) ?? 2
-
-          for (const s of eligibleStaff) {
-            if (!affects(s.id)) continue
-            const dayCode = getDayCode(date)
-            const prevSat = addDays(date, -(dayCode === "sat" ? 7 : 8))
-            const prevSun = addDays(date, -(dayCode === "sun" ? 7 : 6))
-            const workedLastWeekend = recentAssignments.some(
-              (a) => a.staff_id === s.id && (a.date === prevSat || a.date === prevSun)
-            )
-
-            if (recovery === "following" && workedLastWeekend) {
-              if (rule.is_hard) {
-                hardRemovals.add(s.id)
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — trabajó el fin de semana pasado (regla obligatoria)`)
-              } else {
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — needs rest (descanso_fin_de_semana)`)
-              }
-            } else if (recovery === "previous" && workedLastWeekend) {
-              if (rule.is_hard) {
-                hardRemovals.add(s.id)
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — fines de semana alternos (regla obligatoria)`)
-              } else {
-                warnings.push(`${date}: ${s.first_name} ${s.last_name} worked last weekend — alternating weekends required`)
-              }
-            }
-          }
-
-          // Rest days after weekend (weekday check)
-          if (restDays > 0 && !weekend) {
-            for (const s of eligibleStaff) {
-              if (!affects(s.id)) continue
-              const lastWorkedWeekend = [...recentAssignments]
-                .filter((a) => a.staff_id === s.id && isWeekend(a.date))
-                .sort((a, b) => b.date.localeCompare(a.date))[0]
-              if (!lastWorkedWeekend) continue
-              const diffMs = new Date(date + "T12:00:00").getTime() - new Date(lastWorkedWeekend.date + "T12:00:00").getTime()
-              const diffDays = Math.round(diffMs / 86400000)
-              if (diffDays > 0 && diffDays <= restDays) {
-                if (rule.is_hard) {
-                  hardRemovals.add(s.id)
-                  warnings.push(`${date}: ${s.first_name} ${s.last_name} descansa — necesita ${restDays} días de descanso tras fin de semana (regla obligatoria)`)
-                } else {
-                  warnings.push(`${date}: ${s.first_name} ${s.last_name} needs ${restDays} rest days after weekend`)
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // asignacion_fija: force-include staff on specified days, prevent hard removals
-    const fixedShiftOverrides: Record<string, string> = {} // staff_id → forced shift code
-    for (const rule of rules.filter((r) => r.enabled && r.type === "asignacion_fija")) {
-      const fixedShift = rule.params.fixedShift as string | undefined
-      const fixedDays = (rule.params.fixedDays as string[] | undefined) ?? []
-      if (fixedDays.length > 0 && !fixedDays.includes(dayCode)) continue
-      for (const staffId of rule.staff_ids) {
-        const s = eligibleStaff.find((st) => st.id === staffId)
-        if (!s) continue
-        if (rule.is_hard) {
-          hardRemovals.delete(staffId) // override any earlier hard removal
-          if (fixedShift) fixedShiftOverrides[staffId] = fixedShift
-          warnings.push(`${date}: ${s.first_name} ${s.last_name} — asignación fija${fixedShift ? ` (${fixedShift})` : ""}`)
-        } else if (hardRemovals.has(staffId)) {
-          warnings.push(`${date}: ${s.first_name} ${s.last_name} no asignado — asignación fija no cumplida (regla blanda)`)
-        }
-      }
-    }
+    const { hardRemovals, fixedShiftOverrides } = applyDayRules({
+      date,
+      dayCode,
+      weekend,
+      rules,
+      eligibleStaff,
+      reservedIds,
+      recentAssignments,
+      workloadScore,
+      consecutiveDaysBefore,
+      warnings,
+    })
 
     // Working staff for today (after rule removals)
     const workingStaff = eligibleStaff.filter((s) => !hardRemovals.has(s.id))
@@ -868,142 +671,21 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
     }
 
-    // ── 2f-pre: Budget-filling pass ────────────────────────────────────
-    // After meeting minimum demand, distribute remaining staff capacity
-    // across tasks they're qualified for. This ensures staff use their
-    // full weekly budget and all tasks get adequate coverage.
-
-    // Build no_misma_tarea conflict lookup: for each task, which staff IDs
-    // are already assigned and would conflict with new additions?
-    const noMismaTareaGroups: { staffIds: Set<string> }[] = []
-    for (const rule of rules.filter((r) => r.enabled && r.type === "no_misma_tarea" && r.is_hard)) {
-      noMismaTareaGroups.push({ staffIds: new Set(rule.staff_ids) })
-    }
-
-    function wouldConflictNoMismaTarea(staffId: string, taskCode: string): boolean {
-      for (const group of noMismaTareaGroups) {
-        if (!group.staffIds.has(staffId)) continue
-        // Check if another member of this conflict group is already on this task
-        const otherOnTask = dayAssignments.some((a) =>
-          a.function_label === taskCode && a.staff_id !== staffId && group.staffIds.has(a.staff_id)
-        )
-        if (otherOnTask) return true
-      }
-      return false
-    }
-
-    // Collect working staff qualifications
-    const allQualifiedTasks: Record<string, string[]> = {} // staff_id → task codes they can do
-    for (const s of workingStaff) {
-      const skills = staffSkillsCache[s.id]
-      if (!skills) continue
-      const qualifiedFor = tecnicas.filter((t) => isQualified(skills, t.codigo)).map((t) => t.codigo)
-      if (qualifiedFor.length > 0) allQualifiedTasks[s.id] = qualifiedFor
-    }
-
-    // Sort tasks by how many staff are already assigned (fewest first → spread load)
-    const taskAssignCount: Record<string, number> = {}
-    for (const a of dayAssignments) {
-      taskAssignCount[a.function_label] = (taskAssignCount[a.function_label] ?? 0) + 1
-    }
-
-    // Staff sorted by fewest tasks assigned today (prioritise idle staff)
-    const staffByLoad = [...workingStaff].sort((a, b) => {
-      const aCount = staffTaskCount[a.id] ?? 0
-      const bCount = staffTaskCount[b.id] ?? 0
-      if (aCount !== bCount) return aCount - bCount
-      return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
+    // ── 2f: Budget-filling + group-extension passes ─────────────────────────
+    fillBudgets({
+      workingStaff,
+      staffSkillsCache,
+      tecnicas,
+      rules,
+      linkedGroups,
+      taskConflictThreshold,
+      dummyShift,
+      workloadScore,
+      dayAssignments,
+      staffTaskCount,
+      staffTasks,
+      assignedStaffIds,
     })
-
-    // Task-to-group lookup: task code → its linked group array (same JS reference per group)
-    const taskToLinkedGroup = new Map<string, string[]>()
-    for (const g of linkedGroups) {
-      for (const c of g) taskToLinkedGroup.set(c, g)
-    }
-
-    // ── 2f: Budget-filling pass ─────────────────────────────────────────────
-    // Assign every unassigned working staff to their best-fit technique group.
-    // "Best fit" = the linked group (tecnicas_juntas rule) for which the staff
-    // is qualified for the most tasks. Staff are assigned to ALL tasks in their
-    // group that they can do. Staff with no matching group get the least-covered
-    // standalone task instead.
-    for (const s of staffByLoad) {
-      if (assignedStaffIds.has(s.id) && (staffTaskCount[s.id] ?? 0) >= 1) continue
-      const qualified = allQualifiedTasks[s.id]
-      if (!qualified || qualified.length === 0) continue
-
-      // Find best-fit linked group (most tasks the staff is qualified for)
-      let bestGroup: string[] | null = null
-      let bestScore = 0
-      for (const g of linkedGroups) {
-        const score = g.filter((t) => qualified.includes(t)).length
-        if (score > bestScore) { bestScore = score; bestGroup = g }
-      }
-
-      if (bestGroup && bestScore > 0) {
-        // Assign to all qualified tasks in the best-fit group
-        for (const taskCode of bestGroup) {
-          if (!qualified.includes(taskCode)) continue
-          if (wouldConflictNoMismaTarea(s.id, taskCode)) continue
-          if ((staffTaskCount[s.id] ?? 0) >= taskConflictThreshold) break
-          dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: taskCode })
-          staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
-          if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
-          staffTasks[s.id].add(taskCode)
-          assignedStaffIds.add(s.id)
-          taskAssignCount[taskCode] = (taskAssignCount[taskCode] ?? 0) + 1
-        }
-      } else {
-        // No linked group: pick the least-covered task (prefer standalone over grouped)
-        const pick = [...qualified]
-          .filter((t) => !wouldConflictNoMismaTarea(s.id, t))
-          .sort((a, b) => {
-            const aGrouped = taskToLinkedGroup.has(a) ? 1 : 0
-            const bGrouped = taskToLinkedGroup.has(b) ? 1 : 0
-            if (aGrouped !== bGrouped) return aGrouped - bGrouped
-            return (taskAssignCount[a] ?? 0) - (taskAssignCount[b] ?? 0)
-          })[0]
-        if (!pick) continue
-        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: pick })
-        staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
-        if (!staffTasks[s.id]) staffTasks[s.id] = new Set()
-        staffTasks[s.id].add(pick)
-        assignedStaffIds.add(s.id)
-        taskAssignCount[pick] = (taskAssignCount[pick] ?? 0) + 1
-      }
-    }
-
-    // ── 2g: Group-extension pass ────────────────────────────────────────────
-    // Staff already assigned to any task in a linked group should also cover
-    // the other tasks in that same group they're qualified for.
-    // Staff NOT in any linked group do NOT get additional tasks — this prevents
-    // multi-skilled staff from flooding every task row.
-    for (const s of staffByLoad) {
-      const qualified = allQualifiedTasks[s.id]
-      if (!qualified) continue
-      const currentTasks = staffTasks[s.id]
-      if (!currentTasks || currentTasks.size === 0) continue
-
-      // Find the linked group this staff is part of (first match wins)
-      let myGroup: string[] | null = null
-      for (const taskCode of currentTasks) {
-        const g = taskToLinkedGroup.get(taskCode)
-        if (g) { myGroup = g; break }
-      }
-      if (!myGroup) continue // No linked group → no extension
-
-      // Extend to remaining qualified tasks in the same group only
-      for (const taskCode of myGroup) {
-        if (currentTasks.has(taskCode)) continue
-        if (!qualified.includes(taskCode)) continue
-        if (wouldConflictNoMismaTarea(s.id, taskCode)) continue
-        if ((staffTaskCount[s.id] ?? 0) >= taskConflictThreshold) break
-        dayAssignments.push({ staff_id: s.id, shift_type: dummyShift, function_label: taskCode })
-        staffTaskCount[s.id] = (staffTaskCount[s.id] ?? 0) + 1
-        currentTasks.add(taskCode)
-        taskAssignCount[taskCode] = (taskAssignCount[taskCode] ?? 0) + 1
-      }
-    }
 
     // ── 2f: Determine OFF staff ─────────────────────────────────────────
 
@@ -1050,32 +732,8 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     }
   }
 
-  // ── Post-plan: Repair no_librar_mismo_dia violations ──────────────────────
-  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
-    for (const dayPlan of days) {
-      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
-      const offIds = new Set(dayPlan.offStaff)
-      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id) && offIds.has(id))
-      // Only act if ALL conflict members are off
-      if (conflictOff.length < rule.staff_ids.length) continue
-
-      warnings.push(
-        `${dayPlan.date}: no_librar_mismo_dia — ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} todos libres`
-      )
-    }
-  }
-  // Soft no_librar_mismo_dia: just warn
-  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && !r.is_hard && r.staff_ids.length >= 2)) {
-    for (const dayPlan of days) {
-      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
-      const offIds = new Set(dayPlan.offStaff)
-      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id) && offIds.has(id))
-      if (conflictOff.length < rule.staff_ids.length) continue
-      warnings.push(
-        `${dayPlan.date}: no_librar_mismo_dia — ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} todos libres (regla blanda)`
-      )
-    }
-  }
+  // ── Post-plan: no_librar_mismo_dia warnings ───────────────────────────────
+  checkNoLibrarMismoDia(days, rules, staff, warnings)
 
   return { days, warnings }
 }
