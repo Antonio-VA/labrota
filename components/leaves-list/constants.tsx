@@ -4,6 +4,7 @@ import { Plane, Cross, User, GraduationCap, Baby, CalendarX } from "lucide-react
 import { cn } from "@/lib/utils"
 import type { LeaveType, LeaveWithStaff } from "@/lib/types/database"
 import type { useTranslations } from "next-intl"
+import { toISODate } from "@/lib/format-date"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -13,7 +14,7 @@ export function daysBetween(start: string, end: string): number {
   return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
-export const TODAY = new Date().toISOString().split("T")[0]
+export const TODAY = toISODate()
 
 // ── Leave type config (icon + color) ─────────────────────────────────────────
 

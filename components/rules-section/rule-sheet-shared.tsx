@@ -5,6 +5,7 @@ import { ShieldAlert, ShieldCheck, Clock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { Staff, Tecnica } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 const LABEL_CLASS = "block text-[13px] font-medium text-foreground mb-1"
 export const INPUT_CLASS =
@@ -179,7 +180,7 @@ export function ExpiryToggle({ value, onChange }: { value: string; onChange: (v:
       onClick={() => {
         const d = new Date()
         d.setDate(d.getDate() + 30)
-        onChange(d.toISOString().split("T")[0])
+        onChange(toISODate(d))
       }}
       className="text-[12px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
     >

@@ -4,6 +4,7 @@
  */
 
 import type { ShiftCoverageEntry, WorkingDay } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 export const WEEKDAY_CODES: WorkingDay[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
 
@@ -19,7 +20,7 @@ export function isWeekend(isoDate: string): boolean {
 export function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T12:00:00")
   d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 /** Return ISO date strings for all 7 days of the week starting on weekStart. */
@@ -29,7 +30,7 @@ export function getWeekDates(weekStart: string): string[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(base)
     d.setDate(base.getDate() + i)
-    dates.push(d.toISOString().split("T")[0])
+    dates.push(toISODate(d))
   }
   return dates
 }

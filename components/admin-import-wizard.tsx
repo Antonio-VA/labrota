@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { Upload, ArrowLeft, ArrowRight, Check, AlertTriangle, FileSpreadsheet, X, Trash2, Plus } from "lucide-react"
 import { getSheetNames, parseSheet, type ParsedRota, type ParsedStaff, type ParsedTechnique, type ParsedShift, type ParsedLeave } from "@/lib/parse-excel-rota"
 import { importOrganisation, type ImportPayload } from "@/app/admin/import-actions"
+import { toISODate } from "@/lib/format-date"
 
 type Step = "upload" | "sheet" | "mapping" | "confirm"
 type TechniqueWithColor = ParsedTechnique & { color: string }
@@ -152,7 +153,7 @@ export function AdminImportWizard({ orgName: externalOrgName }: { orgName?: stri
           shifts,
           leaves,
           assignments: parsed?.assignments ?? [],
-          weekStart: parsed?.weekStart ?? new Date().toISOString().split("T")[0],
+          weekStart: parsed?.weekStart ?? toISODate(),
         }
         const result = await importOrganisation(payload)
         if (result.error) { toast.error(result.error); return }

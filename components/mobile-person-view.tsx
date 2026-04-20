@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Search, Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, toISODate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
@@ -106,7 +106,7 @@ export function MobilePersonView({
             {days.map((day) => {
               const myAssignments = day.assignments.filter((a) => a.staff_id === selectedStaffId)
               const isOnLeave = onLeaveByDate[day.date]?.includes(selectedStaffId!) ?? false
-              const isToday = day.date === new Date().toISOString().split("T")[0]
+              const isToday = day.date === toISODate()
 
               return (
                 <div

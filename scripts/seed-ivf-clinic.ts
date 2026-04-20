@@ -7,6 +7,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { config } from "dotenv"
+import { toISODate } from "@/lib/format-date"
 config({ path: ".env.local" })
 
 const supabase = createClient(
@@ -39,7 +40,7 @@ function randomDate(from: string, to: string): string {
   const start = new Date(from + "T12:00:00").getTime()
   const end = new Date(to + "T12:00:00").getTime()
   const d = new Date(start + Math.random() * (end - start))
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ async function main() {
       const durationDays = 1 + Math.floor(Math.random() * 7) // 1-7 days
       const endDate = new Date(start + "T12:00:00")
       endDate.setDate(endDate.getDate() + durationDays - 1)
-      const end = endDate.toISOString().split("T")[0]
+      const end = toISODate(endDate)
 
       const type = pickRandom(leaveTypes)
       const status = Math.random() > 0.3 ? "approved" : "pending"

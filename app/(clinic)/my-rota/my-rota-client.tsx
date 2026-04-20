@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useViewerStaffId } from "@/lib/role-context"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 import { getRotaWeek, type RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { MySchedule } from "@/components/my-schedule"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const TODAY = new Date().toISOString().split("T")[0]
+const TODAY = toISODate()
 
 // Module-level cache — survives navigation away and back
 const _myRotaCache = new Map<string, RotaWeekData>()
@@ -16,7 +16,7 @@ const _myRotaCache = new Map<string, RotaWeekData>()
 function addDaysToDate(date: string, days: number): string {
   const d = new Date(date + "T12:00:00")
   d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 export function MyRotaClient() {

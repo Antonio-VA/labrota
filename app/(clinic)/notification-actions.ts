@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Notification } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 export async function getNotifications(): Promise<Notification[]> {
   const supabase = await createClient()
@@ -75,7 +76,7 @@ export async function notifyLeaveImpact(params: {
   const overlapping = (rotas ?? []).filter((r) => {
     const weekEnd = new Date(r.week_start + "T12:00:00")
     weekEnd.setDate(weekEnd.getDate() + 6)
-    const weekEndStr = weekEnd.toISOString().split("T")[0]
+    const weekEndStr = toISODate(weekEnd)
     return r.week_start <= params.endDate && weekEndStr >= params.startDate
   })
 

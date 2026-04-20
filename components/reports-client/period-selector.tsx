@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { toISODate } from "@/lib/format-date"
 
 
 // ── Period presets ────────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ type PeriodKey = "this_week" | "last_4_weeks" | "this_month" | "last_month" | "c
 
 export function getPresetDates(key: PeriodKey): { from: string; to: string } | null {
   const today = new Date()
-  const iso = (d: Date) => d.toISOString().split("T")[0]
+  const iso = (d: Date) => toISODate(d)
 
   if (key === "this_week") {
     const dow = today.getDay()

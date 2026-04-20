@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Plus, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { toISODate } from "@/lib/format-date"
 
 export function EndDateField({ initialValue, disabled, label }: { initialValue: string | null; disabled: boolean; label: string }) {
   const t = useTranslations("staff")
@@ -57,7 +58,7 @@ function nextSunday(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00")
   const dow = d.getDay()
   if (dow !== 0) d.setDate(d.getDate() + (7 - dow))
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 export function OnboardingPeriodField({ initialValue, disabled }: { initialValue: string | null; disabled: boolean }) {

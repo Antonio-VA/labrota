@@ -10,6 +10,7 @@ import { DayStatsInput } from "./day-stats-input"
 import { DayWarningPopover } from "./warnings"
 import { TODAY } from "./constants"
 import { buildPuncResolver } from "./utils"
+import { toISODate } from "@/lib/format-date"
 
 export function ShiftGridHeader({
   headerDates, localDays, locale, publicHolidays,
@@ -66,8 +67,8 @@ export function ShiftGridHeader({
           const forecast = computeBiopsyForecast(dateStr, getPuncForDate, biopsyConversionRate, biopsyDay5Pct, biopsyDay6Pct)
           const d5ago = new Date(dateStr + "T12:00:00"); d5ago.setDate(d5ago.getDate() - 5)
           const d6ago = new Date(dateStr + "T12:00:00"); d6ago.setDate(d6ago.getDate() - 6)
-          const p5 = getPuncForDate(d5ago.toISOString().split("T")[0])
-          const p6 = getPuncForDate(d6ago.toISOString().split("T")[0])
+          const p5 = getPuncForDate(toISODate(d5ago))
+          const p6 = getPuncForDate(toISODate(d6ago))
           const sources: string[] = []
           if (p5 > 0) sources.push(t("punctionsD5", { count: p5 }))
           if (p6 > 0) sources.push(t("punctionsD6", { count: p6 }))

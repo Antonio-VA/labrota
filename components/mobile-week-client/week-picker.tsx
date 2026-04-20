@@ -5,12 +5,12 @@ import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 
 export function addDays(date: string, n: number): string {
   const d = new Date(date + "T12:00:00")
   d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 export function WeekPicker({ weekStart, locale, onSelect }: { weekStart: string; locale: "es" | "en"; onSelect: (w: string) => void }) {

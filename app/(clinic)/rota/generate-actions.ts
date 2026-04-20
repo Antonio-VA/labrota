@@ -15,6 +15,7 @@ import {
   releaseRotaGenerationLock,
   ROTA_GENERATION_LOCK_ERROR,
 } from "@/lib/rota-generation-lock"
+import { toISODate } from "@/lib/format-date"
 import type {
   StaffWithSkills,
   Leave,
@@ -39,7 +40,7 @@ export async function generateRota(
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
-  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+  const fourWeeksAgoStr = toISODate(fourWeeksAgo)
 
   // Fetch all required data in parallel
   const [staffRes, leavesRes, recentAssignmentsRes, labConfigRes, rulesRes, shiftTypesForEngine, tecnicasForEngine] = await Promise.all([
@@ -359,7 +360,7 @@ export async function generateRotaWithAI(
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
-  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+  const fourWeeksAgoStr = toISODate(fourWeeksAgo)
 
   // Fetch all data (same as generateRota)
   const [staffRes, leavesRes, recentRes, labConfigRes, rulesRes, shiftTypesRes, tecnicasRes] = await Promise.all([
@@ -691,8 +692,8 @@ export async function getHybridUsage(): Promise<{ used: number; limit: number; r
   const orgId = await getCachedOrgId()
   if (!orgId) return { used: 0, limit: 10, remaining: 10 }
 
-  const today = new Date().toISOString().split("T")[0]
-  const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + ONE_DAY_MS).toISOString().split("T")[0]
+  const today = toISODate()
+  const tomorrow = toISODate(new Date(today + "T00:00:00Z").getTime() + ONE_DAY_MS)
 
   const [orgRes, usageRes] = await Promise.all([
     supabase.from("organisations").select("daily_hybrid_limit").eq("id", orgId).single(),
@@ -733,7 +734,7 @@ export async function generateRotaHybrid(
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
-  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+  const fourWeeksAgoStr = toISODate(fourWeeksAgo)
 
   // ── 1. Fetch all data ──────────────────────────────────────────────────────
   const [staffRes, leavesRes, recentRes, labConfigRes, rulesRes, shiftTypesRes, tecnicasRes] = await Promise.all([
@@ -1267,7 +1268,7 @@ export async function generateTaskHybrid(
   const weekDates = getWeekDates(weekStart)
   const fourWeeksAgo = new Date(weekStart + "T12:00:00")
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - RECENT_ASSIGNMENTS_LOOKBACK_DAYS)
-  const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+  const fourWeeksAgoStr = toISODate(fourWeeksAgo)
 
   // ── 1. Fetch all data ────────────────────────────────────────────────────────
   const [staffRes, leavesRes, recentRes, labConfigRes, rulesRes, shiftTypesRes, tecnicasRes, recentTaskRes] = await Promise.all([

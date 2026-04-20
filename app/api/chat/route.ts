@@ -6,7 +6,7 @@ import { getOrgId } from "@/lib/get-org-id"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { StaffRole, SkillName, PunctionsByDay, LabConfigUpdate } from "@/lib/types/database"
 import { propose } from "@/lib/proposal-types"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 
 const SKILL_LABEL: Record<string, string> = {
   icsi: "ICSI", iui: "IUI", vitrification: "Vitrification", thawing: "Thawing",
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
   if (viewingWeekStart) {
     const d = new Date(viewingWeekStart + "T12:00:00")
     d.setDate(d.getDate() + 6)
-    viewingWeekEnd = d.toISOString().split("T")[0]
+    viewingWeekEnd = toISODate(d)
   }
 
   const weekContext = viewingWeekStart
@@ -166,7 +166,7 @@ ${pageContext ? `- ${pageContext}` : ""}
 - When analysing coverage, compare actual staff per shift against lab minimums.
 - IMPORTANT: Always use your read tools (getWeekRota, getWeekCoverage, etc.) to fetch actual data before answering questions about the rota. Never guess or assume what the rota contains. Even if you just proposed generating a rota and the user confirmed it, you MUST call getWeekRota or getWeekCoverage to see the actual results — your propose tools do not return rota data.
 - Dates in tool parameters use ISO format (YYYY-MM-DD), but when DISPLAYING dates to the user, always use a readable format like "Mon 4 May 2026" or "4–10 May 2026". Never show raw ISO dates in your text responses.
-- The current date is ${new Date().toISOString().split("T")[0]}.`
+- The current date is ${toISODate()}.`
 
   try {
   const result = streamText({
@@ -189,7 +189,7 @@ ${pageContext ? `- ${pageContext}` : ""}
         }),
         execute: async ({ weekStart }) => {
           const endDate = (() => {
-            const d = new Date(weekStart + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toISOString().split("T")[0]
+            const d = new Date(weekStart + "T12:00:00"); d.setDate(d.getDate() + 6); return toISODate(d)
           })()
 
           const { data: assignments } = await supabase
@@ -245,7 +245,7 @@ ${pageContext ? `- ${pageContext}` : ""}
         }),
         execute: async ({ weekStart }) => {
           const endDate = (() => {
-            const d = new Date(weekStart + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toISOString().split("T")[0]
+            const d = new Date(weekStart + "T12:00:00"); d.setDate(d.getDate() + 6); return toISODate(d)
           })()
 
           const [assignmentsRes, configRes, shiftTypesRes] = await Promise.all([
@@ -343,9 +343,9 @@ ${pageContext ? `- ${pageContext}` : ""}
           if (!staffList?.length) return { error: `No staff found matching "${staffName}"` }
 
           const staff = staffList[0]
-          const today = new Date().toISOString().split("T")[0]
+          const today = toISODate()
           const fourWeeksAgo = new Date(); fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
-          const fourWeeksAgoStr = fourWeeksAgo.toISOString().split("T")[0]
+          const fourWeeksAgoStr = toISODate(fourWeeksAgo)
 
           const [assignmentsRes, leavesRes] = await Promise.all([
             supabase.from("rota_assignments")
@@ -406,8 +406,8 @@ ${pageContext ? `- ${pageContext}` : ""}
           staffName: z.string().optional().describe("Filter by staff name (partial match)"),
         }),
         execute: async ({ from, to, staffName }) => {
-          const fromDate = from ?? new Date().toISOString().split("T")[0]
-          const toDate = to ?? (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().split("T")[0] })()
+          const fromDate = from ?? toISODate()
+          const toDate = to ?? (() => { const d = new Date(); d.setDate(d.getDate() + 90); return toISODate(d) })()
 
           const query = supabase
             .from("leaves")

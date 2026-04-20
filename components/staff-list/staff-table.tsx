@@ -11,6 +11,7 @@ import { HeaderPopover } from "./dropdown-panel"
 import { SkillOverflow } from "./skill-overflow"
 import { StaffColorDot } from "./staff-color-dot"
 import { buildGrid, DAY_LABELS, ALL_DAYS_TABLE, ALL_COL_ORDER, type ColKey } from "./types"
+import { toISODate } from "@/lib/format-date"
 
 export function StaffTable({
   members, t, ts, muted,
@@ -236,7 +237,7 @@ export function StaffTable({
                   )}
                   {(() => {
                     const end = member.onboarding_end_date
-                    const today = new Date().toISOString().split("T")[0]
+                    const today = toISODate()
                     if (end && today <= end) return (
                       <Tooltip>
                         <TooltipTrigger render={<span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 cursor-default">ONBOARDING</span>} />

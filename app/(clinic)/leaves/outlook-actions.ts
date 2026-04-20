@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { syncStaffOutlook } from "@/lib/outlook/sync"
 import type { OutlookConnection, Staff } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 export type OutlookStaffStatus = {
   staffId: string
@@ -132,7 +133,7 @@ export async function disconnectOutlook(
       .eq("source", "outlook")
   } else {
     // Delete future Outlook-synced leaves
-    const today = new Date().toISOString().split("T")[0]
+    const today = toISODate()
     await admin
       .from("leaves")
       .delete()

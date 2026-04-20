@@ -39,6 +39,7 @@ import type {
   WorkingDay,
 } from "@/lib/types/database"
 import { getDayCode, isWeekend, addDays, getWeekDates, normalizeShiftCov } from "@/lib/engine-helpers"
+import { toISODate } from "@/lib/format-date"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ export function runRotaEngineV2({
     const s = new Date(leave.start_date + "T12:00:00")
     const e = new Date(leave.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       if (!leaveMap[leave.staff_id]) leaveMap[leave.staff_id] = new Set()
       leaveMap[leave.staff_id].add(iso)
     }
@@ -239,7 +240,7 @@ export function runRotaEngineV2({
     const d = new Date(date + "T12:00:00")
     for (let i = 0; i < 30; i++) {
       d.setDate(d.getDate() - 1)
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       if (!assignedByDate[iso]?.has(staffId)) break
       count++
     }

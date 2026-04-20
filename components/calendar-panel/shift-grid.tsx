@@ -14,6 +14,7 @@ import {
   type RotaDay,
   type ShiftTimes,
 } from "@/app/(clinic)/rota/actions"
+import { toISODate } from "@/lib/format-date"
 import type { StaffWithSkills, ShiftType } from "@/lib/types/database"
 import { useShiftGridDnd } from "@/hooks/use-shift-grid-dnd"
 import { DraggableShiftBadge, DroppableCell } from "./dnd-wrappers"
@@ -91,7 +92,7 @@ export function ShiftGrid({
     for (let i = 0; i < 7; i++) {
       const d = new Date(base)
       d.setDate(base.getDate() + i)
-      dates.push(d.toISOString().split("T")[0])
+      dates.push(toISODate(d))
     }
     return dates
   }, [weekStart])

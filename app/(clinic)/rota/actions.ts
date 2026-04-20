@@ -8,7 +8,7 @@ import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { getWeekDates } from "@/lib/engine-helpers"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot } from "@/lib/rota-snapshots"
 import type {
@@ -271,7 +271,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const s = new Date(leave.start_date + "T12:00:00")
     const e = new Date(leave.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       if (!onLeaveByDate[iso]) onLeaveByDate[iso] = []
       onLeaveByDate[iso].push(leave.staff_id)
       if (!onLeaveTypeByDate[iso]) onLeaveTypeByDate[iso] = {}
@@ -798,7 +798,7 @@ export async function regenerateDay(
   const [staffRes, leavesRes, recentRes, configRes, rulesRes, shiftRes, tecRes] = await Promise.all([
     supabase.from("staff").select("*, staff_skills(*)").neq("onboarding_status", "inactive"),
     supabase.from("leaves").select("staff_id, start_date, end_date, type").lte("start_date", weekDates[6]).gte("end_date", weekDates[0]).eq("status", "approved"),
-    supabase.from("rota_assignments").select("staff_id, date, shift_type").gte("date", fourWeeksAgo.toISOString().split("T")[0]).lte("date", weekDates[6]),
+    supabase.from("rota_assignments").select("staff_id, date, shift_type").gte("date", toISODate(fourWeeksAgo)).lte("date", weekDates[6]),
     supabase.from("lab_config").select("*").single(),
     supabase.from("rota_rules").select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at").eq("enabled", true),
     supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days").order("sort_order"),
@@ -1203,7 +1203,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     for (let i = 0; i < 28; i++) {
       const d = new Date(base)
       d.setDate(base.getDate() + i)
-      gridDates.push(d.toISOString().split("T")[0])
+      gridDates.push(toISODate(d))
     }
   } else {
     // Legacy month grid
@@ -1220,7 +1220,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
 
     gridDates = []
     for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
-      gridDates.push(d.toISOString().split("T")[0])
+      gridDates.push(toISODate(d))
     }
   }
 
@@ -1309,7 +1309,7 @@ export async function getRotaMonthSummary(monthStart: string, weekStartOverride?
     const s = new Date(l.start_date + "T12:00:00")
     const e = new Date(l.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       leaveByDate[iso] = (leaveByDate[iso] ?? 0) + 1
     }
   }
@@ -1445,12 +1445,12 @@ export interface StaffProfileData {
 
 export async function getStaffProfile(staffId: string, weekStart?: string): Promise<StaffProfileData> {
   const supabase = await createClient()
-  const today    = new Date().toISOString().split("T")[0]
+  const today    = toISODate()
 
   // Go back 8 weeks to capture enough history for "last 10 shifts"
   const eightWeeksAgo = new Date()
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
-  const since = eightWeeksAgo.toISOString().split("T")[0]
+  const since = toISODate(eightWeeksAgo)
 
   // Compute previous and next week date ranges relative to the viewed week
   const viewedMonday = new Date((weekStart ?? getMondayOf()) + "T12:00:00")
@@ -1462,7 +1462,7 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
   nextMonday.setDate(nextMonday.getDate() + 7)
   const nextSunday = new Date(nextMonday)
   nextSunday.setDate(nextSunday.getDate() + 6)
-  const fmt = (d: Date) => d.toISOString().split("T")[0]
+  const fmt = (d: Date) => toISODate(d)
 
   const [assignmentsRes, leavesRes, pastLeavesRes, prevWeekRes, nextWeekRes, rulesRes] = await Promise.all([
     typedQuery<{ date: string; shift_type: string; function_label: string | null }[]>(
@@ -1523,7 +1523,7 @@ export async function getStaffProfile(staffId: string, weekStart?: string): Prom
     nextWeekAssignments: nextWeekRes.data ?? [],
     rules: (rulesRes.data ?? []).filter((r) =>
       (r.staff_ids.includes(staffId) || r.params.supervisor_id === staffId) &&
-      (!r.expires_at || r.expires_at > (weekStart ?? new Date().toISOString().split("T")[0]))
+      (!r.expires_at || r.expires_at > (weekStart ?? toISODate()))
     ),
   }
 }
@@ -1536,7 +1536,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
   // Get the same weekday from last week
   const lastWeekDate = new Date(date + "T12:00:00")
   lastWeekDate.setDate(lastWeekDate.getDate() - 7)
-  const lastWeek = lastWeekDate.toISOString().split("T")[0]
+  const lastWeek = toISODate(lastWeekDate)
 
   const { data: lastWeekAssignments } = await typedQuery<{ staff_id: string; shift_type: string; function_label: string | null }[]>(
     supabase
@@ -1596,7 +1596,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
   // Previous week start
   const prevDate = new Date(weekStart + "T12:00:00")
   prevDate.setDate(prevDate.getDate() - 7)
-  const prevWeekStart = prevDate.toISOString().split("T")[0]
+  const prevWeekStart = toISODate(prevDate)
   const prevDates = getWeekDates(prevWeekStart)
   const currDates = getWeekDates(weekStart)
 
@@ -1635,7 +1635,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     const s = new Date(l.start_date + "T12:00:00")
     const e = new Date(l.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       if (!onLeave[iso]) onLeave[iso] = new Set()
       onLeave[iso].add(l.staff_id)
     }
@@ -1784,7 +1784,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
     const s = new Date(l.start_date + "T12:00:00")
     const e = new Date(l.end_date + "T12:00:00")
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split("T")[0]
+      const iso = toISODate(d)
       if (!onLeave[iso]) onLeave[iso] = new Set()
       onLeave[iso].add(l.staff_id)
     }

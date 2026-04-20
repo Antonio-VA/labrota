@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toISODate } from "@/lib/format-date"
 
 const DAY_LABELS_ES = ["L", "M", "X", "J", "V", "S", "D"]
 const DAY_LABELS_EN = ["M", "T", "W", "T", "F", "S", "S"]
@@ -32,7 +33,7 @@ export function WeeklyStrip({
   personalMode?: boolean
 }) {
   const labels = locale === "es" ? DAY_LABELS_ES : DAY_LABELS_EN
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   const touchStartX = useRef(0)
 
   return (

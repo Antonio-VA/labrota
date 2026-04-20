@@ -1,5 +1,6 @@
 import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL, DEFAULT_DEPT_ORDER } from "@/lib/department-colors"
 import type { DeptMaps } from "./types"
+import { toISODate } from "@/lib/format-date"
 
 export const DEFAULT_DEPT_MAPS: DeptMaps = {
   border: DEFAULT_DEPT_BORDER,
@@ -46,7 +47,7 @@ export const LEGACY_SKILL_NAMES: Record<string, string> = {
   sperm_freezing: "Congelación de esperma",
 }
 
-export const TODAY = new Date().toISOString().split("T")[0]
+export const TODAY = toISODate()
 
 export const DAY_ES_2: Record<string, string> = { mon: "Lu", tue: "Ma", wed: "Mi", thu: "Ju", fri: "Vi", sat: "Sá", sun: "Do" }
 

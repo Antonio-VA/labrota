@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic"
 import { notFound } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
 import { getRotaWeek } from "@/app/(clinic)/rota/actions"
-import { formatDateWithYear, formatDate } from "@/lib/format-date"
+import { formatDateWithYear, formatDate, toISODate } from "@/lib/format-date"
 import { DEFAULT_DEPT_BORDER, DEFAULT_DEPT_LABEL } from "@/lib/department-colors"
 import { createClient } from "@/lib/supabase/server"
 import { formatTime } from "@/lib/format-time"
@@ -36,8 +36,8 @@ export default async function PrintRotaPage({
 
   const weekEnd = new Date(weekStart + "T12:00:00")
   weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekLabel = `${formatDate(weekStart, locale)} – ${formatDateWithYear(weekEnd.toISOString().split("T")[0], locale)}`
-  const today = formatDateWithYear(new Date().toISOString().split("T")[0], locale)
+  const weekLabel = `${formatDate(weekStart, locale)} – ${formatDateWithYear(toISODate(weekEnd), locale)}`
+  const today = formatDateWithYear(toISODate(), locale)
 
   // Department colours from DB or fallback
   const deptBorder: Record<string, string> = { ...DEFAULT_DEPT_BORDER }
@@ -158,7 +158,7 @@ export default async function PrintRotaPage({
                 const d = new Date(day.date + "T12:00:00")
                 const wday = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d).toUpperCase()
                 const dayNum = d.getDate()
-                const isToday = day.date === new Date().toISOString().split("T")[0]
+                const isToday = day.date === toISODate()
                 return (
                   <th key={day.date} style={{
                     padding: "6px 4px", textAlign: "center",

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
-import { formatDateWithYear, getMondayOf } from "@/lib/format-date"
+import { formatDateWithYear, getMondayOf, toISODate } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ function getDatesInRange(from: string, to: string): string[] {
   const d = new Date(from + "T12:00:00")
   const end = new Date(to + "T12:00:00")
   while (d <= end) {
-    dates.push(d.toISOString().split("T")[0])
+    dates.push(toISODate(d))
     d.setDate(d.getDate() + 1)
   }
   return dates
@@ -315,8 +315,8 @@ export async function generateExtraDaysReport(month: string): Promise<ExtraDaysD
   const [year, mon] = month.split("-").map(Number)
   const firstDay = new Date(year, mon - 1, 1)
   const lastDay = new Date(year, mon, 0)
-  const from = firstDay.toISOString().split("T")[0]
-  const to = lastDay.toISOString().split("T")[0]
+  const from = toISODate(firstDay)
+  const to = toISODate(lastDay)
 
   // Fetch staff
   const { data: staffData } = await supabase

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { Palmtree, ArrowLeftRight, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 
@@ -25,7 +25,7 @@ const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T12:00:00")
   d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 function formatWeekOption(mondayStr: string, locale: "es" | "en"): string {
@@ -85,7 +85,7 @@ export function MySchedule({
 }: MyScheduleProps) {
   const t = useTranslations("mySchedule")
   const tc = useTranslations("common")
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   const [currentDate, setCurrentDate] = useState(initialDate ?? today)
 
   // Sync internal state when parent changes the week (via prev/next buttons)

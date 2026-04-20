@@ -11,7 +11,7 @@ import { useMobileWeekData } from "@/hooks/use-mobile-week-data"
 import { TapPopover } from "@/components/tap-popover"
 import { WeekNotes } from "@/components/week-notes"
 import { toast } from "sonner"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 import { ROLE_COLOR, contrastColor, ROLE_LABEL, LEAVE_ICONS, LEAVE_COLORS, dayAbbrFor } from "./constants"
 import { WeekPicker } from "./week-picker"
 import { WeekInsightsSheet, WeekWarningsSheet } from "./bottom-sheets"
@@ -97,7 +97,7 @@ export function MobileWeekClient() {
     setWeekStart(getMondayOf(d))
   }
 
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   const currentWeek = getMondayOf()
   const isCurrentWeek = weekStart === currentWeek
 

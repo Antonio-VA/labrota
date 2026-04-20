@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { runRotaEngineV2 } from "../rota-engine-v2"
 import { getWeekDates } from "../engine-helpers"
+import { toISODate } from "../format-date"
 import type {
   StaffWithSkills,
   Leave,
@@ -405,8 +406,7 @@ describe("runRotaEngineV2 — rules", () => {
     // Seed 5 consecutive days immediately before Monday
     const recentAssignments = Array.from({ length: 5 }, (_, i) => ({
       id: `r${i}`, staff_id: "s1",
-      date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
-        .toISOString().split("T")[0],
+      date: toISODate(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000),
       shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",
@@ -431,8 +431,7 @@ describe("runRotaEngineV2 — rules", () => {
     const staff = [makeStaff({ id: "s1" })]
     const recentAssignments = Array.from({ length: 5 }, (_, i) => ({
       id: `r${i}`, staff_id: "s1",
-      date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
-        .toISOString().split("T")[0],
+      date: toISODate(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000),
       shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",
@@ -486,8 +485,7 @@ describe("runRotaEngineV2 — rules", () => {
     const staff = [makeStaff({ id: "s1" })]
     const recentAssignments = Array.from({ length: 5 }, (_, i) => ({
       id: `r${i}`, staff_id: "s1",
-      date: new Date(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000)
-        .toISOString().split("T")[0],
+      date: toISODate(new Date("2026-03-16T12:00:00").getTime() - (5 - i) * 86400000),
       shift_type: "T1", is_manual_override: false,
       function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null,
       rota_id: "r", organisation_id: ORG, created_at: "", updated_at: "",

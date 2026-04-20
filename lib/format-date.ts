@@ -94,5 +94,27 @@ export function getMondayOf(input: string | Date = new Date()): string {
   d.setHours(12, 0, 0, 0)
   const dow = d.getDay() // 0 = Sun
   d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow))
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
+}
+
+/**
+ * YYYY-MM-DD string. Single replacement for the `.toISOString().split("T")[0]`
+ * idiom scattered across the codebase.
+ *
+ * Accepts:
+ *   - Date instance
+ *   - number (epoch ms) — equivalent to `new Date(n)`
+ *   - string already in `YYYY-MM-DD` shape (returned as-is, avoiding a
+ *     round-trip through Date that can slip the day across UTC-offset
+ *     boundaries)
+ *   - any other string parseable by `new Date(s)`
+ *   - no argument: today's date in UTC
+ */
+export function toISODate(date: Date | string | number = new Date()): string {
+  if (typeof date === "string") {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+    return new Date(date).toISOString().slice(0, 10)
+  }
+  if (typeof date === "number") return new Date(date).toISOString().slice(0, 10)
+  return date.toISOString().slice(0, 10)
 }

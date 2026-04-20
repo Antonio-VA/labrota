@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import type { SwapRequest, SwapType } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -390,7 +391,7 @@ export async function getDayOffExchangeOptions(
   for (let i = 0; i < 14; i++) {
     const d = new Date(start)
     d.setDate(d.getDate() + i)
-    const iso = d.toISOString().split("T")[0]
+    const iso = toISODate(d)
     // Exclude the initiator's own shift date
     if (iso !== initAssignment.date) dateRange.push(iso)
   }

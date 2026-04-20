@@ -6,6 +6,7 @@ import { getOrgId } from "@/lib/get-org-id"
 import { createBackup } from "@/app/admin/backup-actions"
 import type { ExtractedData, ImportResult } from "@/lib/types/import"
 import type { RotaRuleType } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 const PASTEL_COLORS = [
   "#BFDBFE", "#BBF7D0", "#FECACA", "#FDE68A", "#DDD6FE", "#FBCFE8",
@@ -55,7 +56,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
           onboarding_status: "active" as const,
           color: PASTEL_COLORS[i % PASTEL_COLORS.length],
           contracted_hours: 40,
-          start_date: new Date().toISOString().split("T")[0],
+          start_date: toISODate(),
         }
       })
 

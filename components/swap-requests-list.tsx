@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowLeftRight, Check, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, toISODate } from "@/lib/format-date"
 import type { SwapRequestWithNames } from "@/app/(clinic)/swaps/actions"
 
 interface SwapRequestsListProps {
@@ -65,7 +65,7 @@ export function SwapRequestsList({ staffId, locale }: SwapRequestsListProps) {
   if (loading) return null
 
   // Only show swaps for today or future dates
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   const futureSwaps = swaps.filter(s => s.swap_date >= today)
   if (futureSwaps.length === 0) return null
 

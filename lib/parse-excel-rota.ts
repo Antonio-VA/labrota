@@ -1,5 +1,5 @@
 import type * as XLSXType from "xlsx"
-import { getMondayOf } from "@/lib/format-date"
+import { getMondayOf, toISODate } from "@/lib/format-date"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ function isDate(cell: unknown, SSF?: typeof XLSXType.SSF): Date | null {
 }
 
 function toISO(d: Date): string {
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 function looksLikeInitials(s: string): boolean {

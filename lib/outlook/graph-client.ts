@@ -1,6 +1,7 @@
 import { MICROSOFT_TOKEN_URL, GRAPH_BASE_URL, getClientConfig } from "./config"
 import { encrypt, decrypt } from "./encryption"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { toISODate } from "@/lib/format-date"
 
 interface TokenResponse {
   access_token: string
@@ -156,7 +157,7 @@ export async function fetchOOFEvents(
       if (e.isAllDay && end > start) {
         const d = new Date(end)
         d.setDate(d.getDate() - 1)
-        end = d.toISOString().split("T")[0]
+        end = toISODate(d)
       }
       return { eventId: e.id, subject: e.subject, startDate: start, endDate: end }
     })

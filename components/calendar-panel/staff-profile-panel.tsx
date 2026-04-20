@@ -6,7 +6,7 @@ import { X, CalendarPlus, CalendarX, Clock, Star, ChevronUp, ChevronDown } from 
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { formatDateRange, formatDateWithYear } from "@/lib/format-date"
+import { formatDateRange, formatDateWithYear, toISODate } from "@/lib/format-date"
 import { useUserRole } from "@/lib/role-context"
 import { getStaffProfile, type RotaWeekData, type StaffProfileData } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
@@ -121,7 +121,7 @@ export function StaffProfilePanel({
                   )}
                   {(() => {
                     const end = staff.onboarding_end_date
-                    const today = new Date().toISOString().split("T")[0]
+                    const today = toISODate()
                     if (end && today <= end) return (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">ONBOARDING</span>
                     )
@@ -199,7 +199,7 @@ export function StaffProfilePanel({
                       {Array.from({ length: 7 }).map((_, i) => {
                         const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
                         const d = new Date(ws); d.setDate(d.getDate() - 7 + i)
-                        const dateStr = d.toISOString().split("T")[0]
+                        const dateStr = toISODate(d)
                         const a = (data?.prevWeekAssignments ?? []).find((a) => a.date === dateStr)
                         return (
                           <div key={i} className="flex flex-col items-center gap-0.5">
@@ -227,7 +227,7 @@ export function StaffProfilePanel({
                       {Array.from({ length: 7 }).map((_, i) => {
                         const ws = weekStart ? new Date(weekStart + "T12:00:00") : new Date()
                         const d = new Date(ws); d.setDate(d.getDate() + 7 + i)
-                        const dateStr = d.toISOString().split("T")[0]
+                        const dateStr = toISODate(d)
                         const a = (data?.nextWeekAssignments ?? []).find((a) => a.date === dateStr)
                         return (
                           <div key={i} className="flex flex-col items-center gap-0.5">
@@ -390,7 +390,7 @@ export function StaffProfilePanel({
                 </div>
                 {(() => {
                   const end = staff.onboarding_end_date
-                  const today = new Date().toISOString().split("T")[0]
+                  const today = toISODate()
                   if (!end) return null
                   return (
                     <div>

@@ -1,5 +1,5 @@
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
-import { formatDate, formatDateWithYear } from "@/lib/format-date"
+import { formatDate, formatDateWithYear, toISODate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
 
 /**
@@ -17,7 +17,7 @@ export function buildRotaEmailHtml(params: {
 
   const weekEnd = new Date(data.weekStart + "T12:00:00")
   weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekLabel = `${formatDate(data.weekStart, locale)} – ${formatDateWithYear(weekEnd.toISOString().split("T")[0], locale)}`
+  const weekLabel = `${formatDate(data.weekStart, locale)} – ${formatDateWithYear(toISODate(weekEnd), locale)}`
 
   const subject = isEs
     ? `Horario publicado: ${weekLabel}`

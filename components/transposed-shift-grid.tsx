@@ -13,6 +13,7 @@ import { useStaffHover } from "@/components/staff-hover-context"
 import type { StaffWithSkills, ShiftType, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import { ROLE_BORDER, TECNICA_PILL } from "@/components/calendar-panel/constants"
+import { toISODate } from "@/lib/format-date"
 
 const DOW_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 
@@ -138,7 +139,7 @@ function TransposedShiftGridInner({
     return map
   }, [staffList, data.departments])
 
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
 
   // Local optimistic state — mirrors data.days but allows instant UI updates
   type DayData = NonNullable<typeof data>["days"][0]

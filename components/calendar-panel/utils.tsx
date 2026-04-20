@@ -3,6 +3,7 @@ import type { Tecnica } from "@/lib/types/database"
 import type { DeptMaps, ViewMode } from "./types"
 import { DEFAULT_DEPT_MAPS, ROLE_ORDER, SHIFT_ORDER, LEGACY_SKILL_NAMES } from "./constants"
 import { Bookmark, Grid3X3, Sparkles, BrainCircuit } from "lucide-react"
+import { toISODate } from "@/lib/format-date"
 
 /** Pick the locale-appropriate department display name */
 export function deptDisplayName(d: import("@/lib/types/database").Department, locale: string): string {
@@ -48,13 +49,13 @@ export function sortAssignments<T extends { staff: { role: string }; shift_type:
 export function addDays(isoDate: string, n: number): string {
   const d = new Date(isoDate + "T12:00:00")
   d.setDate(d.getDate() + n)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 export function addMonths(isoDate: string, n: number): string {
   const d = new Date(isoDate + "T12:00:00")
   d.setMonth(d.getMonth() + n)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 export function getMonthStart(isoDate: string): string {

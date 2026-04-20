@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { toISODate } from "@/lib/format-date"
 
 interface ImportStaff {
   initials: string
@@ -92,7 +93,7 @@ export async function importOrganisation(payload: ImportPayload): Promise<{ erro
 
   // 4. Create staff (batch insert, then map initials → IDs)
   const staffIdMap: Record<string, string> = {}
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   if (payload.staff.length > 0) {
     const staffRows = payload.staff.map((s) => ({
       organisation_id: orgId,
@@ -335,7 +336,7 @@ export async function importHistoricalRota(
   }
 
   // Process leaves — only future or spanning-current
-  const TODAY = new Date().toISOString().split("T")[0]
+  const TODAY = toISODate()
   for (const l of payload.leaves) {
     if (l.to && l.to < TODAY) continue // Past leave, skip
     const staffId = staffByInitials[l.initials]

@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffRole, OnboardingStatus, ContractType, SkillName, SkillLevel, WorkingDay, ShiftType } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -429,7 +430,7 @@ export async function bulkSoftDeleteStaff(
   const supabase = await createClient()
   const orgId = await getOrgId()
   if (!orgId) return { deleted: 0, error: "Not authenticated." }
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
 
   const { data, error } = await supabase
     .from("staff")

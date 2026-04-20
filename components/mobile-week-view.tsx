@@ -7,6 +7,7 @@ import { RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
+import { toISODate } from "@/lib/format-date"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
@@ -59,7 +60,7 @@ export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null;
           >
             <div className="px-2 py-2 border-r border-border" />
             {dayLabels.map((dl, i) => {
-              const isToday = dl.date === new Date().toISOString().split("T")[0]
+              const isToday = dl.date === toISODate()
               const isWeekend = [0, 6].includes(new Date(dl.date + "T12:00:00").getDay())
               return (
                 <div

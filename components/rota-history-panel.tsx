@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getWeekSnapshots, restoreWeekSnapshot, type RotaSnapshot, type SnapshotAssignment } from "@/lib/rota-snapshots"
-import { formatDate, formatDateTime } from "@/lib/format-date"
+import { formatDate, formatDateTime, toISODate } from "@/lib/format-date"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
@@ -16,7 +16,7 @@ function getWeekDates(weekStart: string): string[] {
   const dates: string[] = []
   const d = new Date(weekStart + "T12:00:00")
   for (let i = 0; i < 7; i++) {
-    dates.push(d.toISOString().split("T")[0])
+    dates.push(toISODate(d))
     d.setDate(d.getDate() + 1)
   }
   return dates

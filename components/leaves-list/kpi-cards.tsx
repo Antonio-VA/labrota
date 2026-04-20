@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import { daysBetween, TODAY } from "./constants"
 import type { LeaveWithStaff } from "@/lib/types/database"
+import { toISODate } from "@/lib/format-date"
 
 // ── KPI summary cards ────────────────────────────────────────────────────────
 
@@ -21,8 +22,8 @@ export function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   weekStart.setDate(todayDate.getDate() + mondayOffset)
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekStart.getDate() + 6)
-  const wsISO = weekStart.toISOString().split("T")[0]
-  const weISO = weekEnd.toISOString().split("T")[0]
+  const wsISO = toISODate(weekStart)
+  const weISO = toISODate(weekEnd)
 
   let thisWeekDays = 0
   for (const l of leaves) {
@@ -35,7 +36,7 @@ export function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   // Next 4 weeks — total absence days in next 28 days
   const fourWeeksOut = new Date(todayDate)
   fourWeeksOut.setDate(todayDate.getDate() + 28)
-  const fourWeeksISO = fourWeeksOut.toISOString().split("T")[0]
+  const fourWeeksISO = toISODate(fourWeeksOut)
   let next4WeeksDays = 0
   for (const l of leaves) {
     if (l.end_date < TODAY || l.start_date > fourWeeksISO) continue
@@ -47,7 +48,7 @@ export function KpiCards({ leaves }: { leaves: LeaveWithStaff[] }) {
   // Next 12 weeks — total absence days in next 84 days
   const twelveWeeksOut = new Date(todayDate)
   twelveWeeksOut.setDate(todayDate.getDate() + 84)
-  const twelveWeeksISO = twelveWeeksOut.toISOString().split("T")[0]
+  const twelveWeeksISO = toISODate(twelveWeeksOut)
   let next12WeeksDays = 0
   for (const l of leaves) {
     if (l.end_date < TODAY || l.start_date > twelveWeeksISO) continue

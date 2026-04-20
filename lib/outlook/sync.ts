@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getValidAccessToken, fetchOOFEvents, type OOFEvent } from "./graph-client"
-import { formatDateRange, formatDateWithYear, getMondayOf } from "@/lib/format-date"
+import { formatDateRange, formatDateWithYear, getMondayOf, toISODate } from "@/lib/format-date"
 import type { LeaveType } from "@/lib/types/database"
 
 function formatLeaveRange(start: string, end: string): string {
@@ -58,8 +58,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   }
 
   // Fetch OOF events for the next 90 days
-  const today = new Date().toISOString().split("T")[0]
-  const futureDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  const today = toISODate()
+  const futureDate = toISODate(Date.now() + 90 * 24 * 60 * 60 * 1000)
 
   let oofEvents: OOFEvent[]
   try {

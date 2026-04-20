@@ -1,3 +1,5 @@
+import { toISODate } from "@/lib/format-date"
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedLeaveEntry {
@@ -54,7 +56,7 @@ export function parseDate(s: string): string {
   if (dmy) {
     const d = parseInt(dmy[1], 10), m = parseInt(dmy[2], 10) - 1, y = parseInt(dmy[3], 10)
     const dt = new Date(y, m, d, 12)
-    if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0]
+    if (!isNaN(dt.getTime())) return toISODate(dt)
   }
 
   // DD/MM (current year)
@@ -62,7 +64,7 @@ export function parseDate(s: string): string {
   if (dmShort) {
     const d = parseInt(dmShort[1], 10), m = parseInt(dmShort[2], 10) - 1
     const dt = new Date(new Date().getFullYear(), m, d, 12)
-    if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0]
+    if (!isNaN(dt.getTime())) return toISODate(dt)
   }
 
   // "24 mar 2026", "24 march 2026", "24 de marzo de 2026"
@@ -74,7 +76,7 @@ export function parseDate(s: string): string {
     const y = textDate[3] ? parseInt(textDate[3], 10) : new Date().getFullYear()
     if (m !== undefined) {
       const dt = new Date(y, m, d, 12)
-      if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0]
+      if (!isNaN(dt.getTime())) return toISODate(dt)
     }
   }
 
@@ -87,7 +89,7 @@ export function parseDate(s: string): string {
     const y = enDate[3] ? parseInt(enDate[3], 10) : new Date().getFullYear()
     if (m !== undefined) {
       const dt = new Date(y, m, d, 12)
-      if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0]
+      if (!isNaN(dt.getTime())) return toISODate(dt)
     }
   }
 

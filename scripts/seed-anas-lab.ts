@@ -6,6 +6,7 @@
 import { readFileSync } from "fs"
 import { resolve } from "path"
 import { createClient } from "@supabase/supabase-js"
+import { toISODate } from "@/lib/format-date"
 
 try {
   const raw = readFileSync(resolve(process.cwd(), ".env.local"), "utf-8")
@@ -33,13 +34,13 @@ function monday(weeksFromNow: number): string {
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff + weeksFromNow * 7)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 function addDays(date: string, days: number): string {
   const d = new Date(date + "T12:00:00")
   d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]
+  return toISODate(d)
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

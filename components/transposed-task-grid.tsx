@@ -15,6 +15,7 @@ import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
 import { ROLE_BORDER } from "@/components/calendar-panel/constants"
 import { resolveColor } from "@/components/task-grid/constants"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
+import { toISODate } from "@/lib/format-date"
 
 // ── Staff selector popup ──────────────────────────────────────────────────────
 
@@ -283,7 +284,7 @@ function TransposedTaskGridInner({
   const { hoveredStaffId, setHovered } = useStaffHover()
 
   const tecnicas = useMemo(() => (data.tecnicas ?? []).filter((t) => t.activa).sort((a, b) => a.orden - b.orden), [data.tecnicas])
-  const today = new Date().toISOString().split("T")[0]
+  const today = toISODate()
   const visibleStaffIds = useMemo(() => new Set(staffList.map((s) => s.id)), [staffList])
   const staffColorMap = useMemo(() =>
     Object.fromEntries(staffList.map((s) => [s.id, s.color ? resolveColor(s.color) : (ROLE_BORDER[s.role] ?? "#64748B")]))
