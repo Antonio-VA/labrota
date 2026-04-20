@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
-import { applyTheme } from "@/components/account-panel"
+import { applyTheme } from "@/lib/apply-theme"
 import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
 import { toast } from "sonner"
 

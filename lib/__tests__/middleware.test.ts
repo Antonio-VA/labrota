@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 let mockUser: { id?: string; app_metadata?: { role?: string } } | null = null
-let mockProfileData: { preferences?: Record<string, unknown> } | null = null
+let mockProfileData: { preferences?: Record<string, unknown>; preferences_updated_at?: string } | null = null
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
@@ -26,10 +26,13 @@ const mockNext = vi.fn()
 
 class MockCookies {
   private store = new Map<string, string>()
+  private deleted = new Set<string>()
   getAll() { return [...this.store.entries()].map(([name, value]) => ({ name, value })) }
-  set(name: string, value: string) { this.store.set(name, value) }
+  set(name: string, value: string) { this.store.set(name, value); this.deleted.delete(name) }
   get(name: string) { return this.store.has(name) ? { name, value: this.store.get(name)! } : undefined }
   has(name: string) { return this.store.has(name) }
+  delete(name: string) { this.store.delete(name); this.deleted.add(name) }
+  wasDeleted(name: string) { return this.deleted.has(name) }
 }
 
 class MockNextResponse {
@@ -57,10 +60,12 @@ vi.mock("next/server", () => ({
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
-function createRequest(pathname: string, host = "labrota.app"): unknown {
+function createRequest(pathname: string, host = "labrota.app", cookies?: Record<string, string>): unknown {
   const url = `https://${host}${pathname}`
+  const reqCookies = new MockCookies()
+  if (cookies) for (const [name, value] of Object.entries(cookies)) reqCookies.set(name, value)
   return {
-    cookies: new MockCookies(),
+    cookies: reqCookies,
     nextUrl: {
       pathname,
       searchParams: new URLSearchParams(),
@@ -78,12 +83,12 @@ function createRequest(pathname: string, host = "labrota.app"): unknown {
   }
 }
 
-async function runMiddleware(pathname: string, host?: string) {
+async function runMiddleware(pathname: string, host?: string, cookies?: Record<string, string>) {
   mockRedirect.mockClear()
   mockRewrite.mockClear()
   mockNext.mockClear()
   const { middleware } = await import("@/middleware")
-  return middleware(createRequest(pathname, host) as Parameters<typeof middleware>[0])
+  return middleware(createRequest(pathname, host, cookies) as Parameters<typeof middleware>[0])
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -291,53 +296,86 @@ describe("middleware — admin subdomain", () => {
   })
 })
 
-describe("middleware — preferences sync (DB → cookies on new device)", () => {
-  it("writes labrota_theme cookie from DB preferences", async () => {
+describe("middleware — preferences sync (timestamp-based DB → cookies)", () => {
+  const TS1 = "2026-04-20T10:00:00.000Z"
+  const TS2 = "2026-04-20T11:00:00.000Z"
+
+  it("writes labrota_theme and labrota_prefs_ts cookies when ts cookie is missing", async () => {
     mockUser = { id: "u1", app_metadata: { role: "member" } }
-    mockProfileData = { preferences: { theme: "dark", accentColor: "#abcdef" } }
+    mockProfileData = { preferences: { theme: "dark", accentColor: "#abcdef" }, preferences_updated_at: TS1 }
     const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
     const cookie = res.cookies.get("labrota_theme")
     expect(cookie?.value).toContain('"theme":"dark"')
     expect(cookie?.value).toContain('"accentColor":"#abcdef"')
-  })
-
-  it("writes labrota_prefs_synced marker cookie", async () => {
-    mockUser = { id: "u1", app_metadata: { role: "member" } }
-    mockProfileData = { preferences: { theme: "light" } }
-    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
-    expect(res.cookies.get("labrota_prefs_synced")?.value).toBe("1")
+    expect(res.cookies.get("labrota_prefs_ts")?.value).toBe(TS1)
   })
 
   it("writes locale cookie when user chose one explicitly", async () => {
     mockUser = { id: "u1", app_metadata: { role: "member" } }
-    mockProfileData = { preferences: { locale: "en" } }
+    mockProfileData = { preferences: { locale: "en" }, preferences_updated_at: TS1 }
     const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
     expect(res.cookies.get("locale")?.value).toBe("en")
   })
 
-  it("does not write locale cookie when user chose 'browser'", async () => {
+  it("deletes locale cookie when user switched to 'browser'", async () => {
     mockUser = { id: "u1", app_metadata: { role: "member" } }
-    mockProfileData = { preferences: { locale: "browser" } }
-    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
-    expect(res.cookies.get("locale")).toBeUndefined()
+    mockProfileData = { preferences: { locale: "browser" }, preferences_updated_at: TS1 }
+    const res = (await runMiddleware("/schedule", undefined, { locale: "en" })) as unknown as MockNextResponse
+    expect(res.cookies.wasDeleted("locale")).toBe(true)
   })
 
-  it("does not query DB for super_admin", async () => {
+  it("does not touch cookies when ts matches (same device, already synced)", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "dark" }, preferences_updated_at: TS1 }
+    const res = (await runMiddleware("/schedule", undefined, { labrota_prefs_ts: TS1 })) as unknown as MockNextResponse
+    expect(res.cookies.get("labrota_theme")).toBeUndefined()
+    expect(res.cookies.get("labrota_prefs_ts")).toBeUndefined()
+  })
+
+  it("refreshes cookies when DB ts is newer than cookie ts (multi-device sync)", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "light" }, preferences_updated_at: TS2 }
+    const res = (await runMiddleware("/schedule", undefined, { labrota_prefs_ts: TS1 })) as unknown as MockNextResponse
+    expect(res.cookies.get("labrota_theme")?.value).toContain('"theme":"light"')
+    expect(res.cookies.get("labrota_prefs_ts")?.value).toBe(TS2)
+  })
+
+  it("does not query prefs for super_admin", async () => {
     mockUser = { id: "u1", app_metadata: { role: "super_admin" } }
-    mockProfileData = { preferences: { theme: "dark" } }
+    mockProfileData = { preferences: { theme: "dark" }, preferences_updated_at: TS1 }
     const res = (await runMiddleware("/admin")) as unknown as MockNextResponse
-    // super_admin path: prefs sync skipped entirely, no theme/marker cookie set
     expect(res.cookies.get("labrota_theme")).toBeUndefined()
-    expect(res.cookies.get("labrota_prefs_synced")).toBeUndefined()
+    expect(res.cookies.get("labrota_prefs_ts")).toBeUndefined()
   })
 
-  it("does not write theme cookie when DB has no preferences", async () => {
+  it("deletes labrota_theme when preferences have no theme fields", async () => {
     mockUser = { id: "u1", app_metadata: { role: "member" } }
-    mockProfileData = null
-    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    mockProfileData = { preferences: { locale: "en" }, preferences_updated_at: TS1 }
+    const res = (await runMiddleware("/schedule", undefined, { labrota_theme: "{\"theme\":\"dark\"}" })) as unknown as MockNextResponse
+    expect(res.cookies.wasDeleted("labrota_theme")).toBe(true)
+  })
+
+  it("skips DB read entirely when TTL cookie is fresh", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "dark" }, preferences_updated_at: TS2 }
+    const futureTtl = String(Date.now() + 60_000)
+    const res = (await runMiddleware("/schedule", undefined, {
+      labrota_prefs_ttl: futureTtl,
+      labrota_prefs_ts: TS1,
+    })) as unknown as MockNextResponse
+    // No sync work runs, so neither theme nor ts cookie gets written
     expect(res.cookies.get("labrota_theme")).toBeUndefined()
-    // Marker still gets set to avoid re-querying
-    expect(res.cookies.get("labrota_prefs_synced")?.value).toBe("1")
+    expect(res.cookies.get("labrota_prefs_ts")).toBeUndefined()
+    expect(res.cookies.get("labrota_prefs_ttl")).toBeUndefined()
+  })
+
+  it("writes labrota_prefs_ttl after a sync pass", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "dark" }, preferences_updated_at: TS1 }
+    const res = (await runMiddleware("/schedule")) as unknown as MockNextResponse
+    const ttl = res.cookies.get("labrota_prefs_ttl")?.value
+    expect(ttl).toBeDefined()
+    expect(parseInt(ttl!, 10)).toBeGreaterThan(Date.now())
   })
 })
 

@@ -11,7 +11,7 @@ import {
   saveUserPreferences, type UserPreferences, type UserOutlookStatus,
 } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
-import { applyTheme } from "@/components/account-panel"
+import { applyTheme } from "@/lib/apply-theme"
 import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
 import { toast } from "sonner"
 import { Sheet, SheetContent } from "@/components/ui/sheet"

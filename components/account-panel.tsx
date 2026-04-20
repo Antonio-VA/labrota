@@ -398,5 +398,3 @@ export function FontScaleSlider({ value, onChange }: { value: "s" | "m" | "l"; o
     </div>
   )
 }
-
-export { applyTheme } from "@/lib/apply-theme"

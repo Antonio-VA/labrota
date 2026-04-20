@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import {
+  PREFS_TS_COOKIE, PREFS_TTL_COOKIE, THEME_COOKIE, LOCALE_COOKIE,
+  PREFS_COOKIE_OPTS, PREFS_TTL_MS,
+} from "@/lib/preferences-cookies"
 
 const PUBLIC_PATHS = new Set([
   "/privacy",
@@ -67,42 +71,61 @@ export async function middleware(request: NextRequest) {
 
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
 
-  // ── Sync user preferences from DB → cookies on new device/browser ────────
-  // Only runs once per browser (marker cookie prevents repeated DB lookups).
-  // Covers: locale, theme, accentColor, fontScale.
-  if (user && !isSuperAdmin && !request.cookies.has("labrota_prefs_synced")) {
-    try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("preferences")
-        .eq("id", user.id)
-        .single() as { data: { preferences?: Record<string, unknown> } | null }
-      const prefs = data?.preferences as Record<string, unknown> | undefined
-      if (prefs) {
-        const maxAge = 365 * 24 * 60 * 60
-        const cookieOpts = { path: "/", maxAge, sameSite: "lax" as const }
+  // ── Sync user preferences from DB → cookies ──────────────────────────────
+  // Timestamp-based, TTL-gated. A short-lived `labrota_prefs_ttl` cookie lets
+  // us skip the DB on nearly every request. When the TTL expires, we compare
+  // `preferences_updated_at` (DB) against `labrota_prefs_ts` (cookie) and
+  // refresh cookies only if different. Changes made on one device propagate
+  // to others within PREFS_TTL_MS.
+  if (user && !isSuperAdmin) {
+    const ttlRaw = request.cookies.get(PREFS_TTL_COOKIE)?.value
+    const ttlExpiresAt = ttlRaw ? parseInt(ttlRaw, 10) : 0
+    const ttlFresh = ttlExpiresAt > Date.now()
 
-        // Locale: only set if user explicitly chose one (not "browser")
-        const dbLocale = prefs.locale as string | undefined
-        if (dbLocale && dbLocale !== "browser" && !request.cookies.has("locale")) {
-          supabaseResponse.cookies.set("locale", dbLocale, cookieOpts)
+    if (!ttlFresh) {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("preferences, preferences_updated_at")
+          .eq("id", user.id)
+          .single<{ preferences: Record<string, unknown> | null; preferences_updated_at: string }>()
+
+        const dbTs = data?.preferences_updated_at
+        const cookieTs = request.cookies.get(PREFS_TS_COOKIE)?.value
+
+        if (dbTs && dbTs !== cookieTs) {
+          const prefs = data?.preferences ?? {}
+          const dbLocale = prefs.locale as string | undefined
+          const currentLocale = request.cookies.get(LOCALE_COOKIE)?.value
+
+          if (dbLocale && dbLocale !== "browser") {
+            if (currentLocale !== dbLocale) supabaseResponse.cookies.set(LOCALE_COOKIE, dbLocale, PREFS_COOKIE_OPTS)
+          } else if (dbLocale === "browser" && currentLocale) {
+            supabaseResponse.cookies.delete(LOCALE_COOKIE)
+          }
+
+          const dbTheme = prefs.theme as string | undefined
+          const dbAccent = prefs.accentColor as string | undefined
+          const dbFontScale = prefs.fontScale as string | undefined
+          const currentTheme = request.cookies.get(THEME_COOKIE)?.value
+
+          if (dbTheme || dbAccent || dbFontScale) {
+            const themeObj: Record<string, string> = {}
+            if (dbTheme) themeObj.theme = dbTheme
+            if (dbAccent) themeObj.accentColor = dbAccent
+            if (dbFontScale) themeObj.fontScale = dbFontScale
+            const themeJson = JSON.stringify(themeObj)
+            if (currentTheme !== themeJson) supabaseResponse.cookies.set(THEME_COOKIE, themeJson, PREFS_COOKIE_OPTS)
+          } else if (currentTheme) {
+            supabaseResponse.cookies.delete(THEME_COOKIE)
+          }
+
+          supabaseResponse.cookies.set(PREFS_TS_COOKIE, dbTs, PREFS_COOKIE_OPTS)
         }
 
-        // Theme bundle: theme + accentColor + fontScale
-        const dbTheme = prefs.theme as string | undefined
-        const dbAccent = prefs.accentColor as string | undefined
-        const dbFontScale = prefs.fontScale as string | undefined
-        if ((dbTheme || dbAccent || dbFontScale) && !request.cookies.has("labrota_theme")) {
-          const themeObj: Record<string, string> = {}
-          if (dbTheme) themeObj.theme = dbTheme
-          if (dbAccent) themeObj.accentColor = dbAccent
-          if (dbFontScale) themeObj.fontScale = dbFontScale
-          supabaseResponse.cookies.set("labrota_theme", JSON.stringify(themeObj), cookieOpts)
-        }
-      }
-    } catch { /* non-critical — preferences will use defaults */ }
-    // Marker cookie so we don't query DB on every request
-    supabaseResponse.cookies.set("labrota_prefs_synced", "1", { path: "/", maxAge: 365 * 24 * 60 * 60, sameSite: "lax" })
+        supabaseResponse.cookies.set(PREFS_TTL_COOKIE, String(Date.now() + PREFS_TTL_MS), PREFS_COOKIE_OPTS)
+      } catch { /* non-critical — cookies retain previous values */ }
+    }
   }
 
   const hostname = (request.headers.get("host") ?? "").toLowerCase()

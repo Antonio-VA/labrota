@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  PREFS_TS_COOKIE, PREFS_TTL_COOKIE, PREFS_COOKIE_OPTS, PREFS_TTL_MS,
+} from "@/lib/preferences-cookies"
 
 export interface FavoriteView {
   view: string
@@ -96,12 +99,11 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
   return { url }
 }
 
-export async function saveUserPreferences(prefs: UserPreferences): Promise<{ error?: string }> {
+export async function saveUserPreferences(prefs: UserPreferences): Promise<{ error?: string; updatedAt?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated." }
 
-  // Merge with existing preferences to avoid wiping unrelated fields
   const { data: existing } = await supabase
     .from("profiles")
     .select("preferences")
@@ -110,20 +112,23 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
 
   const merged = { ...(existing?.preferences ?? {}), ...prefs }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("profiles")
     .update({ preferences: merged })
     .eq("id", user.id)
+    .select("preferences_updated_at")
+    .single<{ preferences_updated_at: string }>()
 
-  if (error) return { error: error.message }
+  if (error || !updated) return { error: error?.message ?? "Failed to save preferences." }
 
-  // Clear sync marker so other devices pick up the new preferences
+  const updatedAt = updated.preferences_updated_at
   const { cookies } = await import("next/headers")
   const cookieStore = await cookies()
-  cookieStore.delete("labrota_prefs_synced")
+  cookieStore.set(PREFS_TS_COOKIE, updatedAt, PREFS_COOKIE_OPTS)
+  cookieStore.set(PREFS_TTL_COOKIE, String(Date.now() + PREFS_TTL_MS), PREFS_COOKIE_OPTS)
 
   revalidatePath("/")
-  return {}
+  return { updatedAt }
 }
 
 export interface UserOutlookStatus {

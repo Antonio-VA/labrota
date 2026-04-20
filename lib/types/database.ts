@@ -88,6 +88,7 @@ export interface Profile {
   email:                   string
   full_name:               string | null
   preferences:             Record<string, unknown> | null
+  preferences_updated_at:  string
   created_at:              string
   updated_at:              string
 }
