@@ -3,11 +3,10 @@
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "./day-stats-input"
-import { DayWarningPopover } from "../toolbar/warnings"
+import { DayWarningPopover, HolidayBadge } from "../toolbar/warnings"
 import { TODAY } from "../constants"
 import { buildPuncResolver } from "../utils"
 import { toISODate } from "@/lib/format-date"
@@ -100,14 +99,7 @@ export function ShiftGridHeader({
             )}
           >
             {day && day.warnings.length > 0 && <DayWarningPopover warnings={day.warnings} />}
-            {holidayName && (
-              <Tooltip>
-                <TooltipTrigger render={
-                  <span className="absolute top-[4px] left-[6px] text-[11px] leading-none cursor-default">🏖️</span>
-                } />
-                <TooltipContent side="bottom">{holidayName}</TooltipContent>
-              </Tooltip>
-            )}
+            {holidayName && <HolidayBadge name={holidayName} />}
 
             <button
               onClick={() => onDateClick?.(dateStr)}

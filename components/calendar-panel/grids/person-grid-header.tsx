@@ -2,11 +2,10 @@
 
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "./day-stats-input"
-import { DayWarningPopover } from "../toolbar/warnings"
+import { DayWarningPopover, HolidayBadge } from "../toolbar/warnings"
 import { TODAY } from "../constants"
 import { buildPuncResolver } from "../utils"
 
@@ -77,12 +76,7 @@ export function PersonGridHeader({
             style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
           >
             {day.warnings.length > 0 && <DayWarningPopover warnings={day.warnings} />}
-            {holiday && (
-              <Tooltip>
-                <TooltipTrigger render={<span className="absolute top-[4px] left-[6px] text-[11px] leading-none cursor-default">🏖️</span>} />
-                <TooltipContent side="bottom">{holiday}</TooltipContent>
-              </Tooltip>
-            )}
+            {holiday && <HolidayBadge name={holiday} />}
             <button
               onClick={() => onDateClick?.(day.date)}
               className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}

@@ -10,6 +10,18 @@ import { WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER } from "../constants"
 
 // ── Skill gap pill ────────────────────────────────────────────────────────────
 
+/** Corner badge marking a public holiday in column headers. Self-positioned to mirror DayWarningPopover. */
+export function HolidayBadge({ name }: { name: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={
+        <span className="absolute top-[4px] left-[6px] z-10 text-[11px] leading-none cursor-default">🏖️</span>
+      } />
+      <TooltipContent side="bottom">{name}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** Click-to-open popover for per-day warnings in column headers. */
 export function DayWarningPopover({ warnings }: { warnings: RotaDayWarning[] }) {
   const t = useTranslations("schedule")
