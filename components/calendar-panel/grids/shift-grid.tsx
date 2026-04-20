@@ -135,8 +135,12 @@ export function ShiftGrid({
   if (data && data !== prevData) {
     setPrevData(data)
     setLocalDaysRaw(data.days)
-    onLocalDaysChange?.(data.days)
   }
+  // Notify parent on server-data change — deferred to effect to avoid
+  // set-during-render warning (onLocalDaysChange calls setState on the parent).
+  useEffect(() => {
+    if (data) onLocalDaysChange?.(data.days)
+  }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const patchLocalAssignment = useCallback((assignmentId: string, patch: Record<string, unknown>) => {
     setLocalDays((prev) => prev.map((d) => ({
@@ -162,7 +166,7 @@ export function ShiftGrid({
     return (
       <div className="rounded-lg border border-border bg-background overflow-hidden w-full flex flex-col">
         <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border" style={{ minHeight: 52 }}>
-          <div className="border-r border-border bg-muted" />
+          <div className="bg-muted" />
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center justify-center py-1.5 gap-1 border-l border-border bg-muted">
               <div className="shimmer-bar h-2.5 w-6" />
@@ -173,7 +177,7 @@ export function ShiftGrid({
         </div>
         {Array.from({ length: 6 }).map((_, row) => (
           <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
-            <div className="border-r border-border flex items-center justify-end px-2 py-3">
+            <div className="flex items-center justify-end px-2 py-3 bg-muted">
               <div className="shimmer-bar h-3 w-8" />
             </div>
             {Array.from({ length: 7 }).map((_, i) => (

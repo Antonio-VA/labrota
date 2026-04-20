@@ -47,7 +47,7 @@ export function ShiftGridHeader({
   , [localDays])
 
   return (
-    <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: 52 }}>
+    <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-10 border-b border-border" style={{ minHeight: simplified ? undefined : 52 }}>
       <div className="bg-muted" />
       {headerDates.map((dateStr) => {
         const day = dayByDate.get(dateStr)

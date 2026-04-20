@@ -1,5 +1,6 @@
 "use client"
 
+import { Fragment } from "react"
 import { Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { RotaDay } from "@/app/(clinic)/rota/actions"
@@ -83,8 +84,12 @@ export function ShiftGridOffRow({
               backgroundSize: "10px 10px",
             }}
           >
-            {onLeaveStaff.map((s) => renderChip(s, day.date, true))}
-            {availableOff.map((s) => renderChip(s, day.date, false))}
+            {onLeaveStaff.map((s) => (
+              <Fragment key={`leave-${s.id}`}>{renderChip(s, day.date, true)}</Fragment>
+            ))}
+            {availableOff.map((s) => (
+              <Fragment key={`off-${s.id}`}>{renderChip(s, day.date, false)}</Fragment>
+            ))}
           </DroppableCell>
         )
       })}
