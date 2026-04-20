@@ -57,12 +57,16 @@ export async function cancelSwapRequest(swapId: string): Promise<{ error?: strin
 // ── Execute swap (called when target accepts) ────────────────────────────────
 
 export async function executeSwap(swapId: string): Promise<{ error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: "No organisation found." }
+
   const admin = createAdminClient()
 
   const { data: swap } = await admin
     .from("swap_requests")
     .select("*")
     .eq("id", swapId)
+    .eq("organisation_id", orgId)
     .single() as { data: SwapRequest | null }
 
   if (!swap) return { error: "Swap request not found." }

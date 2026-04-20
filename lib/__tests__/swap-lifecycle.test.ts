@@ -39,8 +39,9 @@ function makeAdminClient(
   return {
     from: (table: string) => {
       if (table === "swap_requests") {
+        const eqChain = { eq: () => eqChain, single: async () => ({ data: swapData }) }
         return {
-          select: () => ({ eq: () => ({ single: async () => ({ data: swapData }) }) }),
+          select: () => ({ eq: () => eqChain }),
           update: () => ({ eq: async () => ({ error: null }) }),
         }
       }
@@ -143,8 +144,9 @@ describe("executeSwap", () => {
       const admin = {
         from: (table: string) => {
           if (table === "swap_requests") {
+            const eqChain = { eq: () => eqChain, single: async () => ({ data: dayOffSwap }) }
             return {
-              select: () => ({ eq: () => ({ single: async () => ({ data: dayOffSwap }) }) }),
+              select: () => ({ eq: () => eqChain }),
               update: () => ({ eq: async () => ({ error: null }) }),
             }
           }

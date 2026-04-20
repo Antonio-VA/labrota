@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
-import { syncStaffOutlook } from "@/lib/outlook/sync"
+import { syncStaffOutlook, syncAllForOrg } from "@/lib/outlook/sync"
 import { getValidAccessToken, revokeOutlookToken } from "@/lib/outlook/graph-client"
 import type { OutlookConnection, Staff } from "@/lib/types/database"
 import { toISODate } from "@/lib/format-date"
@@ -88,25 +88,11 @@ export async function syncOutlookAll(): Promise<{
   const orgId = await getOrgId()
   if (!orgId) return { created: 0, updated: 0, deleted: 0, errors: ["No organisation found"] }
 
-  const admin = createAdminClient()
-  const { data: connections } = await admin
-    .from("outlook_connections")
-    .select("staff_id")
-    .eq("organisation_id", orgId)
-    .eq("sync_enabled", true) as { data: Array<{ staff_id: string }> | null }
-
-  const totals = { created: 0, updated: 0, deleted: 0, errors: [] as string[] }
-  for (const conn of connections ?? []) {
-    const r = await syncStaffOutlook(conn.staff_id, orgId)
-    totals.created += r.created
-    totals.updated += r.updated
-    totals.deleted += r.deleted
-    totals.errors.push(...r.errors)
-  }
+  const { totalResult } = await syncAllForOrg(orgId)
 
   revalidatePath("/leaves")
   revalidatePath("/schedule")
-  return totals
+  return totalResult
 }
 
 export async function disconnectOutlook(

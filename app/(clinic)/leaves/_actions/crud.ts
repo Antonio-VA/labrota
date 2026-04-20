@@ -8,6 +8,30 @@ import type { LeaveType, LeaveStatus, Leave } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
+async function resolveHrFields(
+  orgId: string,
+  staffId: string,
+  leaveTypeId: string | null,
+  startDate: string,
+  endDate: string,
+): Promise<{
+  hrFields: Partial<Pick<Leave, "leave_type_id" | "days_counted" | "balance_year" | "uses_cf_days" | "cf_days_used">>
+  hrResult: Awaited<ReturnType<typeof computeHrLeaveFields>> | null
+}> {
+  if (!leaveTypeId || !(await isHrModuleActive(orgId))) return { hrFields: {}, hrResult: null }
+  const hrResult = await computeHrLeaveFields({ orgId, staffId, leaveTypeId, startDate, endDate })
+  return {
+    hrFields: {
+      leave_type_id: hrResult.leave_type_id,
+      days_counted: hrResult.overflow.needed ? hrResult.overflow.mainDays : hrResult.days_counted,
+      balance_year: hrResult.balance_year,
+      uses_cf_days: hrResult.uses_cf_days,
+      cf_days_used: hrResult.cf_days_used,
+    },
+    hrResult,
+  }
+}
+
 function parseLeaveForm(formData: FormData) {
   return {
     staff_id:   formData.get("staff_id") as string,
@@ -30,24 +54,9 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
   if (leave.end_date < leave.start_date) return { error: "End date must be on or after start date." }
 
   const leaveTypeId = formData.get("leave_type_id") as string | null
-  let hrFields: Record<string, unknown> = {}
-  let hrResultCached: Awaited<ReturnType<typeof computeHrLeaveFields>> | null = null
-  if (leaveTypeId && await isHrModuleActive(orgId)) {
-    hrResultCached = await computeHrLeaveFields({
-      orgId,
-      staffId: leave.staff_id,
-      leaveTypeId,
-      startDate: leave.start_date,
-      endDate: leave.end_date,
-    })
-    hrFields = {
-      leave_type_id: hrResultCached.leave_type_id,
-      days_counted: hrResultCached.overflow.needed ? hrResultCached.overflow.mainDays : hrResultCached.days_counted,
-      balance_year: hrResultCached.balance_year,
-      uses_cf_days: hrResultCached.uses_cf_days,
-      cf_days_used: hrResultCached.cf_days_used,
-    }
-  }
+  const { hrFields, hrResult: hrResultCached } = await resolveHrFields(
+    orgId, leave.staff_id, leaveTypeId, leave.start_date, leave.end_date,
+  )
 
   const { error, data: insertedLeave } = await supabase
     .from("leaves")
@@ -112,9 +121,14 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
 
   if (leave.end_date < leave.start_date) return { error: "End date must be on or after start date." }
 
+  const leaveTypeId = formData.get("leave_type_id") as string | null
+  const { hrFields } = await resolveHrFields(
+    orgId, leave.staff_id, leaveTypeId, leave.start_date, leave.end_date,
+  )
+
   const { error } = await supabase
     .from("leaves")
-    .update(leave)
+    .update({ ...leave, ...hrFields })
     .eq("id", id)
     .eq("organisation_id", orgId)
 
@@ -151,24 +165,9 @@ export async function quickCreateLeave(params: {
   if (!params.staffId) return { error: "Staff member is required." }
   if (params.endDate < params.startDate) return { error: "End date must be on or after start date." }
 
-  let hrFields: Partial<Pick<Leave, 'leave_type_id' | 'days_counted' | 'balance_year' | 'uses_cf_days' | 'cf_days_used'>> = {}
-  let hrResultCached: Awaited<ReturnType<typeof computeHrLeaveFields>> | null = null
-  if (params.leaveTypeId && await isHrModuleActive(orgId)) {
-    hrResultCached = await computeHrLeaveFields({
-      orgId,
-      staffId: params.staffId,
-      leaveTypeId: params.leaveTypeId,
-      startDate: params.startDate,
-      endDate: params.endDate,
-    })
-    hrFields = {
-      leave_type_id: hrResultCached.leave_type_id,
-      days_counted: hrResultCached.overflow.needed ? hrResultCached.overflow.mainDays : hrResultCached.days_counted,
-      balance_year: hrResultCached.balance_year,
-      uses_cf_days: hrResultCached.uses_cf_days,
-      cf_days_used: hrResultCached.cf_days_used,
-    }
-  }
+  const { hrFields, hrResult: hrResultCached } = await resolveHrFields(
+    orgId, params.staffId, params.leaveTypeId ?? null, params.startDate, params.endDate,
+  )
 
   const { error, data: insertedLeave } = await supabase
     .from("leaves")
