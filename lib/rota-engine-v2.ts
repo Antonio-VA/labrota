@@ -37,6 +37,11 @@ import type { DayPlan, TaskAssignment, RotaEngineResult, EngineParams } from "./
 import { inferPreferences } from "./rota-engine-v2/infer-preferences"
 import { buildLeaveMap } from "./rota-engine-v2/leave-map"
 import { buildHolidayContext } from "./rota-engine-v2/holiday-helpers"
+import { repairNoLibrarMismoDia } from "./rota-engine-v2/no-librar-swap"
+import { reEnforceSupervisorColocation, collectTrainingTecnicaMap } from "./rota-engine-v2/supervisor-relocate"
+import { repairShiftCoverage } from "./rota-engine-v2/coverage-repair"
+import { assignTasksToShifts } from "./rota-engine-v2/task-assignment"
+import { enforceFinalBudget } from "./rota-engine-v2/budget-enforcement"
 
 export type { DayPlan, TaskAssignment, RotaEngineResult, EngineParams }
 
@@ -1509,508 +1514,45 @@ export function runRotaEngineV2({
     }
   }
 
-  // ── PHASE 3: Repair no_librar_mismo_dia violations ──────────────────────────
-  // After all days are planned, find days where ALL conflict group members are off.
-  // Fix by swapping a conflict member's off day with a non-conflict same-role member.
-  for (const rule of rules.filter((r) => r.enabled && r.type === "no_librar_mismo_dia" && r.is_hard && r.staff_ids.length >= 2)) {
-    for (const dayPlan of days) {
-      const assignedIds = new Set(dayPlan.assignments.map((a) => a.staff_id))
-      const conflictOff = rule.staff_ids.filter((id) => !assignedIds.has(id))
-      // Only act if ALL conflict members are off
-      if (conflictOff.length < rule.staff_ids.length) continue
 
-      // Pick the conflict member with the most total assignments (easiest to move)
-      const conflictCandidates = conflictOff
-        .map((id) => staff.find((s) => s.id === id))
-        .filter((s): s is StaffWithSkills => !!s && s.onboarding_status !== "inactive" && !leaveMap[s.id]?.has(dayPlan.date))
-        .sort((a, b) => {
-          const aTotal = days.filter((d) => d.assignments.some((x) => x.staff_id === a.id)).length
-          const bTotal = days.filter((d) => d.assignments.some((x) => x.staff_id === b.id)).length
-          return bTotal - aTotal // more assignments = easier to swap one out
-        })
+  repairNoLibrarMismoDia({ days, rules, staff, leaveMap, warnings })
 
-      let fixed = false
-      for (const conflictPerson of conflictCandidates) {
-        if (fixed) break
-        // Find a non-conflict same-role person working today who could swap off days
-        // The swap: conflictPerson works today, donor takes off today + works on conflictPerson's off day
-        for (const asg of dayPlan.assignments) {
-          if (fixed) break
-          if (rule.staff_ids.includes(asg.staff_id)) continue // skip conflict members
-          const donor = staff.find((s) => s.id === asg.staff_id)
-          if (!donor || donor.role !== conflictPerson.role) continue
+  reEnforceSupervisorColocation({ days, rules, activeShiftTypes, tecnicaTypicalShifts })
 
-          // Find a day where conflictPerson works but donor is off
-          const swapDay = days.find((d) => {
-            if (d.date === dayPlan.date) return false
-            const cpWorking = d.assignments.some((x) => x.staff_id === conflictPerson.id)
-            const donorOff = !d.assignments.some((x) => x.staff_id === donor.id)
-            if (!cpWorking || !donorOff) return false
-            // Check donor is available on that day
-            if (leaveMap[donor.id]?.has(d.date)) return false
-            if (donor.start_date > d.date || (donor.end_date && donor.end_date < d.date)) return false
-            // Don't create a new violation: after removing conflictPerson from this day,
-            // ensure at least one conflict member still works here
-            const otherConflictWorking = d.assignments.some((x) =>
-              rule.staff_ids.includes(x.staff_id) && x.staff_id !== conflictPerson.id
-            )
-            if (!otherConflictWorking) {
-              // All conflict members would be off on swapDay after removing conflictPerson
-              // Check if any conflict member besides conflictPerson is assigned
-              const anyConflictAssigned = rule.staff_ids.some((id) =>
-                id !== conflictPerson.id && d.assignments.some((x) => x.staff_id === id)
-              )
-              if (!anyConflictAssigned) return false // would create a new violation
-            }
-            return true
-          })
-
-          if (!swapDay) continue
-
-          // Execute swap:
-          // 1. Remove donor from today, add conflictPerson to today (with donor's shift)
-          const donorShift = asg.shift_type
-          dayPlan.assignments = dayPlan.assignments.filter((a) => a.staff_id !== donor.id)
-          dayPlan.assignments.push({ staff_id: conflictPerson.id, shift_type: donorShift })
-
-          // 2. Remove conflictPerson from swapDay, add donor (with conflictPerson's shift)
-          const cpAsg = swapDay.assignments.find((a) => a.staff_id === conflictPerson.id)
-          const cpShift = cpAsg?.shift_type ?? donorShift
-          swapDay.assignments = swapDay.assignments.filter((a) => a.staff_id !== conflictPerson.id)
-          swapDay.assignments.push({ staff_id: donor.id, shift_type: cpShift })
-
-          warnings.push(
-            `[engine] ${dayPlan.date}: no_librar_mismo_dia — swapped ${conflictPerson.first_name} ↔ ${donor.first_name}`
-          )
-          fixed = true
-        }
-      }
-
-      if (!fixed) {
-        warnings.push(
-          `${dayPlan.date}: no_librar_mismo_dia — could not resolve: ${conflictOff.map((id) => staff.find((s) => s.id === id)?.first_name ?? id).join(" + ")} all off`
-        )
-      }
-    }
-  }
-
-  // ── Re-enforce supervisor co-location after Phase 3 ────────────────────────
-  // Phase 3 (no_librar_mismo_dia) swaps staff between days, potentially splitting
-  // supervised pairs. Re-apply co-location for all supervisor rules.
-  const dayCodeLookup = ["sun","mon","tue","wed","thu","fri","sat"] as const
-  for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
-    const supervisorId = rule.params.supervisor_id as string | undefined
-    if (!supervisorId) continue
-    const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
-    const supervisedIds = rule.staff_ids.filter((id) => id !== supervisorId)
-    const trainingTec = rule.params.training_tecnica_code as string | undefined
-    const validShifts = trainingTec ? tecnicaTypicalShifts[trainingTec] : null
-
-    for (const dayPlan of days) {
-      const dc = dayCodeLookup[new Date(dayPlan.date + "T12:00:00").getDay()] as string
-      if (supDays.length > 0 && !supDays.includes(dc)) continue
-      const supAsg = dayPlan.assignments.find((a) => a.staff_id === supervisorId)
-      if (!supAsg) continue
-      const traineeAsg = dayPlan.assignments.find((a) => supervisedIds.includes(a.staff_id))
-      if (!traineeAsg) continue
-      if (supAsg.shift_type === traineeAsg.shift_type) continue
-
-      // Determine target shift
-      const dayShiftSet = new Set(activeShiftTypes
-        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
-        .map((st) => st.code))
-
-      if (validShifts && validShifts.size > 0) {
-        const traineeInValid = validShifts.has(traineeAsg.shift_type)
-        const supInValid = validShifts.has(supAsg.shift_type)
-        if (traineeInValid) {
-          supAsg.shift_type = traineeAsg.shift_type
-        } else if (supInValid) {
-          traineeAsg.shift_type = supAsg.shift_type
-        } else {
-          const shiftCounts: Record<string, number> = {}
-          for (const a of dayPlan.assignments) shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
-          const bestShift = [...validShifts]
-            .filter((s) => dayShiftSet.has(s))
-            .sort((a, b) => (shiftCounts[b] ?? 0) - (shiftCounts[a] ?? 0))[0]
-          if (bestShift) {
-            supAsg.shift_type = bestShift as ShiftType
-            traineeAsg.shift_type = bestShift as ShiftType
-          } else {
-            supAsg.shift_type = traineeAsg.shift_type
-          }
-        }
-      } else {
-        supAsg.shift_type = traineeAsg.shift_type
-      }
-    }
-  }
-
-  // ── Final coverage repair pass ────────────────────────────────────────────
-  // Coverage minimums are hard constraints. Post-distribution passes (supervisor
-  // co-location, technique alignment, Phase 3) can break them. This final pass
-  // verifies each shift×role meets its minimum and force-moves surplus staff.
   if (shiftCoverageEnabled && shiftCoverageByDay) {
-    const dayCodeNames = ["sun","mon","tue","wed","thu","fri","sat"] as const
-    const staffById = new Map(staff.map((s) => [s.id, s]))
-    for (const dayPlan of days) {
-      const dc = dayCodeNames[new Date(dayPlan.date + "T12:00:00").getDay()] as string
-      const dayShiftCodes = activeShiftTypes
-        .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
-        .map((st) => st.code)
-      for (const role of ["lab", "andrology", "admin"] as const) {
-        for (const shiftCode of dayShiftCodes) {
-          const cov = shiftCoverageByDay[shiftCode]?.[dc]
-          const covEntry = cov == null ? { lab: 0, andrology: 0, admin: 0 }
-            : typeof cov === "number" ? { lab: cov, andrology: 0, admin: 0 } : cov as { lab: number; andrology: number; admin: number }
-          const min = covEntry[role] ?? 0
-          if (min === 0) continue
-          const inShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode && staffById.get(a.staff_id)?.role === role)
-          let deficit = min - inShift.length
-          if (deficit <= 0) continue
-          // Pull surplus staff of the same role from other shifts
-          for (const srcShift of dayShiftCodes) {
-            if (srcShift === shiftCode || deficit <= 0) continue
-            const srcCov = shiftCoverageByDay[srcShift]?.[dc]
-            const srcEntry = srcCov == null ? { lab: 0, andrology: 0, admin: 0 }
-              : typeof srcCov === "number" ? { lab: srcCov, andrology: 0, admin: 0 } : srcCov as { lab: number; andrology: number; admin: number }
-            const srcMin = srcEntry[role] ?? 0
-            const srcInShift = dayPlan.assignments.filter((a) => a.shift_type === srcShift && staffById.get(a.staff_id)?.role === role)
-            const surplus = srcInShift.length - srcMin
-            if (surplus <= 0) continue
-            const toMove = Math.min(deficit, surplus)
-            let moved = 0
-            for (const a of srcInShift) {
-              if (moved >= toMove) break
-              a.shift_type = shiftCode as ShiftType
-              moved++
-            }
-            deficit -= moved
-          }
-        }
-      }
-    }
+    repairShiftCoverage({ days, staff, activeShiftTypes, shiftCoverageByDay })
   }
 
-  // ── Collect training technique assignments from supervisor rules ──────────
-  // Map: trainee staff_id → forced technique code (from supervisor_requerido rules with training_tecnica_code)
-  const trainingTecnicaMap: Record<string, string> = {}
-  for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
-    const trainingTecCode = rule.params.training_tecnica_code as string | undefined
-    if (!trainingTecCode) continue
-    const supervisorId = rule.params.supervisor_id as string | undefined
-    const traineeIds = rule.staff_ids.filter((id) => id !== supervisorId)
-    for (const id of traineeIds) {
-      trainingTecnicaMap[id] = trainingTecCode
-    }
-  }
+  const trainingTecnicaMap = collectTrainingTecnicaMap(rules)
 
-  // ── PHASE 4: Task assignment (shift engine) ─────────────────────────────────
-  // Only runs when explicit task coverage is configured. By_task orgs use the
-  // task engine instead. By_shift orgs without task coverage should not produce
-  // task-level rows — having active técnicas alone is not enough.
   const hasExplicitTaskCoverage = taskCoverageEnabled && taskCoverageByDay && Object.keys(taskCoverageByDay).length > 0
   if (hasExplicitTaskCoverage) {
-    const taskConflictThreshold = labConfig.task_conflict_threshold ?? 3
-
-    for (const dayPlan of days) {
-      const date = dayPlan.date
-      const dayCode = getDayCode(date)
-      const assignedStaff = dayPlan.assignments.map((a) => {
-        const s = staff.find((st) => st.id === a.staff_id)
-        return s ? { ...a, staff: s } : null
-      }).filter(Boolean) as { staff_id: string; shift_type: ShiftType; staff: StaffWithSkills }[]
-
-      if (assignedStaff.length === 0) continue
-
-      // 4.1: Build task demand for this day (explicit coverage only)
-      const taskDemand: { code: string; needed: number; typical_shifts: Set<string>; avoid_shifts: Set<string> }[] = []
-      for (const [tecCode, dayCov] of Object.entries(taskCoverageByDay!)) {
-        const needed = dayCov[dayCode] ?? 0
-        if (needed <= 0) continue
-        const tec = tecnicas.find((t) => t.codigo === tecCode)
-        taskDemand.push({
-          code: tecCode,
-          needed,
-          typical_shifts: new Set(tec?.typical_shifts ?? []),
-          avoid_shifts: new Set(tec?.avoid_shifts ?? []),
-        })
-      }
-
-      // 4.1b: Apply restriccion_dia_tecnica rules — remove demand for blocked techniques
-      for (const rule of rules.filter((r) => r.enabled && r.type === "restriccion_dia_tecnica")) {
-        const tecCode = rule.params.tecnica_code as string | undefined
-        const dayMode = rule.params.dayMode as string | undefined
-        const restrictedDays = (rule.params.restrictedDays as string[] | undefined) ?? []
-        if (!tecCode || restrictedDays.length === 0) continue
-        const blocked = dayMode === "only"
-          ? !restrictedDays.includes(dayCode)  // "only" mode: blocked if day NOT in list
-          : restrictedDays.includes(dayCode)    // "never" mode: blocked if day IS in list
-        if (blocked) {
-          const idx = taskDemand.findIndex((td) => td.code === tecCode)
-          if (idx !== -1) {
-            taskDemand.splice(idx, 1)
-            warnings.push(`[rule] ${tecCode} blocked on ${dayCode} by restriccion_dia_tecnica`)
-          }
-        }
-      }
-
-      if (taskDemand.length === 0) continue
-
-      // 4.2: Build staff capability matrix
-      const staffTaskCount: Record<string, number> = {} // staff_id → tasks assigned so far
-      const staffSkillMap: Record<string, { certified: Set<string>; training: Set<string> }> = {}
-      for (const { staff_id, staff: s } of assignedStaff) {
-        staffTaskCount[staff_id] = 0
-        const certified = new Set<string>()
-        const training = new Set<string>()
-        for (const sk of s.staff_skills) {
-          if (sk.level === "certified") certified.add(sk.skill)
-          else if (sk.level === "training") training.add(sk.skill)
-        }
-        staffSkillMap[staff_id] = { certified, training }
-      }
-
-      // 4.3: Sort tasks by rarest first (fewest qualified staff)
-      const qualifiedCount = (code: string): number => {
-        return assignedStaff.filter(({ staff_id }) => {
-          const skills = staffSkillMap[staff_id]
-          return skills?.certified.has(code) || skills?.training.has(code)
-        }).length
-      }
-      taskDemand.sort((a, b) => qualifiedCount(a.code) - qualifiedCount(b.code))
-
-      // Track task assignments for no_misma_tarea checking
-      const dayTaskMap: Record<string, Set<string>> = {} // staff_id → set of task codes
-
-      // 4.3b: Force training technique assignments from supervisor rules
-      for (const { staff_id } of assignedStaff) {
-        const forcedTec = trainingTecnicaMap[staff_id]
-        if (!forcedTec) continue
-        // Only force if the technique exists in demand (even if filled)
-        const demandEntry = taskDemand.find((td) => td.code === forcedTec)
-        if (!demandEntry) continue
-        taskAssignments.push({ staff_id, tecnica_code: forcedTec, date })
-        staffTaskCount[staff_id] = (staffTaskCount[staff_id] ?? 0) + 1
-        if (!dayTaskMap[staff_id]) dayTaskMap[staff_id] = new Set()
-        dayTaskMap[staff_id].add(forcedTec)
-        // Reduce remaining demand
-        demandEntry.needed = Math.max(0, demandEntry.needed - 1)
-      }
-
-      for (const task of taskDemand) {
-        // Find qualified staff for this task
-        const candidates = assignedStaff.filter(({ staff_id }) => {
-          if (staffTaskCount[staff_id] >= taskConflictThreshold) return false
-          const skills = staffSkillMap[staff_id]
-          return skills?.certified.has(task.code) || skills?.training.has(task.code)
-        })
-
-        // Sort candidates: compatible shift first, then certified > training, then fewest tasks, then workload
-        candidates.sort((a, b) => {
-          // Prefer staff on a compatible shift
-          const aShiftOk = task.typical_shifts.size === 0 || task.typical_shifts.has(a.shift_type) ? 0 : 1
-          const bShiftOk = task.typical_shifts.size === 0 || task.typical_shifts.has(b.shift_type) ? 0 : 1
-          if (aShiftOk !== bShiftOk) return aShiftOk - bShiftOk
-          // Avoid staff on an avoided shift
-          const aAvoid = task.avoid_shifts.has(a.shift_type) ? 1 : 0
-          const bAvoid = task.avoid_shifts.has(b.shift_type) ? 1 : 0
-          if (aAvoid !== bAvoid) return aAvoid - bAvoid
-          // Certified before training
-          const aCert = staffSkillMap[a.staff_id]?.certified.has(task.code) ? 0 : 1
-          const bCert = staffSkillMap[b.staff_id]?.certified.has(task.code) ? 0 : 1
-          if (aCert !== bCert) return aCert - bCert
-          // Fewest tasks assigned so far
-          const aCount = staffTaskCount[a.staff_id]
-          const bCount = staffTaskCount[b.staff_id]
-          if (aCount !== bCount) return aCount - bCount
-          // Lowest workload
-          return (workloadScore[a.staff_id] ?? 0) - (workloadScore[b.staff_id] ?? 0)
-        })
-
-        let filled = 0
-        for (const candidate of candidates) {
-          if (filled >= task.needed) break
-          taskAssignments.push({ staff_id: candidate.staff_id, tecnica_code: task.code, date })
-          staffTaskCount[candidate.staff_id]++
-          if (!dayTaskMap[candidate.staff_id]) dayTaskMap[candidate.staff_id] = new Set()
-          dayTaskMap[candidate.staff_id].add(task.code)
-          filled++
-        }
-
-        // If still unfilled, try adding unassigned staff to the day
-        if (filled < task.needed) {
-          const unassignedQualified = staff.filter((s) => {
-            if (assignedStaff.some((a) => a.staff_id === s.id)) return false
-            if (s.onboarding_status === "inactive") return false
-            if (s.start_date > date || (s.end_date && s.end_date < date)) return false
-            if (leaveMap[s.id]?.has(date)) return false
-            if ((weeklyShiftCount[s.id] ?? 0) >= (s.days_per_week ?? 5)) return false
-            const skills = staffSkillMap[s.id] ?? {
-              certified: new Set(s.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)),
-              training: new Set(s.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)),
-            }
-            return skills.certified.has(task.code) || skills.training.has(task.code)
-          }).sort((a, b) => (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0))
-
-          for (const pick of unassignedQualified) {
-            if (filled >= task.needed) break
-            // Add to day assignments — pick a compatible shift
-            const dayShiftCodes = shiftTypes
-              .filter((st) => st.active !== false && (!st.active_days || st.active_days.length === 0 || st.active_days.includes(dayCode)))
-              .sort((a, b) => a.sort_order - b.sort_order)
-              .map((st) => st.code)
-            const compatibleShift = (task.typical_shifts.size > 0
-              ? dayShiftCodes.find((sc) => task.typical_shifts.has(sc))
-              : null) ?? dayShiftCodes[0] ?? "T1"
-
-            dayPlan.assignments.push({ staff_id: pick.id, shift_type: compatibleShift as ShiftType })
-            assignedStaff.push({ staff_id: pick.id, shift_type: compatibleShift as ShiftType, staff: pick })
-            staffTaskCount[pick.id] = 1
-            staffSkillMap[pick.id] = {
-              certified: new Set(pick.staff_skills.filter((sk) => sk.level === "certified").map((sk) => sk.skill)),
-              training: new Set(pick.staff_skills.filter((sk) => sk.level === "training").map((sk) => sk.skill)),
-            }
-            if (!dayTaskMap[pick.id]) dayTaskMap[pick.id] = new Set()
-            dayTaskMap[pick.id].add(task.code)
-            taskAssignments.push({ staff_id: pick.id, tecnica_code: task.code, date })
-            weeklyShiftCount[pick.id] = (weeklyShiftCount[pick.id] ?? 0) + 1
-            workloadScore[pick.id] = (workloadScore[pick.id] ?? 0) + 1
-            filled++
-            warnings.push(`${date}: ${pick.first_name} ${pick.last_name} añadido para cubrir tarea ${task.code} (supera mínimo departamento)`)
-          }
-        }
-
-        if (filled < task.needed) {
-          warnings.push(`${date}: COBERTURA INSUFICIENTE — ${task.code} necesita ${task.needed}, asignados ${filled}`)
-        }
-
-        // Warn if only training-level staff cover this task
-        const assignedForTask = taskAssignments.filter((ta) => ta.date === date && ta.tecnica_code === task.code)
-        const allTraining = assignedForTask.length > 0 && assignedForTask.every((ta) => {
-          return !staffSkillMap[ta.staff_id]?.certified.has(task.code)
-        })
-        if (allTraining && assignedForTask.length > 0) {
-          warnings.push(`${date}: solo personal en formación para ${task.code}`)
-        }
-      }
-
-      // 4.6: Enforce no_misma_tarea rules
-      for (const rule of rules.filter((r) => r.enabled && r.type === "no_misma_tarea")) {
-        const ruleStaffIds = new Set(rule.staff_ids)
-        // Group task assignments by task for this day
-        const taskToStaff: Record<string, string[]> = {}
-        for (const ta of taskAssignments.filter((ta) => ta.date === date)) {
-          if (!taskToStaff[ta.tecnica_code]) taskToStaff[ta.tecnica_code] = []
-          taskToStaff[ta.tecnica_code].push(ta.staff_id)
-        }
-
-        for (const [taskCode, staffIds] of Object.entries(taskToStaff)) {
-          const conflicting = staffIds.filter((id) => ruleStaffIds.has(id))
-          if (conflicting.length <= 1) continue
-
-          if (rule.is_hard) {
-            // Keep the first, try to reassign the rest to other tasks
-            for (let i = 1; i < conflicting.length; i++) {
-              const staffId = conflicting[i]
-              const skills = staffSkillMap[staffId]
-              // Find another task this person is qualified for and not yet assigned to
-              const currentTasks = dayTaskMap[staffId] ?? new Set()
-              const altTask = taskDemand.find((t) =>
-                t.code !== taskCode &&
-                !currentTasks.has(t.code) &&
-                (skills?.certified.has(t.code) || skills?.training.has(t.code))
-              )
-              if (altTask) {
-                // Move: remove from current task, add to alternative
-                const idx = taskAssignments.findIndex((ta) => ta.date === date && ta.staff_id === staffId && ta.tecnica_code === taskCode)
-                if (idx >= 0) {
-                  taskAssignments[idx].tecnica_code = altTask.code
-                  currentTasks.delete(taskCode)
-                  currentTasks.add(altTask.code)
-                }
-              } else {
-                // Can't reassign — remove from task entirely
-                const idx = taskAssignments.findIndex((ta) => ta.date === date && ta.staff_id === staffId && ta.tecnica_code === taskCode)
-                if (idx >= 0) {
-                  taskAssignments.splice(idx, 1)
-                  staffTaskCount[staffId]--
-                  currentTasks.delete(taskCode)
-                }
-                warnings.push(`${date}: ${staff.find((s) => s.id === staffId)?.first_name ?? staffId} retirado de ${taskCode} (no_misma_tarea)`)
-              }
-            }
-          } else {
-            const names = conflicting.map((id) => staff.find((s) => s.id === id)?.first_name ?? id)
-            warnings.push(`${date}: ${names.join(" + ")} asignados a ${taskCode} (no_misma_tarea, soft)`)
-          }
-        }
-      }
-    }
+    assignTasksToShifts({
+      days,
+      staff,
+      rules,
+      labConfig,
+      tecnicas,
+      shiftTypes,
+      taskCoverageByDay: taskCoverageByDay!,
+      leaveMap,
+      weeklyShiftCount,
+      workloadScore,
+      trainingTecnicaMap,
+      taskAssignments,
+      warnings,
+    })
   }
 
-  // ── FINAL BUDGET ENFORCEMENT ─────────────────────────────────────────────────
-  // Hard guarantee: every active staff member must have exactly their effective
-  // budget shifts. Recount from actual dayPlan.assignments (not weeklyShiftCount,
-  // which can drift after Phase 3 swaps). Runs after all other passes.
-  {
-    const finalCount: Record<string, number> = {}
-    for (const dayPlan of days) {
-      for (const a of dayPlan.assignments) {
-        finalCount[a.staff_id] = (finalCount[a.staff_id] ?? 0) + 1
-      }
-    }
-
-    for (const s of staff) {
-      if (s.onboarding_status === "inactive") continue
-      const target = getEffectiveBudget(s)
-      if (target <= 0) continue
-      const actual = finalCount[s.id] ?? 0
-      if (actual >= target) continue
-
-      const needed = target - actual
-      const candidateDays = days
-        .filter((dayPlan) => {
-          if (dayPlan.assignments.some((a) => a.staff_id === s.id)) return false
-          if (leaveMap[s.id]?.has(dayPlan.date)) return false
-          if (s.start_date > dayPlan.date) return false
-          if (s.end_date && s.end_date < dayPlan.date) return false
-          return true
-        })
-        .sort((a, b) => a.assignments.length - b.assignments.length)
-
-      let added = 0
-      for (const dayPlan of candidateDays) {
-        if (added >= needed) break
-        const dc = getDayCode(dayPlan.date)
-        const dayShiftCodes = activeShiftTypes
-          .filter((st) => !st.active_days || st.active_days.length === 0 || st.active_days.includes(dc))
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((st) => st.code)
-        const fallback = dayShiftCodes.length > 0 ? dayShiftCodes : (shiftCodes.length > 0 ? shiftCodes : ["T1"])
-        const shiftCount: Record<string, number> = {}
-        for (const sc of fallback) shiftCount[sc] = 0
-        for (const a of dayPlan.assignments) {
-          if (shiftCount[a.shift_type] !== undefined) shiftCount[a.shift_type]++
-        }
-        const prefShifts = s.preferred_shift ? s.preferred_shift.split(",").filter(Boolean) : []
-        let bestShift = prefShifts.find((ps) => fallback.includes(ps))
-        if (!bestShift) {
-          bestShift = fallback.reduce((best, sc) =>
-            (shiftCount[sc] ?? 0) < (shiftCount[best] ?? 0) ? sc : best
-          , fallback[0])
-        }
-        dayPlan.assignments.push({ staff_id: s.id, shift_type: bestShift as ShiftType })
-        finalCount[s.id] = (finalCount[s.id] ?? 0) + 1
-        added++
-        warnings.push(`[engine] BUDGET ENFORCEMENT: ${s.first_name} ${s.last_name} added to ${dayPlan.date} (${actual + added}/${target})`)
-      }
-
-      if (added < needed) {
-        warnings.push(`[engine] BUDGET ENFORCEMENT FAILED: ${s.first_name} ${s.last_name} reached only ${actual + added}/${target} — not enough available days`)
-      }
-    }
-  }
+  enforceFinalBudget({
+    days,
+    staff,
+    warnings,
+    activeShiftTypes,
+    shiftCodes,
+    leaveMap,
+    getEffectiveBudget,
+  })
 
   return { days, taskAssignments, warnings }
 }
