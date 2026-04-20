@@ -100,6 +100,14 @@ export function ShiftGridHeader({
             )}
           >
             {day && day.warnings.length > 0 && <DayWarningPopover warnings={day.warnings} />}
+            {holidayName && (
+              <Tooltip>
+                <TooltipTrigger render={
+                  <span className="absolute top-[4px] left-[6px] text-[11px] leading-none cursor-default">🏖️</span>
+                } />
+                <TooltipContent side="bottom">{holidayName}</TooltipContent>
+              </Tooltip>
+            )}
 
             <button
               onClick={() => onDateClick?.(dateStr)}
@@ -114,14 +122,6 @@ export function ShiftGridHeader({
                 {dayN}
               </span>
             </button>
-            {holidayName && (
-              <Tooltip>
-                <TooltipTrigger render={
-                  <span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>
-                } />
-                <TooltipContent side="bottom">{holidayName}</TooltipContent>
-              </Tooltip>
-            )}
 
             {statsInput}
           </div>

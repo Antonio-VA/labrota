@@ -77,6 +77,12 @@ export function PersonGridHeader({
             style={isSat ? { borderLeft: "1px dashed var(--border)" } : undefined}
           >
             {day.warnings.length > 0 && <DayWarningPopover warnings={day.warnings} />}
+            {holiday && (
+              <Tooltip>
+                <TooltipTrigger render={<span className="absolute top-[4px] left-[6px] text-[11px] leading-none cursor-default">🏖️</span>} />
+                <TooltipContent side="bottom">{holiday}</TooltipContent>
+              </Tooltip>
+            )}
             <button
               onClick={() => onDateClick?.(day.date)}
               className={cn("flex flex-col items-center gap-0 cursor-pointer hover:opacity-70 transition-opacity", !onDateClick && "cursor-default")}
@@ -90,12 +96,6 @@ export function PersonGridHeader({
                 {dayN}
               </span>
             </button>
-            {holiday && (
-              <Tooltip>
-                <TooltipTrigger render={<span className="size-4 flex items-center justify-center text-[10px] cursor-default">🏖️</span>} />
-                <TooltipContent side="bottom">{holiday}</TooltipContent>
-              </Tooltip>
-            )}
             {statsInput}
           </div>
         )
