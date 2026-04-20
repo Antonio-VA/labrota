@@ -10,24 +10,25 @@ export async function generateLeaveReport(from: string, to: string): Promise<Lea
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
+  const [orgRes, leavesRes, staffRes] = await Promise.all([
+    supabase.from("organisations").select("name").eq("id", orgId).single(),
+    supabase
+      .from("leaves")
+      .select("id, staff_id, type, start_date, end_date, notes")
+      .eq("organisation_id", orgId)
+      .eq("status", "approved")
+      .lte("start_date", to)
+      .gte("end_date", from)
+      .order("start_date"),
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, color")
+      .eq("organisation_id", orgId),
+  ])
 
-  // Fetch approved leaves overlapping the range
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("id, staff_id, type, start_date, end_date, notes")
-    .eq("organisation_id", orgId)
-    .eq("status", "approved")
-    .lte("start_date", to)
-    .gte("end_date", from)
-    .order("start_date") as { data: { id: string; staff_id: string; type: string; start_date: string; end_date: string; notes: string | null }[] | null }
-
-  // Fetch staff lookup
-  const { data: staffData } = await supabase
-    .from("staff")
-    .select("id, first_name, last_name, role, color")
-    .eq("organisation_id", orgId) as { data: { id: string; first_name: string; last_name: string; role: string; color: string }[] | null }
+  const orgName = (orgRes.data as { name: string } | null)?.name ?? ""
+  const leaves = leavesRes.data as { id: string; staff_id: string; type: string; start_date: string; end_date: string; notes: string | null }[] | null
+  const staffData = staffRes.data as { id: string; first_name: string; last_name: string; role: string; color: string }[] | null
 
   const staffMap = new Map((staffData ?? []).map((s) => [s.id, s]))
 

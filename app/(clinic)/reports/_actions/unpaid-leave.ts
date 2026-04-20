@@ -10,26 +10,24 @@ export async function generateUnpaidLeaveReport(from: string, to: string): Promi
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  // Check HR module is active
-  const { data: hrMod } = await supabase
-    .from("hr_module")
-    .select("status")
-    .maybeSingle() as { data: { status: string } | null }
+  const [hrModRes, orgRes, unpaidTypesRes] = await Promise.all([
+    supabase.from("hr_module").select("status").maybeSingle(),
+    supabase.from("organisations").select("name").eq("id", orgId).single(),
+    supabase
+      .from("company_leave_types")
+      .select("id, name, name_en")
+      .eq("organisation_id", orgId)
+      .eq("is_paid", false)
+      .eq("is_archived", false),
+  ])
 
+  const hrMod = hrModRes.data as { status: string } | null
   if (hrMod?.status !== "active") {
     return { error: "HR module is not active." }
   }
 
-  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
-
-  // Get unpaid leave types
-  const { data: unpaidTypes } = await supabase
-    .from("company_leave_types")
-    .select("id, name, name_en")
-    .eq("organisation_id", orgId)
-    .eq("is_paid", false)
-    .eq("is_archived", false) as { data: Array<{ id: string; name: string; name_en: string | null }> | null }
+  const orgName = (orgRes.data as { name: string } | null)?.name ?? ""
+  const unpaidTypes = unpaidTypesRes.data as Array<{ id: string; name: string; name_en: string | null }> | null
 
   if (!unpaidTypes?.length) {
     return {
@@ -52,21 +50,23 @@ export async function generateUnpaidLeaveReport(from: string, to: string): Promi
       .map((t) => t.id)
   )
 
-  // Fetch approved leaves with unpaid types in the range
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("staff_id, leave_type_id, days_counted, start_date, end_date")
-    .eq("organisation_id", orgId)
-    .eq("status", "approved")
-    .in("leave_type_id", unpaidTypeIds)
-    .lte("start_date", to)
-    .gte("end_date", from) as { data: Array<{ staff_id: string; leave_type_id: string; days_counted: number | null; start_date: string; end_date: string }> | null }
+  const [leavesRes, staffRes] = await Promise.all([
+    supabase
+      .from("leaves")
+      .select("staff_id, leave_type_id, days_counted, start_date, end_date")
+      .eq("organisation_id", orgId)
+      .eq("status", "approved")
+      .in("leave_type_id", unpaidTypeIds)
+      .lte("start_date", to)
+      .gte("end_date", from),
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, color")
+      .eq("organisation_id", orgId),
+  ])
 
-  // Fetch staff lookup
-  const { data: staffData } = await supabase
-    .from("staff")
-    .select("id, first_name, last_name, role, color")
-    .eq("organisation_id", orgId) as { data: Array<{ id: string; first_name: string; last_name: string; role: string; color: string }> | null }
+  const leaves = leavesRes.data as Array<{ staff_id: string; leave_type_id: string; days_counted: number | null; start_date: string; end_date: string }> | null
+  const staffData = staffRes.data as Array<{ id: string; first_name: string; last_name: string; role: string; color: string }> | null
 
   const staffMap = new Map((staffData ?? []).map((s) => [s.id, s]))
 

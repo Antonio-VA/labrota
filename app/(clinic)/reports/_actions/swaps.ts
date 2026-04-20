@@ -11,29 +11,30 @@ export async function generateSwapReport(from: string, to: string): Promise<Swap
 
   const admin = createAdminClient()
 
-  const { data: org } = await admin.from("organisations").select("name").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
+  const [orgRes, swapsRes] = await Promise.all([
+    admin.from("organisations").select("name").eq("id", orgId).single(),
+    admin
+      .from("swap_requests")
+      .select("id, initiator_staff_id, target_staff_id, swap_type, swap_date, swap_shift_type, status, created_at, manager_reviewed_at, target_responded_at")
+      .eq("organisation_id", orgId)
+      .gte("swap_date", from)
+      .lte("swap_date", to)
+      .order("created_at", { ascending: false }),
+  ])
 
-  const { data: swaps } = await admin
-    .from("swap_requests")
-    .select("id, initiator_staff_id, target_staff_id, swap_type, swap_date, swap_shift_type, status, created_at, manager_reviewed_at, target_responded_at")
-    .eq("organisation_id", orgId)
-    .gte("swap_date", from)
-    .lte("swap_date", to)
-    .order("created_at", { ascending: false }) as {
-      data: Array<{
-        id: string
-        initiator_staff_id: string
-        target_staff_id: string | null
-        swap_type: string
-        swap_date: string
-        swap_shift_type: string
-        status: string
-        created_at: string
-        manager_reviewed_at: string | null
-        target_responded_at: string | null
-      }> | null
-    }
+  const orgName = (orgRes.data as { name: string } | null)?.name ?? ""
+  const swaps = swapsRes.data as Array<{
+    id: string
+    initiator_staff_id: string
+    target_staff_id: string | null
+    swap_type: string
+    swap_date: string
+    swap_shift_type: string
+    status: string
+    created_at: string
+    manager_reviewed_at: string | null
+    target_responded_at: string | null
+  }> | null
 
   if (!swaps || swaps.length === 0) {
     return { orgName, periodLabel: `${formatDateES(from)} – ${formatDateES(to)}`, from, to, totalRequests: 0, approved: 0, rejected: 0, pending: 0, cancelled: 0, rows: [] }

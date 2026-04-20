@@ -15,30 +15,30 @@ export async function generateExtraDaysReport(month: string): Promise<ExtraDaysD
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
   if (month >= currentMonth) return { error: "Solo se pueden generar informes de meses pasados." }
 
-  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
-
   const [year, mon] = month.split("-").map(Number)
   const firstDay = new Date(year, mon - 1, 1)
   const lastDay = new Date(year, mon, 0)
   const from = toISODate(firstDay)
   const to = toISODate(lastDay)
 
-  // Fetch staff
-  const { data: staffData } = await supabase
-    .from("staff")
-    .select("id, first_name, last_name, role, color, days_per_week")
-    .eq("organisation_id", orgId)
-    .neq("onboarding_status", "inactive") as { data: { id: string; first_name: string; last_name: string; role: string; color: string; days_per_week: number }[] | null }
-  const staff = staffData ?? []
+  const [orgRes, staffRes, assignmentsRes] = await Promise.all([
+    supabase.from("organisations").select("name").eq("id", orgId).single(),
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, color, days_per_week")
+      .eq("organisation_id", orgId)
+      .neq("onboarding_status", "inactive"),
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, date")
+      .eq("organisation_id", orgId)
+      .gte("date", from)
+      .lte("date", to),
+  ])
 
-  // Fetch assignments
-  const { data: assignments } = await supabase
-    .from("rota_assignments")
-    .select("staff_id, date")
-    .eq("organisation_id", orgId)
-    .gte("date", from)
-    .lte("date", to) as { data: { staff_id: string; date: string }[] | null }
+  const orgName = (orgRes.data as { name: string } | null)?.name ?? ""
+  const staff = (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string; color: string; days_per_week: number }[]
+  const assignments = assignmentsRes.data as { staff_id: string; date: string }[] | null
 
   // Group assignments by staff → week → unique dates
   const staffIds = new Set(staff.map((s) => s.id))
