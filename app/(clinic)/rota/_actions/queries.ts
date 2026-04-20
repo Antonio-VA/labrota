@@ -120,62 +120,53 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const supabase = await createClient()
   const dates = getWeekDates(weekStart)
 
-  // Fire the assignments query in parallel with everything else, but don't block
-  // the null-rota return on it — if no rota exists, we throw it away unawaited.
-  // This saves ~50-150ms on "no rota" weeks (next-week clicks before generation).
+  // Fan out every query we could need, then await `rotas` first. When the week
+  // has no rota we can skip awaiting leaves/rules/assignments entirely — they
+  // only drive assignment-dependent UI which the empty state doesn't render.
   type AssignmentJoinRow = { id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; function_label: string | null; tecnica_id: string | null; whole_team: boolean; rota_id: string }
+  const rotaPromise = typedQuery<RotaRecord>(
+    supabase
+      .from("rotas")
+      .select("id, status, published_at, published_by, punctions_override, engine_warnings")
+      .eq("week_start", weekStart)
+      .maybeSingle())
+  const labConfigPromise = supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle()
+  const shiftTypesPromise = typedQuery<ShiftTypeDefinition[]>(supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order"))
+  const tecnicasPromise = typedQuery<Tecnica[]>(supabase.from("tecnicas").select("*").order("orden").order("created_at"))
+  const departmentsPromise = typedQuery<import("@/lib/types/database").Department[]>(supabase.from("departments").select("*").order("sort_order"))
+  const orgPromise = typedQuery<OrgConfig>(
+    supabase
+      .from("organisations")
+      .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
+      .limit(1)
+      .maybeSingle())
+  const staffPromise = typedQuery<StaffRow[]>(
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours"))
+  const skillsPromise = typedQuery<SkillRow[]>(
+    supabase
+      .from("staff_skills")
+      .select("staff_id, skill, level"))
+  // Assignment-dependent queries — only awaited on the rota-exists path.
+  const leavesPromise = typedQuery<LeaveRow[]>(
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date, type")
+      .lte("start_date", dates[6])
+      .gte("end_date", dates[0])
+      .eq("status", "approved"))
+  const rulesPromise = typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]))
   const assignmentsPromise = typedQuery<AssignmentJoinRow[]>(
     supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
       .eq("rotas.week_start", weekStart))
 
-  const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes] = await Promise.all([
-    typedQuery<RotaRecord>(
-      supabase
-        .from("rotas")
-        .select("id, status, published_at, published_by, punctions_override, engine_warnings")
-        .eq("week_start", weekStart)
-        .maybeSingle()),
-    supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle(),
-    typedQuery<LeaveRow[]>(
-      supabase
-        .from("leaves")
-        .select("staff_id, start_date, end_date, type")
-        .lte("start_date", dates[6])
-        .gte("end_date", dates[0])
-        .eq("status", "approved")),
-    typedQuery<ShiftTypeDefinition[]>(supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order")),
-    typedQuery<Tecnica[]>(supabase.from("tecnicas").select("*").order("orden").order("created_at")),
-    typedQuery<import("@/lib/types/database").Department[]>(supabase.from("departments").select("*").order("sort_order")),
-    typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"])),
-    typedQuery<OrgConfig>(
-      supabase
-        .from("organisations")
-        .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
-        .limit(1)
-        .maybeSingle()),
-    typedQuery<StaffRow[]>(
-      supabase
-        .from("staff")
-        .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours")),
-    typedQuery<SkillRow[]>(
-      supabase
-        .from("staff_skills")
-        .select("staff_id, skill, level")),
-  ])
-
-  // Check for critical query errors — throw so callers can catch
-  const criticalErrors = [
-    labConfigResult.error && `lab_config: ${labConfigResult.error.message}`,
-    leavesResult.error && `leaves: ${leavesResult.error.message}`,
-    shiftTypesRes.error && `shift_types: ${shiftTypesRes.error.message}`,
-    staffRes.error && `staff: ${staffRes.error.message}`,
-  ].filter(Boolean)
-  if (criticalErrors.length > 0) {
-    console.error("[getRotaWeek] Query errors:", criticalErrors.join("; "))
-    throw new Error(`Failed to load schedule data: ${criticalErrors.join("; ")}`)
-  }
+  // Await `rotas` first (indexed single-row lookup, ~20ms). The other queries
+  // are already in flight in parallel, so awaiting this first doesn't add
+  // latency on the rota-exists path.
+  const rotaResultFull = await rotaPromise
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
   let rotaResult = rotaResultFull
@@ -190,6 +181,72 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   const rotaData  = rotaResult.data
+
+  // ── Fast path: no rota exists ──────────────────────────────────────────────
+  // Skip awaiting leaves/rules/assignments and all the assignment-dependent
+  // processing below. Only wait for the config/staff queries the empty-state
+  // shell actually needs.
+  if (!rotaData) {
+    leavesPromise.catch(() => {})
+    rulesPromise.catch(() => {})
+    assignmentsPromise.catch(() => {})
+    const [labConfigResult, shiftTypesRes, tecnicasRes, departmentsRes, orgResult, staffRes, skillsRes] = await Promise.all([
+      labConfigPromise, shiftTypesPromise, tecnicasPromise, departmentsPromise, orgPromise, staffPromise, skillsPromise,
+    ])
+    const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
+    const shiftTypesData = shiftTypesRes.data ?? []
+    const shiftTimes: ShiftTimes | null = shiftTypesData.length > 0
+      ? Object.fromEntries(shiftTypesData.map((st) => [st.code, { start: st.start_time, end: st.end_time }]))
+      : null
+    const orgDisplayMode = orgResult.data?.rota_display_mode ?? "by_shift"
+    const engineConfig: import("@/lib/types/database").EngineConfig = {
+      aiOptimalVersion:     orgResult.data?.ai_optimal_version     ?? "v2",
+      hybridEnabled:        orgResult.data?.engine_hybrid_enabled  ?? true,
+      reasoningEnabled:     orgResult.data?.engine_reasoning_enabled ?? false,
+      taskOptimalVersion:   orgResult.data?.task_optimal_version   ?? "v1",
+      taskHybridEnabled:    orgResult.data?.task_hybrid_enabled    ?? false,
+      taskReasoningEnabled: orgResult.data?.task_reasoning_enabled ?? false,
+    }
+    const punctionsDefault: Record<string, number> = {}
+    for (const date of dates) {
+      const dow = new Date(date + "T12:00:00").getDay()
+      punctionsDefault[date] = labConfig?.punctions_by_day?.[DOW_TO_KEY[dow]] ?? 0
+    }
+    const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
+    const orgCountry = (labConfig as { country?: string } | null)?.country || "ES"
+    const orgRegion  = (labConfig as { region?: string } | null)?.region || null
+    const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
+    const skillsByStaff: Record<string, SkillRow[]> = {}
+    for (const sk of skillsRes.data ?? []) {
+      if (!skillsByStaff[sk.staff_id]) skillsByStaff[sk.staff_id] = []
+      skillsByStaff[sk.staff_id].push(sk)
+    }
+    const activeStaff = ((staffRes.data ?? []) as StaffRow[]).filter((s) => s.onboarding_status !== "inactive").map((s) => ({
+      ...s,
+      staff_skills: (skillsByStaff[s.id] ?? []) as unknown as StaffWithSkills["staff_skills"],
+    })) as StaffWithSkills[]
+
+    const emptyDays: RotaDay[] = dates.map((d) => ({ date: d, isWeekend: isWeekend(d), assignments: [], skillGaps: [], warnings: [] }))
+    return { weekStart, rota: null, days: emptyDays, punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate: {}, onLeaveTypeByDate: {}, staffNames: {}, publicHolidays, tecnicas: tecnicasRes.data ?? [], departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, enableSwapRequests: !!(labConfig?.enable_swap_requests) && orgDisplayMode === "by_shift", trainingByStaff: {}, aiReasoning: null, engineConfig, activeStaff }
+  }
+
+  // ── Slow path: rota exists ─────────────────────────────────────────────────
+  const [labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes] = await Promise.all([
+    labConfigPromise, leavesPromise, shiftTypesPromise, tecnicasPromise, departmentsPromise, rulesPromise, orgPromise, staffPromise, skillsPromise,
+  ])
+
+  // Check for critical query errors — throw so callers can catch
+  const criticalErrors = [
+    labConfigResult.error && `lab_config: ${labConfigResult.error.message}`,
+    leavesResult.error && `leaves: ${leavesResult.error.message}`,
+    shiftTypesRes.error && `shift_types: ${shiftTypesRes.error.message}`,
+    staffRes.error && `staff: ${staffRes.error.message}`,
+  ].filter(Boolean)
+  if (criticalErrors.length > 0) {
+    console.error("[getRotaWeek] Query errors:", criticalErrors.join("; "))
+    throw new Error(`Failed to load schedule data: ${criticalErrors.join("; ")}`)
+  }
+
   const labConfig = labConfigResult.data as import("@/lib/types/database").LabConfig | null
   const allFetchedRules = ((rulesRes.data ?? []) as { type: string; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; expires_at: string | null }[])
     .filter((r) => !r.expires_at || r.expires_at > weekStart)
@@ -229,15 +286,13 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     taskReasoningEnabled: orgRow?.task_reasoning_enabled ?? false,
   }
 
-  const rota = rotaData
-    ? {
-        id: rotaData.id,
-        status: rotaData.status as RotaStatus,
-        published_at: rotaData.published_at,
-        published_by: (rotaData as Record<string, unknown>).published_by as string | null ?? null,
-        punctions_override: rotaData.punctions_override ?? {},
-      }
-    : null
+  const rota = {
+    id: rotaData.id,
+    status: rotaData.status as RotaStatus,
+    published_at: rotaData.published_at,
+    published_by: (rotaData as Record<string, unknown>).published_by as string | null ?? null,
+    punctions_override: rotaData.punctions_override ?? {},
+  }
 
   // Compute default punctions per date from lab config
   const punctionsDefault: Record<string, number> = {}
@@ -291,14 +346,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     staff_skills: (skillsByStaff[s.id] ?? []) as unknown as StaffWithSkills["staff_skills"],
   })) as StaffWithSkills[]
 
-  if (!rota) {
-    // Throw away the speculative assignments query without awaiting it.
-    assignmentsPromise.catch(() => {})
-    return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek: labConfig?.first_day_of_week ?? 0, timeFormat: labConfig?.time_format ?? "24h", biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, enableSwapRequests: !!(labConfig?.enable_swap_requests) && orgDisplayMode === "by_shift", trainingByStaff, aiReasoning: null, engineConfig, activeStaff }
-  }
-
-  // Fetch assignments + all org staff in parallel so we can enrich assignments without
-  // relying on a PostgREST join (which can silently return null after schema migrations).
+  // Enrich assignments without relying on a PostgREST join (which can silently
+  // return null after schema migrations).
   type RawAssignment = {
     id: string; staff_id: string; date: string; shift_type: string;
     is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null;
