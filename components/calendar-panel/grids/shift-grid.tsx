@@ -176,7 +176,7 @@ export function ShiftGrid({
           ))}
         </div>
         {Array.from({ length: 6 }).map((_, row) => (
-          <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border">
+          <div key={row} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border last:border-b-0">
             <div className="flex items-center justify-end px-2 py-3 bg-muted">
               <div className="shimmer-bar h-3 w-8" />
             </div>

@@ -11,16 +11,14 @@ import { MobileHeader } from "@/components/mobile-header"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { LayoutChatWrapper } from "@/components/layout-chat-wrapper"
 import { RoleProvider } from "@/lib/role-context"
-import { time, mark, now } from "@/lib/server-timing"
 
 export default async function ClinicLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const tLayout = now()
   const supabase = await createClient()
-  const user = await time("layout.getAuthUser", () => getAuthUser())
+  const user = await getAuthUser()
 
   let orgName: string | null = null
   let orgLogoUrl: string | null = null
@@ -32,7 +30,6 @@ export default async function ClinicLayout({
 
   if (user) {
     // ── Round 1: profile + memberships in parallel (no dependency between them) ──
-    const tRound1 = now()
     const admin = createAdminClient()
     const [{ data: profile }, { data: memberships }] = await Promise.all([
       supabase
@@ -45,7 +42,6 @@ export default async function ClinicLayout({
         .select("organisation_id, role, linked_staff_id")
         .eq("user_id", user.id) as unknown as Promise<{ data: Array<{ organisation_id: string; role: string; linked_staff_id: string | null }> | null }>,
     ])
-    mark("layout.round1", tRound1)
 
     defaultOrgId = (profile as { default_organisation_id?: string | null } | null)?.default_organisation_id ?? null
 
@@ -135,18 +131,13 @@ export default async function ClinicLayout({
       }
     }
 
-    if (round2.length > 0) {
-      const tRound2 = now()
-      await Promise.all(round2)
-      mark(`layout.round2 (${round2.length} queries)`, tRound2)
-    }
+    if (round2.length > 0) await Promise.all(round2)
 
     // Guard: authenticated user with no org membership cannot access the clinic app
     if (!activeOrgId || !memberships?.length) {
       redirect("/login?error=no_access")
     }
   }
-  mark("layout.total", tLayout)
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-muted">
