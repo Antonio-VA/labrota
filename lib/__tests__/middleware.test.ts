@@ -377,6 +377,22 @@ describe("middleware — preferences sync (timestamp-based DB → cookies)", () 
     expect(ttl).toBeDefined()
     expect(parseInt(ttl!, 10)).toBeGreaterThan(Date.now())
   })
+
+  it("re-reads from DB when TTL cookie is expired", async () => {
+    mockUser = { id: "u1", app_metadata: { role: "member" } }
+    mockProfileData = { preferences: { theme: "dark" }, preferences_updated_at: TS2 }
+    const expiredTtl = String(Date.now() - 60_000)
+    const res = (await runMiddleware("/schedule", undefined, {
+      labrota_prefs_ttl: expiredTtl,
+      labrota_prefs_ts: TS1,
+    })) as unknown as MockNextResponse
+    // Expired TTL → middleware queries DB, sees newer ts, refreshes cookies + TTL
+    expect(res.cookies.get("labrota_theme")?.value).toContain('"theme":"dark"')
+    expect(res.cookies.get("labrota_prefs_ts")?.value).toBe(TS2)
+    const newTtl = res.cookies.get("labrota_prefs_ttl")?.value
+    expect(newTtl).toBeDefined()
+    expect(parseInt(newTtl!, 10)).toBeGreaterThan(Date.now())
+  })
 })
 
 describe("middleware — matcher config", () => {
