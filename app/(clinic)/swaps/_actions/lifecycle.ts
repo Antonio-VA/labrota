@@ -95,12 +95,10 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
       return { error: "The target shift assignment no longer exists." }
     }
 
-    // Swap staff_ids: delete both then reinsert to avoid unique constraint violation
+    // Insert swapped rows first so a mid-write crash leaves extra rows (recoverable)
+    // rather than missing rows (data loss). New staff_ids don't conflict with existing rows.
     const initData = { ...initiatorAssignment, staff_id: targetAssignment.staff_id }
     const targetData = { ...targetAssignment, staff_id: initiatorAssignment.staff_id }
-
-    await admin.from("rota_assignments").delete().eq("id", initiatorAssignment.id)
-    await admin.from("rota_assignments").delete().eq("id", targetAssignment.id)
 
     await admin.from("rota_assignments").insert({
       rota_id: initData.rota_id,
@@ -120,6 +118,9 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
       is_manual_override: true,
     })
 
+    await admin.from("rota_assignments").delete().eq("id", initiatorAssignment.id)
+    await admin.from("rota_assignments").delete().eq("id", targetAssignment.id)
+
   } else {
     // day_off: target covers initiator's day; initiator covers target's exchange day
     if (!swap.target_staff_id) return { error: "Target staff not specified." }
@@ -137,9 +138,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         return { error: "The exchange assignment no longer exists." }
       }
 
-      await admin.from("rota_assignments").delete().eq("id", initiatorAssignment.id)
-      await admin.from("rota_assignments").delete().eq("id", targetAssignment.id)
-
+      // Insert first, then delete — same crash-safety pattern as shift_swap above
       await admin.from("rota_assignments").insert({
         rota_id: initiatorAssignment.rota_id,
         staff_id: targetAssignment.staff_id,
@@ -157,6 +156,9 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         organisation_id: swap.organisation_id,
         is_manual_override: true,
       })
+
+      await admin.from("rota_assignments").delete().eq("id", initiatorAssignment.id)
+      await admin.from("rota_assignments").delete().eq("id", targetAssignment.id)
     } else {
       // Legacy / simple cover: reassign initiator's shift to target staff
       await admin

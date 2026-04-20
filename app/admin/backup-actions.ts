@@ -330,7 +330,6 @@ export async function restoreBackup(
   }
 
   revalidatePath(`/admin/orgs/${orgId}`)
-  revalidatePath("/")
   return {}
 }
 

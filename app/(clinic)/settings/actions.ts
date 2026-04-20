@@ -325,7 +325,7 @@ export async function updateOrgName(name: string): Promise<{ error?: string }> {
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
-  revalidatePath("/")
+  revalidatePath("/", "layout") // org name appears in sidebar
   return {}
 }
 
@@ -338,7 +338,7 @@ export async function updateOrgLogo(logoUrl: string): Promise<{ error?: string }
     .eq("id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/settings")
-  revalidatePath("/")
+  revalidatePath("/", "layout") // logo appears in sidebar
   return {}
 }
 
@@ -366,7 +366,6 @@ export async function updateOrgRegional(country: string, region: string): Promis
   }
 
   revalidatePath("/settings")
-  revalidatePath("/")
   return {}
 }
 
@@ -428,7 +427,7 @@ export async function resetImplementation(): Promise<{ error?: string }> {
   revalidatePath("/settings")
   revalidatePath("/staff")
   revalidatePath("/lab")
-  revalidatePath("/")
+  revalidatePath("/", "layout")
   return {}
 }
 

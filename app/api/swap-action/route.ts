@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createHmac } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
-const SECRET = process.env.SUPABASE_SECRET_KEY ?? ""
+function getSecret(): Buffer {
+  const secret = process.env.SWAP_TOKEN_SECRET
+  if (!secret) throw new Error("SWAP_TOKEN_SECRET env var is required")
+  return Buffer.from(secret)
+}
+
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export function signSwapAction(swapId: string, action: "approve" | "reject", step: "manager" | "target"): string {
   const expires = Date.now() + TOKEN_TTL_MS
-  return `${expires}.${createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")}`
+  return `${expires}.${createHmac("sha256", getSecret()).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")}`
 }
 
 function verifySwapAction(swapId: string, action: string, step: string, token: string): boolean {
@@ -17,8 +22,11 @@ function verifySwapAction(swapId: string, action: string, step: string, token: s
   const expires = Number(token.slice(0, dotIdx))
   const sig = token.slice(dotIdx + 1)
   if (isNaN(expires) || Date.now() > expires) return false
-  const expected = createHmac("sha256", SECRET).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")
-  return expected === sig
+  const expected = createHmac("sha256", getSecret()).update(`${swapId}:${action}:${step}:${expires}`).digest("hex")
+  const expectedBuf = Buffer.from(expected, "hex")
+  const sigBuf = Buffer.from(sig, "hex")
+  if (expectedBuf.length !== sigBuf.length) return false
+  return timingSafeEqual(expectedBuf, sigBuf)
 }
 
 export async function GET(request: NextRequest) {

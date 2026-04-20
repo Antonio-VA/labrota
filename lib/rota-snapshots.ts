@@ -188,13 +188,14 @@ export async function restoreWeekSnapshot(snapshotId: string): Promise<{ error?:
   // Capture current state before restoring
   await captureWeekSnapshot(snapshot.rota_id, snapshot.week_start)
 
-  // Delete ALL assignments for this rota (entire week)
-  await supabase
+  // Fetch IDs of current assignments to delete after safe re-insert
+  const { data: currentAssignments } = await supabase
     .from("rota_assignments")
-    .delete()
-    .eq("rota_id", snapshot.rota_id)
+    .select("id")
+    .eq("rota_id", snapshot.rota_id) as { data: { id: string }[] | null }
+  const oldIds = (currentAssignments ?? []).map((a) => a.id)
 
-  // Re-insert from snapshot
+  // Insert from snapshot first — a crash here leaves extra rows, not missing ones
   if (snapshot.assignments.length > 0) {
     const rows = snapshot.assignments.map((a) => ({
       rota_id: snapshot.rota_id,
@@ -207,6 +208,11 @@ export async function restoreWeekSnapshot(snapshotId: string): Promise<{ error?:
     }))
     const { error } = await supabase.from("rota_assignments").insert(rows as never)
     if (error) return { error: error.message }
+  }
+
+  // Delete old rows by ID now that new rows are safely written
+  if (oldIds.length > 0) {
+    await supabase.from("rota_assignments").delete().in("id", oldIds)
   }
 
   revalidatePath("/")
@@ -231,14 +237,15 @@ export async function restoreSnapshot(snapshotId: string): Promise<{ error?: str
   // Capture current state before restoring
   await captureSnapshot(snapshot.rota_id, snapshot.date, snapshot.week_start)
 
-  // Delete current assignments for this day
-  await supabase
+  // Fetch IDs of current assignments for this day to delete after safe re-insert
+  const { data: currentAssignments } = await supabase
     .from("rota_assignments")
-    .delete()
+    .select("id")
     .eq("rota_id", snapshot.rota_id)
-    .eq("date", snapshot.date)
+    .eq("date", snapshot.date) as { data: { id: string }[] | null }
+  const oldIds = (currentAssignments ?? []).map((a) => a.id)
 
-  // Re-insert from snapshot
+  // Insert from snapshot first — a crash here leaves extra rows, not missing ones
   if (snapshot.assignments.length > 0) {
     const rows = snapshot.assignments.map((a) => ({
       rota_id: snapshot.rota_id,
@@ -251,6 +258,11 @@ export async function restoreSnapshot(snapshotId: string): Promise<{ error?: str
     }))
     const { error } = await supabase.from("rota_assignments").insert(rows as never)
     if (error) return { error: error.message }
+  }
+
+  // Delete old rows by ID now that new rows are safely written
+  if (oldIds.length > 0) {
+    await supabase.from("rota_assignments").delete().in("id", oldIds)
   }
 
   revalidatePath("/")

@@ -38,7 +38,7 @@ export async function switchOrg(orgId: string): Promise<{ error?: string }> {
     sameSite: "lax",
   })
 
-  revalidatePath("/")
+  revalidatePath("/", "layout") // active org switch affects entire layout (sidebar, nav, data)
   return {}
 }
 

@@ -95,7 +95,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
   // Update user metadata
   await supabase.auth.updateUser({ data: { avatar_url: url } })
 
-  revalidatePath("/")
+  revalidatePath("/", "layout") // avatar appears in sidebar
   return { url }
 }
 
@@ -127,7 +127,7 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
   cookieStore.set(PREFS_TS_COOKIE, updatedAt, PREFS_COOKIE_OPTS)
   cookieStore.set(PREFS_TTL_COOKIE, String(Date.now() + PREFS_TTL_MS), PREFS_COOKIE_OPTS)
 
-  revalidatePath("/")
+  revalidatePath("/", "layout") // preferences affect sidebar/theme
   return { updatedAt }
 }
 

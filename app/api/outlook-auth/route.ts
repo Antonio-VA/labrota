@@ -3,11 +3,16 @@ import { createHmac } from "crypto"
 import { MICROSOFT_AUTH_URL, SCOPES, getClientConfig } from "@/lib/outlook/config"
 import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
 
+function getOutlookStateSecret(): string {
+  const secret = process.env.OUTLOOK_STATE_SECRET
+  if (!secret) throw new Error("OUTLOOK_STATE_SECRET env var is required")
+  return secret
+}
+
 // Build a signed state parameter to prevent CSRF
 function buildState(staffId: string, orgId: string): string {
   const payload = `${staffId}:${orgId}:${Date.now()}`
-  const secret = process.env.SUPABASE_SECRET_KEY!
-  const sig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 16)
+  const sig = createHmac("sha256", getOutlookStateSecret()).update(payload).digest("hex")
   return Buffer.from(`${payload}:${sig}`).toString("base64url")
 }
 

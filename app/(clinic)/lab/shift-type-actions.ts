@@ -66,7 +66,6 @@ export async function saveShiftTypes(
   }
 
   revalidatePath("/lab")
-  revalidatePath("/")
   return {}
 }
 

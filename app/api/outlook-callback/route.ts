@@ -1,23 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { createHmac } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { exchangeCodeForTokens, getMicrosoftProfile } from "@/lib/outlook/graph-client"
 import { encrypt } from "@/lib/outlook/encryption"
 import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
 
+function getOutlookStateSecret(): string {
+  const secret = process.env.OUTLOOK_STATE_SECRET
+  if (!secret) throw new Error("OUTLOOK_STATE_SECRET env var is required")
+  return secret
+}
+
 // Verify and parse the signed state parameter
 function parseState(state: string): { staffId: string; orgId: string } | null {
   try {
     const decoded = Buffer.from(state, "base64url").toString("utf8")
-    const parts = decoded.split(":")
-    if (parts.length !== 4) return null
-    const [staffId, orgId, timestamp, sig] = parts
+    // Format: staffId:orgId:timestamp:sig (sig is full hex HMAC, no UUIDs contain ":")
+    const lastColon = decoded.lastIndexOf(":")
+    if (lastColon === -1) return null
+    const sig = decoded.slice(lastColon + 1)
+    const payload = decoded.slice(0, lastColon)
+    const payloadParts = payload.split(":")
+    if (payloadParts.length !== 3) return null
+    const [staffId, orgId, timestamp] = payloadParts
 
-    // Verify signature
-    const payload = `${staffId}:${orgId}:${timestamp}`
-    const secret = process.env.SUPABASE_SECRET_KEY!
-    const expectedSig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 16)
-    if (sig !== expectedSig) return null
+    // Verify signature using timing-safe comparison
+    const expectedSig = createHmac("sha256", getOutlookStateSecret()).update(payload).digest("hex")
+    const expectedBuf = Buffer.from(expectedSig, "hex")
+    const sigBuf = Buffer.from(sig, "hex")
+    if (expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) return null
 
     // Verify timestamp (max 10 minutes)
     if (Date.now() - parseInt(timestamp) > 10 * 60 * 1000) return null

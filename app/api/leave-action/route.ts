@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createHmac } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
-const SECRET = process.env.SUPABASE_SECRET_KEY ?? ""
+function getSecret(): Buffer {
+  const secret = process.env.LEAVE_TOKEN_SECRET
+  if (!secret) throw new Error("LEAVE_TOKEN_SECRET env var is required")
+  return Buffer.from(secret)
+}
+
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export function signLeaveAction(leaveId: string, action: "approve" | "reject"): string {
   const expires = Date.now() + TOKEN_TTL_MS
-  return `${expires}.${createHmac("sha256", SECRET).update(`${leaveId}:${action}:${expires}`).digest("hex")}`
+  return `${expires}.${createHmac("sha256", getSecret()).update(`${leaveId}:${action}:${expires}`).digest("hex")}`
 }
 
 function verifyLeaveAction(leaveId: string, action: string, token: string): boolean {
@@ -18,8 +23,11 @@ function verifyLeaveAction(leaveId: string, action: string, token: string): bool
   const expires = Number(token.slice(0, dotIdx))
   const sig = token.slice(dotIdx + 1)
   if (isNaN(expires) || Date.now() > expires) return false
-  const expected = createHmac("sha256", SECRET).update(`${leaveId}:${action}:${expires}`).digest("hex")
-  return expected === sig
+  const expected = createHmac("sha256", getSecret()).update(`${leaveId}:${action}:${expires}`).digest("hex")
+  const expectedBuf = Buffer.from(expected, "hex")
+  const sigBuf = Buffer.from(sig, "hex")
+  if (expectedBuf.length !== sigBuf.length) return false
+  return timingSafeEqual(expectedBuf, sigBuf)
 }
 
 export async function GET(request: NextRequest) {

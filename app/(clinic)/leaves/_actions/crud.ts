@@ -131,9 +131,8 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
     userId: user?.id,
     trigger: "leave_updated",
   })
-  revalidatePath("/")
-
   revalidatePath("/leaves")
+  revalidatePath("/") // clearRotaAssignmentsForLeave modifies the schedule
   return { success: true }
 }
 

@@ -53,7 +53,6 @@ export async function saveDepartments(
     }
 
     revalidatePath("/lab")
-    revalidatePath("/")
     return {}
   })
 }
