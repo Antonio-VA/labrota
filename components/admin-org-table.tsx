@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, getInitials } from "@/lib/utils"
 import { Archive, Pause, Trash2, Copy, X } from "lucide-react"
 import { toast } from "sonner"
 import { createBackup } from "@/app/admin/backup-actions"
@@ -159,7 +159,7 @@ export function AdminOrgTable({ rows, locale }: { rows: OrgRow[]; locale: string
                       {row.logo_url ? (
                         <Image src={row.logo_url} alt={row.name} width={32} height={32} className="size-full object-contain p-0.5" />
                       ) : (
-                        row.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+                        getInitials(row.name) ?? ""
                       )}
                     </div>
                     <div>

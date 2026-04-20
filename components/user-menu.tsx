@@ -7,19 +7,11 @@ import type { User } from "@supabase/supabase-js"
 import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { getInitials } from "@/lib/utils"
 
 function initials(user: User): string {
-  const email = user.email ?? ""
   const name = (user.user_metadata?.full_name as string | undefined) ?? ""
-  if (name) {
-    return name
-      .split(" ")
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-  }
-  return email.slice(0, 2).toUpperCase()
+  return getInitials(name) ?? (user.email ?? "").slice(0, 2).toUpperCase()
 }
 
 function displayName(user: User): string {

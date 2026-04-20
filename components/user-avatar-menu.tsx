@@ -9,7 +9,7 @@ import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
 import { useUserPreferences, DEFAULT_PREFS, resolvePrefs } from "@/hooks/use-user-preferences"
 import { THEME_COOKIE } from "@/lib/preferences-cookies"
-import { cn } from "@/lib/utils"
+import { cn, getInitials } from "@/lib/utils"
 import type { User } from "@supabase/supabase-js"
 
 interface InitialUser {
@@ -90,9 +90,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
 
   const fullName = initialUser.fullName ?? ""
   const firstName = fullName.split(" ")[0] || initialUser.email?.split("@")[0] || ""
-  const initials = fullName
-    ? fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : (initialUser.email ?? "").slice(0, 2).toUpperCase()
+  const initials = getInitials(fullName) ?? (initialUser.email ?? "").slice(0, 2).toUpperCase()
   const [avatarError, setAvatarError] = useState(false)
   const avatarUrl = !avatarError ? hiResAvatarUrl(initialUser.avatarUrl) : null
 

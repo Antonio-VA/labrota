@@ -42,7 +42,7 @@ export function AccountPanel({ open, onClose, user }: {
 }) {
   const t = useTranslations("account")
   const to = useTranslations("outlook")
-  const { prefs, update, hydrate, status } = useUserPreferences(DEFAULT_PREFS)
+  const { prefs, update, status } = useUserPreferences(DEFAULT_PREFS)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [department, setDepartment] = useState<string | null>(null)
@@ -53,12 +53,12 @@ export function AccountPanel({ open, onClose, user }: {
     if (!open || !user) return
     setLoading(true)
     Promise.all([getUserPreferences(), getUserDepartment(), getUserOutlookStatus()]).then(([p, dept, ol]) => {
-      hydrate(resolvePrefs(p))
+      update(resolvePrefs(p), { persist: false })
       setDepartment(dept)
       setOutlook(ol)
       setLoading(false)
     })
-  }, [open, user, hydrate])
+  }, [open, user, update])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const firstName = (user?.user_metadata?.full_name as string)?.split(" ")[0] ?? ""

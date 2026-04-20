@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw, X } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, getInitials } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import {
   getUserProfile, getUserPreferences, getUserOutlookStatus,
@@ -43,7 +43,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   const [loading, setLoading] = useState(!_accountCache)
   const [loaded, setLoaded] = useState(!!_accountCache)
 
-  const { prefs, update, hydrate } = useUserPreferences(resolvePrefs(_accountCache?.prefs))
+  const { prefs, update } = useUserPreferences(resolvePrefs(_accountCache?.prefs))
 
   // Fetch data when sheet opens (once per session; re-seeds from module cache on remount)
   /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
@@ -54,12 +54,12 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
       const resolvedPrefs = resolvePrefs(p)
       _accountCache = { user: u, prefs: resolvedPrefs, outlook: o }
       setUser(u)
-      hydrate(resolvedPrefs)
+      update(resolvedPrefs, { persist: false })
       setOutlook(o)
       setLoading(false)
       setLoaded(true)
     })
-  }, [open, loaded, hydrate])
+  }, [open, loaded, update])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   async function signOut() {
@@ -68,9 +68,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
     window.location.href = "/login"
   }
 
-  const initials = user?.fullName
-    ? user.fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : user?.email?.[0]?.toUpperCase() ?? "?"
+  const initials = getInitials(user?.fullName) ?? user?.email?.[0]?.toUpperCase() ?? "?"
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose() }}>

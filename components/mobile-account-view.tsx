@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, getInitials } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
@@ -36,9 +36,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
     window.location.href = "/login"
   }
 
-  const initials = initialUser?.fullName
-    ? initialUser.fullName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : initialUser?.email?.[0]?.toUpperCase() ?? "?"
+  const initials = getInitials(initialUser?.fullName) ?? initialUser?.email?.[0]?.toUpperCase() ?? "?"
 
   return (
     <div className="flex flex-col gap-4 px-4 py-5">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { COUNTRIES, getCountry } from "@/lib/regional-config"
 import { updateOrgLogo } from "@/app/admin/actions"
+import { getInitials } from "@/lib/utils"
 
 export function ConfigurationSection({
   orgId,
@@ -80,7 +81,7 @@ export function ConfigurationSection({
                 {logoUrl ? (
                   <Image src={logoUrl} alt="" width={56} height={56} className="size-full object-cover" />
                 ) : (
-                  orgName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+                  getInitials(orgName) ?? ""
                 )}
                 <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
                   <Upload className="size-4 text-white" />

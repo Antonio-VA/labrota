@@ -66,12 +66,6 @@ export function useUserPreferences(initial: SavablePrefs) {
 
   const prefsRef = useRef<SavablePrefs>(initial)
   const pendingRef = useRef<SavablePrefs | null>(null)
-  const hydrate = useCallback((seed: SavablePrefs) => {
-    if (prefsEqual(seed, prefsRef.current)) return
-    prefsRef.current = seed
-    setPrefsState(seed)
-    applyTheme(seed)
-  }, [])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
   const instanceIdRef = useRef<string>("")
@@ -88,21 +82,23 @@ export function useUserPreferences(initial: SavablePrefs) {
     bcRef.current?.postMessage({ prefs: toSave, source: instanceIdRef.current } satisfies BroadcastMessage)
   }, [flashStatus, setStatus])
 
-  const update = useCallback((patch: Partial<SavablePrefs>) => {
+  /** Apply `patch` to local state + DOM. With `{ persist: false }` (used to
+   *  seed from server or sibling tabs) the change skips the debounced save. */
+  const update = useCallback((patch: Partial<SavablePrefs>, opts?: { persist?: boolean }) => {
     const prev = prefsRef.current
     const next = { ...prev, ...patch }
     if (prefsEqual(prev, next)) return
     prefsRef.current = next
-    pendingRef.current = next
     setPrefsState(next)
-
     applyTheme(next)
 
-    if (patch.locale !== undefined && patch.locale !== prev.locale) {
-      writeLocaleCookie(patch.locale as LocalePref)
+    if (next.locale !== prev.locale) {
+      writeLocaleCookie(next.locale as LocalePref)
       router.refresh()
     }
 
+    if (opts?.persist === false) return
+    pendingRef.current = next
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => { void flush() }, SAVE_DEBOUNCE_MS)
   }, [flush, router])
@@ -138,5 +134,5 @@ export function useUserPreferences(initial: SavablePrefs) {
     }
   }, [flush])
 
-  return { prefs, update, hydrate, status }
+  return { prefs, update, status }
 }

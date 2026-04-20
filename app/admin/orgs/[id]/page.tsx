@@ -113,9 +113,6 @@ export default async function OrgDetailPage({
       }
     })
 
-  // Org initials
-  const _initials = org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}

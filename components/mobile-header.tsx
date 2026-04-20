@@ -8,7 +8,7 @@ import { NotificationBell } from "@/components/notification-panel"
 import { SwapBell } from "@/components/swap-panel"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { MobileAccountSheet } from "@/components/mobile-account-sheet"
-import { cn } from "@/lib/utils"
+import { cn, getInitials } from "@/lib/utils"
 
 interface MobileHeaderProps {
   orgName: string | null
@@ -36,9 +36,7 @@ export function MobileHeader({
   }
 
   // Org chip
-  const orgInitials = orgName
-    ? orgName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : "?"
+  const orgInitials = getInitials(orgName) ?? "?"
 
   return (
     <>
@@ -90,7 +88,7 @@ export function MobileHeader({
             {allOrgs.map((org) => {
               const isActive = org.id === activeOrgId
               const isDefault = localDefault === org.id
-              const initials = org.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+              const initials = getInitials(org.name) ?? "?"
               return (
                 <div
                   key={org.id}
