@@ -209,6 +209,13 @@ export function runRotaEngineV2({
   }
 
   // ── PHASE 2: Day-by-day assignment (minimum guaranteed + fill with preferences)
+  // Intentionally kept inline. The loop reads and writes ~15 mutable maps
+  // (weeklyShiftCount, weekShiftHistory, assignedByDate, minCoverageReserved,
+  // workloadScore, leaveMap, inferredShiftPref/DayPref/DayAvoid, tecnicaTypicalShifts,
+  // …) and many closures (getEffectiveBudget, getEffectiveDayCode,
+  // isEffectiveWeekend, consecutiveDaysBefore). Extracting it would require
+  // threading all of that through a params object or refactoring the loop into
+  // a stateful class — not a size-only win. Do not flag in file-size audits.
   for (const date of allDates) {
     const dayCode = getDayCode(date)
     const effectiveDayCode = getEffectiveDayCode(date)
