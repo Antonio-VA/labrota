@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
   // Notify the staff member about the decision
   try {
-    const { notifyLeaveDecision } = await import("@/app/(clinic)/leaves/actions")
+    const { notifyLeaveDecision } = await import("@/app/(clinic)/leaves/emails")
     await notifyLeaveDecision({ leaveId, orgId: leave.organisation_id, decision: newStatus as "approved" | "rejected" })
   } catch { /* email failure should not block */ }
 
