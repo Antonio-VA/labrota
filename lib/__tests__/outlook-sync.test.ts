@@ -172,7 +172,8 @@ describe("syncStaffOutlook", () => {
     const result = await syncStaffOutlook(STAFF_ID, ORG_ID)
     expect(result.created).toBe(1)
     expect(result.errors).toHaveLength(0)
-    const inserted = insertCalls[0] as Record<string, unknown>
+    const insertedArr = insertCalls[0] as Record<string, unknown>[]
+    const inserted = insertedArr[0]
     expect(inserted.outlook_event_id).toBe("evt-1")
     expect(inserted.type).toBe("annual")
     expect(inserted.staff_id).toBe(STAFF_ID)
@@ -247,7 +248,8 @@ describe("leave type inference", () => {
       { eventId: "evt-x", subject, startDate: "2026-05-01", endDate: "2026-05-01" },
     ])
     await syncStaffOutlook(STAFF_ID, ORG_ID)
-    return (insertCalls[0] as Record<string, string>)?.type ?? "not-inserted"
+    const arr = insertCalls[0] as Record<string, string>[] | undefined
+    return arr?.[0]?.type ?? "not-inserted"
   }
 
   it.each([

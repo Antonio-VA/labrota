@@ -32,11 +32,7 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   const admin = createAdminClient()
 
   // Org isolation: the admin client bypasses RLS, so we must verify that
-  // staffId actually belongs to orgId before touching any tables. Without
-  // this, a caller passing a foreign staffId could read that staff's
-  // Outlook token via getValidAccessToken and write leaves into the wrong
-  // org. Checking against `staff` (not `outlook_connections`) also stops a
-  // tampered connection row from escalating.
+  // staffId actually belongs to orgId before touching any tables.
   const { data: staffRow } = await admin
     .from("staff")
     .select("id")
@@ -48,7 +44,6 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     return result
   }
 
-  // Get valid access token (auto-refreshes if needed)
   let accessToken: string
   try {
     accessToken = await getValidAccessToken(staffId)
@@ -57,7 +52,6 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     return result
   }
 
-  // Fetch OOF events for the next 90 days
   const today = toISODate()
   const futureDate = toISODate(Date.now() + 90 * 24 * 60 * 60 * 1000)
 
@@ -69,8 +63,6 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
     return result
   }
 
-  // Load existing Outlook-synced leaves for this staff
-  // Use end_date >= today so ongoing multi-day leaves (started before today) are also tracked
   const { data: existingLeaves } = await admin
     .from("leaves")
     .select("id, outlook_event_id, start_date, end_date, type")
@@ -88,79 +80,93 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
       .map((l) => [l.outlook_event_id!, l])
   )
 
+  // ── Classify events into create / update / delete buckets ─────────────────
   const processedEventIds = new Set<string>()
-  const createdRanges: { start: string; end: string }[] = []
-  const deletedRanges: { start: string; end: string }[] = []
+  const toCreate: OOFEvent[] = []
+  const toUpdate: Array<{ id: string; event: OOFEvent }> = []
 
-  // Upsert OOF events
   for (const event of oofEvents) {
     processedEventIds.add(event.eventId)
     const existing = existingMap.get(event.eventId)
-
     if (existing) {
-      // Check if dates changed
       if (existing.start_date !== event.startDate || existing.end_date !== event.endDate) {
-        const { error } = await admin
-          .from("leaves")
-          .update({
-            start_date: event.startDate,
-            end_date: event.endDate,
-            type: guessLeaveType(event.subject),
-          })
-          .eq("id", existing.id)
-        if (error) result.errors.push(`Update failed for event ${event.eventId}: ${error.message}`)
-        else result.updated++
+        toUpdate.push({ id: existing.id, event })
       }
     } else {
-      // Create new leave
-      const { error } = await admin
-        .from("leaves")
-        .insert({
-          organisation_id: orgId,
-          staff_id: staffId,
-          type: guessLeaveType(event.subject),
-          start_date: event.startDate,
-          end_date: event.endDate,
-          status: "approved",
-          source: "outlook",
-          outlook_event_id: event.eventId,
-          notes: `Outlook: ${event.subject}`,
-        } as never)
-      if (error) result.errors.push(`Insert failed for event ${event.eventId}: ${error.message}`)
-      else {
-        result.created++
-        createdRanges.push({ start: event.startDate, end: event.endDate })
-        // Remove conflicting rota assignments (even published ones)
-        await admin
+      toCreate.push(event)
+    }
+  }
+
+  const toDelete = [...existingMap.values()].filter(
+    (l) => !processedEventIds.has(l.outlook_event_id!) && l.end_date >= today
+  )
+
+  // ── Bulk insert new leaves ─────────────────────────────────────────────────
+  const createdRanges: { start: string; end: string }[] = []
+  if (toCreate.length > 0) {
+    const rows = toCreate.map((event) => ({
+      organisation_id: orgId,
+      staff_id: staffId,
+      type: guessLeaveType(event.subject),
+      start_date: event.startDate,
+      end_date: event.endDate,
+      status: "approved",
+      source: "outlook",
+      outlook_event_id: event.eventId,
+      notes: `Outlook: ${event.subject}`,
+    }))
+    const { error } = await admin.from("leaves").insert(rows as never)
+    if (error) {
+      result.errors.push(`Insert failed: ${error.message}`)
+    } else {
+      result.created += toCreate.length
+      for (const e of toCreate) createdRanges.push({ start: e.startDate, end: e.endDate })
+    }
+  }
+
+  // ── Concurrent updates ─────────────────────────────────────────────────────
+  if (toUpdate.length > 0) {
+    const updateResults = await Promise.all(
+      toUpdate.map(({ id, event }) =>
+        (admin
+          .from("leaves")
+          .update({ start_date: event.startDate, end_date: event.endDate, type: guessLeaveType(event.subject) })
+          .eq("id", id) as unknown) as Promise<{ error: { message: string } | null }>
+      )
+    )
+    for (const r of updateResults) {
+      if (r.error) result.errors.push(`Update failed: ${r.error.message}`)
+      else result.updated++
+    }
+  }
+
+  // ── Bulk delete stale leaves ───────────────────────────────────────────────
+  const deletedRanges: { start: string; end: string }[] = []
+  if (toDelete.length > 0) {
+    const idsToDelete = toDelete.map((l) => l.id)
+    const { error } = await admin.from("leaves").delete().in("id", idsToDelete) as { error: { message: string } | null }
+    if (error) {
+      result.errors.push(`Delete failed: ${error.message}`)
+    } else {
+      result.deleted += toDelete.length
+      for (const l of toDelete) deletedRanges.push({ start: l.start_date, end: l.end_date })
+    }
+  }
+
+  // ── Concurrent rota_assignments cleanup for all affected date ranges ───────
+  const allCleanupRanges = [...createdRanges, ...deletedRanges]
+  if (allCleanupRanges.length > 0) {
+    await Promise.all(
+      allCleanupRanges.map(({ start, end }) =>
+        admin
           .from("rota_assignments")
           .delete()
           .eq("staff_id", staffId)
           .eq("organisation_id", orgId)
-          .gte("date", event.startDate)
-          .lte("date", event.endDate)
-      }
-    }
-  }
-
-  // Delete future synced leaves whose Outlook events no longer exist
-  for (const [eventId, leave] of existingMap) {
-    if (!processedEventIds.has(eventId) && leave.end_date >= today) {
-      // Also remove conflicting rota assignments
-      await admin
-        .from("rota_assignments")
-        .delete()
-        .eq("staff_id", staffId)
-        .eq("organisation_id", orgId)
-        .gte("date", leave.start_date)
-        .lte("date", leave.end_date)
-
-      const { error } = await admin
-        .from("leaves")
-        .delete()
-        .eq("id", leave.id)
-      if (error) result.errors.push(`Delete failed for event ${eventId}: ${error.message}`)
-      else { result.deleted++; deletedRanges.push({ start: leave.start_date, end: leave.end_date }) }
-    }
+          .gte("date", start)
+          .lte("date", end)
+      )
+    )
   }
 
   // Update last_synced_at
@@ -215,6 +221,8 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
   return result
 }
 
+const SYNC_CONCURRENCY = 5
+
 // Sync all connected staff for an organisation
 export async function syncAllForOrg(orgId: string): Promise<{ staffSynced: number; totalResult: SyncResult }> {
   const admin = createAdminClient()
@@ -225,14 +233,18 @@ export async function syncAllForOrg(orgId: string): Promise<{ staffSynced: numbe
     .eq("sync_enabled", true) as { data: Array<{ staff_id: string }> | null }
 
   const totalResult: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
+  const staffIds = (connections ?? []).map((c) => c.staff_id)
 
-  for (const conn of connections ?? []) {
-    const r = await syncStaffOutlook(conn.staff_id, orgId)
-    totalResult.created += r.created
-    totalResult.updated += r.updated
-    totalResult.deleted += r.deleted
-    totalResult.errors.push(...r.errors)
+  for (let i = 0; i < staffIds.length; i += SYNC_CONCURRENCY) {
+    const batch = staffIds.slice(i, i + SYNC_CONCURRENCY)
+    const results = await Promise.all(batch.map((id) => syncStaffOutlook(id, orgId)))
+    for (const r of results) {
+      totalResult.created += r.created
+      totalResult.updated += r.updated
+      totalResult.deleted += r.deleted
+      totalResult.errors.push(...r.errors)
+    }
   }
 
-  return { staffSynced: (connections ?? []).length, totalResult }
+  return { staffSynced: staffIds.length, totalResult }
 }

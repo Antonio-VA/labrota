@@ -1,9 +1,19 @@
 "use server"
 
+import { createHash } from "crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import { revalidatePath } from "next/cache"
+
+function snapshotHash(assignments: unknown): string {
+  const json = JSON.stringify(assignments, (_, v) =>
+    v !== null && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort())
+      : v
+  )
+  return createHash("sha256").update(json).digest("hex")
+}
 
 export interface RotaSnapshot {
   id: string
@@ -65,7 +75,7 @@ export async function captureSnapshot(rotaId: string, date: string, weekStart: s
       .limit(1)
       .maybeSingle() as { data: { assignments: unknown } | null }
 
-    if (latest && JSON.stringify(latest.assignments) === JSON.stringify(payload)) return
+    if (latest && snapshotHash(latest.assignments) === snapshotHash(payload)) return
 
     await admin.from("rota_snapshots").insert({
       organisation_id: orgId,
@@ -119,7 +129,7 @@ export async function captureWeekSnapshot(rotaId: string, weekStart: string): Pr
       .limit(1)
       .maybeSingle() as { data: { assignments: unknown } | null }
 
-    if (latest && JSON.stringify(latest.assignments) === JSON.stringify(payload)) return
+    if (latest && snapshotHash(latest.assignments) === snapshotHash(payload)) return
 
     // Get current user for attribution
     const supabase = await createClient()

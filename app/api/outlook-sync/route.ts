@@ -20,19 +20,19 @@ export async function POST(req: NextRequest) {
     .select("organisation_id")
     .eq("enable_outlook_sync", true) as { data: Array<{ organisation_id: string }> | null }
 
-  const results: Array<{ orgId: string; staffSynced: number; created: number; updated: number; deleted: number; errors: string[] }> = []
-
-  for (const config of configs ?? []) {
-    const { staffSynced, totalResult } = await syncAllForOrg(config.organisation_id)
-    results.push({
-      orgId: config.organisation_id,
-      staffSynced,
-      created: totalResult.created,
-      updated: totalResult.updated,
-      deleted: totalResult.deleted,
-      errors: totalResult.errors,
+  const results = await Promise.all(
+    (configs ?? []).map(async (config) => {
+      const { staffSynced, totalResult } = await syncAllForOrg(config.organisation_id)
+      return {
+        orgId: config.organisation_id,
+        staffSynced,
+        created: totalResult.created,
+        updated: totalResult.updated,
+        deleted: totalResult.deleted,
+        errors: totalResult.errors,
+      }
     })
-  }
+  )
 
   return NextResponse.json({ synced: results })
 }

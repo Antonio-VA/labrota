@@ -16,4 +16,4 @@ export const PREFS_COOKIE_OPTS = {
 // the DB in middleware. Short enough that a change on device A propagates to
 // device B within a few minutes; long enough to skip the DB on nearly every
 // request.
-export const PREFS_TTL_MS = 5 * 60 * 1000
+export const PREFS_TTL_MS = 24 * 60 * 60 * 1000

@@ -112,6 +112,14 @@ export interface RotaWeekData {
 import { getPublicHolidays } from "@/lib/rota-holidays"
 import { isWeekend } from "@/lib/engine-helpers"
 
+const _holidaysCache = new Map<string, Record<string, string>>()
+function cachedPublicHolidays(year: number, country: string, region: string | null): Record<string, string> {
+  const key = `${year}-${country}-${region ?? ""}`
+  let cached = _holidaysCache.get(key)
+  if (!cached) { cached = getPublicHolidays(year, country, region); _holidaysCache.set(key, cached) }
+  return cached
+}
+
 // ── getRotaWeek ───────────────────────────────────────────────────────────────
 
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
@@ -148,24 +156,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     supabase
       .from("staff_skills")
       .select("staff_id, skill, level"))
-  // Assignment-dependent queries — only awaited on the rota-exists path.
-  const leavesPromise = typedQuery<LeaveRow[]>(
-    supabase
-      .from("leaves")
-      .select("staff_id, start_date, end_date, type")
-      .lte("start_date", dates[6])
-      .gte("end_date", dates[0])
-      .eq("status", "approved"))
-  const rulesPromise = typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]))
-  const assignmentsPromise = typedQuery<AssignmentJoinRow[]>(
-    supabase
-      .from("rota_assignments")
-      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
-      .eq("rotas.week_start", weekStart))
-
-  // Await `rotas` first (indexed single-row lookup, ~20ms). The other queries
-  // are already in flight in parallel, so awaiting this first doesn't add
-  // latency on the rota-exists path.
+  // Await `rotas` first (fast indexed lookup). Assignment-dependent queries
+  // (leaves, rules, assignments) are started on the slow path only, avoiding
+  // wasted DB calls for empty weeks.
   const rotaResultFull = await rotaPromise
 
   // Fallback: if engine_warnings column doesn't exist yet, retry without it
@@ -187,9 +180,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // processing below. Only wait for the config/staff queries the empty-state
   // shell actually needs.
   if (!rotaData) {
-    leavesPromise.catch(() => {})
-    rulesPromise.catch(() => {})
-    assignmentsPromise.catch(() => {})
     const [labConfigResult, shiftTypesRes, tecnicasRes, departmentsRes, orgResult, staffRes, skillsRes] = await Promise.all([
       labConfigPromise, shiftTypesPromise, tecnicasPromise, departmentsPromise, orgPromise, staffPromise, skillsPromise,
     ])
@@ -215,7 +205,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
     const orgCountry = (labConfig as { country?: string } | null)?.country || "ES"
     const orgRegion  = (labConfig as { region?: string } | null)?.region || null
-    const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
+    const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => cachedPublicHolidays(y, orgCountry, orgRegion)))
     const skillsByStaff: Record<string, SkillRow[]> = {}
     for (const sk of skillsRes.data ?? []) {
       if (!skillsByStaff[sk.staff_id]) skillsByStaff[sk.staff_id] = []
@@ -231,8 +221,21 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   // ── Slow path: rota exists ─────────────────────────────────────────────────
-  const [labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes] = await Promise.all([
-    labConfigPromise, leavesPromise, shiftTypesPromise, tecnicasPromise, departmentsPromise, rulesPromise, orgPromise, staffPromise, skillsPromise,
+  const leavesPromise = typedQuery<LeaveRow[]>(
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date, type")
+      .lte("start_date", dates[6])
+      .gte("end_date", dates[0])
+      .eq("status", "approved"))
+  const rulesPromise = typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"]))
+  const assignmentsPromise = typedQuery<AssignmentJoinRow[]>(
+    supabase
+      .from("rota_assignments")
+      .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
+      .eq("rotas.week_start", weekStart))
+  const [labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes, assignmentsResRaw] = await Promise.all([
+    labConfigPromise, leavesPromise, shiftTypesPromise, tecnicasPromise, departmentsPromise, rulesPromise, orgPromise, staffPromise, skillsPromise, assignmentsPromise,
   ])
 
   // Check for critical query errors — throw so callers can catch
@@ -333,7 +336,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const years = [...new Set(dates.map((d) => parseInt(d.slice(0, 4))))]
   const orgCountry = (labConfig as { country?: string } | null)?.country || "ES"
   const orgRegion = (labConfig as { region?: string } | null)?.region || null
-  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => getPublicHolidays(y, orgCountry, orgRegion)))
+  const publicHolidays: Record<string, string> = Object.assign({}, ...years.map((y) => cachedPublicHolidays(y, orgCountry, orgRegion)))
 
   // Build activeStaff from the parallel staff+skills queries — avoids duplicate getActiveStaff() call
   const skillsByStaff: Record<string, SkillRow[]> = {}
@@ -357,9 +360,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     staff: { id: string; first_name: string; last_name: string; role: string } | null
   }
 
-  // Assignments were fetched in parallel via rota join — now that we know the
-  // rota exists, await the speculative query started at the top of this function.
-  const assignmentsRes = (await assignmentsPromise) as { data: RawAssignment[] | null; error: { message: string } | null }
+  const assignmentsRes = assignmentsResRaw as { data: RawAssignment[] | null; error: { message: string } | null }
 
   // Build a staff lookup map so we don't depend on a join
   const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }> = {}
