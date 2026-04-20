@@ -1,5 +1,14 @@
 "use server"
 
+// NOTE: This file is ~1060 LOC. It was intentionally left un-split during the
+// codebase health audit. The two generate* functions share a rough shape
+// (quota -> fetch -> engine -> Claude -> validate/rescue -> insert/fallback)
+// but their validation and under-budget rescue logic diverges in subtle ways
+// (shift-based counts assignments; task-based counts distinct working days
+// and has an extra technique-coverage rescue pass). Extracting shared helpers
+// risks regressing that logic. Prefer to leave as-is unless a concrete
+// behavioural change forces the split.
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
