@@ -4,6 +4,7 @@ import {
   PREFS_TS_COOKIE, PREFS_TTL_COOKIE, THEME_COOKIE, LOCALE_COOKIE,
   PREFS_COOKIE_OPTS, PREFS_TTL_MS,
 } from "@/lib/preferences-cookies"
+import { time, mark, now } from "@/lib/server-timing"
 
 const PUBLIC_PATHS = new Set([
   "/privacy",
@@ -27,6 +28,7 @@ function isPublicPath(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
+  const tMw = now()
 
   // PKCE flow: if a `code` param lands on any non-callback route, redirect to /auth/callback.
   // Handled before any auth work so we don't pay a round-trip for a redirect.
@@ -67,7 +69,7 @@ export async function middleware(request: NextRequest) {
   // Refresh session — must call getUser() not getSession()
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await time("mw.auth.getUser", () => supabase.auth.getUser())
 
   const isSuperAdmin = user?.app_metadata?.role === "super_admin"
 
@@ -84,11 +86,13 @@ export async function middleware(request: NextRequest) {
 
     if (!ttlFresh) {
       try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("preferences, preferences_updated_at")
-          .eq("id", user.id)
-          .single<{ preferences: Record<string, unknown> | null; preferences_updated_at: string }>()
+        const { data } = await time("mw.profiles.prefs", () =>
+          supabase
+            .from("profiles")
+            .select("preferences, preferences_updated_at")
+            .eq("id", user.id)
+            .single<{ preferences: Record<string, unknown> | null; preferences_updated_at: string }>()
+        )
 
         const dbTs = data?.preferences_updated_at
         const cookieTs = request.cookies.get(PREFS_TS_COOKIE)?.value
@@ -206,6 +210,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin", request.url))
   }
 
+  mark(`mw.total ${pathname}`, tMw)
   return supabaseResponse
 }
 

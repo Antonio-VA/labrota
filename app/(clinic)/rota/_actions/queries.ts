@@ -11,6 +11,7 @@ import { getWeekDates } from "@/lib/engine-helpers"
 import { getMondayOf, toISODate } from "@/lib/format-date"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot } from "@/lib/rota-snapshots"
+import { time, mark, now } from "@/lib/server-timing"
 import type {
   RotaStatus,
   StaffWithSkills,
@@ -115,6 +116,7 @@ import { isWeekend } from "@/lib/engine-helpers"
 // ── getRotaWeek ───────────────────────────────────────────────────────────────
 
 export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
+  const tFn = now()
   const cookieStore = await cookies()
   const locale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
   const supabase = await createClient()
@@ -124,51 +126,58 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // the null-rota return on it — if no rota exists, we throw it away unawaited.
   // This saves ~50-150ms on "no rota" weeks (next-week clicks before generation).
   type AssignmentJoinRow = { id: string; staff_id: string; date: string; shift_type: string; is_manual_override: boolean; trainee_staff_id: string | null; notes: string | null; function_label: string | null; tecnica_id: string | null; whole_team: boolean; rota_id: string }
+  const tAssign = now()
   const assignmentsPromise = typedQuery<AssignmentJoinRow[]>(
     supabase
       .from("rota_assignments")
       .select("id, staff_id, date, shift_type, is_manual_override, trainee_staff_id, notes, function_label, tecnica_id, whole_team, rota_id, rotas!inner(week_start)")
-      .eq("rotas.week_start", weekStart))
+      .eq("rotas.week_start", weekStart)).finally(() => mark("rota.q.assignments", tAssign))
 
   // User preferences override org-level lab_config for display-only knobs
   // (firstDayOfWeek, timeFormat). Fetched in parallel with the main batch so
   // it adds no sequential latency.
-  const userPrefsPromise = getCachedUserPreferences()
+  const tPrefs = now()
+  const userPrefsPromise = getCachedUserPreferences().finally(() => mark("rota.q.userPrefs", tPrefs))
 
+  const tBatch = now()
+  const tRota = now(), tLab = now(), tLeaves = now(), tShifts = now(), tTec = now(),
+        tDept = now(), tRules = now(), tOrg = now(), tStaff = now(), tSkills = now()
   const [rotaResultFull, labConfigResult, leavesResult, shiftTypesRes, tecnicasRes, departmentsRes, rulesRes, orgResult, staffRes, skillsRes] = await Promise.all([
     typedQuery<RotaRecord>(
       supabase
         .from("rotas")
         .select("id, status, published_at, published_by, punctions_override, engine_warnings")
         .eq("week_start", weekStart)
-        .maybeSingle()),
-    supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle(),
+        .maybeSingle()).finally(() => mark("rota.q.rotas", tRota)),
+    supabase.from("lab_config").select("punctions_by_day, country, region, ratio_optimal, ratio_minimum, first_day_of_week, time_format, biopsy_conversion_rate, biopsy_day5_pct, biopsy_day6_pct, days_off_preference, task_conflict_threshold, enable_task_in_shift, enable_swap_requests, part_time_weight, intern_weight, public_holiday_mode, shift_coverage_enabled, shift_coverage_by_day").maybeSingle().then((r) => { mark("rota.q.labConfig", tLab); return r }),
     typedQuery<LeaveRow[]>(
       supabase
         .from("leaves")
         .select("staff_id, start_date, end_date, type")
         .lte("start_date", dates[6])
         .gte("end_date", dates[0])
-        .eq("status", "approved")),
-    typedQuery<ShiftTypeDefinition[]>(supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order")),
-    typedQuery<Tecnica[]>(supabase.from("tecnicas").select("*").order("orden").order("created_at")),
-    typedQuery<import("@/lib/types/database").Department[]>(supabase.from("departments").select("*").order("sort_order")),
-    typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"])),
+        .eq("status", "approved")).finally(() => mark("rota.q.leaves", tLeaves)),
+    typedQuery<ShiftTypeDefinition[]>(supabase.from("shift_types").select("code, name_es, name_en, start_time, end_time, sort_order, active, active_days, department_codes").order("sort_order")).finally(() => mark("rota.q.shiftTypes", tShifts)),
+    typedQuery<Tecnica[]>(supabase.from("tecnicas").select("*").order("orden").order("created_at")).finally(() => mark("rota.q.tecnicas", tTec)),
+    typedQuery<import("@/lib/types/database").Department[]>(supabase.from("departments").select("*").order("sort_order")).finally(() => mark("rota.q.departments", tDept)),
+    typedQuery<RuleRow[]>(supabase.from("rota_rules").select("type, enabled, staff_ids, params, expires_at").eq("enabled", true).in("type", ["restriccion_dia_tecnica", "supervisor_requerido"])).finally(() => mark("rota.q.rules", tRules)),
     typedQuery<OrgConfig>(
       supabase
         .from("organisations")
         .select("rota_display_mode, ai_optimal_version, engine_hybrid_enabled, engine_reasoning_enabled, task_optimal_version, task_hybrid_enabled, task_reasoning_enabled")
         .limit(1)
-        .maybeSingle()),
+        .maybeSingle()).finally(() => mark("rota.q.org", tOrg)),
     typedQuery<StaffRow[]>(
       supabase
         .from("staff")
-        .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours")),
+        .select("id, first_name, last_name, role, onboarding_status, contract_type, onboarding_end_date, days_per_week, working_pattern, preferred_days, avoid_days, preferred_shift, avoid_shifts, prefers_guardia, color, email, start_date, end_date, notes, contracted_hours")).finally(() => mark("rota.q.staff", tStaff)),
     typedQuery<SkillRow[]>(
       supabase
         .from("staff_skills")
-        .select("staff_id, skill, level")),
+        .select("staff_id, skill, level")).finally(() => mark("rota.q.skills", tSkills)),
   ])
+  mark("rota.batch(10 queries)", tBatch)
+  const tPost = now()
 
   // Check for critical query errors — throw so callers can catch
   const criticalErrors = [
@@ -303,6 +312,8 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   if (!rota) {
     // Throw away the speculative assignments query without awaiting it.
     assignmentsPromise.catch(() => {})
+    mark("rota.post(no-rota)", tPost)
+    mark("rota.getRotaWeek.total", tFn)
     return { weekStart, rota: null, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames: {}, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek, timeFormat, biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, enableSwapRequests: !!(labConfig?.enable_swap_requests) && orgDisplayMode === "by_shift", trainingByStaff, aiReasoning: null, engineConfig, activeStaff }
   }
 
@@ -319,7 +330,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   // Assignments were fetched in parallel via rota join — now that we know the
   // rota exists, await the speculative query started at the top of this function.
+  const tAssignAwait = now()
   const assignmentsRes = (await assignmentsPromise) as { data: RawAssignment[] | null; error: { message: string } | null }
+  mark("rota.assignments.await", tAssignAwait)
 
   // Build a staff lookup map so we don't depend on a join
   const staffLookup: Record<string, { id: string; first_name: string; last_name: string; role: string; onboarding_status: string; contract_type: string | null; onboarding_end_date: string | null }> = {}
@@ -617,5 +630,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     if (reasoningEntry) aiReasoning = reasoningEntry.replace("[ai-reasoning] ", "")
   }
 
+  mark("rota.post(with-rota)", tPost)
+  mark("rota.getRotaWeek.total", tFn)
   return { weekStart, rota, days: dates.map((d) => dayMap[d]), punctionsDefault, shiftTypes: shiftTypesData, shiftTimes, onLeaveByDate, onLeaveTypeByDate, staffNames, publicHolidays, tecnicas, departments: departmentsRes.data ?? [], ratioOptimal: labConfig?.ratio_optimal ?? 1.0, ratioMinimum: labConfig?.ratio_minimum ?? 0.75, firstDayOfWeek, timeFormat, biopsyConversionRate: labConfig?.biopsy_conversion_rate ?? 0.5, biopsyDay5Pct: labConfig?.biopsy_day5_pct ?? 0.5, biopsyDay6Pct: labConfig?.biopsy_day6_pct ?? 0.5, rotaDisplayMode: orgDisplayMode, daysOffPreference: labConfig?.days_off_preference ?? "prefer_weekend", taskConflictThreshold: labConfig?.task_conflict_threshold ?? 3, enableTaskInShift: labConfig?.enable_task_in_shift ?? false, enableSwapRequests: !!(labConfig?.enable_swap_requests) && orgDisplayMode === "by_shift", trainingByStaff, aiReasoning, engineConfig, activeStaff }
 }
