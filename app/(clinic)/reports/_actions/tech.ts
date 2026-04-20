@@ -10,36 +10,36 @@ export async function generateTechReport(from: string, to: string): Promise<Tech
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: org } = await supabase.from("organisations").select("name").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
-
   const dates = getDatesInRange(from, to)
   const totalDays = dates.length
   if (totalDays === 0) return { error: "Período inválido." }
 
-  // Fetch active técnicas
-  const { data: tecnicas } = await supabase
-    .from("tecnicas")
-    .select("codigo, nombre_es, color, department")
-    .eq("organisation_id", orgId)
-    .eq("activa", true)
-    .order("orden") as { data: { codigo: string; nombre_es: string; color: string; department: string }[] | null }
+  const [orgRes, tecnicasRes, assignmentsRes, skillsRes] = await Promise.all([
+    supabase.from("organisations").select("name").eq("id", orgId).single(),
+    supabase
+      .from("tecnicas")
+      .select("codigo, nombre_es, color, department")
+      .eq("organisation_id", orgId)
+      .eq("activa", true)
+      .order("orden"),
+    supabase
+      .from("rota_assignments")
+      .select("date, function_label")
+      .eq("organisation_id", orgId)
+      .gte("date", from)
+      .lte("date", to)
+      .neq("function_label", ""),
+    supabase
+      .from("staff_skills")
+      .select("skill")
+      .eq("organisation_id", orgId)
+      .eq("level", "certified"),
+  ])
 
-  // Fetch assignments with function_label
-  const { data: assignments } = await supabase
-    .from("rota_assignments")
-    .select("date, function_label")
-    .eq("organisation_id", orgId)
-    .gte("date", from)
-    .lte("date", to)
-    .neq("function_label", "") as { data: { date: string; function_label: string }[] | null }
-
-  // Fetch qualified staff count per technique
-  const { data: skills } = await supabase
-    .from("staff_skills")
-    .select("skill")
-    .eq("organisation_id", orgId)
-    .eq("level", "certified") as { data: { skill: string }[] | null }
+  const orgName = (orgRes.data as { name: string } | null)?.name ?? ""
+  const tecnicas = tecnicasRes.data as { codigo: string; nombre_es: string; color: string; department: string }[] | null
+  const assignments = assignmentsRes.data as { date: string; function_label: string }[] | null
+  const skills = skillsRes.data as { skill: string }[] | null
 
   const qualifiedCount: Record<string, number> = {}
   for (const sk of skills ?? []) {

@@ -1,8 +1,9 @@
 import type { StaffWithSkills, RotaRule } from "@/lib/types/database"
+import { isQualified, type StaffSkillSets } from "./skills"
 
 export interface BudgetFillParams {
   workingStaff: StaffWithSkills[]
-  staffSkillsCache: Record<string, { certified: Set<string>; training: Set<string> }>
+  staffSkillsCache: Record<string, StaffSkillSets>
   tecnicas: { codigo: string; department: string }[]
   rules: RotaRule[]
   linkedGroups: string[][]
@@ -38,11 +39,6 @@ export function fillBudgets({
   staffTasks,
   assignedStaffIds,
 }: BudgetFillParams): void {
-  const isQualified = (
-    skills: { certified: Set<string>; training: Set<string> },
-    taskCode: string
-  ): boolean => skills.certified.has(taskCode) || skills.training.has(taskCode)
-
   // Build no_misma_tarea conflict lookup
   const noMismaTareaGroups: { staffIds: Set<string> }[] = []
   for (const rule of rules.filter((r) => r.enabled && r.type === "no_misma_tarea" && r.is_hard)) {

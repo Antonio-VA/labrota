@@ -19,7 +19,7 @@
 
 import type { SkillName, StaffWithSkills } from "@/lib/types/database"
 
-import { getDayCode, isWeekend, addDays, getWeekDates } from "@/lib/engine-helpers"
+import { getDayCode, isWeekend, getWeekDates } from "@/lib/engine-helpers"
 import { toISODate } from "@/lib/format-date"
 
 import type { TaskDayPlan, TaskEngineResult, TaskEngineParams } from "./task-engine/types"
@@ -27,6 +27,7 @@ import { reserveMinCoverage } from "./task-engine/min-coverage"
 import { checkNoLibrarMismoDia } from "./task-engine/no-librar-check"
 import { applyDayRules } from "./task-engine/apply-day-rules"
 import { fillBudgets } from "./task-engine/budget-fill"
+import { getStaffSkills, isQualified } from "./task-engine/skills"
 
 export type { TaskDayPlan, TaskEngineResult, TaskEngineParams }
 
@@ -137,22 +138,6 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
     const used = weeklyDayCount[s.id] ?? 0
     const cap = s.days_per_week ?? 5
     return used < cap
-  }
-
-  // ── Skill helpers ─────────────────────────────────────────────────────────
-
-  function getStaffSkills(s: StaffWithSkills): { certified: Set<string>; training: Set<string> } {
-    const certified = new Set<string>()
-    const training = new Set<string>()
-    for (const sk of s.staff_skills) {
-      if (sk.level === "certified") certified.add(sk.skill)
-      else if (sk.level === "training") training.add(sk.skill)
-    }
-    return { certified, training }
-  }
-
-  function isQualified(skills: { certified: Set<string>; training: Set<string> }, taskCode: string): boolean {
-    return skills.certified.has(taskCode) || skills.training.has(taskCode)
   }
 
   // ── PHASE 1: Pre-plan minimum department coverage ────────────────────────
@@ -671,7 +656,7 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       }
     }
 
-    // ── 2f: Budget-filling + group-extension passes ─────────────────────────
+    // ── 2f: Budget-filling + group-extension passes ─────────────────────
     fillBudgets({
       workingStaff,
       staffSkillsCache,
@@ -687,14 +672,14 @@ export function runTaskEngine(params: TaskEngineParams): TaskEngineResult {
       assignedStaffIds,
     })
 
-    // ── 2f: Determine OFF staff ─────────────────────────────────────────
+    // ── 2g: Determine OFF staff ─────────────────────────────────────────
 
     const offStaff = staff.filter((s) => {
       if (!isAvailable(s, date)) return false
       return !assignedStaffIds.has(s.id)
     }).map((s) => s.id)
 
-    // ── 2g: Skill gap detection ─────────────────────────────────────────
+    // ── 2h: Skill gap detection ─────────────────────────────────────────
 
     const skillGaps: SkillName[] = []
     for (const tec of tecnicas) {

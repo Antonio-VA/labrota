@@ -7,7 +7,7 @@ export interface MinCoverageParams {
   labConfig: LabConfig
   leaveMap: Record<string, Set<string>>
   workloadScore: Record<string, number>
-  daysOffPref: "prefer_weekend" | "always_weekend" | "none" | string
+  daysOffPref: LabConfig["days_off_preference"]
 }
 
 /**
@@ -24,6 +24,10 @@ export function reserveMinCoverage({
   daysOffPref,
 }: MinCoverageParams): Record<string, Set<string>> {
   const minCoverageReserved: Record<string, Set<string>> = {}
+  // Incremental counters — avoid re-walking every day's set on every sort
+  // comparison (O(N²) per role-day).
+  const reservedCount: Record<string, number> = {}
+  const reservedWeekendCount: Record<string, number> = {}
 
   for (const date of allWeekDates) {
     minCoverageReserved[date] = new Set()
@@ -46,30 +50,28 @@ export function reserveMinCoverage({
           if (s.onboarding_status === "inactive" || s.role !== role) return false
           if (s.start_date > date || (s.end_date && s.end_date < date)) return false
           if (leaveMap[s.id]?.has(date)) return false
-          const reserved = Object.values(minCoverageReserved).filter((set) => set.has(s.id)).length
-          return reserved < (s.days_per_week ?? 5)
+          return (reservedCount[s.id] ?? 0) < (s.days_per_week ?? 5)
         })
         .sort((a, b) => {
-          const aRes = Object.values(minCoverageReserved).filter((set) => set.has(a.id)).length
-          const bRes = Object.values(minCoverageReserved).filter((set) => set.has(b.id)).length
+          const aRes = reservedCount[a.id] ?? 0
+          const bRes = reservedCount[b.id] ?? 0
           if (aRes !== bRes) return aRes - bRes
           const aInPattern = !a.working_pattern?.length || a.working_pattern.includes(dayCode) ? 0 : 1
           const bInPattern = !b.working_pattern?.length || b.working_pattern.includes(dayCode) ? 0 : 1
           if (aInPattern !== bInPattern) return aInPattern - bInPattern
           if (daysOffPref === "prefer_weekend" && wknd) {
-            const aWknd = Object.entries(minCoverageReserved).filter(
-              ([d, set]) => isWeekend(d) && set.has(a.id)
-            ).length
-            const bWknd = Object.entries(minCoverageReserved).filter(
-              ([d, set]) => isWeekend(d) && set.has(b.id)
-            ).length
+            const aWknd = reservedWeekendCount[a.id] ?? 0
+            const bWknd = reservedWeekendCount[b.id] ?? 0
             if (aWknd !== bWknd) return aWknd - bWknd
           }
           return (workloadScore[a.id] ?? 0) - (workloadScore[b.id] ?? 0)
         })
 
       for (let i = 0; i < Math.min(required, eligible.length); i++) {
-        minCoverageReserved[date].add(eligible[i].id)
+        const id = eligible[i].id
+        minCoverageReserved[date].add(id)
+        reservedCount[id] = (reservedCount[id] ?? 0) + 1
+        if (wknd) reservedWeekendCount[id] = (reservedWeekendCount[id] ?? 0) + 1
       }
     }
   }

@@ -10,38 +10,38 @@ export async function generateStaffReport(from: string, to: string): Promise<Sta
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
-  const { data: org } = await supabase.from("organisations").select("name, rota_display_mode").eq("id", orgId).single()
-  const orgName = (org as { name: string } | null)?.name ?? ""
-  const mode = ((org as { rota_display_mode?: string } | null)?.rota_display_mode ?? "by_shift") as "by_shift" | "by_task"
-
   const dates = getDatesInRange(from, to)
   const totalDays = dates.length
   if (totalDays === 0) return { error: "Período inválido." }
 
-  // Fetch active staff
-  const { data: staffData } = await supabase
-    .from("staff")
-    .select("id, first_name, last_name, role, color, onboarding_status")
-    .eq("organisation_id", orgId)
-    .neq("onboarding_status", "inactive") as { data: { id: string; first_name: string; last_name: string; role: string; color: string; onboarding_status: string }[] | null }
-  const staff = staffData ?? []
+  const [orgRes, staffRes, assignmentsRes, leavesRes] = await Promise.all([
+    supabase.from("organisations").select("name, rota_display_mode").eq("id", orgId).single(),
+    supabase
+      .from("staff")
+      .select("id, first_name, last_name, role, color, onboarding_status")
+      .eq("organisation_id", orgId)
+      .neq("onboarding_status", "inactive"),
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, date, function_label")
+      .eq("organisation_id", orgId)
+      .gte("date", from)
+      .lte("date", to),
+    supabase
+      .from("leaves")
+      .select("staff_id, start_date, end_date")
+      .eq("organisation_id", orgId)
+      .eq("status", "approved")
+      .lte("start_date", to)
+      .gte("end_date", from),
+  ])
 
-  // Fetch all assignments in range
-  const { data: assignments } = await supabase
-    .from("rota_assignments")
-    .select("staff_id, date, function_label")
-    .eq("organisation_id", orgId)
-    .gte("date", from)
-    .lte("date", to) as { data: { staff_id: string; date: string; function_label: string }[] | null }
-
-  // Fetch leaves in range
-  const { data: leaves } = await supabase
-    .from("leaves")
-    .select("staff_id, start_date, end_date")
-    .eq("organisation_id", orgId)
-    .eq("status", "approved")
-    .lte("start_date", to)
-    .gte("end_date", from) as { data: { staff_id: string; start_date: string; end_date: string }[] | null }
+  const org = orgRes.data
+  const orgName = (org as { name: string } | null)?.name ?? ""
+  const mode = ((org as { rota_display_mode?: string } | null)?.rota_display_mode ?? "by_shift") as "by_shift" | "by_task"
+  const staff = (staffRes.data ?? []) as { id: string; first_name: string; last_name: string; role: string; color: string; onboarding_status: string }[]
+  const assignments = assignmentsRes.data as { staff_id: string; date: string; function_label: string }[] | null
+  const leaves = leavesRes.data as { staff_id: string; start_date: string; end_date: string }[] | null
 
   // Build per-staff data
   const staffIds = new Set(staff.map((s) => s.id))
