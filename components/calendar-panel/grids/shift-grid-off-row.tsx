@@ -4,8 +4,8 @@ import { Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
-import { DraggableOffStaff, DroppableCell } from "./dnd-wrappers"
-import type { Assignment } from "./types"
+import { DraggableOffStaff, DroppableCell } from "../dnd-wrappers"
+import type { Assignment } from "../types"
 
 export function ShiftGridOffRow({
   localDays, staffList, onLeaveByDate, overId, isPublished,

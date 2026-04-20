@@ -15,8 +15,8 @@ import {
 } from "@/app/(clinic)/rota/actions"
 import { getHybridUsage } from "@/app/(clinic)/rota/generate-actions"
 import { formatDate } from "@/lib/format-date"
-import { buildStrategyCards, parseHybridInsights, type GenerationStrategy } from "./utils"
-import { TODAY } from "./constants"
+import { buildStrategyCards, parseHybridInsights, type GenerationStrategy } from "../utils"
+import { TODAY } from "../constants"
 
 export function GenerationStrategyModal({ open, weekStart: _weekStart, weekLabel, onClose, onGenerate, rotaDisplayMode, engineConfig }: {
   open: boolean; weekStart: string; weekLabel: string

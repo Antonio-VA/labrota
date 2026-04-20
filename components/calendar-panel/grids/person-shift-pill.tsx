@@ -1,8 +1,8 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { TECNICA_PILL } from "./constants"
-import type { Assignment } from "./types"
+import { TECNICA_PILL } from "../constants"
+import type { Assignment } from "../types"
 import type { ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 

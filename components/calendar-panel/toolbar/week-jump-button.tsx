@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getMondayOf } from "@/lib/format-date"
-import type { ViewMode } from "./types"
-import { TODAY } from "./constants"
-import { addDays, formatToolbarLabel } from "./utils"
+import type { ViewMode } from "../types"
+import { TODAY } from "../constants"
+import { addDays, formatToolbarLabel } from "../utils"
 
 export function WeekJumpButton({ currentDate, weekStart, view, locale, onSelect }: {
   currentDate: string; weekStart: string; view: ViewMode; locale: string

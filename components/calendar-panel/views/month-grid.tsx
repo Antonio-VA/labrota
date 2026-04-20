@@ -6,10 +6,10 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
-import { rotateArray } from "./utils"
-import { DayStatsInput } from "./day-stats-input"
+import { rotateArray } from "../utils"
+import { DayStatsInput } from "../grids/day-stats-input"
 import { useStaffHover } from "@/components/staff-hover-context"
-import { TODAY, DOW_HEADERS_ES, DOW_HEADERS_EN } from "./constants"
+import { TODAY, DOW_HEADERS_ES, DOW_HEADERS_EN } from "../constants"
 import type { RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 
 export function MonthGrid({ summary, loading, locale, currentDate: _currentDate, onSelectDay, onSelectWeek, firstDayOfWeek = 0, punctionsOverride = {}, onPunctionsChange, onBiopsyChange, monthViewMode = "shift", colorChips }: {

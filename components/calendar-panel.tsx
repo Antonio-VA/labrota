@@ -18,7 +18,7 @@ import { toast } from "sonner"
 import { getMondayOf } from "@/lib/format-date"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import dynamic from "next/dynamic"
-const MonthGrid = dynamic(() => import("./calendar-panel/month-grid").then((m) => ({ default: m.MonthGrid })), { ssr: false })
+const MonthGrid = dynamic(() => import("./calendar-panel/views/month-grid").then((m) => ({ default: m.MonthGrid })), { ssr: false })
 import { useViewerStaffId } from "@/lib/role-context"
 import { StaffHoverProvider, useStaffHover } from "@/components/staff-hover-context"
 import { WeekNotes } from "@/components/week-notes"
@@ -28,12 +28,12 @@ import { TODAY } from "./calendar-panel/constants"
 import { addDays, getMonthStart } from "./calendar-panel/utils"
 
 import { CalendarSkeleton } from "./calendar-panel/loading-skeleton"
-import { DesktopToolbar } from "./calendar-panel/desktop-toolbar"
-import { WeekContent } from "./calendar-panel/week-content"
-import { MobileDaySection } from "./calendar-panel/mobile-day-section"
-import { AssignmentSheetHost } from "./calendar-panel/assignment-sheet-host"
-import { CalendarModalsHost } from "./calendar-panel/calendar-modals-host"
-import { BottomTaskbar } from "./calendar-panel/bottom-taskbar"
+import { DesktopToolbar } from "./calendar-panel/toolbar/desktop-toolbar"
+import { WeekContent } from "./calendar-panel/views/week-content"
+import { MobileDaySection } from "./calendar-panel/views/mobile-day-section"
+import { AssignmentSheetHost } from "./calendar-panel/modals/assignment-sheet-host"
+import { CalendarModalsHost } from "./calendar-panel/modals/calendar-modals-host"
+import { BottomTaskbar } from "./calendar-panel/toolbar/bottom-taskbar"
 
 export function CalendarPanel(props: { refreshKey?: number; initialData?: RotaWeekData; initialStaff?: StaffWithSkills[]; hasNotifications?: boolean; initialNotes?: import("@/app/(clinic)/notes-actions").WeekNoteData }) {
   return (

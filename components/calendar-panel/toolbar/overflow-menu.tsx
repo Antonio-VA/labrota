@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react"
 import { MoreHorizontal, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { MenuItem } from "./types"
+import type { MenuItem } from "../types"
 
 export function OverflowMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)

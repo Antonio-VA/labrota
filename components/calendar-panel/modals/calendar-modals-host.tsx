@@ -4,7 +4,7 @@ import dynamic from "next/dynamic"
 import { formatDate } from "@/lib/format-date"
 import type { RotaWeekData, RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
-import { formatToolbarLabel, type GenerationStrategy } from "./utils"
+import { formatToolbarLabel, type GenerationStrategy } from "../utils"
 import type { useCalendarModals } from "@/hooks/use-calendar-modals"
 
 const RotaHistoryPanel = dynamic(() => import("@/components/rota-history-panel").then((m) => m.RotaHistoryPanel), { ssr: false })

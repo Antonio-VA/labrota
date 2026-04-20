@@ -6,7 +6,7 @@ import { AlertTriangle, Check } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { StaffWithSkills } from "@/lib/types/database"
 import type { RotaDayWarning, RotaDay } from "@/app/(clinic)/rota/actions"
-import { WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER } from "./constants"
+import { WARNING_CATEGORY_KEY, WARNING_CATEGORY_ORDER } from "../constants"
 
 // ── Skill gap pill ────────────────────────────────────────────────────────────
 

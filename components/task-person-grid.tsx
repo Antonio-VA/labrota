@@ -13,7 +13,7 @@ import type { Assignment } from "@/components/calendar-panel/types"
 import { ROLE_ORDER, DEFAULT_DEPT_MAPS, TODAY } from "@/components/calendar-panel/constants"
 import { resolveColor, LEAVE_ICON_MAP } from "@/components/task-grid/constants"
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
-import { DayStatsInput } from "@/components/calendar-panel/day-stats-input"
+import { DayStatsInput } from "@/components/calendar-panel/grids/day-stats-input"
 const LEAVE_LABEL: Record<string, { es: string; en: string }> = {
   annual:    { es: "Vacaciones", en: "Annual leave" },
   sick:      { es: "Baja médica", en: "Sick leave" },
@@ -23,8 +23,8 @@ const LEAVE_LABEL: Record<string, { es: string; en: string }> = {
   other:     { es: "Ausencia",   en: "Leave" },
 }
 
-import { TaskChip } from "@/components/calendar-panel/task-chip"
-import { TaskPickerPortal } from "@/components/calendar-panel/task-picker"
+import { TaskChip } from "@/components/calendar-panel/grids/task-chip"
+import { TaskPickerPortal } from "@/components/calendar-panel/grids/task-picker"
 
 /** One staff × one day task cell — manages its own picker portal */
 function TaskPersonCell({

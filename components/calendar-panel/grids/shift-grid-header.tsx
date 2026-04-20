@@ -7,9 +7,9 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "./day-stats-input"
-import { DayWarningPopover } from "./warnings"
-import { TODAY } from "./constants"
-import { buildPuncResolver } from "./utils"
+import { DayWarningPopover } from "../toolbar/warnings"
+import { TODAY } from "../constants"
+import { buildPuncResolver } from "../utils"
 import { toISODate } from "@/lib/format-date"
 
 export function ShiftGridHeader({

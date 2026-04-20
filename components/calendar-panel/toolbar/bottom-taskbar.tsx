@@ -3,7 +3,7 @@
 import type { RotaWeekData, RotaMonthSummary, RotaDay } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { ShiftBudgetBar, MonthBudgetBar } from "./budget-bars"
-import { formatToolbarLabel } from "./utils"
+import { formatToolbarLabel } from "../utils"
 
 export function BottomTaskbar({
   view, canEdit, weekData, monthSummary, loadingWeek, loadingMonth,

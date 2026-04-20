@@ -12,8 +12,8 @@ import { getStaffProfile, type RotaWeekData, type StaffProfileData } from "@/app
 import type { StaffWithSkills } from "@/lib/types/database"
 import { InlineLeaveForm } from "./inline-leave-form"
 import { ProfileSkillsSection } from "./profile-skills-section"
-import { TODAY, DAY_ES_2 } from "./constants"
-import { buildDeptMaps, makeSkillLabel } from "./utils"
+import { TODAY, DAY_ES_2 } from "../constants"
+import { buildDeptMaps, makeSkillLabel } from "../utils"
 
 export function StaffProfilePanel({
   staffId, staffList, weekData, open, onClose, onRefreshWeek,

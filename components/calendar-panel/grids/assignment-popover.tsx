@@ -7,7 +7,7 @@ import { Hourglass } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import type { Tecnica } from "@/lib/types/database"
-import { TECNICA_PILL } from "./constants"
+import { TECNICA_PILL } from "../constants"
 
 // Maps department to role for técnica filtering
 export const DEPT_FOR_ROLE: Record<string, string> = { lab: "lab", andrology: "andrology" }

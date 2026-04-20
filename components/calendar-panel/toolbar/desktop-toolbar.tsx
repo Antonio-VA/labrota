@@ -8,7 +8,7 @@ import { WeekJumpButton } from "./week-jump-button"
 import { DepartmentFilterDropdown } from "./department-filter"
 import { OverflowMenu } from "./overflow-menu"
 import { WarningsPill } from "./warnings"
-import type { ViewMode, CalendarLayout, MenuItem } from "./types"
+import type { ViewMode, CalendarLayout, MenuItem } from "../types"
 import type { RotaWeekData, RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 

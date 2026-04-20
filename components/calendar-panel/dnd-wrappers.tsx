@@ -2,7 +2,7 @@
 
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
-import { ShiftBadge, type ShiftBadgeProps } from "./shift-badge"
+import { ShiftBadge, type ShiftBadgeProps } from "./grids/shift-badge"
 
 export function DraggableShiftBadge({ id, ...props }: { id: string } & ShiftBadgeProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })

@@ -6,8 +6,8 @@ import { Hourglass } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Tecnica } from "@/lib/types/database"
 import { useStaffHover } from "@/components/staff-hover-context"
-import { ROLE_BORDER, TECNICA_PILL } from "./constants"
-import { DEFAULT_DEPT_MAPS } from "./constants"
+import { ROLE_BORDER, TECNICA_PILL } from "../constants"
+import { DEFAULT_DEPT_MAPS } from "../constants"
 
 // ── Staff chip (Vista por persona) ────────────────────────────────────────────
 

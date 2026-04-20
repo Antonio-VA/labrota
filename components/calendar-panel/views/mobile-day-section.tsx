@@ -11,13 +11,13 @@ import { computeBiopsyForecast } from "@/lib/biopsy-forecast"
 import { WeeklyStrip } from "@/components/weekly-strip"
 import { MobileTaskDayView } from "@/components/mobile-task-day-view"
 import { MobileAddStaffSheet } from "@/components/mobile-add-staff-sheet"
-import { MobileOverflow } from "./mobile-overflow"
+import { MobileOverflow } from "../toolbar/mobile-overflow"
 import { DayView } from "./day-view"
 import { removeAssignment, regenerateDay } from "@/app/(clinic)/rota/actions"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import type { StaffWithSkills } from "@/lib/types/database"
 import { toast } from "sonner"
-import { addDays } from "./utils"
+import { addDays } from "../utils"
 
 export function MobileDaySection({
   weekData, staffList, currentDate, setCurrentDate, weekStart,

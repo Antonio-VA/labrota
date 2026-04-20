@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
-import type { Assignment } from "./types"
+import type { Assignment } from "../types"
 import type { ShiftTimes } from "@/app/(clinic)/rota/actions"
 import type { ShiftTypeDefinition } from "@/lib/types/database"
 

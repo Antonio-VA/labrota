@@ -8,8 +8,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import type { StaffWithSkills } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay, RotaMonthSummary } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
-import { DEFAULT_DEPT_MAPS, ROLE_LABEL } from "./constants"
-import { buildDeptMaps } from "./utils"
+import { DEFAULT_DEPT_MAPS, ROLE_LABEL } from "../constants"
+import { buildDeptMaps } from "../utils"
 
 // Leave type → icon map (used in ShiftBudgetBar and PersonGrid)
 export const LEAVE_ICON_MAP: Record<string, typeof Plane> = { annual: Plane, sick: Cross, personal: User, training: GraduationCap, maternity: Baby, other: CalendarX }
