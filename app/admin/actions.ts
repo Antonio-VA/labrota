@@ -84,7 +84,8 @@ export async function createOrganisation(formData: FormData) {
 
   // Setup configuration (with sensible defaults if not provided)
   const coveragePreset = (formData.get("coverage_preset") as string) || "standard"
-  const rotaDisplayMode = (formData.get("rota_display_mode") as string) || "by_shift"
+  const rotaDisplayModeRaw = (formData.get("rota_display_mode") as string) || "by_shift"
+  const rotaDisplayMode = rotaDisplayModeRaw === "by_task" ? "by_task" : "by_shift"
   const country = ((formData.get("country") as string) || "").trim()
   const authMethod = (formData.get("auth_method") as string) === "password" ? "password" : "otp"
   const firstUserEmail = ((formData.get("first_user_email") as string) || "").trim()
@@ -431,6 +432,7 @@ export async function createOrgUser(formData: FormData) {
 
 // ── updateOrgAuthMethod ───────────────────────────────────────────────────
 const VALID_AUTH_METHODS = new Set(["otp", "password"])
+const VALID_DISPLAY_MODES = new Set(["by_shift", "by_task"])
 
 export async function updateOrgAuthMethod(orgId: string, method: "otp" | "password") {
   await assertSuperAdmin()
@@ -488,6 +490,9 @@ export async function updateOrgRegional(orgId: string, country: string, region: 
 // ── updateOrgDisplayMode ──────────────────────────────────────────────────
 export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by_task") {
   await assertSuperAdmin()
+  if (!VALID_DISPLAY_MODES.has(mode)) {
+    return { error: "Invalid display mode." }
+  }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -502,6 +507,9 @@ export async function updateOrgDisplayMode(orgId: string, mode: "by_shift" | "by
 
 export async function updateOrgBilling(orgId: string, data: { billing_start: string | null; billing_end: string | null; billing_fee: number | null }) {
   await assertSuperAdmin()
+  if (data.billing_fee !== null && (!Number.isFinite(data.billing_fee) || data.billing_fee < 0)) {
+    return { error: "Billing fee must be a non-negative number." }
+  }
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
@@ -578,6 +586,9 @@ export async function updateOrgEngineConfig(orgId: string, config: {
 
 export async function updateOrgMaxStaff(orgId: string, maxStaff: number) {
   await assertSuperAdmin()
+  if (!Number.isInteger(maxStaff) || maxStaff < 1 || maxStaff > 10000) {
+    return { error: "Max staff must be an integer between 1 and 10000." }
+  }
   const admin = createAdminClient()
   const { error } = await admin
     .from("organisations")
