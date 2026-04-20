@@ -1247,7 +1247,9 @@
   },
   "account": {
     "title": "Mi cuenta",
-    "saved": "Preferencias guardadas",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveFailed": "Error al guardar",
     "photoUpdated": "Foto actualizada",
     "profile": "Perfil",
     "language": "Idioma",

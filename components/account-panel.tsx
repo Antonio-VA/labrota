@@ -1,25 +1,21 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
-import { useRef } from "react"
+import { useState, useEffect, useRef, useTransition } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { X, Sun, Moon, Monitor, Check, Camera, Cloud, Unplug, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   getUserPreferences,
   getUserDepartment,
-  saveUserPreferences,
   uploadAvatar,
   getUserOutlookStatus,
   type UserPreferences,
   type UserOutlookStatus,
 } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
-import { applyTheme } from "@/lib/apply-theme"
-import { writeLocaleCookie } from "@/lib/locale-cookie"
+import { useUserPreferences, resolvePrefs, DEFAULT_PREFS } from "@/hooks/use-user-preferences"
 import type { User } from "@supabase/supabase-js"
 
 const ACCENT_COLORS = [
@@ -45,16 +41,8 @@ export function AccountPanel({ open, onClose, user }: {
   user: User | null
 }) {
   const t = useTranslations("account")
-  const tc = useTranslations("common")
   const to = useTranslations("outlook")
-  const [prefs, setPrefs] = useState<UserPreferences>(() => {
-    if (typeof window === "undefined") return { locale: "browser", theme: "light", accentColor: "#1b4f8a" }
-    try {
-      const saved = JSON.parse(localStorage.getItem("labrota_theme") || "{}")
-      return { locale: "browser", theme: saved.theme ?? "light", accentColor: saved.accentColor ?? "#1b4f8a" }
-    } catch { return { locale: "browser", theme: "light", accentColor: "#1b4f8a" } }
-  })
-  const [loadedLocale, setLoadedLocale] = useState<UserPreferences["locale"]>("browser")
+  const { prefs, update, hydrate, status } = useUserPreferences(DEFAULT_PREFS)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [department, setDepartment] = useState<string | null>(null)
@@ -65,36 +53,13 @@ export function AccountPanel({ open, onClose, user }: {
     if (!open || !user) return
     setLoading(true)
     Promise.all([getUserPreferences(), getUserDepartment(), getUserOutlookStatus()]).then(([p, dept, ol]) => {
-      setPrefs({
-        locale: p.locale ?? "browser",
-        theme: p.theme ?? "light",
-        accentColor: p.accentColor ?? "#1b4f8a",
-        timeFormat: p.timeFormat ?? "24h",
-        firstDayOfWeek: p.firstDayOfWeek ?? 0,
-      })
-      setLoadedLocale(p.locale ?? "browser")
+      hydrate(resolvePrefs(p))
       setDepartment(dept)
       setOutlook(ol)
       setLoading(false)
     })
-  }, [open, user])
+  }, [open, user, hydrate])
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  function handleSave() {
-    // Apply theme immediately — don't wait for server save
-    applyTheme(prefs)
-    startTransition(async () => {
-      const result = await saveUserPreferences(prefs)
-      if (result.error) { toast.error(result.error); return }
-      if (prefs.locale && prefs.locale !== loadedLocale) {
-        writeLocaleCookie(prefs.locale)
-        window.location.href = "/"
-        return
-      }
-      toast.success(t("saved"))
-      onClose()
-    })
-  }
 
   const firstName = (user?.user_metadata?.full_name as string)?.split(" ")[0] ?? ""
   const initials = firstName ? firstName.slice(0, 2).toUpperCase() : (user?.email ?? "").slice(0, 2).toUpperCase()
@@ -127,7 +92,10 @@ export function AccountPanel({ open, onClose, user }: {
       )}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <p className="text-[15px] font-medium">{t("title")}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[15px] font-medium">{t("title")}</p>
+            <SaveIndicator status={status} />
+          </div>
           <button onClick={onClose} className="size-7 flex items-center justify-center rounded hover:bg-muted transition-all duration-200 ease-out">
             <X className="size-4 text-slate-500 transition-transform duration-200 ease-out hover:scale-110 hover:rotate-90" />
           </button>
@@ -178,7 +146,7 @@ export function AccountPanel({ open, onClose, user }: {
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-3">{t("language")}</p>
             <select
               value={prefs.locale}
-              onChange={(e) => setPrefs((p) => ({ ...p, locale: e.target.value as NonNullable<UserPreferences["locale"]> }))}
+              onChange={(e) => update({ locale: e.target.value as NonNullable<UserPreferences["locale"]> })}
               className="w-full h-9 rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="browser">{t("browserDefault")}</option>
@@ -196,11 +164,7 @@ export function AccountPanel({ open, onClose, user }: {
               {THEME_OPTION_KEYS.map((opt) => (
                 <button
                   key={opt.key}
-                  onClick={() => {
-                    const next = { ...prefs, theme: opt.key }
-                    setPrefs(next as typeof prefs)
-                    applyTheme(next as UserPreferences)
-                  }}
+                  onClick={() => update({ theme: opt.key })}
                   className={cn(
                     "group/btn flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all duration-200 ease-out text-[12px] hover:shadow-sm",
                     prefs.theme === opt.key
@@ -219,7 +183,7 @@ export function AccountPanel({ open, onClose, user }: {
               {ACCENT_COLORS.map((c) => (
                 <button
                   key={c.key}
-                  onClick={() => setPrefs((p) => ({ ...p, accentColor: c.hex }))}
+                  onClick={() => update({ accentColor: c.hex })}
                   title={t(c.labelKey)}
                   className={cn(
                     "size-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ease-out",
@@ -234,7 +198,7 @@ export function AccountPanel({ open, onClose, user }: {
               ))}
             </div>
 
-            <FontScaleSlider value={prefs.fontScale ?? "m"} onChange={(v) => { setPrefs((p) => ({ ...p, fontScale: v })); applyTheme({ ...prefs, fontScale: v }) }} />
+            <FontScaleSlider value={prefs.fontScale ?? "m"} onChange={(v) => update({ fontScale: v })} />
           </div>
 
           {/* Preferences — time format + first day */}
@@ -248,7 +212,7 @@ export function AccountPanel({ open, onClose, user }: {
                   <button
                     key={fmt}
                     type="button"
-                    onClick={() => setPrefs((p) => ({ ...p, timeFormat: fmt }))}
+                    onClick={() => update({ timeFormat: fmt })}
                     className={cn(
                       "px-3 py-1 text-[12px] font-medium transition-colors",
                       prefs.timeFormat === fmt
@@ -266,7 +230,7 @@ export function AccountPanel({ open, onClose, user }: {
               <span className="text-[13px] font-medium">{t("firstDayOfWeek")}</span>
               <select
                 value={prefs.firstDayOfWeek ?? 0}
-                onChange={(e) => setPrefs((p) => ({ ...p, firstDayOfWeek: parseInt(e.target.value, 10) }))}
+                onChange={(e) => update({ firstDayOfWeek: parseInt(e.target.value, 10) })}
                 className="h-8 rounded-lg border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:border-ring"
               >
                 <option value={0}>{t("monday")}</option>
@@ -342,17 +306,17 @@ export function AccountPanel({ open, onClose, user }: {
             </div>
           ) : null}
         </div>
-
-        {/* Footer */}
-        <div className="border-t border-border px-5 py-3 shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>{tc("cancel")}</Button>
-          <Button size="sm" onClick={handleSave} disabled={isPending || loading}>
-            {isPending ? tc("saving") : tc("save")}
-          </Button>
-        </div>
       </div>
     </>
   )
+}
+
+function SaveIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+  const t = useTranslations("account")
+  if (status === "idle") return null
+  const text = status === "saving" ? t("saving") : status === "saved" ? t("saved") : t("saveFailed")
+  const color = status === "error" ? "text-destructive" : "text-muted-foreground"
+  return <span className={cn("text-[11px] transition-opacity", color)}>{text}</span>
 }
 
 // ── Font scale slider (shared between dropdown + panel) ──────────────────────

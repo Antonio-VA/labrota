@@ -5,9 +5,10 @@ import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { LogOut, UserCog, HelpCircle, BookOpen, Sun, Moon, Monitor } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { applyTheme } from "@/lib/apply-theme"
 import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
+import { useUserPreferences, DEFAULT_PREFS } from "@/hooks/use-user-preferences"
+import { THEME_COOKIE } from "@/lib/preferences-cookies"
 import { cn } from "@/lib/utils"
 import type { User } from "@supabase/supabase-js"
 
@@ -22,6 +23,18 @@ const THEME_OPTION_KEYS = [
   { key: "dark" as const, labelKey: "themeDark", icon: Moon },
   { key: "auto" as const, labelKey: "themeSystem", icon: Monitor },
 ]
+
+function readSeedFromLocalStorage() {
+  if (typeof window === "undefined") return DEFAULT_PREFS
+  try {
+    const raw = localStorage.getItem(THEME_COOKIE)
+    if (raw) {
+      const p = JSON.parse(raw)
+      return { ...DEFAULT_PREFS, theme: p.theme ?? DEFAULT_PREFS.theme, accentColor: p.accentColor ?? DEFAULT_PREFS.accentColor, fontScale: p.fontScale ?? DEFAULT_PREFS.fontScale }
+    }
+  } catch {}
+  return DEFAULT_PREFS
+}
 
 // Request a higher-resolution version of known CDN avatar URLs (Google, Gravatar, etc.)
 function hiResAvatarUrl(url: string | null): string | null {
@@ -40,21 +53,14 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
   const [accountOpen, setAccountOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [fullUser, setFullUser] = useState<User | null>(null)
-  const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "auto">("light")
   const ref = useRef<HTMLDivElement>(null)
 
-  // Read current theme on mount
-  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("labrota_theme")
-      if (raw) {
-        const p = JSON.parse(raw)
-        if (p.theme) setCurrentTheme(p.theme)
-      }
-    } catch {}
-  }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // Seed from localStorage so the selected radio reflects current state before
+  // server prefs hydrate. Server-authoritative prefs arrive via AccountPanel's
+  // fetch and propagate here through the BroadcastChannel in the hook.
+  const [initialSeed] = useState(readSeedFromLocalStorage)
+  const { prefs, update } = useUserPreferences(initialSeed)
+  const currentTheme = prefs.theme ?? "light"
 
   useEffect(() => {
     if (!open) return
@@ -76,20 +82,6 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
     } else {
       setAccountOpen(true)
     }
-  }
-
-  function handleThemeChange(theme: "light" | "dark" | "auto") {
-    setCurrentTheme(theme)
-    // Read existing prefs to preserve accent color
-    let accentColor = "#1b4f8a"
-    try {
-      const raw = localStorage.getItem("labrota_theme")
-      if (raw) {
-        const p = JSON.parse(raw)
-        if (p.accentColor) accentColor = p.accentColor
-      }
-    } catch {}
-    applyTheme({ theme, accentColor })
   }
 
   function signOut() {
@@ -155,7 +147,7 @@ export function UserAvatarMenu({ initialUser, variant = "dark" }: { initialUser:
             {THEME_OPTION_KEYS.map(({ key, labelKey, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => handleThemeChange(key)}
+                onClick={() => update({ theme: key })}
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left hover:bg-accent transition-colors duration-75"
               >
                 <Icon className="size-3.5 text-muted-foreground" />

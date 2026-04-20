@@ -4,6 +4,7 @@ export const PREFS_TS_COOKIE = "labrota_prefs_ts"
 export const PREFS_TTL_COOKIE = "labrota_prefs_ttl"
 export const THEME_COOKIE = "labrota_theme"
 export const LOCALE_COOKIE = "locale"
+export const PREFS_BROADCAST_CHANNEL = "labrota_prefs"
 
 export const PREFS_COOKIE_OPTS = {
   path: "/",

@@ -6,10 +6,9 @@ import { useTranslations } from "next-intl"
 import { Sun, Moon, Monitor, LogOut, Cloud, Unplug, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { saveUserPreferences, getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
+import { getUserOutlookStatus, type UserPreferences, type UserOutlookStatus } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
-import { applyTheme } from "@/lib/apply-theme"
-import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
+import { useUserPreferences, resolvePrefs } from "@/hooks/use-user-preferences"
 import { toast } from "sonner"
 
 const ACCENT_COLORS = [
@@ -26,32 +25,15 @@ interface MobileAccountViewProps {
 
 export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }: MobileAccountViewProps) {
   const t = useTranslations("account")
-  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [avatarImgError, setAvatarImgError] = useState(false)
-  const [prefs, setPrefs] = useState<UserPreferences>({
-    theme: initialPrefs.theme ?? "light",
-    accentColor: initialPrefs.accentColor ?? "#1b4f8a",
-    locale: initialPrefs.locale ?? "browser",
-  })
+  const { prefs, update } = useUserPreferences(resolvePrefs(initialPrefs))
   const [outlook, setOutlook] = useState<UserOutlookStatus>(initialOutlook)
 
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = "/login"
-  }
-
-  function handleSave() {
-    startTransition(async () => {
-      applyTheme(prefs)
-      const nextLocale = prefs.locale ?? "browser"
-      const localeChanged = readLocaleCookie() !== nextLocale
-      writeLocaleCookie(nextLocale)
-      await saveUserPreferences(prefs)
-      toast.success(t("saved"))
-      if (localeChanged) window.location.reload()
-    })
   }
 
   const initials = initialUser?.fullName
@@ -90,7 +72,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
               ].map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
-                  onClick={() => setPrefs((p) => ({ ...p, theme: key }))}
+                  onClick={() => update({ theme: key })}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-medium transition-colors",
                     prefs.theme === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
@@ -112,7 +94,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
               {ACCENT_COLORS.map((c) => (
                 <button
                   key={c}
-                  onClick={() => setPrefs((p) => ({ ...p, accentColor: c }))}
+                  onClick={() => update({ accentColor: c })}
                   className={cn(
                     "size-8 rounded-full transition-all",
                     prefs.accentColor === c ? "ring-2 ring-offset-2 ring-primary" : "ring-1 ring-border"
@@ -136,7 +118,7 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
               ].map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setPrefs((p) => ({ ...p, locale: key }))}
+                  onClick={() => update({ locale: key })}
                   className={cn(
                     "flex-1 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-center",
                     prefs.locale === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
@@ -211,15 +193,6 @@ export function MobileAccountView({ initialUser, initialPrefs, initialOutlook }:
               )}
             </div>
           )}
-
-          {/* Save */}
-          <button
-            onClick={handleSave}
-            disabled={isPending}
-            className="py-3 rounded-xl bg-primary text-primary-foreground text-[14px] font-semibold active:opacity-80 disabled:opacity-50 transition-opacity"
-          >
-            {isPending ? tc("saving") : tc("save")}
-          </button>
 
       {/* Support */}
       <a

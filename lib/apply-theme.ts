@@ -1,3 +1,5 @@
+import { THEME_COOKIE } from "@/lib/preferences-cookies"
+
 export type ThemePrefs = {
   theme?: "light" | "dark" | "auto"
   accentColor?: string
@@ -12,8 +14,8 @@ export function applyTheme(prefs: ThemePrefs) {
   // Persist to localStorage + cookie (cookie is read server-side in layout.tsx)
   const themeData = JSON.stringify({ theme: prefs.theme, accentColor: prefs.accentColor, fontScale: prefs.fontScale })
   try {
-    localStorage.setItem("labrota_theme", themeData)
-    document.cookie = `labrota_theme=${encodeURIComponent(themeData)};path=/;max-age=${365 * 86400};SameSite=Lax`
+    localStorage.setItem(THEME_COOKIE, themeData)
+    document.cookie = `${THEME_COOKIE}=${encodeURIComponent(themeData)};path=/;max-age=${365 * 86400};SameSite=Lax`
   } catch {}
 
   if (prefs.accentColor) {

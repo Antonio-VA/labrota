@@ -8,11 +8,10 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import {
   getUserProfile, getUserPreferences, getUserOutlookStatus,
-  saveUserPreferences, type UserPreferences, type UserOutlookStatus,
+  type UserPreferences, type UserOutlookStatus,
 } from "@/app/(clinic)/account-actions"
 import { syncOutlookForStaff, disconnectOutlook } from "@/app/(clinic)/leaves/outlook-actions"
-import { applyTheme } from "@/lib/apply-theme"
-import { readLocaleCookie, writeLocaleCookie } from "@/lib/locale-cookie"
+import { useUserPreferences, resolvePrefs } from "@/hooks/use-user-preferences"
 import { toast } from "sonner"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
@@ -37,14 +36,14 @@ interface MobileAccountSheetProps {
 
 export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   const t = useTranslations("account")
-  const tc = useTranslations("common")
   const [isPending, startTransition] = useTransition()
   const [avatarImgError, setAvatarImgError] = useState(false)
   const [user, setUser] = useState(_accountCache?.user ?? null)
-  const [prefs, setPrefs] = useState<UserPreferences | null>(_accountCache?.prefs ?? null)
   const [outlook, setOutlook] = useState(_accountCache?.outlook ?? null)
   const [loading, setLoading] = useState(!_accountCache)
   const [loaded, setLoaded] = useState(!!_accountCache)
+
+  const { prefs, update, hydrate } = useUserPreferences(resolvePrefs(_accountCache?.prefs))
 
   // Fetch data when sheet opens (once per session; re-seeds from module cache on remount)
   /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
@@ -52,35 +51,21 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
     if (!open || loaded) return
     setLoading(true)
     Promise.all([getUserProfile(), getUserPreferences(), getUserOutlookStatus()]).then(([u, p, o]) => {
-      const resolvedPrefs = { theme: p.theme ?? "light", accentColor: p.accentColor ?? "#1b4f8a", locale: p.locale ?? "browser" } satisfies UserPreferences
+      const resolvedPrefs = resolvePrefs(p)
       _accountCache = { user: u, prefs: resolvedPrefs, outlook: o }
       setUser(u)
-      setPrefs(resolvedPrefs)
+      hydrate(resolvedPrefs)
       setOutlook(o)
       setLoading(false)
       setLoaded(true)
     })
-  }, [open, loaded])
+  }, [open, loaded, hydrate])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = "/login"
-  }
-
-  function handleSave() {
-    if (!prefs) return
-    startTransition(async () => {
-      if (_accountCache) _accountCache.prefs = prefs
-      applyTheme(prefs)
-      const nextLocale = prefs.locale ?? "browser"
-      const localeChanged = readLocaleCookie() !== nextLocale
-      writeLocaleCookie(nextLocale)
-      await saveUserPreferences(prefs)
-      toast.success(t("saved"))
-      if (localeChanged) window.location.reload()
-    })
   }
 
   const initials = user?.fullName
@@ -105,13 +90,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
           <span className="text-[15px] font-semibold">
             {t("settings")}
           </span>
-          <button
-            onClick={handleSave}
-            disabled={isPending || !prefs}
-            className="text-[14px] font-semibold text-primary active:opacity-60 disabled:opacity-30 px-1"
-          >
-            {isPending ? "…" : tc("save")}
-          </button>
+          <div className="size-8" aria-hidden />
         </div>
 
         {/* Scrollable body */}
@@ -122,7 +101,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
               <div className="h-[180px] rounded-xl bg-muted" />
               <div className="h-24 rounded-xl bg-muted" />
             </div>
-          ) : prefs ? (
+          ) : (
             <div className="flex flex-col gap-3 px-4 py-3 pb-10">
 
               {/* Profile */}
@@ -158,7 +137,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                     ].map(({ key, icon: Icon, label }) => (
                       <button
                         key={key}
-                        onClick={() => setPrefs((p) => p && ({ ...p, theme: key }))}
+                        onClick={() => update({ theme: key })}
                         className={cn(
                           "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-medium transition-colors",
                           prefs.theme === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
@@ -181,7 +160,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                     {ACCENT_COLORS.map((c) => (
                       <button
                         key={c}
-                        onClick={() => setPrefs((p) => p && ({ ...p, accentColor: c }))}
+                        onClick={() => update({ accentColor: c })}
                         className={cn(
                           "size-7 rounded-full transition-all",
                           prefs.accentColor === c ? "ring-2 ring-offset-1 ring-primary" : "ring-1 ring-border"
@@ -207,7 +186,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
                     ].map(({ key, label }) => (
                       <button
                         key={key}
-                        onClick={() => setPrefs((p) => p && ({ ...p, locale: key }))}
+                        onClick={() => update({ locale: key })}
                         className={cn(
                           "flex-1 py-2 rounded-lg text-[12px] font-medium text-center transition-colors",
                           prefs.locale === key ? "bg-primary/10 text-primary" : "text-muted-foreground active:bg-muted"
@@ -303,7 +282,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
               </div>
 
             </div>
-          ) : null}
+          )}
         </div>
       </SheetContent>
     </Sheet>
