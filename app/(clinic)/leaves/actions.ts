@@ -8,6 +8,7 @@ import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry, checkLeave
 import type { LeaveType, LeaveStatus } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
+import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
 function parseLeaveForm(formData: FormData) {
   return {
@@ -83,13 +84,19 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
   }
 
   // Auto-remove conflicting rota assignments for this staff during leave period
-  await supabase
-    .from("rota_assignments")
-    .delete()
-    .eq("staff_id", leave.staff_id)
-    .eq("organisation_id", orgId)
-    .gte("date", leave.start_date)
-    .lte("date", leave.end_date)
+  if (insertedLeave) {
+    const { data: { user } } = await supabase.auth.getUser()
+    await clearRotaAssignmentsForLeave({
+      client: supabase,
+      orgId,
+      staffId: leave.staff_id,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+      leaveId: insertedLeave.id,
+      userId: user?.id,
+      trigger: "leave_created",
+    })
+  }
   revalidatePath("/")
 
   // Notify admins if this leave impacts published rotas
@@ -128,16 +135,18 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
   if (error) return { error: error.message }
 
   // Auto-remove conflicting rota assignments for updated leave period
-  if (orgId) {
-    await supabase
-      .from("rota_assignments")
-      .delete()
-      .eq("staff_id", leave.staff_id)
-      .eq("organisation_id", orgId)
-      .gte("date", leave.start_date)
-      .lte("date", leave.end_date)
-    revalidatePath("/")
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  await clearRotaAssignmentsForLeave({
+    client: supabase,
+    orgId,
+    staffId: leave.staff_id,
+    startDate: leave.start_date,
+    endDate: leave.end_date,
+    leaveId: id,
+    userId: user?.id,
+    trigger: "leave_updated",
+  })
+  revalidatePath("/")
 
   revalidatePath("/leaves")
   return { success: true }
@@ -220,13 +229,19 @@ export async function quickCreateLeave(params: {
   }
 
   // Auto-remove conflicting rota assignments
-  await supabase
-    .from("rota_assignments")
-    .delete()
-    .eq("staff_id", params.staffId)
-    .eq("organisation_id", orgId)
-    .gte("date", params.startDate)
-    .lte("date", params.endDate)
+  if (insertedLeave) {
+    const { data: { user } } = await supabase.auth.getUser()
+    await clearRotaAssignmentsForLeave({
+      client: supabase,
+      orgId,
+      staffId: params.staffId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      leaveId: insertedLeave.id,
+      userId: user?.id,
+      trigger: "leave_created",
+    })
+  }
 
   revalidatePath("/")
   revalidatePath("/leaves")
@@ -707,13 +722,16 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     
 
   // Auto-remove conflicting rota assignments
-  await supabase
-    .from("rota_assignments")
-    .delete()
-    .eq("staff_id", leave.staff_id)
-    .eq("organisation_id", orgId)
-    .gte("date", leave.start_date)
-    .lte("date", leave.end_date)
+  await clearRotaAssignmentsForLeave({
+    client: supabase,
+    orgId,
+    staffId: leave.staff_id,
+    startDate: leave.start_date,
+    endDate: leave.end_date,
+    leaveId,
+    userId: user?.id,
+    trigger: "leave_approved",
+  })
 
   // Notify the staff member about the decision
   notifyLeaveDecision({ leaveId, orgId, decision: "approved" }).catch(() => {})

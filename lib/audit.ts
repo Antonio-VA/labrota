@@ -5,6 +5,7 @@ export type AuditAction =
   | "config_change"
   | "rota_generated" | "rota_published" | "rota_deleted"
   | "assignment_changed"
+  | "rota_assignments_cleared_by_leave"
   | "staff_created" | "staff_updated"
   | "leave_created" | "leave_updated" | "leave_deleted"
   | "skill_updated"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
 const SECRET = process.env.SUPABASE_SECRET_KEY ?? ""
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -79,13 +80,15 @@ export async function GET(request: NextRequest) {
 
   // If approved, remove conflicting rota assignments
   if (action === "approve") {
-    await admin
-      .from("rota_assignments")
-      .delete()
-      .eq("staff_id", leave.staff_id)
-      .eq("organisation_id", leave.organisation_id)
-      .gte("date", leave.start_date)
-      .lte("date", leave.end_date)
+    await clearRotaAssignmentsForLeave({
+      client: admin,
+      orgId: leave.organisation_id,
+      staffId: leave.staff_id,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+      leaveId,
+      trigger: "leave_approved",
+    })
   }
 
   // Notify the staff member about the decision
