@@ -115,6 +115,19 @@ export async function getValidAccessToken(staffId: string): Promise<string> {
   }
 }
 
+// Revoke all refresh tokens at Microsoft for the signed-in user.
+// Throws on Graph failure so callers can distinguish success from silent drop.
+export async function revokeOutlookToken(accessToken: string): Promise<void> {
+  const res = await fetch(`${GRAPH_BASE_URL}/me/revokeSignInSessions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Graph revokeSignInSessions failed (${res.status}): ${body}`)
+  }
+}
+
 // Get the Microsoft user profile (id + email)
 export async function getMicrosoftProfile(accessToken: string): Promise<{ id: string; mail: string }> {
   const res = await fetch(`${GRAPH_BASE_URL}/me?$select=id,mail,userPrincipalName`, {

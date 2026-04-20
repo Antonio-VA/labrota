@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { syncStaffOutlook } from "@/lib/outlook/sync"
+import { getValidAccessToken, revokeOutlookToken } from "@/lib/outlook/graph-client"
 import type { OutlookConnection, Staff } from "@/lib/types/database"
 import { toISODate } from "@/lib/format-date"
 
@@ -114,6 +115,26 @@ export async function disconnectOutlook(
   if (!orgId) return { error: "No organisation found" }
 
   const admin = createAdminClient()
+
+  // Verify the staff belongs to the caller's org before touching the
+  // connection — otherwise a caller could revoke tokens in a different org.
+  const { data: staffRow } = await admin
+    .from("staff")
+    .select("id")
+    .eq("id", staffId)
+    .eq("organisation_id", orgId)
+    .maybeSingle()
+  if (!staffRow) return { error: "Staff not found" }
+
+  // Best-effort: revoke refresh tokens at Microsoft before deleting the row.
+  // Failures are non-fatal — the BEFORE DELETE trigger still records an audit
+  // entry, and the token will expire naturally.
+  try {
+    const accessToken = await getValidAccessToken(staffId)
+    await revokeOutlookToken(accessToken)
+  } catch (e) {
+    console.warn(`[outlook] Token revocation failed for staff ${staffId}:`, e)
+  }
 
   // Delete the connection
   const { error: delError } = await admin
