@@ -6,9 +6,21 @@ import { saveUserPreferences, type UserPreferences } from "@/app/(clinic)/accoun
 import { applyTheme } from "@/lib/apply-theme"
 import { writeLocaleCookie, type LocalePref } from "@/lib/locale-cookie"
 import { PREFS_BROADCAST_CHANNEL } from "@/lib/preferences-cookies"
+import { useTimedState } from "@/hooks/use-timed-state"
 
 const SAVE_DEBOUNCE_MS = 500
 const SAVED_INDICATOR_MS = 1500
+
+function prefsEqual(a: SavablePrefs, b: SavablePrefs): boolean {
+  return (
+    a.locale === b.locale &&
+    a.theme === b.theme &&
+    a.accentColor === b.accentColor &&
+    a.fontScale === b.fontScale &&
+    a.timeFormat === b.timeFormat &&
+    a.firstDayOfWeek === b.firstDayOfWeek
+  )
+}
 
 export type SavablePrefs = Pick<
   UserPreferences,
@@ -49,18 +61,18 @@ export function resolvePrefs(p: Partial<UserPreferences> | null | undefined): Sa
  *  BroadcastChannel keeps sibling tabs in sync without another server round-trip. */
 export function useUserPreferences(initial: SavablePrefs) {
   const [prefs, setPrefsState] = useState<SavablePrefs>(initial)
-  const [status, setStatus] = useState<SaveStatus>("idle")
+  const [status, flashStatus, setStatus] = useTimedState<SaveStatus>("idle", SAVED_INDICATOR_MS)
   const router = useRouter()
 
   const prefsRef = useRef<SavablePrefs>(initial)
   const pendingRef = useRef<SavablePrefs | null>(null)
   const hydrate = useCallback((seed: SavablePrefs) => {
+    if (prefsEqual(seed, prefsRef.current)) return
     prefsRef.current = seed
     setPrefsState(seed)
     applyTheme(seed)
   }, [])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
   const instanceIdRef = useRef<string>("")
 
@@ -72,15 +84,14 @@ export function useUserPreferences(initial: SavablePrefs) {
     setStatus("saving")
     const result = await saveUserPreferences(toSave)
     if (result.error) { setStatus("error"); return }
-    setStatus("saved")
+    flashStatus("saved")
     bcRef.current?.postMessage({ prefs: toSave, source: instanceIdRef.current } satisfies BroadcastMessage)
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setStatus("idle"), SAVED_INDICATOR_MS)
-  }, [])
+  }, [flashStatus, setStatus])
 
   const update = useCallback((patch: Partial<SavablePrefs>) => {
     const prev = prefsRef.current
     const next = { ...prev, ...patch }
+    if (prefsEqual(prev, next)) return
     prefsRef.current = next
     pendingRef.current = next
     setPrefsState(next)
@@ -105,6 +116,7 @@ export function useUserPreferences(initial: SavablePrefs) {
       if (e.data.source === instanceIdRef.current) return
       const incoming = e.data.prefs
       const prev = prefsRef.current
+      if (prefsEqual(incoming, prev)) return
       prefsRef.current = incoming
       setPrefsState(incoming)
       applyTheme(incoming)
@@ -121,8 +133,8 @@ export function useUserPreferences(initial: SavablePrefs) {
     window.addEventListener("pagehide", handleHide)
     return () => {
       window.removeEventListener("pagehide", handleHide)
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
       if (pendingRef.current) void flush()
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     }
   }, [flush])
 

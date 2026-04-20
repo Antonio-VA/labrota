@@ -7,7 +7,7 @@ import { LogOut, UserCog, HelpCircle, BookOpen, Sun, Moon, Monitor } from "lucid
 import { createClient } from "@/lib/supabase/client"
 import { AccountPanel } from "@/components/account-panel"
 import { SupportModal } from "@/components/support-modal"
-import { useUserPreferences, DEFAULT_PREFS } from "@/hooks/use-user-preferences"
+import { useUserPreferences, DEFAULT_PREFS, resolvePrefs } from "@/hooks/use-user-preferences"
 import { THEME_COOKIE } from "@/lib/preferences-cookies"
 import { cn } from "@/lib/utils"
 import type { User } from "@supabase/supabase-js"
@@ -28,10 +28,7 @@ function readSeedFromLocalStorage() {
   if (typeof window === "undefined") return DEFAULT_PREFS
   try {
     const raw = localStorage.getItem(THEME_COOKIE)
-    if (raw) {
-      const p = JSON.parse(raw)
-      return { ...DEFAULT_PREFS, theme: p.theme ?? DEFAULT_PREFS.theme, accentColor: p.accentColor ?? DEFAULT_PREFS.accentColor, fontScale: p.fontScale ?? DEFAULT_PREFS.fontScale }
-    }
+    if (raw) return resolvePrefs(JSON.parse(raw))
   } catch {}
   return DEFAULT_PREFS
 }
