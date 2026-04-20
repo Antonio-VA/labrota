@@ -28,56 +28,17 @@
 
 import type {
   StaffWithSkills,
-  Leave,
-  RotaAssignment,
-  LabConfig,
-  RotaRule,
   ShiftType,
-  ShiftTypeDefinition,
-  ShiftCoverageByDay,
   SkillName,
-  WorkingDay,
 } from "@/lib/types/database"
 import { getDayCode, isWeekend, addDays, getWeekDates, normalizeShiftCov } from "@/lib/engine-helpers"
 import { toISODate } from "@/lib/format-date"
+import type { DayPlan, TaskAssignment, RotaEngineResult, EngineParams } from "./rota-engine-v2/types"
+import { inferPreferences } from "./rota-engine-v2/infer-preferences"
+import { buildLeaveMap } from "./rota-engine-v2/leave-map"
+import { buildHolidayContext } from "./rota-engine-v2/holiday-helpers"
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface DayPlan {
-  date: string
-  assignments: { staff_id: string; shift_type: ShiftType }[]
-  skillGaps: SkillName[]
-}
-
-export interface TaskAssignment {
-  staff_id: string
-  tecnica_code: string
-  date: string
-}
-
-export interface RotaEngineResult {
-  days: DayPlan[]
-  taskAssignments: TaskAssignment[]
-  warnings: string[]
-}
-
-export interface EngineParams {
-  weekStart: string              // ISO Monday
-  staff: StaffWithSkills[]
-  leaves: Leave[]
-  recentAssignments: RotaAssignment[]  // last ~4 weeks, used for workload scoring
-  labConfig: LabConfig
-  shiftTypes?: ShiftTypeDefinition[]   // org shift catalogue — used to fill all shifts
-  punctionsOverride?: Record<string, number>  // per-date overrides from rota record
-  rules?: RotaRule[]             // enabled scheduling rules
-  tecnicas?: { codigo: string; department?: string; typical_shifts: string[]; avoid_shifts?: string[] }[]
-  shiftRotation?: "stable" | "weekly" | "daily"
-  taskCoverageEnabled?: boolean
-  taskCoverageByDay?: Record<string, Record<string, number>> | null  // tecnica_code → { mon: N, ... }
-  shiftCoverageEnabled?: boolean
-  shiftCoverageByDay?: ShiftCoverageByDay | null // shift_code → { day: { lab, andrology, admin } }
-  publicHolidays?: Record<string, string>  // date → holiday name
-}
+export type { DayPlan, TaskAssignment, RotaEngineResult, EngineParams }
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 
@@ -118,69 +79,7 @@ export function runRotaEngineV2({
     workloadScore[a.staff_id] = (workloadScore[a.staff_id] ?? 0) + 1
   }
 
-  // ── Infer preferences from historical patterns ────────────────────────────
-  // For each staff member, count shift and day frequencies from recent assignments.
-  // If a pattern is strong enough (≥70% for a shift, ≥60% for days), use it as
-  // an implicit preference — but only when no explicit preference is set.
-  const inferredShiftPref: Record<string, string> = {}  // staff_id → shift code
-  const inferredDayPref: Record<string, Set<string>> = {}   // staff_id → day codes they prefer
-  const inferredDayAvoid: Record<string, Set<string>> = {}  // staff_id → day codes they avoid
-
-  if (recentAssignments.length > 0) {
-    // Group by staff
-    const byStaff: Record<string, typeof recentAssignments> = {}
-    for (const a of recentAssignments) {
-      if (!byStaff[a.staff_id]) byStaff[a.staff_id] = []
-      byStaff[a.staff_id].push(a)
-    }
-
-    for (const [staffId, assignments] of Object.entries(byStaff)) {
-      const person = staff.find((s) => s.id === staffId)
-      if (!person) continue
-      const totalAssignments = assignments.length
-
-      // Shift inference: count how often each shift appears
-      if (!person.preferred_shift && !(person.avoid_shifts?.length)) {
-        const shiftCounts: Record<string, number> = {}
-        for (const a of assignments) {
-          shiftCounts[a.shift_type] = (shiftCounts[a.shift_type] ?? 0) + 1
-        }
-        const topShift = Object.entries(shiftCounts).sort((a, b) => b[1] - a[1])[0]
-        if (topShift && topShift[1] / totalAssignments >= 0.7) {
-          inferredShiftPref[staffId] = topShift[0]
-        }
-      }
-
-      // Day inference: count how often each weekday appears vs total weeks
-      if (!(person.preferred_days?.length) && !(person.avoid_days?.length)) {
-        const totalWeeks = Math.max(1, Math.ceil(totalAssignments / 5))
-        const dayCounts: Record<string, number> = {}
-        for (const a of assignments) {
-          const dow = new Date(a.date + "T12:00:00").getDay()
-          const dayCode = (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const)[dow]
-          dayCounts[dayCode] = (dayCounts[dayCode] ?? 0) + 1
-        }
-        // Days that appear in ≥60% of weeks → inferred preferred
-        // Days that appear in ≤15% of weeks (and total > 2 weeks) → inferred avoid
-        for (const [dayCode, count] of Object.entries(dayCounts)) {
-          const ratio = count / totalWeeks
-          if (ratio >= 0.6) {
-            if (!inferredDayPref[staffId]) inferredDayPref[staffId] = new Set()
-            inferredDayPref[staffId].add(dayCode)
-          }
-        }
-        if (totalWeeks >= 3) {
-          for (const dc of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]) {
-            const ratio = (dayCounts[dc] ?? 0) / totalWeeks
-            if (ratio <= 0.15) {
-              if (!inferredDayAvoid[staffId]) inferredDayAvoid[staffId] = new Set()
-              inferredDayAvoid[staffId].add(dc)
-            }
-          }
-        }
-      }
-    }
-  }
+  const { inferredShiftPref, inferredDayPref, inferredDayAvoid } = inferPreferences(recentAssignments, staff)
 
   const allWeekDates = getWeekDates(weekStart)
 
@@ -188,24 +87,7 @@ export function runRotaEngineV2({
   const weeklyShiftCount: Record<string, number> = {}
   const weekShiftHistory: Record<string, Set<string>> = {} // staff_id → shifts used this week (for daily rotation)
 
-  // Leave map: staff_id → set of dates on leave
-  const leaveMap: Record<string, Set<string>> = {}
-  for (const leave of leaves) {
-    const s = new Date(leave.start_date + "T12:00:00")
-    const e = new Date(leave.end_date + "T12:00:00")
-    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = toISODate(d)
-      if (!leaveMap[leave.staff_id]) leaveMap[leave.staff_id] = new Set()
-      leaveMap[leave.staff_id].add(iso)
-    }
-  }
-
-  // Leave days this week per staff — used to discount their shift budget so the
-  // ShiftBudgetBar doesn't flag leave-reduced weeks as under-scheduled.
-  const leaveThisWeek: Record<string, number> = {}
-  for (const staffId in leaveMap) {
-    leaveThisWeek[staffId] = allWeekDates.filter((d) => leaveMap[staffId].has(d)).length
-  }
+  const { leaveMap, leaveThisWeek } = buildLeaveMap(leaves, allWeekDates)
 
   // Shift codes sorted by sort_order — only active shifts are used for assignment.
   const activeShiftTypes = shiftTypes.filter((st) => st.active !== false)
@@ -250,31 +132,9 @@ export function runRotaEngineV2({
   // Days-off preference: controls when staff get their off days
   const daysOffPref = labConfig.days_off_preference ?? "prefer_weekend"
 
-  // ── Public holiday handling ──────────────────────────────────────────────
-  const holidayMode = labConfig.public_holiday_mode ?? "saturday"
   const allDates = getWeekDates(weekStart)
-  const holidaysThisWeek = allDates.filter((d) => publicHolidays[d])
-  const holidayCount = holidaysThisWeek.length
-
-  const HOLIDAY_DAY_CODE: Record<string, WorkingDay> = { weekday: "wed", saturday: "sat", sunday: "sun" }
-  function getEffectiveDayCode(date: string): WorkingDay {
-    if (publicHolidays[date] && !isWeekend(date) && holidayMode !== "weekday") {
-      return HOLIDAY_DAY_CODE[holidayMode] ?? getDayCode(date)
-    }
-    return getDayCode(date)
-  }
-
-  function isEffectiveWeekend(date: string): boolean {
-    if (publicHolidays[date] && holidayMode !== "weekday") return true
-    return isWeekend(date)
-  }
-
-  const reduceBudget = labConfig.public_holiday_reduce_budget ?? true
-  function getEffectiveBudget(s: StaffWithSkills): number {
-    const base = s.days_per_week ?? 5
-    if (!reduceBudget || holidayCount === 0) return base
-    return Math.max(1, base - holidayCount)
-  }
+  const { holidayMode, holidayCount, reduceBudget, getEffectiveDayCode, isEffectiveWeekend, getEffectiveBudget } =
+    buildHolidayContext(labConfig, allDates, publicHolidays)
 
   if (holidayMode !== "weekday" && holidayCount > 0) {
     warnings.push(`[engine] Public holiday mode: ${holidayMode} — ${holidayCount} holiday(s) this week.${reduceBudget ? ` Weekly budgets reduced by ${holidayCount}.` : ""}`)
