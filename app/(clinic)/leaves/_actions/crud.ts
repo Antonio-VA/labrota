@@ -84,7 +84,7 @@ export async function createLeave(_prevState: unknown, formData: FormData) {
       trigger: "leave_created",
     })
   }
-  revalidatePath("/")
+  revalidatePath("/schedule")
 
   const { data: staffData } = await supabase
     .from("staff")
@@ -132,7 +132,7 @@ export async function updateLeave(id: string, _prevState: unknown, formData: For
     trigger: "leave_updated",
   })
   revalidatePath("/leaves")
-  revalidatePath("/") // clearRotaAssignmentsForLeave modifies the schedule
+  revalidatePath("/schedule") // clearRotaAssignmentsForLeave modifies the schedule
   return { success: true }
 }
 
@@ -215,7 +215,7 @@ export async function quickCreateLeave(params: {
     })
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   revalidatePath("/leaves")
   return {}
 }
@@ -227,5 +227,6 @@ export async function deleteLeave(id: string): Promise<{ error?: string }> {
   const { error } = await supabase.from("leaves").delete().eq("id", id).eq("organisation_id", orgId)
   if (error) return { error: error.message }
   revalidatePath("/leaves")
+  revalidatePath("/schedule")
   return {}
 }

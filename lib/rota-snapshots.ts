@@ -225,7 +225,7 @@ export async function restoreWeekSnapshot(snapshotId: string): Promise<{ error?:
     await supabase.from("rota_assignments").delete().in("id", oldIds)
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -275,7 +275,7 @@ export async function restoreSnapshot(snapshotId: string): Promise<{ error?: str
     await supabase.from("rota_assignments").delete().in("id", oldIds)
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 

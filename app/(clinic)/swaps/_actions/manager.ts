@@ -88,7 +88,7 @@ export async function approveSwapByManager(swapId: string): Promise<{ error?: st
     console.error("[swap] Failed to notify target after manager approval:", e)
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -126,7 +126,7 @@ export async function rejectSwapByManager(swapId: string): Promise<{ error?: str
 
   if (error) return { error: error.message }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 

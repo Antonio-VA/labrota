@@ -82,7 +82,7 @@ export async function copyDayFromLastWeek(weekStart: string, date: string): Prom
     if (error) return { error: error.message }
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return { count: toInsert.length }
 }
 
@@ -163,7 +163,7 @@ export async function copyPreviousWeek(weekStart: string): Promise<{ error?: str
     if (error) return { error: error.message }
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return { count: toInsert.length }
 }
 
@@ -189,6 +189,6 @@ export async function clearWeek(weekStart: string): Promise<{ error?: string }> 
   await supabase.from("rotas").update({ generation_type: "manual" }).eq("id", rotaRow.id)
 
   await supabase.from("rota_assignments").delete().eq("rota_id", rotaRow.id)
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }

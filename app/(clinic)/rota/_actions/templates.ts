@@ -159,7 +159,7 @@ export async function applyTemplate(templateId: string, weekStart: string, stric
     if (error) return { error: error.message }
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return { skipped: [...new Set(skipped)] }
 }
 

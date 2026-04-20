@@ -50,7 +50,7 @@ export async function cancelSwapRequest(swapId: string): Promise<{ error?: strin
     .update({ status: "cancelled" })
     .eq("id", swapId)
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -190,7 +190,7 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
     console.error("[swap] Failed to resend rota email:", e)
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 

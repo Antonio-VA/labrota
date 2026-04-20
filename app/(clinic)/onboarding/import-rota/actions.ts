@@ -111,7 +111,7 @@ export async function importFutureRota(input: ImportRotaInput): Promise<ImportRo
     totalWeeks++
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   revalidatePath("/settings")
 
   return {

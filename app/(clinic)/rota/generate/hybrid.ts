@@ -547,7 +547,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     // Log usage for quota tracking
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
-    revalidatePath("/")
+    revalidatePath("/schedule")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
   } catch (e) {
     // If Claude fails, fall back to engine v2 result
@@ -577,7 +577,7 @@ Review the base rota above. Identify any L2/L3 improvements (avoid_days violatio
     // Log usage for quota tracking (fallback still counts as a hybrid attempt)
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
-    revalidatePath("/")
+    revalidatePath("/schedule")
 
     const msg = e instanceof Error ? e.message : "AI optimisation failed"
     return {
@@ -1036,7 +1036,7 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
     logAuditEvent({ orgId, userId: auditUser?.id, userEmail: auditUser?.email, action: "rota_generated", entityType: "rota", entityId: rotaId, metadata: { weekStart, method: "ai_hybrid_task", assignmentCount: toInsert.length, preserveOverrides } })
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
 
-    revalidatePath("/")
+    revalidatePath("/schedule")
     return { assignmentCount: toInsert.length, reasoning: fullReasoning }
 
   } catch (e) {
@@ -1059,7 +1059,7 @@ Review the base rota. Identify L2/L3 improvements (technique rotation gaps, intr
     const userWarnings = taskResult.warnings.filter((w) => !w.startsWith("[engine]") && !w.includes("[debug]"))
     await supabase.from("rotas").update({ engine_warnings: userWarnings.length > 0 ? userWarnings : null }).eq("id", rotaId)
     await supabase.from("hybrid_generation_log").insert({ organisation_id: orgId })
-    revalidatePath("/")
+    revalidatePath("/schedule")
     const msg = e instanceof Error ? e.message : "AI optimisation failed"
     return { assignmentCount: engineAssignments.length, reasoning: `⚠ Claude optimisation failed (${msg}). Showing task engine base rota instead.` }
   }

@@ -207,7 +207,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   notifyLeaveDecision({ leaveId, orgId, decision: "approved" }).catch(() => {})
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   revalidatePath("/leaves")
   return {}
 }
@@ -315,5 +315,6 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
   }
 
   revalidatePath("/leaves")
+  revalidatePath("/schedule")
   return {}
 }

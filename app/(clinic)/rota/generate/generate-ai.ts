@@ -354,7 +354,7 @@ Use staff IDs (not names) and shift codes exactly as provided.`
       metadata: { weekStart, method: "ai_reasoning", assignmentCount: toInsert.length, preserveOverrides, aiWarnings },
     })
 
-    revalidatePath("/")
+    revalidatePath("/schedule")
     return { assignmentCount: toInsert.length, reasoning }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "AI generation failed"

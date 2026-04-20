@@ -333,7 +333,7 @@ export async function generateRota(
     metadata: { weekStart, method: generationType, assignmentCount: toInsert.length, preserveOverrides, rotaDisplayMode },
   })
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   const coverageInfo = engineWarnings.find((w) => w.startsWith("[engine]"))
   return { assignmentCount: toInsert.length, _coverageModel: coverageInfo }
   } finally {

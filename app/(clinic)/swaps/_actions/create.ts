@@ -126,7 +126,7 @@ export async function createSwapRequest(params: {
     await notifySwapManagers(inserted.id, orgId)
   } catch { /* non-blocking */ }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return { id: inserted.id }
 }
 

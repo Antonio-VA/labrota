@@ -75,6 +75,7 @@ export async function syncOutlookForStaff(staffId: string): Promise<{
 
   const result = await syncStaffOutlook(staffId, orgId)
   revalidatePath("/leaves")
+  revalidatePath("/schedule")
   return result
 }
 
@@ -104,6 +105,7 @@ export async function syncOutlookAll(): Promise<{
   }
 
   revalidatePath("/leaves")
+  revalidatePath("/schedule")
   return totals
 }
 
@@ -169,6 +171,7 @@ export async function disconnectOutlook(
   }
 
   revalidatePath("/leaves")
+  revalidatePath("/schedule")
   return {}
 }
 

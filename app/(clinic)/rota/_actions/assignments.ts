@@ -90,7 +90,7 @@ export async function upsertAssignment(params: {
       .eq("id", params.assignmentId)
       .eq("organisation_id", orgId)
     if (error) return { error: error.message }
-    revalidatePath("/")
+    revalidatePath("/schedule")
     return { id: params.assignmentId }
   } else {
     // Insert new assignment — use upsert if constraint exists, fall back to insert
@@ -125,7 +125,7 @@ export async function upsertAssignment(params: {
       entityType: "rota_assignment",
       metadata: { staffId: params.staffId, date: params.date, shiftType: params.shiftType, functionLabel: params.functionLabel ?? "" },
     })
-    revalidatePath("/")
+    revalidatePath("/schedule")
     return { id: (row as unknown as { id: string })?.id }
   }
 }
@@ -146,7 +146,7 @@ export async function deleteAssignment(assignmentId: string): Promise<{ error?: 
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -165,7 +165,7 @@ export async function updateAssignmentShift(
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -187,7 +187,7 @@ export async function deleteAllDayAssignments(
     .eq("date", date)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -283,7 +283,7 @@ export async function regenerateDay(
     if (error) return { error: error.message }
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return { count: toInsert.length }
 }
 
@@ -302,7 +302,7 @@ export async function moveAssignment(
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -340,7 +340,7 @@ export async function setPunctionsOverride(
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -372,7 +372,7 @@ export async function publishRota(rotaId: string): Promise<{ error?: string }> {
   const cookieStore = await cookies()
   const notifLocale = (cookieStore.get("locale")?.value ?? "es") === "en" ? "en" : "es"
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
 
   // Fire-and-forget: send notification emails
   if (rotaRow?.week_start) {
@@ -416,7 +416,7 @@ export async function unlockRota(rotaId: string): Promise<{ error?: string }> {
     .eq("id", rotaId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -432,7 +432,7 @@ export async function moveAssignmentShift(assignmentId: string, newShiftType: st
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -452,7 +452,7 @@ export async function removeAssignment(assignmentId: string): Promise<{ error?: 
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -468,7 +468,7 @@ export async function setTecnica(assignmentId: string, tecnicaId: string | null)
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -484,7 +484,7 @@ export async function setFunctionLabel(assignmentId: string, label: string | nul
     .eq("id", assignmentId)
     .eq("organisation_id", orgId)
   if (error) return { error: error.message }
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }
 
@@ -552,6 +552,6 @@ export async function setWholeTeam(
     }
   }
 
-  revalidatePath("/")
+  revalidatePath("/schedule")
   return {}
 }

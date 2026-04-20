@@ -246,7 +246,7 @@ export async function importHistoricalGuardia(data: ExtractedData): Promise<Impo
     revalidatePath("/staff")
     revalidatePath("/lab")
     revalidatePath("/settings")
-    revalidatePath("/")
+    revalidatePath("/schedule")
 
     return { success: true, counts }
   } catch (err) {
