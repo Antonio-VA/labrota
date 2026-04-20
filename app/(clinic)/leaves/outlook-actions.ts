@@ -116,8 +116,8 @@ export async function disconnectOutlook(
 
   const admin = createAdminClient()
 
-  // Verify the staff belongs to the caller's org before touching the
-  // connection — otherwise a caller could revoke tokens in a different org.
+  // Scope to caller's org — otherwise staffId from another org could be used
+  // to revoke that org's Microsoft tokens via the admin client.
   const { data: staffRow } = await admin
     .from("staff")
     .select("id")
@@ -126,9 +126,7 @@ export async function disconnectOutlook(
     .maybeSingle()
   if (!staffRow) return { error: "Staff not found" }
 
-  // Best-effort: revoke refresh tokens at Microsoft before deleting the row.
-  // Failures are non-fatal — the BEFORE DELETE trigger still records an audit
-  // entry, and the token will expire naturally.
+  // Non-fatal: the BEFORE DELETE trigger still audits, and tokens expire.
   try {
     const accessToken = await getValidAccessToken(staffId)
     await revokeOutlookToken(accessToken)
@@ -136,7 +134,6 @@ export async function disconnectOutlook(
     console.warn(`[outlook] Token revocation failed for staff ${staffId}:`, e)
   }
 
-  // Delete the connection
   const { error: delError } = await admin
     .from("outlook_connections")
     .delete()

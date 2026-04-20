@@ -115,8 +115,6 @@ export async function getValidAccessToken(staffId: string): Promise<string> {
   }
 }
 
-// Revoke all refresh tokens at Microsoft for the signed-in user.
-// Throws on Graph failure so callers can distinguish success from silent drop.
 export async function revokeOutlookToken(accessToken: string): Promise<void> {
   const res = await fetch(`${GRAPH_BASE_URL}/me/revokeSignInSessions`, {
     method: "POST",
