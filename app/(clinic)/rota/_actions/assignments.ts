@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { typedQuery } from "@/lib/supabase/typed-query"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
+import { acquireRotaGenerationLock, releaseRotaGenerationLock, ROTA_GENERATION_LOCK_ERROR } from "@/lib/rota-generation-lock"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { getWeekDates } from "@/lib/engine-helpers"
 import { getMondayOf, toISODate } from "@/lib/format-date"
@@ -259,28 +260,35 @@ export async function regenerateDay(
   if (rotaError || !rotaRow) return { error: rotaError?.message ?? "Failed to create rota." }
   const rotaId = (rotaRow as { id: string }).id
 
-  // Delete existing assignments for THIS DAY only (preserve manual overrides)
-  await supabase
-    .from("rota_assignments")
-    .delete()
-    .eq("rota_id", rotaId)
-    .eq("date", date)
-    .eq("is_manual_override", false)
+  const locked = await acquireRotaGenerationLock(supabase, rotaId)
+  if (!locked) return { error: ROTA_GENERATION_LOCK_ERROR }
 
-  // Insert engine assignments for this day
-  const toInsert = dayPlan.assignments.map((a) => ({
-    organisation_id: orgId,
-    rota_id: rotaId,
-    staff_id: a.staff_id,
-    date,
-    shift_type: a.shift_type,
-    is_manual_override: false,
-    function_label: "",
-  }))
+  try {
+    // Delete existing assignments for THIS DAY only (preserve manual overrides)
+    await supabase
+      .from("rota_assignments")
+      .delete()
+      .eq("rota_id", rotaId)
+      .eq("date", date)
+      .eq("is_manual_override", false)
 
-  if (toInsert.length > 0) {
-    const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
-    if (error) return { error: error.message }
+    // Insert engine assignments for this day
+    const toInsert = dayPlan.assignments.map((a) => ({
+      organisation_id: orgId,
+      rota_id: rotaId,
+      staff_id: a.staff_id,
+      date,
+      shift_type: a.shift_type,
+      is_manual_override: false,
+      function_label: "",
+    }))
+
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
+      if (error) return { error: error.message }
+    }
+  } finally {
+    await releaseRotaGenerationLock(supabase, rotaId)
   }
 
   revalidatePath("/schedule")

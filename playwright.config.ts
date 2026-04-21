@@ -7,7 +7,11 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: process.env.E2E_BASE_URL || "https://labrota.app",
+    baseURL: (() => {
+      const url = process.env.E2E_BASE_URL
+      if (!url) throw new Error("E2E_BASE_URL is required. Set it to http://localhost:3000 for local runs.")
+      return url
+    })(),
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },

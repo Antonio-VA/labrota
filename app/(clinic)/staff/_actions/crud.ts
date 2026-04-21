@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffRole, OnboardingStatus, ContractType, SkillLevel, ShiftType } from "@/lib/types/database"
-import { STAFF_PASTEL_COLORS, ALL_DAYS } from "@/components/staff-form/constants"
+import { STAFF_PASTEL_COLORS, ALL_DAYS } from "@/lib/constants"
 import { APP_URL, FROM_EMAIL } from "@/lib/config"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

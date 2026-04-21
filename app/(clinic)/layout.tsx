@@ -53,7 +53,9 @@ export default async function ClinicLayout({
     if (cookieOrgId && memberships?.some((m) => m.organisation_id === cookieOrgId)) {
       // Cookie org is valid — use it (even if DB says something different from another device)
       activeOrgId = cookieOrgId
-      // Sync DB if out of sync — must be awaited so RLS auth_organisation_id() matches before any RLS query
+      // LOAD-BEARING await: auth_organisation_id() RLS function reads profiles.organisation_id.
+      // If we skip this write or don't await it, every subsequent RLS-guarded query in this
+      // request will silently operate against the wrong org and leak or deny data.
       if (profile?.organisation_id !== cookieOrgId) {
         await admin.from("profiles").update({ organisation_id: cookieOrgId } as never).eq("id", user.id)
       }
