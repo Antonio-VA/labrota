@@ -79,9 +79,9 @@ test.describe("Staff page", () => {
     // Form should have visible text inputs
     await expect(page.locator("input:visible").first()).toBeVisible({ timeout: 5_000 })
 
-    // Should have a submit/save button
+    // Multi-step form — first step shows "Next", last step shows "Create"
     await expect(
-      page.getByRole("button", { name: /Guardar|Save|Crear|Create/i }).first()
+      page.getByRole("button", { name: /Siguiente|Next|Guardar|Save|Crear|Create/i }).first()
     ).toBeVisible({ timeout: 5_000 })
   })
 })

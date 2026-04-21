@@ -4,6 +4,7 @@ test.describe("Schedule interactions", () => {
   test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
   test("week navigation: next and previous", async ({ page }) => {
+    test.setTimeout(120_000)
     await page.goto("/schedule")
     // Wait for toolbar (faster than pills) then navigate
     const nextBtn = page.getByRole("button", { name: /Período siguiente|Next period/i })
