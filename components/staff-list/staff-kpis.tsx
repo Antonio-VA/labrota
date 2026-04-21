@@ -32,7 +32,7 @@ export function StaffKpis({
   const [headcountOpen, setHeadcountOpen] = useState(false)
   const headcountRef = useRef<HTMLDivElement>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- one-time fetch when cache is empty */
+   
   useEffect(() => {
     if (headcount !== null) return
     setHeadcountLoading(true)
@@ -42,7 +42,7 @@ export function StaffKpis({
       setHeadcountLoading(false)
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   useEffect(() => {
     if (!headcountOpen) return

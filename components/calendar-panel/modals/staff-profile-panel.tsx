@@ -48,7 +48,7 @@ export function StaffProfilePanel({
   const weekStart = weekData?.weekStart ?? null
   useEffect(() => {
     if (!staffId || !open) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-change
+     
     setData(null)
     setLoading(true)
     getStaffProfile(staffId, weekStart ?? undefined).then((d) => { setData(d); setLoading(false) })

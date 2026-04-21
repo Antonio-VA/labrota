@@ -61,7 +61,7 @@ export function MobileBottomNav() {
 
   const router = useRouter()
   const [activeKey, setActiveKey] = useState<string | null>(null)
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on navigation
+   
   useEffect(() => { setActiveKey(null) }, [pathname])
 
   const handleTap = useCallback((key: string, href: string) => {

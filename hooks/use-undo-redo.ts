@@ -113,7 +113,7 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
   useEffect(() => {
     undoStack.current = []
     redoStack.current = []
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- paired with ref clear above
+     
     setUndoLen(0)
     setRedoLen(0)
   }, [weekStart])

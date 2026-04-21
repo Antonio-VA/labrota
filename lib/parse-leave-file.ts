@@ -161,7 +161,7 @@ export function matchStaff(rawName: string, staffList: StaffRecord[]): StaffReco
 // ── Text extraction ───────────────────────────────────────────────────────────
 
 async function extractFromExcel(buffer: ArrayBuffer): Promise<string> {
-  const XLSX = await import("xlsx")
+  const XLSX = await import("xlsx-js-style")
   const wb = XLSX.read(buffer, { type: "array", cellDates: true })
   const lines: string[] = []
   for (const name of wb.SheetNames) {

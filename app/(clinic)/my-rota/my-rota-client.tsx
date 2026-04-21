@@ -46,7 +46,7 @@ export function MyRotaClient() {
     }).catch(() => setLoading(false))
   }, [])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-change
+   
   useEffect(() => { fetchWeek(weekStart) }, [weekStart, fetchWeek])
 
   // Listen for AI agent refresh events

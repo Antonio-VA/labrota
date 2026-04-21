@@ -22,7 +22,7 @@ export function InlineLeaveForm({ staffId, open, onClose, onCreated }: { staffId
 
   useEffect(() => {
     if (!staffId || !startDate || !endDate || endDate < startDate) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced fetch on deps
+       
       setBalancePreview(null)
       return
     }

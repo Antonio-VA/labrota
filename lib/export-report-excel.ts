@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import * as XLSX from "xlsx-js-style"
 import type { StaffReportData, TechReportData, UnpaidLeaveReportData } from "@/app/(clinic)/reports/actions"
 
 function autoFit(ws: XLSX.WorkSheet, data: string[][]) {

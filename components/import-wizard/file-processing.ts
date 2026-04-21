@@ -1,7 +1,7 @@
 import type { ProcessedFile } from "@/lib/types/import"
 
 export async function processExcel(file: File): Promise<ProcessedFile> {
-  const XLSX = await import("xlsx")
+  const XLSX = await import("xlsx-js-style")
   const buffer = await file.arrayBuffer()
   const wb = XLSX.read(buffer, { type: "array" })
   const texts: string[] = []

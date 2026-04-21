@@ -242,7 +242,7 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         onSetAllDepts={setAllDepts} onSetOnlyDept={setOnlyDept}
         deptLabels={globalDeptMaps.label} deptColors={globalDeptMaps.border} deptAbbr={deptAbbrMap}
         weekData={weekData} monthSummary={monthSummary} filteredStaffList={filteredStaffList}
-        /* eslint-disable-next-line react-hooks/refs -- AI reasoning is set in effects and needs to render as a fallback; TODO: promote to state if re-render cost becomes an issue */
+         
         aiReasoning={weekData?.aiReasoning || aiReasoningRef.current || null}
         onGenerateClick={handleGenerateClick} onPublish={handlePublish} onUnlock={handleUnlock}
         onShowReasoning={() => modals.setShowReasoningModal(true)}
@@ -381,9 +381,9 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
         modals={modals}
         weekStart={weekStart} currentDate={currentDate} locale={locale}
         weekData={weekData} monthSummary={monthSummary} staffList={staffList}
-        /* eslint-disable-next-line react-hooks/refs -- AI reasoning/source are set in effects and render as fallbacks; TODO: promote to state */
+         
         aiReasoning={weekData?.aiReasoning ?? aiReasoningRef.current ?? ""}
-        /* eslint-disable-next-line react-hooks/refs -- see above */
+         
         reasoningVariant={reasoningSourceRef.current === "hybrid" ? "hybrid" : "claude"}
         desktopSwapEnabled={desktopSwapEnabled}
         onStrategyGenerate={handleStrategyGenerate}

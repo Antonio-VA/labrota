@@ -91,7 +91,7 @@ export function ShiftBudgetBar({ data, staffList, weekLabel: _weekLabel, onPillC
     const el = containerRef.current
     if (!el) return
     const items = el.querySelectorAll<HTMLElement>("[data-pill]")
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM-layout measurement
+     
     if (items.length === 0) { setVisibleCount(null); return }
     const containerRight = el.getBoundingClientRect().right
     let count = 0

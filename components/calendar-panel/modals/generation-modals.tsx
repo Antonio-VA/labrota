@@ -33,7 +33,7 @@ export function GenerationStrategyModal({ open, weekStart: _weekStart, weekLabel
   const [selectedTplId, setSelectedTplId] = useState<string | null>(null)
   const [hybridQuota, setHybridQuota] = useState<{ used: number; limit: number; remaining: number } | null>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- modal lifecycle */
+   
   useEffect(() => {
     if (!open) { setSelected(null); setSelectedTplId(null); return }
     setSelected("ai_optimal")
@@ -41,7 +41,7 @@ export function GenerationStrategyModal({ open, weekStart: _weekStart, weekLabel
     getTemplates().then((d) => { setTemplates(d); setLoadingTpl(false) })
     getHybridUsage().then(setHybridQuota)
   }, [open])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   if (!open) return null
 
@@ -228,7 +228,7 @@ export function SaveTemplateModal({ open, weekStart, onClose, onSaved }: {
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on open
+   
   useEffect(() => { if (open) setName("") }, [open])
 
   if (!open) return null
@@ -278,13 +278,13 @@ export function ApplyTemplateModal({ open, weekStart, onClose, onApplied }: {
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState<string | null>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
+   
   useEffect(() => {
     if (!open) return
     setLoading(true)
     getTemplates().then((d) => { setTemplates(d); setLoading(false) })
   }, [open])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   if (!open) return null
 

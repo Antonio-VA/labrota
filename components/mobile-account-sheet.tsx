@@ -46,7 +46,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
   const { prefs, update } = useUserPreferences(resolvePrefs(_accountCache?.prefs))
 
   // Fetch data when sheet opens (once per session; re-seeds from module cache on remount)
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
+   
   useEffect(() => {
     if (!open || loaded) return
     setLoading(true)
@@ -60,7 +60,7 @@ export function MobileAccountSheet({ open, onClose }: MobileAccountSheetProps) {
       setLoaded(true)
     })
   }, [open, loaded, update])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   async function signOut() {
     const supabase = createClient()

@@ -21,7 +21,7 @@ export function useStaffList({
 
   // Prefer initialStaff prop; otherwise wait briefly for weekData.activeStaff
   // (populated by getRotaWeek) and only fall back to a separate fetch if that stalls.
-  /* eslint-disable react-hooks/set-state-in-effect -- initial-prop fast path */
+   
   useEffect(() => {
     if (!initialStaffUsed.current && initialStaff && initialStaff.length > 0) {
       initialStaffUsed.current = true
@@ -55,10 +55,10 @@ export function useStaffList({
       if (timeoutId !== undefined) clearTimeout(timeoutId)
     }
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   // Mirror weekData.activeStaff into staffList — ID guard avoids rerender churn.
-  /* eslint-disable react-hooks/set-state-in-effect -- mirrors weekData deriving activeStaff */
+   
   useEffect(() => {
     if (!weekData?.activeStaff || weekData.activeStaff.length === 0) return
     const ids = weekData.activeStaff.map((s) => s.id).sort().join(",")
@@ -68,7 +68,7 @@ export function useStaffList({
     setStaffList(weekData.activeStaff)
     setStaffLoaded(true)
   }, [weekData?.activeStaff])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   return { staffList, staffLoaded }
 }

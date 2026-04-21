@@ -15,7 +15,7 @@ export function useMobileWeekData() {
   const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOf()))
   const [error, setError] = useState<string | null>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-week-change */
+   
   useEffect(() => {
     const cachedData = _mobileWeekCache.get(weekStart)
     const cachedStaff = _mobileWeekStaffCache
@@ -52,7 +52,7 @@ export function useMobileWeekData() {
       setLoading(false)
     })
   }, [weekStart])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   function refresh() {
     setLoading(true)

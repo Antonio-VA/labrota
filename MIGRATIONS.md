@@ -2,41 +2,36 @@
 
 Run these in order in the Supabase SQL editor before deploying new code.
 
-## ⚠️ Known issue — duplicate migration timestamps
+## Migration-timestamp collisions (resolved)
 
-Nine timestamps in `supabase/migrations/` are used by two files each:
+Nine files previously shared timestamps with other files on the same date.
+They have been renumbered:
 
-```
-20260320000001_rota_assignments_function_label.sql + 20260320000001_rota_features.sql
-20260328000001_rota_templates.sql                  + 20260328000001_staff_avoid_preferences.sql
-20260328000002_rota_generation_type.sql            + 20260328000002_tecnicas_avoid_shifts.sql
-20260328000003_andrology_skills.sql                + 20260328000003_task_coverage.sql
-20260328000004_org_billing.sql                     + 20260328000004_preferred_days.sql
-20260328000005_enable_task_in_shift.sql            + 20260328000005_tecnicas_department.sql
-20260328000006_implementation_steps.sql            + 20260328000006_skill_to_text.sql
-20260328000007_backups.sql                         + 20260328000007_migrate_skills_to_tecnica_codes.sql
-20260330000015_restriccion_dia_tecnica_rule.sql    + 20260330000015_rule_expiry.sql
-```
+| Original (kept)                                       | Renumbered file (was same timestamp)                           |
+| ----------------------------------------------------- | -------------------------------------------------------------- |
+| `20260320000001_rota_assignments_function_label.sql`  | `20260320000101_rota_features.sql`                             |
+| `20260328000001_rota_templates.sql`                   | `20260328000101_staff_avoid_preferences.sql`                   |
+| `20260328000002_rota_generation_type.sql`             | `20260328000102_tecnicas_avoid_shifts.sql`                     |
+| `20260328000003_andrology_skills.sql`                 | `20260328000103_task_coverage.sql`                             |
+| `20260328000004_org_billing.sql`                      | `20260328000104_preferred_days.sql`                            |
+| `20260328000005_enable_task_in_shift.sql`             | `20260328000105_tecnicas_department.sql`                       |
+| `20260328000006_implementation_steps.sql`             | `20260328000106_skill_to_text.sql`                             |
+| `20260328000007_backups.sql`                          | `20260328000107_migrate_skills_to_tecnica_codes.sql`           |
+| `20260330000015_restriccion_dia_tecnica_rule.sql`     | `20260330000115_rule_expiry.sql`                               |
 
-These were already applied to prod, so simply renaming them would make the
-Supabase CLI see them as brand-new migrations and attempt to re-run — most
-would fail with duplicate-column errors and could leave the DB in a bad
-state.
+The renames are paired with `20260421000004_renumber_colliding_migrations.sql`,
+which rewrites `supabase_migrations.schema_migrations` atomically so the
+Supabase CLI treats the renumbered files as already-applied on databases
+that had the old timestamps applied. The renumber migration is idempotent —
+it's a no-op on a fresh DB and on DBs that have already been patched.
 
-**Do not rename in place.** When this is fixed, the operation must be:
+**Deploying this change:** apply migrations as usual (`supabase db push` or
+the Supabase dashboard). The renumber migration runs before the CLI tries
+to apply the renumbered files as "new", so no manual coordination is
+required.
 
-1. During a maintenance window, renumber one file of each pair (e.g. bump
-   `20260320000001_rota_features.sql` → `20260320000002_rota_features.sql`).
-2. In the same migration or a one-off SQL script, update
-   `supabase_migrations.schema_migrations` (or the equivalent tracking
-   table for the CLI version in use) to rewrite the recorded filename for
-   that migration so the CLI treats the renumbered file as already-applied.
-3. Verify `supabase db diff` is clean before and after.
-4. Any staging/dev database that has also applied these migrations needs
-   the same tracking-table rewrite.
-
-Until that is done, keep all *new* migrations strictly after the highest
-existing timestamp so no further collisions happen.
+**Future guideline:** keep new migrations strictly after the highest
+existing timestamp. Don't reuse timestamps, even within the same PR.
 
 ## How to check what's been run
 

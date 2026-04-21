@@ -33,12 +33,12 @@ export function AdminBackups({ orgId }: { orgId: string }) {
   const [restoreOpts, setRestoreOpts] = useState({ config: true, rotas: true, includeDrafts: false })
   const [deleteTarget, setDeleteTarget] = useState<BackupEntry | null>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-change */
+   
   useEffect(() => {
     setLoading(true)
     getBackups(orgId).then((data) => { setBackups(data); setLoading(false) })
   }, [orgId])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const manualBackups = backups.filter((b) => b.type === "manual")
   const autoBackups = backups.filter((b) => b.type === "auto")

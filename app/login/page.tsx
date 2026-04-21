@@ -25,7 +25,7 @@ export default function LoginPage() {
   const passwordRef = useRef<HTMLInputElement>(null)
 
   // Detect errors from query params or hash fragment on mount
-  /* eslint-disable react-hooks/set-state-in-effect -- reads URL params/hash */
+   
   useEffect(() => {
     const queryError = searchParams.get("error")
     const queryMessage = searchParams.get("message")
@@ -51,7 +51,7 @@ export default function LoginPage() {
       window.history.replaceState(null, "", window.location.pathname)
     }
   }, [searchParams, t])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   useEffect(() => {
     if (step === "code") otpRef.current?.focus()

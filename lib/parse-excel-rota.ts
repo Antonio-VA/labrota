@@ -1,4 +1,4 @@
-import type * as XLSXType from "xlsx"
+import type * as XLSXType from "xlsx-js-style"
 import { getMondayOf, toISODate } from "@/lib/format-date"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -107,13 +107,13 @@ function isTaskHeader(s: string): boolean {
 // ── Main parser ───────────────────────────────────────────────────────────────
 
 export async function getSheetNames(buffer: ArrayBuffer): Promise<string[]> {
-  const XLSX = await import("xlsx")
+  const XLSX = await import("xlsx-js-style")
   const wb = XLSX.read(buffer, { type: "array" })
   return wb.SheetNames
 }
 
 export async function parseSheet(buffer: ArrayBuffer, sheetName: string): Promise<ParsedRota> {
-  const XLSX = await import("xlsx")
+  const XLSX = await import("xlsx-js-style")
   const wb = XLSX.read(buffer, { type: "array", cellDates: true })
   const ws = wb.Sheets[sheetName]
   if (!ws) throw new Error("Sheet not found")

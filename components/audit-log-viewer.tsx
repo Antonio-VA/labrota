@@ -81,11 +81,11 @@ export function AuditLogViewer() {
   const [uniqueUsers, setUniqueUsers] = useState<string[]>([])
 
   // Reset page when filters change so offset stays valid.
-  /* eslint-disable react-hooks/set-state-in-effect -- reset on filter change */
+   
   useEffect(() => { setPage(0) }, [actionFilter, userFilter, dateFrom, dateTo])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
-  /* eslint-disable react-hooks/set-state-in-effect -- paged server fetch */
+   
   useEffect(() => {
     setLoading(true)
     getAuditLogs({
@@ -107,7 +107,7 @@ export function AuditLogViewer() {
       setLoading(false)
     })
   }, [actionFilter, userFilter, dateFrom, dateTo, page])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   // Populate the user-filter dropdown once — distinct across all logs, not
   // just the current page (the old client-side dropdown was page-local).

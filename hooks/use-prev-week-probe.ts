@@ -14,7 +14,7 @@ export function usePrevWeekProbe({
 }) {
   const [prevWeekHasRota, setPrevWeekHasRota] = useState(false)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- cache-hit fast path */
+   
   useEffect(() => {
     if (!canEdit || view !== "week") return
     let cancelled = false
@@ -31,7 +31,7 @@ export function usePrevWeekProbe({
     }).catch(() => { if (!cancelled) setPrevWeekHasRota(false) })
     return () => { cancelled = true }
   }, [weekStart, canEdit, view])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   return prevWeekHasRota
 }

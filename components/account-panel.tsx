@@ -48,7 +48,7 @@ export function AccountPanel({ open, onClose, user }: {
   const [department, setDepartment] = useState<string | null>(null)
   const [outlook, setOutlook] = useState<UserOutlookStatus>({ available: false, connected: false, email: null, lastSyncedAt: null, staffId: null, orgId: null })
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-open */
+   
   useEffect(() => {
     if (!open || !user) return
     setLoading(true)
@@ -59,7 +59,7 @@ export function AccountPanel({ open, onClose, user }: {
       setLoading(false)
     })
   }, [open, user, update])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const firstName = (user?.user_metadata?.full_name as string)?.split(" ")[0] ?? ""
   const initials = firstName ? firstName.slice(0, 2).toUpperCase() : (user?.email ?? "").slice(0, 2).toUpperCase()

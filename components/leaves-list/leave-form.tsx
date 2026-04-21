@@ -54,7 +54,7 @@ export function LeaveForm({
   const router = useRouter()
 
   // Live balance preview — debounced, only in request mode
-  /* eslint-disable react-hooks/set-state-in-effect -- debounced fetch-on-change */
+   
   useEffect(() => {
     if (!useRequestFlow || !viewerStaffId || !startDate || !endDate || endDate < startDate) {
       setBalancePreview(null)
@@ -68,7 +68,7 @@ export function LeaveForm({
     }, 350)
     return () => clearTimeout(timer)
   }, [useRequestFlow, viewerStaffId, startDate, endDate, leaveType])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   useEffect(() => {
     if ((state as { success?: boolean } | null)?.success) {
