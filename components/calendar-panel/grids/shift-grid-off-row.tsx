@@ -40,7 +40,7 @@ export function ShiftGridOffRow({
           colorChips ? "border-border" : "border-transparent",
         )}
         style={{
-          borderLeft: colorChips ? `3px solid ${isHov && staffColorMap[s.id] ? staffColorMap[s.id] : fallbackBorder}` : undefined,
+          borderLeft: `3px solid ${colorChips && isHov && staffColorMap[s.id] ? staffColorMap[s.id] : fallbackBorder}`,
           borderRadius: 4, paddingLeft: 5, paddingRight: 6,
           ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}),
         }}
