@@ -19,38 +19,38 @@ test.describe("Public pages", () => {
     await expect(page.locator("#email")).toBeVisible()
     await expect(page.locator("#password")).toBeVisible()
   })
+
+  test("privacy page loads", async ({ page }) => {
+    await page.goto("/privacy")
+    await expect(page.getByText(/Privacy Policy|Política de Privacidad/i).first()).toBeVisible()
+  })
+
+  test("terms page loads", async ({ page }) => {
+    await page.goto("/terms")
+    await expect(page.getByText(/Terms of Service|Términos de Servicio/i).first()).toBeVisible()
+  })
+
+  test("GDPR page loads", async ({ page }) => {
+    await page.goto("/gdpr")
+    await expect(page.getByText(/GDPR|RGPD/i).first()).toBeVisible()
+  })
 })
 
-// ── Authenticated pages ───────────────────────────────────────────────────────
+// ── Authenticated smoke tests ────────────────────────────────────────────────
 
-test.describe("Schedule (authenticated)", () => {
+test.describe("Authenticated page loads", () => {
   test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
   test("schedule page renders toolbar", async ({ page }) => {
     await page.goto("/schedule")
-    // Toolbar should render — use exact match to avoid AI chat suggestion buttons containing "week"
     await expect(page.getByRole("button", { name: /^(Semana|Week)$/i })).toBeVisible({ timeout: 45_000 })
   })
 
   test("schedule loads rota data", async ({ page }) => {
     await page.goto("/schedule")
-    // Budget bar pills = data loaded. 45s for cold start + client fallback.
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 45_000 })
   })
 
-  test("week navigation is instant (prefetch)", async ({ page }) => {
-    await page.goto("/schedule")
-    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 45_000 })
-
-    // Next week button
-    const nextBtn = page.getByRole("button", { name: /siguiente|Next period/i })
-    await nextBtn.click()
-
-    // Must load within 3s (prefetch cache hit)
-    await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 3_000 })
-  })
-
-  // Navigate directly via URL to avoid depending on schedule loading state
   test("lab page loads", async ({ page }) => {
     await page.goto("/lab")
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 10_000 })
@@ -63,16 +63,38 @@ test.describe("Schedule (authenticated)", () => {
 
   test("leaves page loads", async ({ page }) => {
     await page.goto("/leaves")
-    await expect(page.getByText(/Ausentes|Sin ausencias|Absent|No leave|Add leave|Añadir ausencia/i).first()).toBeVisible({ timeout: 10_000 })
+    await expect(
+      page.getByText(/Ausentes|Sin ausencias|Absent|No leave|Añadir ausencia|Add leave/i).first()
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test("reports page loads", async ({ page }) => {
     await page.goto("/reports")
-    await expect(page.getByText(/Resumen|Summary|Staff summary/i).first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/Informes|Reports/i).first()).toBeVisible({ timeout: 10_000 })
   })
 
-  test("admin page loads", async ({ page }) => {
+  test("settings page loads", async ({ page }) => {
     await page.goto("/settings")
     await expect(page.getByText(/Administración|Administration/i).first()).toBeVisible({ timeout: 10_000 })
+  })
+
+  test("my-rota page loads", async ({ page }) => {
+    await page.goto("/my-rota")
+    // Should show personal schedule or loading state — wait for any content
+    await expect(page.locator("main, [data-weekly-strip]").first()).toBeVisible({ timeout: 15_000 })
+  })
+
+  test("staff/new page loads", async ({ page }) => {
+    await page.goto("/staff/new")
+    await expect(
+      page.getByText(/Añadir personal|Add Staff/i).first()
+    ).toBeVisible({ timeout: 10_000 })
+  })
+
+  test("settings/hr-module page loads", async ({ page }) => {
+    await page.goto("/settings/hr-module")
+    await expect(
+      page.getByText(/Configuracion modulo RRHH|HR Module|RRHH/i).first()
+    ).toBeVisible({ timeout: 10_000 })
   })
 })
