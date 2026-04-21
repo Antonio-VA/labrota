@@ -23,21 +23,23 @@ interface AuditEvent {
   metadata?: Record<string, unknown>
 }
 
-/** Log an audit event. Fire-and-forget — never throws. */
+/** Log an audit event. Fire-and-forget — never throws. Retries once on failure. */
 export async function logAuditEvent(event: AuditEvent): Promise<void> {
-  try {
-    const admin = createAdminClient()
-    await admin.from("audit_logs").insert({
-      organisation_id: event.orgId,
-      user_id: event.userId ?? null,
-      user_email: event.userEmail ?? null,
-      action: event.action,
-      entity_type: event.entityType ?? null,
-      entity_id: event.entityId ?? null,
-      changes: event.changes ?? null,
-      metadata: event.metadata ?? null,
-    })
-  } catch (e) {
-    console.error("[audit] Failed to log event:", e)
+  const row = {
+    organisation_id: event.orgId,
+    user_id: event.userId ?? null,
+    user_email: event.userEmail ?? null,
+    action: event.action,
+    entity_type: event.entityType ?? null,
+    entity_id: event.entityId ?? null,
+    changes: event.changes ?? null,
+    metadata: event.metadata ?? null,
   }
+  const admin = createAdminClient()
+  const { error } = await admin.from("audit_logs").insert(row)
+  if (!error) return
+  // Retry once after a short delay — transient DB errors shouldn't silently drop audit entries
+  await new Promise((r) => setTimeout(r, 500))
+  const { error: retryError } = await admin.from("audit_logs").insert(row)
+  if (retryError) console.error("[audit] Failed to log event after retry:", retryError)
 }

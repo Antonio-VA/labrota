@@ -200,7 +200,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     trigger: "leave_approved",
   })
 
-  notifyLeaveDecision({ leaveId, orgId, decision: "approved" }).catch(() => {})
+  notifyLeaveDecision({ leaveId, orgId, decision: "approved" }).catch((e) => console.error("[leave] approveLeave notification failed:", e))
 
   revalidatePath("/schedule")
   revalidatePath("/leaves")
@@ -234,7 +234,7 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
-  notifyLeaveDecision({ leaveId, orgId, decision: "rejected" }).catch(() => {})
+  notifyLeaveDecision({ leaveId, orgId, decision: "rejected" }).catch((e) => console.error("[leave] rejectLeave notification failed:", e))
 
   revalidatePath("/leaves")
   return {}
