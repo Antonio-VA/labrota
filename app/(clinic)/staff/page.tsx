@@ -18,7 +18,7 @@ export default async function StaffPage() {
   const supabase = await createClient()
   const orgId = await getOrgId()
   const [staffRes, tecnicasRes, deptRes, shiftRes] = await Promise.all([
-    supabase.from("staff").select("*, staff_skills(*)").order("last_name"),
+    supabase.from("staff").select("*, staff_skills(*)").order("last_name").limit(500),
     supabase.from("tecnicas").select("*").eq("activa", true).order("orden"),
     supabase.from("departments").select("*").order("sort_order"),
     supabase.from("shift_types").select("*").order("sort_order"),

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate } from "@/lib/format-date"
+import { sendEmail as sendResendEmail } from "@/lib/email"
 import type { SwapRequest } from "@/lib/types/database"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,14 +97,8 @@ async function getStaffEmail(staffId: string, orgId: string): Promise<string | n
 }
 
 async function sendEmail(to: string[], subject: string, html: string) {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey || to.length === 0) return
-
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "LabRota <noreply@labrota.app>", to, subject, html }),
-  })
+  if (to.length === 0) return
+  await sendResendEmail({ to, subject, html })
 }
 
 function emailWrapper(headerColor: string, title: string, orgName: string, bodyHtml: string) {

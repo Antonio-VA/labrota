@@ -290,31 +290,16 @@ export async function sendRotaPublishEmails(params: {
   locale: "es" | "en"
   emailFormat?: "by_shift" | "by_person"
 }) {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey || params.emails.length === 0) return
+  if (params.emails.length === 0) return
 
   const { subject, html } = buildRotaEmailHtml(params)
 
-  try {
-    // Resend supports up to 50 recipients per call
-    const batches: string[][] = []
-    for (let i = 0; i < params.emails.length; i += 50) {
-      batches.push(params.emails.slice(i, i + 50))
-    }
-
-    for (const batch of batches) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "LabRota <noreply@labrota.app>",
-          to: batch,
-          subject,
-          html,
-        }),
-      })
-    }
-  } catch (err) {
-    console.error("[rota-email] Failed to send publish notifications:", err)
+  // sendEmail() handles batching recipients over 50 and never throws —
+  // it returns { ok, error? }. We just log failures; publishing the rota
+  // has already succeeded by this point.
+  const { sendEmail } = await import("@/lib/email")
+  const result = await sendEmail({ to: params.emails, subject, html })
+  if (!result.ok && !result.skipped) {
+    console.error("[rota-email] Failed to send publish notifications:", result.error)
   }
 }

@@ -71,13 +71,15 @@ export default async function LeavesPage() {
       .from("leaves")
       .select("*, staff(id, first_name, last_name, role)")
       .eq("organisation_id", orgId!)
-      .order("start_date", { ascending: false }),
+      .order("start_date", { ascending: false })
+      .limit(2000),
     queryClient
       .from("staff")
       .select("*")
       .eq("organisation_id", orgId!)
       .eq("onboarding_status", "active")
-      .order("last_name"),
+      .order("last_name")
+      .limit(500),
   ])
 
   const rawLeaves = (leavesData ?? []) as unknown as LeaveWithStaff[]

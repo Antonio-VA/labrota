@@ -10,7 +10,8 @@ import { getOrgId } from "@/lib/get-org-id"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffRole, OnboardingStatus, ContractType, SkillLevel, ShiftType } from "@/lib/types/database"
 import { STAFF_PASTEL_COLORS, ALL_DAYS } from "@/lib/constants"
-import { APP_URL, FROM_EMAIL } from "@/lib/config"
+import { APP_URL } from "@/lib/config"
+import { sendEmail } from "@/lib/email"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -183,18 +184,10 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
       const orgName = orgRow?.name ?? "Unknown Organisation"
       const activeCount = activeCountRes.count
       if ((activeCount ?? 0) > maxStaff) {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.RESEND_API_KEY ?? ""}`,
-          },
-          body: JSON.stringify({
-            from: FROM_EMAIL,
-            to: "info@labrota.app",
-            subject: `[LabRota] Staff limit exceeded — ${orgName}`,
-            text: `${orgName} has exceeded their contracted staff limit.\n\nContracted limit: ${maxStaff}\nCurrent active staff: ${activeCount}\n\nPlease contact them to discuss upgrading their subscription.`,
-          }),
+        await sendEmail({
+          to: "info@labrota.app",
+          subject: `[LabRota] Staff limit exceeded — ${orgName}`,
+          text: `${orgName} has exceeded their contracted staff limit.\n\nContracted limit: ${maxStaff}\nCurrent active staff: ${activeCount}\n\nPlease contact them to discuss upgrading their subscription.`,
         })
       }
     } catch (e) {

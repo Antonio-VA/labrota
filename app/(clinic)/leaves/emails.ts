@@ -1,6 +1,7 @@
 import "server-only"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
+import { sendEmail } from "@/lib/email"
 
 const TYPE_LABELS: Record<string, { es: string; en: string }> = {
   annual:    { es: "Vacaciones",            en: "Annual leave" },
@@ -24,13 +25,7 @@ function dayCount(startDate: string, endDate: string): number {
 }
 
 async function sendResendEmail(to: string[], subject: string, html: string): Promise<void> {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) return
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "LabRota <noreply@labrota.app>", to, subject, html }),
-  })
+  await sendEmail({ to, subject, html })
 }
 
 export async function sendLeaveRequestEmail(params: {
