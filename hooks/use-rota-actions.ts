@@ -20,6 +20,7 @@ import {
 } from "@/app/(clinic)/rota/generate-actions"
 import type { GenerationStrategy } from "@/components/calendar-panel/utils"
 import type { ViewMode } from "@/components/calendar-panel/types"
+import { getRotaCache } from "./use-rota-cache"
 
 type Translate = (key: string, values?: Record<string, string | number>) => string
 
@@ -118,6 +119,11 @@ export function useRotaActions({
         } else {
           toast.success(t("scheduleGenerated"))
         }
+
+        // Drop stale cache entries so fetchWeek doesn't flash pre-regen data
+        // before the fresh result arrives.
+        const cache = getRotaCache()
+        for (const ws of weeksToGenerate) cache.weeks.delete(ws)
 
         fetchWeek(weekStart)
         if (view === "month") fetchMonth(monthStart, weekStart)
