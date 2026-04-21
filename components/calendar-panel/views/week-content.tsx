@@ -170,10 +170,15 @@ export function WeekContent({
               if (result.error) { toast.error(result.error); return }
               fetchWeekSilent(weekStart)
               if (snapshot && assignment && canEdit && pushUndo) {
+                const idCapture = { value: id }
                 pushUndo(
                   snapshot,
-                  () => upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined }),
-                  () => removeAssignment(id),
+                  async () => {
+                    const r = await upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined })
+                    if (r.id) idCapture.value = r.id
+                    return r
+                  },
+                  () => removeAssignment(idCapture.value),
                 )
               }
             }}

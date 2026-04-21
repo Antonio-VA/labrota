@@ -118,7 +118,11 @@ export function useTaskGridState({
       onAfterMutation?.(
         snapshot,
         () => idCapture.value ? removeAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
-        () => upsertAssignment({ weekStart, staffId, date, shiftType, functionLabel: tecnicaCodigo }),
+        async () => {
+          const r = await upsertAssignment({ weekStart, staffId, date, shiftType, functionLabel: tecnicaCodigo })
+          if (r.id) idCapture.value = r.id
+          return r
+        },
       )
     }
     const result = await assignSilent(staffId, tecnicaCodigo, date, shiftType)
@@ -136,11 +140,16 @@ export function useTaskGridState({
       if (a) { assignment = { ...a, date: d.date }; break }
     }
     optimisticRemove(assignmentId)
+    const idCapture = { value: assignmentId }
     if (snapshot && assignment) {
       onAfterMutation?.(
         snapshot,
-        () => upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined }),
-        () => removeAssignment(assignmentId),
+        async () => {
+          const r = await upsertAssignment({ weekStart, staffId: assignment.staff_id, date: assignment.date, shiftType: assignment.shift_type, functionLabel: assignment.function_label ?? undefined })
+          if (r.id) idCapture.value = r.id
+          return r
+        },
+        () => removeAssignment(idCapture.value),
       )
     }
     const result = await removeSilent(assignmentId)

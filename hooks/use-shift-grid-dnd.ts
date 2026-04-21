@@ -79,7 +79,11 @@ export function useShiftGridDnd({
         onAfterMutation?.(
           snapshot,
           () => idCapture.value ? deleteAssignment(idCapture.value) : Promise.resolve({ error: "Cannot undo" }),
-          () => upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift }),
+          async () => {
+            const r = await upsertAssignment({ weekStart, staffId, date: destDate, shiftType: destShift })
+            if (r.id) idCapture.value = r.id
+            return r
+          },
         )
       }
       try {
@@ -108,11 +112,16 @@ export function useShiftGridDnd({
       const oldDate = sourceAssignment.date
       const oldStaff = sourceAssignment.staff_id
       const snapshot = data
+      const idCapture = { value: assignmentId }
       if (snapshot) {
         onAfterMutation?.(
           snapshot,
-          () => upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift }),
-          () => removeAssignment(assignmentId),
+          async () => {
+            const r = await upsertAssignment({ weekStart, staffId: oldStaff, date: oldDate, shiftType: oldShift })
+            if (r.id) idCapture.value = r.id
+            return r
+          },
+          () => removeAssignment(idCapture.value),
         )
       }
       try {
