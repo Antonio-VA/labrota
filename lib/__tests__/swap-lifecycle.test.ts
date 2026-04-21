@@ -39,10 +39,18 @@ function makeAdminClient(
   return {
     from: (table: string) => {
       if (table === "swap_requests") {
-        const eqChain = { eq: () => eqChain, single: async () => ({ data: swapData }) }
+        const selectEqChain = { eq: () => selectEqChain, single: async () => ({ data: swapData }) }
+        // Claim chain: update().eq().eq().select().single() — also directly awaitable for rejection path
+        const claimedId = swapData ? (swapData as { id: string }).id : null
+        const updateChain: Record<string, unknown> = {
+          eq: () => updateChain,
+          select: () => updateChain,
+          single: async () => ({ data: claimedId ? { id: claimedId } : null, error: null }),
+          then: (resolve: (v: unknown) => void) => resolve({ error: null, data: claimedId ? { id: claimedId } : null }),
+        }
         return {
-          select: () => ({ eq: () => eqChain }),
-          update: () => ({ eq: async () => ({ error: null }) }),
+          select: () => ({ eq: () => selectEqChain }),
+          update: () => updateChain,
         }
       }
       if (table === "rota_assignments") {
@@ -144,10 +152,17 @@ describe("executeSwap", () => {
       const admin = {
         from: (table: string) => {
           if (table === "swap_requests") {
-            const eqChain = { eq: () => eqChain, single: async () => ({ data: dayOffSwap }) }
+            const selectEqChain = { eq: () => selectEqChain, single: async () => ({ data: dayOffSwap }) }
+            const claimedId = dayOffSwap ? (dayOffSwap as { id: string }).id : null
+            const updateChain: Record<string, unknown> = {
+              eq: () => updateChain,
+              select: () => updateChain,
+              single: async () => ({ data: claimedId ? { id: claimedId } : null, error: null }),
+              then: (resolve: (v: unknown) => void) => resolve({ error: null, data: claimedId ? { id: claimedId } : null }),
+            }
             return {
-              select: () => ({ eq: () => eqChain }),
-              update: () => ({ eq: async () => ({ error: null }) }),
+              select: () => ({ eq: () => selectEqChain }),
+              update: () => updateChain,
             }
           }
           if (table === "rota_assignments") {

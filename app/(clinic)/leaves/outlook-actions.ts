@@ -130,30 +130,30 @@ export async function disconnectOutlook(
   if (delError) return { error: delError.message }
 
   if (keepLeaves) {
-    // Convert synced leaves to manual
-    await admin
+    const { error: convErr } = await admin
       .from("leaves")
       .update({ source: "manual", outlook_event_id: null })
       .eq("staff_id", staffId)
       .eq("organisation_id", orgId)
       .eq("source", "outlook")
+    if (convErr) return { error: convErr.message }
   } else {
-    // Delete future Outlook-synced leaves
     const today = toISODate()
-    await admin
+    const { error: delErr } = await admin
       .from("leaves")
       .delete()
       .eq("staff_id", staffId)
       .eq("organisation_id", orgId)
       .eq("source", "outlook")
       .gte("start_date", today)
-    // Convert past ones to manual
-    await admin
+    if (delErr) return { error: delErr.message }
+    const { error: convErr } = await admin
       .from("leaves")
       .update({ source: "manual", outlook_event_id: null })
       .eq("staff_id", staffId)
       .eq("organisation_id", orgId)
       .eq("source", "outlook")
+    if (convErr) return { error: convErr.message }
   }
 
   revalidatePath("/leaves")

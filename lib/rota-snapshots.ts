@@ -222,7 +222,8 @@ export async function restoreWeekSnapshot(snapshotId: string): Promise<{ error?:
 
   // Delete old rows by ID now that new rows are safely written
   if (oldIds.length > 0) {
-    await supabase.from("rota_assignments").delete().in("id", oldIds)
+    const { error: delError } = await supabase.from("rota_assignments").delete().in("id", oldIds)
+    if (delError) return { error: delError.message }
   }
 
   revalidatePath("/schedule")
@@ -272,7 +273,8 @@ export async function restoreSnapshot(snapshotId: string): Promise<{ error?: str
 
   // Delete old rows by ID now that new rows are safely written
   if (oldIds.length > 0) {
-    await supabase.from("rota_assignments").delete().in("id", oldIds)
+    const { error: delError } = await supabase.from("rota_assignments").delete().in("id", oldIds)
+    if (delError) return { error: delError.message }
   }
 
   revalidatePath("/schedule")

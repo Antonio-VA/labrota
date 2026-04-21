@@ -170,22 +170,17 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: leave, error: fetchError } = await supabase
-    .from("leaves")
-    .select("staff_id, start_date, end_date, type")
-    .eq("id", leaveId)
-    .eq("organisation_id", orgId)
-    .single() as { data: { staff_id: string; start_date: string; end_date: string; type: string } | null; error: unknown }
-
-  if (fetchError || !leave) return { error: "Leave not found." }
-
-  const { error } = await supabase
+  // Atomic: update only if still pending — prevents double-approval race
+  const { data: leave, error } = await supabase
     .from("leaves")
     .update({ status: "approved" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
+    .eq("status", "pending")
+    .select("staff_id, start_date, end_date")
+    .single() as { data: { staff_id: string; start_date: string; end_date: string } | null; error: unknown }
 
-  if (error) return { error: error.message }
+  if (error || !leave) return { error: "Leave not found or no longer pending." }
 
   // Try to store reviewer info (columns may not exist before migration)
   await supabase
@@ -220,13 +215,17 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { error } = await supabase
+  // Atomic: update only if still pending — prevents approve+reject race
+  const { data: rejected, error } = await supabase
     .from("leaves")
     .update({ status: "rejected" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
+    .eq("status", "pending")
+    .select("id")
+    .single() as { data: { id: string } | null; error: unknown }
 
-  if (error) return { error: error.message }
+  if (error || !rejected) return { error: "Leave not found or no longer pending." }
 
   // Try to store reviewer info (columns may not exist before migration)
   await supabase
@@ -257,28 +256,27 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
     .single() as { data: { id: string; staff_id: string; type: string; start_date: string; end_date: string; status: string; organisation_id: string; staff: { first_name: string; last_name: string } } | null }
 
   if (!leave) return { error: "Leave not found." }
-  if (leave.status !== "pending" && leave.status !== "approved") {
-    return { error: "Only pending or approved leaves can be cancelled." }
-  }
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { error } = await admin
+  // Atomic: update only if still pending/approved — prevents cancel-after-reject race
+  const { data: cancelled, error } = await admin
     .from("leaves")
     .update({ status: "cancelled" })
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
+    .in("status", ["pending", "approved"])
+    .select("id")
+    .single() as { data: { id: string } | null; error: unknown }
+
+  if (!cancelled || error) return { error: (error as { message?: string })?.message ?? "Leave is no longer cancellable." }
 
   // Try to store reviewer info (columns may not exist before migration)
-  if (!error) {
-    await admin
-      .from("leaves")
-      .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
-      .eq("id", leaveId)
-      .eq("organisation_id", orgId)
-  }
-
-  if (error) return { error: error.message }
+  await admin
+    .from("leaves")
+    .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
+    .eq("id", leaveId)
+    .eq("organisation_id", orgId)
 
   try {
     const staffName = `${leave.staff.first_name} ${leave.staff.last_name}`

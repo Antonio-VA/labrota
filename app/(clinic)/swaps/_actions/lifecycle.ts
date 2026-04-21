@@ -84,6 +84,18 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
     return { error: "The original shift assignment no longer exists." }
   }
 
+  // Atomic claim — prevents double-execution if two requests race past the status check above.
+  // Only one UPDATE can match status="pending_target"; the second gets null and returns early.
+  const { data: claimed } = await admin
+    .from("swap_requests")
+    .update({ status: "approved", target_responded_at: new Date().toISOString() })
+    .eq("id", swapId)
+    .eq("status", "pending_target")
+    .select("id")
+    .single() as { data: { id: string } | null }
+
+  if (!claimed) return { error: "Swap was already processed." }
+
   if (swap.swap_type === "shift_swap") {
     // Both assignments must exist for shift swap
     if (!swap.target_assignment_id) return { error: "Target assignment not specified." }
@@ -171,12 +183,6 @@ export async function executeSwap(swapId: string): Promise<{ error?: string }> {
         .eq("id", initiatorAssignment.id)
     }
   }
-
-  // Mark swap as approved
-  await admin
-    .from("swap_requests")
-    .update({ status: "approved", target_responded_at: new Date().toISOString() })
-    .eq("id", swapId)
 
   // Re-send published rota email with swap notice (fire-and-forget)
   try {
