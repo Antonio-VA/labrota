@@ -10,7 +10,7 @@ import { useStaffHover } from "@/components/staff-hover-context"
 import { toast } from "sonner"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
-import { upsertAssignment, removeAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
+import { upsertAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "@/components/calendar-panel/grids/day-stats-input"
 import { ROLE_BORDER } from "@/components/calendar-panel/constants"
 import { resolveColor } from "@/components/task-grid/constants"
@@ -21,7 +21,7 @@ import { toISODate } from "@/lib/format-date"
 
 function StaffSelectorPopup({
   onClose, tecnica, staffList, assignedStaffIds, leaveIds, isWholeTeam,
-  colorChips, staffColorMap, onAdd, onRemove, onToggleWholeTeam,
+  colorChips: _colorChips, staffColorMap: _staffColorMap, onAdd, onRemove, onToggleWholeTeam,
 }: {
   onClose: () => void; tecnica: Tecnica; staffList: StaffWithSkills[]
   assignedStaffIds: Set<string>; leaveIds: Set<string>; isWholeTeam: boolean
@@ -69,7 +69,7 @@ function StaffSelectorPopup({
           const onLeave = leaveIds.has(s.id)
           return (
             <button key={s.id} disabled={onLeave}
-              onClick={() => { if (!onLeave) isSelected ? onRemove(s.id) : onAdd(s.id) }}
+              onClick={() => { if (!onLeave) { if (isSelected) onRemove(s.id); else onAdd(s.id) } }}
               className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-left transition-colors",
                 onLeave ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50")}>
               <span className={cn("size-4 rounded border flex items-center justify-center text-[9px] shrink-0",
@@ -98,7 +98,7 @@ type AssignmentLike = {
 
 function TechDayCell({
   tec, dayDate, assignments, staffList, leaveIds, isPublished, colorChips, staffColorMap,
-  compact, isWeekend, isSat, hoveredStaffId, setHovered,
+  compact, isWeekend, isSat: _isSat, hoveredStaffId, setHovered,
   onAdd, onRemoveById, onToggleWholeTeam, onChipClick,
 }: {
   tec: Tecnica; dayDate: string

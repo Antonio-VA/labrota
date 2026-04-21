@@ -32,6 +32,9 @@ export function ReviewStep({
   updateRule: (idx: number, updates: Partial<ExtractedRule>) => void
   startImport: () => void
   setStep: (step: Step) => void
+  // next-intl's Translator expects `Record<string, string | number | Date>` —
+  // `any` is the only thing that accepts the real `useTranslations()` return.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: (key: string, params?: Record<string, any>) => string
 }) {
   return (

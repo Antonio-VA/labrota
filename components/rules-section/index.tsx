@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition, useMemo } from "react"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { PlusIcon, ShieldCheck, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -25,7 +25,6 @@ export function RulesSection({
   rotaDisplayMode?: string
 }) {
   const t = useTranslations("lab.rules")
-  const locale = useLocale() as "es" | "en"
   const allowedTypes = useMemo(() => new Set(
     RULE_TYPES.filter((rt) => {
       const mode = RULE_MODE[rt]

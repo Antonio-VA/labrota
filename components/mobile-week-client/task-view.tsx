@@ -27,15 +27,16 @@ export function TaskView({
   deptColorMap: Record<string, string>
   staffColorLookup: Record<string, string>
 }) {
-  if (!data.tecnicas) return null
-  const activeTecnicas = data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
-  const DAY_ABBR = dayAbbrFor(locale)
-
+  // Hooks first — unconditional to satisfy rules-of-hooks.
   const workingDaysByStaff = useMemo(() => {
     const m: Record<string, Set<string>> = {}
     for (const d of days) for (const a of d.assignments) (m[a.staff_id] ??= new Set()).add(d.date)
     return m
   }, [days])
+
+  if (!data.tecnicas) return null
+  const activeTecnicas = data.tecnicas.filter((tc) => tc.activa).sort((a, b) => a.orden - b.orden)
+  const DAY_ABBR = dayAbbrFor(locale)
 
   function renderStaffChip(a: Assignment) {
     const isHL = highlightEnabled && highlightedStaff === a.staff_id

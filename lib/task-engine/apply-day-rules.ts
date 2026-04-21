@@ -1,5 +1,5 @@
 import type { StaffWithSkills, RotaRule, RotaAssignment } from "@/lib/types/database"
-import { getDayCode, isWeekend, addDays } from "@/lib/engine-helpers"
+import { isWeekend, addDays } from "@/lib/engine-helpers"
 
 export interface DayRulesParams {
   date: string

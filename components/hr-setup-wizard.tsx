@@ -41,7 +41,7 @@ const LEGACY_TYPE_LABELS: Record<string, { es: string; en: string }> = {
   other: { es: "Otro", en: "Other" },
 }
 
-export function HrSetupWizard({ legacyTypes, existingTypes }: HrSetupWizardProps) {
+export function HrSetupWizard({ legacyTypes, existingTypes: _existingTypes }: HrSetupWizardProps) {
   const t = useTranslations("hr")
   const tc = useTranslations("common")
   const router = useRouter()

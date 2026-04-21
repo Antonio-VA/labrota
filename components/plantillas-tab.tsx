@@ -12,7 +12,6 @@ import { useLocale, useTranslations } from "next-intl"
 import {
   renameTemplate,
   deleteTemplate,
-  getTemplates,
 } from "@/app/(clinic)/rota/actions"
 import type { RotaTemplate } from "@/lib/types/database"
 
@@ -45,11 +44,6 @@ export function PlantillasTab({ initialTemplates }: { initialTemplates: RotaTemp
     setTemplates((prev) => prev.filter((t) => t.id !== id))
     setDeletingId(null)
     toast.success(t("deleted"))
-  }
-
-  async function refresh() {
-    const data = await getTemplates()
-    setTemplates(data)
   }
 
   // Compute shift breakdown for a template

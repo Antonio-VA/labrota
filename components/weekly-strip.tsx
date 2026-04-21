@@ -1,6 +1,5 @@
 "use client"
 
-import { useRef } from "react"
 import { Palmtree } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toISODate } from "@/lib/format-date"
@@ -21,7 +20,7 @@ export function WeeklyStrip({
   days,
   currentDate,
   onSelectDay,
-  onSwipeWeek,
+  onSwipeWeek: _onSwipeWeek,
   locale = "es",
   personalMode = false,
 }: {
@@ -34,7 +33,6 @@ export function WeeklyStrip({
 }) {
   const labels = locale === "es" ? DAY_LABELS_ES : DAY_LABELS_EN
   const today = toISODate()
-  const touchStartX = useRef(0)
 
   return (
     <div

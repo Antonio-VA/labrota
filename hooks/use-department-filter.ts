@@ -41,7 +41,7 @@ export function useDepartmentFilter(weekData: RotaWeekData | null, staffList: St
   function toggleDept(dept: string) {
     setDeptFilter((prev) => {
       const next = new Set(prev)
-      next.has(dept) ? next.delete(dept) : next.add(dept)
+      if (next.has(dept)) next.delete(dept); else next.add(dept)
       return next
     })
   }

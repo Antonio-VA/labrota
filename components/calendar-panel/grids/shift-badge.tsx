@@ -99,8 +99,8 @@ export function ShiftBadge({ first, last, role, isOverride: _isOverride, functio
         borderRadius: 4,
         ...(crossHovered ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
       }}
-      onMouseEnter={() => { setPillHovered(true); staffId && setHovered(staffId) }}
-      onMouseLeave={() => { setPillHovered(false); staffId && setHovered(null) }}
+      onMouseEnter={() => { setPillHovered(true); if (staffId) setHovered(staffId) }}
+      onMouseLeave={() => { setPillHovered(false); if (staffId) setHovered(null) }}
     >
       <span className="truncate">{first} {last[0]}.</span>
       {trainingTecCode && (

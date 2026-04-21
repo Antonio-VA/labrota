@@ -92,7 +92,7 @@ export function runRotaEngineV2({
   const weeklyShiftCount: Record<string, number> = {}
   const weekShiftHistory: Record<string, Set<string>> = {} // staff_id → shifts used this week (for daily rotation)
 
-  const { leaveMap, leaveThisWeek } = buildLeaveMap(leaves, allWeekDates)
+  const { leaveMap } = buildLeaveMap(leaves, allWeekDates)
 
   // Shift codes sorted by sort_order — only active shifts are used for assignment.
   const activeShiftTypes = shiftTypes.filter((st) => st.active !== false)

@@ -452,7 +452,7 @@ function TransposedPersonGridInner({
                       <span className={cn("text-muted-foreground italic", compact ? "text-[9px]" : "text-[11px]")}>{t("leaveShort")}</span>
                     ) : !isPublished ? (
                       <PersonShiftSelector
-                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as any, is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
+                        assignment={{ id: "", shift_type: "", staff_id: s.id, staff: s as unknown as Assignment["staff"], is_manual_override: false, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false } as Assignment}
                         shiftTimes={shiftTimes}
                         shiftTypes={data?.shiftTypes ?? []}
                         isPublished={false}
@@ -465,7 +465,7 @@ function TransposedPersonGridInner({
                           else {
                             setLocalDays((prev) => prev.map((dd) => dd.date !== day.date ? dd : {
                               ...dd,
-                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as any, shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
+                              assignments: [...dd.assignments, { id: `temp-${Date.now()}`, staff_id: s.id, staff: s as unknown as Assignment["staff"], shift_type: newShift, is_manual_override: true, function_label: null, tecnica_id: null, notes: null, trainee_staff_id: null, whole_team: false }],
                             }))
                           }
                         }}

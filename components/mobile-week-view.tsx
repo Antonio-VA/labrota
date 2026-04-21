@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
-import { RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
+import { RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
@@ -11,10 +10,9 @@ import { toISODate } from "@/lib/format-date"
 
 const ROLE_COLOR: Record<string, string> = { lab: "#3B82F6", andrology: "#10B981", admin: "#64748B" }
 
-export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null; weekStart: string }) {
+export function MobileWeekView({ data, weekStart: _weekStart }: { data: RotaWeekData | null; weekStart: string }) {
   const t = useTranslations("schedule")
   const locale = useLocale() as "es" | "en"
-  const [isLandscape, setIsLandscape] = useState(false)
 
   if (!data) {
     return (
@@ -59,7 +57,7 @@ export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null;
             style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}
           >
             <div className="px-2 py-2 border-r border-border" />
-            {dayLabels.map((dl, i) => {
+            {dayLabels.map((dl) => {
               const isToday = dl.date === toISODate()
               const isWeekend = [0, 6].includes(new Date(dl.date + "T12:00:00").getDay())
               return (
@@ -138,7 +136,6 @@ export function MobileWeekView({ data, weekStart }: { data: RotaWeekData | null;
               <span className="text-[10px] font-medium text-muted-foreground">OFF</span>
             </div>
             {days.map((day) => {
-              const assignedIds = new Set(day.assignments.map((a) => a.staff_id))
               const leaveIds = new Set(data.onLeaveByDate?.[day.date] ?? [])
               const offCount = Math.max(0, day.assignments.length > 0 ? 0 : 0) // simplified — just show leave count
               return (

@@ -111,13 +111,13 @@ export function AuditLogViewer() {
 
   // Populate the user-filter dropdown once — distinct across all logs, not
   // just the current page (the old client-side dropdown was page-local).
-  /* eslint-disable react-hooks/set-state-in-effect -- one-time fetch */
+   
   useEffect(() => {
     getAuditLogUsers().then((res) => {
       if (!("error" in res)) setUniqueUsers(res)
     })
   }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const paged = logs

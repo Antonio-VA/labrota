@@ -12,7 +12,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { useAssignmentActions } from "@/hooks/use-assignment-actions"
 import type {
-  StaffWithSkills, ShiftType, ShiftTypeDefinition, Tecnica,
+  StaffWithSkills, ShiftTypeDefinition, Tecnica,
 } from "@/lib/types/database"
 import type { RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import { ROLE_BORDER, ROLE_ORDER, TECNICA_PILL } from "./constants"

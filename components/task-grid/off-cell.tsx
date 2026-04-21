@@ -10,7 +10,7 @@ import type { RotaDay } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
 import { LEAVE_ICON_MAP } from "./constants"
 
-export function OffCell({ date, day, unassigned, onLeave, staffList, assignedIds, isPublished, onMakeOff, staffColorMap, leaveTypeByStaff, onChipClick }: {
+export function OffCell({ date, day: _day, unassigned, onLeave, staffList, assignedIds: _assignedIds, isPublished, onMakeOff, staffColorMap, leaveTypeByStaff, onChipClick }: {
   date: string; day: RotaDay
   unassigned: StaffWithSkills[]; onLeave: StaffWithSkills[]
   staffList: StaffWithSkills[]; assignedIds: Set<string>

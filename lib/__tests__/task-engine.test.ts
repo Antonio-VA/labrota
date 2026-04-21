@@ -5,6 +5,8 @@ import type {
   LabConfig,
   ShiftTypeDefinition,
   RotaRule,
+  Leave,
+  RotaAssignment,
 } from "../types/database"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -160,7 +162,7 @@ describe("runTaskEngine", () => {
     const result = runTaskEngine({
       weekStart: WEEK,
       staff,
-      leaves: [{ staff_id: "s1", start_date: "2026-03-16", end_date: "2026-03-16", type: "holiday", status: "approved" } as any],
+      leaves: [{ staff_id: "s1", start_date: "2026-03-16", end_date: "2026-03-16", type: "holiday", status: "approved" } as unknown as Leave],
       recentAssignments: [],
       labConfig: BASE_CONFIG,
       shiftTypes: [SHIFT_T1],
@@ -436,7 +438,7 @@ describe("scheduling rules", () => {
       { staff_id: "s1", date: "2026-03-13", shift_type: "T1" },
       { staff_id: "s1", date: "2026-03-14", shift_type: "T1" },
       { staff_id: "s1", date: "2026-03-15", shift_type: "T1" },
-    ] as any[]
+    ] as RotaAssignment[]
 
     const rules: RotaRule[] = [{
       id: "r1", organisation_id: ORG, type: "max_dias_consecutivos",

@@ -47,13 +47,13 @@ export function MobileWeekClient() {
   })
   const [taskDaysAsRows, setTaskDaysAsRows] = useState<boolean>(weekFavourite?.taskDaysAsRows === true)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- derived from fetched data */
+   
   useEffect(() => {
     if (data?.rotaDisplayMode === "by_task" && weekViewMode === "person") {
       setWeekViewMode("task")
     }
   }, [data?.rotaDisplayMode, weekViewMode])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   function toggleHighlight() {
     setHighlightEnabled((v) => {
@@ -105,7 +105,9 @@ export function MobileWeekClient() {
   const currentWeek = getMondayOf()
   const isCurrentWeek = weekStart === currentWeek
 
-  const days = data?.days ?? []
+  // Memo `days` so the `[] ?? []` fallback doesn't produce a fresh array each
+  // render and invalidate downstream useMemos that depend on `days`.
+  const days = useMemo(() => data?.days ?? [], [data?.days])
   const shiftTypes = data?.shiftTypes?.filter((s) => s.active !== false) ?? []
   const shiftTypeMap = Object.fromEntries(shiftTypes.map((s) => [s.code, s]))
   const timeFormat = data?.timeFormat ?? "24h"
@@ -309,7 +311,6 @@ export function MobileWeekClient() {
                   {days.map((day) => {
                     const assignments = day.assignments.filter((a) => a.shift_type === st.code)
                     const dow = new Date(day.date + "T12:00:00").getDay()
-                    const isSat = dow === 6; const isSun = dow === 0
                     const activeDays = (shiftTypeMap[st.code] as { active_days?: string[] })?.active_days
                     const dowKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][dow]
                     const isActive = !activeDays || activeDays.includes(dowKey)

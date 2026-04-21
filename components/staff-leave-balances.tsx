@@ -39,7 +39,7 @@ const STATUS_VARIANT: Record<string, "active" | "onboarding" | "inactive"> = {
 
 export function StaffLeaveBalances({
   staffId,
-  staffName,
+  staffName: _staffName,
   leaveTypes,
   balances,
   config,

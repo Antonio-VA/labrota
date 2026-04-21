@@ -11,7 +11,6 @@ import type {
   HolidayConfig,
   CompanyLeaveType,
   HolidayBalance,
-  Leave,
 } from "@/lib/types/database"
 import type { DayCountConfig } from "@/lib/hr-balance-engine"
 

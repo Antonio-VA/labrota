@@ -35,7 +35,7 @@ interface MobileTaskDayViewProps {
 }
 
 export function MobileTaskDayView({
-  day, tecnicas, departments, data, staffList, isEditMode, onRemoveAssignment, onAddToTask, loading, locale,
+  day, tecnicas, departments: _departments, data, staffList, isEditMode, onRemoveAssignment, onAddToTask, loading, locale: _locale,
 }: MobileTaskDayViewProps) {
   const t = useTranslations("schedule")
   const tc = useTranslations("common")
@@ -133,7 +133,6 @@ export function MobileTaskDayView({
                   const rd = (ro[a.staff.role] ?? 9) - (ro[b.staff.role] ?? 9)
                   return rd !== 0 ? rd : a.staff.first_name.localeCompare(b.staff.first_name)
                 }).map((a) => {
-                  const roleColor = ROLE_COLOR[a.staff.role] ?? "#64748B"
                   const deptName = a.staff.role === "lab" ? "Embryology" : a.staff.role === "andrology" ? "Andrology" : "Admin"
                   const isHov = hoveredStaffId === a.staff_id
                   const staffMember = staffList.find((s) => s.id === a.staff_id)

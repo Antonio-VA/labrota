@@ -62,6 +62,10 @@ export function WeekContent({
   onDesktopChipClick: (assignment: { id?: string; staff_id: string; shift_type?: string }, date: string) => void
   onOpenSheet: (date: string) => void
   onMonthDayClick: (date: string) => void
+  // `Promise<any>` here is deliberate — different callers' undo/redo hooks
+  // return `Promise<void>`, `Promise<{error?: string}>`, etc., and using a
+  // narrower type (even `unknown`) trips TS's function-parameter contravariance.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pushUndo?: (snapshot: RotaWeekData, redo: () => Promise<any>, undo: () => Promise<any>) => void
   cancelLastUndo?: () => void
   triggerSaved?: () => void

@@ -3,13 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedOrgId } from "@/lib/auth-cache"
-import { ONE_DAY_MS, RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
-import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
+import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { getWeekDates } from "@/lib/engine-helpers"
-import { runTaskEngine } from "@/lib/task-engine"
 import { logAuditEvent } from "@/lib/audit"
 import { captureWeekSnapshot } from "@/lib/rota-snapshots"
-import { getPublicHolidays } from "@/lib/rota-holidays"
 import {
   acquireRotaGenerationLock,
   releaseRotaGenerationLock,
@@ -23,7 +20,6 @@ import type {
   RotaRule,
   ShiftTypeDefinition,
   LabConfig,
-  ShiftCoverageByDay,
 } from "@/lib/types/database"
 
 export async function generateRotaWithAI(

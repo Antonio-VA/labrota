@@ -69,7 +69,7 @@ export function ColumnDialog({
                   type="button"
                   onClick={() => {
                     const next = new Set(draftVisible)
-                    next.has(key) ? next.delete(key) : next.add(key)
+                    if (next.has(key)) next.delete(key); else next.add(key)
                     setDraftVisible(next)
                   }}
                   className="flex items-center gap-2 flex-1 text-left"

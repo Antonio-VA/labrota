@@ -12,6 +12,11 @@ function getStore(storage: Storage): globalThis.Storage | null {
  * Always initialises with defaultValue (SSR-safe), then hydrates from
  * storage in an effect to avoid hydration mismatches.
  */
+/* eslint-disable react-hooks/set-state-in-effect --
+   This hook intentionally calls setState from within an effect to hydrate
+   from localStorage after mount (required for SSR safety). The writer
+   useCallback also ends up flagged because the rule tracks setState usage
+   transitively through the returned setter. */
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
@@ -38,6 +43,7 @@ export function usePersistedState<T>(
 
   return [value, setValue]
 }
+/* eslint-enable react-hooks/set-state-in-effect */
 
 /**
  * Boolean persisted state with a stable toggle callback.

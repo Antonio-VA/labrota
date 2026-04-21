@@ -3,31 +3,24 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
-import { typedQuery } from "@/lib/supabase/typed-query"
 import { getCachedOrgId } from "@/lib/auth-cache"
 import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
 import { acquireRotaGenerationLock, releaseRotaGenerationLock, ROTA_GENERATION_LOCK_ERROR } from "@/lib/rota-generation-lock"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { getWeekDates } from "@/lib/engine-helpers"
-import { getMondayOf, toISODate } from "@/lib/format-date"
+import { toISODate } from "@/lib/format-date"
 import { logAuditEvent } from "@/lib/audit"
 import { captureSnapshot } from "@/lib/rota-snapshots"
 import { getPublicHolidays } from "@/lib/rota-holidays"
 import { getRotaWeek } from "./queries"
 import type {
-  RotaStatus,
   StaffWithSkills,
   Leave,
   RotaAssignment,
   RotaRule,
-  SkillName,
   ShiftType,
-  StaffRole,
   ShiftTypeDefinition,
-  Tecnica,
   LabConfig,
-  ShiftCoverageByDay,
-  ShiftCoverageEntry,
 } from "@/lib/types/database"
 // ── getActiveStaff ────────────────────────────────────────────────────────────
 

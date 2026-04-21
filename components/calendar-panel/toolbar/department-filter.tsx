@@ -54,7 +54,7 @@ export function DepartmentFilterDropdown({ selected, allDepts, onToggle, onSetAl
         <div className="absolute right-0 top-full mt-1 z-50 min-w-[280px] rounded-lg border border-border bg-background shadow-lg py-1.5">
           {/* Toggle all */}
           <button
-            onClick={() => { allSelected ? setOpen(false) : onSetAll() }}
+            onClick={() => { if (allSelected) setOpen(false); else onSetAll() }}
             className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[12px] text-muted-foreground hover:bg-muted/50 transition-colors"
           >
             <span className={cn("size-3.5 rounded border flex items-center justify-center", allSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>

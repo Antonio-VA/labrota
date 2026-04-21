@@ -1,7 +1,6 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { cn } from "@/lib/utils"
 import { formatTime } from "@/lib/format-time"
 import { TapPopover } from "@/components/tap-popover"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"

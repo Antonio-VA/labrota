@@ -14,7 +14,7 @@ import { buildGrid, DAY_LABELS, ALL_DAYS_TABLE, ALL_COL_ORDER, type ColKey } fro
 import { toISODate } from "@/lib/format-date"
 
 export function StaffTable({
-  members, t, ts, muted,
+  members, t, ts: _ts, muted,
   selectedIds, onToggle, onToggleAll, skillLabel,
   deptBorder, deptLabel, skillOrder, tecnicas,
   sortCol, onSortChange,

@@ -1,13 +1,13 @@
 "use client"
 
-import { FileText, FileSpreadsheet, Image } from "lucide-react"
+import { FileText, FileSpreadsheet, Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function FileIcon({ name }: { name: string }) {
   const ext = name.split(".").pop()?.toLowerCase() ?? ""
   if (["xlsx", "xls", "csv"].includes(ext)) return <FileSpreadsheet className="size-5 text-emerald-500" />
   if (ext === "pdf") return <FileText className="size-5 text-red-500" />
-  if (["png", "jpg", "jpeg", "webp"].includes(ext)) return <Image className="size-5 text-blue-500" />
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) return <ImageIcon className="size-5 text-blue-500" />
   return <FileText className="size-5 text-muted-foreground" />
 }
 

@@ -28,7 +28,7 @@ function timeAgo(iso: string, t: ReturnType<typeof useTranslations>): string {
 export function OutlookSyncPanel({
   open,
   onClose,
-  orgId,
+  orgId: _orgId,
 }: {
   open: boolean
   onClose: () => void
@@ -53,7 +53,7 @@ export function OutlookSyncPanel({
   }, [open, loadStatus])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const handleSyncOne = (staffId: string, staffName: string) => {
+  const handleSyncOne = (staffId: string, _staffName: string) => {
     startTransition(async () => {
       const result = await syncOutlookForStaff(staffId)
       if (result.errors.length > 0) {

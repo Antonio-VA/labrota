@@ -10,7 +10,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { toast } from "sonner"
 import { moveAssignment, moveAssignmentShift, removeAssignment, upsertAssignment } from "@/app/(clinic)/rota/actions"
 import { useStaffHover } from "@/components/staff-hover-context"
-import type { StaffWithSkills, ShiftType, Tecnica } from "@/lib/types/database"
+import type { StaffWithSkills } from "@/lib/types/database"
 import type { RotaWeekData, RotaDay, ShiftTimes } from "@/app/(clinic)/rota/actions"
 import { ROLE_BORDER, TECNICA_PILL } from "@/components/calendar-panel/constants"
 import { toISODate } from "@/lib/format-date"
@@ -113,8 +113,8 @@ export function TransposedShiftGrid(props: TransposedShiftGridProps) {
 }
 
 function TransposedShiftGridInner({
-  data, staffList, locale, isPublished, shiftTimes, publicHolidays, onLeaveByDate,
-  compact, colorChips = true, timeFormat = "24h", onCellClick, onChipClick, onRefresh,
+  data, staffList, locale, isPublished, shiftTimes: _shiftTimes, publicHolidays, onLeaveByDate,
+  compact, colorChips: _colorChips = true, timeFormat = "24h", onCellClick, onChipClick, onRefresh,
   swapStaffId, gridSetDaysRef,
 }: TransposedShiftGridProps & { data: RotaWeekData }) {
   const tSwaps = useTranslations("swaps")

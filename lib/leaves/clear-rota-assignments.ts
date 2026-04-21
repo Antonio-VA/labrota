@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/types/database"
 import { logAuditEvent } from "@/lib/audit"
 import { captureWeekSnapshot } from "@/lib/rota-snapshots"
-import { getMondayOf } from "@/lib/format-date"
 
 /**
  * Removes rota assignments that overlap a leave and audits the side effect.

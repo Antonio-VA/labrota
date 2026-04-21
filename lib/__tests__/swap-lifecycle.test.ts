@@ -123,7 +123,6 @@ describe("executeSwap", () => {
     it("swaps the staff_id values between the two assignments", async () => {
       const inserts: unknown[] = []
       const admin = makeAdminClient(BASE_SWAP, INIT_ASSIGNMENT, TARGET_ASSIGNMENT, [])
-      const origInsert = (admin.from("rota_assignments") as ReturnType<typeof admin.from>).insert
       // Intercept insert to capture payloads
       const assignmentTableRef = {
         ...admin.from("rota_assignments"),

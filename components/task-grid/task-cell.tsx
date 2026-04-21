@@ -13,7 +13,7 @@ import { StaffSelector } from "./staff-selector"
 export function TaskCell({
   tecnica, date, assignments, staffList, leaveStaffIds, conflictStaffIds,
   isPublished, isWholeTeamOverride,
-  onAssign, onRemove, onAssignSilent, onRemoveSilent,
+  onAssign: _onAssign, onRemove, onAssignSilent, onRemoveSilent,
   onOptimisticAdd, onOptimisticRemove, onToggleWholeTeam, onRefresh,
   compact = false, staffColorMap, colorBorders = true, onChipClick,
 }: {
