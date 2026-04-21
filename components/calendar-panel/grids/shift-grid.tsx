@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -116,13 +116,15 @@ export function ShiftGrid({
   const deptMapsMemo = useMemo(() => buildDeptMaps(data?.departments ?? [], locale), [data?.departments, locale])
 
   const [localDays, setLocalDaysRaw] = useState(data?.days ?? [])
-  const setLocalDays = useCallback<typeof setLocalDaysRaw>((update) => {
-    setLocalDaysRaw((prev) => {
-      const next = typeof update === "function" ? update(prev) : update
-      onLocalDaysChange?.(next)
-      return next
-    })
-  }, [onLocalDaysChange])
+  // Notify parent of local-day changes via effect to avoid setState-during-render.
+  const localDaysRef = useRef(localDays)
+  useEffect(() => {
+    if (localDays !== localDaysRef.current) {
+      localDaysRef.current = localDays
+      onLocalDaysChange?.(localDays)
+    }
+  }, [localDays, onLocalDaysChange])
+  const setLocalDays = setLocalDaysRaw
 
   useEffect(() => {
     if (!gridSetDaysRef) return
@@ -219,6 +221,7 @@ export function ShiftGrid({
 
   return (
     <DndContext
+      id="shift-grid-dnd"
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}

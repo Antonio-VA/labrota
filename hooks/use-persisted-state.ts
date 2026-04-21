@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 
 type Storage = "local" | "session"
 
@@ -9,20 +9,24 @@ function getStore(storage: Storage): globalThis.Storage | null {
 
 /**
  * useState backed by localStorage or sessionStorage.
- * Returns [value, setValue, toggle] — toggle is only useful for booleans.
+ * Always initialises with defaultValue (SSR-safe), then hydrates from
+ * storage in an effect to avoid hydration mismatches.
  */
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
   storage: Storage = "local",
 ): [T, (v: T | ((prev: T) => T)) => void] {
-  const [value, setValueState] = useState<T>(() => {
+  const [value, setValueState] = useState<T>(defaultValue)
+
+  // Hydrate from storage after mount to avoid SSR/client mismatch.
+  useEffect(() => {
     const store = getStore(storage)
-    if (!store) return defaultValue
+    if (!store) return
     const stored = store.getItem(key)
-    if (stored === null) return defaultValue
-    try { return JSON.parse(stored) as T } catch { return stored as unknown as T }
-  })
+    if (stored === null) return
+    try { setValueState(JSON.parse(stored) as T) } catch { setValueState(stored as unknown as T) }
+  }, [key, storage])
 
   const setValue = useCallback((v: T | ((prev: T) => T)) => {
     setValueState((prev) => {

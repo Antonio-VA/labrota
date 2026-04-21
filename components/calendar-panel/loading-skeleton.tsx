@@ -4,10 +4,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function CalendarSkeleton() {
   return (
-    <main className="flex flex-1 flex-col overflow-hidden">
+    <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
       {/* Toolbar */}
       <div className="hidden lg:flex items-center justify-between border-b px-4 h-12 gap-3 shrink-0 bg-background">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Skeleton className="h-7 w-16 rounded" />
           <Skeleton className="h-7 w-7 rounded" />
           <Skeleton className="h-7 w-7 rounded" />

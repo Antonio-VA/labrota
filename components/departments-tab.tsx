@@ -288,7 +288,7 @@ export function DepartmentsTab({ initialDepartments, enableSubDepartments: _enab
         </>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext id="departments-dnd" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={departments.filter((d) => !d.parent_id).map((d) => d.sortId)} strategy={verticalListSortingStrategy}>
           {departments.filter((d) => !d.parent_id).map((dept, idx) => (
             <SortableRow

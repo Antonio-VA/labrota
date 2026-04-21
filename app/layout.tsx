@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
+import Script from "next/script"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -90,8 +91,8 @@ export default async function RootLayout({
       {...(Object.keys(rootStyle).length > 0 ? { style: rootStyle as React.CSSProperties } : {})}
     >
       <head>
-        {/* Fallback for auto mode — needs client JS to check prefers-color-scheme */}
-        <script dangerouslySetInnerHTML={{ __html: `
+        {/* Theme flash prevention — runs before paint to set dark mode + accent color */}
+        <Script id="theme-init" strategy="beforeInteractive">{`
           try {
             var c = document.cookie.match(/labrota_theme=([^;]+)/);
             if (c) {
@@ -107,7 +108,7 @@ export default async function RootLayout({
               }
             }
           } catch(e) {}
-        `}} />
+        `}</Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>

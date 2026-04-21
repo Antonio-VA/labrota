@@ -12,9 +12,9 @@ export function useStaffList({
   weekData: RotaWeekData | null
   refreshKey: number
 }) {
-  const initialCache = getRotaCache()
-  const [staffList, setStaffList] = useState<StaffWithSkills[]>(initialCache.staff ?? [])
-  const [staffLoaded, setStaffLoaded] = useState(!!initialCache.staff)
+  // Use only server-safe data for initial state to avoid hydration mismatches.
+  const [staffList, setStaffList] = useState<StaffWithSkills[]>(initialStaff ?? [])
+  const [staffLoaded, setStaffLoaded] = useState(!!initialStaff && initialStaff.length > 0)
 
   const initialStaffUsed = useRef(false)
   const prevStaffIdsRef = useRef("")

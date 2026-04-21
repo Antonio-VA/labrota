@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useUndoRedo } from "@/hooks/use-undo-redo"
 import { useDepartmentFilter } from "@/hooks/use-department-filter"
 import { usePersistedState, usePersistedToggle } from "@/hooks/use-persisted-state"
@@ -63,10 +63,8 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
   const [colorChips, toggleColorChips, setColorChips] = usePersistedToggle("labrota_color_chips", true)
   const { enabled: highlightHover, setEnabled: setHighlightHover } = useStaffHover()
 
-  const [currentDate, setCurrentDateState] = useState(() => {
-    if (typeof window === "undefined") return initialData?.weekStart ?? TODAY
-    return sessionStorage.getItem("labrota_current_date") || initialData?.weekStart || TODAY
-  })
+  // Always start with server-safe value; hydrate from sessionStorage in an effect.
+  const [currentDate, setCurrentDateState] = useState(initialData?.weekStart ?? TODAY)
   const setCurrentDate: typeof setCurrentDateState = (v) => {
     setCurrentDateState((prev) => {
       const next = typeof v === "function" ? v(prev) : v
@@ -74,6 +72,11 @@ function CalendarPanelInner({ refreshKey = 0, initialData, initialStaff, hasNoti
       return next
     })
   }
+  // Restore saved date from sessionStorage after hydration.
+  useEffect(() => {
+    const saved = sessionStorage.getItem("labrota_current_date")
+    if (saved && saved !== currentDate) setCurrentDateState(saved)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [mobileEditMode, setMobileEditMode] = useState(false)
   const [preEditSnapshot, setPreEditSnapshot] = useState<RotaWeekData | null>(null)

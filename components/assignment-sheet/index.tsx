@@ -162,6 +162,7 @@ export function AssignmentSheet({
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
         <DndContext
+          id="assignment-sheet-dnd"
           sensors={sensors}
           onDragStart={(e) => setActiveId(String(e.active.id))}
           onDragEnd={(e) => { setActiveId(null); handleDragEnd(e) }}

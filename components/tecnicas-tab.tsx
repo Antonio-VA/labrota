@@ -425,7 +425,7 @@ export function TécnicasTab({ initialTecnicas, shiftCodes = ["T1", "T2", "T3"],
         </div>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext id="tecnicas-dnd" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={tecnicas.map((t) => t.sortId)} strategy={verticalListSortingStrategy}>
           {tecnicas.map((tec, idx) => (
             <SortableRow

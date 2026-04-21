@@ -315,7 +315,7 @@ function TransposedShiftGridInner({
     : null
 
   return (
-    <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
+    <DndContext id="transposed-shift-dnd" sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
       <div className="overflow-auto flex-1 rounded-lg border border-border">
         <div className="min-w-[600px]" style={{ display: "grid", gridTemplateColumns: gridCols }}>
           {/* Header row */}

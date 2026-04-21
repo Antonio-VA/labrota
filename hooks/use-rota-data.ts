@@ -37,14 +37,16 @@ export function useRotaData({
     if (initialData) cache.weeks.set(initialData.weekStart, initialData)
   }
 
-  const cachedWeek = (initialData?.weekStart === weekStart ? initialData : null) ?? cache.weeks.get(weekStart) ?? null
+  // Use only server-safe data (initialData prop) for useState initializers to
+  // avoid hydration mismatches — window cache only exists on the client.
+  const ssrWeek = initialData?.weekStart === weekStart ? initialData : null
 
-  const [weekData, setWeekData]           = useState<RotaWeekData | null>(cachedWeek)
-  const [loadingWeek, setLoadingWeek]     = useState(!cachedWeek)
+  const [weekData, setWeekData]           = useState<RotaWeekData | null>(ssrWeek)
+  const [loadingWeek, setLoadingWeek]     = useState(!ssrWeek)
   const [error, setError]                 = useState<string | null>(null)
-  const [initialLoaded, setInitialLoaded] = useState(!!cachedWeek)
+  const [initialLoaded, setInitialLoaded] = useState(!!ssrWeek)
   const [punctionsOverride, setPunctionsOverrideLocal] = useState<Record<string, number>>(
-    cachedWeek?.rota?.punctions_override ?? {},
+    ssrWeek?.rota?.punctions_override ?? {},
   )
   const [activeStrategy, setActiveStrategy] = useState<GenerationStrategy | null>(null)
   const [liveDays, setLiveDays]           = useState<RotaDay[] | null>(null)
