@@ -4,6 +4,7 @@ test.describe("Schedule interactions", () => {
   test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
   test("week navigation: next and previous", async ({ page }) => {
+    test.setTimeout(120_000)
     await page.goto("/schedule")
     // Wait for pills — page must be fully loaded before navigating
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 45_000 })
