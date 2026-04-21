@@ -63,12 +63,12 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     if (gridSetDaysRef.current) {
       flushSync(() => {
         gridSetDaysRef.current!(entry.snapshot.days)
-        setUndoLen(undoStack.current.length)
-        setRedoLen(redoStack.current.length)
       })
     }
     // 2. Update weekData for toolbar/coverage (normal batched render)
     setWeekData(entry.snapshot)
+    setUndoLen(undoStack.current.length)
+    setRedoLen(redoStack.current.length)
     // 3. Fire-and-forget: persist to server
     entry.inverse().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al deshacer" : "Undo failed")
@@ -93,12 +93,12 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
     if (gridSetDaysRef.current) {
       flushSync(() => {
         gridSetDaysRef.current!(targetSnapshot.days)
-        setUndoLen(undoStack.current.length)
-        setRedoLen(redoStack.current.length)
       })
     }
     // 2. Update weekData for toolbar/coverage
     setWeekData(targetSnapshot)
+    setUndoLen(undoStack.current.length)
+    setRedoLen(redoStack.current.length)
     // 3. Fire-and-forget: persist to server
     entry.forward().then((result) => {
       if (result?.error) toast.error(locale === "es" ? "Error al rehacer" : "Redo failed")
@@ -124,8 +124,9 @@ export function useUndoRedo({ weekStart, locale, weekData, setWeekData, fetchWee
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey)) return
-      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undoRedoRef.current.handleUndo() }
-      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); undoRedoRef.current.handleRedo() }
+      const k = e.key.toLowerCase()
+      if (k === "z" && !e.shiftKey) { e.preventDefault(); undoRedoRef.current.handleUndo() }
+      if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); undoRedoRef.current.handleRedo() }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
