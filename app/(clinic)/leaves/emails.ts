@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
 import { sendEmail } from "@/lib/email"
 import { APP_URL } from "@/lib/config"
+import { getResendApiKey } from "@/lib/env"
 
 const TYPE_LABELS: Record<string, { es: string; en: string }> = {
   annual:    { es: "Vacaciones",            en: "Annual leave" },
@@ -45,7 +46,7 @@ export async function sendLeaveRequestEmail(params: {
   totalActiveStaff: number
   overflowNote?: string
 }) {
-  if (!process.env.RESEND_API_KEY) return
+  if (!getResendApiKey()) return
 
   const { signLeaveAction } = await import("@/app/api/leave-action/route")
   const approveToken = signLeaveAction(params.leaveId, "approve")
@@ -230,7 +231,7 @@ export async function sendLeaveCancellationEmail(params: {
   orgName: string
   locale: "es" | "en"
 }) {
-  if (!process.env.RESEND_API_KEY) return
+  if (!getResendApiKey()) return
 
   const isEs = params.locale === "es"
   const baseUrl = APP_URL
@@ -283,7 +284,7 @@ export async function notifyLeaveDecision(params: {
   orgId: string
   decision: "approved" | "rejected"
 }) {
-  if (!process.env.RESEND_API_KEY) return
+  if (!getResendApiKey()) return
 
   const admin = createAdminClient()
 

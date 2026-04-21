@@ -5,6 +5,30 @@ export const ONE_DAY_MS = 86_400_000
 export const FOUR_WEEKS_DAYS = 28
 export const COOKIE_MAX_AGE_ONE_YEAR = 365 * 86_400
 
+/**
+ * UI timing constants. Prefer these over inline numeric literals so the
+ * cadence of the app is discoverable and tunable in one place. Only the
+ * most-replicated values live here; one-off delays inside a specific
+ * component can stay local if they're self-explanatory.
+ */
+export const TIMING = {
+  /** Keep blob URLs alive long enough for the browser to finish opening them. */
+  PDF_URL_REVOKE_MS: 60_000,
+  /** How long a transient success/error flash stays visible. */
+  TOAST_DISMISS_MS: 2_000,
+  /** Auto-close delay for tap-to-reveal popovers on mobile. */
+  POPOVER_AUTO_CLOSE_MS: 3_000,
+  /** Delay before focusing an input after a sheet/modal opens — lets the
+   *  browser finish the enter animation so the keyboard doesn't flicker. */
+  FOCUS_DELAY_MS: 300,
+  /** Delay between opening the chat panel and auto-sending a prefilled prompt. */
+  SEND_DELAY_MS: 400,
+  /** Initial interval for notification polling (doubles on backoff). */
+  POLLING_INITIAL_MS: 30_000,
+  /** Ceiling for polling backoff — 5 minutes. */
+  POLLING_MAX_MS: 300_000,
+} as const
+
 // ── Rota engine ───────────────────────────────────────────────────────────────
 /** How many weeks of recent assignments to look back when calculating rotation fairness */
 export const RECENT_ASSIGNMENTS_LOOKBACK_DAYS = 28

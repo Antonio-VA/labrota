@@ -1,5 +1,6 @@
 import "server-only"
 import { FROM_EMAIL } from "@/lib/config"
+import { getResendApiKey } from "@/lib/env"
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
 const RESEND_MAX_RECIPIENTS_PER_CALL = 50
@@ -41,7 +42,7 @@ export interface SendEmailResult {
  * or swallow it (best-effort updates). Never throws.
  */
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
-  const resendKey = process.env.RESEND_API_KEY
+  const resendKey = getResendApiKey()
   if (!resendKey) return { ok: false, skipped: true, error: "RESEND_API_KEY not configured" }
 
   if (!params.html && !params.text) {

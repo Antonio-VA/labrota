@@ -17,6 +17,7 @@ import { updateLabConfig } from "@/app/(clinic)/lab/actions"
 import { createRule, toggleRule, deleteRule } from "@/app/(clinic)/lab/rules-actions"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { TIMING } from "@/lib/constants"
 import type { Proposal } from "@/lib/proposal-types"
 
 const transport = new DefaultChatTransport({
@@ -291,7 +292,7 @@ export function ChatPanel({
 
   // Focus input when panel opens
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 300)
+    if (open) setTimeout(() => inputRef.current?.focus(), TIMING.FOCUS_DELAY_MS)
   }, [open])
 
   // Listen for pre-filled AI prompts (e.g. from swap panel "Check impact")
@@ -299,7 +300,7 @@ export function ChatPanel({
     function onPrompt(e: Event) {
       const prompt = (e as CustomEvent).detail as string
       if (prompt) {
-        setTimeout(() => sendMessage({ text: prompt }), 400)
+        setTimeout(() => sendMessage({ text: prompt }), TIMING.SEND_DELAY_MS)
       }
     }
     window.addEventListener("labrota:ai-prompt", onPrompt)
@@ -387,7 +388,14 @@ export function ChatPanel({
                         }`}
                       >
                         {m.role === "user" ? text : (
+                          // Defence-in-depth: constrain the tags ReactMarkdown
+                          // may render so a future model regression (or prompt
+                          // injection via tool output) can't emit <img
+                          // onerror=...>, <script>, or <a href="javascript:…">.
+                          // Keep this list in sync with the `components` map.
                           <ReactMarkdown
+                            allowedElements={["p", "strong", "em", "ul", "ol", "li", "code", "pre", "br"]}
+                            unwrapDisallowed
                             components={{
                               p:      ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
                               strong: ({ children }) => <strong className="font-semibold">{children}</strong>,

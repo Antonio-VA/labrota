@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react"
 import { createPortal } from "react-dom"
+import { TIMING } from "@/lib/constants"
 
 export function TapPopover({ trigger, children }: { trigger: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -37,7 +38,7 @@ export function TapPopover({ trigger, children }: { trigger: ReactNode; children
     }
     document.addEventListener("mousedown", handler)
     document.addEventListener("touchstart", handler)
-    const timer = setTimeout(() => setOpen(false), 3000)
+    const timer = setTimeout(() => setOpen(false), TIMING.POPOVER_AUTO_CLOSE_MS)
     return () => {
       document.removeEventListener("mousedown", handler)
       document.removeEventListener("touchstart", handler)

@@ -4,12 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { exchangeCodeForTokens, getMicrosoftProfile } from "@/lib/outlook/graph-client"
 import { encrypt } from "@/lib/outlook/encryption"
 import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
-
-function getOutlookStateSecret(): string {
-  const secret = process.env.OUTLOOK_STATE_SECRET
-  if (!secret) throw new Error("OUTLOOK_STATE_SECRET env var is required")
-  return secret
-}
+import { getOutlookStateSecret } from "@/lib/env"
+import { redactForLog } from "@/lib/redact"
 
 // Verify and parse the signed state parameter
 function parseState(state: string): { staffId: string; orgId: string } | null {
@@ -54,7 +50,7 @@ export async function GET(req: NextRequest) {
 
   // User declined consent
   if (error) {
-    console.error("[outlook-callback] OAuth error:", error, errorDesc)
+    console.error("[outlook-callback] OAuth error:", error, redactForLog(errorDesc))
     return errorRedirect(req, `consent_${error}`)
   }
 
@@ -111,7 +107,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/leaves?outlook=connected", req.url))
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown"
-    console.error("[outlook-callback] Error:", msg)
+    console.error("[outlook-callback] Error:", redactForLog(msg))
     return errorRedirect(req, encodeURIComponent(msg.slice(0, 100)))
   }
 }

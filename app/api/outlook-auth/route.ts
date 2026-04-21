@@ -2,12 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { createHmac } from "crypto"
 import { MICROSOFT_AUTH_URL, SCOPES, getClientConfig } from "@/lib/outlook/config"
 import { authorizeOutlookConnection } from "@/lib/outlook/authorize"
-
-function getOutlookStateSecret(): string {
-  const secret = process.env.OUTLOOK_STATE_SECRET
-  if (!secret) throw new Error("OUTLOOK_STATE_SECRET env var is required")
-  return secret
-}
+import { getOutlookStateSecret } from "@/lib/env"
 
 // Build a signed state parameter to prevent CSRF
 function buildState(staffId: string, orgId: string): string {

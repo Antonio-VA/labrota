@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable"
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import type { Tecnica } from "@/lib/types/database"
 import { formatTime } from "@/lib/format-time"
+import { TIMING } from "@/lib/constants"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ async function sharePdf(doc: jsPDF, filename: string) {
 
   const url = URL.createObjectURL(blob)
   window.open(url, "_blank")
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  setTimeout(() => URL.revokeObjectURL(url), TIMING.PDF_URL_REVOKE_MS)
 }
 
 /** Render header + return startY for table */

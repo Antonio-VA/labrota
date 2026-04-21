@@ -1,14 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { syncAllForOrg } from "@/lib/outlook/sync"
+import { getCronSecret } from "@/lib/env"
 
 // Cron endpoint: syncs all connected Outlook accounts for all orgs with outlook sync enabled.
 // Secured by CRON_SECRET env var (Vercel Cron sets this automatically).
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (authHeader !== `Bearer ${getCronSecret()}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

@@ -1,5 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic"
-import { convertToModelMessages, streamText, stepCountIs, UIMessage } from "ai"
+import { convertToModelMessages, streamText, stepCountIs } from "ai"
 import { CLAUDE_MODEL } from "@/lib/constants"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
@@ -8,6 +8,7 @@ import { addDays } from "@/lib/engine-helpers"
 import { buildReadTools } from "./_lib/read-tools"
 import { buildProposeTools } from "./_lib/propose-tools"
 import { buildSystemPrompt } from "./_lib/system-prompt"
+import { validateChatBody } from "./_lib/validate-body"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -23,24 +24,41 @@ export async function POST(req: Request) {
   const { success } = rateLimit(`chat:${user.id}`, 20)
   if (!success) return rateLimitResponse()
 
-  const { messages, viewingWeekStart, currentPage }: { messages: UIMessage[]; viewingWeekStart?: string; currentPage?: string } = await req.json()
+  // Bounds before we hand anything to the AI model. A malformed or oversized
+  // payload would either crash `convertToModelMessages` or (worse) balloon
+  // provider cost + latency before the rate limiter notices.
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return Response.json({ error: "Request body must be valid JSON." }, { status: 400 })
+  }
+  const validated = validateChatBody(body)
+  if (!validated.ok) {
+    return Response.json({ error: validated.error }, { status: 400 })
+  }
+  const { messages: typedMessages, viewingWeekStart: safeViewingWeekStart, currentPage: safeCurrentPage } = validated
 
-  const viewingWeekEnd = viewingWeekStart ? addDays(viewingWeekStart, 6) : undefined
+  const viewingWeekEnd = safeViewingWeekStart ? addDays(safeViewingWeekStart, 6) : undefined
 
-  const systemText = buildSystemPrompt({ viewingWeekStart, viewingWeekEnd, currentPage })
+  const systemText = buildSystemPrompt({
+    viewingWeekStart: safeViewingWeekStart,
+    viewingWeekEnd,
+    currentPage: safeCurrentPage,
+  })
 
   try {
     const result = streamText({
       model: anthropic(CLAUDE_MODEL),
       system: systemText,
       abortSignal: AbortSignal.timeout(30_000),
-      messages: await convertToModelMessages(messages),
+      messages: await convertToModelMessages(typedMessages),
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },
       },
       stopWhen: stepCountIs(5),
       tools: {
-        ...buildReadTools({ supabase, orgId, viewingWeekStart, viewingWeekEnd }),
+        ...buildReadTools({ supabase, orgId, viewingWeekStart: safeViewingWeekStart, viewingWeekEnd }),
         ...buildProposeTools({ supabase, orgId }),
       },
     })

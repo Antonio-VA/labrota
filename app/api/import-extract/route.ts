@@ -3,6 +3,7 @@ import { generateText, Output } from "ai"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { detectFromBase64 } from "@/lib/detect-file-type"
 import type { ProcessedFile } from "@/lib/types/import"
 
 const extractionSchema = z.object({
@@ -141,6 +142,19 @@ export async function POST(req: Request) {
     }
     if (file.type === "image" && file.mediaType && !ALLOWED_MEDIA.includes(file.mediaType)) {
       return Response.json({ error: `Unsupported media type: ${file.mediaType}` }, { status: 400 })
+    }
+    // `file.type` / `file.mediaType` come from the browser's File object and
+    // are trivially spoofable. Sniff magic bytes on the base64 payload before
+    // trusting the declared MIME — reject anything that doesn't match PDF or
+    // one of the accepted image formats.
+    if (file.type === "image" && file.base64) {
+      const detected = detectFromBase64(file.base64)
+      if (!detected) {
+        return Response.json({ error: `File ${file.fileName} is not a recognised PDF or image.` }, { status: 400 })
+      }
+      if (file.mediaType && detected !== file.mediaType) {
+        return Response.json({ error: `File ${file.fileName} is declared as ${file.mediaType} but is actually ${detected}.` }, { status: 400 })
+      }
     }
     totalBytes += (file.content?.length ?? 0) + (file.base64?.length ?? 0)
   }

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
+import { TIMING } from "@/lib/constants"
 
 export function AutosaveNotes({ staffId, initialValue }: { staffId: string; initialValue: string }) {
   const tc = useTranslations("common")
@@ -18,7 +19,7 @@ export function AutosaveNotes({ staffId, initialValue }: { staffId: string; init
       setSaveStatus("saving")
       const result = await bulkUpdateStaffField([{ id: staffId, field: "notes", value: newValue }])
       setSaveStatus(result.error ? "" : "saved")
-      if (!result.error) setTimeout(() => setSaveStatus(""), 2000)
+      if (!result.error) setTimeout(() => setSaveStatus(""), TIMING.TOAST_DISMISS_MS)
     }, 800)
   }
 

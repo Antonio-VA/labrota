@@ -3,14 +3,13 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { TOKEN_TTL_MS } from "@/lib/config"
+import { getSwapTokenSecret } from "@/lib/env"
 import { sendSwapTargetEmail, notifySwapTarget, notifySwapInitiator } from "@/lib/swap-email"
 import { executeSwap } from "@/app/(clinic)/swaps/actions"
 import { actionResultPage, actionErrorPage } from "@/lib/email-page"
 
 function getSecret(): Buffer {
-  const secret = process.env.SWAP_TOKEN_SECRET
-  if (!secret) throw new Error("SWAP_TOKEN_SECRET env var is required")
-  return Buffer.from(secret)
+  return Buffer.from(getSwapTokenSecret())
 }
 
 

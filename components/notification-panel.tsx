@@ -12,6 +12,7 @@ import {
   markAllAsRead,
 } from "@/app/(clinic)/notification-actions"
 import type { Notification } from "@/lib/types/database"
+import { TIMING } from "@/lib/constants"
 
 const SWAP_TYPES = new Set(["swap_request", "swap_pending_target", "swap_approved", "swap_rejected"])
 
@@ -34,7 +35,7 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
   const [swapActioned, setSwapActioned] = useState<Set<string>>(new Set())
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const delayRef = useRef(30_000) // start at 30s
+  const delayRef = useRef<number>(TIMING.POLLING_INITIAL_MS)
   const countRef = useRef(0)
 
   const refreshList = useCallback(() => {
@@ -52,11 +53,11 @@ export function NotificationBell({ large }: { large?: boolean } = {}) {
         if (n > countRef.current) refreshList()
         countRef.current = n
         setCount(n)
-        delayRef.current = 30_000
+        delayRef.current = TIMING.POLLING_INITIAL_MS
         scheduleNext()
       }).catch(() => {
-        // Back off on failure: double up to 5 minutes
-        delayRef.current = Math.min(delayRef.current * 2, 300_000)
+        // Back off on failure: double up to POLLING_MAX_MS
+        delayRef.current = Math.min(delayRef.current * 2, TIMING.POLLING_MAX_MS)
         scheduleNext()
       })
     }, delayRef.current)
