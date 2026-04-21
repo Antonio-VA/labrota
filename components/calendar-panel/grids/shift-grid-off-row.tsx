@@ -28,21 +28,23 @@ export function ShiftGridOffRow({
 }) {
   function renderChip(s: StaffWithSkills, date: string, onLeave: boolean) {
     const isHov = hoveredStaffId === s.id
-    const fallbackBorder = onLeave ? "var(--muted-foreground)" : (roleBorder[s.role] ?? "#94A3B8")
+    const staffColor = staffColorMap[s.id]
+    const hasHighlight = isHov && !!staffColor
+    const roleBorderColor = onLeave ? "var(--muted-foreground)" : (roleBorder[s.role] ?? "#94A3B8")
+    const leftBorderColor = colorChips ? (hasHighlight ? staffColor : roleBorderColor) : undefined
     const chip = (
       <div
         onClick={() => onChipClick({ staff_id: s.id } as Assignment, date)}
         onMouseEnter={() => setHovered(s.id)}
         onMouseLeave={() => setHovered(null)}
         className={cn(
-          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border cursor-pointer transition-colors duration-150",
+          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border cursor-pointer transition-colors duration-150",
           onLeave && "select-none",
-          colorChips ? "border-border" : "border-transparent",
         )}
         style={{
-          borderLeft: `3px solid ${colorChips && isHov && staffColorMap[s.id] ? staffColorMap[s.id] : fallbackBorder}`,
+          ...(leftBorderColor ? { borderLeft: `3px solid ${leftBorderColor}` } : {}),
           borderRadius: 4, paddingLeft: 5, paddingRight: 6,
-          ...(colorChips && isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}),
+          ...(hasHighlight ? { backgroundColor: staffColor, color: "#1e293b" } : {}),
         }}
       >
         <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
