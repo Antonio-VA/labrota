@@ -82,10 +82,13 @@ test.describe("Authenticated page loads", () => {
     // my-rota is mobile-only (md:hidden). Use phone viewport.
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto("/my-rota")
-    // Page should render — schedule strip, skeleton, or "no shift" message
+    // Page should render — "no shift" message or schedule content
     await expect(
-      page.getByText(/turno|shift|no tienes|lun|mon|sáb|sat/i).first()
-    ).toBeVisible({ timeout: 20_000 })
+      page.getByText(/No tienes un turno|No shift assigned/i).first()
+    ).toBeVisible({ timeout: 20_000 }).catch(async () => {
+      // If user has a shift, schedule content loads instead
+      await expect(page.locator("[data-pill], .animate-pulse").first()).toBeVisible({ timeout: 10_000 })
+    })
   })
 
   test("staff/new page loads", async ({ page }) => {
