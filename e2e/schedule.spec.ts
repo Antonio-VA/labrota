@@ -13,11 +13,13 @@ test.describe("Schedule interactions", () => {
 
     // Navigate forward
     const nextBtn = page.getByRole("button", { name: /Período siguiente|Next period/i })
+    await expect(nextBtn).toBeVisible({ timeout: 10_000 })
     await nextBtn.click()
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 5_000 })
 
     // Navigate back
     const prevBtn = page.getByRole("button", { name: /Período anterior|Previous period/i })
+    await expect(prevBtn).toBeVisible({ timeout: 10_000 })
     await prevBtn.click()
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 5_000 })
 
@@ -32,7 +34,7 @@ test.describe("Schedule interactions", () => {
     await expect(page.getByRole("button", { name: /^(Semana|Week)$/i })).toBeVisible({ timeout: 45_000 })
 
     // Switch to month
-    const monthBtn = page.getByRole("button", { name: /^(4 semanas|Month)$/i })
+    const monthBtn = page.getByRole("button", { name: /^(4 semanas|4 weeks|Month)$/i })
     await monthBtn.click()
 
     // Month view should show — button should now be active/pressed

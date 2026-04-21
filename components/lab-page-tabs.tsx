@@ -37,11 +37,15 @@ export function LabPageTabs({
   return (
     <div className="flex flex-col gap-6 w-full overflow-hidden">
       {/* Tab bar */}
-      <div className="flex border-b border-border">
+      <div role="tablist" className="flex border-b border-border">
         {TAB_KEYS.map((key) => (
           <button
             key={key}
             type="button"
+            role="tab"
+            aria-selected={active === key}
+            aria-controls={`lab-tabpanel-${key}`}
+            id={`lab-tab-${key}`}
             onClick={() => setActive(key)}
             className={cn(
               "px-4 py-2 text-[14px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
@@ -56,7 +60,12 @@ export function LabPageTabs({
       </div>
 
       {/* Tab content — only active tab rendered */}
-      <div className="w-full">
+      <div
+        role="tabpanel"
+        id={`lab-tabpanel-${active}`}
+        aria-labelledby={`lab-tab-${active}`}
+        className="w-full"
+      >
         {content[active]}
       </div>
     </div>

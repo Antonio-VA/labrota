@@ -73,7 +73,7 @@ test.describe("Staff page", () => {
   test("new staff page shows creation form", async ({ page }) => {
     await page.goto("/staff/new")
     await expect(
-      page.getByText(/Añadir personal|Add Staff/i).first()
+      page.getByText(/Añadir miembro|Add member/i).first()
     ).toBeVisible({ timeout: 10_000 })
 
     // Form should have name inputs

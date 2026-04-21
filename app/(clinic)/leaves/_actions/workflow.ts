@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { isHrModuleActive, checkLeaveRequestBalance } from "@/lib/hr-leave-integration"
@@ -200,7 +201,12 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
     trigger: "leave_approved",
   })
 
-  notifyLeaveDecision({ leaveId, orgId, decision: "approved" }).catch((e) => console.error("[leave] approveLeave notification failed:", e))
+  // after() keeps the promise alive past the server-action response so the
+  // serverless function isn't torn down before the email/notification sends.
+  after(() =>
+    notifyLeaveDecision({ leaveId, orgId, decision: "approved" })
+      .catch((e) => console.error("[leave] approveLeave notification failed:", e))
+  )
 
   revalidatePath("/schedule")
   revalidatePath("/leaves")
@@ -234,7 +240,10 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
     .eq("id", leaveId)
     .eq("organisation_id", orgId)
 
-  notifyLeaveDecision({ leaveId, orgId, decision: "rejected" }).catch((e) => console.error("[leave] rejectLeave notification failed:", e))
+  after(() =>
+    notifyLeaveDecision({ leaveId, orgId, decision: "rejected" })
+      .catch((e) => console.error("[leave] rejectLeave notification failed:", e))
+  )
 
   revalidatePath("/leaves")
   return {}

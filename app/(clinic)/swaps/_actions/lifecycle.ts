@@ -56,8 +56,17 @@ export async function cancelSwapRequest(swapId: string): Promise<{ error?: strin
 
 // ── Execute swap (called when target accepts) ────────────────────────────────
 
-export async function executeSwap(swapId: string): Promise<{ error?: string }> {
-  const orgId = await getOrgId()
+/**
+ * Execute an approved swap. Swaps the staff assignments atomically.
+ *
+ * @param swapId - ID of the swap request to execute
+ * @param trustedOrgId - Optional org ID to use instead of the session-derived
+ *   one. Required when called from unauthenticated routes (e.g. HMAC email
+ *   action links where the caller has no session cookie). Callers MUST have
+ *   verified the caller's right to this org (e.g. via HMAC token validation).
+ */
+export async function executeSwap(swapId: string, trustedOrgId?: string): Promise<{ error?: string }> {
+  const orgId = trustedOrgId ?? await getOrgId()
   if (!orgId) return { error: "No organisation found." }
 
   const admin = createAdminClient()

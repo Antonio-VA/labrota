@@ -79,15 +79,19 @@ test.describe("Authenticated page loads", () => {
   })
 
   test("my-rota page loads", async ({ page }) => {
+    // my-rota is a mobile-only view (`md:hidden`). Use a phone-sized viewport.
+    await page.setViewportSize({ width: 390, height: 844 })
     await page.goto("/my-rota")
-    // Should show personal schedule or loading state — wait for any content
-    await expect(page.locator("main, [data-weekly-strip]").first()).toBeVisible({ timeout: 15_000 })
+    // Should show personal schedule, skeleton, or "no shift" message
+    await expect(
+      page.locator("main, [data-weekly-strip], .animate-pulse, p").first()
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test("staff/new page loads", async ({ page }) => {
     await page.goto("/staff/new")
     await expect(
-      page.getByText(/Añadir personal|Add Staff/i).first()
+      page.getByText(/Añadir miembro|Add member/i).first()
     ).toBeVisible({ timeout: 10_000 })
   })
 

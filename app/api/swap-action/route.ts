@@ -83,17 +83,30 @@ export async function GET(request: NextRequest) {
   // === MANAGER STEP ===
   if (step === "manager") {
     if (action === "approve") {
+      const reviewedAt = new Date().toISOString()
       await admin
         .from("swap_requests")
-        .update({ status: "pending_target", manager_reviewed_at: new Date().toISOString() })
+        .update({ status: "pending_target", manager_reviewed_at: reviewedAt })
         .eq("id", swapId)
 
-      // Send email to target staff with accept/decline links
+      // Send email to target staff with accept/decline links.
+      // If the email send fails, roll the status back so the swap isn't stuck
+      // in pending_target with no way for the target to know about it.
       try {
         await sendSwapTargetEmail(swapId, swap.organisation_id)
-      } catch (e) { console.error("[swap-action] Failed to send target email:", e) }
+      } catch (e) {
+        console.error("[swap-action] Failed to send target email, rolling back status:", e)
+        await admin
+          .from("swap_requests")
+          .update({ status: "pending_manager", manager_reviewed_at: null })
+          .eq("id", swapId)
+          .eq("status", "pending_target")
+        return new NextResponse(actionErrorPage(
+          "The swap was approved but the target staff member could not be notified. Please try again in a moment."
+        ), { status: 502, headers: { "Content-Type": "text/html" } })
+      }
 
-      // In-app notification for target
+      // In-app notification for target (best-effort — email is the source of truth)
       try {
         await notifySwapTarget(swapId, swap.organisation_id)
       } catch { /* notification failure should not block */ }
@@ -128,7 +141,9 @@ export async function GET(request: NextRequest) {
     if (action === "approve") {
       // Execute the swap
       try {
-        const result = await executeSwap(swapId)
+        // Pass org explicitly — this route is HMAC-authenticated with no session cookie,
+        // so executeSwap() would otherwise fail to resolve the org from getOrgId().
+        const result = await executeSwap(swapId, swap.organisation_id)
         if (result.error) {
           return new NextResponse(actionErrorPage(result.error), { status: 400, headers: { "Content-Type": "text/html" } })
         }

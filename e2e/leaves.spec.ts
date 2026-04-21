@@ -39,7 +39,7 @@ test.describe("Leaves page", () => {
     ).toBeVisible({ timeout: 5_000 })
 
     // Should have date inputs and a submit button
-    await expect(page.locator("input, [role='combobox'], select").first()).toBeVisible({ timeout: 3_000 })
+    await expect(page.locator("input:not([type='file']), [role='combobox'], select").first()).toBeVisible({ timeout: 3_000 })
     await expect(
       page.getByRole("button", { name: /Guardar|Save|Crear|Create|Añadir|Add/i }).first()
     ).toBeVisible({ timeout: 3_000 })
