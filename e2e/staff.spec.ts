@@ -77,7 +77,7 @@ test.describe("Staff page", () => {
     ).toBeVisible({ timeout: 10_000 })
 
     // Form should have name inputs
-    await expect(page.locator("input").first()).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator("input:not([type='file'])").first()).toBeVisible({ timeout: 5_000 })
 
     // Should have a submit/save button
     await expect(

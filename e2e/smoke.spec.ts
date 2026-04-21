@@ -79,13 +79,13 @@ test.describe("Authenticated page loads", () => {
   })
 
   test("my-rota page loads", async ({ page }) => {
-    // my-rota is a mobile-only view (`md:hidden`). Use a phone-sized viewport.
+    // my-rota is mobile-only (md:hidden). Use phone viewport.
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto("/my-rota")
-    // Should show personal schedule, skeleton, or "no shift" message
+    // Page should render — schedule strip, skeleton, or "no shift" message
     await expect(
-      page.locator("main, [data-weekly-strip], .animate-pulse, p").first()
-    ).toBeVisible({ timeout: 15_000 })
+      page.getByText(/turno|shift|no tienes|lun|mon|sáb|sat/i).first()
+    ).toBeVisible({ timeout: 20_000 })
   })
 
   test("staff/new page loads", async ({ page }) => {

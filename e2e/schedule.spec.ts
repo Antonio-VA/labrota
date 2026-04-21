@@ -3,7 +3,9 @@ import { test, expect } from "@playwright/test"
 test.describe("Schedule interactions", () => {
   test.use({ storageState: "e2e/.auth/e2e-test.json" })
 
+  // Schedule loads can take 45s; navigation adds more — extend timeout
   test("week navigation: next and previous", async ({ page }) => {
+    test.setTimeout(90_000)
     await page.goto("/schedule")
     await expect(page.locator("[data-pill]").first()).toBeVisible({ timeout: 45_000 })
 
