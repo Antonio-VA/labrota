@@ -38,7 +38,7 @@ export function ShiftGridOffRow({
         onMouseEnter={() => setHovered(s.id)}
         onMouseLeave={() => setHovered(null)}
         className={cn(
-          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border cursor-pointer transition-colors duration-150",
+          "flex items-center gap-1 py-0.5 text-[11px] font-medium w-full bg-card text-muted-foreground border border-border/50 cursor-pointer transition-colors duration-150",
           onLeave && "select-none",
         )}
         style={{
