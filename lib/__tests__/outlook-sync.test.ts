@@ -116,7 +116,7 @@ function makeAdminFrom(opts: {
 
 // ── Import under test ──────────────────────────────────────────────────────────
 
-const { syncStaffOutlook } = await import("@/lib/outlook/sync")
+const { syncStaffOutlook, syncAllForOrg } = await import("@/lib/outlook/sync")
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -266,5 +266,89 @@ describe("leave type inference", () => {
     ["Reunión de equipo",  "other"],
   ])('"%s" → "%s"', async (subject, expected) => {
     expect(await typeForSubject(subject)).toBe(expected)
+  })
+})
+
+// ── Partial-failure reporting ─────────────────────────────────────────────────
+
+describe("syncAllForOrg partial failures", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function mockConnections(staffIds: string[]) {
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === "outlook_connections") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                then: (resolve: (v: { data: unknown; error: null }) => void) =>
+                  Promise.resolve({
+                    data: staffIds.map((id) => ({ staff_id: id })),
+                    error: null,
+                  }).then(resolve),
+              }),
+            }),
+          }),
+        }
+      }
+      // For staff / leaves / rota_assignments the per-staff sync call reads
+      // the first chain(); return something generic & safe.
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: null }) }),
+          }),
+        }),
+      }
+    })
+  }
+
+  it("counts thrown per-staff syncs as failures and never rejects", async () => {
+    mockConnections(["s-1", "s-2", "s-3"])
+    // s-2 throws inside getValidAccessToken, which inside syncStaffOutlook is
+    // already caught and converted to an errors[] entry. To exercise the
+    // Promise.allSettled path we need syncStaffOutlook itself to throw — the
+    // simplest way is to make the initial staff-membership query throw.
+    let callCount = 0
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === "outlook_connections") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                then: (resolve: (v: { data: unknown; error: null }) => void) =>
+                  Promise.resolve({
+                    data: [{ staff_id: "s-1" }, { staff_id: "s-2" }, { staff_id: "s-3" }],
+                    error: null,
+                  }).then(resolve),
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === "staff") {
+        callCount++
+        if (callCount === 2) {
+          // Second call (s-2) blows up before any catch in syncStaffOutlook.
+          throw new Error("db connection dropped")
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: null }) }),
+            }),
+          }),
+        }
+      }
+      return { select: () => ({ eq: () => ({}) }) }
+    })
+
+    const { staffSynced, staffFailed, totalResult } = await syncAllForOrg("org-1")
+
+    // 3 staff total, 1 failed → 2 considered "synced" (fulfilled, even if
+    // they appended their own error entries).
+    expect(staffFailed).toBe(1)
+    expect(staffSynced).toBe(2)
+    expect(totalResult.errors.some((e) => /s-2/.test(e))).toBe(true)
   })
 })

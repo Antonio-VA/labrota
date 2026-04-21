@@ -34,8 +34,13 @@ export async function uploadLeaveAttachment(formData: FormData): Promise<{ path?
   if (!file || file.size === 0) return { error: "No file provided." }
   if (file.size > 10 * 1024 * 1024) return { error: "File exceeds 10 MB limit." }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-  if (!ALLOWED_EXT.has(ext)) {
+  // Defence-in-depth: strip any path segments the client may have supplied
+  // (e.g. `pdf.pdf/../../secret`) before extracting the extension, and require
+  // the extension to be plain alphanumerics. Combined with the whitelist this
+  // makes a path-traversal or smuggled slash impossible to land.
+  const rawName = file.name.replace(/\\/g, "/").split("/").pop() ?? ""
+  const ext = rawName.split(".").pop()?.toLowerCase() ?? ""
+  if (!/^[a-z0-9]+$/.test(ext) || !ALLOWED_EXT.has(ext)) {
     return { error: "Unsupported file type. Allowed: PDF, JPG, PNG, GIF, WebP, DOC, DOCX." }
   }
   if (!ALLOWED_MIME.has(file.type)) {

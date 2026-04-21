@@ -33,10 +33,6 @@ function verifySwapAction(swapId: string, action: string, step: string, token: s
 }
 
 export async function GET(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  const rl = rateLimit(`swap-action:${ip}`, 20)
-  if (!rl.success) return rateLimitResponse()
-
   const { searchParams } = request.nextUrl
   const swapId = searchParams.get("id")
   const action = searchParams.get("action") as "approve" | "reject" | null
@@ -46,6 +42,15 @@ export async function GET(request: NextRequest) {
   if (!swapId || !action || !step || !token || !["approve", "reject"].includes(action) || !["manager", "target"].includes(step)) {
     return new NextResponse(actionErrorPage("Invalid request."), { status: 400, headers: { "Content-Type": "text/html" } })
   }
+
+  // Rate-limit by swap id AND by caller IP — keying on IP alone lets a single
+  // bad actor on a corporate NAT lock out the rest of the clinic, while
+  // keying on swapId alone makes it easy for an attacker to DoS any known
+  // swap. The OR over the two keys gives the tighter bound.
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const rlSwap = rateLimit(`swap-action:swap:${swapId}`, 20)
+  const rlIp = rateLimit(`swap-action:ip:${ip}`, 60)
+  if (!rlSwap.success || !rlIp.success) return rateLimitResponse()
 
   if (!verifySwapAction(swapId, action, step, token)) {
     return new NextResponse(actionErrorPage("Invalid or expired link."), { status: 403, headers: { "Content-Type": "text/html" } })

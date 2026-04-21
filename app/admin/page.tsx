@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { getLocale } from "next-intl/server"
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { Button } from "@/components/ui/button"
 // formatDateWithYear moved into AdminOrgTable client component
@@ -35,6 +37,12 @@ async function fetchLastLogin(admin: ReturnType<typeof createAdminClient>, profi
 }
 
 export default async function AdminPage() {
+  // Defense-in-depth: layout + middleware already gate /admin, but the admin
+  // client bypasses RLS, so re-verify here before instantiating it.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.role !== "super_admin") notFound()
+
   const admin = createAdminClient()
   const locale = await getLocale() as "es" | "en"
 

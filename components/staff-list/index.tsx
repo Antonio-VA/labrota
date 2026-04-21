@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { cn } from "@/lib/utils"
 import type { StaffWithSkills, StaffRole, OnboardingStatus, Tecnica } from "@/lib/types/database"
 import { bulkUpdateStaffField } from "@/app/(clinic)/staff/actions"
-import { makeSkillLabel, sortByName, sortByRole, ALL_COL_ORDER, HR_KEYS, ROLE_BORDER_COLOR, type ColKey } from "./types"
+import { makeSkillLabel, sortByName, sortByRole, ALL_COL_ORDER, HR_KEYS, ROLE_BORDER_COLOR, type ColKey, type TFn } from "./types"
 import { StaffTable } from "./staff-table"
 import { StaffKpis } from "./staff-kpis"
 import { BulkToolbar } from "./bulk-toolbar"
@@ -219,7 +219,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
           departments={deptsProp}
           deptBorder={deptBorder}
           maxStaff={maxStaff}
-          t={t as any}
+          t={t as unknown as TFn}
         />
       )}
 
@@ -277,7 +277,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
 
         {activeFiltered.length > 0 && (
           <StaffTable
-            members={activeFiltered} t={t as any} ts={ts as any} muted={false}
+            members={activeFiltered} t={t as unknown as TFn} ts={ts as unknown as TFn} muted={false}
             selectedIds={effectiveSelectedIds} onToggle={toggleOne} onToggleAll={toggleAll}
             skillLabel={skillLabel} deptBorder={deptBorder} deptLabel={deptLabel} skillOrder={skillOrder} tecnicas={tecnicas}
             sortCol={sortCol} onSortChange={setSortCol} visibleCols={visibleCols} editMode={editMode}
@@ -300,7 +300,7 @@ export function StaffList({ staff, tecnicas = [], departments: deptsProp = [], s
         {showHistory && inactiveFiltered.length > 0 && (
           <div className="mt-4">
             <StaffTable
-              members={inactiveFiltered} t={t as any} ts={ts as any} muted
+              members={inactiveFiltered} t={t as unknown as TFn} ts={ts as unknown as TFn} muted
               selectedIds={effectiveSelectedIds} onToggle={toggleOne} onToggleAll={toggleAll}
               skillLabel={skillLabel} deptBorder={deptBorder} deptLabel={deptLabel} skillOrder={skillOrder} tecnicas={tecnicas}
               colOrder={colOrder}

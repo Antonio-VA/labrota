@@ -223,8 +223,14 @@ export async function syncStaffOutlook(staffId: string, orgId: string): Promise<
 
 const SYNC_CONCURRENCY = 5
 
-// Sync all connected staff for an organisation
-export async function syncAllForOrg(orgId: string): Promise<{ staffSynced: number; totalResult: SyncResult }> {
+// Sync all connected staff for an organisation.
+// Uses Promise.allSettled so one staff failure does not silently shortcut the
+// whole org — each rejection is captured into totalResult.errors.
+export async function syncAllForOrg(orgId: string): Promise<{
+  staffSynced: number
+  staffFailed: number
+  totalResult: SyncResult
+}> {
   const admin = createAdminClient()
   const { data: connections } = await admin
     .from("outlook_connections")
@@ -234,17 +240,27 @@ export async function syncAllForOrg(orgId: string): Promise<{ staffSynced: numbe
 
   const totalResult: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
   const staffIds = (connections ?? []).map((c) => c.staff_id)
+  let staffFailed = 0
 
   for (let i = 0; i < staffIds.length; i += SYNC_CONCURRENCY) {
     const batch = staffIds.slice(i, i + SYNC_CONCURRENCY)
-    const results = await Promise.all(batch.map((id) => syncStaffOutlook(id, orgId)))
-    for (const r of results) {
-      totalResult.created += r.created
-      totalResult.updated += r.updated
-      totalResult.deleted += r.deleted
-      totalResult.errors.push(...r.errors)
+    const settled = await Promise.allSettled(batch.map((id) => syncStaffOutlook(id, orgId)))
+    for (let j = 0; j < settled.length; j++) {
+      const s = settled[j]
+      if (s.status === "fulfilled") {
+        const r = s.value
+        totalResult.created += r.created
+        totalResult.updated += r.updated
+        totalResult.deleted += r.deleted
+        totalResult.errors.push(...r.errors)
+      } else {
+        staffFailed++
+        const msg = s.reason instanceof Error ? s.reason.message : String(s.reason)
+        console.error(`[outlook-sync] staff ${batch[j]} threw:`, msg)
+        totalResult.errors.push(`staff ${batch[j]}: ${msg}`)
+      }
     }
   }
 
-  return { staffSynced: staffIds.length, totalResult }
+  return { staffSynced: staffIds.length - staffFailed, staffFailed, totalResult }
 }

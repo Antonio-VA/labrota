@@ -1,6 +1,7 @@
 import type { RotaWeekData } from "@/app/(clinic)/rota/actions"
 import { formatDate, formatDateWithYear, toISODate } from "@/lib/format-date"
 import { formatTime } from "@/lib/format-time"
+import { APP_URL } from "@/lib/config"
 
 /**
  * Build LabRota-branded HTML email with the week schedule inline.
@@ -23,7 +24,7 @@ export function buildRotaEmailHtml(params: {
     ? `Horario publicado: ${weekLabel}`
     : `Rota published: ${weekLabel}`
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
 
   // Build day headers
   const dayHeaders = data.days.map((day) => {

@@ -248,6 +248,11 @@ export async function restoreBackup(
   if (!backup) return { error: "Backup not found" }
 
   if (options.config) {
+    // NOTE: the `as never` casts below restore historical JSON snapshots whose
+    // shape may not match the current generated Supabase Insert type (columns
+    // get added/renamed over the life of the schema). They are intentional —
+    // do not replace with typed inserts without also migrating old backups.
+
     // Clear existing config
     await admin.from("staff_skills").delete().eq("organisation_id", orgId)
     await admin.from("leaves").delete().eq("organisation_id", orgId)

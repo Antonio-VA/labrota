@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate } from "@/lib/format-date"
 import { sendEmail as sendResendEmail } from "@/lib/email"
+import { APP_URL } from "@/lib/config"
 import type { SwapRequest } from "@/lib/types/database"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -13,6 +14,13 @@ async function getSwapContext(swapId: string, orgId: string) {
     admin.from("organisations").select("name").eq("id", orgId).single(),
     admin.from("lab_config").select("country").eq("organisation_id", orgId).maybeSingle(),
   ])
+
+  if (swapRes.error) {
+    console.warn(`[swap-email] failed to load swap ${swapId}:`, swapRes.error.message)
+  }
+  if (orgRes.error) {
+    console.warn(`[swap-email] failed to load org ${orgId}:`, orgRes.error.message)
+  }
 
   const swap = swapRes.data as SwapRequest | null
   if (!swap) return null
@@ -135,7 +143,7 @@ export async function sendSwapManagerEmail(swapId: string, orgId: string) {
   if (emails.length === 0) return
 
   const { signSwapAction } = await import("@/app/api/swap-action/route")
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
   const approveUrl = `${baseUrl}/api/swap-action?id=${swapId}&action=approve&step=manager&token=${signSwapAction(swapId, "approve", "manager")}`
   const rejectUrl = `${baseUrl}/api/swap-action?id=${swapId}&action=reject&step=manager&token=${signSwapAction(swapId, "reject", "manager")}`
 
@@ -205,7 +213,7 @@ export async function sendSwapTargetEmail(swapId: string, orgId: string) {
   if (!targetEmail) return
 
   const { signSwapAction } = await import("@/app/api/swap-action/route")
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
   const acceptUrl = `${baseUrl}/api/swap-action?id=${swapId}&action=approve&step=target&token=${signSwapAction(swapId, "approve", "target")}`
   const declineUrl = `${baseUrl}/api/swap-action?id=${swapId}&action=reject&step=target&token=${signSwapAction(swapId, "reject", "target")}`
 
@@ -264,7 +272,7 @@ export async function notifySwapInitiator(swapId: string, orgId: string, result:
           : `Your shift swap request with <strong>${targetName}</strong> on <strong>${dateLabel}</strong> has been <strong>rejected</strong>.`)}
     </p>
     <p style="text-align:center;margin:16px 0 0;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"}" style="color:#1B4F8A;font-size:13px;text-decoration:underline;">${isEs ? "Abrir LabRota" : "Open LabRota"}</a>
+      <a href="${APP_URL}" style="color:#1B4F8A;font-size:13px;text-decoration:underline;">${isEs ? "Abrir LabRota" : "Open LabRota"}</a>
     </p>`
 
   const headerColor = isApproved ? "#059669" : "#ef4444"

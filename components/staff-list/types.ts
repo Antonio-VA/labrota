@@ -1,6 +1,11 @@
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
 import { DEFAULT_DEPT_BORDER } from "@/lib/department-colors"
 
+// Narrowed next-intl TFunction used across staff-list subcomponents. Cast from
+// `useTranslations()` at the call site — next-intl's full generic signature
+// isn't compatible with passing `t` down through a simple prop.
+export type TFn = (key: string, values?: Record<string, unknown>) => string
+
 // ── Column types ────────────────────────────────────────────────────────────
 
 export type ColKey =

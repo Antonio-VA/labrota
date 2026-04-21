@@ -13,6 +13,7 @@ export function useMobileWeekData() {
   const [data, setData] = useState<RotaWeekData | null>(() => _mobileWeekCache.get(getMondayOf()) ?? null)
   const [staffList, setStaffList] = useState<StaffWithSkills[]>(() => _mobileWeekStaffCache ?? [])
   const [loading, setLoading] = useState(() => !_mobileWeekCache.has(getMondayOf()))
+  const [error, setError] = useState<string | null>(null)
 
   /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-week-change */
   useEffect(() => {
@@ -22,15 +23,20 @@ export function useMobileWeekData() {
       setData(cachedData)
       setStaffList(cachedStaff)
       setLoading(false)
+      setError(null)
       Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
         _mobileWeekCache.set(weekStart, rotaData)
         _mobileWeekStaffCache = staff
         setData(rotaData)
         setStaffList(staff)
-      }).catch(() => {})
+      }).catch((err) => {
+        console.error("[mobile-week] background refresh failed", err)
+        setError(err instanceof Error ? err.message : "Failed to refresh week")
+      })
       return
     }
     setLoading(true)
+    setError(null)
     Promise.all([
       cachedData ? Promise.resolve(cachedData) : getRotaWeek(weekStart),
       cachedStaff ? Promise.resolve(cachedStaff) : getActiveStaff(),
@@ -40,20 +46,29 @@ export function useMobileWeekData() {
       setData(rotaData)
       setStaffList(staff)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch((err) => {
+      console.error("[mobile-week] fetch failed", err)
+      setError(err instanceof Error ? err.message : "Failed to load week")
+      setLoading(false)
+    })
   }, [weekStart])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function refresh() {
     setLoading(true)
+    setError(null)
     Promise.all([getRotaWeek(weekStart), getActiveStaff()]).then(([rotaData, staff]) => {
       _mobileWeekCache.set(weekStart, rotaData)
       _mobileWeekStaffCache = staff
       setData(rotaData)
       setStaffList(staff)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch((err) => {
+      console.error("[mobile-week] refresh failed", err)
+      setError(err instanceof Error ? err.message : "Failed to refresh week")
+      setLoading(false)
+    })
   }
 
-  return { weekStart, setWeekStart, data, staffList, loading, refresh }
+  return { weekStart, setWeekStart, data, staffList, loading, error, refresh }
 }

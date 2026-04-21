@@ -53,7 +53,7 @@ export async function getUserDepartment(): Promise<string | null> {
     .from("staff")
     .select("role")
     .eq("email", user.email ?? "")
-    .maybeSingle() as unknown as { data: { role: string } | null }
+    .maybeSingle<{ role: string }>()
 
   return data?.role ?? null
 }
@@ -67,7 +67,7 @@ export async function getUserPreferences(): Promise<UserPreferences> {
     .from("profiles")
     .select("preferences")
     .eq("id", user.id)
-    .single() as unknown as { data: { preferences: UserPreferences } | null }
+    .single<{ preferences: UserPreferences }>()
 
   return data?.preferences ?? {}
 }
@@ -108,7 +108,7 @@ export async function saveUserPreferences(prefs: UserPreferences): Promise<{ err
     .from("profiles")
     .select("preferences")
     .eq("id", user.id)
-    .single() as unknown as { data: { preferences: UserPreferences } | null }
+    .single<{ preferences: UserPreferences }>()
 
   const merged = { ...(existing?.preferences ?? {}), ...prefs }
 
@@ -154,15 +154,15 @@ export async function getUserOutlookStatus(): Promise<UserOutlookStatus> {
     .from("profiles")
     .select("organisation_id")
     .eq("id", user.id)
-    .single() as { data: { organisation_id: string | null } | null }
+    .single<{ organisation_id: string | null }>()
   const orgId = profile?.organisation_id
   if (!orgId) return none
 
   // Fetch feature flag, linked staff member, and email-fallback staff in parallel
   const [configRes, memberRes, staffRes] = await Promise.all([
-    admin.from("lab_config").select("enable_outlook_sync").eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { enable_outlook_sync: boolean } | null }>,
-    admin.from("organisation_members").select("linked_staff_id").eq("user_id", user.id).eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { linked_staff_id: string | null } | null }>,
-    admin.from("staff").select("id").eq("email", user.email ?? "").eq("organisation_id", orgId).maybeSingle() as unknown as Promise<{ data: { id: string } | null }>,
+    admin.from("lab_config").select("enable_outlook_sync").eq("organisation_id", orgId).maybeSingle<{ enable_outlook_sync: boolean }>(),
+    admin.from("organisation_members").select("linked_staff_id").eq("user_id", user.id).eq("organisation_id", orgId).maybeSingle<{ linked_staff_id: string | null }>(),
+    admin.from("staff").select("id").eq("email", user.email ?? "").eq("organisation_id", orgId).maybeSingle<{ id: string }>(),
   ])
 
   if (!configRes.data?.enable_outlook_sync) return none
@@ -174,7 +174,7 @@ export async function getUserOutlookStatus(): Promise<UserOutlookStatus> {
     .from("outlook_connections")
     .select("email, last_synced_at")
     .eq("staff_id", staffId)
-    .maybeSingle() as { data: { email: string; last_synced_at: string | null } | null }
+    .maybeSingle<{ email: string; last_synced_at: string | null }>()
 
   return {
     available: true,

@@ -2,6 +2,7 @@ import "server-only"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate, formatDateWithYear } from "@/lib/format-date"
 import { sendEmail } from "@/lib/email"
+import { APP_URL } from "@/lib/config"
 
 const TYPE_LABELS: Record<string, { es: string; en: string }> = {
   annual:    { es: "Vacaciones",            en: "Annual leave" },
@@ -50,7 +51,7 @@ export async function sendLeaveRequestEmail(params: {
   const approveToken = signLeaveAction(params.leaveId, "approve")
   const rejectToken = signLeaveAction(params.leaveId, "reject")
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
   const approveUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=approve&token=${approveToken}`
   const rejectUrl = `${baseUrl}/api/leave-action?id=${params.leaveId}&action=reject&token=${rejectToken}`
   const appUrl = `${baseUrl}/leaves`
@@ -232,7 +233,7 @@ export async function sendLeaveCancellationEmail(params: {
   if (!process.env.RESEND_API_KEY) return
 
   const isEs = params.locale === "es"
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
   const typeLabel = TYPE_LABELS[params.type]?.[params.locale] ?? params.type
   const fmtDate = (d: string) => formatDate(d + "T12:00:00", params.locale)
 
@@ -334,7 +335,7 @@ export async function notifyLeaveDecision(params: {
 
   const isApproved = params.decision === "approved"
   const headerColor = isApproved ? "#059669" : "#ef4444"
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.labrota.app"
+  const baseUrl = APP_URL
 
   const subject = isApproved
     ? (isEs ? `Ausencia aprobada` : `Leave approved`)

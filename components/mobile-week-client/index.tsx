@@ -25,7 +25,11 @@ export function MobileWeekClient() {
   const tc = useTranslations("common")
   const locale = useLocale() as "es" | "en"
   const canEdit = useCanEdit()
-  const { weekStart, setWeekStart, data, staffList, loading, refresh } = useMobileWeekData()
+  const { weekStart, setWeekStart, data, staffList, loading, error, refresh } = useMobileWeekData()
+
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error])
   const weekGridRef = useRef<HTMLDivElement>(null)
   const [highlightEnabled, setHighlightEnabled] = usePersistedState<boolean>("labrota_week_highlight", false)
   const [highlightedStaff, setHighlightedStaff] = useState<string | null>(null)

@@ -2,6 +2,42 @@
 
 Run these in order in the Supabase SQL editor before deploying new code.
 
+## ⚠️ Known issue — duplicate migration timestamps
+
+Nine timestamps in `supabase/migrations/` are used by two files each:
+
+```
+20260320000001_rota_assignments_function_label.sql + 20260320000001_rota_features.sql
+20260328000001_rota_templates.sql                  + 20260328000001_staff_avoid_preferences.sql
+20260328000002_rota_generation_type.sql            + 20260328000002_tecnicas_avoid_shifts.sql
+20260328000003_andrology_skills.sql                + 20260328000003_task_coverage.sql
+20260328000004_org_billing.sql                     + 20260328000004_preferred_days.sql
+20260328000005_enable_task_in_shift.sql            + 20260328000005_tecnicas_department.sql
+20260328000006_implementation_steps.sql            + 20260328000006_skill_to_text.sql
+20260328000007_backups.sql                         + 20260328000007_migrate_skills_to_tecnica_codes.sql
+20260330000015_restriccion_dia_tecnica_rule.sql    + 20260330000015_rule_expiry.sql
+```
+
+These were already applied to prod, so simply renaming them would make the
+Supabase CLI see them as brand-new migrations and attempt to re-run — most
+would fail with duplicate-column errors and could leave the DB in a bad
+state.
+
+**Do not rename in place.** When this is fixed, the operation must be:
+
+1. During a maintenance window, renumber one file of each pair (e.g. bump
+   `20260320000001_rota_features.sql` → `20260320000002_rota_features.sql`).
+2. In the same migration or a one-off SQL script, update
+   `supabase_migrations.schema_migrations` (or the equivalent tracking
+   table for the CLI version in use) to rewrite the recorded filename for
+   that migration so the CLI treats the renumbered file as already-applied.
+3. Verify `supabase db diff` is clean before and after.
+4. Any staging/dev database that has also applied these migrations needs
+   the same tracking-table rewrite.
+
+Until that is done, keep all *new* migrations strictly after the highest
+existing timestamp so no further collisions happen.
+
 ## How to check what's been run
 
 ```sql

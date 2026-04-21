@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils"
 import { formatDateTime, formatDateTimeDetailed } from "@/lib/format-date"
 import { Input } from "@/components/ui/input"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
-import { getAuditLogs, type AuditLogEntry } from "@/app/(clinic)/lab/audit-actions"
+import { toast } from "sonner"
+import { getAuditLogs, getAuditLogUsers, type AuditLogEntry } from "@/app/(clinic)/lab/audit-actions"
 
 const PAGE_SIZE = 25
 
@@ -69,6 +70,7 @@ export function AuditLogViewer() {
   const locale = useLocale()
   const dateFmt = locale as "es" | "en"
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState("")
   const [userFilter, setUserFilter] = useState("")
@@ -76,30 +78,49 @@ export function AuditLogViewer() {
   const [dateTo, setDateTo] = useState("")
   const [page, setPage] = useState(0)
   const [detail, setDetail] = useState<AuditLogEntry | null>(null)
+  const [uniqueUsers, setUniqueUsers] = useState<string[]>([])
 
-  /* eslint-disable react-hooks/set-state-in-effect -- fetch-on-filter-change */
-  useEffect(() => {
-    setLoading(true)
-    setPage(0)
-    getAuditLogs({
-      action: actionFilter || undefined,
-      from: dateFrom || undefined,
-      to: dateTo || undefined,
-      limit: 500, // fetch more, paginate client-side
-    }).then((data) => { setLogs("error" in data ? [] : data); setLoading(false) })
-  }, [actionFilter, dateFrom, dateTo])
+  // Reset page when filters change so offset stays valid.
+  /* eslint-disable react-hooks/set-state-in-effect -- reset on filter change */
+  useEffect(() => { setPage(0) }, [actionFilter, userFilter, dateFrom, dateTo])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Client-side user filter
-  const filtered = userFilter
-    ? logs.filter((l) => l.user_email?.toLowerCase().includes(userFilter.toLowerCase()))
-    : logs
+  /* eslint-disable react-hooks/set-state-in-effect -- paged server fetch */
+  useEffect(() => {
+    setLoading(true)
+    getAuditLogs({
+      action: actionFilter || undefined,
+      userEmail: userFilter || undefined,
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    }).then((res) => {
+      if ("error" in res) {
+        setLogs([])
+        setTotal(0)
+        toast.error(res.error)
+      } else {
+        setLogs(res.entries)
+        setTotal(res.total)
+      }
+      setLoading(false)
+    })
+  }, [actionFilter, userFilter, dateFrom, dateTo, page])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
-  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  // Populate the user-filter dropdown once — distinct across all logs, not
+  // just the current page (the old client-side dropdown was page-local).
+  /* eslint-disable react-hooks/set-state-in-effect -- one-time fetch */
+  useEffect(() => {
+    getAuditLogUsers().then((res) => {
+      if (!("error" in res)) setUniqueUsers(res)
+    })
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Unique users for filter
-  const uniqueUsers = [...new Set(logs.map((l) => l.user_email).filter(Boolean))] as string[]
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const paged = logs
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,7 +192,7 @@ export function AuditLogViewer() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-[12px] text-muted-foreground">
-            {t("records", { count: filtered.length, page: page + 1, total: totalPages })}
+            {t("records", { count: total, page: page + 1, total: totalPages })}
           </span>
           <div className="flex items-center gap-1">
             <button
