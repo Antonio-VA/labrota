@@ -1,5 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic"
 import { convertToModelMessages, streamText, stepCountIs, UIMessage } from "ai"
+import { CLAUDE_MODEL } from "@/lib/constants"
 import { createClient } from "@/lib/supabase/server"
 import { getOrgId } from "@/lib/get-org-id"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
 
   try {
     const result = streamText({
-      model: anthropic("claude-sonnet-4.6"),
+      model: anthropic(CLAUDE_MODEL),
       system: systemText,
       abortSignal: AbortSignal.timeout(30_000),
       messages: await convertToModelMessages(messages),

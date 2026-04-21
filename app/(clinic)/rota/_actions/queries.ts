@@ -5,7 +5,7 @@ import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { typedQuery } from "@/lib/supabase/typed-query"
 import { getCachedOrgId } from "@/lib/auth-cache"
-import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS } from "@/lib/constants"
+import { RECENT_ASSIGNMENTS_LOOKBACK_DAYS, DAY_CODES } from "@/lib/constants"
 import { runRotaEngineV2 } from "@/lib/rota-engine-v2"
 import { getWeekDates } from "@/lib/engine-helpers"
 import { getMondayOf, toISODate } from "@/lib/format-date"
@@ -259,7 +259,6 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   // Build training map: date → staff_id → tecnica code
   // Only for supervisor rules with a training technique, respecting active days
-  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
   const trainingByStaff: Record<string, Record<string, string>> = {}
   for (const rule of supervisorRules) {
     const trainingTec = rule.params.training_tecnica_code as string | undefined
@@ -268,7 +267,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
     const traineeIds = rule.staff_ids.filter((id) => id !== supervisorId)
     for (const d of dates) {
-      const dow = dayNames[new Date(d + "T12:00:00").getDay()]
+      const dow = DAY_CODES[new Date(d + "T12:00:00").getDay()]
       if (supDays.length > 0 && !supDays.includes(dow)) continue
       if (!trainingByStaff[d]) trainingByStaff[d] = {}
       for (const sid of traineeIds) {
@@ -473,7 +472,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // Compute skill gaps and coverage warnings per day
   for (const day of Object.values(dayMap)) {
     // Skill gaps — exclude techniques blocked by restriccion_dia_tecnica rules
-    const dayCodeForGap = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
+    const dayCodeForGap = DAY_CODES[new Date(day.date + "T12:00:00").getDay()] as string
     const covered = new Set(day.assignments.flatMap((a) => staffSkillMap[a.staff_id] ?? []))
     day.skillGaps = allOrgSkills.filter((sk) => {
       if (covered.has(sk)) return false
@@ -502,7 +501,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     // Skip if ALL of a technique's typical_shifts are inactive on this day
     // Skip if the shift has no minimum for the technique's department
     const holidayModeForWarning = labConfig?.public_holiday_mode ?? "saturday"
-    const rawDayCodeForWarning = ["sun","mon","tue","wed","thu","fri","sat"][new Date(day.date + "T12:00:00").getDay()] as string
+    const rawDayCodeForWarning = DAY_CODES[new Date(day.date + "T12:00:00").getDay()] as string
     const holidayDayMap: Record<string, string> = { weekday: rawDayCodeForWarning, saturday: "sat", sunday: "sun" }
     const dayCodeForWarning = (publicHolidays[day.date] && rawDayCodeForWarning !== "sat" && rawDayCodeForWarning !== "sun") ? (holidayDayMap[holidayModeForWarning] ?? rawDayCodeForWarning) : rawDayCodeForWarning
     const activeDayShifts = new Set(
@@ -557,14 +556,13 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   }
 
   // Check supervisor co-location rules — warn if pair is split
-  const DOW_CODES = ["sun","mon","tue","wed","thu","fri","sat"] as const
   for (const rule of supervisorRules) {
     const supervisorId = rule.params.supervisor_id as string | undefined
     if (!supervisorId) continue
     const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
     const supervisedIds = (rule.staff_ids ?? []).filter((id) => id !== supervisorId)
     for (const day of Object.values(dayMap)) {
-      const dayDow = DOW_CODES[new Date(day.date + "T12:00:00").getDay()]
+      const dayDow = DAY_CODES[new Date(day.date + "T12:00:00").getDay()]
       if (supDays.length > 0 && !supDays.includes(dayDow)) continue
       const supAsg = day.assignments.find((a) => a.staff_id === supervisorId)
       const traineeAsg = day.assignments.find((a) => supervisedIds.includes(a.staff_id))
@@ -583,10 +581,9 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   const shiftCovEnabled = labConfig?.shift_coverage_enabled ?? false
   const shiftCovByDay = labConfig?.shift_coverage_by_day as ShiftCoverageByDay | null
   if (shiftCovEnabled && shiftCovByDay) {
-    const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
     for (const day of Object.values(dayMap)) {
       if (day.assignments.length === 0) continue
-      const rawDc = DAY_NAMES[new Date(day.date + "T12:00:00").getDay()]
+      const rawDc = DAY_CODES[new Date(day.date + "T12:00:00").getDay()]
       const holidayMode = labConfig?.public_holiday_mode ?? "saturday"
       const isHoliday = !!publicHolidays[day.date] && rawDc !== "sat" && rawDc !== "sun"
       const holidayDcMap: Record<string, string> = { weekday: rawDc, saturday: "sat", sunday: "sun" }

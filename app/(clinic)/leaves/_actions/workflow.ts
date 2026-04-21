@@ -150,8 +150,8 @@ export async function requestLeave(params: {
       }))
       await admin.from("notifications").insert(inAppNotifs)
     }
-  } catch {
-    // Notification/email failure should not block the request
+  } catch (e) {
+    console.error("[leave] requestLeave notification failed:", e)
   }
 
   const infoMessage = overflowInfo
@@ -308,8 +308,8 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
         })
       }
     }
-  } catch {
-    // Email failure should not block
+  } catch (e) {
+    console.error("[leave] cancelLeave email failed:", e)
   }
 
   revalidatePath("/leaves")

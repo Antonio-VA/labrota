@@ -68,7 +68,9 @@ export default async function RootLayout({
       if (p.fontScale === "s") fontScale = "0.9"
       else if (p.fontScale === "l") fontScale = "1.1"
     }
-  } catch {}
+  } catch (e) {
+    console.error("[layout] Failed to parse theme cookie:", e)
+  }
 
   const rootStyle: Record<string, string> = {}
   if (accentColor) {
@@ -107,7 +109,7 @@ export default async function RootLayout({
                 r.setProperty('--header-bg', p.accentColor);
               }
             }
-          } catch(e) {}
+          } catch(e) { console.error("[layout] inline theme script error:", e) }
         `}</Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

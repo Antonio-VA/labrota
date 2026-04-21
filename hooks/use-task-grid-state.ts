@@ -79,7 +79,7 @@ export function useTaskGridState({
     const s = staffList.find((x) => x.id === staffId)
     if (!s) return
     setLocalDays((prev) => {
-      const tempId = `temp-${Date.now()}-${Math.random()}`
+      const tempId = `temp-${crypto.randomUUID()}`
       return prev.map((d) => d.date !== date ? d : {
         ...d,
         assignments: [...d.assignments, {

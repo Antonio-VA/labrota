@@ -101,7 +101,7 @@ export function usePersonGridState({
   }, [])
 
   const handleTaskAdd = useCallback(async (staffId: string | null, date: string, tecnicaCodigo: string) => {
-    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const tempId = `temp-${crypto.randomUUID()}`
     const staffMember = staffId ? staffList.find((s) => s.id === staffId) : null
     setLocalDays((prev) => prev.map((d) => d.date !== date ? d : {
       ...d,

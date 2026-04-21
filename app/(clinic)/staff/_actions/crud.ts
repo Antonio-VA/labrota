@@ -10,6 +10,7 @@ import { getOrgId } from "@/lib/get-org-id"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffRole, OnboardingStatus, ContractType, SkillLevel, ShiftType } from "@/lib/types/database"
 import { STAFF_PASTEL_COLORS, ALL_DAYS } from "@/components/staff-form/constants"
+import { APP_URL, FROM_EMAIL } from "@/lib/config"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -22,8 +23,8 @@ async function inviteStaffAsViewer(staffId: string, email: string, fullName: str
     .eq("id", orgId)
     .single() as { data: { auth_method: string } | null }
   const redirectTo = orgData?.auth_method === "password"
-    ? "https://www.labrota.app/auth/callback?next=/set-password"
-    : "https://www.labrota.app/auth/callback"
+    ? `${APP_URL}/auth/callback?next=/set-password`
+    : `${APP_URL}/auth/callback`
 
   const { data: existingProfile } = await admin
     .from("profiles")
@@ -189,7 +190,7 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
             "Authorization": `Bearer ${process.env.RESEND_API_KEY ?? ""}`,
           },
           body: JSON.stringify({
-            from: "LabRota <onboarding@resend.dev>",
+            from: FROM_EMAIL,
             to: "info@labrota.app",
             subject: `[LabRota] Staff limit exceeded — ${orgName}`,
             text: `${orgName} has exceeded their contracted staff limit.\n\nContracted limit: ${maxStaff}\nCurrent active staff: ${activeCount}\n\nPlease contact them to discuss upgrading their subscription.`,

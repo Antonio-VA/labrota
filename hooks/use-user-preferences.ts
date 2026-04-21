@@ -105,7 +105,7 @@ export function useUserPreferences(initial: SavablePrefs) {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
-    instanceIdRef.current = `${Date.now()}-${Math.random()}`
+    instanceIdRef.current = crypto.randomUUID()
     const bc = new BroadcastChannel(PREFS_BROADCAST_CHANNEL)
     bcRef.current = bc
     bc.onmessage = (e: MessageEvent<BroadcastMessage>) => {

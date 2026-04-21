@@ -285,7 +285,7 @@ function TaskPersonGridInner({
     let tempId = ""
     const staffMember = staffId ? activeStaff.find((s) => s.id === staffId) : null
     setLocalDays((prev) => {
-      tempId = `temp-${Date.now()}-${Math.random()}`
+      tempId = `temp-${crypto.randomUUID()}`
       return prev.map((d) => d.date !== date ? d : {
         ...d,
         assignments: [...d.assignments, {
