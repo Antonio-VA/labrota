@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { z } from "zod"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry } from "@/lib/hr-leave-integration"
-import type { LeaveStatus, Leave } from "@/lib/types/database"
+import type { LeaveStatus, LeaveType, Leave } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
