@@ -42,7 +42,7 @@ export function ShiftGridOffRow({
         style={{
           borderLeft: `3px solid ${colorChips && isHov && staffColorMap[s.id] ? staffColorMap[s.id] : fallbackBorder}`,
           borderRadius: 4, paddingLeft: 5, paddingRight: 6,
-          ...(isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}),
+          ...(colorChips && isHov && staffColorMap[s.id] ? { backgroundColor: staffColorMap[s.id], color: "#1e293b" } : {}),
         }}
       >
         <span className={cn("truncate", onLeave && "italic")}>{s.first_name} {s.last_name[0]}.</span>
