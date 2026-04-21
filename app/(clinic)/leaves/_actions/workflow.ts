@@ -24,7 +24,7 @@ export async function requestLeave(params: {
   if (!user) return { error: "Not authenticated." }
   const orgId = await getOrgId()
   if (!orgId) return { error: "No organisation found." }
-  if (params.endDate < params.startDate) return { error: "La fecha de fin debe ser posterior a la de inicio." }
+  if (params.endDate < params.startDate) return { error: "End date must be after start date." }
 
   const { data: member } = await supabase
     .from("organisation_members")
@@ -47,7 +47,7 @@ export async function requestLeave(params: {
     })
     if (bal.blocked) {
       return {
-        error: `No tienes suficientes días disponibles de ${bal.leaveTypeName ?? "este tipo de ausencia"}. Disponibles: ${bal.available}d, solicitados: ${bal.daysCounted}d.`
+        error: `Insufficient balance for ${bal.leaveTypeName ?? "this leave type"}. Available: ${bal.available}d, requested: ${bal.daysCounted}d.`
       }
     }
     if (bal.overflow.needed && bal.overflow.overflowTypeName) {
@@ -182,7 +182,7 @@ export async function approveLeave(leaveId: string): Promise<{ error?: string }>
 
   if (error || !leave) return { error: "Leave not found or no longer pending." }
 
-  // Try to store reviewer info (columns may not exist before migration)
+  // Store reviewer info
   await supabase
     .from("leaves")
     .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
@@ -227,7 +227,7 @@ export async function rejectLeave(leaveId: string): Promise<{ error?: string }> 
 
   if (error || !rejected) return { error: "Leave not found or no longer pending." }
 
-  // Try to store reviewer info (columns may not exist before migration)
+  // Store reviewer info
   await supabase
     .from("leaves")
     .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
@@ -271,7 +271,7 @@ export async function cancelLeave(leaveId: string): Promise<{ error?: string }> 
 
   if (!cancelled || error) return { error: (error as { message?: string })?.message ?? "Leave is no longer cancellable." }
 
-  // Try to store reviewer info (columns may not exist before migration)
+  // Store reviewer info
   await admin
     .from("leaves")
     .update({ reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })

@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { z } from "zod"
 import { notifyLeaveImpact } from "@/app/(clinic)/notification-actions"
 import { isHrModuleActive, computeHrLeaveFields, createOverflowEntry } from "@/lib/hr-leave-integration"
-import type { LeaveType, LeaveStatus, Leave } from "@/lib/types/database"
+import type { LeaveStatus, Leave } from "@/lib/types/database"
 import { getOrgId } from "@/lib/get-org-id"
 import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 
@@ -32,15 +33,24 @@ async function resolveHrFields(
   }
 }
 
+const leaveFormSchema = z.object({
+  staff_id:   z.string().min(1),
+  type:       z.enum(["annual", "sick", "personal", "training", "maternity", "other"]),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  end_date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes:      z.string().optional().transform((v) => v?.trim() || null),
+})
+
 function parseLeaveForm(formData: FormData) {
-  return {
-    staff_id:   formData.get("staff_id") as string,
-    type:       formData.get("type") as LeaveType,
-    start_date: formData.get("start_date") as string,
-    end_date:   formData.get("end_date") as string,
-    status:     "approved" as LeaveStatus,
-    notes:      ((formData.get("notes") as string) || "").trim() || null,
+  const raw = {
+    staff_id:   formData.get("staff_id"),
+    type:       formData.get("type"),
+    start_date: formData.get("start_date"),
+    end_date:   formData.get("end_date"),
+    notes:      formData.get("notes") ?? undefined,
   }
+  const parsed = leaveFormSchema.parse(raw)
+  return { ...parsed, status: "approved" as LeaveStatus }
 }
 
 export async function createLeave(_prevState: unknown, formData: FormData) {

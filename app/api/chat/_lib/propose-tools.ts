@@ -177,19 +177,28 @@ export function buildProposeTools(params: {
     }),
 
     proposeAddSkill: tool({
-      description: "Propose adding a skill to a staff member. The user must confirm.",
+      description: "Propose adding a skill (tecnica code) to a staff member. Use getSkills or getTecnicas to find valid skill codes for this org. The user must confirm.",
       inputSchema: z.object({
         staffName: z.string().describe("Full or partial name of the staff member"),
-        skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
+        skill: z.string().describe("Skill/tecnica code for this org (e.g. FIV, ICSI, IUI — fetch valid codes with getTecnicas)"),
         level: z.enum(["certified", "training"]).describe("Skill level"),
       }),
       execute: async ({ staffName, skill, level }) => {
         const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })
         if (!staff) return { error: `Staff member "${staffName}" not found.` }
 
+        // Validate that the skill code exists for this org
+        const { data: tecnica } = await supabase
+          .from("tecnicas")
+          .select("codigo")
+          .eq("organisation_id", orgId)
+          .eq("codigo", skill.toUpperCase())
+          .maybeSingle() as { data: { codigo: string } | null }
+        if (!tecnica) return { error: `Skill code "${skill}" not found. Use getTecnicas to list valid codes for this org.` }
+
         return propose(
           "addSkill",
-          { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill, level },
+          { staffId: staff.id, staffName: `${staff.first_name} ${staff.last_name}`, skill: tecnica.codigo, level },
           `Add ${SKILL_LABEL[skill] ?? skill} (${level}) to ${staff.first_name} ${staff.last_name}`,
         )
       },
@@ -199,7 +208,7 @@ export function buildProposeTools(params: {
       description: "Propose removing a skill from a staff member. The user must confirm.",
       inputSchema: z.object({
         staffName: z.string().describe("Full or partial name of the staff member"),
-        skill: z.enum(["icsi", "iui", "vitrification", "thawing", "biopsy", "semen_analysis", "sperm_prep", "witnessing", "other"]),
+        skill: z.string().describe("Skill/tecnica code for this org — fetch valid codes with getTecnicas"),
       }),
       execute: async ({ staffName, skill }) => {
         const staff = await resolveStaffByName(supabase, orgId, staffName, { activeOnly: true })

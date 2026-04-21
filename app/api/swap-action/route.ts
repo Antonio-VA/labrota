@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import { APP_URL, BRAND_COLOR, TOKEN_TTL_MS } from "@/lib/config"
+import { TOKEN_TTL_MS } from "@/lib/config"
 import { sendSwapTargetEmail, notifySwapTarget, notifySwapInitiator } from "@/lib/swap-email"
 import { executeSwap } from "@/app/(clinic)/swaps/actions"
+import { actionResultPage, actionErrorPage } from "@/lib/email-page"
 
 function getSecret(): Buffer {
   const secret = process.env.SWAP_TOKEN_SECRET
@@ -43,11 +44,11 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("token")
 
   if (!swapId || !action || !step || !token || !["approve", "reject"].includes(action) || !["manager", "target"].includes(step)) {
-    return new NextResponse(errorPage("Invalid request."), { status: 400, headers: { "Content-Type": "text/html" } })
+    return new NextResponse(actionErrorPage("Invalid request."), { status: 400, headers: { "Content-Type": "text/html" } })
   }
 
   if (!verifySwapAction(swapId, action, step, token)) {
-    return new NextResponse(errorPage("Invalid or expired link."), { status: 403, headers: { "Content-Type": "text/html" } })
+    return new NextResponse(actionErrorPage("Invalid or expired link."), { status: 403, headers: { "Content-Type": "text/html" } })
   }
 
   const admin = createAdminClient()
@@ -65,14 +66,14 @@ export async function GET(request: NextRequest) {
     } | null }
 
   if (!swap) {
-    return new NextResponse(errorPage("Swap request not found."), { status: 404, headers: { "Content-Type": "text/html" } })
+    return new NextResponse(actionErrorPage("Swap request not found."), { status: 404, headers: { "Content-Type": "text/html" } })
   }
 
   // Validate status matches expected step
   const expectedStatus = step === "manager" ? "pending_manager" : "pending_target"
   if (swap.status !== expectedStatus) {
     const alreadyMsg = swap.status === "approved" ? "already approved" : swap.status === "rejected" ? "already rejected" : `in status: ${swap.status}`
-    return new NextResponse(resultPage(
+    return new NextResponse(actionResultPage(
       "Already processed",
       `This swap request has been ${alreadyMsg}.`,
       "#64748b"
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
         await notifySwapTarget(swapId, swap.organisation_id)
       } catch { /* notification failure should not block */ }
 
-      return new NextResponse(resultPage(
+      return new NextResponse(actionResultPage(
         "Swap approved",
         "The swap has been approved. The target staff member will be notified to accept or decline.",
         "#059669"
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
         await notifySwapInitiator(swapId, swap.organisation_id, "rejected")
       } catch { /* non-blocking */ }
 
-      return new NextResponse(resultPage(
+      return new NextResponse(actionResultPage(
         "Swap rejected",
         "The swap request has been rejected.",
         "#ef4444"
@@ -129,11 +130,11 @@ export async function GET(request: NextRequest) {
       try {
         const result = await executeSwap(swapId)
         if (result.error) {
-          return new NextResponse(errorPage(result.error), { status: 400, headers: { "Content-Type": "text/html" } })
+          return new NextResponse(actionErrorPage(result.error), { status: 400, headers: { "Content-Type": "text/html" } })
         }
       } catch (e) {
         console.error("[swap-action] Failed to execute swap:", e)
-        return new NextResponse(errorPage("Failed to execute the swap. Please try again or contact your manager."), { status: 500, headers: { "Content-Type": "text/html" } })
+        return new NextResponse(actionErrorPage("Failed to execute the swap. Please try again or contact your manager."), { status: 500, headers: { "Content-Type": "text/html" } })
       }
 
       // Notify initiator
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
         await notifySwapInitiator(swapId, swap.organisation_id, "approved")
       } catch { /* non-blocking */ }
 
-      return new NextResponse(resultPage(
+      return new NextResponse(actionResultPage(
         "Swap accepted",
         "The shift swap has been applied. The schedule has been updated.",
         "#059669"
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
         await notifySwapInitiator(swapId, swap.organisation_id, "rejected")
       } catch { /* non-blocking */ }
 
-      return new NextResponse(resultPage(
+      return new NextResponse(actionResultPage(
         "Swap declined",
         "The swap request has been declined.",
         "#ef4444"
@@ -166,22 +167,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return new NextResponse(errorPage("Invalid request."), { status: 400, headers: { "Content-Type": "text/html" } })
+  return new NextResponse(actionErrorPage("Invalid request."), { status: 400, headers: { "Content-Type": "text/html" } })
 }
 
-function resultPage(title: string, description: string, accentColor: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} — LabRota</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;">
-<div style="background:white;border-radius:16px;padding:40px;max-width:400px;width:90%;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">
-<div style="width:48px;height:48px;border-radius:50%;background:${accentColor}15;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-</div>
-<h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#0f172a;">${title}</h1>
-<p style="margin:0 0 24px;font-size:14px;color:#64748b;">${description}</p>
-<a href="${APP_URL}" style="display:inline-block;background:${BRAND_COLOR};color:white;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;">Open LabRota</a>
-</div></body></html>`
-}
-
-function errorPage(message: string) {
-  return resultPage("Error", message, "#ef4444")
-}

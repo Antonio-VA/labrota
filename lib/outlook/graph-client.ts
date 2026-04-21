@@ -105,13 +105,19 @@ export async function getValidAccessToken(staffId: string): Promise<string> {
       .eq("staff_id", staffId)
 
     return tokens.access_token
-  } catch {
-    // Token revoked — disable sync
-    await admin
-      .from("outlook_connections")
-      .update({ sync_enabled: false })
-      .eq("staff_id", staffId)
-    throw new Error(`Outlook token revoked for staff ${staffId}. Sync disabled.`)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    // Only permanently disable sync when the token is truly revoked.
+    // Transient errors (network blip, Microsoft 5xx) should not kill sync —
+    // those will retry on the next cron run.
+    if (msg.includes("invalid_grant") || msg.includes("authorization_declined") || msg.includes("AADSTS")) {
+      await admin
+        .from("outlook_connections")
+        .update({ sync_enabled: false })
+        .eq("staff_id", staffId)
+      throw new Error(`Outlook token revoked for staff ${staffId}. Sync disabled.`)
+    }
+    throw e
   }
 }
 

@@ -3,6 +3,7 @@
 import React, { useRef } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
+type TranslationFn = ReturnType<typeof useTranslations>
 import { ChevronLeft, ChevronRight, AlertTriangle, Check, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -64,8 +65,8 @@ export function MobileDaySection({
   mobileFavoriteView: { viewMode: string; compact: boolean; deptColor: boolean } | null
   onSaveMobileFavorite: () => void
   onGoToMobileFavorite: (() => void) | undefined
-  t: any
-  tc: any
+  t: TranslationFn
+  tc: TranslationFn
 }) {
   const mobileContentRef = useRef<HTMLDivElement>(null)
   const [dayWarningsOpen, setDayWarningsOpen] = React.useState(false)

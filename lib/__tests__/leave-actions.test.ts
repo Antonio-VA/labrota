@@ -158,6 +158,6 @@ describe("requestLeave — staffId ownership verification", () => {
       endDate: "2026-04-10",
     })
 
-    expect(result.error).toBe("La fecha de fin debe ser posterior a la de inicio.")
+    expect(result.error).toBe("End date must be after start date.")
   })
 })

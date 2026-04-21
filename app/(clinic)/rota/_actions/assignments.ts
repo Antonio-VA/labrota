@@ -106,17 +106,11 @@ export async function upsertAssignment(params: {
       trainee_staff_id: params.traineeStaffId ?? null,
       function_label: params.functionLabel ?? "",
     }
-    let { data: row, error } = await supabase
+    const { data: row, error } = await supabase
       .from("rota_assignments")
       .upsert(row_data, { onConflict: "rota_id,staff_id,date,function_label" })
       .select("id")
       .single()
-    // Fall back to plain insert if constraint doesn't exist
-    if (error?.message?.includes("ON CONFLICT")) {
-      const res = await supabase.from("rota_assignments").insert(row_data).select("id").single()
-      row = res.data
-      error = res.error
-    }
     if (error) return { error: error.message }
     // Audit
     const { data: { user: auUser } } = await supabase.auth.getUser()
@@ -233,7 +227,7 @@ export async function regenerateDay(
     labConfig,
     shiftTypes: (shiftRes.data ?? []) as ShiftTypeDefinition[],
     rules: ((rulesRes.data ?? []) as RotaRule[]).filter((r) => !r.expires_at || r.expires_at > weekStart),
-    tecnicas: (tecRes.data ?? []).map((t: any) => ({
+    tecnicas: (tecRes.data ?? []).map((t: { codigo: string; department?: string; typical_shifts?: string[]; avoid_shifts?: string[] }) => ({
       codigo: t.codigo,
       department: t.department ?? "lab",
       typical_shifts: t.typical_shifts ?? [],
@@ -263,6 +257,16 @@ export async function regenerateDay(
   const locked = await acquireRotaGenerationLock(supabase, rotaId)
   if (!locked) return { error: ROTA_GENERATION_LOCK_ERROR }
 
+  const toInsert = dayPlan.assignments.map((a) => ({
+    organisation_id: orgId,
+    rota_id: rotaId,
+    staff_id: a.staff_id,
+    date,
+    shift_type: a.shift_type,
+    is_manual_override: false,
+    function_label: "",
+  }))
+
   try {
     // Delete existing assignments for THIS DAY only (preserve manual overrides)
     await supabase
@@ -271,17 +275,6 @@ export async function regenerateDay(
       .eq("rota_id", rotaId)
       .eq("date", date)
       .eq("is_manual_override", false)
-
-    // Insert engine assignments for this day
-    const toInsert = dayPlan.assignments.map((a) => ({
-      organisation_id: orgId,
-      rota_id: rotaId,
-      staff_id: a.staff_id,
-      date,
-      shift_type: a.shift_type,
-      is_manual_override: false,
-      function_label: "",
-    }))
 
     if (toInsert.length > 0) {
       const { error } = await supabase.from("rota_assignments").upsert(toInsert, { onConflict: "rota_id,staff_id,date,function_label", ignoreDuplicates: true })
@@ -537,28 +530,9 @@ export async function setWholeTeam(
       .eq("date", date)
       .eq("function_label", functionLabel)
     if (error) return { error: error.message }
-  } else if (wholeTeam) {
-    // No assignments yet — create a marker row so whole_team persists
-    // Use a special staff_id placeholder (first org member)
-    const { data: firstStaff } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("organisation_id", orgId)
-      .limit(1)
-      .single()
-    if (firstStaff) {
-      await supabase.from("rota_assignments").upsert({
-        organisation_id: orgId,
-        rota_id: rotaId,
-        staff_id: (firstStaff as { id: string }).id,
-        date,
-        shift_type: "T1",
-        function_label: functionLabel,
-        whole_team: true,
-        is_manual_override: true,
-      }, { onConflict: "rota_id,staff_id,date,function_label" })
-    }
   }
+  // If wholeTeam=true with no existing assignments, it is a no-op:
+  // the flag only makes sense once assignment rows exist for this function+day.
 
   revalidatePath("/schedule")
   return {}

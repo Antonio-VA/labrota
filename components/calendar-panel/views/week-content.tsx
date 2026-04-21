@@ -1,6 +1,9 @@
 "use client"
 
+import type { useTranslations } from "next-intl"
 import React from "react"
+
+type TranslationFn = ReturnType<typeof useTranslations>
 import { CalendarDays, Sparkles, BrainCircuit, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TaskGrid } from "@/components/task-grid"
@@ -71,8 +74,8 @@ export function WeekContent({
   onCopyPreviousWeek: () => void
   desktopSwapStaffId: string | null
   gridSetDaysRef: React.MutableRefObject<((days: RotaDay[]) => void) | null>
-  t: any
-  tc: any
+  t: TranslationFn
+  tc: TranslationFn
 }) {
   const handleRefresh = () => fetchWeekSilent(weekStart)
 

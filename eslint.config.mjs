@@ -15,13 +15,13 @@ const eslintConfig = defineConfig([
   {
     rules: {
       // Catch missing useEffect/useCallback deps before they cause bugs
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": "error",
       // Flag explicit `as any` — use unknown or a proper type instead
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       // Unused variables are noise — prefix with _ to opt out
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       // Prefer const where reassignment never happens
-      "prefer-const": "warn",
+      "prefer-const": "error",
     },
   },
 ]);

@@ -1,5 +1,7 @@
 "use client"
 
+import type { useTranslations } from "next-intl"
+type TranslationFn = ReturnType<typeof useTranslations>
 import { ChevronLeft, ChevronRight, Lock, FileText, Sheet, BookmarkPlus, BookmarkCheck, Rows3, ArrowRightLeft, LayoutList, Star, Clock, Trash2, Check, Undo2, Redo2, BrainCircuit, Grid3X3, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -95,8 +97,8 @@ export interface DesktopToolbarProps {
   onGoToFavorite: (() => void) | undefined
 
   // i18n
-  t: any
-  tc: any
+  t: TranslationFn
+  tc: TranslationFn
 }
 
 export function DesktopToolbar(props: DesktopToolbarProps) {
@@ -308,7 +310,7 @@ function buildOverflowItems(ctx: {
   setView: (v: ViewMode) => void
   setCalendarLayout: (l: CalendarLayout) => void
   onShowHistory: () => void; onDelete: () => void
-  t: any
+  t: TranslationFn
 }): MenuItem[] {
   const {
     canEdit, isDraft, isPublished, hasAssignments, hasNotifications, view, isPending,

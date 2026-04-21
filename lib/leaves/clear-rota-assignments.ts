@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/types/database"
 import { logAuditEvent } from "@/lib/audit"
+import { captureWeekSnapshot } from "@/lib/rota-snapshots"
+import { getMondayOf } from "@/lib/format-date"
 
 /**
  * Removes rota assignments that overlap a leave and audits the side effect.
@@ -22,6 +24,25 @@ export async function clearRotaAssignmentsForLeave(params: {
   trigger: "leave_created" | "leave_updated" | "leave_approved"
 }): Promise<void> {
   const { client, orgId, staffId, startDate, endDate, leaveId, userId, trigger } = params
+
+  // Snapshot every affected week before deletion so the schedule can be recovered.
+  // captureWeekSnapshot uses its own admin client and is safe to call from any context.
+  const weekStarts: string[] = []
+  const cur = new Date(startDate + "T12:00:00")
+  const end = new Date(endDate + "T12:00:00")
+  cur.setDate(cur.getDate() - ((cur.getDay() + 6) % 7)) // rewind to Monday
+  while (cur <= end) {
+    weekStarts.push(cur.toISOString().slice(0, 10))
+    cur.setDate(cur.getDate() + 7)
+  }
+  const { data: affectedRotas } = await client
+    .from("rotas")
+    .select("id, week_start")
+    .eq("organisation_id", orgId)
+    .in("week_start", weekStarts) as { data: { id: string; week_start: string }[] | null }
+  if (affectedRotas?.length) {
+    await Promise.all(affectedRotas.map((r) => captureWeekSnapshot(r.id, r.week_start)))
+  }
 
   const { data } = await client
     .from("rota_assignments")

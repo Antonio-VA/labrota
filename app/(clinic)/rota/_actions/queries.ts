@@ -161,19 +161,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
   // wasted DB calls for empty weeks.
   const rotaResultFull = await rotaPromise
 
-  // Fallback: if engine_warnings column doesn't exist yet, retry without it
-  let rotaResult = rotaResultFull
-  if (rotaResultFull.error && !rotaResultFull.data) {
-    const fallback = await typedQuery<RotaRecord>(
-      supabase
-        .from("rotas")
-        .select("id, status, published_at, published_by, punctions_override")
-        .eq("week_start", weekStart)
-        .maybeSingle())
-    rotaResult = fallback
-  }
-
-  const rotaData  = rotaResult.data
+  const rotaData = rotaResultFull.data
 
   // ── Fast path: no rota exists ──────────────────────────────────────────────
   // Skip awaiting leaves/rules/assignments and all the assignment-dependent
@@ -377,18 +365,7 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
     return 1
   }
 
-  // If newer columns missing, retry with minimal select
-  let rawAssignments: RawAssignment[] = []
-  if (assignmentsRes.error) {
-    const { data: baseData } = await typedQuery<Omit<RawAssignment, "trainee_staff_id" | "notes" | "function_label" | "tecnica_id">[]>(
-      supabase
-        .from("rota_assignments")
-        .select("id, staff_id, date, shift_type, is_manual_override")
-        .eq("rota_id", rota.id))
-    rawAssignments = (baseData ?? []).map((a) => ({ ...a, trainee_staff_id: null, notes: null, function_label: null, tecnica_id: null, whole_team: false }))
-  } else {
-    rawAssignments = assignmentsRes.data ?? []
-  }
+  const rawAssignments: RawAssignment[] = assignmentsRes.data ?? []
 
   const assignmentsData: AssignmentRow[] = rawAssignments.map((a) => ({
     ...a,
@@ -406,10 +383,10 @@ export async function getRotaWeek(weekStart: string): Promise<RotaWeekData> {
 
   const allOrgSkills = [...new Set((skillsData ?? []).filter((ss) => ss.level === "certified").map((ss) => ss.skill as SkillName))]
 
-  // Only include assignments whose shift_type exists in this org's shift_types table.
-  // Assignments with stale codes (e.g. 'am'/'pm'/'full' from before the shift_types migration)
-  // would otherwise make staff invisible: they'd be in assignedIds but match no shift row.
-  // Skip this filter for by_task orgs — shift_type is irrelevant there.
+  // Guard against any assignment whose shift_type code is not in this org's shift_types.
+  // Migration 20260421000001 cleaned up the known legacy codes ('am'/'pm'/'full') but this
+  // filter stays as a cheap safety net against future schema drift.
+  // Skip for by_task orgs — shift_type is irrelevant there.
   const validShiftCodes = (orgDisplayMode === "by_task" || shiftTypesData.length === 0)
     ? null  // null = no filtering
     : new Set(shiftTypesData.map((st) => st.code))
