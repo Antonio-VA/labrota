@@ -4,10 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { getAdminHrModuleStatus, adminGetHolidayConfig, adminGetCompanyLeaveTypes } from "@/app/admin/hr-module-actions"
-import { AdminRrhhPage } from "@/components/admin-rrhh-page"
+import { AdminHrPage } from "@/components/admin-hr-page"
 import { AdminOrgHeaderActions } from "@/components/admin-org-header-actions"
 
-export default async function OrgRrhhPage({
+export default async function OrgHrPage({
   params,
 }: {
   params: Promise<{ id: string }>
@@ -29,17 +29,17 @@ export default async function OrgRrhhPage({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header — same component as org detail, with RRHH active */}
+      {/* Header — same component as org detail, with HR tab active */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" render={<Link href="/" />}>
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <AdminOrgHeaderActions org={org} hrActive={true} activeModule="rrhh" />
+          <AdminOrgHeaderActions org={org} hrActive={true} activeModule="hr" />
         </div>
       </div>
 
-      <AdminRrhhPage
+      <AdminHrPage
         orgId={id}
         config={config}
         leaveTypes={leaveTypes}

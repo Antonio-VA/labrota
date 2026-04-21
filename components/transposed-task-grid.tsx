@@ -9,6 +9,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useStaffHover } from "@/components/staff-hover-context"
 import { toast } from "sonner"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
+import { filterStaffForPicker } from "@/lib/staff-filter"
 import type { RotaWeekData, RotaDay } from "@/app/(clinic)/rota/actions"
 import { upsertAssignment, setWholeTeam } from "@/app/(clinic)/rota/actions"
 import { DayStatsInput } from "@/components/calendar-panel/grids/day-stats-input"
@@ -37,15 +38,11 @@ function StaffSelectorPopup({
     return () => document.removeEventListener("mousedown", h)
   }, [onClose])
 
-  const tecCode = tecnica.codigo.toUpperCase()
-  const qualified = staffList.filter((s) => s.staff_skills?.some((sk) => sk.skill.toUpperCase() === tecCode) && s.onboarding_status !== "inactive")
-  const filtered = qualified
-    .filter((s) => {
-      if (!search) return true
-      const name = `${s.first_name} ${s.last_name}`.toLowerCase()
-      return name.includes(search.toLowerCase()) || `${s.first_name[0]}${s.last_name[0]}`.toLowerCase().includes(search.toLowerCase())
-    })
-    .sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name))
+  const filtered = filterStaffForPicker(staffList, {
+    tecnicaCode: tecnica.codigo,
+    search,
+    excludeInactive: true,
+  })
 
   return (
     <div ref={ref} className="bg-background border border-border rounded-lg shadow-lg w-56 overflow-hidden" onClick={(e) => e.stopPropagation()}>

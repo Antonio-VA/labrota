@@ -48,7 +48,7 @@ export function AdminHrInstallCard({ orgId, installed, active, installedAt }: Pr
 
         <div>
           {active && (
-            <Button variant="outline" size="sm" render={<Link href={`/orgs/${orgId}/rrhh`} />}>
+            <Button variant="outline" size="sm" render={<Link href={`/orgs/${orgId}/hr`} />}>
               Configurar
             </Button>
           )}

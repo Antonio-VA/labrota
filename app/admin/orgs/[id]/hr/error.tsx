@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 
-export default function RrhhError({
+export default function HrError({
   error,
   reset,
 }: {

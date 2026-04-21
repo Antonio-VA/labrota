@@ -11,7 +11,7 @@ import { toast } from "sonner"
 
 interface Org { id: string; name: string; slug: string; is_active: boolean; logo_url: string | null }
 
-export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" }: { org: Org; hrActive?: boolean; activeModule?: "labrota" | "rrhh" }) {
+export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" }: { org: Org; hrActive?: boolean; activeModule?: "labrota" | "hr" }) {
   const router = useRouter()
   const [isNavigating, startNavigation] = useTransition()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -61,13 +61,13 @@ export function AdminOrgHeaderActions({ org, hrActive, activeModule = "labrota" 
                 const target = e.target.value
                 startNavigation(() => {
                   if (target === "labrota") router.push(`/orgs/${org.id}`)
-                  else if (target === "rrhh") router.push(`/orgs/${org.id}/rrhh`)
+                  else if (target === "hr") router.push(`/orgs/${org.id}/hr`)
                 })
               }}
               className="border border-border rounded-md px-2 py-1 text-[13px] bg-background font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ml-1"
             >
               <option value="labrota">LabRota</option>
-              <option value="rrhh">RRHH</option>
+              <option value="hr">RRHH</option>
             </select>
           )}
         </div>

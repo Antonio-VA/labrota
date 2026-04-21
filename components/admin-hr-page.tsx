@@ -34,7 +34,7 @@ interface Props {
   leaveTypes: CompanyLeaveType[]
 }
 
-export function AdminRrhhPage({ orgId, config: initialConfig, leaveTypes: initialTypes }: Props) {
+export function AdminHrPage({ orgId, config: initialConfig, leaveTypes: initialTypes }: Props) {
   const router = useRouter()
   const locale = useLocale() as "es" | "en"
   const [isPending, startTransition] = useTransition()

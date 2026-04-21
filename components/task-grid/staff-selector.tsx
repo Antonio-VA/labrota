@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { StaffWithSkills, Tecnica } from "@/lib/types/database"
+import { filterStaffForPicker } from "@/lib/staff-filter"
 
 export function StaffSelector({
   open, onClose, onAdd, onRemoveStaff, onToggleWholeTeam: onWtToggle,
@@ -29,17 +30,14 @@ export function StaffSelector({
 
   if (!open) return null
 
-  const tecCode = tecnica.codigo.toUpperCase()
-  const qualifiedStaff = availableStaff.filter((s) =>
-    s.staff_skills.some((sk) => sk.skill.toUpperCase() === tecCode)
-  )
-
-  const filtered = qualifiedStaff.filter((s) => {
-    if (!search) return true
-    const name = `${s.first_name} ${s.last_name}`.toLowerCase()
-    const initials = `${s.first_name[0]}${s.last_name[0]}`.toLowerCase()
-    return name.includes(search.toLowerCase()) || initials.includes(search.toLowerCase())
-  }).sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name))
+  // Callers of this selector pre-filter `availableStaff` (e.g. by department
+  // or active-shift) so we keep excludeInactive=false here — otherwise we'd
+  // double-filter and drop staff the caller intentionally included.
+  const filtered = filterStaffForPicker(availableStaff, {
+    tecnicaCode: tecnica.codigo,
+    search,
+    excludeInactive: false,
+  })
 
   const atCap = assignedStaffIds.size >= 3
 

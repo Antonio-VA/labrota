@@ -42,6 +42,7 @@ import { reEnforceSupervisorColocation, collectTrainingTecnicaMap } from "./rota
 import { repairShiftCoverage } from "./rota-engine-v2/coverage-repair"
 import { assignTasksToShifts } from "./rota-engine-v2/task-assignment"
 import { enforceFinalBudget } from "./rota-engine-v2/budget-enforcement"
+import { alignTechniquesForDay } from "./rota-engine-v2/align-techniques"
 
 export type { DayPlan, TaskAssignment, RotaEngineResult, EngineParams }
 
@@ -1337,138 +1338,17 @@ export function runRotaEngineV2({
     const assignedById = new Map(assigned.map((s) => [s.id, s]))
 
     // ── Technique-shift alignment pass ──────────────────────────────────────
-    // After distribution, check each technique's typical_shift for coverage.
-    // If a shift is missing a qualified person, try to swap with someone from
-    // another shift. The shiftMinForGuard prevents breaking coverage minimums.
-    {
-
-    // Check each technique's typical_shift for coverage. If a shift is missing
-    // a qualified person for a mapped technique, try to reassign or add one.
-
-    // Build set of staff protected by supervisor rules (active today) — never move them
-    const supervisedStaffIds = new Set<string>()
-    for (const rule of rules.filter((r) => r.enabled && r.type === "supervisor_requerido")) {
-      const supDays = (rule.params.supervisorDays as string[] | undefined) ?? []
-      if (supDays.length > 0 && !supDays.includes(dayCode)) continue
-      for (const id of rule.staff_ids) supervisedStaffIds.add(id)
-    }
-
-    // Group techniques by their typical shift
-    const techByShift: Record<string, string[]> = {} // shift_code → [tecnica_codigo...]
-    for (const [codigo, shifts] of Object.entries(tecnicaTypicalShifts)) {
-      for (const sc of shifts) {
-        if (!techByShift[sc]) techByShift[sc] = []
-        techByShift[sc].push(codigo)
-      }
-    }
-
-    // Build shift counts for minimum-protection during alignment
-    const shiftCountAfterDist: Record<string, number> = {}
-    for (const sc of defaultShiftCodes) shiftCountAfterDist[sc] = 0
-    for (const a of dayPlan.assignments) shiftCountAfterDist[a.shift_type] = (shiftCountAfterDist[a.shift_type] ?? 0) + 1
-
-    // Per-shift minimums for guard checks
-    const shiftMinForGuard: Record<string, number> = {}
-    if (shiftCoverageEnabled && shiftCoverageByDay) {
-      for (const sc of defaultShiftCodes) {
-        const cov = normalizeShiftCov(shiftCoverageByDay[sc]?.[dayCode])
-        shiftMinForGuard[sc] = cov.lab + cov.andrology + cov.admin
-      }
-    }
-
-    // For each shift, check technique coverage
-    for (const [shiftCode, techCodes] of Object.entries(techByShift)) {
-      if (!dayShiftSet.has(shiftCode)) continue
-      const staffInShift = dayPlan.assignments.filter((a) => a.shift_type === shiftCode)
-
-      for (const techCode of techCodes) {
-        // Check if at least one certified person is in this shift
-        const hasCoverage = staffInShift.some((a) => {
-          const member = assignedById.get(a.staff_id)
-          return member?.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified")
-        })
-        if (hasCoverage) continue
-
-        // Gap found — try to resolve
-        // 1. Try to swap: find someone in ANOTHER shift who is qualified and swap them
-        //    BUT never move someone out of a shift that would drop below its minimum
-        let resolved = false
-        const qualifiedInOtherShifts = dayPlan.assignments.filter((a) => {
-          if (a.shift_type === shiftCode) return false
-          if (!assignedById.get(a.staff_id)?.staff_skills.some((sk) => sk.skill === techCode && sk.level === "certified")) return false
-          // Guard: don't move supervised staff (supervisor rules place them deliberately)
-          if (supervisedStaffIds.has(a.staff_id)) return false
-          // Guard: don't move if source shift would drop below minimum
-          const sourceMin = shiftMinForGuard[a.shift_type] ?? 0
-          if (sourceMin > 0 && (shiftCountAfterDist[a.shift_type] ?? 0) <= sourceMin) return false
-          return true
-        })
-
-        if (qualifiedInOtherShifts.length > 0) {
-          // Pick rarest: person whose qualification is shared by fewest others
-          const scored = qualifiedInOtherShifts.map((a) => {
-            const qualCount = assigned.filter((s) =>
-              s.staff_skills.some((sk) => sk.skill === techCode)
-            ).length
-            return { a, rarity: qualCount, workload: workloadScore[a.staff_id] ?? 0 }
-          }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
-
-          // Try candidates in order — skip only if they explicitly prefer their current shift
-          for (const { a: candidate } of scored) {
-            const member = assignedById.get(candidate.staff_id)
-            const prefShifts = member?.preferred_shift?.split(",").filter(Boolean) ?? []
-            // Block swap only if person explicitly prefers their CURRENT shift
-            if (prefShifts.length > 0 && prefShifts.includes(candidate.shift_type)) continue
-            // Update shift counts
-            shiftCountAfterDist[candidate.shift_type]--
-            shiftCountAfterDist[shiftCode] = (shiftCountAfterDist[shiftCode] ?? 0) + 1
-            candidate.shift_type = shiftCode as ShiftType
-            resolved = true
-            break
-          }
-        }
-
-        if (!resolved) {
-          // 2. Try to add: find an unassigned qualified staff member
-          //    Skip when coverage-aware distribution is active — minimums are already
-          //    enforced and adding extra staff would break the day cap and budgets.
-          if (!shiftCoverageEnabled) {
-          const unassigned = staff.filter((s) =>
-            !(assignedByDate[date] ?? new Set()).has(s.id) &&
-            !leaveMap[s.id]?.has(date) &&
-            s.onboarding_status === "active" &&
-            (weeklyShiftCount[s.id] ?? 0) < (s.days_per_week ?? 5) &&
-            s.staff_skills.some((sk) => sk.skill === techCode)
-          )
-          if (unassigned.length > 0) {
-            // Pick rarest then least-assigned
-            const scored = unassigned.map((s) => {
-              const qualCount = staff.filter((o) =>
-                o.staff_skills.some((sk) => sk.skill === techCode)
-              ).length
-              return { s, rarity: qualCount, workload: workloadScore[s.id] ?? 0 }
-            }).sort((x, y) => x.rarity - y.rarity || x.workload - y.workload)
-
-            const pick = scored[0].s
-            dayPlan.assignments.push({ staff_id: pick.id, shift_type: shiftCode as ShiftType })
-            assigned.push(pick)
-            if (!assignedByDate[date]) assignedByDate[date] = new Set()
-            assignedByDate[date].add(pick.id)
-            resolved = true
-          }
-          } // end if (!shiftCoverageEnabled)
-        }
-
-        if (!resolved) {
-          const shiftDef = shiftTypes.find((st) => st.code === shiftCode)
-          const shiftName = shiftDef ? shiftDef.code : shiftCode
-          // Internal log only — getRotaWeek generates the user-facing
-          // "technique_shift_gap" warning with full technique names
-          warnings.push(`[engine] ${date}: ${shiftName} sin personal cualificado para ${techCode}`)
-        }
-      }
-    }
-    } // end technique-shift alignment pass
+    // Lifted into ./rota-engine-v2/align-techniques.ts — the pass is long
+    // enough to make the main loop harder to read than it needs to be and
+    // is self-contained given an explicit context object.
+    alignTechniquesForDay({
+      date, dayCode, dayPlan, dayShiftSet, defaultShiftCodes,
+      assigned, assignedById, assignedByDate,
+      staff, rules, tecnicaTypicalShifts,
+      leaveMap, weeklyShiftCount, workloadScore,
+      shiftCoverageEnabled, shiftCoverageByDay, shiftTypes,
+      warnings,
+    })
 
     // Hard guard: remove anyone who would exceed their weekly budget
     // (can happen if Phase 1 over-reserves)
