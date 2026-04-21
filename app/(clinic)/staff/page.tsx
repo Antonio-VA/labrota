@@ -4,13 +4,13 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOrgId } from "@/lib/get-org-id"
 import { MobileGate } from "@/components/mobile-gate"
-import { TableSkeleton } from "@/components/ui/skeleton"
+import StaffLoading from "./loading"
 import { calculateBalance } from "@/lib/hr-balance-engine"
 import { getLeaveYear } from "@/lib/hr-balance-engine"
 import type { StaffWithSkills, Tecnica, Department, ShiftTypeDefinition, CompanyLeaveType, HolidayConfig, HolidayBalance, Leave } from "@/lib/types/database"
 
 const StaffList = dynamic(() => import("@/components/staff-list").then((m) => m.StaffList), {
-  loading: () => <TableSkeleton />,
+  loading: () => <StaffLoading />,
 })
 
 export default async function StaffPage() {
