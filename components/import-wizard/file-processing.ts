@@ -22,7 +22,7 @@ export async function processPdf(file: File): Promise<ProcessedFile> {
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i)
     const content = await page.getTextContent()
-    const text = content.items.map((item: any) => item.str).join(" ")
+    const text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ")
     pages.push(text)
   }
   return { type: "text", content: pages.join("\n\n"), fileName: file.name }

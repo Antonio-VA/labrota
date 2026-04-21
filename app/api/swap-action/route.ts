@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { APP_URL, BRAND_COLOR, TOKEN_TTL_MS } from "@/lib/config"
+import { sendSwapTargetEmail, notifySwapTarget, notifySwapInitiator } from "@/lib/swap-email"
+import { executeSwap } from "@/app/(clinic)/swaps/actions"
 
 function getSecret(): Buffer {
   const secret = process.env.SWAP_TOKEN_SECRET
@@ -87,13 +89,11 @@ export async function GET(request: NextRequest) {
 
       // Send email to target staff with accept/decline links
       try {
-        const { sendSwapTargetEmail } = await import("@/lib/swap-email")
         await sendSwapTargetEmail(swapId, swap.organisation_id)
       } catch (e) { console.error("[swap-action] Failed to send target email:", e) }
 
       // In-app notification for target
       try {
-        const { notifySwapTarget } = await import("@/lib/swap-email")
         await notifySwapTarget(swapId, swap.organisation_id)
       } catch { /* notification failure should not block */ }
 
@@ -111,7 +111,6 @@ export async function GET(request: NextRequest) {
 
       // Notify initiator
       try {
-        const { notifySwapInitiator } = await import("@/lib/swap-email")
         await notifySwapInitiator(swapId, swap.organisation_id, "rejected")
       } catch { /* non-blocking */ }
 
@@ -128,7 +127,6 @@ export async function GET(request: NextRequest) {
     if (action === "approve") {
       // Execute the swap
       try {
-        const { executeSwap } = await import("@/app/(clinic)/swaps/actions")
         const result = await executeSwap(swapId)
         if (result.error) {
           return new NextResponse(errorPage(result.error), { status: 400, headers: { "Content-Type": "text/html" } })
@@ -140,7 +138,6 @@ export async function GET(request: NextRequest) {
 
       // Notify initiator
       try {
-        const { notifySwapInitiator } = await import("@/lib/swap-email")
         await notifySwapInitiator(swapId, swap.organisation_id, "approved")
       } catch { /* non-blocking */ }
 
@@ -158,7 +155,6 @@ export async function GET(request: NextRequest) {
 
       // Notify initiator
       try {
-        const { notifySwapInitiator } = await import("@/lib/swap-email")
         await notifySwapInitiator(swapId, swap.organisation_id, "rejected")
       } catch { /* non-blocking */ }
 

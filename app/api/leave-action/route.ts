@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from "crypto"
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { clearRotaAssignmentsForLeave } from "@/lib/leaves/clear-rota-assignments"
 import { APP_URL, BRAND_COLOR, TOKEN_TTL_MS } from "@/lib/config"
+import { notifyLeaveDecision } from "@/app/(clinic)/leaves/emails"
 
 function getSecret(): Buffer {
   const secret = process.env.LEAVE_TOKEN_SECRET
@@ -101,7 +102,6 @@ export async function GET(request: NextRequest) {
 
   // Notify the staff member about the decision
   try {
-    const { notifyLeaveDecision } = await import("@/app/(clinic)/leaves/emails")
     await notifyLeaveDecision({ leaveId, orgId: leave.organisation_id, decision: newStatus as "approved" | "rejected" })
   } catch { /* email failure should not block */ }
 

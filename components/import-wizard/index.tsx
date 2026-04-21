@@ -53,14 +53,23 @@ export function ImportWizard() {
         throw new Error(err.error || `HTTP ${res.status}`)
       }
       const data = await res.json()
+      const parsed = data as {
+        staff?: Array<Omit<ExtractedStaff, "included">>
+        shifts?: Array<Omit<ExtractedShift, "included">>
+        techniques?: Array<Omit<ExtractedTechnique, "included">>
+        rules?: Array<Omit<ExtractedRule, "accepted">>
+        rota_mode?: ExtractedData["rota_mode"]
+        task_coverage?: ExtractedData["task_coverage"]
+        lab_settings?: ExtractedData["lab_settings"]
+      }
       const enriched: ExtractedData = {
-        staff: (data.staff ?? []).map((s: any) => ({ ...s, included: true })),
-        shifts: (data.shifts ?? []).map((s: any) => ({ ...s, included: true })),
-        techniques: (data.techniques ?? []).map((t: any) => ({ ...t, included: true })),
-        rules: (data.rules ?? []).map((r: any) => ({ ...r, accepted: r.confidence >= 0.6 })),
-        rota_mode: data.rota_mode ?? undefined,
-        task_coverage: data.task_coverage ?? undefined,
-        lab_settings: data.lab_settings ?? undefined,
+        staff: (parsed.staff ?? []).map((s) => ({ ...s, included: true })),
+        shifts: (parsed.shifts ?? []).map((s) => ({ ...s, included: true })),
+        techniques: (parsed.techniques ?? []).map((t) => ({ ...t, included: true })),
+        rules: (parsed.rules ?? []).map((r) => ({ ...r, accepted: r.confidence >= 0.6 })),
+        rota_mode: parsed.rota_mode ?? undefined,
+        task_coverage: parsed.task_coverage ?? undefined,
+        lab_settings: parsed.lab_settings ?? undefined,
       }
       setExtracted(enriched)
       setStep("review")

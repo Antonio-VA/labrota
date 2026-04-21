@@ -4,7 +4,8 @@
 // ============================================================
 
 // ── Enums ────────────────────────────────────────────────────────────────────
-export type StaffRole         = string  // maps to departments.code
+/** Opaque string — equals a `departments.code` value for the org. Cannot be a literal union because departments are user-created at runtime. */
+export type StaffRole         = string
 
 export interface Department {
   id:              string
@@ -21,10 +22,12 @@ export interface Department {
 }
 export type OnboardingStatus  = 'active' | 'onboarding' | 'inactive'
 export type ContractType      = 'full_time' | 'part_time' | 'intern'
+/** Opaque string — equals a `shift_types.code` value for the org. Cannot be a literal union because shift types are user-configured at runtime. */
 export type ShiftType         = string
 export type RotaStatus        = 'draft' | 'published'
 export type LeaveType         = 'annual' | 'sick' | 'personal' | 'training' | 'maternity' | 'other'
 export type LeaveStatus       = 'pending' | 'approved' | 'rejected' | 'cancelled'
+/** Opaque string — equals a `tecnicas.codigo` value for the org. Cannot be a literal union because techniques are user-configured at runtime. */
 export type SkillName = string
 
 export type SkillLevel        = 'certified' | 'training'
