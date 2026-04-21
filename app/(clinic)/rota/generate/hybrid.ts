@@ -153,7 +153,7 @@ export async function generateRotaHybrid(
     for (const o of overrideAssignments) overrideKeys.add(`${o.staff_id}:${o.date}`)
   }
 
-  captureWeekSnapshot(rotaId, weekStart)
+  await captureWeekSnapshot(rotaId, weekStart)
 
   if (preserveOverrides) {
     await supabase.from("rota_assignments").delete().eq("rota_id", rotaId).eq("is_manual_override", false)
@@ -684,7 +684,7 @@ export async function generateTaskHybrid(
     for (const o of overrideAssignments) overrideKeys.add(`${o.staff_id}:${o.date}:${o.function_label ?? ""}`)
   }
 
-  captureWeekSnapshot(rotaId, weekStart)
+  await captureWeekSnapshot(rotaId, weekStart)
   if (preserveOverrides) {
     await supabase.from("rota_assignments").delete().eq("rota_id", rotaId).eq("is_manual_override", false)
   } else {
