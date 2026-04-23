@@ -1209,6 +1209,8 @@
     "confirmDraftDescription": "The agent is proposing the following changes. Review them before confirming.",
     "apply": "Apply",
     "discard": "Discard",
+    "applied": "Applied",
+    "discarded": "Discarded",
     "examples": {
       "generate": "Generate next week's rota",
       "leave": "Add a week of annual leave for Amira next month",

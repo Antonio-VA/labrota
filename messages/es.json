@@ -1209,6 +1209,8 @@
     "confirmDraftDescription": "El agente propone los siguientes cambios. Revísalos antes de confirmar.",
     "apply": "Aplicar",
     "discard": "Descartar",
+    "applied": "Aplicado",
+    "discarded": "Descartado",
     "examples": {
       "generate": "Genera el horario de la semana que viene",
       "leave": "Añade una semana de vacaciones a Amira el mes que viene",

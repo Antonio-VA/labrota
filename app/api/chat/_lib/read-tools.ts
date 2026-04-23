@@ -367,23 +367,32 @@ export function buildReadTools(params: {
     }),
 
     getRules: tool({
-      description: "Get all scheduling rules and constraints configured for the lab.",
+      description: "Get all scheduling rules and constraints configured for the lab. Rules with enabled=false are disabled. staff_ids is empty when the rule applies to everyone.",
       inputSchema: z.object({}),
       execute: async () => {
-        const { data } = await supabase
-          .from("rota_rules")
-          .select("id, type, config, description, active, staff(first_name, last_name)")
-          .eq("organisation_id", orgId)
-          .order("created_at") as {
-            data: { id: string; type: string; config: Record<string, unknown>; description: string | null; active: boolean; staff: { first_name: string; last_name: string } | null }[] | null
-          }
+        const [rulesRes, staffRes] = await Promise.all([
+          supabase
+            .from("rota_rules")
+            .select("id, type, is_hard, enabled, staff_ids, params, notes, expires_at")
+            .eq("organisation_id", orgId)
+            .order("created_at") as unknown as Promise<{
+              data: { id: string; type: string; is_hard: boolean; enabled: boolean; staff_ids: string[]; params: Record<string, unknown>; notes: string | null; expires_at: string | null }[] | null
+            }>,
+          supabase.from("staff").select("id, first_name, last_name").eq("organisation_id", orgId) as unknown as Promise<{
+            data: { id: string; first_name: string; last_name: string }[] | null
+          }>,
+        ])
 
-        return (data ?? []).map((r) => ({
+        const staffById = Object.fromEntries((staffRes.data ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`]))
+
+        return (rulesRes.data ?? []).map((r) => ({
           type: r.type,
-          description: r.description,
-          active: r.active,
-          config: r.config,
-          appliesTo: r.staff ? `${r.staff.first_name} ${r.staff.last_name}` : "All staff",
+          hard: r.is_hard,
+          enabled: r.enabled,
+          params: r.params,
+          notes: r.notes,
+          expiresAt: r.expires_at,
+          appliesTo: r.staff_ids.length ? r.staff_ids.map((id) => staffById[id] ?? id) : "all staff",
         }))
       },
     }),
