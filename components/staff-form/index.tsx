@@ -59,7 +59,7 @@ export function StaffForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} noValidate className="flex flex-col gap-6">
       <TabStrip steps={STEPS} labels={stepLabels} current={tab} setCurrent={setTab} isWizard={isWizard} />
 
       <div className={cn("flex flex-col gap-6", tab !== "datos" && "hidden")}>
