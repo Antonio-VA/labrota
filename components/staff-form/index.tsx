@@ -40,6 +40,8 @@ export function StaffForm({
 
   const STEPS: Step[] = balancesTab
     ? ["datos", "disponibilidad", "tareas", "balances", "notes"]
+    : mode === "create"
+    ? ["datos", "disponibilidad", "tareas"]
     : ["datos", "disponibilidad", "tareas", "notes"]
   const [tab, setTab] = useState<Step>("datos")
   const isWizard = mode === "create"
