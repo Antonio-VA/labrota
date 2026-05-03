@@ -27,6 +27,9 @@ export function Field({
     <div className="flex flex-col gap-1.5">
       <label className="text-[14px] font-medium">
         {label}
+        {required && (
+          <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+        )}
         {!required && (
           <span className="ml-1 text-[12px] font-normal text-muted-foreground">({tc("optional").toLowerCase()})</span>
         )}
