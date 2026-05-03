@@ -27,8 +27,8 @@ export function TabDatos({
           <Field label={t("fields.firstName")} required>
             <Input name="first_name" defaultValue={staff?.first_name} disabled={isPending} required className="rounded-[8px]" />
           </Field>
-          <Field label={t("fields.lastName")} required>
-            <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} required className="rounded-[8px]" />
+          <Field label={t("fields.lastName")}>
+            <Input name="last_name" defaultValue={staff?.last_name} disabled={isPending} className="rounded-[8px]" />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">

@@ -579,6 +579,10 @@
     "wizardStep1": "Datos",
     "wizardStep2": "Disponibilidad",
     "wizardStep3": "Habilidades",
+    "errors": {
+      "firstNameRequired": "El nombre es obligatorio.",
+      "startDateRequired": "La fecha de inicio es obligatoria."
+    },
     "inviteFailed": "Miembro creado pero la invitación falló: {error}",
     "staffCreationFailed": "No se pudo crear el miembro del equipo.",
     "onlyInactiveDelete": "Solo se pueden borrar definitivamente miembros inactivos.",

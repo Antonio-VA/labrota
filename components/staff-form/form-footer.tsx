@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 export function FormFooter<Step extends string>({
   steps, current, setCurrent, isWizard, isPending,
   confirmDelete, setConfirmDelete, isDeleting, onDelete,
+  onNext,
 }: {
   steps: Step[]
   current: Step
@@ -17,6 +18,7 @@ export function FormFooter<Step extends string>({
   setConfirmDelete: (v: boolean) => void
   isDeleting: boolean
   onDelete: () => void
+  onNext?: () => void
 }) {
   const t = useTranslations("staff")
   const tc = useTranslations("common")
@@ -37,7 +39,7 @@ export function FormFooter<Step extends string>({
             </Button>
           )}
           {stepIndex < steps.length - 1 ? (
-            <Button type="button" onClick={() => setCurrent(steps[stepIndex + 1])} disabled={isPending}>
+            <Button type="button" onClick={onNext ?? (() => setCurrent(steps[stepIndex + 1]))} disabled={isPending}>
               {tc("next")}
             </Button>
           ) : (

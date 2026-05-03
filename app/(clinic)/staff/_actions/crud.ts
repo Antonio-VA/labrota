@@ -101,7 +101,6 @@ export async function createStaff(_prevState: unknown, formData: FormData) {
   const onboardingEndDate = ((formData.get("onboarding_end_date") as string) || "").trim() || null
 
   if (!staff.first_name) return { error: "First name is required." }
-  if (!staff.last_name) return { error: "Last name is required." }
   if (!staff.start_date) return { error: "Start date is required." }
   if (staff.email && !EMAIL_RE.test(staff.email)) return { error: "Invalid email format." }
   if (staff.end_date && staff.start_date && staff.end_date < staff.start_date) return { error: "End date must be after start date." }

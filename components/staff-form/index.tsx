@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { createStaff, updateStaff, deleteStaff } from "@/app/(clinic)/staff/actions"
@@ -44,6 +44,9 @@ export function StaffForm({
     ? ["datos", "disponibilidad", "tareas"]
     : ["datos", "disponibilidad", "tareas", "notes"]
   const [tab, setTab] = useState<Step>("datos")
+  const [stepError, setStepError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  useEffect(() => { setStepError(null) }, [tab])
   const isWizard = mode === "create"
   const stepLabels: Record<Step, string> = {
     datos: t("wizardStep1"),
@@ -54,12 +57,25 @@ export function StaffForm({
   }
   const showFooter = tab !== "balances" && tab !== "notes"
 
+  const handleNext = () => {
+    setStepError(null)
+    if (tab === "datos") {
+      const el = formRef.current
+      const firstName = (el?.elements.namedItem("first_name") as HTMLInputElement | null)?.value?.trim()
+      const startDate = (el?.elements.namedItem("start_date") as HTMLInputElement | null)?.value?.trim()
+      if (!firstName) { setStepError(t("errors.firstNameRequired")); return }
+      if (!startDate) { setStepError(t("errors.startDateRequired")); return }
+    }
+    const stepIndex = STEPS.indexOf(tab)
+    setTab(STEPS[stepIndex + 1])
+  }
+
   const handleDelete = () => {
     form.startDelete(async () => { await deleteStaff(staff!.id) })
   }
 
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-6">
+    <form ref={formRef} action={formAction} noValidate className="flex flex-col gap-6">
       <TabStrip steps={STEPS} labels={stepLabels} current={tab} setCurrent={setTab} isWizard={isWizard} />
 
       <div className={cn("flex flex-col gap-6", tab !== "datos" && "hidden")}>
@@ -103,8 +119,8 @@ export function StaffForm({
         )}
       </div>
 
-      {state?.error && (
-        <p className="text-[14px] text-destructive">{state.error}</p>
+      {(stepError || state?.error) && (
+        <p className="text-[14px] text-destructive">{stepError ?? state?.error}</p>
       )}
 
       {showFooter && (
@@ -112,6 +128,7 @@ export function StaffForm({
           steps={STEPS} current={tab} setCurrent={setTab} isWizard={isWizard} isPending={isPending}
           confirmDelete={form.confirmDelete} setConfirmDelete={form.setConfirmDelete}
           isDeleting={form.isDeleting} onDelete={handleDelete}
+          onNext={isWizard ? handleNext : undefined}
         />
       )}
     </form>

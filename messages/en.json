@@ -579,6 +579,10 @@
     "wizardStep1": "Details",
     "wizardStep2": "Availability",
     "wizardStep3": "Skills",
+    "errors": {
+      "firstNameRequired": "First name is required.",
+      "startDateRequired": "Start date is required."
+    },
     "inviteFailed": "Staff created but invite failed: {error}",
     "staffCreationFailed": "Failed to create staff member.",
     "onlyInactiveDelete": "Only inactive members can be permanently deleted.",
